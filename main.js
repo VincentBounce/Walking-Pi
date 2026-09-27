@@ -249,9 +249,9 @@ function constantWorker() {
         break;
       }
       case 'phi': v = (S + isqrt(5n * S * S)) / 2n; break;
-      case 'sqrt2': v = isqrt(2n * S * S); break;
-      case 'sqrt3': v = isqrt(3n * S * S); break;
-      case 'sqrt5': v = isqrt(5n * S * S); break;
+      case 'sqrt2': case 'sqrt3': case 'sqrt5': case 'sqrt6': case 'sqrt7': case 'sqrt8':
+        v = isqrt(BigInt(id.slice(4)) * S * S);
+        break;
       case 'cbrt2': v = icbrt(2n * S * S * S); break;
       case 'catalan': { // Lupaș series, by binary splitting:
         // G = 1/18 Σ_{k≥0} (40m²−24m+3) Π_{j=1..k} −32j³(2j−1)/((4j+1)²(4j+3)²), with m = k+1
@@ -308,15 +308,18 @@ const CONSTANTS = {
   pi:    { sym: 'π',    name: 'Pi' },
   e:     { sym: 'e',    name: "Euler's number" },
   phi:   { sym: 'φ',    name: 'Golden ratio' },
-  sqrt2: { sym: '√2',   name: 'Square root of 2' },
-  sqrt3: { sym: '√3',   name: 'Square root of 3' },
-  sqrt5: { sym: '√5',   name: 'Square root of 5' },
   ln2:   { sym: 'ln 2', name: 'Natural log of 2' },
   zeta3: { sym: 'ζ(3)', name: "Apéry's constant" },
   E:     { sym: 'E',    name: 'Erdős–Borwein constant' },
   catalan: { sym: 'G',  name: "Catalan's constant" },
-  cbrt2: { sym: '∛2',   name: 'Cube root of 2' },
   gamma: { sym: 'γ',    name: 'Euler–Mascheroni constant' },
+  sqrt2: { sym: '√2',   name: 'Square root of 2', group: 'Roots' },
+  sqrt3: { sym: '√3',   name: 'Square root of 3', group: 'Roots' },
+  sqrt5: { sym: '√5',   name: 'Square root of 5', group: 'Roots' },
+  sqrt6: { sym: '√6',   name: 'Square root of 6', group: 'Roots' },
+  sqrt7: { sym: '√7',   name: 'Square root of 7', group: 'Roots' },
+  sqrt8: { sym: '√8',   name: 'Square root of 8 (= 2√2)', group: 'Roots' },
+  cbrt2: { sym: '∛2',   name: 'Cube root of 2', group: 'Roots' },
   random: { sym: 'rand', name: 'Random digits', group: 'Comparisons' },
   champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons' },
   fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons' },
@@ -1321,8 +1324,12 @@ function drawSphereCursor(ctx) {
   const hl = Math.hypot(...h) || 1;
   h = h.map((v) => v / hl);
   const side = cross(nrm, h);
-  const size = 1.1;  // ≈ one tile edge
+  // scale to the tile: the arrow is 1.6·size long, about half an edge, centred on the tile centre
+  const g = walk.geo, v0 = g.poly[0], v1 = g.poly[1];
+  const edge = walk.R * Math.hypot(...[0, 1, 2].map((d) => g.verts[3 * v0 + d] - g.verts[3 * v1 + d]));
+  const size = 0.3 * edge;
   const at = (fwd, lat) => {
+    fwd -= 0.2;  // the arrow spans −0.6 … 1 along its axis: shift it so it is centred
     const [x, y] = projectPoint(...[0, 1, 2].map((d) => pos[d] + h[d] * fwd * size + side[d] * lat * size));
     return [view.ox + x * view.scale, view.oy + y * view.scale];
   };
