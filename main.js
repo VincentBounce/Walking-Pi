@@ -1575,7 +1575,11 @@ for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
 $('primorialP').value = '392113,1';
 $('primorialP').addEventListener('change', compute);
 $('primeSize').addEventListener('change', compute);
-$('sphereF').addEventListener('change', () => { if (current) buildWalk(); });
+$('sphereF').addEventListener('change', () => {
+  if (!current) return;
+  buildWalk();
+  play(true);
+});
 $('constant').addEventListener('change', compute);
 $('mersenneP').addEventListener('change', compute);
 $('fraction').addEventListener('change', compute);
