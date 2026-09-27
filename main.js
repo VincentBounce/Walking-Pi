@@ -10,6 +10,13 @@ function constantWorker() {
     const { id, n, base } = e.data;
     const B = BigInt(base);
     const t0 = performance.now();
+    if (id === 'mersenne') { // nombre premier de Mersenne 2^p − 1 : entier, pas de partie fractionnaire
+      const all = ((1n << BigInt(e.data.p)) - 1n).toString(base);
+      const digits = new Uint8Array(0);
+      // on ne renvoie que les n premiers chiffres (ceux de la marche) et le nombre total
+      self.postMessage({ type: 'done', intPart: all.slice(0, n), total: all.length, digits, ms: performance.now() - t0 });
+      return;
+    }
     const guard = 30 + Math.ceil(Math.log(n) / Math.log(base));
     const prec = n + guard;
     const S = B ** BigInt(prec);
@@ -53,6 +60,53 @@ function constantWorker() {
         x = y;
       }
       while (x * x > v) x--;
+      return x;
+    }
+
+    // Scindage binaire de Σ_{k∈[a,b)} poly(k)·Π_{j=a..k} p(j)/q(j) : renvoie [P, Q, T] avec somme = T/Q
+    function binarySplit(a, b, p, q, poly) {
+      if (b - a === 1) {
+        progress(a);
+        const P = p(a);
+        return [P, q(a), poly(a) * P];
+      }
+      const m = (a + b) >> 1;
+      const [Pl, Ql, Tl] = binarySplit(a, m, p, q, poly);
+      const [Pr, Qr, Tr] = binarySplit(m, b, p, q, poly);
+      return [Pl * Pr, Ql * Qr, Tl * Qr + Pl * Tr];
+    }
+
+    // Idem pour Brent–McMillan, avec p = m², q = k² et la somme harmonique H_k = Σ 1/j :
+    // T/Q = Σ Π p/q, C/D = Σ 1/k, V/(Q·D) = Σ (Π p/q)·H_k
+    function harmonicSplit(a, b, m2) {
+      if (b - a === 1) {
+        progress(a);
+        const K = BigInt(a);
+        return [m2, K * K, m2, K, 1n, m2];
+      }
+      const mid = (a + b) >> 1;
+      const [Pl, Ql, Tl, Dl, Cl, Vl] = harmonicSplit(a, mid, m2);
+      const [Pr, Qr, Tr, Dr, Cr, Vr] = harmonicSplit(mid, b, m2);
+      return [Pl * Pr, Ql * Qr, Tl * Qr + Pl * Tr, Dl * Dr, Cl * Dr + Dl * Cr,
+              Vl * Qr * Dr + Pl * (Cl * Dr * Tr + Dl * Vr)];
+    }
+
+    // racine cubique entière (même principe que isqrt)
+    function icbrt(v) {
+      if (v < 1n << 52n) {
+        let x = BigInt(Math.round(Math.cbrt(Number(v))));
+        while (x * x * x > v) x--;
+        while ((x + 1n) ** 3n <= v) x++;
+        return x;
+      }
+      const shift = BigInt(Math.floor((v.toString(16).length * 4) / 6));  // ≈ bits / 6
+      let x = (icbrt(v >> (3n * shift)) + 1n) << shift;
+      for (;;) {
+        const y = (2n * x + v / (x * x)) / 3n;
+        if (y >= x) break;
+        x = y;
+      }
+      while (x * x * x > v) x--;
       return x;
     }
 
@@ -107,6 +161,33 @@ function constantWorker() {
       case 'sqrt2': v = isqrt(2n * S * S); break;
       case 'sqrt3': v = isqrt(3n * S * S); break;
       case 'sqrt5': v = isqrt(5n * S * S); break;
+      case 'cbrt2': v = icbrt(2n * S * S * S); break;
+      case 'catalan': { // Lupaș, par scindage binaire :
+        // G = 1/18 Σ_{k≥0} (40m²−24m+3) Π_{j=1..k} −32j³(2j−1)/((4j+1)²(4j+3)²), avec m = k+1
+        const K = Math.ceil(lnS / Math.log(4)) + 10;
+        total = K;
+        const J = (j) => BigInt(j);
+        const [, Q, T] = binarySplit(0, K,
+          (j) => (j === 0 ? 1n : -32n * J(j) ** 3n * (2n * J(j) - 1n)),
+          (j) => (j === 0 ? 1n : (4n * J(j) + 1n) ** 2n * (4n * J(j) + 3n) ** 2n),
+          (k) => 40n * J(k + 1) ** 2n - 24n * J(k + 1) + 3n);
+        v = (T * S) / (18n * Q);
+        break;
+      }
+      case 'gamma': { // Brent–McMillan par scindage binaire, avec m = 2^i·3^j ≥ ln(S)/4 (ln m calculable vite)
+        let m = Infinity, i2 = 0, j3 = 0;
+        for (let i = 0; i < 64; i++) for (let j = 0; j < 40; j++) {
+          const c = 2 ** i * 3 ** j;
+          if (c >= lnS / 4 + 1 && c < m) { m = c; i2 = i; j3 = j; }
+        }
+        const K = Math.ceil(3.6 * m) + 10;  // (m^k/k!)² est négligeable au-delà de ≈ 3,59·m
+        total = atanTerms(26) + atanTerms(4801) + atanTerms(8749) + atanTerms(5) + K;
+        const ln2 = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
+        const ln3 = ln2 + 2n * atanInv(5, true);
+        const [, Q, T, D, , V] = harmonicSplit(1, K, BigInt(m) * BigInt(m));
+        v = (V * S) / (D * (Q + T)) - (BigInt(i2) * ln2 + BigInt(j3) * ln3);
+        break;
+      }
     }
 
     self.postMessage({ type: 'progress', p: 1 });
@@ -142,6 +223,13 @@ const CONSTANTS = {
   ln2:   { sym: 'ln 2', name: 'Natural log of 2' },
   zeta3: { sym: 'ζ(3)', name: "Apéry's constant" },
   E:     { sym: 'E',    name: 'Erdős–Borwein constant' },
+  catalan: { sym: 'G',  name: "Catalan's constant" },
+  cbrt2: { sym: '∛2',   name: 'Cube root of 2' },
+  gamma: { sym: 'γ',    name: 'Euler–Mascheroni constant' },
+  random: { sym: 'rand', name: 'Random digits', group: 'Comparisons' },
+  champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons' },
+  fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons' },
+  mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
 };
 
 const MODES = {
@@ -163,8 +251,14 @@ const MODES = {
               rule: 'Base-6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
 };
 
-const cache = {};        // "id/base" → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
-let current = null;      // entrée du cache affichée + mode de marche
+// exposants p des nombres premiers de Mersenne connus (à partir de 127)
+const MERSENNE = [127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701,
+  23209, 44497, 86243, 110503, 132049, 216091, 756839, 859433, 1257787, 1398269, 2976221, 3021377,
+  6972593, 13466917, 20996011, 24036583, 25964951, 30402457, 32582657, 37156667, 42643801, 43112609,
+  57885161, 74207281, 77232917, 82589933, 136279841];
+
+const cache = {};        // clé → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
+let current = null;      // { head: chiffres de la partie entière, digits, mode }
 let worker = null;
 
 const walk = {
@@ -210,43 +304,127 @@ function requestedDigits() {
   return Math.min(1_000_000, Math.max(10, n || 10));
 }
 
+const SUB = (v) => String(v).replace(/\d/g, (c) => '₀₁₂₃₄₅₆₇₈₉'[c]);
+
+// Nom affiché et clé de cache du nombre choisi
+function numberInfo(id) {
+  if (id === 'mersenne') {
+    const p = $('mersenneP').value;
+    return { sym: `M${SUB(p)}`, key: `mersenne${p}`, p: Number(p) };
+  }
+  if (id === 'fraction') {
+    const txt = $('fraction').value.replace(/\s/g, '');
+    return { sym: txt, key: `fraction${txt}` };
+  }
+  return { sym: CONSTANTS[id].sym, key: id };
+}
+
+// Chiffres calculés directement (sans worker) : aléatoire, Champernowne, fraction
+function localDigits(id, n, base) {
+  const digits = new Uint8Array(n);
+  if (id === 'random') {
+    const buf = new Uint8Array(n * 2);
+    crypto.getRandomValues(buf);
+    const lim = 256 - (256 % base);             // rejet pour une distribution uniforme
+    let j = 0;
+    for (let i = 0; i < n; i++) {
+      let r;
+      do {
+        if (j === buf.length) { crypto.getRandomValues(buf); j = 0; }
+        r = buf[j++];
+      } while (r >= lim);
+      digits[i] = r % base;
+    }
+    return { intPart: '0', digits };
+  }
+  if (id === 'champernowne') {                  // 0,1 2 3 … écrits en base b à la suite
+    for (let i = 0, k = 1; i < n; k++) {
+      const t = k.toString(base);
+      for (let c = 0; c < t.length && i < n; c++) digits[i++] = t.charCodeAt(c) - 48;
+    }
+    return { intPart: '0', digits };
+  }
+  // fraction p/q : division posée en base b
+  const m = $('fraction').value.replace(/\s/g, '').match(/^(\d+)(?:\/(\d+))?$/);
+  if (!m || BigInt(m[2] ?? 1) === 0n) return null;
+  const p = BigInt(m[1]), q = BigInt(m[2] ?? 1), B = BigInt(base);
+  let r = p % q;
+  for (let i = 0; i < n; i++) {
+    r *= B;
+    digits[i] = Number(r / q);
+    r %= q;
+  }
+  return { intPart: (p / q).toString(base), digits };
+}
+
+function setCurrent(entry) {
+  const t = entry.intPart.replace(/^0+/, '');   // partie entière sans zéros de tête
+  const head = new Uint8Array(t.length);
+  for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
+  current = { head, digits: entry.digits, mode: $('mode').value };
+}
+
 function compute() {
   const n = requestedDigits();
   const id = $('constant').value;
-  const { sym } = CONSTANTS[id];
+  const info = numberInfo(id);
+  const { sym } = info;
   $('digits').value = n;
   $('titleSym').textContent = sym;
+  $('fractionRow').hidden = id !== 'fraction';
+  $('mersenneRow').hidden = id !== 'mersenne';
   const { base } = MODES[$('mode').value];
-  const key = `${id}/${base}`;
+  const key = `${info.key}/${base}`;
+  const label = (count) => `${fmt(count)} base-${base} digits of ${sym}`;
   updateRuleText();
-  if (cache[key] && cache[key].digits.length >= n) {
-    current = { ...cache[key], mode: $('mode').value };
-    $('status').textContent = `${fmt(n)} base-${base} digits of ${sym} (cached)`;
+  if (worker) { worker.terminate(); worker = null; setBusy(false); }
+
+  if (['random', 'champernowne', 'fraction'].includes(id)) {
+    const entry = localDigits(id, n, base);
+    if (!entry) {
+      $('status').textContent = 'Enter a fraction like 22/7';
+      return;
+    }
+    setCurrent(entry);
+    $('status').textContent = label(n);
     buildWalk();
     play(true);
     return;
   }
-  if (worker) worker.terminate();
+
+  const done = (entry, how) => {
+    setCurrent(entry);
+    const total = entry.total ?? current.head.length + current.digits.length;
+    $('status').textContent = id === 'mersenne'
+      ? `${label(total)} ${how}${total > n ? ` — walking the first ${fmt(n)}` : ''}`
+      : `${label(n)} ${how}`;
+    buildWalk();
+    play(true);
+  };
+  const hit = cache[key];
+  const enough = id === 'mersenne' ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
+                                    : hit && hit.digits.length >= n;
+  if (enough) {
+    done(hit, '(cached)');
+    return;
+  }
   const src = `(${constantWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
-  $('status').textContent = `Computing ${fmt(n)} base-${base} digits of ${sym}…`;
+  $('status').textContent = `Computing ${id === 'mersenne' ? `base-${base} digits of ${sym}` : label(n)}…` +
+    (id === 'mersenne' && info.p > 20_000_000 ? ' (a very large prime: this can take a minute or more)' : '');
   worker.onmessage = (e) => {
     if (e.data.type === 'progress') {
       $('progressBar').style.width = `${Math.min(100, e.data.p * 100)}%`;
     } else {
-      cache[key] = { intPart: e.data.intPart, digits: e.data.digits };
-      current = { ...cache[key], mode: $('mode').value };
+      cache[key] = { intPart: e.data.intPart, digits: e.data.digits, total: e.data.total };
       worker.terminate();
       worker = null;
       setBusy(false);
-      $('status').textContent =
-        `${fmt(n)} base-${base} digits of ${sym} computed in ${(e.data.ms / 1000).toFixed(2)} s`;
-      buildWalk();
-      play(true);
+      done(cache[key], `computed in ${(e.data.ms / 1000).toFixed(2)} s`);
     }
   };
-  worker.postMessage({ id, n, base });
+  worker.postMessage({ id, n, base, p: info.p });
 }
 
 function setBusy(busy) {
@@ -255,16 +433,14 @@ function setBusy(busy) {
   $('progressBar').style.width = busy ? '0' : '100%';
 }
 
-function intDigits() {
-  return $('intPart').checked ? Array.from(current.intPart, Number) : [];
-}
-
 function buildWalk() {
   const n = requestedDigits();
-  const head = intDigits();
-  const seq = new Uint8Array(head.length + n);
+  // partie entière toujours incluse ; au plus n chiffres pour un grand entier
+  const head = current.head.subarray(0, n);
+  const frac = current.digits.subarray(0, n);
+  const seq = new Uint8Array(head.length + frac.length);
   seq.set(head);
-  seq.set(current.digits.subarray(0, n), head.length);
+  seq.set(frac, head.length);
   const len = seq.length;
   const is3d = MODES[current.mode].lattice === 'cube';
   const wx = new Float64Array(len + 1);
@@ -747,11 +923,11 @@ function updateStats() {
   const a = Math.max(0, cur - before);
   const b = Math.min(walk.n, cur + after);
   const d = walk.digits;
-  const intLen = intDigits().length;
-  let html = a > 0 ? '…' : (intLen ? '' : `${current.intPart}.`);
+  const intLen = Math.min(current.head.length, walk.n);
+  let html = a > 0 ? '…' : (intLen ? '' : '0.');
   for (let i = a; i < b; i++) {
     html += i === cur - 1 ? `<span class="cur">${d[i]}</span>` : d[i];
-    if (i === intLen - 1) html += '.';
+    if (i === intLen - 1 && intLen < walk.n) html += '.';
   }
   strip.innerHTML = html + (b < walk.n ? '…' : '');
 }
@@ -801,7 +977,6 @@ $('restart').addEventListener('click', () => { restart(); play(true); });
 $('end').addEventListener('click', () => { advanceTo(walk.n); });
 $('fit').addEventListener('click', fitNow);
 $('speed').addEventListener('input', updateSpeedLabel);
-$('intPart').addEventListener('change', () => { if (current) buildWalk(); });
 $('colorMode').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
@@ -848,7 +1023,7 @@ stage.addEventListener('pointercancel', endDrag);
 stage.addEventListener('dblclick', fitNow);
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.matches('input[type=number], select')) return;
+  if (e.target.matches('input[type=number], input[type=text], select')) return;
   switch (e.key) {
     case ' ': e.preventDefault(); $('play').click(); break;
     case 'ArrowRight': $('step').click(); break;
@@ -858,10 +1033,23 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-for (const [id, { sym, name }] of Object.entries(CONSTANTS)) {
-  $('constant').add(new Option(`${sym} — ${name}`, id));
+const groups = {};
+for (const [id, { sym, name, group = 'Constants' }] of Object.entries(CONSTANTS)) {
+  if (!groups[group]) {
+    groups[group] = document.createElement('optgroup');
+    groups[group].label = group;
+    $('constant').append(groups[group]);
+  }
+  groups[group].append(new Option(`${sym} — ${name}`, id));
 }
+for (const p of MERSENNE) {
+  const decimals = Math.floor(p * Math.log10(2)) + 1;
+  $('mersenneP').add(new Option(`M${SUB(p)} — ${fmt(decimals)} decimal digits`, p));
+}
+$('mersenneP').value = 44497;
 $('constant').addEventListener('change', compute);
+$('mersenneP').addEventListener('change', compute);
+$('fraction').addEventListener('change', compute);
 $('mode').addEventListener('change', compute);
 
 new ResizeObserver(resize).observe(stage);

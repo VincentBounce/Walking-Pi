@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
-  <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π and other constants.">
+  <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,6 +19,12 @@
         <h2>Digits</h2>
         <label>Number
           <select id="constant"></select>
+        </label>
+        <label id="fractionRow" hidden>Fraction p/q
+          <input id="fraction" type="text" value="22/7" inputmode="numeric" autocomplete="off">
+        </label>
+        <label id="mersenneRow" hidden>Prime
+          <select id="mersenneP"></select>
         </label>
         <label>Walk mode
           <select id="mode">
@@ -35,7 +41,6 @@
         <label>Number of digits
           <input id="digits" type="number" min="10" max="1000000" step="1000" value="20000">
         </label>
-        <label class="check"><input id="intPart" type="checkbox"> Include the integer part</label>
         <button id="compute" class="primary">Compute</button>
         <div class="progress"><div id="progressBar"></div></div>
         <p id="status" class="muted">—</p>
