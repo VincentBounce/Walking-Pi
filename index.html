@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
-  <meta name="description" content="A walk on a grid driven by the base-3 or base-4 digits of π and other constants.">
+  <meta name="description" content="A walk on a grid driven by the base-2, 3 or 4 digits of π and other constants.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,8 +22,10 @@
         </label>
         <label>Walk mode
           <select id="mode">
-            <option value="turtle">Turtle — base 3 (left / forward / right)</option>
-            <option value="cardinal">Cardinal — base 4 (N / E / S / W)</option>
+            <option value="turtle">Squares turtle — base 3 (left / forward / right)</option>
+            <option value="cardinal">Squares cardinal — base 4 (N / E / S / W)</option>
+            <option value="triLR">Triangles — base 2 (left / right)</option>
+            <option value="triFixed">Triangles — base 3 (3 fixed edges)</option>
           </select>
         </label>
         <label>Number of digits

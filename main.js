@@ -124,6 +124,8 @@ function constantWorker() {
 const $ = (id) => document.getElementById(id);
 const fmt = (v) => v.toLocaleString('en');
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, O (y vers le bas à l'écran)
+const H = Math.sqrt(3) / 2;                        // hauteur d'un triangle de côté 1
+const TRI_Y0 = -2 * H / 3;                         // décalage pour que le centre du triangle de départ soit en (0, 0)
 const BANDS = 256;
 const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
   `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, 60%)`);
@@ -143,20 +145,24 @@ const CONSTANTS = {
 };
 
 const MODES = {
-  turtle:   { base: 3, turtle: true,
-              rule: 'Base-3 digits on a grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
-  cardinal: { base: 4, turtle: false,
-              rule: 'Base-4 digits on a grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
+  turtle:   { base: 3, tri: false,
+              rule: 'Base-3 digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
+  cardinal: { base: 4, tri: false,
+              rule: 'Base-4 digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
+  triLR:    { base: 2, tri: true,
+              rule: 'Base-2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
+  triFixed: { base: 3, tri: true,
+              rule: 'Base-3 digits on triangle tiles — cross the <b>0</b> = horizontal edge, <b>1</b> = “/” edge, <b>2</b> = “\\” edge' },
 };
 
-const cache = {};        // id → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
-let current = null;      // entrée du cache affichée
+const cache = {};        // "id/base" → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
+let current = null;      // entrée du cache affichée + mode de marche
 let worker = null;
 
 const walk = {
   n: 0,            // nombre de pas
   digits: null,    // chiffre de chaque pas
-  xs: null, ys: null, dirs: null,  // positions/caps des n+1 points
+  xs: null, ys: null,  // positions (centres des cases) des n+1 points
   cells: null,     // cases distinctes visitées jusqu'au point i
   maxDist: null,   // distance max jusqu'au point i
   base: 3,
@@ -204,7 +210,7 @@ function compute() {
   const key = `${id}/${base}`;
   updateRuleText();
   if (cache[key] && cache[key].digits.length >= n) {
-    current = cache[key];
+    current = { ...cache[key], mode: $('mode').value };
     $('status').textContent = `${fmt(n)} base-${base} digits of ${sym} (cached)`;
     buildWalk();
     play(true);
@@ -219,7 +225,8 @@ function compute() {
     if (e.data.type === 'progress') {
       $('progressBar').style.width = `${Math.min(100, e.data.p * 100)}%`;
     } else {
-      current = cache[key] = { intPart: e.data.intPart, digits: e.data.digits, mode: $('mode').value };
+      cache[key] = { intPart: e.data.intPart, digits: e.data.digits };
+      current = { ...cache[key], mode: $('mode').value };
       worker.terminate();
       worker = null;
       setBusy(false);
@@ -249,33 +256,78 @@ function buildWalk() {
   seq.set(head);
   seq.set(current.digits.subarray(0, n), head.length);
   const len = seq.length;
-  const xs = new Int32Array(len + 1);
-  const ys = new Int32Array(len + 1);
-  const dirs = new Uint8Array(len + 1);
+  const xs = new Float64Array(len + 1);
+  const ys = new Float64Array(len + 1);
   const cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1);
-  const { base, turtle } = MODES[current.mode];
+  const { base } = MODES[current.mode];
+  const step = STEPPERS[current.mode]();
   const counts = new Int32Array(base * (len + 1));
   const seen = new Set([key(0, 0)]);
-  let x = 0, y = 0, d = 0, m = 0;
+  let m = 0;
   cells[0] = 1;
   for (let i = 0; i < len; i++) {
     const g = seq[i];
-    if (!turtle) d = g;                 // cardinal : le chiffre donne la direction
-    else if (g === 0) d = (d + 3) % 4;  // gauche
-    else if (g === 2) d = (d + 1) % 4;  // droite
-    x += DIRS[d][0];
-    y += DIRS[d][1];
-    xs[i + 1] = x; ys[i + 1] = y; dirs[i + 1] = d;
-    seen.add(key(x, y));
+    const [a, b, x, y] = step(g);
+    xs[i + 1] = x; ys[i + 1] = y;
+    seen.add(key(a, b));
     cells[i + 1] = seen.size;
     m = Math.max(m, Math.hypot(x, y));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
   }
-  Object.assign(walk, { n: len, digits: seq, xs, ys, dirs, cells, maxDist, base, counts });
+  Object.assign(walk, { n: len, digits: seq, xs, ys, tri: MODES[current.mode].tri, cells, maxDist, base, counts });
   restart();
+}
+
+/* Chaque stepper reçoit un chiffre et renvoie [case a, case b, x, y] :
+ * les coordonnées entières de la case et la position de son centre.   */
+const STEPPERS = {
+  turtle() {
+    let x = 0, y = 0, d = 0;
+    return (g) => {
+      if (g === 0) d = (d + 3) % 4;       // gauche
+      else if (g === 2) d = (d + 1) % 4;  // droite
+      x += DIRS[d][0]; y += DIRS[d][1];
+      return [x, y, x, y];
+    };
+  },
+  cardinal() {
+    let x = 0, y = 0;
+    return (g) => {
+      x += DIRS[g][0]; y += DIRS[g][1];  // le chiffre donne la direction
+      return [x, y, x, y];
+    };
+  },
+  triLR: () => triStepper(true),
+  triFixed: () => triStepper(false),
+};
+
+/* Pavage en triangles : la case (c, r) pointe vers le haut si c + r est pair.
+ * Arêtes : 0 = horizontale, 1 = « / », 2 = « \ ».
+ * Triangle ▲ : 0 → dessous (c, r+1), 1 → gauche (c−1, r), 2 → droite (c+1, r)
+ * Triangle ▼ : 0 → dessus (c, r−1), 1 → droite (c+1, r), 2 → gauche (c−1, r)
+ * Arêtes dans le sens trigonométrique : ▲ [2, 1, 0], ▼ [0, 2, 1] ; en entrant
+ * par l'arête e, la suivante dans ce sens est à droite, l'autre à gauche.      */
+const TRI_CCW = { up: [2, 1, 0], down: [0, 2, 1] };
+
+function triStepper(leftRight) {
+  let c = 0, r = 0, entry = 0; // départ : triangle ▲ en (0, 0), entré par le bas
+  return (g) => {
+    const up = ((c + r) & 1) === 0;
+    let edge = g;
+    if (leftRight) {
+      const ccw = up ? TRI_CCW.up : TRI_CCW.down;
+      const i = ccw.indexOf(entry);
+      edge = ccw[(i + (g === 1 ? 1 : 2)) % 3];  // 0 = gauche, 1 = droite
+    }
+    if (edge === 0) r += up ? 1 : -1;
+    else c += (edge === 1) === up ? -1 : 1;
+    entry = edge;
+    const upNow = ((c + r) & 1) === 0;
+    return [c, r, c / 2, r * H + (upNow ? 2 * H / 3 : H / 3) + TRI_Y0];
+  };
 }
 
 function key(x, y) {
@@ -383,6 +435,10 @@ function drawGrid() {
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
   ctx.beginPath();
+  if (walk.tri) {
+    drawTriGrid(ctx, stepCells);
+    return;
+  }
   const x0 = ((view.ox % px) + px) % px;
   const y0 = ((view.oy % px) + px) % px;
   for (let x = x0; x < cw; x += px) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, ch); }
@@ -393,6 +449,31 @@ function drawGrid() {
   ctx.beginPath();
   ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
   ctx.moveTo(0, Math.round(view.oy) + 0.5); ctx.lineTo(cw, Math.round(view.oy) + 0.5);
+  ctx.stroke();
+}
+
+// Réseau triangulaire : droites y = y0 + k·H, x ± (y − y0)/√3 = k (k multiple de step)
+function drawTriGrid(ctx, step) {
+  const { scale: s, ox, oy } = view;
+  const toX = (x) => ox + x * s, toY = (y) => oy + y * s;
+  const yTop = -oy / s, yBot = (ch - oy) / s;
+  const xL = -ox / s, xR = (cw - ox) / s;
+  const r3 = Math.sqrt(3);
+  const hs = H * step;
+  for (let k = Math.ceil((yTop - TRI_Y0) / hs); TRI_Y0 + k * hs <= yBot; k++) {
+    const y = Math.round(toY(TRI_Y0 + k * hs)) + 0.5;
+    ctx.moveTo(0, y); ctx.lineTo(cw, y);
+  }
+  for (const sign of [1, -1]) {
+    // x + sign·(y − y0)/√3 = k
+    const vals = [xL + sign * (yTop - TRI_Y0) / r3, xL + sign * (yBot - TRI_Y0) / r3,
+                  xR + sign * (yTop - TRI_Y0) / r3, xR + sign * (yBot - TRI_Y0) / r3];
+    const k0 = Math.floor(Math.min(...vals) / step), k1 = Math.ceil(Math.max(...vals) / step);
+    for (let k = k0; k <= k1; k++) {
+      const xAt = (y) => k * step - sign * (y - TRI_Y0) / r3;
+      ctx.moveTo(toX(xAt(yTop)), 0); ctx.lineTo(toX(xAt(yBot)), ch);
+    }
+  }
   ctx.stroke();
 }
 
@@ -449,7 +530,13 @@ function drawOverlay() {
   // position courante + cap
   const x = ox + walk.xs[cur] * s;
   const y = oy + walk.ys[cur] * s;
-  const [dx, dy] = DIRS[walk.dirs[cur]];
+  // cap = direction du dernier pas (vers le haut au départ)
+  let dx = 0, dy = -1;
+  if (cur > 0) {
+    const ux = walk.xs[cur] - walk.xs[cur - 1], uy = walk.ys[cur] - walk.ys[cur - 1];
+    const l = Math.hypot(ux, uy);
+    dx = ux / l; dy = uy / l;
+  }
   const a = r * 1.8;
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#0e1116';
@@ -467,7 +554,8 @@ function updateStats() {
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.xs[cur] : 0;
   const y = walk.n ? -walk.ys[cur] : 0;
-  $('sPos').textContent = `(${fmt(x)}, ${fmt(y)})`;
+  const p = (v) => fmt(Math.round(v * 100) / 100 || 0);
+  $('sPos').textContent = `(${p(x)}, ${p(y)})`;
   $('sDist').textContent = Math.hypot(x, y).toFixed(1);
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
   $('sCells').textContent = walk.n ? fmt(walk.cells[cur]) : '1';
