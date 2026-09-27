@@ -365,8 +365,14 @@ const MODES = {
               rule: 'Base-2 digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1],
               rule: 'Base-3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+  /* Cube sphere, hidden for now (its mesh, cubeSphere(), is kept):
   cubeSphere: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1],
               rule: 'Base-3 digits on a cube sphere of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+  */
+  octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', turns: [2, 1],
+              rule: 'Base-2 digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
+              rule: 'Base-2 digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   cubeRel:  { base: 5, lattice: 'cube',
               rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
   cubeFixed: { base: 6, lattice: 'cube',
@@ -726,7 +732,7 @@ function setPerspective() {
   $('perspectiveRow').hidden = !perspectiveAllowed();
   if (!perspectiveAllowed() || !$('perspective').checked) { walk.persp = null; return; }
   if (walk.sphere) {
-    walk.persp = { c: [0, 0, 0], D: 2.5 * walk.R * Math.sqrt(3) };
+    walk.persp = { c: [0, 0, 0], D: 2.5 * walk.R * walk.geo.extent };
     return;
   }
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -1012,7 +1018,9 @@ function finishMesh(verts, tiles, sides, size, flat = false) {
       nbr[sides * other[0] + other[1]] = t; nbrEdge[sides * other[0] + other[1]] = k;
     }
   }
-  return { size, n, sides, flat, verts: new Float64Array(verts), poly, cen, nrm: nrmOut, nbr, nbrEdge };
+  let extent = 0;  // distance of the farthest vertex from the centre (1 on a sphere)
+  for (let v = 0; v < nv; v++) extent = Math.max(extent, Math.hypot(verts[3 * v], verts[3 * v + 1], verts[3 * v + 2]));
+  return { size, n, sides, flat, extent, verts: new Float64Array(verts), poly, cen, nrm: nrmOut, nbr, nbrEdge };
 }
 
 /* Geodesic sphere: an icosahedron whose 20 faces are each cut into f² triangles, pushed out
@@ -1084,15 +1092,29 @@ function cubeFlat(n) {
   return (meshCache[key] = finishMesh(verts, quads, 4, n, true));
 }
 
-/* Tetrahedron: each of the 4 faces cut into f² triangles, left flat. Its 4 corners are shared
- * by 3 triangles instead of 6. */
-function tetraFlat(f) {
-  const key = `tetra${f}`;
+/* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
+ * tetrahedron (4 faces, corners shared by 3 triangles instead of 6), octahedron (8 faces,
+ * corners shared by 4) and icosahedron (20 faces, corners shared by 5). */
+const PHI = (1 + Math.sqrt(5)) / 2;
+const POLYHEDRA = {
+  tetra: { P: [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]],
+           faces: [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]] },
+  octa:  { P: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+           faces: [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]] },
+  icosa: { P: [[-1, PHI, 0], [1, PHI, 0], [-1, -PHI, 0], [1, -PHI, 0], [0, -1, PHI], [0, 1, PHI],
+               [0, -1, -PHI], [0, 1, -PHI], [PHI, 0, -1], [PHI, 0, 1], [-PHI, 0, -1], [-PHI, 0, 1]],
+           faces: [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4],
+                   [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8],
+                   [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]] },
+};
+
+function flatPolyhedron(name, f) {
+  const key = `${name}${f}`;
   if (meshCache[key]) return meshCache[key];
-  const P = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+  const { P, faces } = POLYHEDRA[name];
   const { verts, add } = vertexStore(false);
   const tris = [];
-  for (const [A, B, C] of [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]].map((face) => face.map((v) => P[v]))) {
+  for (const [A, B, C] of faces.map((face) => face.map((v) => P[v]))) {
     const at = (i, j) => add(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
     for (let i = 0; i < f; i++) {
       for (let j = 0; i + j < f; j++) {
@@ -1111,8 +1133,13 @@ const SPHERES = {
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   flat: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
-  tetra: { mesh: tetraFlat, radius: (f) => f / (2 * Math.SQRT2),  // tetrahedron edge 2√2 → triangle edge = 1 unit
+  // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
+  tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
+  octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
+          sizes: [8, 16, 32, 64, 128], initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
+  icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
+          sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
 };
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
@@ -1225,7 +1252,7 @@ function restart() {
   bounds3 = [0, 0, 0, 0, 0, 0];
   if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
     const R = walk.R;
-    const F = walk.geo.flat ? R * Math.sqrt(3) : R;  // cube and tetrahedron corners reach R·√3 from the centre
+    const F = R * walk.geo.extent;  // the corners of a flat solid stick out beyond R
     bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
