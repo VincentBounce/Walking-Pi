@@ -1,46 +1,119 @@
 'use strict';
 
 /* ------------------------------------------------------------------ *
- * Calcul des chiffres de π en base 3 (Web Worker, BigInt, Machin)     *
- *   π = 16·arctan(1/5) − 4·arctan(1/239)                              *
- * On calcule π·3^(N+G) en entiers puis toString(3) donne "10" + N     *
- * chiffres (G = chiffres de garde contre les erreurs d'arrondi).      *
+ * Calcul des chiffres en base 3 (Web Worker, BigInt)                  *
+ * On calcule c·3^(N+G) en entiers (G = chiffres de garde contre les   *
+ * erreurs d'arrondi), on divise par 3^G puis toString(3).             *
  * ------------------------------------------------------------------ */
-function piWorker() {
+function constantWorker() {
   self.onmessage = (e) => {
-    const n = e.data.n;
+    const { id, n } = e.data;
     const t0 = performance.now();
     const guard = 30 + Math.ceil(Math.log(n) / Math.log(3));
-    const scale = 3n ** BigInt(n + guard);
-    const termsFor = (x) => ((n + guard) * Math.log(3)) / (2 * Math.log(x));
-    const total = termsFor(5) + termsFor(239);
-    let done = 0;
+    const prec = n + guard;
+    const S = 3n ** BigInt(prec);
+    const lnS = prec * Math.log(3);
+    let done = 0, total = 1;
+    const progress = (i) => {
+      if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
+    };
 
-    function arctanInv(x) {
+    // S·arctan(1/x), ou S·artanh(1/x) si hyperbolic
+    const atanTerms = (x) => lnS / (2 * Math.log(x));
+    function atanInv(x, hyperbolic) {
       const bx = BigInt(x);
       const x2 = bx * bx;
-      let term = scale / bx;
+      let term = S / bx;
       let sum = term;
-      let k = 1n;
-      let sign = -1n;
-      for (let i = 1; ; i++) {
+      for (let k = 1; ; k++) {
         term /= x2;
         if (term === 0n) break;
-        sum += sign * (term / (2n * k + 1n));
-        k++;
-        sign = -sign;
-        if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
+        const t = term / BigInt(2 * k + 1);
+        sum += hyperbolic || k % 2 === 0 ? t : -t;
+        progress(k);
       }
-      done += termsFor(x);
+      done += atanTerms(x);
       return sum;
     }
 
-    const pi = (16n * arctanInv(5) - 4n * arctanInv(239)) / 3n ** BigInt(guard);
+    // racine carrée entière (Newton, précision doublée récursivement)
+    function isqrt(v) {
+      if (v < 1n << 52n) {
+        let x = BigInt(Math.floor(Math.sqrt(Number(v))));
+        while (x * x > v) x--;
+        while ((x + 1n) * (x + 1n) <= v) x++;
+        return x;
+      }
+      const shift = BigInt(Math.floor(v.toString(16).length));  // ≈ bits / 4
+      let x = (isqrt(v >> (2n * shift)) + 1n) << shift;
+      for (;;) {
+        const y = (x + v / x) >> 1n;
+        if (y >= x) break;
+        x = y;
+      }
+      while (x * x > v) x--;
+      return x;
+    }
+
+    let v;
+    switch (id) {
+      case 'pi': // Machin : π = 16·arctan(1/5) − 4·arctan(1/239)
+        total = atanTerms(5) + atanTerms(239);
+        v = 16n * atanInv(5) - 4n * atanInv(239);
+        break;
+      case 'ln2': // ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749)
+        total = atanTerms(26) + atanTerms(4801) + atanTerms(8749);
+        v = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
+        break;
+      case 'e': { // e = Σ 1/k!
+        total = 1;
+        for (let lf = 0; lf < lnS; total++) lf += Math.log(total);
+        let term = S;
+        v = S;
+        for (let k = 1; term > 0n; k++) {
+          term /= BigInt(k);
+          v += term;
+          progress(k);
+        }
+        break;
+      }
+      case 'zeta3': { // Amdeberhan–Zeilberger : ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
+        total = lnS / Math.log(1024);
+        let t = S;
+        v = 0n;
+        for (let k = 0; t > 0n; k++) {
+          const K = BigInt(k);
+          const p = (205n * K * K + 250n * K + 77n) * t;
+          v += k % 2 ? -p : p;
+          t = (t * (K + 1n) ** 5n) / (32n * (2n * K + 3n) ** 5n);
+          progress(k);
+        }
+        v /= 64n;
+        break;
+      }
+      case 'E': { // Erdős–Borwein : E = Σ 1/(2^n − 1) = Σ 2^(−n²)·(2^n + 1)/(2^n − 1)
+        v = 0n;
+        for (let k = 1; ; k++) {
+          const K = BigInt(k);
+          const p = 1n << K;
+          const t = ((S * (p + 1n)) >> (K * K)) / (p - 1n);
+          if (t === 0n) break;
+          v += t;
+        }
+        break;
+      }
+      case 'phi': v = (S + isqrt(5n * S * S)) / 2n; break;
+      case 'sqrt2': v = isqrt(2n * S * S); break;
+      case 'sqrt3': v = isqrt(3n * S * S); break;
+      case 'sqrt5': v = isqrt(5n * S * S); break;
+    }
+
     self.postMessage({ type: 'progress', p: 1 });
-    const s = pi.toString(3);
-    const digits = new Uint8Array(s.length);
-    for (let i = 0; i < s.length; i++) digits[i] = s.charCodeAt(i) - 48;
-    self.postMessage({ type: 'done', digits, ms: performance.now() - t0 }, [digits.buffer]);
+    const s = (v / 3n ** BigInt(guard)).toString(3).padStart(n + 1, '0');
+    const intPart = s.slice(0, s.length - n);
+    const digits = new Uint8Array(n);
+    for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(intPart.length + i) - 48;
+    self.postMessage({ type: 'done', intPart, digits, ms: performance.now() - t0 }, [digits.buffer]);
   };
 }
 
@@ -48,6 +121,7 @@ function piWorker() {
  * État                                                                *
  * ------------------------------------------------------------------ */
 const $ = (id) => document.getElementById(id);
+const fmt = (v) => v.toLocaleString('en');
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, O (y vers le bas à l'écran)
 const BANDS = 256;
 const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
@@ -55,7 +129,20 @@ const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
 const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72'];
 const MONO = '#f0b429';
 
-let fullDigits = null;   // "10" + fraction, en chiffres 0..2
+const CONSTANTS = {
+  pi:    { sym: 'π',    name: 'Pi' },
+  e:     { sym: 'e',    name: "Euler's number" },
+  phi:   { sym: 'φ',    name: 'Golden ratio' },
+  sqrt2: { sym: '√2',   name: 'Square root of 2' },
+  sqrt3: { sym: '√3',   name: 'Square root of 3' },
+  sqrt5: { sym: '√5',   name: 'Square root of 5' },
+  ln2:   { sym: 'ln 2', name: 'Natural log of 2' },
+  zeta3: { sym: 'ζ(3)', name: "Apéry's constant" },
+  E:     { sym: 'E',    name: 'Erdős–Borwein constant' },
+};
+
+const cache = {};        // id → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
+let current = null;      // entrée du cache affichée
 let worker = null;
 
 const walk = {
@@ -94,42 +181,55 @@ function requestedDigits() {
 
 function compute() {
   const n = requestedDigits();
+  const id = $('constant').value;
+  const { sym } = CONSTANTS[id];
   $('digits').value = n;
-  if (fullDigits && fullDigits.length >= n + 2) {
+  $('titleSym').textContent = sym;
+  if (cache[id] && cache[id].digits.length >= n) {
+    current = cache[id];
+    $('status').textContent = `${fmt(n)} digits of ${sym} (cached)`;
     buildWalk();
+    play(true);
     return;
   }
   if (worker) worker.terminate();
-  const src = `(${piWorker.toString()})()`;
+  const src = `(${constantWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
-  $('status').textContent = `Calcul de ${n.toLocaleString('fr')} chiffres…`;
+  $('status').textContent = `Computing ${fmt(n)} digits of ${sym}…`;
   worker.onmessage = (e) => {
     if (e.data.type === 'progress') {
       $('progressBar').style.width = `${Math.min(100, e.data.p * 100)}%`;
     } else {
-      fullDigits = e.data.digits;
+      current = cache[id] = { intPart: e.data.intPart, digits: e.data.digits };
       worker.terminate();
       worker = null;
       setBusy(false);
       $('status').textContent =
-        `${n.toLocaleString('fr')} chiffres calculés en ${(e.data.ms / 1000).toFixed(2)} s`;
+        `${fmt(n)} digits of ${sym} computed in ${(e.data.ms / 1000).toFixed(2)} s`;
       buildWalk();
       play(true);
     }
   };
-  worker.postMessage({ n });
+  worker.postMessage({ id, n });
 }
 
 function setBusy(busy) {
   $('compute').disabled = busy;
-  $('compute').textContent = busy ? 'Calcul…' : 'Calculer';
-  if (busy) $('progressBar').style.width = '0';
+  $('compute').textContent = busy ? 'Computing…' : 'Compute';
+  $('progressBar').style.width = busy ? '0' : '100%';
+}
+
+function intDigits() {
+  return $('intPart').checked ? Array.from(current.intPart, Number) : [];
 }
 
 function buildWalk() {
   const n = requestedDigits();
-  const seq = $('intPart').checked ? fullDigits.subarray(0, n + 2) : fullDigits.subarray(2, n + 2);
+  const head = intDigits();
+  const seq = new Uint8Array(head.length + n);
+  seq.set(head);
+  seq.set(current.digits.subarray(0, n), head.length);
   const len = seq.length;
   const xs = new Int32Array(len + 1);
   const ys = new Int32Array(len + 1);
@@ -172,7 +272,7 @@ function stepsPerFrame() {
 
 function updateSpeedLabel() {
   const s = stepsPerFrame() * 60;
-  $('speedLabel').textContent = `${s < 100 ? s.toFixed(s < 10 ? 1 : 0) : Math.round(s).toLocaleString('fr')} pas/s`;
+  $('speedLabel').textContent = `${s < 100 ? s.toFixed(s < 10 ? 1 : 0) : fmt(Math.round(s))} steps/s`;
 }
 
 function advanceTo(target) {
@@ -191,7 +291,7 @@ function advanceTo(target) {
 
 function play(on) {
   playing = on && walk.n > 0 && cur < walk.n;
-  $('play').textContent = playing ? '❚❚ Pause' : '▶︎ Lecture';
+  $('play').textContent = playing ? '❚❚ Pause' : '▶︎ Play';
 }
 
 function restart() {
@@ -344,7 +444,6 @@ function drawOverlay() {
 }
 
 function updateStats() {
-  const fmt = (v) => v.toLocaleString('fr');
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.xs[cur] : 0;
   const y = walk.n ? -walk.ys[cur] : 0;
@@ -363,10 +462,11 @@ function updateStats() {
   const a = Math.max(0, cur - before);
   const b = Math.min(walk.n, cur + after);
   const d = walk.digits;
-  let html = a > 0 ? '…' : ($('intPart').checked ? '' : '10.');
+  const intLen = intDigits().length;
+  let html = a > 0 ? '…' : (intLen ? '' : `${current.intPart}.`);
   for (let i = a; i < b; i++) {
     html += i === cur - 1 ? `<span class="cur">${d[i]}</span>` : d[i];
-    if ($('intPart').checked && i === 1) html += '.';
+    if (i === intLen - 1) html += '.';
   }
   strip.innerHTML = html + (b < walk.n ? '…' : '');
 }
@@ -415,7 +515,7 @@ $('restart').addEventListener('click', () => { restart(); play(true); });
 $('end').addEventListener('click', () => { advanceTo(walk.n); });
 $('fit').addEventListener('click', fitNow);
 $('speed').addEventListener('input', updateSpeedLabel);
-$('intPart').addEventListener('change', () => { if (fullDigits) buildWalk(); });
+$('intPart').addEventListener('change', () => { if (current) buildWalk(); });
 $('colorMode').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
@@ -466,6 +566,11 @@ document.addEventListener('keydown', (e) => {
     case 'f': case 'F': fitNow(); break;
   }
 });
+
+for (const [id, { sym, name }] of Object.entries(CONSTANTS)) {
+  $('constant').add(new Option(`${sym} — ${name}`, id));
+}
+$('constant').addEventListener('change', compute);
 
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
