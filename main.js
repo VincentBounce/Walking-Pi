@@ -1,21 +1,112 @@
 'use strict';
 
 /* ------------------------------------------------------------------ *
- * Calcul des chiffres en base b (Web Worker, BigInt)                  *
- * On calcule c·b^(N+G) en entiers (G = chiffres de garde contre les   *
- * erreurs d'arrondi), on divise par b^G puis toString(b).             *
+ * Digit computation in base b (Web Worker, BigInt)                   *
+ * A constant c is computed as the integer c·b^(N+G), where G guard   *
+ * digits absorb rounding errors; the result is divided by b^G and    *
+ * printed with toString(b).                                          *
  * ------------------------------------------------------------------ */
 function constantWorker() {
   self.onmessage = (e) => {
     const { id, n, base } = e.data;
     const B = BigInt(base);
     const t0 = performance.now();
-    if (id === 'mersenne') { // nombre premier de Mersenne 2^p − 1 : entier, pas de partie fractionnaire
-      const all = ((1n << BigInt(e.data.p)) - 1n).toString(base);
-      const digits = new Uint8Array(0);
-      // on ne renvoie que les n premiers chiffres (ceux de la marche) et le nombre total
-      self.postMessage({ type: 'done', intPart: all.slice(0, n), total: all.length, digits, ms: performance.now() - t0 });
+    // Large integers (primes): no fractional part. Only the first n digits
+    // (the ones the walk uses) are sent back, plus the total digit count.
+    const integer = { mersenne: () => (1n << BigInt(e.data.p)) - 1n, primorial, randomPrime }[id];
+    if (integer) {
+      const N = integer();
+      const all = N.toString(base);
+      self.postMessage({ type: 'done', intPart: all.slice(0, n), total: all.length, digits: new Uint8Array(0),
+                         decimals: id === 'randomPrime' ? e.data.size : undefined, tests: integer.tests,
+                         ms: performance.now() - t0 });
       return;
+    }
+
+    function smallPrimes(limit) {
+      const composite = new Uint8Array(limit + 1);
+      const list = [];
+      for (let i = 2; i <= limit; i++) {
+        if (composite[i]) continue;
+        list.push(i);
+        for (let j = i * i; j <= limit; j += i) composite[j] = 1;
+      }
+      return list;
+    }
+
+    // p# ± 1, where p# is the product of all primes ≤ p (multiplied as a balanced product tree)
+    function primorial() {
+      let level = smallPrimes(e.data.p).map(BigInt);
+      while (level.length > 1) {
+        const next = [];
+        for (let i = 0; i < level.length; i += 2) next.push(i + 1 < level.length ? level[i] * level[i + 1] : level[i]);
+        level = next;
+      }
+      return level[0] + BigInt(e.data.sign);
+    }
+
+    function randomBigInt(below) { // uniform enough in [0, below): 64 extra random bits, then reduce
+      const bytes = new Uint8Array(Math.ceil(below.toString(16).length / 2) + 8);
+      crypto.getRandomValues(bytes);
+      let r = 0n;
+      for (const b of bytes) r = (r << 8n) | BigInt(b);
+      return r % below;
+    }
+
+    function modPow(b, exp, m) {
+      let r = 1n;
+      b %= m;
+      for (const bit of exp.toString(2)) {
+        r = (r * r) % m;
+        if (bit === '1') r = (r * b) % m;
+      }
+      return r;
+    }
+
+    function millerRabin(nn, a) { // true if nn is a strong probable prime to base a
+      let d = nn - 1n, s = 0;
+      while ((d & 1n) === 0n) { d >>= 1n; s++; }
+      let x = modPow(a, d, nn);
+      if (x === 1n || x === nn - 1n) return true;
+      for (let i = 1; i < s; i++) {
+        x = (x * x) % nn;
+        if (x === nn - 1n) return true;
+      }
+      return false;
+    }
+
+    // Random prime with the requested number of decimal digits: pick a random odd start, sieve a
+    // window of candidates by small primes, then Miller–Rabin (base 2, then 24 random bases).
+    function randomPrime() {
+      const size = e.data.size;
+      const lo = 10n ** BigInt(size - 1);
+      const primes = smallPrimes(20000).slice(1);  // odd primes only
+      const expected = size * Math.log(10) * 0.0567;  // ≈ Miller–Rabin tests before a prime shows up
+      const W = 8192;
+      let start = lo + randomBigInt(9n * lo - 2n * BigInt(W));
+      if ((start & 1n) === 0n) start++;
+      let tests = 0;
+      for (;;) {
+        const sieve = new Uint8Array(W);  // candidate j is start + 2j
+        for (const q of primes) {
+          const r = Number(start % BigInt(q));
+          for (let j = ((q - r) * ((q + 1) / 2)) % q; j < W; j += q) sieve[j] = 1;
+        }
+        for (let j = 0; j < W; j++) {
+          if (sieve[j]) continue;
+          const c = start + 2n * BigInt(j);
+          tests++;
+          self.postMessage({ type: 'progress', p: Math.min(0.95, tests / (2 * expected)) });
+          if (!millerRabin(c, 2n)) continue;
+          let ok = true;
+          for (let k = 0; k < 24 && ok; k++) ok = millerRabin(c, 2n + randomBigInt(c - 3n));
+          if (ok) {
+            randomPrime.tests = tests;
+            return c;
+          }
+        }
+        start += 2n * BigInt(W);
+      }
     }
     const guard = 30 + Math.ceil(Math.log(n) / Math.log(base));
     const prec = n + guard;
@@ -26,7 +117,7 @@ function constantWorker() {
       if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
     };
 
-    // S·arctan(1/x), ou S·artanh(1/x) si hyperbolic
+    // S·arctan(1/x), or S·artanh(1/x) when hyperbolic
     const atanTerms = (x) => lnS / (2 * Math.log(x));
     function atanInv(x, hyperbolic) {
       const bx = BigInt(x);
@@ -44,7 +135,7 @@ function constantWorker() {
       return sum;
     }
 
-    // racine carrée entière (Newton, précision doublée récursivement)
+    // Integer square root (Newton, with recursively doubled precision)
     function isqrt(v) {
       if (v < 1n << 52n) {
         let x = BigInt(Math.floor(Math.sqrt(Number(v))));
@@ -63,7 +154,7 @@ function constantWorker() {
       return x;
     }
 
-    // Scindage binaire de Σ_{k∈[a,b)} poly(k)·Π_{j=a..k} p(j)/q(j) : renvoie [P, Q, T] avec somme = T/Q
+    // Binary splitting of Σ_{k∈[a,b)} poly(k)·Π_{j=a..k} p(j)/q(j): returns [P, Q, T] with sum = T/Q
     function binarySplit(a, b, p, q, poly) {
       if (b - a === 1) {
         progress(a);
@@ -76,7 +167,7 @@ function constantWorker() {
       return [Pl * Pr, Ql * Qr, Tl * Qr + Pl * Tr];
     }
 
-    // Idem pour Brent–McMillan, avec p = m², q = k² et la somme harmonique H_k = Σ 1/j :
+    // Same for Brent–McMillan, with p = m², q = k² and the harmonic sum H_k = Σ 1/j:
     // T/Q = Σ Π p/q, C/D = Σ 1/k, V/(Q·D) = Σ (Π p/q)·H_k
     function harmonicSplit(a, b, m2) {
       if (b - a === 1) {
@@ -91,7 +182,7 @@ function constantWorker() {
               Vl * Qr * Dr + Pl * (Cl * Dr * Tr + Dl * Vr)];
     }
 
-    // racine cubique entière (même principe que isqrt)
+    // Integer cube root (same approach as isqrt)
     function icbrt(v) {
       if (v < 1n << 52n) {
         let x = BigInt(Math.round(Math.cbrt(Number(v))));
@@ -112,7 +203,7 @@ function constantWorker() {
 
     let v;
     switch (id) {
-      case 'pi': // Machin : π = 16·arctan(1/5) − 4·arctan(1/239)
+      case 'pi': // Machin: π = 16·arctan(1/5) − 4·arctan(1/239)
         total = atanTerms(5) + atanTerms(239);
         v = 16n * atanInv(5) - 4n * atanInv(239);
         break;
@@ -132,7 +223,7 @@ function constantWorker() {
         }
         break;
       }
-      case 'zeta3': { // Amdeberhan–Zeilberger : ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
+      case 'zeta3': { // Amdeberhan–Zeilberger: ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
         total = lnS / Math.log(1024);
         let t = S;
         v = 0n;
@@ -146,7 +237,7 @@ function constantWorker() {
         v /= 64n;
         break;
       }
-      case 'E': { // Erdős–Borwein : E = Σ 1/(2^n − 1) = Σ 2^(−n²)·(2^n + 1)/(2^n − 1)
+      case 'E': { // Erdős–Borwein: E = Σ 1/(2^n − 1) = Σ 2^(−n²)·(2^n + 1)/(2^n − 1)
         v = 0n;
         for (let k = 1; ; k++) {
           const K = BigInt(k);
@@ -162,8 +253,8 @@ function constantWorker() {
       case 'sqrt3': v = isqrt(3n * S * S); break;
       case 'sqrt5': v = isqrt(5n * S * S); break;
       case 'cbrt2': v = icbrt(2n * S * S * S); break;
-      case 'catalan': { // Lupaș, par scindage binaire :
-        // G = 1/18 Σ_{k≥0} (40m²−24m+3) Π_{j=1..k} −32j³(2j−1)/((4j+1)²(4j+3)²), avec m = k+1
+      case 'catalan': { // Lupaș series, by binary splitting:
+        // G = 1/18 Σ_{k≥0} (40m²−24m+3) Π_{j=1..k} −32j³(2j−1)/((4j+1)²(4j+3)²), with m = k+1
         const K = Math.ceil(lnS / Math.log(4)) + 10;
         total = K;
         const J = (j) => BigInt(j);
@@ -174,13 +265,13 @@ function constantWorker() {
         v = (T * S) / (18n * Q);
         break;
       }
-      case 'gamma': { // Brent–McMillan par scindage binaire, avec m = 2^i·3^j ≥ ln(S)/4 (ln m calculable vite)
+      case 'gamma': { // Brent–McMillan by binary splitting, with m = 2^i·3^j ≥ ln(S)/4 so that ln m is cheap
         let m = Infinity, i2 = 0, j3 = 0;
         for (let i = 0; i < 64; i++) for (let j = 0; j < 40; j++) {
           const c = 2 ** i * 3 ** j;
           if (c >= lnS / 4 + 1 && c < m) { m = c; i2 = i; j3 = j; }
         }
-        const K = Math.ceil(3.6 * m) + 10;  // (m^k/k!)² est négligeable au-delà de ≈ 3,59·m
+        const K = Math.ceil(3.6 * m) + 10;  // (m^k/k!)² is negligible beyond ≈ 3.59·m
         total = atanTerms(26) + atanTerms(4801) + atanTerms(8749) + atanTerms(5) + K;
         const ln2 = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
         const ln3 = ln2 + 2n * atanInv(5, true);
@@ -200,13 +291,13 @@ function constantWorker() {
 }
 
 /* ------------------------------------------------------------------ *
- * État                                                                *
+ * State                                                              *
  * ------------------------------------------------------------------ */
 const $ = (id) => document.getElementById(id);
 const fmt = (v) => v.toLocaleString('en');
-const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, O (y vers le bas à l'écran)
-const H = Math.sqrt(3) / 2;                        // hauteur d'un triangle de côté 1
-const TRI_Y0 = -2 * H / 3;                         // décalage pour que le centre du triangle de départ soit en (0, 0)
+const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, W (screen y points down)
+const H = Math.sqrt(3) / 2;                        // height of a triangle with side 1
+const TRI_Y0 = -2 * H / 3;                         // offset that puts the centre of the starting triangle at (0, 0)
 const BANDS = 256;
 const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
   `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, 60%)`);
@@ -230,6 +321,8 @@ const CONSTANTS = {
   champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons' },
   fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons' },
   mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
+  primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes' },
+  randomPrime: { sym: 'p', name: 'Random prime', group: 'Primes' },
 };
 
 const MODES = {
@@ -251,36 +344,44 @@ const MODES = {
               rule: 'Base-6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
 };
 
-// exposants p des nombres premiers de Mersenne connus (à partir de 127)
+// Exponents p of the known Mersenne primes (from 127 up)
 const MERSENNE = [127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701,
   23209, 44497, 86243, 110503, 132049, 216091, 756839, 859433, 1257787, 1398269, 2976221, 3021377,
   6972593, 13466917, 20996011, 24036583, 25964951, 30402457, 32582657, 37156667, 42643801, 43112609,
   57885161, 74207281, 77232917, 82589933, 136279841];
 
-const cache = {};        // clé → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
-let current = null;      // { head: chiffres de la partie entière, digits, mode }
+// Primorial primes p# ± 1: values of p from OEIS A005234 (p# + 1) and A006794 (p# − 1),
+// starting from p = 379 (smaller ones are too short to be interesting)
+const PRIMORIAL_PLUS = [379, 1019, 1021, 2657, 3229, 4547, 4787, 11549, 13649, 18523, 23801, 24029, 42209,
+  145823, 366439, 392113, 4328927, 5256037, 6369619, 7351117, 9562633];
+const PRIMORIAL_MINUS = [317, 337, 991, 1873, 2053, 2377, 4093, 4297, 4583, 6569, 13033, 15877, 843301,
+  1098133, 3267113, 4778027, 6354977, 6533299];
+const INTEGER_IDS = ['mersenne', 'primorial', 'randomPrime'];
+
+const cache = {};        // key → { intPart: "10", digits: Uint8Array (fractional part) }
+let current = null;      // { head: integer-part digits, digits, mode }
 let worker = null;
 
 const walk = {
-  n: 0,            // nombre de pas
-  digits: null,    // chiffre de chaque pas
-  xs: null, ys: null,  // positions (centres des cases) des n+1 points
-  cells: null,     // cases distinctes visitées jusqu'au point i
-  maxDist: null,   // distance max jusqu'au point i
+  n: 0,            // number of steps
+  digits: null,    // digit of each step
+  xs: null, ys: null,  // screen-plane positions (cell centres) of the n+1 points
+  cells: null,     // distinct cells visited up to point i
+  maxDist: null,   // max distance up to point i
   base: 3,
-  counts: null,    // nombre cumulé de chaque chiffre jusqu'au pas i (base valeurs par point)
+  counts: null,    // running count of each digit up to step i (base values per point)
 };
 
-let cur = 0;        // nombre de pas effectués
-let drawn = 0;      // nombre de pas déjà tracés sur le calque
+let cur = 0;        // steps taken so far
+let drawn = 0;      // steps already drawn on the path layer
 let playing = false;
 let acc = 0;
 let needsFull = true;
 let statsDirty = true;
 let bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 const view = { scale: 20, ox: 0, oy: 0 };
-const cam = { yaw: -0.6, pitch: 0.5 };   // rotation de la vue 3D (radians)
-let bounds3 = null;                        // boîte englobante 3D des points 0..cur
+const cam = { yaw: -0.6, pitch: 0.5 };   // 3D view rotation (radians)
+let bounds3 = null;                        // 3D bounding box of points 0..cur
 
 const stage = $('stage');
 const layers = {
@@ -291,7 +392,7 @@ const layers = {
 let cw = 0, ch = 0;
 
 /* ------------------------------------------------------------------ *
- * Calcul et construction de la marche                                 *
+ * Computing digits and building the walk                             *
  * ------------------------------------------------------------------ */
 function updateRuleText() {
   const { base, rule } = MODES[$('mode').value];
@@ -306,11 +407,20 @@ function requestedDigits() {
 
 const SUB = (v) => String(v).replace(/\d/g, (c) => '₀₁₂₃₄₅₆₇₈₉'[c]);
 
-// Nom affiché et clé de cache du nombre choisi
+// Display name and cache key of the selected number
 function numberInfo(id) {
   if (id === 'mersenne') {
     const p = $('mersenneP').value;
     return { sym: `M${SUB(p)}`, key: `mersenne${p}`, p: Number(p) };
+  }
+  if (id === 'primorial') {
+    const [p, sign] = $('primorialP').value.split(',');
+    return { sym: `${fmt(Number(p))}# ${sign > 0 ? '+' : '−'} 1`, key: `primorial${p}${sign}`,
+             p: Number(p), sign: Number(sign) };
+  }
+  if (id === 'randomPrime') {
+    const size = Number($('primeSize').value);
+    return { sym: `p${SUB(size)}`, key: null, size };  // never cached: a new prime each time
   }
   if (id === 'fraction') {
     const txt = $('fraction').value.replace(/\s/g, '');
@@ -319,13 +429,13 @@ function numberInfo(id) {
   return { sym: CONSTANTS[id].sym, key: id };
 }
 
-// Chiffres calculés directement (sans worker) : aléatoire, Champernowne, fraction
+// Digits computed directly on the main thread: random, Champernowne, fraction
 function localDigits(id, n, base) {
   const digits = new Uint8Array(n);
   if (id === 'random') {
     const buf = new Uint8Array(n * 2);
     crypto.getRandomValues(buf);
-    const lim = 256 - (256 % base);             // rejet pour une distribution uniforme
+    const lim = 256 - (256 % base);             // rejection sampling for a uniform distribution
     let j = 0;
     for (let i = 0; i < n; i++) {
       let r;
@@ -337,14 +447,14 @@ function localDigits(id, n, base) {
     }
     return { intPart: '0', digits };
   }
-  if (id === 'champernowne') {                  // 0,1 2 3 … écrits en base b à la suite
+  if (id === 'champernowne') {                  // 0.1 2 3 … written in base b one after another
     for (let i = 0, k = 1; i < n; k++) {
       const t = k.toString(base);
       for (let c = 0; c < t.length && i < n; c++) digits[i++] = t.charCodeAt(c) - 48;
     }
     return { intPart: '0', digits };
   }
-  // fraction p/q : division posée en base b
+  // fraction p/q: long division in base b
   const m = $('fraction').value.replace(/\s/g, '').match(/^(\d+)(?:\/(\d+))?$/);
   if (!m || BigInt(m[2] ?? 1) === 0n) return null;
   const p = BigInt(m[1]), q = BigInt(m[2] ?? 1), B = BigInt(base);
@@ -358,7 +468,7 @@ function localDigits(id, n, base) {
 }
 
 function setCurrent(entry) {
-  const t = entry.intPart.replace(/^0+/, '');   // partie entière sans zéros de tête
+  const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
   current = { head, digits: entry.digits, mode: $('mode').value };
@@ -373,6 +483,9 @@ function compute() {
   $('titleSym').textContent = sym;
   $('fractionRow').hidden = id !== 'fraction';
   $('mersenneRow').hidden = id !== 'mersenne';
+  $('primorialRow').hidden = id !== 'primorial';
+  $('primeSizeRow').hidden = id !== 'randomPrime';
+  const integer = INTEGER_IDS.includes(id);
   const { base } = MODES[$('mode').value];
   const key = `${info.key}/${base}`;
   const label = (count) => `${fmt(count)} base-${base} digits of ${sym}`;
@@ -395,15 +508,16 @@ function compute() {
   const done = (entry, how) => {
     setCurrent(entry);
     const total = entry.total ?? current.head.length + current.digits.length;
-    $('status').textContent = id === 'mersenne'
-      ? `${label(total)} ${how}${total > n ? ` — walking the first ${fmt(n)}` : ''}`
-      : `${label(n)} ${how}`;
+    const what = id === 'randomPrime'
+      ? `${label(total)}: a random ${fmt(info.size)}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`
+      : integer ? label(total) : label(n);
+    $('status').textContent = `${what} ${how}${integer && total > n ? ` — walking the first ${fmt(n)}` : ''}`;
     buildWalk();
     play(true);
   };
-  const hit = cache[key];
-  const enough = id === 'mersenne' ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
-                                    : hit && hit.digits.length >= n;
+  const hit = info.key && cache[key];
+  const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
+                         : hit && hit.digits.length >= n;
   if (enough) {
     done(hit, '(cached)');
     return;
@@ -411,20 +525,24 @@ function compute() {
   const src = `(${constantWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
-  $('status').textContent = `Computing ${id === 'mersenne' ? `base-${base} digits of ${sym}` : label(n)}…` +
-    (id === 'mersenne' && info.p > 20_000_000 ? ' (a very large prime: this can take a minute or more)' : '');
+  const slow = (id === 'mersenne' && info.p > 20_000_000) || (id === 'randomPrime' && info.size > 1000);
+  $('status').textContent =
+    (id === 'randomPrime' ? `Searching for a random ${fmt(info.size)}-digit prime…`
+      : `Computing ${integer ? `base-${base} digits of ${sym}` : label(n)}…`) +
+    (slow ? ' (this can take a minute or more)' : '');
   worker.onmessage = (e) => {
     if (e.data.type === 'progress') {
       $('progressBar').style.width = `${Math.min(100, e.data.p * 100)}%`;
     } else {
-      cache[key] = { intPart: e.data.intPart, digits: e.data.digits, total: e.data.total };
+      const entry = { intPart: e.data.intPart, digits: e.data.digits, total: e.data.total, tests: e.data.tests };
+      if (info.key) cache[key] = entry;
       worker.terminate();
       worker = null;
       setBusy(false);
-      done(cache[key], `computed in ${(e.data.ms / 1000).toFixed(2)} s`);
+      done(entry, `(${(e.data.ms / 1000).toFixed(2)} s)`);
     }
   };
-  worker.postMessage({ id, n, base, p: info.p });
+  worker.postMessage({ id, n, base, p: info.p, sign: info.sign, size: info.size });
 }
 
 function setBusy(busy) {
@@ -435,7 +553,7 @@ function setBusy(busy) {
 
 function buildWalk() {
   const n = requestedDigits();
-  // partie entière toujours incluse ; au plus n chiffres pour un grand entier
+  // the integer part is always included; at most n digits for a large integer
   const head = current.head.subarray(0, n);
   const frac = current.digits.subarray(0, n);
   const seq = new Uint8Array(head.length + frac.length);
@@ -475,14 +593,14 @@ function buildWalk() {
   restart();
 }
 
-// Projection orthographique d'un point 3D sur le plan de l'écran (unités du monde)
+// Orthographic projection of a 3D point onto the screen plane (world units)
 function projectPoint(x, y, z) {
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   return [x * cy - y * sy, -(z * cp + (x * sy + y * cy) * sp)];
 }
 
-// Projection de toute la marche 3D (xs, ys), même formule que projectPoint
+// Projection of the whole 3D walk (xs, ys), same formula as projectPoint
 function project() {
   const { wx, wy, wz, xs, ys } = walk;
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
@@ -493,8 +611,8 @@ function project() {
   }
 }
 
-// Rotation autour du centre de la boîte englobante : ce centre garde la même
-// position à l'écran. Recalcule ensuite la projection et la boîte 2D.
+// Rotate around the centre of the bounding box, which keeps its position
+// on screen. Then recompute the projection and the 2D bounds.
 function rotateView(dyaw, dpitch) {
   const [x0, x1, y0, y1, z0, z1] = bounds3 || [0, 0, 0, 0, 0, 0];
   const c = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
@@ -520,15 +638,15 @@ function updateHint() {
   $('autoRotateRow').hidden = !walk.is3d;
 }
 
-/* Chaque stepper reçoit un chiffre et renvoie [clé, x, y, z] : la clé
- * unique de la case et la position de son centre (z = 0 en 2D ; en 2D
- * y pointe vers le bas de l'écran, en 3D z pointe vers le haut).      */
+/* Each stepper takes a digit and returns [key, x, y, z]: a unique key
+ * for the cell and the position of its centre (z = 0 in 2D; in 2D, y
+ * points down the screen; in 3D, z points up).                       */
 const STEPPERS = {
   turtle() {
     let x = 0, y = 0, d = 0;
     return (g) => {
-      if (g === 0) d = (d + 3) % 4;       // gauche
-      else if (g === 2) d = (d + 1) % 4;  // droite
+      if (g === 0) d = (d + 3) % 4;       // left
+      else if (g === 2) d = (d + 1) % 4;  // right
       x += DIRS[d][0]; y += DIRS[d][1];
       return [key(x, y), x, y, 0];
     };
@@ -536,7 +654,7 @@ const STEPPERS = {
   cardinal() {
     let x = 0, y = 0;
     return (g) => {
-      x += DIRS[g][0]; y += DIRS[g][1];  // le chiffre donne la direction
+      x += DIRS[g][0]; y += DIRS[g][1];  // the digit is the direction
       return [key(x, y), x, y, 0];
     };
   },
@@ -548,17 +666,17 @@ const STEPPERS = {
   cubeFixed: () => cubeStepper(false),
 };
 
-/* Réseau cubique : x = est, y = nord, z = haut.
- * Fixe : 0 = N, 1 = E, 2 = haut, 3 = S, 4 = O, 5 = bas (opposés à ±3).
- * Relatif : repère (avant f, haut u), gauche = u × f.
- *   0 = gauche, 1 = monter, 2 = tout droit, 3 = descendre, 4 = droite. */
+/* Cubic lattice: x = east, y = north, z = up.
+ * Fixed: 0 = N, 1 = E, 2 = up, 3 = S, 4 = W, 5 = down (opposites are 3 apart).
+ * Relative: frame (forward f, up u), left = u × f.
+ *   0 = left, 1 = pitch up, 2 = straight, 3 = pitch down, 4 = right. */
 const CUBE_DIRS = [[0, 1, 0], [1, 0, 0], [0, 0, 1], [0, -1, 0], [-1, 0, 0], [0, 0, -1]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const neg = (a) => [-a[0], -a[1], -a[2]];
 
 function cubeStepper(relative) {
   let x = 0, y = 0, z = 0;
-  let f = [0, 1, 0], u = [0, 0, 1]; // départ vers le nord, tête en haut
+  let f = [0, 1, 0], u = [0, 0, 1]; // start facing north, head up
   return (g) => {
     let d;
     if (relative) {
@@ -580,37 +698,37 @@ function key3(x, y, z) {
   return ((x + 2 ** 16) * 2 ** 17 + (y + 2 ** 16)) * 2 ** 17 + (z + 2 ** 16);
 }
 
-/* Pavage hexagonal (hexagones à sommet plat, centres à distance 1).
- * Position = a·u0 + b·u1 avec u0 = N = (0, −1) et u1 = NE = (H, −1/2) à l'écran.
- * Directions dans le sens horaire : 0 = N, 1 = NE, 2 = SE, 3 = S, 4 = SO, 5 = NO. */
+/* Hexagonal tiling (flat-topped hexagons, centres 1 apart).
+ * Position = a·u0 + b·u1 with u0 = N = (0, −1) and u1 = NE = (H, −1/2) on screen.
+ * Directions clockwise: 0 = N, 1 = NE, 2 = SE, 3 = S, 4 = SW, 5 = NW. */
 const HEX_DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
 
 function hexStepper(relative) {
-  let a = 0, b = 0, d = 0; // départ orienté vers le nord
+  let a = 0, b = 0, d = 0; // start facing north
   return (g) => {
-    d = relative ? (d + g - 2 + 6) % 6 : g;  // relatif : 0 = virage serré à gauche … 4 = serré à droite
+    d = relative ? (d + g - 2 + 6) % 6 : g;  // relative: 0 = sharp left … 4 = sharp right
     a += HEX_DIRS[d][0]; b += HEX_DIRS[d][1];
     return [key(a, b), b * H, -a - b / 2, 0];
   };
 }
 
-/* Pavage en triangles : la case (c, r) pointe vers le haut si c + r est pair.
- * Arêtes : 0 = horizontale, 1 = « / », 2 = « \ ».
- * Triangle ▲ : 0 → dessous (c, r+1), 1 → gauche (c−1, r), 2 → droite (c+1, r)
- * Triangle ▼ : 0 → dessus (c, r−1), 1 → droite (c+1, r), 2 → gauche (c−1, r)
- * Arêtes dans le sens trigonométrique : ▲ [2, 1, 0], ▼ [0, 2, 1] ; en entrant
- * par l'arête e, la suivante dans ce sens est à droite, l'autre à gauche.      */
+/* Triangle tiling: cell (c, r) points up when c + r is even.
+ * Edges: 0 = horizontal, 1 = “/”, 2 = “\”.
+ * ▲ triangle: 0 → below (c, r+1), 1 → left (c−1, r), 2 → right (c+1, r)
+ * ▼ triangle: 0 → above (c, r−1), 1 → right (c+1, r), 2 → left (c−1, r)
+ * Edges in counterclockwise order: ▲ [2, 1, 0], ▼ [0, 2, 1]. Entering
+ * through edge e, the next edge in that order is on the right, the other on the left. */
 const TRI_CCW = { up: [2, 1, 0], down: [0, 2, 1] };
 
 function triStepper(leftRight) {
-  let c = 0, r = 0, entry = 0; // départ : triangle ▲ en (0, 0), entré par le bas
+  let c = 0, r = 0, entry = 0; // start: ▲ triangle at (0, 0), entered from below
   return (g) => {
     const up = ((c + r) & 1) === 0;
     let edge = g;
     if (leftRight) {
       const ccw = up ? TRI_CCW.up : TRI_CCW.down;
       const i = ccw.indexOf(entry);
-      edge = ccw[(i + (g === 1 ? 1 : 2)) % 3];  // 0 = gauche, 1 = droite
+      edge = ccw[(i + (g === 1 ? 1 : 2)) % 3];  // 0 = left, 1 = right
     }
     if (edge === 0) r += up ? 1 : -1;
     else c += (edge === 1) === up ? -1 : 1;
@@ -625,11 +743,11 @@ function key(x, y) {
 }
 
 /* ------------------------------------------------------------------ *
- * Animation                                                           *
+ * Animation                                                          *
  * ------------------------------------------------------------------ */
 function stepsPerFrame() {
   const v = Number($('speed').value) / 100;
-  return 10 ** (v * 5 - 1); // 0,1 → 10 000 pas par image
+  return 10 ** (v * 5 - 1); // 0.1 → 10,000 steps per frame
 }
 
 function updateSpeedLabel() {
@@ -675,7 +793,7 @@ function restart() {
 }
 
 /* ------------------------------------------------------------------ *
- * Vue (zoom / déplacement)                                            *
+ * View (zoom / pan)                                                  *
  * ------------------------------------------------------------------ */
 function fitToBounds(b) {
   const w = b.maxX - b.minX + 2;
@@ -719,7 +837,7 @@ function userMovedView() {
 }
 
 /* ------------------------------------------------------------------ *
- * Rendu                                                               *
+ * Rendering                                                          *
  * ------------------------------------------------------------------ */
 function drawGrid() {
   const ctx = layers.grid;
@@ -749,7 +867,7 @@ function drawGrid() {
   for (let x = x0; x < cw; x += px) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, ch); }
   for (let y = y0; y < ch; y += px) { ctx.moveTo(0, Math.round(y) + 0.5); ctx.lineTo(cw, Math.round(y) + 0.5); }
   ctx.stroke();
-  // axes passant par l'origine
+  // axes through the origin
   ctx.strokeStyle = 'rgba(255,255,255,0.14)';
   ctx.beginPath();
   ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
@@ -757,7 +875,7 @@ function drawGrid() {
   ctx.stroke();
 }
 
-// 3D : boîte englobante de la marche (fil de fer) + repère des axes en haut à gauche
+// 3D: wireframe bounding box of the walk + axis gizmo in the top-left corner
 function draw3DFrame(ctx) {
   const proj = projectPoint;
   const [x0, x1, y0, y1, z0, z1] = bounds3;
@@ -772,7 +890,7 @@ function draw3DFrame(ctx) {
     }
   }
   ctx.stroke();
-  // repère : x = est (rouge), y = nord (vert), z = haut (bleu)
+  // gizmo: x = east (red), y = north (green), z = up (blue)
   const o = [44, 44];
   ctx.lineWidth = 2;
   ctx.font = '11px system-ui, sans-serif';
@@ -786,8 +904,8 @@ function draw3DFrame(ctx) {
   });
 }
 
-// Hexagones à sommet plat de rayon 1/√3 ; chacun trace ses 3 arêtes du haut
-// (les 3 du bas sont celles des voisins S, SE et SO). Masqué si trop petit.
+// Flat-topped hexagons of radius 1/√3; each one draws its 3 top edges
+// (the 3 bottom ones belong to the S, SE and SW neighbours). Hidden when too small.
 function drawHexGrid(ctx) {
   const { scale: s, ox, oy } = view;
   const R = s / Math.sqrt(3);
@@ -804,7 +922,7 @@ function drawHexGrid(ctx) {
   ctx.stroke();
 }
 
-// Réseau triangulaire : droites y = y0 + k·H, x ± (y − y0)/√3 = k (k multiple de step)
+// Triangular lattice: lines y = y0 + k·H and x ± (y − y0)/√3 = k (k a multiple of step)
 function drawTriGrid(ctx, step) {
   const { scale: s, ox, oy } = view;
   const toX = (x) => ox + x * s, toY = (y) => oy + y * s;
@@ -845,7 +963,7 @@ function styleColor(k) {
   }
 }
 
-// Trace les segments [from, to) : le segment i relie le point i au point i+1.
+// Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
   const ctx = layers.path;
@@ -874,20 +992,20 @@ function drawOverlay() {
   if (!walk.n) return;
   const { scale: s, ox, oy } = view;
   const r = Math.max(3, Math.min(s * 0.35, 8));
-  // départ
+  // start
   ctx.fillStyle = '#3fb950';
   ctx.beginPath();
   ctx.arc(ox, oy, r, 0, Math.PI * 2);
   ctx.fill();
-  // position courante + cap
+  // current position + heading
   const x = ox + walk.xs[cur] * s;
   const y = oy + walk.ys[cur] * s;
-  // cap = direction du dernier pas (vers le haut au départ)
+  // heading = direction of the last step (up at the start)
   let dx = 0, dy = -1;
   if (cur > 0) {
     const ux = walk.xs[cur] - walk.xs[cur - 1], uy = walk.ys[cur] - walk.ys[cur - 1];
     const l = Math.hypot(ux, uy);
-    if (l > 1e-6) { dx = ux / l; dy = uy / l; } else { dx = 0; dy = 0; } // pas dans l'axe de la vue
+    if (l > 1e-6) { dx = ux / l; dy = uy / l; } else { dx = 0; dy = 0; } // step along the view axis
   }
   const a = r * 1.8;
   ctx.fillStyle = '#ffffff';
@@ -916,7 +1034,7 @@ function updateStats() {
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
     $('sCounts').textContent = Array.from(c, fmt).join(' / ');
   }
-  // bandeau des chiffres autour du pas courant
+  // digit strip around the current step
   const strip = $('digitStrip');
   if (!walk.n) { strip.textContent = ''; return; }
   const before = 36, after = 20;
@@ -945,7 +1063,7 @@ function tick() {
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
     fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
-  if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // la boîte 3D grandit avec la marche
+  if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // the 3D box grows with the walk
   if (needsFull) {
     layers.path.clearRect(0, 0, cw, ch);
     drawn = 0;
@@ -965,7 +1083,7 @@ function tick() {
 }
 
 /* ------------------------------------------------------------------ *
- * Interactions                                                        *
+ * Interactions                                                       *
  * ------------------------------------------------------------------ */
 $('compute').addEventListener('click', compute);
 $('play').addEventListener('click', () => {
@@ -1047,6 +1165,18 @@ for (const p of MERSENNE) {
   $('mersenneP').add(new Option(`M${SUB(p)} — ${fmt(decimals)} decimal digits`, p));
 }
 $('mersenneP').value = 44497;
+for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
+  const group = document.createElement('optgroup');
+  group.label = sign > 0 ? 'p# + 1' : 'p# − 1';
+  for (const p of list) {
+    const decimals = Math.round(p / Math.LN10);  // ln(p#) ≈ p
+    group.append(new Option(`${fmt(p)}# ${sign > 0 ? '+' : '−'} 1 — ≈ ${fmt(decimals)} decimal digits`, `${p},${sign}`));
+  }
+  $('primorialP').append(group);
+}
+$('primorialP').value = '392113,1';
+$('primorialP').addEventListener('change', compute);
+$('primeSize').addEventListener('change', compute);
 $('constant').addEventListener('change', compute);
 $('mersenneP').addEventListener('change', compute);
 $('fraction').addEventListener('change', compute);
