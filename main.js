@@ -1238,6 +1238,18 @@ function styleColor(k) {
 
 const sphereDraw = { at: 0, cost: 0 };
 
+// Auto-fit on the sphere: ease the camera towards the walker so that it faces the viewer,
+// i.e. yaw and pitch such that towardViewer(walker) = 1 (then it projects onto the centre)
+function followWalker() {
+  const x = walk.wx[cur], y = walk.wy[cur], z = walk.wz[cur];
+  const l = Math.hypot(x, y, z);
+  const pitch = Math.asin(z / l), yaw = Math.atan2(-x, -y);
+  let dyaw = yaw - cam.yaw;
+  dyaw -= 2 * Math.PI * Math.round(dyaw / (2 * Math.PI));  // shortest way round
+  const dpitch = pitch - cam.pitch;
+  if (Math.abs(dyaw) + Math.abs(dpitch) > 1e-4) rotateView(dyaw * 0.12, dpitch * 0.12);
+}
+
 // Component of a unit vector towards the viewer (> 0 on the visible half of the sphere)
 function towardViewer(x, y, z) {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
@@ -1447,6 +1459,7 @@ function tick() {
     fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
+    if (walk.n && $('autoFit').checked && !$('autoRotate').checked) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
@@ -1530,6 +1543,7 @@ stage.addEventListener('pointermove', (e) => {
     view.oy += dy;
     userMovedView();
   } else {
+    if (walk.sphere) $('autoFit').checked = false;  // stop following the walker while the user rotates
     rotateView(dx * 0.008, dy * 0.008);
   }
 });
