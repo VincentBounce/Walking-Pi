@@ -356,6 +356,8 @@ const MODES = {
               rule: 'Base-5 digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
   hexFixed: { base: 6, lattice: 'hex',
               rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
+  sphereLR: { base: 2, lattice: 'sphere',
+              rule: 'Base-2 digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   cubeRel:  { base: 5, lattice: 'cube',
               rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
   cubeFixed: { base: 6, lattice: 'cube',
@@ -547,6 +549,7 @@ function compute() {
   $('mersenneRow').hidden = id !== 'mersenne';
   $('primorialRow').hidden = id !== 'primorial';
   $('primeSizeRow').hidden = id !== 'randomPrime';
+  $('sphereRow').hidden = MODES[$('mode').value].lattice !== 'sphere';
   const integer = INTEGER_IDS.includes(id);
   const { base } = MODES[$('mode').value];
   const key = `${info.key}/${base}`;
@@ -626,6 +629,10 @@ function buildWalk() {
     buildPointWalk(seq, MODES[current.mode]);
     return;
   }
+  if (MODES[current.mode].lattice === 'sphere') {
+    buildSphereWalk(seq);
+    return;
+  }
   const len = seq.length;
   const is3d = MODES[current.mode].lattice === 'cube';
   const wx = new Float64Array(len + 1);
@@ -654,7 +661,7 @@ function buildWalk() {
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice,
                         skipZeros: !!MODES[current.mode].skipZeros,
-                        points: false, keys: seq, labels: null,
+                        points: false, keys: seq, labels: null, sphere: false,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) project();
@@ -693,6 +700,7 @@ function rotateView(dyaw, dpitch) {
   view.ox += (before[0] - after[0]) * view.scale;
   view.oy += (before[1] - after[1]) * view.scale;
   project();
+  if (walk.sphere) { needsFull = true; return; }  // bounds are the fixed sphere
   const done = cur;
   cur = 0;
   bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -890,7 +898,107 @@ function buildPointWalk(seq, { base, points: kind }) {
   }
   Object.assign(walk, { n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
                         counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
+                        sphere: false,
                         xs, ys });
+  updateHint();
+  restart();
+}
+
+/* Geodesic sphere: an icosahedron whose 20 faces are each cut into f² triangles, pushed out
+ * onto the sphere. Each triangle lists its vertices counterclockwise seen from outside, and
+ * nbr[3t + k] is the triangle across edge k (from vertex k to vertex k + 1). */
+const geodesicCache = {};
+function geodesic(f) {
+  if (geodesicCache[f]) return geodesicCache[f];
+  const p = (1 + Math.sqrt(5)) / 2;
+  const ico = [[-1, p, 0], [1, p, 0], [-1, -p, 0], [1, -p, 0], [0, -1, p], [0, 1, p],
+               [0, -1, -p], [0, 1, -p], [p, 0, -1], [p, 0, 1], [-p, 0, -1], [-p, 0, 1]];
+  const faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4],
+                 [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8],
+                 [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+  const verts = [], index = new Map(), tris = [];
+  const vertex = (x, y, z) => {  // normalised, shared between faces
+    const l = Math.hypot(x, y, z);
+    x /= l; y /= l; z /= l;
+    const k = `${x.toFixed(9)},${y.toFixed(9)},${z.toFixed(9)}`;
+    if (!index.has(k)) { index.set(k, verts.length / 3); verts.push(x, y, z); }
+    return index.get(k);
+  };
+  for (const [a, b, c] of faces) {
+    const [A, B, C] = [ico[a], ico[b], ico[c]];
+    const at = (i, j) => vertex(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
+    for (let i = 0; i < f; i++) {
+      for (let j = 0; i + j < f; j++) {
+        tris.push([at(i, j), at(i + 1, j), at(i, j + 1)]);
+        if (i + j < f - 1) tris.push([at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+      }
+    }
+  }
+  const n = tris.length;
+  const tri = new Int32Array(3 * n), cen = new Float64Array(3 * n);
+  const V = (v, d) => verts[3 * v + d];
+  tris.forEach((t, i) => {
+    let [a, b, c] = t;
+    const e1 = [0, 1, 2].map((d) => V(b, d) - V(a, d)), e2 = [0, 1, 2].map((d) => V(c, d) - V(a, d));
+    const nrm = cross(e1, e2);
+    const m = [0, 1, 2].map((d) => V(a, d) + V(b, d) + V(c, d));
+    if (nrm[0] * m[0] + nrm[1] * m[1] + nrm[2] * m[2] < 0) [b, c] = [c, b];  // make it counterclockwise
+    tri.set([a, b, c], 3 * i);
+    const l = Math.hypot(...m);
+    cen.set(m.map((v) => v / l), 3 * i);
+  });
+  const edges = new Map(), nbr = new Int32Array(3 * n), nbrEdge = new Int8Array(3 * n);
+  const nv = verts.length / 3;
+  for (let t = 0; t < n; t++) {
+    for (let k = 0; k < 3; k++) {
+      const u = tri[3 * t + k], v = tri[3 * t + (k + 1) % 3];
+      const e = Math.min(u, v) * nv + Math.max(u, v);
+      const other = edges.get(e);
+      if (other === undefined) { edges.set(e, [t, k]); continue; }
+      nbr[3 * t + k] = other[0]; nbrEdge[3 * t + k] = other[1];
+      nbr[3 * other[0] + other[1]] = t; nbrEdge[3 * other[0] + other[1]] = k;
+    }
+  }
+  return (geodesicCache[f] = { f, n, verts: new Float64Array(verts), tri, cen, nbr, nbrEdge });
+}
+
+// Walk from triangle to triangle: entering through edge k, edge k + 2 is on the left and
+// edge k + 1 on the right (vertices counterclockwise seen from outside).
+function buildSphereWalk(seq) {
+  const g = geodesic(Number($('sphereF').value));
+  const R = g.f * 1.05;  // edge ≈ 1 unit on screen scale
+  const len = seq.length;
+  const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
+  const tile = new Int32Array(len + 1), cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
+  const counts = new Int32Array(2 * (len + 1));
+  const seen = new Uint8Array(g.n);
+  let t = 0, entry = 0, distinct = 1, m = 0, coverStep = -1;
+  seen[0] = 1;
+  const c0 = [g.cen[0], g.cen[1], g.cen[2]];
+  const put = (i) => {
+    wx[i] = g.cen[3 * t] * R; wy[i] = g.cen[3 * t + 1] * R; wz[i] = g.cen[3 * t + 2] * R;
+    tile[i] = t;
+    cells[i] = distinct;
+    const dot = (g.cen[3 * t] * c0[0] + g.cen[3 * t + 1] * c0[1] + g.cen[3 * t + 2] * c0[2]);
+    m = Math.max(m, R * Math.acos(Math.max(-1, Math.min(1, dot))));  // great-circle distance from the start
+    maxDist[i] = m;
+  };
+  put(0);
+  for (let i = 0; i < len; i++) {
+    const edge = seq[i] === 1 ? (entry + 1) % 3 : (entry + 2) % 3;
+    const next = g.nbr[3 * t + edge];
+    entry = g.nbrEdge[3 * t + edge];
+    t = next;
+    if (!seen[t]) { seen[t] = 1; distinct++; if (distinct === g.n) coverStep = i + 1; }
+    put(i + 1);
+    counts[2 * (i + 1)] = counts[2 * i] + (seq[i] === 0);
+    counts[2 * (i + 1) + 1] = counts[2 * i + 1] + (seq[i] === 1);
+  }
+  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base: 2, counts,
+                        lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
+                        sphere: true, geo: g, R, tile, coverStep, visits: new Int32Array(g.n), maxVisits: 0,
+                        xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
+  project();
   updateHint();
   restart();
 }
@@ -916,6 +1024,7 @@ function advanceTo(target) {
   target = Math.min(walk.n, target);
   const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
+    if (walk.sphere) walk.maxVisits = Math.max(walk.maxVisits, ++walk.visits[walk.tile[i]]);
     if (is3d) {
       const b = bounds3;
       b[0] = Math.min(b[0], wx[i]); b[1] = Math.max(b[1], wx[i]);
@@ -943,7 +1052,14 @@ function restart() {
   acc = 0;
   bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
   bounds3 = [0, 0, 0, 0, 0, 0];
-  if ($('autoFit').checked) fitToBounds({ minX: -3, maxX: 3, minY: -3, maxY: 3 });
+  if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
+    const R = walk.R;
+    bounds = { minX: -R, maxX: R, minY: -R, maxY: R };
+    bounds3 = [-R, R, -R, R, -R, R];
+    walk.visits.fill(0);
+    walk.visits[walk.tile[0]] = walk.maxVisits = 1;
+  }
+  if ($('autoFit').checked) fitToBounds(walk.sphere ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
   needsFull = true;
   statsDirty = true;
   play(false);
@@ -1041,7 +1157,7 @@ function draw3DFrame(ctx) {
     const [px, py] = proj(X[i], Y[j], Z[k]);
     return [view.ox + px * view.scale, view.oy + py * view.scale];
   };
-  for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+  for (let a = 0; a < 2 && !walk.sphere; a++) for (let b = 0; b < 2; b++) {
     for (const [p, q] of [[pt(0, a, b), pt(1, a, b)], [pt(a, 0, b), pt(a, 1, b)], [pt(a, b, 0), pt(a, b, 1)]]) {
       ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]);
     }
@@ -1120,6 +1236,82 @@ function styleColor(k) {
   }
 }
 
+const sphereDraw = { at: 0, cost: 0 };
+
+// Component of a unit vector towards the viewer (> 0 on the visible half of the sphere)
+function towardViewer(x, y, z) {
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  return z * sp - (x * Math.sin(cam.yaw) + y * Math.cos(cam.yaw)) * cp;
+}
+const facing = (i) => towardViewer(walk.wx[i], walk.wy[i], walk.wz[i]) > 0;
+
+// Sphere: visible triangles coloured by visit count (log scale), shading, and the recent trail
+function drawSphere() {
+  const ctx = layers.path;
+  ctx.clearRect(0, 0, cw, ch);
+  const { geo: g, R, visits, maxVisits } = walk;
+  const { scale: s, ox, oy } = view;
+  const nv = g.verts.length / 3;
+  const px = new Float32Array(nv), py = new Float32Array(nv);
+  for (let v = 0; v < nv; v++) {
+    const [x, y] = projectPoint(g.verts[3 * v] * R, g.verts[3 * v + 1] * R, g.verts[3 * v + 2] * R);
+    px[v] = ox + x * s; py[v] = oy + y * s;
+  }
+  const LEVELS = 32;
+  const buckets = Array.from({ length: LEVELS + 1 }, () => []);
+  const logMax = Math.log(Math.max(2, maxVisits));
+  for (let t = 0; t < g.n; t++) {
+    if (towardViewer(g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]) <= 0) continue;
+    const v = visits[t];
+    buckets[v ? 1 + Math.round((Math.log(v) / logMax) * (LEVELS - 1)) : 0].push(t);
+  }
+  const outline = (list) => {
+    ctx.beginPath();
+    for (const t of list) {
+      const a = g.tri[3 * t], b = g.tri[3 * t + 1], c = g.tri[3 * t + 2];
+      ctx.moveTo(px[a], py[a]); ctx.lineTo(px[b], py[b]); ctx.lineTo(px[c], py[c]); ctx.closePath();
+    }
+  };
+  // background disc: anti-aliasing seams between triangles show this colour instead of black
+  ctx.fillStyle = '#1f2630';
+  ctx.beginPath();
+  ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+  ctx.fill();
+  buckets.forEach((list, k) => {
+    if (!list.length || k === 0) return;
+    outline(list);
+    ctx.fillStyle = GRADIENT[Math.round(((k - 1) / (LEVELS - 1)) * (BANDS - 1))];
+    ctx.fill();
+  });
+  if ($('showGrid').checked && s > 6) {  // triangle edges once they are big enough
+    outline(buckets.flat());
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+  }
+  // shading: darker towards the rim
+  const shade = ctx.createRadialGradient(ox - R * s * 0.3, oy - R * s * 0.3, R * s * 0.1, ox, oy, R * s);
+  shade.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+  shade.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
+  shade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+  ctx.fill();
+  // recent trail on the visible side
+  const from = Math.max(0, cur - 300);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = Math.max(1, Math.min(s * 0.15, 2.5));
+  ctx.lineJoin = ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = from; i < cur; i++) {
+    if (!facing(i) || !facing(i + 1)) continue;
+    ctx.moveTo(ox + walk.xs[i] * s, oy + walk.ys[i] * s);
+    ctx.lineTo(ox + walk.xs[i + 1] * s, oy + walk.ys[i + 1] * s);
+  }
+  ctx.stroke();
+}
+
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -1161,11 +1353,14 @@ function drawOverlay() {
   if (!walk.n) return;
   const { scale: s, ox, oy } = view;
   const r = Math.max(3, Math.min(s * 0.35, 8));
-  // start
-  ctx.fillStyle = '#3fb950';
-  ctx.beginPath();
-  ctx.arc(ox, oy, r, 0, Math.PI * 2);
-  ctx.fill();
+  // start (hidden on the far side of the sphere)
+  if (!walk.sphere || facing(0)) {
+    ctx.fillStyle = '#3fb950';
+    ctx.beginPath();
+    ctx.arc(ox + walk.xs[0] * s, oy + walk.ys[0] * s, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (walk.sphere && !facing(cur)) return;
   // current position + heading
   const x = ox + walk.xs[cur] * s;
   const y = oy + walk.ys[cur] * s;
@@ -1206,7 +1401,11 @@ function updateStats() {
   $('sPos').textContent = walk.is3d ? `(${p(x)}, ${p(y)}, ${p(z)})` : `(${p(x)}, ${p(y)})`;
   $('sDist').textContent = Math.hypot(x, y, z).toFixed(1);
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
-  $('sCells').textContent = walk.n ? fmt(walk.cells[cur]) : '1';
+  $('sCells').textContent = !walk.n ? '1' : walk.sphere
+    ? `${fmt(walk.cells[cur])} / ${fmt(walk.geo.n)}` +
+      (walk.coverStep >= 0 && cur >= walk.coverStep ? ` (all by step ${fmt(walk.coverStep)})`
+                                                     : ` (${(100 * walk.cells[cur] / walk.geo.n).toFixed(1)} %)`)
+    : fmt(walk.cells[cur]);
   if (walk.n && walk.counts) {
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
     $('sCounts').textContent = Array.from(c, fmt).join(' / ');
@@ -1246,6 +1445,21 @@ function tick() {
     const b = padBounds(bounds);
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
     fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
+  }
+  if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
+    // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
+    const now = performance.now();
+    if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
+      drawGrid();
+      drawSphere();
+      drawOverlay();
+      updateStats();
+      sphereDraw.cost = performance.now() - now;
+      sphereDraw.at = now;
+      needsFull = statsDirty = false;
+    }
+    requestAnimationFrame(tick);
+    return;
   }
   if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // the 3D box grows with the walk
   if (needsFull) {
@@ -1361,6 +1575,7 @@ for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
 $('primorialP').value = '392113,1';
 $('primorialP').addEventListener('change', compute);
 $('primeSize').addEventListener('change', compute);
+$('sphereF').addEventListener('change', () => { if (current) buildWalk(); });
 $('constant').addEventListener('change', compute);
 $('mersenneP').addEventListener('change', compute);
 $('fraction').addEventListener('change', compute);

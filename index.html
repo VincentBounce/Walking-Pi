@@ -50,6 +50,7 @@
             <optgroup label="3D">
               <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
+              <option value="sphereLR">Geodesic sphere — base 2 (left / right)</option>
             </optgroup>
             <optgroup label="Experimental">
               <option value="spiral">Binary spiral — squares (1 = draw, 0 = skip)</option>
@@ -60,6 +61,14 @@
               <option value="search10">Ulam spiral search — base 10</option>
               <option value="search64">Ulam spiral search — base 64</option>
             </optgroup>
+          </select>
+        </label>
+        <label id="sphereRow" hidden>Sphere
+          <select id="sphereF">
+            <option value="8">1,280 triangles</option>
+            <option value="16" selected>5,120 triangles</option>
+            <option value="32">20,480 triangles</option>
+            <option value="64">81,920 triangles</option>
           </select>
         </label>
         <label>Number of digits
