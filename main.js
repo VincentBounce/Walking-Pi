@@ -344,6 +344,10 @@ const MODES = {
               rule: 'Ulam spiral, base 10 — cell <b>n</b> is marked when the digits of n appear in the digits of the number' },
   search64: { base: 64, lattice: 'square', points: 'search',
               rule: 'Ulam spiral, base 64 — cell <b>n</b> is marked when the base-64 digits of n appear in the base-64 digits of the number' },
+  triSpiral: { base: 2, lattice: 'tri', skipZeros: true,
+              rule: 'Base-2 digits along a spiral of triangles — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+  hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
+              rule: 'Base-2 digits along a spiral of hexagons — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
   triLR:    { base: 2, lattice: 'tri',
               rule: 'Base-2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
   triFixed: { base: 3, lattice: 'tri',
@@ -735,10 +739,12 @@ const STEPPERS = {
       return [key(x, y), x, y, 0];
     };
   },
-  triLR: () => triStepper(true),
-  triFixed: () => triStepper(false),
-  hexRel: () => hexStepper(true),
-  hexFixed: () => hexStepper(false),
+  triLR: () => triStepper('lr'),
+  triFixed: () => triStepper('fixed'),
+  triSpiral: () => triStepper('spiral'),
+  hexSpiral: () => hexStepper('spiral'),
+  hexRel: () => hexStepper('relative'),
+  hexFixed: () => hexStepper('fixed'),
   cubeRel: () => cubeStepper(true),
   cubeFixed: () => cubeStepper(false),
 };
@@ -780,11 +786,20 @@ function key3(x, y, z) {
  * Directions clockwise: 0 = N, 1 = NE, 2 = SE, 3 = S, 4 = SW, 5 = NW. */
 const HEX_DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
 
-function hexStepper(relative) {
-  let a = 0, b = 0, d = 0; // start facing north
+// kind: 'relative' (0 = sharp left … 4 = sharp right), 'fixed' (digit = direction) or
+// 'spiral' (turn left whenever that hexagon is unvisited, else go straight; the digit is ignored)
+function hexStepper(kind) {
+  let a = 0, b = 0, d = kind === 'spiral' ? 3 : 0; // start facing north (the spiral starts facing south)
+  const visited = new Set([key(0, 0)]);
   return (g) => {
-    d = relative ? (d + g - 2 + 6) % 6 : g;  // relative: 0 = sharp left … 4 = sharp right
+    if (kind === 'relative') d = (d + g - 2 + 6) % 6;
+    else if (kind === 'fixed') d = g;
+    else {
+      const l = (d + 5) % 6;
+      if (!visited.has(key(a + HEX_DIRS[l][0], b + HEX_DIRS[l][1]))) d = l;
+    }
     a += HEX_DIRS[d][0]; b += HEX_DIRS[d][1];
+    if (kind === 'spiral') visited.add(key(a, b));
     return [key(a, b), b * H, -a - b / 2, 0];
   };
 }
@@ -797,19 +812,25 @@ function hexStepper(relative) {
  * through edge e, the next edge in that order is on the right, the other on the left. */
 const TRI_CCW = { up: [2, 1, 0], down: [0, 2, 1] };
 
-function triStepper(leftRight) {
+// kind: 'lr' (0 = exit left, 1 = exit right), 'fixed' (digit = edge to cross) or
+// 'spiral' (exit left whenever that triangle is unvisited, else right; the digit is ignored)
+function triStepper(kind) {
   let c = 0, r = 0, entry = 0; // start: ▲ triangle at (0, 0), entered from below
+  const visited = new Set([key(0, 0)]);
+  const across = (edge, up) => (edge === 0 ? [c, r + (up ? 1 : -1)] : [c + ((edge === 1) === up ? -1 : 1), r]);
   return (g) => {
     const up = ((c + r) & 1) === 0;
     let edge = g;
-    if (leftRight) {
+    if (kind !== 'fixed') {
       const ccw = up ? TRI_CCW.up : TRI_CCW.down;
       const i = ccw.indexOf(entry);
-      edge = ccw[(i + (g === 1 ? 1 : 2)) % 3];  // 0 = left, 1 = right
+      const left = ccw[(i + 2) % 3], right = ccw[(i + 1) % 3];
+      if (kind === 'lr') edge = g === 1 ? right : left;
+      else edge = visited.has(key(...across(left, up))) ? right : left;
     }
-    if (edge === 0) r += up ? 1 : -1;
-    else c += (edge === 1) === up ? -1 : 1;
+    [c, r] = across(edge, up);
     entry = edge;
+    visited.add(key(c, r));
     const upNow = ((c + r) & 1) === 0;
     return [key(c, r), c / 2, r * H + (upNow ? 2 * H / 3 : H / 3) + TRI_Y0, 0];
   };

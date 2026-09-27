@@ -39,19 +39,27 @@
         </label>
         <label>Walk mode
           <select id="mode">
-            <option value="turtle">Squares turtle — base 3 (left / forward / right)</option>
-            <option value="cardinal">Squares cardinal — base 4 (N / E / S / W)</option>
-            <option value="spiral">Square spiral — base 2 (1 = draw, 0 = skip)</option>
-            <option value="jump10">Ulam spiral jumps — base 10</option>
-            <option value="jump64">Ulam spiral jumps — base 64</option>
-            <option value="search10">Ulam spiral search — base 10</option>
-            <option value="search64">Ulam spiral search — base 64</option>
-            <option value="triLR">Triangles — base 2 (left / right)</option>
-            <option value="triFixed">Triangles — base 3 (3 fixed edges)</option>
-            <option value="hexRel">Hexagons — base 5 (5 relative turns)</option>
-            <option value="hexFixed">Hexagons — base 6 (6 fixed directions)</option>
-            <option value="cubeRel">3D cubes — base 5 (5 relative turns)</option>
-            <option value="cubeFixed">3D cubes — base 6 (6 fixed directions)</option>
+            <optgroup label="2D">
+              <option value="turtle">Squares turtle — base 3 (left / forward / right)</option>
+              <option value="cardinal">Squares cardinal — base 4 (N / E / S / W)</option>
+              <option value="triLR">Triangles — base 2 (left / right)</option>
+              <option value="triFixed">Triangles — base 3 (3 fixed edges)</option>
+              <option value="hexRel">Hexagons — base 5 (5 relative turns)</option>
+              <option value="hexFixed">Hexagons — base 6 (6 fixed directions)</option>
+            </optgroup>
+            <optgroup label="3D">
+              <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
+              <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
+            </optgroup>
+            <optgroup label="Experimental">
+              <option value="spiral">Binary spiral — squares (1 = draw, 0 = skip)</option>
+              <option value="triSpiral">Binary spiral — triangles (1 = draw, 0 = skip)</option>
+              <option value="hexSpiral">Binary spiral — hexagons (1 = draw, 0 = skip)</option>
+              <option value="jump10">Ulam spiral jumps — base 10</option>
+              <option value="jump64">Ulam spiral jumps — base 64</option>
+              <option value="search10">Ulam spiral search — base 10</option>
+              <option value="search64">Ulam spiral search — base 64</option>
+            </optgroup>
           </select>
         </label>
         <label>Number of digits
