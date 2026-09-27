@@ -157,6 +157,10 @@ const MODES = {
               rule: 'Base-5 digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
   hexFixed: { base: 6, lattice: 'hex',
               rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
+  cubeRel:  { base: 5, lattice: 'cube',
+              rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
+  cubeFixed: { base: 6, lattice: 'cube',
+              rule: 'Base-6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
 };
 
 const cache = {};        // "id/base" → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
@@ -181,6 +185,8 @@ let needsFull = true;
 let statsDirty = true;
 let bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 const view = { scale: 20, ox: 0, oy: 0 };
+const cam = { yaw: -0.6, pitch: 0.5 };   // rotation de la vue 3D (radians)
+let bounds3 = null;                        // boîte englobante 3D des points 0..cur
 
 const stage = $('stage');
 const layers = {
@@ -260,33 +266,73 @@ function buildWalk() {
   seq.set(head);
   seq.set(current.digits.subarray(0, n), head.length);
   const len = seq.length;
-  const xs = new Float64Array(len + 1);
-  const ys = new Float64Array(len + 1);
+  const is3d = MODES[current.mode].lattice === 'cube';
+  const wx = new Float64Array(len + 1);
+  const wy = new Float64Array(len + 1);
+  const wz = is3d ? new Float64Array(len + 1) : null;
   const cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1);
   const { base } = MODES[current.mode];
   const step = STEPPERS[current.mode]();
   const counts = new Int32Array(base * (len + 1));
-  const seen = new Set([key(0, 0)]);
+  const seen = new Set([is3d ? key3(0, 0, 0) : key(0, 0)]);
   let m = 0;
   cells[0] = 1;
   for (let i = 0; i < len; i++) {
     const g = seq[i];
-    const [a, b, x, y] = step(g);
-    xs[i + 1] = x; ys[i + 1] = y;
-    seen.add(key(a, b));
+    const [k, x, y, z] = step(g);
+    wx[i + 1] = x; wy[i + 1] = y;
+    if (is3d) wz[i + 1] = z;
+    seen.add(k);
     cells[i + 1] = seen.size;
-    m = Math.max(m, Math.hypot(x, y));
+    m = Math.max(m, Math.hypot(x, y, z));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
   }
-  Object.assign(walk, { n: len, digits: seq, xs, ys, lattice: MODES[current.mode].lattice, cells, maxDist, base, counts });
+  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
+                        lattice: MODES[current.mode].lattice,
+                        xs: is3d ? new Float64Array(len + 1) : wx,
+                        ys: is3d ? new Float64Array(len + 1) : wy });
+  if (is3d) project();
+  updateHint();
   restart();
 }
 
-/* Chaque stepper reçoit un chiffre et renvoie [case a, case b, x, y] :
- * les coordonnées entières de la case et la position de son centre.   */
+// Projection orthographique de la marche 3D sur le plan de l'écran (xs, ys)
+function project() {
+  const { wx, wy, wz, xs, ys } = walk;
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  for (let i = 0; i < xs.length; i++) {
+    xs[i] = wx[i] * cy - wy[i] * sy;
+    ys[i] = -(wz[i] * cp + (wx[i] * sy + wy[i] * cy) * sp);
+  }
+}
+
+// Après une rotation : recalcule la projection et la boîte englobante 2D
+function rotateView(dyaw, dpitch) {
+  cam.yaw += dyaw;
+  cam.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam.pitch + dpitch));
+  if (!walk.is3d) return;
+  project();
+  const done = cur;
+  cur = 0;
+  bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  advanceTo(done);
+  needsFull = true;
+}
+
+function updateHint() {
+  $('hint').textContent = walk.is3d
+    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: fit'
+    : 'Wheel: zoom · Drag: pan · Double-click: fit';
+  $('autoRotateRow').hidden = !walk.is3d;
+}
+
+/* Chaque stepper reçoit un chiffre et renvoie [clé, x, y, z] : la clé
+ * unique de la case et la position de son centre (z = 0 en 2D ; en 2D
+ * y pointe vers le bas de l'écran, en 3D z pointe vers le haut).      */
 const STEPPERS = {
   turtle() {
     let x = 0, y = 0, d = 0;
@@ -294,21 +340,55 @@ const STEPPERS = {
       if (g === 0) d = (d + 3) % 4;       // gauche
       else if (g === 2) d = (d + 1) % 4;  // droite
       x += DIRS[d][0]; y += DIRS[d][1];
-      return [x, y, x, y];
+      return [key(x, y), x, y, 0];
     };
   },
   cardinal() {
     let x = 0, y = 0;
     return (g) => {
       x += DIRS[g][0]; y += DIRS[g][1];  // le chiffre donne la direction
-      return [x, y, x, y];
+      return [key(x, y), x, y, 0];
     };
   },
   triLR: () => triStepper(true),
   triFixed: () => triStepper(false),
   hexRel: () => hexStepper(true),
   hexFixed: () => hexStepper(false),
+  cubeRel: () => cubeStepper(true),
+  cubeFixed: () => cubeStepper(false),
 };
+
+/* Réseau cubique : x = est, y = nord, z = haut.
+ * Fixe : 0 = N, 1 = E, 2 = haut, 3 = S, 4 = O, 5 = bas (opposés à ±3).
+ * Relatif : repère (avant f, haut u), gauche = u × f.
+ *   0 = gauche, 1 = monter, 2 = tout droit, 3 = descendre, 4 = droite. */
+const CUBE_DIRS = [[0, 1, 0], [1, 0, 0], [0, 0, 1], [0, -1, 0], [-1, 0, 0], [0, 0, -1]];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const neg = (a) => [-a[0], -a[1], -a[2]];
+
+function cubeStepper(relative) {
+  let x = 0, y = 0, z = 0;
+  let f = [0, 1, 0], u = [0, 0, 1]; // départ vers le nord, tête en haut
+  return (g) => {
+    let d;
+    if (relative) {
+      const left = cross(u, f);
+      if (g === 0) f = left;
+      else if (g === 1) [f, u] = [u, neg(f)];
+      else if (g === 3) [f, u] = [neg(u), f];
+      else if (g === 4) f = neg(left);
+      d = f;
+    } else {
+      d = CUBE_DIRS[g];
+    }
+    x += d[0]; y += d[1]; z += d[2];
+    return [key3(x, y, z), x, y, z];
+  };
+}
+
+function key3(x, y, z) {
+  return ((x + 2 ** 16) * 2 ** 17 + (y + 2 ** 16)) * 2 ** 17 + (z + 2 ** 16);
+}
 
 /* Pavage hexagonal (hexagones à sommet plat, centres à distance 1).
  * Position = a·u0 + b·u1 avec u0 = N = (0, −1) et u1 = NE = (H, −1/2) à l'écran.
@@ -320,7 +400,7 @@ function hexStepper(relative) {
   return (g) => {
     d = relative ? (d + g - 2 + 6) % 6 : g;  // relatif : 0 = virage serré à gauche … 4 = serré à droite
     a += HEX_DIRS[d][0]; b += HEX_DIRS[d][1];
-    return [a, b, b * H, -a - b / 2];
+    return [key(a, b), b * H, -a - b / 2, 0];
   };
 }
 
@@ -346,7 +426,7 @@ function triStepper(leftRight) {
     else c += (edge === 1) === up ? -1 : 1;
     entry = edge;
     const upNow = ((c + r) & 1) === 0;
-    return [c, r, c / 2, r * H + (upNow ? 2 * H / 3 : H / 3) + TRI_Y0];
+    return [key(c, r), c / 2, r * H + (upNow ? 2 * H / 3 : H / 3) + TRI_Y0, 0];
   };
 }
 
@@ -369,8 +449,14 @@ function updateSpeedLabel() {
 
 function advanceTo(target) {
   target = Math.min(walk.n, target);
-  const { xs, ys } = walk;
+  const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
+    if (is3d) {
+      const b = bounds3;
+      b[0] = Math.min(b[0], wx[i]); b[1] = Math.max(b[1], wx[i]);
+      b[2] = Math.min(b[2], wy[i]); b[3] = Math.max(b[3], wy[i]);
+      b[4] = Math.min(b[4], wz[i]); b[5] = Math.max(b[5], wz[i]);
+    }
     if (xs[i] < bounds.minX) bounds.minX = xs[i];
     if (xs[i] > bounds.maxX) bounds.maxX = xs[i];
     if (ys[i] < bounds.minY) bounds.minY = ys[i];
@@ -391,6 +477,7 @@ function restart() {
   drawn = 0;
   acc = 0;
   bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+  bounds3 = [0, 0, 0, 0, 0, 0];
   if ($('autoFit').checked) fitToBounds({ minX: -3, maxX: 3, minY: -3, maxY: 3 });
   needsFull = true;
   statsDirty = true;
@@ -463,6 +550,10 @@ function drawGrid() {
     drawHexGrid(ctx);
     return;
   }
+  if (walk.is3d) {
+    draw3DFrame(ctx);
+    return;
+  }
   const x0 = ((view.ox % px) + px) % px;
   const y0 = ((view.oy % px) + px) % px;
   for (let x = x0; x < cw; x += px) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, ch); }
@@ -474,6 +565,37 @@ function drawGrid() {
   ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
   ctx.moveTo(0, Math.round(view.oy) + 0.5); ctx.lineTo(cw, Math.round(view.oy) + 0.5);
   ctx.stroke();
+}
+
+// 3D : boîte englobante de la marche (fil de fer) + repère des axes en haut à gauche
+function draw3DFrame(ctx) {
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const proj = (x, y, z) => [x * cy - y * sy, -(z * cp + (x * sy + y * cy) * sp)];
+  const [x0, x1, y0, y1, z0, z1] = bounds3;
+  const X = [x0, x1], Y = [y0, y1], Z = [z0, z1];
+  const pt = (i, j, k) => {
+    const [px, py] = proj(X[i], Y[j], Z[k]);
+    return [view.ox + px * view.scale, view.oy + py * view.scale];
+  };
+  for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+    for (const [p, q] of [[pt(0, a, b), pt(1, a, b)], [pt(a, 0, b), pt(a, 1, b)], [pt(a, b, 0), pt(a, b, 1)]]) {
+      ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]);
+    }
+  }
+  ctx.stroke();
+  // repère : x = est (rouge), y = nord (vert), z = haut (bleu)
+  const o = [44, 44];
+  ctx.lineWidth = 2;
+  ctx.font = '11px system-ui, sans-serif';
+  [['E', [1, 0, 0], '#ff7b72'], ['N', [0, 1, 0], '#3fb950'], ['Up', [0, 0, 1], '#4ea1ff']].forEach(([label, v, color]) => {
+    const [px, py] = proj(...v);
+    ctx.strokeStyle = ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + px * 26, o[1] + py * 26);
+    ctx.stroke();
+    ctx.fillText(label, o[0] + px * 34 - 5, o[1] + py * 34 + 4);
+  });
 }
 
 // Hexagones à sommet plat de rayon 1/√3 ; chacun trace ses 3 arêtes du haut
@@ -577,7 +699,7 @@ function drawOverlay() {
   if (cur > 0) {
     const ux = walk.xs[cur] - walk.xs[cur - 1], uy = walk.ys[cur] - walk.ys[cur - 1];
     const l = Math.hypot(ux, uy);
-    dx = ux / l; dy = uy / l;
+    if (l > 1e-6) { dx = ux / l; dy = uy / l; } else { dx = 0; dy = 0; } // pas dans l'axe de la vue
   }
   const a = r * 1.8;
   ctx.fillStyle = '#ffffff';
@@ -594,11 +716,12 @@ function drawOverlay() {
 
 function updateStats() {
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
-  const x = walk.n ? walk.xs[cur] : 0;
-  const y = walk.n ? -walk.ys[cur] : 0;
+  const x = walk.n ? walk.wx[cur] : 0;
+  const y = walk.n ? (walk.is3d ? walk.wy[cur] : -walk.wy[cur]) : 0;
+  const z = walk.is3d ? walk.wz[cur] : 0;
   const p = (v) => fmt(Math.round(v * 100) / 100 || 0);
-  $('sPos').textContent = `(${p(x)}, ${p(y)})`;
-  $('sDist').textContent = Math.hypot(x, y).toFixed(1);
+  $('sPos').textContent = walk.is3d ? `(${p(x)}, ${p(y)}, ${p(z)})` : `(${p(x)}, ${p(y)})`;
+  $('sDist').textContent = Math.hypot(x, y, z).toFixed(1);
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
   $('sCells').textContent = walk.n ? fmt(walk.cells[cur]) : '1';
   if (walk.n) {
@@ -622,6 +745,7 @@ function updateStats() {
 }
 
 function tick() {
+  if (walk.is3d && $('autoRotate').checked) rotateView(0.004, 0);
   if (playing) {
     acc += stepsPerFrame();
     const k = Math.floor(acc);
@@ -633,8 +757,8 @@ function tick() {
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
     fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
+  if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // la boîte 3D grandit avec la marche
   if (needsFull) {
-    drawGrid();
     layers.path.clearRect(0, 0, cw, ch);
     drawn = 0;
   }
@@ -690,16 +814,21 @@ stage.addEventListener('wheel', (e) => {
 
 let drag = null;
 stage.addEventListener('pointerdown', (e) => {
-  drag = { x: e.clientX, y: e.clientY };
+  drag = { x: e.clientX, y: e.clientY, pan: !walk.is3d || e.shiftKey };
   stage.setPointerCapture(e.pointerId);
   stage.classList.add('dragging');
 });
 stage.addEventListener('pointermove', (e) => {
   if (!drag) return;
-  view.ox += e.clientX - drag.x;
-  view.oy += e.clientY - drag.y;
-  drag = { x: e.clientX, y: e.clientY };
-  userMovedView();
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (drag.pan) {
+    view.ox += dx;
+    view.oy += dy;
+    userMovedView();
+  } else {
+    rotateView(dx * 0.008, dy * 0.008);
+  }
 });
 const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
 stage.addEventListener('pointerup', endDrag);

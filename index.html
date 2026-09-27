@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
-  <meta name="description" content="A walk on a grid driven by the base-2 to base-6 digits of π and other constants.">
+  <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π and other constants.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,6 +28,8 @@
             <option value="triFixed">Triangles — base 3 (3 fixed edges)</option>
             <option value="hexRel">Hexagons — base 5 (5 relative turns)</option>
             <option value="hexFixed">Hexagons — base 6 (6 fixed directions)</option>
+            <option value="cubeRel">3D cubes — base 5 (5 relative turns)</option>
+            <option value="cubeFixed">3D cubes — base 6 (6 fixed directions)</option>
           </select>
         </label>
         <label>Number of digits
@@ -63,6 +65,7 @@
         </label>
         <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
         <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
+        <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate (3D)</label>
         <button id="fit">Fit view (F)</button>
       </section>
 
@@ -84,7 +87,7 @@
       <canvas id="gridLayer"></canvas>
       <canvas id="pathLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
-      <div class="hint">Wheel: zoom · Drag: pan · Double-click: fit</div>
+      <div id="hint" class="hint">Wheel: zoom · Drag: pan · Double-click: fit</div>
     </div>
   </main>
 
