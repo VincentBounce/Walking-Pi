@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Walking Pi</title>
+  <meta name="description" content="Marche sur un quadrillage guidée par les chiffres de π en base 3.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Walking <span class="pi">π</span></h1>
+    <p class="subtitle">π en base 3 sur un quadrillage — <b>0</b> = gauche + avance, <b>1</b> = avance, <b>2</b> = droite + avance</p>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <section>
+        <h2>Chiffres</h2>
+        <label>Nombre de chiffres (base 3)
+          <input id="digits" type="number" min="10" max="1000000" step="1000" value="20000">
+        </label>
+        <label class="check"><input id="intPart" type="checkbox"> Inclure la partie entière « 10 »</label>
+        <button id="compute" class="primary">Calculer</button>
+        <div class="progress"><div id="progressBar"></div></div>
+        <p id="status" class="muted">—</p>
+      </section>
+
+      <section>
+        <h2>Animation</h2>
+        <div class="row">
+          <button id="play" title="Lecture / pause (espace)">▶︎ Lecture</button>
+          <button id="step" title="Un pas (→)">Pas</button>
+          <button id="restart" title="Recommencer (R)">⟲</button>
+          <button id="end" title="Aller à la fin (E)">⏭</button>
+        </div>
+        <label>Vitesse : <span id="speedLabel"></span>
+          <input id="speed" type="range" min="0" max="100" value="45">
+        </label>
+      </section>
+
+      <section>
+        <h2>Affichage</h2>
+        <label>Couleurs
+          <select id="colorMode">
+            <option value="gradient">Dégradé (ordre)</option>
+            <option value="digit">Par chiffre</option>
+            <option value="mono">Monochrome</option>
+          </select>
+        </label>
+        <label class="check"><input id="showGrid" type="checkbox" checked> Quadrillage</label>
+        <label class="check"><input id="autoFit" type="checkbox" checked> Cadrage automatique</label>
+        <button id="fit">Recentrer (F)</button>
+      </section>
+
+      <section>
+        <h2>Statistiques</h2>
+        <dl class="stats">
+          <dt>Pas</dt><dd id="sStep">0</dd>
+          <dt>Position</dt><dd id="sPos">(0, 0)</dd>
+          <dt>Distance</dt><dd id="sDist">0</dd>
+          <dt>Distance max</dt><dd id="sMax">0</dd>
+          <dt>Cases visitées</dt><dd id="sCells">1</dd>
+          <dt>0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
+        </dl>
+        <div id="digitStrip" class="strip" aria-label="Derniers chiffres"></div>
+      </section>
+    </aside>
+
+    <div id="stage" class="stage">
+      <canvas id="gridLayer"></canvas>
+      <canvas id="pathLayer"></canvas>
+      <canvas id="overlayLayer"></canvas>
+      <div class="hint">Molette : zoom · Glisser : déplacer · Double-clic : recentrer</div>
+    </div>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
