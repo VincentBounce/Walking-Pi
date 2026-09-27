@@ -1,18 +1,19 @@
 'use strict';
 
 /* ------------------------------------------------------------------ *
- * Calcul des chiffres en base 3 (Web Worker, BigInt)                  *
- * On calcule c·3^(N+G) en entiers (G = chiffres de garde contre les   *
- * erreurs d'arrondi), on divise par 3^G puis toString(3).             *
+ * Calcul des chiffres en base b (Web Worker, BigInt)                  *
+ * On calcule c·b^(N+G) en entiers (G = chiffres de garde contre les   *
+ * erreurs d'arrondi), on divise par b^G puis toString(b).             *
  * ------------------------------------------------------------------ */
 function constantWorker() {
   self.onmessage = (e) => {
-    const { id, n } = e.data;
+    const { id, n, base } = e.data;
+    const B = BigInt(base);
     const t0 = performance.now();
-    const guard = 30 + Math.ceil(Math.log(n) / Math.log(3));
+    const guard = 30 + Math.ceil(Math.log(n) / Math.log(base));
     const prec = n + guard;
-    const S = 3n ** BigInt(prec);
-    const lnS = prec * Math.log(3);
+    const S = B ** BigInt(prec);
+    const lnS = prec * Math.log(base);
     let done = 0, total = 1;
     const progress = (i) => {
       if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
@@ -109,7 +110,7 @@ function constantWorker() {
     }
 
     self.postMessage({ type: 'progress', p: 1 });
-    const s = (v / 3n ** BigInt(guard)).toString(3).padStart(n + 1, '0');
+    const s = (v / B ** BigInt(guard)).toString(base).padStart(n + 1, '0');
     const intPart = s.slice(0, s.length - n);
     const digits = new Uint8Array(n);
     for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(intPart.length + i) - 48;
@@ -126,7 +127,7 @@ const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, O (y vers le bas à
 const BANDS = 256;
 const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
   `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, 60%)`);
-const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72'];
+const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950'];
 const MONO = '#f0b429';
 
 const CONSTANTS = {
@@ -141,6 +142,13 @@ const CONSTANTS = {
   E:     { sym: 'E',    name: 'Erdős–Borwein constant' },
 };
 
+const MODES = {
+  turtle:   { base: 3, turtle: true,
+              rule: 'Base-3 digits on a grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
+  cardinal: { base: 4, turtle: false,
+              rule: 'Base-4 digits on a grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
+};
+
 const cache = {};        // id → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
 let current = null;      // entrée du cache affichée
 let worker = null;
@@ -151,7 +159,8 @@ const walk = {
   xs: null, ys: null, dirs: null,  // positions/caps des n+1 points
   cells: null,     // cases distinctes visitées jusqu'au point i
   maxDist: null,   // distance max jusqu'au point i
-  counts: null,    // nombre cumulé de 0 et 1 jusqu'au pas i
+  base: 3,
+  counts: null,    // nombre cumulé de chaque chiffre jusqu'au pas i (base valeurs par point)
 };
 
 let cur = 0;        // nombre de pas effectués
@@ -174,6 +183,12 @@ let cw = 0, ch = 0;
 /* ------------------------------------------------------------------ *
  * Calcul et construction de la marche                                 *
  * ------------------------------------------------------------------ */
+function updateRuleText() {
+  const { base, rule } = MODES[$('mode').value];
+  $('rule').innerHTML = rule;
+  $('sCountsLabel').textContent = Array.from({ length: base }, (_, i) => i).join(' / ');
+}
+
 function requestedDigits() {
   const n = Math.round(Number($('digits').value));
   return Math.min(1_000_000, Math.max(10, n || 10));
@@ -185,9 +200,12 @@ function compute() {
   const { sym } = CONSTANTS[id];
   $('digits').value = n;
   $('titleSym').textContent = sym;
-  if (cache[id] && cache[id].digits.length >= n) {
-    current = cache[id];
-    $('status').textContent = `${fmt(n)} digits of ${sym} (cached)`;
+  const { base } = MODES[$('mode').value];
+  const key = `${id}/${base}`;
+  updateRuleText();
+  if (cache[key] && cache[key].digits.length >= n) {
+    current = cache[key];
+    $('status').textContent = `${fmt(n)} base-${base} digits of ${sym} (cached)`;
     buildWalk();
     play(true);
     return;
@@ -196,22 +214,22 @@ function compute() {
   const src = `(${constantWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
-  $('status').textContent = `Computing ${fmt(n)} digits of ${sym}…`;
+  $('status').textContent = `Computing ${fmt(n)} base-${base} digits of ${sym}…`;
   worker.onmessage = (e) => {
     if (e.data.type === 'progress') {
       $('progressBar').style.width = `${Math.min(100, e.data.p * 100)}%`;
     } else {
-      current = cache[id] = { intPart: e.data.intPart, digits: e.data.digits };
+      current = cache[key] = { intPart: e.data.intPart, digits: e.data.digits, mode: $('mode').value };
       worker.terminate();
       worker = null;
       setBusy(false);
       $('status').textContent =
-        `${fmt(n)} digits of ${sym} computed in ${(e.data.ms / 1000).toFixed(2)} s`;
+        `${fmt(n)} base-${base} digits of ${sym} computed in ${(e.data.ms / 1000).toFixed(2)} s`;
       buildWalk();
       play(true);
     }
   };
-  worker.postMessage({ id, n });
+  worker.postMessage({ id, n, base });
 }
 
 function setBusy(busy) {
@@ -236,13 +254,15 @@ function buildWalk() {
   const dirs = new Uint8Array(len + 1);
   const cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1);
-  const counts = new Int32Array(2 * (len + 1));
+  const { base, turtle } = MODES[current.mode];
+  const counts = new Int32Array(base * (len + 1));
   const seen = new Set([key(0, 0)]);
   let x = 0, y = 0, d = 0, m = 0;
   cells[0] = 1;
   for (let i = 0; i < len; i++) {
     const g = seq[i];
-    if (g === 0) d = (d + 3) % 4;       // gauche
+    if (!turtle) d = g;                 // cardinal : le chiffre donne la direction
+    else if (g === 0) d = (d + 3) % 4;  // gauche
     else if (g === 2) d = (d + 1) % 4;  // droite
     x += DIRS[d][0];
     y += DIRS[d][1];
@@ -251,10 +271,10 @@ function buildWalk() {
     cells[i + 1] = seen.size;
     m = Math.max(m, Math.hypot(x, y));
     maxDist[i + 1] = m;
-    counts[2 * (i + 1)] = counts[2 * i] + (g === 0);
-    counts[2 * (i + 1) + 1] = counts[2 * i + 1] + (g === 1);
+    for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
+    counts[base * (i + 1) + g]++;
   }
-  Object.assign(walk, { n: len, digits: seq, xs, ys, dirs, cells, maxDist, counts });
+  Object.assign(walk, { n: len, digits: seq, xs, ys, dirs, cells, maxDist, base, counts });
   restart();
 }
 
@@ -452,8 +472,8 @@ function updateStats() {
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
   $('sCells').textContent = walk.n ? fmt(walk.cells[cur]) : '1';
   if (walk.n) {
-    const c0 = walk.counts[2 * cur], c1 = walk.counts[2 * cur + 1];
-    $('sCounts').textContent = `${fmt(c0)} / ${fmt(c1)} / ${fmt(cur - c0 - c1)}`;
+    const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
+    $('sCounts').textContent = Array.from(c, fmt).join(' / ');
   }
   // bandeau des chiffres autour du pas courant
   const strip = $('digitStrip');
@@ -571,6 +591,7 @@ for (const [id, { sym, name }] of Object.entries(CONSTANTS)) {
   $('constant').add(new Option(`${sym} — ${name}`, id));
 }
 $('constant').addEventListener('change', compute);
+$('mode').addEventListener('change', compute);
 
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();

@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
-  <meta name="description" content="A walk on a grid driven by the base-3 digits of π and other constants.">
+  <meta name="description" content="A walk on a grid driven by the base-3 or base-4 digits of π and other constants.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <h1>Walking <span id="titleSym" class="pi">π</span></h1>
-    <p class="subtitle">Base-3 digits on a grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step</p>
+    <p id="rule" class="subtitle"></p>
   </header>
 
   <main>
@@ -20,7 +20,13 @@
         <label>Number
           <select id="constant"></select>
         </label>
-        <label>Number of base-3 digits
+        <label>Walk mode
+          <select id="mode">
+            <option value="turtle">Turtle — base 3 (left / forward / right)</option>
+            <option value="cardinal">Cardinal — base 4 (N / E / S / W)</option>
+          </select>
+        </label>
+        <label>Number of digits
           <input id="digits" type="number" min="10" max="1000000" step="1000" value="20000">
         </label>
         <label class="check"><input id="intPart" type="checkbox"> Include the integer part</label>
@@ -64,7 +70,7 @@
           <dt>Distance</dt><dd id="sDist">0</dd>
           <dt>Max distance</dt><dd id="sMax">0</dd>
           <dt>Cells visited</dt><dd id="sCells">1</dd>
-          <dt>0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
+          <dt id="sCountsLabel">0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
         </dl>
         <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
       </section>
