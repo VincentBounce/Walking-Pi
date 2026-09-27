@@ -723,8 +723,12 @@ function project() {
   }
 }
 
-// Perspective applies to 3D walks and flat solids, not to spheres (they keep the orthographic view)
-const perspectiveAllowed = () => walk.is3d && !(walk.sphere && !walk.geo.flat);
+// Perspective applies to every 3D view (the checkbox can turn it off)
+const perspectiveAllowed = () => walk.is3d;
+
+// Apparent radius of a sphere of radius R: R in orthographic view, R·D / √(D² − R²) in perspective
+// (the silhouette circle, seen from a camera at distance D)
+const sphereOutline = () => (walk.persp ? (walk.R * walk.persp.D) / Math.sqrt(walk.persp.D ** 2 - walk.R ** 2) : walk.R);
 
 // Set walk.persp from the checkbox: centre and size from the whole walk (or the solid), camera
 // at 2.5 × that radius, i.e. a field of view of roughly 45°
@@ -1252,7 +1256,7 @@ function restart() {
   bounds3 = [0, 0, 0, 0, 0, 0];
   if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
     const R = walk.R;
-    const F = R * walk.geo.extent;  // the corners of a flat solid stick out beyond R
+    const F = walk.geo.flat ? R * walk.geo.extent : sphereOutline();  // corners of a flat solid stick out beyond R
     bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
@@ -1539,7 +1543,7 @@ function drawSphere() {
     outline(buckets.flat());
   } else {
     ctx.beginPath();
-    ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+    ctx.arc(ox, oy, sphereOutline() * s, 0, Math.PI * 2);
   }
   ctx.fill();
   buckets.forEach((list, level) => {
@@ -1571,13 +1575,14 @@ function drawSphere() {
     }
   } else {
     // shading: darker towards the rim
-    const shade = ctx.createRadialGradient(ox - R * s * 0.3, oy - R * s * 0.3, R * s * 0.1, ox, oy, R * s);
+    const Rs = sphereOutline() * s;
+    const shade = ctx.createRadialGradient(ox - Rs * 0.3, oy - Rs * 0.3, Rs * 0.1, ox, oy, Rs);
     shade.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
     shade.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
     shade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
     ctx.fillStyle = shade;
     ctx.beginPath();
-    ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+    ctx.arc(ox, oy, Rs, 0, Math.PI * 2);
     ctx.fill();
   }
   /* Recent trail (white line through the last 300 steps), disabled for now; may come back.
