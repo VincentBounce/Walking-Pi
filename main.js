@@ -16,7 +16,7 @@ function constantWorker() {
     const integer = { mersenne: () => (1n << BigInt(e.data.p)) - 1n, primorial, randomPrime }[id];
     if (integer) {
       const N = integer();
-      const all = N.toString(base);
+      const all = digitString(N, base);
       self.postMessage({ type: 'done', intPart: all.slice(0, n), total: all.length, digits: new Uint8Array(0),
                          decimals: id === 'randomPrime' ? e.data.size : undefined, tests: integer.tests,
                          ms: performance.now() - t0 });
@@ -282,7 +282,7 @@ function constantWorker() {
     }
 
     self.postMessage({ type: 'progress', p: 1 });
-    const s = (v / B ** BigInt(guard)).toString(base).padStart(n + 1, '0');
+    const s = digitString(v / B ** BigInt(guard), base).padStart(n + 1, '0');
     const intPart = s.slice(0, s.length - n);
     const digits = new Uint8Array(n);
     for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(intPart.length + i) - 48;
@@ -336,6 +336,14 @@ const MODES = {
               rule: 'Base-4 digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
               rule: 'Base-2 digits along a square spiral (Ulam spiral) — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+  jump10:   { base: 10, lattice: 'square', points: 'jump',
+              rule: 'Base-10 digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
+  jump64:   { base: 64, lattice: 'square', points: 'jump',
+              rule: 'Base-64 digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
+  search10: { base: 10, lattice: 'square', points: 'search',
+              rule: 'Ulam spiral, base 10 — cell <b>n</b> is marked when the digits of n appear in the digits of the number' },
+  search64: { base: 64, lattice: 'square', points: 'search',
+              rule: 'Ulam spiral, base 64 — cell <b>n</b> is marked when the base-64 digits of n appear in the base-64 digits of the number' },
   triLR:    { base: 2, lattice: 'tri',
               rule: 'Base-2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
   triFixed: { base: 3, lattice: 'tri',
@@ -404,6 +412,7 @@ function updateRuleText() {
   const { base, rule } = MODES[$('mode').value];
   $('rule').innerHTML = rule;
   $('sCountsLabel').textContent = Array.from({ length: base }, (_, i) => i).join(' / ');
+  $('sCountsLabel').hidden = $('sCounts').hidden = base > 6;  // too many digits to list
 }
 
 function requestedDigits() {
@@ -455,7 +464,7 @@ function localDigits(id, n, base) {
   }
   if (id === 'champernowne') {                  // 0.1 2 3 … written in base b one after another
     for (let i = 0, k = 1; i < n; k++) {
-      const t = k.toString(base);
+      const t = digitString(k, base);
       for (let c = 0; c < t.length && i < n; c++) digits[i++] = t.charCodeAt(c) - 48;
     }
     return { intPart: '0', digits };
@@ -490,7 +499,19 @@ function localDigits(id, n, base) {
     digits[i] = Number(r / q);
     r %= q;
   }
-  return { intPart: (p / q).toString(base), digits };
+  return { intPart: digitString(p / q, base), digits };
+}
+
+// Digits of a non-negative integer (Number or BigInt) in base b, one character per digit
+// with character code 48 + digit ('0'–'9' in base ≤ 10). BigInt.toString stops at base 36,
+// so base 64 is read from the binary expansion, 6 bits per digit.
+function digitString(x, base) {
+  if (base !== 64) return x.toString(base);
+  const bits = x.toString(2);
+  const pad = bits.padStart(Math.ceil(bits.length / 6) * 6, '0');
+  let out = '';
+  for (let i = 0; i < pad.length; i += 6) out += String.fromCharCode(48 + parseInt(pad.slice(i, i + 6), 2));
+  return out;
 }
 
 // Sieve of Eratosthenes: composite[k] = 1 for every composite k ≤ limit (and for 0 and 1)
@@ -560,7 +581,7 @@ function compute() {
     done(hit, '(cached)');
     return;
   }
-  const src = `(${constantWorker.toString()})()`;
+  const src = `${digitString.toString()}\n(${constantWorker.toString()})()`;  // the worker needs digitString too
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
   const slow = (id === 'mersenne' && info.p > 20_000_000) || (id === 'randomPrime' && info.size > 1000);
@@ -597,6 +618,10 @@ function buildWalk() {
   const seq = new Uint8Array(head.length + frac.length);
   seq.set(head);
   seq.set(frac, head.length);
+  if (MODES[current.mode].points) {
+    buildPointWalk(seq, MODES[current.mode]);
+    return;
+  }
   const len = seq.length;
   const is3d = MODES[current.mode].lattice === 'cube';
   const wx = new Float64Array(len + 1);
@@ -625,6 +650,7 @@ function buildWalk() {
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice,
                         skipZeros: !!MODES[current.mode].skipZeros,
+                        points: false, keys: seq, labels: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) project();
@@ -787,6 +813,65 @@ function triStepper(leftRight) {
     const upNow = ((c + r) & 1) === 0;
     return [key(c, r), c / 2, r * H + (upNow ? 2 * H / 3 : H / 3) + TRI_Y0, 0];
   };
+}
+
+/* Ulam-spiral point modes: the walk is the list of marked cells, in order, and
+ * point i + 1 is the i-th mark (point 0 is cell 1, the centre).
+ * jump:   read the digits one by one; jump ahead digit + 1 cells and mark the landing cell.
+ * search: mark cell n when the base-b digits of n occur somewhere in the digit sequence. */
+function buildPointWalk(seq, { base, points: kind }) {
+  let cellsOf;  // ascending cell numbers to mark
+  let keys;     // colour key of each mark: the digit (jump) or the length of n (search)
+  if (kind === 'jump') {
+    cellsOf = new Float64Array(seq.length);
+    let c = 1;
+    for (let i = 0; i < seq.length; i++) cellsOf[i] = c += seq[i] + 1;
+    keys = seq;
+    walk.keyCount = base;
+  } else {
+    // Mark every number whose digits appear, for lengths L with b^L ≤ 20·(digit count)
+    // (above that, less than ~5 % of L-digit numbers can appear), and b^L ≤ 2^27 cells.
+    let maxLen = 1;
+    while (base ** (maxLen + 1) <= Math.min(20 * seq.length, 2 ** 27)) maxLen++;
+    const size = base ** maxLen;
+    const found = new Uint8Array(size);
+    for (let i = 0; i < seq.length; i++) {
+      if (seq[i] === 0) continue;  // n is written without leading zeros
+      let v = 0;
+      for (let L = 0; L < maxLen && i + L < seq.length; L++) {
+        v = v * base + seq[i + L];
+        found[v] = 1;
+      }
+    }
+    walk.keyCount = maxLen;
+    let count = 0;
+    for (let v = 1; v < size; v++) count += found[v];
+    cellsOf = new Float64Array(count);
+    keys = new Uint8Array(count);
+    for (let v = 1, j = 0, len = 1, next = base; v < size; v++) {
+      if (v === next) { len++; next *= base; }
+      if (found[v]) { cellsOf[j] = v; keys[j++] = len; }
+    }
+  }
+  // walk the spiral once, recording the position of every marked cell
+  const len = cellsOf.length;
+  const xs = new Float64Array(len + 1), ys = new Float64Array(len + 1);
+  const cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
+  const step = STEPPERS.spiral();
+  let cell = 1, x = 0, y = 0, m = 0;
+  cells[0] = 1;
+  for (let i = 0; i < len; i++) {
+    while (cell < cellsOf[i]) { [, x, y] = step(); cell++; }
+    xs[i + 1] = x; ys[i + 1] = y;
+    cells[i + 1] = i + 1;
+    m = Math.max(m, Math.hypot(x, y));
+    maxDist[i + 1] = m;
+  }
+  Object.assign(walk, { n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
+                        counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
+                        xs, ys });
+  updateHint();
+  restart();
 }
 
 function key(x, y) {
@@ -1000,7 +1085,7 @@ function drawTriGrid(ctx, step) {
 
 function styleKey(i) {
   switch ($('colorMode').value) {
-    case 'digit': return walk.digits[i];
+    case 'digit': return walk.keys[i];
     case 'mono': return 0;
     default: return Math.floor((i * BANDS) / walk.n);
   }
@@ -1008,7 +1093,7 @@ function styleKey(i) {
 
 function styleColor(k) {
   switch ($('colorMode').value) {
-    case 'digit': return DIGIT_COLORS[k];
+    case 'digit': return walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
     case 'mono': return MONO;
     default: return GRADIENT[k];
   }
@@ -1027,6 +1112,16 @@ function drawSegments(from, to) {
   while (i < to) {
     const k = styleKey(i);
     ctx.strokeStyle = styleColor(k);
+    if (walk.points) {  // point modes: a square on each marked cell
+      ctx.fillStyle = ctx.strokeStyle;
+      // true cell size: when zoomed out, sub-pixel squares blend, so brightness shows the density
+      const w = s * 0.85;
+      while (i < to && styleKey(i) === k) {
+        ctx.fillRect(ox + xs[i + 1] * s - w / 2, oy + ys[i + 1] * s - w / 2, w, w);
+        i++;
+      }
+      continue;
+    }
     ctx.beginPath();
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
     while (i < to && styleKey(i) === k) {
@@ -1053,6 +1148,14 @@ function drawOverlay() {
   // current position + heading
   const x = ox + walk.xs[cur] * s;
   const y = oy + walk.ys[cur] * s;
+  if (walk.points) {  // point modes have no heading: ring around the last mark
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.4, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
   // heading = direction of the last step (up at the start)
   let dx = 0, dy = -1;
   if (cur > 0) {
@@ -1083,13 +1186,20 @@ function updateStats() {
   $('sDist').textContent = Math.hypot(x, y, z).toFixed(1);
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
   $('sCells').textContent = walk.n ? fmt(walk.cells[cur]) : '1';
-  if (walk.n) {
+  if (walk.n && walk.counts) {
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
     $('sCounts').textContent = Array.from(c, fmt).join(' / ');
   }
   // digit strip around the current step
   const strip = $('digitStrip');
   if (!walk.n) { strip.textContent = ''; return; }
+  if (walk.points) {  // point modes: list the most recent marked cell numbers
+    const a = Math.max(0, cur - 8);
+    const list = Array.from(walk.labels.subarray(a, cur), (v, i) =>
+      a + i === cur - 1 ? `<span class="cur">${fmt(v)}</span>` : fmt(v));
+    strip.innerHTML = `Marked cells: ${a > 0 ? '… ' : ''}${list.join(', ')}`;
+    return;
+  }
   const before = 36, after = 20;
   const a = Math.max(0, cur - before);
   const b = Math.min(walk.n, cur + after);
