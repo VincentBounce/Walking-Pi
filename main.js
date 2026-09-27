@@ -361,6 +361,8 @@ const MODES = {
               rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
   sphereLR: { base: 2, lattice: 'sphere', sphere: 'geo', turns: [2, 1],
               rule: 'Base-2 digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
+              rule: 'Base-2 digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1],
               rule: 'Base-3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   cubeSphere: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1],
@@ -1039,6 +1041,26 @@ function cubeFlat(n) {
   return (meshCache[key] = finishMesh(verts, quads, 4, n, true));
 }
 
+/* Tetrahedron: each of the 4 faces cut into f² triangles, left flat. Its 4 corners are shared
+ * by 3 triangles instead of 6. */
+function tetraFlat(f) {
+  const key = `tetra${f}`;
+  if (meshCache[key]) return meshCache[key];
+  const P = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+  const { verts, add } = vertexStore(false);
+  const tris = [];
+  for (const [A, B, C] of [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]].map((face) => face.map((v) => P[v]))) {
+    const at = (i, j) => add(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
+    for (let i = 0; i < f; i++) {
+      for (let j = 0; i + j < f; j++) {
+        tris.push([at(i, j), at(i + 1, j), at(i, j + 1)]);
+        if (i + j < f - 1) tris.push([at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+      }
+    }
+  }
+  return (meshCache[key] = finishMesh(verts, tris, 3, f, true));
+}
+
 const SPHERES = {
   geo:  { mesh: geodesic, radius: (f) => f * 1.05,       // triangle edge ≈ 1 unit
           sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
@@ -1046,6 +1068,8 @@ const SPHERES = {
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   flat: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
+  tetra: { mesh: tetraFlat, radius: (f) => f / (2 * Math.SQRT2),  // tetrahedron edge 2√2 → triangle edge = 1 unit
+          sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
 };
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
@@ -1157,7 +1181,7 @@ function restart() {
   bounds3 = [0, 0, 0, 0, 0, 0];
   if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
     const R = walk.R;
-    const F = walk.geo.flat ? R * Math.sqrt(3) : R;  // a cube's corners reach R·√3 from the centre
+    const F = walk.geo.flat ? R * Math.sqrt(3) : R;  // cube and tetrahedron corners reach R·√3 from the centre
     bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
@@ -1453,10 +1477,10 @@ function drawSphere() {
     ctx.stroke();
   }
   if (g.flat) {
-    // shading: each cube face darker the more it turns away from the viewer
+    // shading: each flat face darker the more it turns away from the viewer
     const faces = new Map();
     for (const t of buckets.flat()) {
-      const k3 = 3 * t, key = `${Math.round(g.nrm[k3])},${Math.round(g.nrm[k3 + 1])},${Math.round(g.nrm[k3 + 2])}`;
+      const k3 = 3 * t, key = `${g.nrm[k3].toFixed(3)},${g.nrm[k3 + 1].toFixed(3)},${g.nrm[k3 + 2].toFixed(3)}`;
       if (!faces.has(key)) faces.set(key, []);
       faces.get(key).push(t);
     }
