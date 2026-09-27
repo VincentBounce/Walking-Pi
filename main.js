@@ -129,7 +129,7 @@ const TRI_Y0 = -2 * H / 3;                         // décalage pour que le cent
 const BANDS = 256;
 const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
   `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, 60%)`);
-const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950'];
+const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'];
 const MONO = '#f0b429';
 
 const CONSTANTS = {
@@ -145,14 +145,18 @@ const CONSTANTS = {
 };
 
 const MODES = {
-  turtle:   { base: 3, tri: false,
+  turtle:   { base: 3, lattice: 'square',
               rule: 'Base-3 digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
-  cardinal: { base: 4, tri: false,
+  cardinal: { base: 4, lattice: 'square',
               rule: 'Base-4 digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
-  triLR:    { base: 2, tri: true,
+  triLR:    { base: 2, lattice: 'tri',
               rule: 'Base-2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
-  triFixed: { base: 3, tri: true,
+  triFixed: { base: 3, lattice: 'tri',
               rule: 'Base-3 digits on triangle tiles — cross the <b>0</b> = horizontal edge, <b>1</b> = “/” edge, <b>2</b> = “\\” edge' },
+  hexRel:   { base: 5, lattice: 'hex',
+              rule: 'Base-5 digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
+  hexFixed: { base: 6, lattice: 'hex',
+              rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
 };
 
 const cache = {};        // "id/base" → { intPart: "10", digits: Uint8Array (partie fractionnaire) }
@@ -277,7 +281,7 @@ function buildWalk() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
   }
-  Object.assign(walk, { n: len, digits: seq, xs, ys, tri: MODES[current.mode].tri, cells, maxDist, base, counts });
+  Object.assign(walk, { n: len, digits: seq, xs, ys, lattice: MODES[current.mode].lattice, cells, maxDist, base, counts });
   restart();
 }
 
@@ -302,7 +306,23 @@ const STEPPERS = {
   },
   triLR: () => triStepper(true),
   triFixed: () => triStepper(false),
+  hexRel: () => hexStepper(true),
+  hexFixed: () => hexStepper(false),
 };
+
+/* Pavage hexagonal (hexagones à sommet plat, centres à distance 1).
+ * Position = a·u0 + b·u1 avec u0 = N = (0, −1) et u1 = NE = (H, −1/2) à l'écran.
+ * Directions dans le sens horaire : 0 = N, 1 = NE, 2 = SE, 3 = S, 4 = SO, 5 = NO. */
+const HEX_DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+
+function hexStepper(relative) {
+  let a = 0, b = 0, d = 0; // départ orienté vers le nord
+  return (g) => {
+    d = relative ? (d + g - 2 + 6) % 6 : g;  // relatif : 0 = virage serré à gauche … 4 = serré à droite
+    a += HEX_DIRS[d][0]; b += HEX_DIRS[d][1];
+    return [a, b, b * H, -a - b / 2];
+  };
+}
 
 /* Pavage en triangles : la case (c, r) pointe vers le haut si c + r est pair.
  * Arêtes : 0 = horizontale, 1 = « / », 2 = « \ ».
@@ -435,8 +455,12 @@ function drawGrid() {
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  if (walk.tri) {
+  if (walk.lattice === 'tri') {
     drawTriGrid(ctx, stepCells);
+    return;
+  }
+  if (walk.lattice === 'hex') {
+    drawHexGrid(ctx);
     return;
   }
   const x0 = ((view.ox % px) + px) % px;
@@ -449,6 +473,24 @@ function drawGrid() {
   ctx.beginPath();
   ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
   ctx.moveTo(0, Math.round(view.oy) + 0.5); ctx.lineTo(cw, Math.round(view.oy) + 0.5);
+  ctx.stroke();
+}
+
+// Hexagones à sommet plat de rayon 1/√3 ; chacun trace ses 3 arêtes du haut
+// (les 3 du bas sont celles des voisins S, SE et SO). Masqué si trop petit.
+function drawHexGrid(ctx) {
+  const { scale: s, ox, oy } = view;
+  const R = s / Math.sqrt(3);
+  if (R < 5) return;
+  const xL = -ox / s, xR = (cw - ox) / s, yTop = -oy / s, yBot = (ch - oy) / s;
+  const v = [0, 1, 2, 3].map((k) => [R * Math.cos((k * Math.PI) / 3), -R * Math.sin((k * Math.PI) / 3)]);
+  for (let b = Math.floor(xL / H) - 1; b <= Math.ceil(xR / H) + 1; b++) {
+    for (let a = Math.floor(-yBot - b / 2) - 1; a <= Math.ceil(-yTop - b / 2) + 1; a++) {
+      const cx = ox + b * H * s, cy = oy + (-a - b / 2) * s;
+      ctx.moveTo(cx + v[0][0], cy + v[0][1]);
+      for (let k = 1; k < 4; k++) ctx.lineTo(cx + v[k][0], cy + v[k][1]);
+    }
+  }
   ctx.stroke();
 }
 
