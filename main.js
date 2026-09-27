@@ -330,6 +330,8 @@ const MODES = {
               rule: 'Base-3 digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
   cardinal: { base: 4, lattice: 'square',
               rule: 'Base-4 digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
+  spiral:   { base: 2, lattice: 'square', skipZeros: true,
+              rule: 'Base-2 digits along a square spiral (Ulam spiral) — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
   triLR:    { base: 2, lattice: 'tri',
               rule: 'Base-2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
   triFixed: { base: 3, lattice: 'tri',
@@ -586,6 +588,7 @@ function buildWalk() {
   }
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice,
+                        skipZeros: !!MODES[current.mode].skipZeros,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) project();
@@ -655,6 +658,18 @@ const STEPPERS = {
     let x = 0, y = 0;
     return (g) => {
       x += DIRS[g][0]; y += DIRS[g][1];  // the digit is the direction
+      return [key(x, y), x, y, 0];
+    };
+  },
+  spiral() { // fixed square spiral from the centre: right, up, left, down with runs 1, 1, 2, 2, 3, 3, …
+    let x = 0, y = 0, d = 0, run = 1, left = 1, turns = 0;
+    return () => {
+      x += DIRS[(1 - d + 4) % 4][0]; y += DIRS[(1 - d + 4) % 4][1];  // E, N, W, S (counterclockwise)
+      if (--left === 0) {
+        d = (d + 1) % 4;
+        if (++turns % 2 === 0) run++;
+        left = run;
+      }
       return [key(x, y), x, y, 0];
     };
   },
@@ -979,7 +994,9 @@ function drawSegments(from, to) {
     ctx.beginPath();
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
     while (i < to && styleKey(i) === k) {
-      ctx.lineTo(ox + xs[i + 1] * s, oy + ys[i + 1] * s);
+      const x = ox + xs[i + 1] * s, y = oy + ys[i + 1] * s;
+      if (walk.skipZeros && walk.digits[i] === 0) ctx.moveTo(x, y);  // spiral: 0 = no line
+      else ctx.lineTo(x, y);
       i++;
     }
     ctx.stroke();
