@@ -323,6 +323,10 @@ const CONSTANTS = {
   mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
   primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes' },
   randomPrime: { sym: 'p', name: 'Random prime', group: 'Primes' },
+  primeConst: { sym: 'ρ', name: 'Prime constant (Ulam)', group: 'Primes',
+                note: 'digit k = 0 if k is not prime, else k mod b' },
+  primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes',
+               note: 'one digit per gap between odd primes: (gap / 2) mod b' },
 };
 
 const MODES = {
@@ -456,6 +460,26 @@ function localDigits(id, n, base) {
     }
     return { intPart: '0', digits };
   }
+  if (id === 'primeConst') {
+    // digit k (k = 1, 2, …) is 0 if k is not prime, else k mod b; a prime equal to b counts as 1.
+    // In base 2 this is exactly the prime constant ρ = Σ 2^(−p) = 0.0110101000101…
+    const composite = sieve(n);
+    for (let k = 2; k <= n; k++) if (!composite[k]) digits[k - 1] = k % base || 1;
+    return { intPart: '0', digits };
+  }
+  if (id === 'primeGaps') {
+    // gaps between consecutive odd primes (3→5, 5→7, 7→11, …) are even: digit = (gap / 2) mod b.
+    // The n-th prime is below n·(ln n + ln ln n) for n ≥ 6.
+    const limit = Math.ceil((n + 2) * (Math.log(n + 2) + Math.log(Math.log(n + 2)))) + 100;
+    const composite = sieve(limit);
+    let prev = 3;
+    for (let k = 5, i = 0; i < n; k += 2) {
+      if (composite[k]) continue;
+      digits[i++] = ((k - prev) / 2) % base;
+      prev = k;
+    }
+    return { intPart: '0', digits };
+  }
   // fraction p/q: long division in base b
   const m = $('fraction').value.replace(/\s/g, '').match(/^(\d+)(?:\/(\d+))?$/);
   if (!m || BigInt(m[2] ?? 1) === 0n) return null;
@@ -467,6 +491,17 @@ function localDigits(id, n, base) {
     r %= q;
   }
   return { intPart: (p / q).toString(base), digits };
+}
+
+// Sieve of Eratosthenes: composite[k] = 1 for every composite k ≤ limit (and for 0 and 1)
+function sieve(limit) {
+  const composite = new Uint8Array(limit + 1);
+  composite[0] = composite[1] = 1;
+  for (let i = 2; i * i <= limit; i++) {
+    if (composite[i]) continue;
+    for (let j = i * i; j <= limit; j += i) composite[j] = 1;
+  }
+  return composite;
 }
 
 function setCurrent(entry) {
@@ -494,14 +529,15 @@ function compute() {
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
 
-  if (['random', 'champernowne', 'fraction'].includes(id)) {
+  if (['random', 'champernowne', 'fraction', 'primeConst', 'primeGaps'].includes(id)) {
     const entry = localDigits(id, n, base);
     if (!entry) {
       $('status').textContent = 'Enter a fraction like 22/7';
       return;
     }
     setCurrent(entry);
-    $('status').textContent = label(n);
+    const { note } = CONSTANTS[id];
+    $('status').textContent = note ? `${label(n)} — ${note}` : label(n);
     buildWalk();
     play(true);
     return;
