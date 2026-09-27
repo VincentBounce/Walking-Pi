@@ -299,7 +299,14 @@ function buildWalk() {
   restart();
 }
 
-// Projection orthographique de la marche 3D sur le plan de l'écran (xs, ys)
+// Projection orthographique d'un point 3D sur le plan de l'écran (unités du monde)
+function projectPoint(x, y, z) {
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  return [x * cy - y * sy, -(z * cp + (x * sy + y * cy) * sp)];
+}
+
+// Projection de toute la marche 3D (xs, ys), même formule que projectPoint
 function project() {
   const { wx, wy, wz, xs, ys } = walk;
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
@@ -310,11 +317,18 @@ function project() {
   }
 }
 
-// Après une rotation : recalcule la projection et la boîte englobante 2D
+// Rotation autour du centre de la boîte englobante : ce centre garde la même
+// position à l'écran. Recalcule ensuite la projection et la boîte 2D.
 function rotateView(dyaw, dpitch) {
+  const [x0, x1, y0, y1, z0, z1] = bounds3 || [0, 0, 0, 0, 0, 0];
+  const c = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+  const before = projectPoint(...c);
   cam.yaw += dyaw;
   cam.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam.pitch + dpitch));
   if (!walk.is3d) return;
+  const after = projectPoint(...c);
+  view.ox += (before[0] - after[0]) * view.scale;
+  view.oy += (before[1] - after[1]) * view.scale;
   project();
   const done = cur;
   cur = 0;
@@ -569,9 +583,7 @@ function drawGrid() {
 
 // 3D : boîte englobante de la marche (fil de fer) + repère des axes en haut à gauche
 function draw3DFrame(ctx) {
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  const proj = (x, y, z) => [x * cy - y * sy, -(z * cp + (x * sy + y * cy) * sp)];
+  const proj = projectPoint;
   const [x0, x1, y0, y1, z0, z1] = bounds3;
   const X = [x0, x1], Y = [y0, y1], Z = [z0, z1];
   const pt = (i, j, k) => {
