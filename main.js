@@ -1305,6 +1305,39 @@ function styleColor(k) {
 
 const sphereDraw = { at: 0, cost: 0 };
 
+// Cursor lying on the sphere: an arrow in the tangent plane at the walker, pointing along the
+// last step, built in 3D and then projected so it is foreshortened like the tiles around it
+function drawSphereCursor(ctx) {
+  const P = (i) => [walk.wx[i], walk.wy[i], walk.wz[i]];
+  const p = P(cur);
+  const l = Math.hypot(...p);
+  const nrm = p.map((v) => v / l);
+  const pos = nrm.map((v) => v * walk.R * 1.003);  // just above the surface
+  // heading: last step (or the next one at the start), minus its normal component
+  const [a, b] = cur > 0 ? [P(cur - 1), p] : [p, P(Math.min(1, walk.n))];
+  let h = [0, 1, 2].map((d) => b[d] - a[d]);
+  const dot = h[0] * nrm[0] + h[1] * nrm[1] + h[2] * nrm[2];
+  h = h.map((v, d) => v - dot * nrm[d]);
+  const hl = Math.hypot(...h) || 1;
+  h = h.map((v) => v / hl);
+  const side = cross(nrm, h);
+  const size = 1.1;  // ≈ one tile edge
+  const at = (fwd, lat) => {
+    const [x, y] = projectPoint(...[0, 1, 2].map((d) => pos[d] + h[d] * fwd * size + side[d] * lat * size));
+    return [view.ox + x * view.scale, view.oy + y * view.scale];
+  };
+  const pts = [at(1, 0), at(-0.6, 0.7), at(-0.3, 0), at(-0.6, -0.7)];
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#0e1116';
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fill();
+}
+
 // Auto-fit on the sphere: ease the camera towards the walker so that it faces the viewer,
 // i.e. yaw and pitch such that towardViewer(walker) = 1 (then it projects onto the centre)
 function followWalker() {
@@ -1443,7 +1476,10 @@ function drawOverlay() {
     ctx.arc(ox + walk.xs[0] * s, oy + walk.ys[0] * s, r, 0, Math.PI * 2);
     ctx.fill();
   }
-  if (walk.sphere && !facing(cur)) return;
+  if (walk.sphere) {
+    if (facing(cur)) drawSphereCursor(ctx);
+    return;
+  }
   // current position + heading
   const x = ox + walk.xs[cur] * s;
   const y = oy + walk.ys[cur] * s;
