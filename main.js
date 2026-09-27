@@ -356,8 +356,10 @@ const MODES = {
               rule: 'Base-5 digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
   hexFixed: { base: 6, lattice: 'hex',
               rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
-  sphereLR: { base: 2, lattice: 'sphere',
+  sphereLR: { base: 2, lattice: 'sphere', sphere: 'geo', turns: [2, 1],
               rule: 'Base-2 digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  cubeSphere: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1],
+              rule: 'Base-3 digits on a cube sphere of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   cubeRel:  { base: 5, lattice: 'cube',
               rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
   cubeFixed: { base: 6, lattice: 'cube',
@@ -550,6 +552,7 @@ function compute() {
   $('primorialRow').hidden = id !== 'primorial';
   $('primeSizeRow').hidden = id !== 'randomPrime';
   $('sphereRow').hidden = MODES[$('mode').value].lattice !== 'sphere';
+  if (MODES[$('mode').value].sphere) fillSphereSizes(MODES[$('mode').value].sphere);
   const integer = INTEGER_IDS.includes(id);
   const { base } = MODES[$('mode').value];
   const key = `${info.key}/${base}`;
@@ -630,7 +633,7 @@ function buildWalk() {
     return;
   }
   if (MODES[current.mode].lattice === 'sphere') {
-    buildSphereWalk(seq);
+    buildSphereWalk(seq, MODES[current.mode]);
     return;
   }
   const len = seq.length;
@@ -904,29 +907,72 @@ function buildPointWalk(seq, { base, points: kind }) {
   restart();
 }
 
-/* Geodesic sphere: an icosahedron whose 20 faces are each cut into f² triangles, pushed out
- * onto the sphere. Each triangle lists its vertices counterclockwise seen from outside, and
- * nbr[3t + k] is the triangle across edge k (from vertex k to vertex k + 1). */
-const geodesicCache = {};
-function geodesic(f) {
-  if (geodesicCache[f]) return geodesicCache[f];
-  const p = (1 + Math.sqrt(5)) / 2;
-  const ico = [[-1, p, 0], [1, p, 0], [-1, -p, 0], [1, -p, 0], [0, -1, p], [0, 1, p],
-               [0, -1, -p], [0, 1, -p], [p, 0, -1], [p, 0, 1], [-p, 0, -1], [-p, 0, 1]];
-  const faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4],
-                 [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8],
-                 [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
-  const verts = [], index = new Map(), tris = [];
-  const vertex = (x, y, z) => {  // normalised, shared between faces
+/* Tiled spheres. A mesh lists each tile's vertices counterclockwise seen from outside
+ * (poly[sides·t + k]); nbr[sides·t + k] is the tile across edge k (vertex k to vertex k + 1)
+ * and nbrEdge[…] the index of that same edge in the neighbour. */
+const meshCache = {};
+
+// Shared vertex store: points are normalised onto the unit sphere and merged when equal
+function vertexStore() {
+  const verts = [], index = new Map();
+  const add = (x, y, z) => {
     const l = Math.hypot(x, y, z);
     x /= l; y /= l; z /= l;
     const k = `${x.toFixed(9)},${y.toFixed(9)},${z.toFixed(9)}`;
     if (!index.has(k)) { index.set(k, verts.length / 3); verts.push(x, y, z); }
     return index.get(k);
   };
+  return { verts, add };
+}
+
+// Orient every tile counterclockwise, compute centres and edge adjacency
+function finishMesh(verts, tiles, sides, size) {
+  const n = tiles.length;
+  const poly = new Int32Array(sides * n), cen = new Float64Array(3 * n);
+  const V = (v) => [verts[3 * v], verts[3 * v + 1], verts[3 * v + 2]];
+  tiles.forEach((t, i) => {
+    const P = t.map(V);
+    const m = [0, 1, 2].map((d) => P.reduce((sum, q) => sum + q[d], 0));
+    // normal from the diagonals (works for triangles and for slightly non-planar quads)
+    const d1 = [0, 1, 2].map((d) => P[2][d] - P[0][d]);
+    const d2 = [0, 1, 2].map((d) => P[sides - 1][d] - P[1][d]);
+    const nrm = cross(d1, d2);
+    const ordered = nrm[0] * m[0] + nrm[1] * m[1] + nrm[2] * m[2] < 0 ? [t[0], ...t.slice(1).reverse()] : t;
+    poly.set(ordered, sides * i);
+    const l = Math.hypot(...m);
+    cen.set(m.map((v) => v / l), 3 * i);
+  });
+  const edges = new Map(), nbr = new Int32Array(sides * n).fill(-1), nbrEdge = new Int8Array(sides * n);
+  const nv = verts.length / 3;
+  for (let t = 0; t < n; t++) {
+    for (let k = 0; k < sides; k++) {
+      const u = poly[sides * t + k], v = poly[sides * t + (k + 1) % sides];
+      const e = Math.min(u, v) * nv + Math.max(u, v);
+      const other = edges.get(e);
+      if (other === undefined) { edges.set(e, [t, k]); continue; }
+      nbr[sides * t + k] = other[0]; nbrEdge[sides * t + k] = other[1];
+      nbr[sides * other[0] + other[1]] = t; nbrEdge[sides * other[0] + other[1]] = k;
+    }
+  }
+  return { size, n, sides, verts: new Float64Array(verts), poly, cen, nbr, nbrEdge };
+}
+
+/* Geodesic sphere: an icosahedron whose 20 faces are each cut into f² triangles, pushed out
+ * onto the sphere. 12 vertices are shared by 5 triangles instead of 6. */
+function geodesic(f) {
+  const key = `geo${f}`;
+  if (meshCache[key]) return meshCache[key];
+  const p = (1 + Math.sqrt(5)) / 2;
+  const ico = [[-1, p, 0], [1, p, 0], [-1, -p, 0], [1, -p, 0], [0, -1, p], [0, 1, p],
+               [0, -1, -p], [0, 1, -p], [p, 0, -1], [p, 0, 1], [-p, 0, -1], [-p, 0, 1]];
+  const faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4],
+                 [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8],
+                 [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+  const { verts, add } = vertexStore();
+  const tris = [];
   for (const [a, b, c] of faces) {
     const [A, B, C] = [ico[a], ico[b], ico[c]];
-    const at = (i, j) => vertex(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
+    const at = (i, j) => add(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
     for (let i = 0; i < f; i++) {
       for (let j = 0; i + j < f; j++) {
         tris.push([at(i, j), at(i + 1, j), at(i, j + 1)]);
@@ -934,43 +980,64 @@ function geodesic(f) {
       }
     }
   }
-  const n = tris.length;
-  const tri = new Int32Array(3 * n), cen = new Float64Array(3 * n);
-  const V = (v, d) => verts[3 * v + d];
-  tris.forEach((t, i) => {
-    let [a, b, c] = t;
-    const e1 = [0, 1, 2].map((d) => V(b, d) - V(a, d)), e2 = [0, 1, 2].map((d) => V(c, d) - V(a, d));
-    const nrm = cross(e1, e2);
-    const m = [0, 1, 2].map((d) => V(a, d) + V(b, d) + V(c, d));
-    if (nrm[0] * m[0] + nrm[1] * m[1] + nrm[2] * m[2] < 0) [b, c] = [c, b];  // make it counterclockwise
-    tri.set([a, b, c], 3 * i);
-    const l = Math.hypot(...m);
-    cen.set(m.map((v) => v / l), 3 * i);
-  });
-  const edges = new Map(), nbr = new Int32Array(3 * n), nbrEdge = new Int8Array(3 * n);
-  const nv = verts.length / 3;
-  for (let t = 0; t < n; t++) {
-    for (let k = 0; k < 3; k++) {
-      const u = tri[3 * t + k], v = tri[3 * t + (k + 1) % 3];
-      const e = Math.min(u, v) * nv + Math.max(u, v);
-      const other = edges.get(e);
-      if (other === undefined) { edges.set(e, [t, k]); continue; }
-      nbr[3 * t + k] = other[0]; nbrEdge[3 * t + k] = other[1];
-      nbr[3 * other[0] + other[1]] = t; nbrEdge[3 * other[0] + other[1]] = k;
-    }
-  }
-  return (geodesicCache[f] = { f, n, verts: new Float64Array(verts), tri, cen, nbr, nbrEdge });
+  return (meshCache[key] = finishMesh(verts, tris, 3, f));
 }
 
-// Walk from triangle to triangle: entering through edge k, edge k + 2 is on the left and
-// edge k + 1 on the right (vertices counterclockwise seen from outside).
-function buildSphereWalk(seq) {
-  const g = geodesic(Number($('sphereF').value));
-  const R = g.f * 1.05;  // edge ≈ 1 unit on screen scale
+/* Cube sphere: each face of a cube cut into n × n squares, pushed out onto the sphere. The grid
+ * uses equal angles (tan mapping) so squares keep similar sizes. 8 vertices (the cube corners)
+ * are shared by 3 squares instead of 4. */
+function cubeSphere(n) {
+  const key = `cube${n}`;
+  if (meshCache[key]) return meshCache[key];
+  const faces = [  // [normal, u axis, v axis]
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    [[0, 1, 0], [1, 0, 0], [0, 0, 1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+    [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [1, 0, 0], [0, 1, 0]]];
+  const { verts, add } = vertexStore();
+  const quads = [];
+  for (const [N, U, W] of faces) {
+    const at = (i, j) => {
+      const a = Math.tan((Math.PI / 4) * (2 * i / n - 1)), b = Math.tan((Math.PI / 4) * (2 * j / n - 1));
+      return add(...[0, 1, 2].map((d) => N[d] + U[d] * a + W[d] * b));
+    };
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) quads.push([at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+    }
+  }
+  return (meshCache[key] = finishMesh(verts, quads, 4, n));
+}
+
+const SPHERES = {
+  geo:  { mesh: geodesic, radius: (f) => f * 1.05,       // triangle edge ≈ 1 unit
+          sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
+  cube: { mesh: cubeSphere, radius: (n) => (2 * n) / Math.PI,  // square edge ≈ 1 unit
+          sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
+};
+
+// Fill the Sphere size menu for the kind of sphere of the current mode
+function fillSphereSizes(kind) {
+  const sel = $('sphereF');
+  if (sel.dataset.kind === kind) return;
+  const { sizes, initial, tiles, unit } = SPHERES[kind];
+  sel.replaceChildren(...sizes.map((f) => new Option(`${fmt(tiles(f))} ${unit}`, f)));
+  sel.value = initial;
+  sel.dataset.kind = kind;
+}
+
+// Walk from tile to tile. Entering a tile through edge k (vertices counterclockwise), the digit d
+// leaves through edge k + turns[d]: k + 1 is on the right, k − 1 on the left, k + 2 straight on
+// (for squares).
+function buildSphereWalk(seq, { sphere: kind, turns, base }) {
+  fillSphereSizes(kind);
+  const { mesh, radius } = SPHERES[kind];
+  const size = Number($('sphereF').value);
+  const g = mesh(size);
+  const R = radius(size);
+  const sides = g.sides;
   const len = seq.length;
   const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
   const tile = new Int32Array(len + 1), cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
-  const counts = new Int32Array(2 * (len + 1));
+  const counts = new Int32Array(base * (len + 1));
   const seen = new Uint8Array(g.n);
   let t = 0, entry = 0, distinct = 1, m = 0, coverStep = -1;
   seen[0] = 1;
@@ -985,16 +1052,16 @@ function buildSphereWalk(seq) {
   };
   put(0);
   for (let i = 0; i < len; i++) {
-    const edge = seq[i] === 1 ? (entry + 1) % 3 : (entry + 2) % 3;
-    const next = g.nbr[3 * t + edge];
-    entry = g.nbrEdge[3 * t + edge];
+    const edge = (entry + turns[seq[i]]) % sides;
+    const next = g.nbr[sides * t + edge];
+    entry = g.nbrEdge[sides * t + edge];
     t = next;
     if (!seen[t]) { seen[t] = 1; distinct++; if (distinct === g.n) coverStep = i + 1; }
     put(i + 1);
-    counts[2 * (i + 1)] = counts[2 * i] + (seq[i] === 0);
-    counts[2 * (i + 1) + 1] = counts[2 * i + 1] + (seq[i] === 1);
+    for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
+    counts[base * (i + 1) + seq[i]]++;
   }
-  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base: 2, counts,
+  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
                         sphere: true, geo: g, R, tile, coverStep, visits: new Int32Array(g.n), maxVisits: 0,
                         xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
@@ -1257,7 +1324,7 @@ function towardViewer(x, y, z) {
 }
 const facing = (i) => towardViewer(walk.wx[i], walk.wy[i], walk.wz[i]) > 0;
 
-// Sphere: visible triangles coloured by visit count (log scale), shading, and the recent trail
+// Sphere: visible tiles coloured by visit count (log scale) and shading
 function drawSphere() {
   const ctx = layers.path;
   ctx.clearRect(0, 0, cw, ch);
@@ -1277,11 +1344,14 @@ function drawSphere() {
     const v = visits[t];
     buckets[v ? 1 + Math.round((Math.log(v) / logMax) * (LEVELS - 1)) : 0].push(t);
   }
+  const k = g.sides;
   const outline = (list) => {
     ctx.beginPath();
     for (const t of list) {
-      const a = g.tri[3 * t], b = g.tri[3 * t + 1], c = g.tri[3 * t + 2];
-      ctx.moveTo(px[a], py[a]); ctx.lineTo(px[b], py[b]); ctx.lineTo(px[c], py[c]); ctx.closePath();
+      const first = g.poly[k * t];
+      ctx.moveTo(px[first], py[first]);
+      for (let j = 1; j < k; j++) ctx.lineTo(px[g.poly[k * t + j]], py[g.poly[k * t + j]]);
+      ctx.closePath();
     }
   };
   // background disc: anti-aliasing seams between triangles show this colour instead of black
@@ -1289,13 +1359,13 @@ function drawSphere() {
   ctx.beginPath();
   ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
   ctx.fill();
-  buckets.forEach((list, k) => {
-    if (!list.length || k === 0) return;
+  buckets.forEach((list, level) => {
+    if (!list.length || level === 0) return;
     outline(list);
-    ctx.fillStyle = GRADIENT[Math.round(((k - 1) / (LEVELS - 1)) * (BANDS - 1))];
+    ctx.fillStyle = GRADIENT[Math.round(((level - 1) / (LEVELS - 1)) * (BANDS - 1))];
     ctx.fill();
   });
-  if ($('showGrid').checked && s > 6) {  // triangle edges once they are big enough
+  if ($('showGrid').checked && s > 6) {  // tile edges once they are big enough
     outline(buckets.flat());
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.lineWidth = 0.6;
@@ -1310,7 +1380,7 @@ function drawSphere() {
   ctx.beginPath();
   ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
   ctx.fill();
-  // recent trail on the visible side
+  /* Recent trail (white line through the last 300 steps), disabled for now; may come back.
   const from = Math.max(0, cur - 300);
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.lineWidth = Math.max(1, Math.min(s * 0.15, 2.5));
@@ -1322,6 +1392,7 @@ function drawSphere() {
     ctx.lineTo(ox + walk.xs[i + 1] * s, oy + walk.ys[i + 1] * s);
   }
   ctx.stroke();
+  */
 }
 
 // Draw segments [from, to): segment i joins point i to point i+1.
