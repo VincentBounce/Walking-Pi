@@ -674,16 +674,28 @@ function buildWalk() {
                         points: false, keys: seq, labels: null, sphere: false,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
-  if (is3d) project();
+  if (is3d) { setPerspective(); project(); } else { walk.persp = null; $('perspectiveRow').hidden = true; }
   updateHint();
   restart();
 }
 
 // Orthographic projection of a 3D point onto the screen plane (world units)
-function projectPoint(x, y, z) {
+function orthoPoint(x, y, z) {
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   return [x * cy - y * sy, -(z * cp + (x * sy + y * cy) * sp)];
+}
+
+/* Perspective (walk.persp = { c, D }): a camera at distance D from the centre c, looking at it.
+ * A point whose depth towards the camera is t (relative to c) is scaled by D / (D − t) around the
+ * projection of c, so nearer parts look bigger. Without it the projection stays orthographic. */
+function projectPoint(x, y, z) {
+  const [px, py] = orthoPoint(x, y, z);
+  const P = walk.persp;
+  if (!P) return [px, py];
+  const [cx, cy] = orthoPoint(...P.c);
+  const k = P.D / (P.D - towardViewer(x - P.c[0], y - P.c[1], z - P.c[2]));
+  return [cx + (px - cx) * k, cy + (py - cy) * k];
 }
 
 // Projection of the whole 3D walk (xs, ys), same formula as projectPoint
@@ -691,10 +703,39 @@ function project() {
   const { wx, wy, wz, xs, ys } = walk;
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const P = walk.persp;
+  const [ccx, ccy] = P ? orthoPoint(...P.c) : [0, 0];
   for (let i = 0; i < xs.length; i++) {
     xs[i] = wx[i] * cy - wy[i] * sy;
     ys[i] = -(wz[i] * cp + (wx[i] * sy + wy[i] * cy) * sp);
+    if (P) {
+      const t = (wz[i] - P.c[2]) * sp - ((wx[i] - P.c[0]) * sy + (wy[i] - P.c[1]) * cy) * cp;
+      const k = P.D / (P.D - t);
+      xs[i] = ccx + (xs[i] - ccx) * k;
+      ys[i] = ccy + (ys[i] - ccy) * k;
+    }
   }
+}
+
+// Perspective applies to 3D walks and flat solids, not to spheres (they keep the orthographic view)
+const perspectiveAllowed = () => walk.is3d && !(walk.sphere && !walk.geo.flat);
+
+// Set walk.persp from the checkbox: centre and size from the whole walk (or the solid), camera
+// at 2.5 × that radius, i.e. a field of view of roughly 45°
+function setPerspective() {
+  $('perspectiveRow').hidden = !perspectiveAllowed();
+  if (!perspectiveAllowed() || !$('perspective').checked) { walk.persp = null; return; }
+  if (walk.sphere) {
+    walk.persp = { c: [0, 0, 0], D: 2.5 * walk.R * Math.sqrt(3) };
+    return;
+  }
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  const W = [walk.wx, walk.wy, walk.wz];
+  for (let i = 0; i <= walk.n; i++) {
+    for (let d = 0; d < 3; d++) { lo[d] = Math.min(lo[d], W[d][i]); hi[d] = Math.max(hi[d], W[d][i]); }
+  }
+  const radius = Math.max(3, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
+  walk.persp = { c: [0, 1, 2].map((d) => (lo[d] + hi[d]) / 2), D: 2.5 * radius };
 }
 
 // Rotate around the centre of the bounding box, which keeps its position
@@ -723,6 +764,7 @@ function updateHint() {
     ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: fit'
     : 'Wheel: zoom · Drag: pan · Double-click: fit';
   $('autoRotateRow').hidden = !walk.is3d;
+  $('perspectiveRow').hidden = !perspectiveAllowed();
 }
 
 /* Each stepper takes a digit and returns [key, x, y, z]: a unique key
@@ -906,6 +948,7 @@ function buildPointWalk(seq, { base, points: kind }) {
     m = Math.max(m, Math.hypot(x, y));
     maxDist[i + 1] = m;
   }
+  walk.persp = null;
   Object.assign(walk, { n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
                         counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
                         sphere: false,
@@ -1125,6 +1168,7 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
                         sphere: true, geo: g, R, tile, coverStep, visits: new Int32Array(g.n), maxVisits: 0,
                         xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
+  setPerspective();
   project();
   updateHint();
   restart();
@@ -1278,7 +1322,7 @@ function drawGrid() {
 
 // 3D: wireframe bounding box of the walk + axis gizmo in the top-left corner
 function draw3DFrame(ctx) {
-  const proj = projectPoint;
+  const proj = projectPoint;  // the box is drawn in perspective, the axis gizmo stays orthographic
   const [x0, x1, y0, y1, z0, z1] = bounds3;
   const X = [x0, x1], Y = [y0, y1], Z = [z0, z1];
   const pt = (i, j, k) => {
@@ -1296,7 +1340,7 @@ function draw3DFrame(ctx) {
   ctx.lineWidth = 2;
   ctx.font = '11px system-ui, sans-serif';
   [['E', [1, 0, 0], '#ff7b72'], ['N', [0, 1, 0], '#3fb950'], ['Up', [0, 0, 1], '#4ea1ff']].forEach(([label, v, color]) => {
-    const [px, py] = proj(...v);
+    const [px, py] = orthoPoint(...v);
     ctx.strokeStyle = ctx.fillStyle = color;
     ctx.beginPath();
     ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + px * 26, o[1] + py * 26);
@@ -1420,10 +1464,17 @@ function towardViewer(x, y, z) {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   return z * sp - (x * Math.sin(cam.yaw) + y * Math.cos(cam.yaw)) * cp;
 }
-const facing = (i) => {  // is the tile of point i on the visible side?
-  const t = walk.tile[i], nr = walk.geo.nrm;
-  return towardViewer(nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]) > 0;
-};
+// Is tile t on the visible side? Orthographic: its normal points towards the viewer.
+// Perspective: its normal points towards the camera position, seen from the tile.
+function tileVisible(t) {
+  const g = walk.geo, n = [g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]];
+  const P = walk.persp;
+  if (!P) return towardViewer(...n) > 0;
+  const cp = Math.cos(cam.pitch);
+  const eye = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)].map((v, d) => P.c[d] + v * P.D);
+  return [0, 1, 2].reduce((sum, d) => sum + n[d] * (eye[d] - g.cen[3 * t + d] * walk.R), 0) > 0;
+}
+const facing = (i) => tileVisible(walk.tile[i]);  // is the tile of point i on the visible side?
 
 // Sphere: visible tiles coloured by visit count (log scale) and shading
 function drawSphere() {
@@ -1441,7 +1492,7 @@ function drawSphere() {
   const buckets = Array.from({ length: LEVELS + 1 }, () => []);
   const logMax = Math.log(Math.max(2, maxVisits));
   for (let t = 0; t < g.n; t++) {
-    if (towardViewer(g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]) <= 0) continue;
+    if (!tileVisible(t)) continue;
     const v = visits[t];
     buckets[v ? 1 + Math.round((Math.log(v) / logMax) * (LEVELS - 1)) : 0].push(t);
   }
@@ -1649,6 +1700,15 @@ function tick() {
     acc -= k;
     if (k > 0) advanceTo(cur + k);
   }
+  if (walk.is3d && !walk.sphere && $('showGrid').checked) {
+    // keep the bounding box in the frame too: in perspective its near corners stick out
+    const [x0, x1, y0, y1, z0, z1] = bounds3;
+    for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) {
+      const [px, py] = projectPoint(x, y, z);
+      bounds.minX = Math.min(bounds.minX, px); bounds.maxX = Math.max(bounds.maxX, px);
+      bounds.minY = Math.min(bounds.minY, py); bounds.maxY = Math.max(bounds.maxY, py);
+    }
+  }
   if (walk.n && $('autoFit').checked && boundsOffscreen()) {
     const b = padBounds(bounds);
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
@@ -1785,6 +1845,12 @@ for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
 $('primorialP').value = '392113,1';
 $('primorialP').addEventListener('change', compute);
 $('primeSize').addEventListener('change', compute);
+$('perspective').addEventListener('change', () => {
+  setPerspective();
+  project();
+  if (walk.sphere) needsFull = true;
+  else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
+});
 $('sphereF').addEventListener('change', () => {
   if (!current) return;
   buildWalk();
