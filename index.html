@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20260927f">
+  <link rel="stylesheet" href="style.css?v=20260927g">
 </head>
 <body>
   <header>
@@ -52,6 +52,7 @@
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
               <option value="sphereLR">Geodesic sphere — base 2 (left / right)</option>
               <option value="cubeSphere">Cube sphere — base 3 (left / forward / right)</option>
+              <option value="cubeFlat">Cube surface — base 3 (left / forward / right)</option>
             </optgroup>
             <optgroup label="Experimental">
               <option value="spiral">Binary spiral — squares (1 = draw, 0 = skip)</option>
@@ -64,7 +65,7 @@
             </optgroup>
           </select>
         </label>
-        <label id="sphereRow" hidden>Sphere
+        <label id="sphereRow" hidden>Surface
           <select id="sphereF"></select>
         </label>
         <label>Number of digits
@@ -125,6 +126,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20260927f"></script>
+  <script src="main.js?v=20260927g"></script>
 </body>
 </html>

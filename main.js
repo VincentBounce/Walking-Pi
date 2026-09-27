@@ -361,6 +361,8 @@ const MODES = {
               rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
   sphereLR: { base: 2, lattice: 'sphere', sphere: 'geo', turns: [2, 1],
               rule: 'Base-2 digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1],
+              rule: 'Base-3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   cubeSphere: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1],
               rule: 'Base-3 digits on a cube sphere of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   cubeRel:  { base: 5, lattice: 'cube',
@@ -915,11 +917,11 @@ function buildPointWalk(seq, { base, points: kind }) {
  * and nbrEdge[…] the index of that same edge in the neighbour. */
 const meshCache = {};
 
-// Shared vertex store: points are normalised onto the unit sphere and merged when equal
-function vertexStore() {
+// Shared vertex store: points are merged when equal and, for spheres, normalised onto the unit sphere
+function vertexStore(normalise = true) {
   const verts = [], index = new Map();
   const add = (x, y, z) => {
-    const l = Math.hypot(x, y, z);
+    const l = normalise ? Math.hypot(x, y, z) : 1;
     x /= l; y /= l; z /= l;
     const k = `${x.toFixed(9)},${y.toFixed(9)},${z.toFixed(9)}`;
     if (!index.has(k)) { index.set(k, verts.length / 3); verts.push(x, y, z); }
@@ -928,10 +930,11 @@ function vertexStore() {
   return { verts, add };
 }
 
-// Orient every tile counterclockwise, compute centres and edge adjacency
-function finishMesh(verts, tiles, sides, size) {
+// Orient every tile counterclockwise, compute centres, outward normals and edge adjacency.
+// On a sphere the centre is pushed onto the surface and the normal is the centre's direction.
+function finishMesh(verts, tiles, sides, size, flat = false) {
   const n = tiles.length;
-  const poly = new Int32Array(sides * n), cen = new Float64Array(3 * n);
+  const poly = new Int32Array(sides * n), cen = new Float64Array(3 * n), nrmOut = new Float64Array(3 * n);
   const V = (v) => [verts[3 * v], verts[3 * v + 1], verts[3 * v + 2]];
   tiles.forEach((t, i) => {
     const P = t.map(V);
@@ -940,10 +943,17 @@ function finishMesh(verts, tiles, sides, size) {
     const d1 = [0, 1, 2].map((d) => P[2][d] - P[0][d]);
     const d2 = [0, 1, 2].map((d) => P[sides - 1][d] - P[1][d]);
     const nrm = cross(d1, d2);
-    const ordered = nrm[0] * m[0] + nrm[1] * m[1] + nrm[2] * m[2] < 0 ? [t[0], ...t.slice(1).reverse()] : t;
-    poly.set(ordered, sides * i);
-    const l = Math.hypot(...m);
-    cen.set(m.map((v) => v / l), 3 * i);
+    const inward = nrm[0] * m[0] + nrm[1] * m[1] + nrm[2] * m[2] < 0;
+    poly.set(inward ? [t[0], ...t.slice(1).reverse()] : t, sides * i);
+    if (flat) {
+      const l = Math.hypot(...nrm) * (inward ? -1 : 1);
+      cen.set(m.map((v) => v / sides), 3 * i);
+      nrmOut.set(nrm.map((v) => v / l), 3 * i);
+    } else {
+      const l = Math.hypot(...m);
+      cen.set(m.map((v) => v / l), 3 * i);
+      nrmOut.set(m.map((v) => v / l), 3 * i);
+    }
   });
   const edges = new Map(), nbr = new Int32Array(sides * n).fill(-1), nbrEdge = new Int8Array(sides * n);
   const nv = verts.length / 3;
@@ -957,7 +967,7 @@ function finishMesh(verts, tiles, sides, size) {
       nbr[sides * other[0] + other[1]] = t; nbrEdge[sides * other[0] + other[1]] = k;
     }
   }
-  return { size, n, sides, verts: new Float64Array(verts), poly, cen, nbr, nbrEdge };
+  return { size, n, sides, flat, verts: new Float64Array(verts), poly, cen, nrm: nrmOut, nbr, nbrEdge };
 }
 
 /* Geodesic sphere: an icosahedron whose 20 faces are each cut into f² triangles, pushed out
@@ -1010,10 +1020,31 @@ function cubeSphere(n) {
   return (meshCache[key] = finishMesh(verts, quads, 4, n));
 }
 
+/* Cube: the same n × n squares per face as the cube sphere, but left flat on the cube. */
+function cubeFlat(n) {
+  const key = `flat${n}`;
+  if (meshCache[key]) return meshCache[key];
+  const faces = [
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    [[0, 1, 0], [1, 0, 0], [0, 0, 1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+    [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [1, 0, 0], [0, 1, 0]]];
+  const { verts, add } = vertexStore(false);
+  const quads = [];
+  for (const [N, U, W] of faces) {
+    const at = (i, j) => add(...[0, 1, 2].map((d) => N[d] + U[d] * (2 * i / n - 1) + W[d] * (2 * j / n - 1)));
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) quads.push([at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+    }
+  }
+  return (meshCache[key] = finishMesh(verts, quads, 4, n, true));
+}
+
 const SPHERES = {
   geo:  { mesh: geodesic, radius: (f) => f * 1.05,       // triangle edge ≈ 1 unit
           sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
   cube: { mesh: cubeSphere, radius: (n) => (2 * n) / Math.PI,  // square edge ≈ 1 unit
+          sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
+  flat: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
 };
 
@@ -1050,7 +1081,9 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
     tile[i] = t;
     cells[i] = distinct;
     const dot = (g.cen[3 * t] * c0[0] + g.cen[3 * t + 1] * c0[1] + g.cen[3 * t + 2] * c0[2]);
-    m = Math.max(m, R * Math.acos(Math.max(-1, Math.min(1, dot))));  // great-circle distance from the start
+    m = Math.max(m, g.flat  // distance from the start: straight line on the cube, great circle on a sphere
+      ? R * Math.hypot(g.cen[3 * t] - c0[0], g.cen[3 * t + 1] - c0[1], g.cen[3 * t + 2] - c0[2])
+      : R * Math.acos(Math.max(-1, Math.min(1, dot))));
     maxDist[i] = m;
   };
   put(0);
@@ -1124,7 +1157,8 @@ function restart() {
   bounds3 = [0, 0, 0, 0, 0, 0];
   if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
     const R = walk.R;
-    bounds = { minX: -R, maxX: R, minY: -R, maxY: R };
+    const F = walk.geo.flat ? R * Math.sqrt(3) : R;  // a cube's corners reach R·√3 from the centre
+    bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
     walk.visits[walk.tile[0]] = walk.maxVisits = 1;
@@ -1313,9 +1347,9 @@ const sphereDraw = { at: 0, cost: 0 };
 function drawSphereCursor(ctx) {
   const P = (i) => [walk.wx[i], walk.wy[i], walk.wz[i]];
   const p = P(cur);
-  const l = Math.hypot(...p);
-  const nrm = p.map((v) => v / l);
-  const pos = nrm.map((v) => v * walk.R * 1.003);  // just above the surface
+  const t = walk.tile[cur], nr = walk.geo.nrm;
+  const nrm = [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]];  // outward normal of the current tile
+  const pos = p.map((v, d) => v + nrm[d] * walk.R * 0.003);  // just above the surface
   // heading: last step (or the next one at the start), minus its normal component
   const [a, b] = cur > 0 ? [P(cur - 1), p] : [p, P(Math.min(1, walk.n))];
   let h = [0, 1, 2].map((d) => b[d] - a[d]);
@@ -1362,7 +1396,10 @@ function towardViewer(x, y, z) {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   return z * sp - (x * Math.sin(cam.yaw) + y * Math.cos(cam.yaw)) * cp;
 }
-const facing = (i) => towardViewer(walk.wx[i], walk.wy[i], walk.wz[i]) > 0;
+const facing = (i) => {  // is the tile of point i on the visible side?
+  const t = walk.tile[i], nr = walk.geo.nrm;
+  return towardViewer(nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]) > 0;
+};
 
 // Sphere: visible tiles coloured by visit count (log scale) and shading
 function drawSphere() {
@@ -1380,7 +1417,7 @@ function drawSphere() {
   const buckets = Array.from({ length: LEVELS + 1 }, () => []);
   const logMax = Math.log(Math.max(2, maxVisits));
   for (let t = 0; t < g.n; t++) {
-    if (towardViewer(g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]) <= 0) continue;
+    if (towardViewer(g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]) <= 0) continue;
     const v = visits[t];
     buckets[v ? 1 + Math.round((Math.log(v) / logMax) * (LEVELS - 1)) : 0].push(t);
   }
@@ -1394,10 +1431,14 @@ function drawSphere() {
       ctx.closePath();
     }
   };
-  // background disc: anti-aliasing seams between triangles show this colour instead of black
+  // background: anti-aliasing seams between tiles show this colour instead of black
   ctx.fillStyle = '#1f2630';
-  ctx.beginPath();
-  ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+  if (g.flat) {
+    outline(buckets.flat());
+  } else {
+    ctx.beginPath();
+    ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+  }
   ctx.fill();
   buckets.forEach((list, level) => {
     if (!list.length || level === 0) return;
@@ -1411,15 +1452,32 @@ function drawSphere() {
     ctx.lineWidth = 0.6;
     ctx.stroke();
   }
-  // shading: darker towards the rim
-  const shade = ctx.createRadialGradient(ox - R * s * 0.3, oy - R * s * 0.3, R * s * 0.1, ox, oy, R * s);
-  shade.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-  shade.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
-  shade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
-  ctx.fillStyle = shade;
-  ctx.beginPath();
-  ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
-  ctx.fill();
+  if (g.flat) {
+    // shading: each cube face darker the more it turns away from the viewer
+    const faces = new Map();
+    for (const t of buckets.flat()) {
+      const k3 = 3 * t, key = `${Math.round(g.nrm[k3])},${Math.round(g.nrm[k3 + 1])},${Math.round(g.nrm[k3 + 2])}`;
+      if (!faces.has(key)) faces.set(key, []);
+      faces.get(key).push(t);
+    }
+    for (const list of faces.values()) {
+      const t = list[0];
+      const toward = towardViewer(g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]);
+      outline(list);
+      ctx.fillStyle = `rgba(0, 0, 0, ${(0.55 * (1 - toward)).toFixed(3)})`;
+      ctx.fill();
+    }
+  } else {
+    // shading: darker towards the rim
+    const shade = ctx.createRadialGradient(ox - R * s * 0.3, oy - R * s * 0.3, R * s * 0.1, ox, oy, R * s);
+    shade.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    shade.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
+    shade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.arc(ox, oy, R * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
   /* Recent trail (white line through the last 300 steps), disabled for now; may come back.
   const from = Math.max(0, cur - 300);
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
