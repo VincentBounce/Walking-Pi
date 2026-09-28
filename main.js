@@ -1476,9 +1476,34 @@ function lifeReset() {
   L.aliveCount = L.everAlive = L.seedAlive;
   L.dyingCount = L.seedDying;
   L.born = L.dead = 0;
+  // lifetime: fingerprint of every generation's state; the first repeat gives the loop
+  L.seen = new Map([[lifeFingerprint(L.alive), 0]]);
+  L.stable = null;  // { T: first generation of the loop, P: its period, extinct }
 }
 
-// One generation. A cell dying at generation g + 1 records died = g + 1 for the fading trail.
+/* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
+ * back at generation g after first appearing at generation T, the pattern loops from T with
+ * period g − T (1 = frozen). With N cells there are 2^N states, so this always happens eventually. */
+const LIFE_TRACK = 200000;  // generations remembered before giving up
+function lifeFingerprint(state) {
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let t = 0; t < state.length; t++) {
+    h1 = Math.imul(h1 ^ state[t], 0x01000193);
+    h2 = Math.imul(h2 ^ (state[t] + t), 0x5bd1e995);
+  }
+  return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
+}
+
+// Record generation gen (state already in L.alive) and detect the first repeat
+function lifeTrack(gen) {
+  const L = walk.life;
+  if (L.stable || L.seen.size >= LIFE_TRACK) return;
+  const key = lifeFingerprint(L.alive);
+  const first = L.seen.get(key);
+  if (first === undefined) L.seen.set(key, gen);
+  else L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 };
+}
+
 // One generation. Only alive cells (state 1) count as live neighbours. With C > 2 states a
 // cell that fails to survive goes through the dying states 2 … C−1 and cannot be born again
 // until it is dead (state 0). A cell dying at generation g records died = g (fading trail).
@@ -1517,6 +1542,7 @@ function lifeStep() {
   L.next = a;
   L.aliveCount = alive;
   L.dyingCount = dying;
+  lifeTrack(gen);
 }
 
 function key(x, y) {
@@ -2122,8 +2148,18 @@ const STAT_LABELS = {
   life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
 };
 
+// Lifetime of the current Life run: when it settles (frozen or looping), or not yet
+function lifetimeText(L) {
+  const s = L.stable;
+  if (!s) return L.seen.size >= LIFE_TRACK ? `not settled after ${fmt(LIFE_TRACK)} generations` : 'not settled yet';
+  if (s.extinct) return `dies out at generation ${fmt(s.T)}`;
+  if (s.P === 1) return `frozen from generation ${fmt(s.T)}`;
+  return `loops from generation ${fmt(s.T)}, period ${fmt(s.P)}`;
+}
+
 function updateStats() {
   STAT_LABELS[walk.life ? 'life' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
+  $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
     $('sStep').textContent = fmt(cur);
@@ -2131,6 +2167,7 @@ function updateStats() {
     $('sDist').textContent = fmt(L.born);
     $('sMax').textContent = fmt(L.dead);
     $('sCells').textContent = pc(L.everAlive);
+    $('sLifetime').textContent = lifetimeText(L);
     $('sCountsLabel').hidden = $('sCounts').hidden = true;
     $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base ${L.C} · ${fmt(n)} cells, ` +
       `${fmt(L.seedAlive)} alive${L.C > 2 ? ` and ${fmt(L.seedDying)} dying` : ''} at generation 0`;
