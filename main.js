@@ -496,13 +496,20 @@ function lifeSubtitle(where) {
     'neighbours share an edge or a corner';
 }
 
-// The colour menu means something else for the Game of Life, and depends on its number of states
+// The colour menu means something else for the Game of Life, and depends on its number of states.
+// In Life the plain states come first (the default); walks keep the gradient first.
 function relabelColours(life) {
-  const multi = life && lifeStates() > 2;  // Generations rules have real dying stages instead of a trail
+  const C = life ? lifeStates() : 2;
+  const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
   const names = !life ? { gradient: 'Gradient (order)', digit: 'By digit', mono: 'Monochrome' }
-    : multi ? { gradient: 'Age + dying stages', digit: 'Activity (state changes)', mono: 'Alive / dying / dead' }
-    : { gradient: 'Age (+ fading trail)', digit: 'Activity (state changes)', mono: 'Alive / dead' };
-  for (const o of $('colorMode').options) o.text = names[o.value];
+    : { mono: `States: alive${dying} · dead`,
+        gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
+        digit: 'Activity (state changes)' };
+  const sel = $('colorMode'), chosen = sel.value;
+  const order = life ? ['mono', 'gradient', 'digit'] : ['gradient', 'digit', 'mono'];
+  const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
+  order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
+  sel.value = chosen;
 }
 
 function requestedDigits() {
@@ -2239,6 +2246,7 @@ function computeFramed() {
 }
 $('mode').addEventListener('change', () => {
   $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default for the cube modes only
+  $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // a new walk mode starts framed
   compute();
 });
