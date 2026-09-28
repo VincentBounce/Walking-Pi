@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001h">
+  <link rel="stylesheet" href="style.css?v=20261001i">
 </head>
 <body>
   <header>
@@ -15,36 +15,6 @@
 
   <main>
     <aside class="panel">
-      <section>
-        <h2>Digits</h2>
-        <label>Number
-          <select id="constant"></select>
-        </label>
-        <label id="fractionRow" hidden>Fraction p/q
-          <input id="fraction" type="text" value="22/7" inputmode="numeric" autocomplete="off">
-        </label>
-        <label id="mersenneRow" hidden>Prime
-          <select id="mersenneP"></select>
-        </label>
-        <label id="primorialRow" hidden>Prime
-          <select id="primorialP"></select>
-        </label>
-        <label id="primeSizeRow" hidden>Size
-          <select id="primeSize">
-            <option value="100">100 decimal digits</option>
-            <option value="300" selected>300 decimal digits</option>
-            <option value="1000">1,000 decimal digits</option>
-            <option value="2000">2,000 decimal digits</option>
-          </select>
-        </label>
-        <label id="digitsRow">Number of digits
-          <input id="digits" type="number" min="5000" max="1000000" step="5000" value="20000">
-        </label>
-        <button id="compute" class="primary">Compute</button>
-        <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
-        <p id="status" class="muted">—</p>
-      </section>
-
       <section>
         <h2>Walk</h2>
         <div class="field-label">Walk mode</div>
@@ -121,6 +91,36 @@
           </div>
           <p id="huntStatus" class="muted"></p>
         </div>
+      </section>
+
+      <section>
+        <h2>Digits</h2>
+        <label>Number
+          <select id="constant"></select>
+        </label>
+        <label id="fractionRow" hidden>Fraction p/q
+          <input id="fraction" type="text" value="22/7" inputmode="numeric" autocomplete="off">
+        </label>
+        <label id="mersenneRow" hidden>Prime
+          <select id="mersenneP"></select>
+        </label>
+        <label id="primorialRow" hidden>Prime
+          <select id="primorialP"></select>
+        </label>
+        <label id="primeSizeRow" hidden>Size
+          <select id="primeSize">
+            <option value="100">100 decimal digits</option>
+            <option value="300" selected>300 decimal digits</option>
+            <option value="1000">1,000 decimal digits</option>
+            <option value="2000">2,000 decimal digits</option>
+          </select>
+        </label>
+        <label id="digitsRow">Number of digits
+          <input id="digits" type="number" min="5000" max="1000000" step="5000" value="20000">
+        </label>
+        <button id="compute" class="primary">Compute</button>
+        <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
+        <p id="status" class="muted">—</p>
       </section>
 
       <section>
@@ -201,6 +201,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261001h"></script>
+  <script src="main.js?v=20261001i"></script>
 </body>
 </html>
