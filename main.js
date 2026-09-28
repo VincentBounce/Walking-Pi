@@ -639,6 +639,7 @@ function compute() {
   if (!mode.life) $('digits').value = n;
   relabelColours(!!mode.life);
   $('lifeRuleRow').hidden = !mode.life;
+  $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
   $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('titleSym').textContent = sym;
   $('fractionRow').hidden = id !== 'fraction';
