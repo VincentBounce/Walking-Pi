@@ -1972,7 +1972,26 @@ function play(on) {
 
 // A new walk is shown complete at once; Play replays it from the start
 function showAll() {
-  if (!walk.life) advanceTo(walk.n);  // the Game of Life starts at generation 0 instead
+  if (walk.life) return;  // the Game of Life starts at generation 0 instead
+  advanceTo(walk.n);
+  if ($('autoFit').checked) fitWhole();  // framed like Fit view, without the margin kept for growing
+}
+
+// 3D walks: keep the bounding box in the frame too (in perspective its near corners stick out)
+function includeBox() {
+  if (!walk.is3d || walk.sphere || !$('showGrid').checked) return;
+  const [x0, x1, y0, y1, z0, z1] = bounds3;
+  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) {
+    const [px, py] = projectPoint(x, y, z);
+    bounds.minX = Math.min(bounds.minX, px); bounds.maxX = Math.max(bounds.maxX, px);
+    bounds.minY = Math.min(bounds.minY, py); bounds.maxY = Math.max(bounds.maxY, py);
+  }
+}
+
+// Frame everything drawn so far
+function fitWhole() {
+  includeBox();
+  fitToBounds(padBounds(bounds));
 }
 
 function restart() {
@@ -2071,12 +2090,6 @@ function drawGrid() {
   const y0 = ((view.oy % px) + px) % px;
   for (let x = x0; x < cw; x += px) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, ch); }
   for (let y = y0; y < ch; y += px) { ctx.moveTo(0, Math.round(y) + 0.5); ctx.lineTo(cw, Math.round(y) + 0.5); }
-  ctx.stroke();
-  // axes through the origin
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-  ctx.beginPath();
-  ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
-  ctx.moveTo(0, Math.round(view.oy) + 0.5); ctx.lineTo(cw, Math.round(view.oy) + 0.5);
   ctx.stroke();
 }
 
@@ -2586,15 +2599,7 @@ function tick(now = performance.now()) {
     acc -= k;
     if (k > 0) advanceTo(cur + k);
   }
-  if (walk.is3d && !walk.sphere && $('showGrid').checked) {
-    // keep the bounding box in the frame too: in perspective its near corners stick out
-    const [x0, x1, y0, y1, z0, z1] = bounds3;
-    for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) {
-      const [px, py] = projectPoint(x, y, z);
-      bounds.minX = Math.min(bounds.minX, px); bounds.maxX = Math.max(bounds.maxX, px);
-      bounds.minY = Math.min(bounds.minY, py); bounds.maxY = Math.max(bounds.maxY, py);
-    }
-  }
+  includeBox();
   if (walk.n && $('autoFit').checked && boundsOffscreen()) {
     const b = padBounds(bounds);
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
@@ -2660,7 +2665,7 @@ $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow
 
 function fitNow() {
   $('autoFit').checked = true;
-  fitToBounds(padBounds(bounds));
+  fitWhole();
 }
 
 stage.addEventListener('wheel', (e) => {
