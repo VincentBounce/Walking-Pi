@@ -699,9 +699,9 @@ function setBusy(busy) {
 
 function buildWalk() {
   const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
-  // the integer part is always included; at most n digits for a large integer
+  // n digits in total: the integer part (always included) then the digits after the point
   const head = current.head.subarray(0, n);
-  const frac = current.digits.subarray(0, n);
+  const frac = current.digits.subarray(0, n - head.length);
   const seq = new Uint8Array(head.length + frac.length);
   seq.set(head);
   seq.set(frac, head.length);
