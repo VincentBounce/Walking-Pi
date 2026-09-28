@@ -2008,7 +2008,11 @@ $('play').addEventListener('click', () => {
   play(!playing);
 });
 $('step').addEventListener('click', () => { play(false); advanceTo(cur + 1); });
-$('restart').addEventListener('click', () => { restart(); play(true); });
+$('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing
+  const wasPlaying = playing;
+  restart();
+  play(wasPlaying);
+});
 $('end').addEventListener('click', () => { advanceTo(walk.n); });
 $('fit').addEventListener('click', fitNow);
 $('speed').addEventListener('input', updateSpeedLabel);
