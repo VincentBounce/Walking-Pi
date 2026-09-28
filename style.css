@@ -37,10 +37,17 @@ main { flex: 1; display: flex; min-height: 0; }
   width: 280px;
   flex-shrink: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;          /* keep room for the scrollbar: the column never shifts */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
   background: var(--panel);
   border-right: 1px solid var(--border);
-  padding: 8px 16px 16px;
+  padding: 8px 12px 16px 16px;
 }
+.panel::-webkit-scrollbar { width: 8px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.panel::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .panel section { padding: 10px 0; border-bottom: 2px solid var(--accent); }
 .panel section:last-child { border-bottom: 0; }
 h2 {
@@ -87,6 +94,7 @@ button.primary {
   font-weight: 600;
 }
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
+.row button { white-space: nowrap; }
 .row button:first-child { flex: 1; }
 
 .progress {
