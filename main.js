@@ -657,7 +657,11 @@ function compute() {
   const integer = INTEGER_IDS.includes(id);
   const base = mode.life ? lifeStates() : mode.base;  // Life: the number of states of the rule
   const key = `${info.key}/${base}`;
-  const label = (count) => `${fmt(count)} base${SUB(base)} digits of ${sym}`;
+  // Status wording: "π in base 3 · 20,000 digits" for walks, "10,240 cells seeded with π in base 3" for Life
+  const cells = mode.life ? n : 0;
+  const label = (count) => (!mode.life ? `${sym} in base ${base} · ${fmt(count)} digits`
+    : count < cells ? `${fmt(count)} of ${fmt(cells)} cells seeded with ${sym} in base ${base} (the others start dead)`
+    : `${fmt(cells)} cells seeded with ${sym} in base ${base}`);
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
 
@@ -681,7 +685,7 @@ function compute() {
     const what = id === 'randomPrime'
       ? `${label(total)}: a random ${fmt(info.size)}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`
       : integer ? label(total) : label(n);
-    $('status').textContent = `${what} ${how}${integer && total > n ? ` — walking the first ${fmt(n)}` : ''}`;
+    $('status').textContent = `${what} ${how}${integer && total > n && !mode.life ? ` — walking the first ${fmt(n)}` : ''}`;
     buildWalk();
     showAll();
   };
@@ -698,7 +702,7 @@ function compute() {
   const slow = (id === 'mersenne' && info.p > 20_000_000) || (id === 'randomPrime' && info.size > 1000);
   $('status').textContent =
     (id === 'randomPrime' ? `Searching for a random ${fmt(info.size)}-digit prime…`
-      : `Computing ${integer ? `base${SUB(base)} digits of ${sym}` : label(n)}…`) +
+      : `Computing ${integer || mode.life ? `${sym} in base ${base}` : label(n)}…`) +
     (slow ? ' (this can take a minute or more)' : '');
   worker.onmessage = (e) => {
     if (e.data.type === 'progress') {
@@ -2114,7 +2118,7 @@ function updateStats() {
     $('sMax').textContent = fmt(L.dead);
     $('sCells').textContent = pc(L.everAlive);
     $('sCountsLabel').hidden = $('sCounts').hidden = true;
-    $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base${SUB(L.C)} · ${fmt(n)} cells, ` +
+    $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base ${L.C} · ${fmt(n)} cells, ` +
       `${fmt(L.seedAlive)} alive${L.C > 2 ? ` and ${fmt(L.seedDying)} dying` : ''} at generation 0`;
     return;
   }
