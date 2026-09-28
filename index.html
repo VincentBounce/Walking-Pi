@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20260928k">
+  <link rel="stylesheet" href="style.css?v=20260929a">
 </head>
 <body>
   <header>
@@ -57,6 +57,13 @@
               <option value="icosaLR">Icosahedron — base 2 (left / right)</option>
               <option value="sphereLR">Geodesic sphere — base 2 (left / right)</option>
             </optgroup>
+            <optgroup label="Game of Life">
+              <option value="lifeCube">Life — cube surface</option>
+              <option value="lifeTetra">Life — tetrahedron</option>
+              <option value="lifeOcta">Life — octahedron</option>
+              <option value="lifeIcosa">Life — icosahedron</option>
+              <option value="lifeSphere">Life — geodesic sphere</option>
+            </optgroup>
             <optgroup label="Experimental">
               <option value="spiral">Binary spiral — squares (1 = draw, 0 = skip)</option>
               <option value="triSpiral">Binary spiral — triangles (1 = draw, 0 = skip)</option>
@@ -70,6 +77,9 @@
         </label>
         <label id="sphereRow" hidden>Surface
           <select id="sphereF"></select>
+        </label>
+        <label id="lifeRuleRow" hidden>Rule (births / survivals)
+          <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
         </label>
         <label>Number of digits
           <input id="digits" type="number" min="10" max="1000000" step="1000" value="20000">
@@ -111,11 +121,11 @@
       <section>
         <h2>Stats</h2>
         <dl class="stats">
-          <dt>Steps</dt><dd id="sStep">0</dd>
-          <dt>Position</dt><dd id="sPos">(0, 0)</dd>
-          <dt>Distance</dt><dd id="sDist">0</dd>
-          <dt>Max distance</dt><dd id="sMax">0</dd>
-          <dt>Cells visited</dt><dd id="sCells">1</dd>
+          <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
+          <dt id="lStat1">Position</dt><dd id="sPos">(0, 0)</dd>
+          <dt id="lStat2">Distance</dt><dd id="sDist">0</dd>
+          <dt id="lStat3">Max distance</dt><dd id="sMax">0</dd>
+          <dt id="lStat4">Cells visited</dt><dd id="sCells">1</dd>
           <dt id="sCountsLabel">0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
         </dl>
         <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
@@ -130,6 +140,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20260928k"></script>
+  <script src="main.js?v=20260929a"></script>
 </body>
 </html>

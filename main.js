@@ -409,6 +409,16 @@ const MODES = {
               rule: 'Base-2 digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
               rule: 'Base-2 digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  lifeCube:   { base: 2, lattice: 'sphere', sphere: 'flat', life: true, perspective: true,
+                rule: 'Game of Life on the surface of a cube — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+  lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
+                rule: 'Game of Life on a tetrahedron of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+  lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', life: true,
+                rule: 'Game of Life on an octahedron of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+  lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true,
+                rule: 'Game of Life on an icosahedron of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+  lifeSphere: { base: 2, lattice: 'sphere', sphere: 'geo', life: true,
+                rule: 'Game of Life on a geodesic sphere of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
   cubeRel:  { base: 5, lattice: 'cube', perspective: true,
               rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
   cubeFixed: { base: 6, lattice: 'cube', perspective: true,
@@ -469,7 +479,21 @@ function updateRuleText() {
   const { base, rule } = MODES[$('mode').value];
   $('rule').innerHTML = rule;
   $('sCountsLabel').textContent = Array.from({ length: base }, (_, i) => i).join(' / ');
-  $('sCountsLabel').hidden = $('sCounts').hidden = base > 6;  // too many digits to list
+  $('sCountsLabel').hidden = $('sCounts').hidden = base > 6 || !!MODES[$('mode').value].life;  // nothing useful to list
+}
+
+// Game of Life needs one binary digit per cell; walks use the requested number of digits
+function digitsNeeded() {
+  const mode = MODES[$('mode').value];
+  return mode.life ? SPHERES[mode.sphere].tiles(Number($('sphereF').value)) : requestedDigits();
+}
+
+// The colour menu means something else for the Game of Life
+function relabelColours(life) {
+  const names = life
+    ? { gradient: 'Age (+ fading trail)', digit: 'Activity (state changes)', mono: 'Alive / dead' }
+    : { gradient: 'Gradient (order)', digit: 'By digit', mono: 'Monochrome' };
+  for (const o of $('colorMode').options) o.text = names[o.value];
 }
 
 function requestedDigits() {
@@ -590,18 +614,21 @@ function setCurrent(entry) {
 }
 
 function compute() {
-  const n = requestedDigits();
+  const mode = MODES[$('mode').value];
+  if (mode.sphere) fillSphereSizes(mode.sphere);
+  const n = digitsNeeded();
   const id = $('constant').value;
   const info = numberInfo(id);
   const { sym } = info;
-  $('digits').value = n;
+  if (!mode.life) $('digits').value = n;
+  relabelColours(!!mode.life);
+  $('lifeRuleRow').hidden = !mode.life;
   $('titleSym').textContent = sym;
   $('fractionRow').hidden = id !== 'fraction';
   $('mersenneRow').hidden = id !== 'mersenne';
   $('primorialRow').hidden = id !== 'primorial';
   $('primeSizeRow').hidden = id !== 'randomPrime';
   $('sphereRow').hidden = MODES[$('mode').value].lattice !== 'sphere';
-  if (MODES[$('mode').value].sphere) fillSphereSizes(MODES[$('mode').value].sphere);
   const integer = INTEGER_IDS.includes(id);
   const { base } = MODES[$('mode').value];
   const key = `${info.key}/${base}`;
@@ -670,7 +697,7 @@ function setBusy(busy) {
 }
 
 function buildWalk() {
-  const n = requestedDigits();
+  const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
   // the integer part is always included; at most n digits for a large integer
   const head = current.head.subarray(0, n);
   const frac = current.digits.subarray(0, n);
@@ -679,6 +706,10 @@ function buildWalk() {
   seq.set(frac, head.length);
   if (MODES[current.mode].points) {
     buildPointWalk(seq, MODES[current.mode]);
+    return;
+  }
+  if (MODES[current.mode].life) {
+    buildLife(seq, MODES[current.mode].sphere);
     return;
   }
   if (MODES[current.mode].lattice === 'sphere') {
@@ -713,7 +744,7 @@ function buildWalk() {
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice,
                         skipZeros: !!MODES[current.mode].skipZeros,
-                        points: false, keys: seq, labels: null, sphere: false,
+                        points: false, keys: seq, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) { setPerspective(); project(); } else { walk.persp = null; $('perspectiveRow').hidden = true; }
@@ -997,7 +1028,7 @@ function buildPointWalk(seq, { base, points: kind }) {
   walk.persp = null;
   Object.assign(walk, { n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
                         counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
-                        sphere: false,
+                        sphere: false, life: null,
                         xs, ys });
   updateHint();
   restart();
@@ -1234,11 +1265,114 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
                         sphere: true, geo: g, R, tile, coverStep, visits: new Int32Array(g.n), maxVisits: 0,
-                        xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
+                        life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
   setPerspective();
   project();
   updateHint();
   restart();
+}
+
+/* ------------------------------------------------------------------ *
+ * Game of Life on the tiled surfaces                                 *
+ * ------------------------------------------------------------------ */
+const LIFE_GENERATIONS = 2000;
+// fading trail after a cell dies: from a light slate grey down to the background
+const LIFE_TRAIL = Array.from({ length: 8 }, (_, i) => {
+  const f = 1 - i / 8, mix = (a, b) => Math.round(b + (a - b) * f);
+  return `rgb(${mix(0x6b, 0x1f)}, ${mix(0x7f, 0x26)}, ${mix(0x99, 0x30)})`;
+});
+
+// Neighbours of each tile: every other tile sharing an edge or a corner with it
+// (12 for triangles, 8 for squares, fewer next to the solid's corners). Compact lists.
+function cornerNeighbours(g) {
+  if (g.life) return g.life;
+  const nv = g.verts.length / 3, k = g.sides;
+  const byVertex = Array.from({ length: nv }, () => []);
+  for (let t = 0; t < g.n; t++) for (let j = 0; j < k; j++) byVertex[g.poly[k * t + j]].push(t);
+  const start = new Int32Array(g.n + 1), list = [];
+  for (let t = 0; t < g.n; t++) {
+    const set = new Set();
+    for (let j = 0; j < k; j++) for (const u of byVertex[g.poly[k * t + j]]) if (u !== t) set.add(u);
+    list.push(...set);
+    start[t + 1] = list.length;
+  }
+  return (g.life = { start, list: new Int32Array(list) });
+}
+
+// "B3/S23" → birth and survival tables indexed by the number of live neighbours
+function parseRule(text) {
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B(\d*)\/S(\d*)$/);
+  if (!m) return null;
+  const table = (digits) => { const a = new Uint8Array(13); for (const d of digits) a[+d] = 1; return a; };
+  return { B: table(m[1]), S: table(m[2]), text: `B${m[1]}/S${m[2]}` };
+}
+
+function buildLife(seq, kind) {
+  fillSphereSizes(kind);
+  const { mesh, radius } = SPHERES[kind];
+  const size = Number($('sphereF').value);
+  const g = mesh(size);
+  const rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
+  $('lifeRule').value = rule.text;
+  const seed = new Uint8Array(g.n);
+  seed.set(seq.subarray(0, g.n));  // one binary digit per cell, 1 = alive
+  const n = g.n;
+  walk.life = { nbr: cornerNeighbours(g), B: rule.B, S: rule.S, ruleText: rule.text, seed,
+                seedAlive: seed.reduce((a, b) => a + b, 0),
+                alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
+                died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
+  const one = new Float64Array(1);
+  Object.assign(walk, { n: LIFE_GENERATIONS, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
+                        maxDist: null, base: 2, counts: null, lattice: 'sphere', skipZeros: false, points: false,
+                        keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
+                        coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
+                        xs: new Float64Array(1), ys: new Float64Array(1) });
+  setPerspective();
+  project();
+  updateHint();
+  restart();
+}
+
+function lifeReset() {
+  const L = walk.life;
+  L.alive.set(L.seed);
+  for (let t = 0; t < L.alive.length; t++) L.age[t] = L.alive[t];
+  L.died.fill(-1e9);
+  L.activity.fill(0);
+  L.ever.set(L.seed);
+  L.maxActivity = 0;
+  L.aliveCount = L.everAlive = L.seedAlive;
+  L.born = L.dead = 0;
+}
+
+// One generation. A cell dying at generation g + 1 records died = g + 1 for the fading trail.
+function lifeStep() {
+  const L = walk.life, { start, list } = L.nbr, a = L.alive, b = L.next, gen = cur + 1;
+  let alive = 0;
+  for (let t = 0; t < a.length; t++) {
+    let c = 0;
+    for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]];
+    const now = a[t] ? L.S[c] : L.B[c];
+    b[t] = now;
+    alive += now;
+    if (now === a[t]) {
+      if (now && L.age[t] < 65535) L.age[t]++;
+      continue;
+    }
+    L.maxActivity = Math.max(L.maxActivity, ++L.activity[t]);
+    if (now) {
+      L.born++;
+      L.age[t] = 1;
+      if (!L.ever[t]) { L.ever[t] = 1; L.everAlive++; }
+    } else {
+      L.dead++;
+      L.age[t] = 0;
+      L.died[t] = gen;
+    }
+  }
+  L.alive = b;
+  L.next = a;
+  L.aliveCount = alive;
 }
 
 function key(x, y) {
@@ -1260,6 +1394,12 @@ function updateSpeedLabel() {
 
 function advanceTo(target) {
   target = Math.min(walk.n, target);
+  if (walk.life) {  // Game of Life: one step = one generation
+    while (cur < target) { lifeStep(); cur++; }
+    statsDirty = true;
+    if (cur >= walk.n) play(false);
+    return;
+  }
   const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
     if (walk.sphere) walk.maxVisits = Math.max(walk.maxVisits, ++walk.visits[walk.tile[i]]);
@@ -1286,7 +1426,7 @@ function play(on) {
 
 // A new walk is shown complete at once; Play replays it from the start
 function showAll() {
-  advanceTo(walk.n);
+  if (!walk.life) advanceTo(walk.n);  // the Game of Life starts at generation 0 instead
 }
 
 function restart() {
@@ -1302,6 +1442,7 @@ function restart() {
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
     walk.visits[walk.tile[0]] = walk.maxVisits = 1;
+    if (walk.life) lifeReset();
   }
   if ($('autoFit').checked) fitToBounds(walk.sphere ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
   needsFull = true;
@@ -1561,12 +1702,28 @@ function drawSphere() {
     px[v] = ox + x * s; py[v] = oy + y * s;
   }
   const LEVELS = 32;
-  const buckets = Array.from({ length: LEVELS + 1 }, () => []);
-  const logMax = Math.log(Math.max(2, maxVisits));
+  const grad = Array.from({ length: LEVELS }, (_, i) => GRADIENT[Math.round((i / (LEVELS - 1)) * (BANDS - 1))]);
+  const logLevel = (v, max) => 1 + Math.round((Math.log(v) / Math.log(Math.max(2, max))) * (LEVELS - 1));
+  // palette[0] is the unlit background; levelOf(t) picks each tile's palette entry
+  let palette = [null, ...grad];
+  let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
+  const L = walk.life;
+  if (L) {
+    const colour = $('colorMode').value;
+    if (colour === 'mono') {
+      palette = [null, '#e6edf3'];
+      levelOf = (t) => L.alive[t];
+    } else if (colour === 'digit') {  // activity: how many times the cell changed state
+      levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
+    } else {  // age of live cells (cyan = newborn … orange = old), then a trail fading after death
+      palette = [null, ...grad, ...LIFE_TRAIL];
+      levelOf = (t) => (L.alive[t] ? Math.min(LEVELS, logLevel(L.age[t], 64))
+        : cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0);
+    }
+  }
+  const buckets = Array.from({ length: palette.length }, () => []);
   for (let t = 0; t < g.n; t++) {
-    if (!tileVisible(t)) continue;
-    const v = visits[t];
-    buckets[v ? 1 + Math.round((Math.log(v) / logMax) * (LEVELS - 1)) : 0].push(t);
+    if (tileVisible(t)) buckets[levelOf(t)].push(t);
   }
   const k = g.sides;
   const outline = (list) => {
@@ -1590,7 +1747,7 @@ function drawSphere() {
   buckets.forEach((list, level) => {
     if (!list.length || level === 0) return;
     outline(list);
-    ctx.fillStyle = GRADIENT[Math.round(((level - 1) / (LEVELS - 1)) * (BANDS - 1))];
+    ctx.fillStyle = palette[level];
     ctx.fill();
   });
   if ($('showGrid').checked && s > 6) {  // tile edges once they are big enough
@@ -1679,7 +1836,7 @@ function drawSegments(from, to) {
 function drawOverlay() {
   const ctx = layers.overlay;
   ctx.clearRect(0, 0, cw, ch);
-  if (!walk.n) return;
+  if (!walk.n || walk.life) return;  // no walker in the Game of Life
   const { scale: s, ox, oy } = view;
   const r = Math.max(3, Math.min(s * 0.35, 8));
   // start (hidden on the far side of the sphere)
@@ -1724,7 +1881,24 @@ function drawOverlay() {
   ctx.fill();
 }
 
+const STAT_LABELS = {
+  walk: ['Steps', 'Position', 'Distance', 'Max distance', 'Cells visited'],
+  life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
+};
+
 function updateStats() {
+  STAT_LABELS[walk.life ? 'life' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
+  if (walk.life) {
+    const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
+    $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('sPos').textContent = pc(L.aliveCount);
+    $('sDist').textContent = fmt(L.born);
+    $('sMax').textContent = fmt(L.dead);
+    $('sCells').textContent = pc(L.everAlive);
+    $('sCountsLabel').hidden = $('sCounts').hidden = true;
+    $('digitStrip').textContent = `Rule ${L.ruleText} · ${fmt(n)} cells, ${fmt(L.seedAlive)} alive at generation 0`;
+    return;
+  }
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.wx[cur] : 0;
   const y = walk.n ? (walk.is3d ? walk.wy[cur] : -walk.wy[cur]) : 0;
@@ -1791,7 +1965,7 @@ function tick(now = performance.now()) {
     fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
-    if (walk.n && $('autoFit').checked && !$('autoRotate').checked) followWalker();
+    if (walk.n && !walk.life && $('autoFit').checked && !$('autoRotate').checked) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
@@ -1927,7 +2101,12 @@ $('perspective').addEventListener('change', () => {
   if (walk.sphere) needsFull = true;
   else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
 });
+$('lifeRule').addEventListener('change', () => {
+  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23'; return; }
+  if (current && MODES[$('mode').value].life) buildWalk();  // restart from generation 0 with the new rule
+});
 $('sphereF').addEventListener('change', () => {
+  if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits
   if (!current) return;
   buildWalk();
   showAll();
