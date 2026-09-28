@@ -1710,7 +1710,7 @@ function setLifeSeed(seed) {
 /* A setup is a flat object of short keys, the same for the page link (#…), the saved setups in
  * this browser (localStorage) and the JSON export. Only the keys that matter are written. */
 let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
-let pendingView = null;   // camera, view, position and champion to restore once a setup is built
+let pendingView = null;   // camera, view and champion to restore once a setup is built
 
 // Cells as base64url, packing 1, 2 or 4 bits per cell depending on the number of states
 function encodeCells(cells, C) {
@@ -1754,7 +1754,6 @@ function getSetup() {
     const r = (v) => Math.round(v * 1000) / 1000;
     s.v = `${r(view.scale)},${r((cw / 2 - view.ox) / view.scale)},${r((ch / 2 - view.oy) / view.scale)}`;
   }
-  if (walk.life ? cur > 0 : cur < walk.n) s.at = cur;
   if (championCode) s.ch = championCode;
   return s;
 }
@@ -1784,8 +1783,8 @@ function applySetup(s) {
   tick('perspective', s.pe);
   if (s.sp !== undefined) { $('speed').value = s.sp; updateSpeedLabel(); }
   pendingDraw = s.rd !== undefined ? Number(s.rd) : null;
-  pendingView = { cam: s.cam, v: s.v, at: s.at, ch: s.ch };
-  compute();  // the rest (camera, view, position, champion) follows once the walk is built
+  pendingView = { cam: s.cam, v: s.v, ch: s.ch };
+  compute();  // the rest (camera, view, champion) follows once the walk is built
   return true;
 }
 
@@ -1805,10 +1804,6 @@ function applyPendingView() {
     project();
     if (walk.sphere) needsFull = true;
     else rotateView(0, 0);
-  }
-  if (p.at !== undefined) {
-    restart();
-    advanceTo(Number(p.at));
   }
   if (p.v && !$('autoFit').checked) {
     const [scale, x, y] = p.v.split(',').map(Number);
