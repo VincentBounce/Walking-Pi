@@ -1937,6 +1937,7 @@ $('mersenneP').addEventListener('change', compute);
 $('fraction').addEventListener('change', compute);
 $('mode').addEventListener('change', () => {
   $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default for the cube modes only
+  $('autoFit').checked = true;  // a new walk mode starts framed
   compute();
 });
 
