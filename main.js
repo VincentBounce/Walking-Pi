@@ -45,9 +45,12 @@ function constantWorker() {
       return level[0] + BigInt(e.data.sign);
     }
 
-    function randomBigInt(below) { // uniform enough in [0, below): 64 extra random bits, then reduce
+    // uniform enough in [0, below): 64 extra random bits, then reduce. With rng (a seeded
+    // generator) the result is reproducible; without it, cryptographic randomness is used.
+    function randomBigInt(below, rng = null) {
       const bytes = new Uint8Array(Math.ceil(below.toString(16).length / 2) + 8);
-      crypto.getRandomValues(bytes);
+      if (rng) for (let i = 0; i < bytes.length; i++) bytes[i] = rng() & 255;
+      else crypto.getRandomValues(bytes);
       let r = 0n;
       for (const b of bytes) r = (r << 8n) | BigInt(b);
       return r % below;
@@ -83,7 +86,8 @@ function constantWorker() {
       const primes = smallPrimes(20000).slice(1);  // odd primes only
       const expected = size * Math.log(10) * 0.0567;  // ≈ Miller–Rabin tests before a prime shows up
       const W = 8192;
-      let start = lo + randomBigInt(9n * lo - 2n * BigInt(W));
+      // the start comes from the draw number, so the same draw always finds the same prime
+      let start = lo + randomBigInt(9n * lo - 2n * BigInt(W), seededRandom(e.data.seed >>> 0));
       if ((start & 1n) === 0n) start++;
       let tests = 0;
       for (;;) {
@@ -525,6 +529,21 @@ function requestedDigits() {
 
 const SUB = (v) => String(v).replace(/\d/g, (c) => '₀₁₂₃₄₅₆₇₈₉'[c]);
 
+// Seeded pseudo-random generator (mulberry32): a draw number gives a reproducible stream of 32-bit
+// integers, so random digits and random primes can be saved and shared as just that number
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), a | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (t ^ (t >>> 14)) >>> 0;
+  };
+}
+let currentDraw = 0;      // draw number of the random number shown
+let pendingDraw = null;   // draw number to reuse at the next compute (a loaded setup), else a fresh one
+const freshDraw = () => crypto.getRandomValues(new Uint32Array(1))[0] % 1e9;
+
 // Display name and cache key of the selected number
 function numberInfo(id) {
   if (id === 'mersenne') {
@@ -550,17 +569,12 @@ function numberInfo(id) {
 // Digits computed directly on the main thread: random, Champernowne, fraction
 function localDigits(id, n, base) {
   const digits = new Uint8Array(n);
-  if (id === 'random') {
-    const buf = new Uint8Array(Math.min(n * 2, 65536));  // getRandomValues gives at most 65,536 bytes per call
-    crypto.getRandomValues(buf);
-    const lim = 256 - (256 % base);             // rejection sampling for a uniform distribution
-    let j = 0;
+  if (id === 'random') {  // reproducible: the same draw number always gives the same digits
+    const rng = seededRandom(currentDraw);
+    const lim = 2 ** 32 - (2 ** 32 % base);  // rejection sampling for a uniform distribution
     for (let i = 0; i < n; i++) {
       let r;
-      do {
-        if (j === buf.length) { crypto.getRandomValues(buf); j = 0; }
-        r = buf[j++];
-      } while (r >= lim);
+      do r = rng(); while (r >= lim);
       digits[i] = r % base;
     }
     return { intPart: '0', digits };
@@ -683,6 +697,10 @@ function compute() {
     : `${fmt(cells)} cells seeded with ${sym} in base ${base}`);
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
+  championCode = null;  // a new start: no loaded champion any more
+  const random = id === 'random' || id === 'randomPrime';
+  if (random) { currentDraw = pendingDraw ?? freshDraw(); pendingDraw = null; }
+  const draw = random ? ` · draw #${currentDraw}` : '';
 
   if (['random', 'champernowne', 'fraction', 'primeConst', 'primeReal', 'primeGaps'].includes(id)) {
     const entry = localDigits(id, n, base);
@@ -692,9 +710,10 @@ function compute() {
     }
     setCurrent(entry);
     const { note } = CONSTANTS[id];
-    $('status').textContent = note ? `${label(n)} — ${note(base)}` : label(n);
+    $('status').textContent = (note ? `${label(n)} — ${note(base)}` : label(n)) + draw;
     buildWalk();
     showAll();
+    applyPendingView();
     return;
   }
 
@@ -704,9 +723,10 @@ function compute() {
     const what = id === 'randomPrime'
       ? `${label(total)}: a random ${fmt(info.size)}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`
       : integer ? label(total) : label(n);
-    $('status').textContent = `${what} ${how}${integer && total > n && !mode.life ? ` — walking the first ${fmt(n)}` : ''}`;
+    $('status').textContent = `${what} ${how}${integer && total > n && !mode.life ? ` — walking the first ${fmt(n)}` : ''}${draw}`;
     buildWalk();
     showAll();
+    applyPendingView();
   };
   const hit = info.key && cache[key];
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
@@ -715,7 +735,8 @@ function compute() {
     done(hit, '(cached)');
     return;
   }
-  const src = `${digitString.toString()}\n(${constantWorker.toString()})()`;  // the worker needs digitString too
+  // the worker also needs digitString and seededRandom
+  const src = `${digitString.toString()}\n${seededRandom.toString()}\n(${constantWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
   const slow = (id === 'mersenne' && info.p > 20_000_000) || (id === 'randomPrime' && info.size > 1000);
@@ -735,7 +756,7 @@ function compute() {
       done(entry, `(${(e.data.ms / 1000).toFixed(2)} s)`);
     }
   };
-  worker.postMessage({ id, n, base, p: info.p, sign: info.sign, size: info.size });
+  worker.postMessage({ id, n, base, p: info.p, sign: info.sign, size: info.size, seed: currentDraw });
 }
 
 // Label of the Compute button: in Life it is only useful to draw a new random seed
@@ -1669,11 +1690,224 @@ function loadChampion() {
     $('huntStatus').textContent = 'The champion was found for another surface, size or rule: hunt again.';
     return;
   }
-  L.seed.set(hunt.seed);
+  setLifeSeed(hunt.seed);
+  championCode = encodeCells(hunt.seed, L.C);
+  $('status').textContent = `Champion loaded: ${lifetimeWords(hunt.best)} (${fmt(L.seedAlive)} live cells at the start)`;
+}
+
+// Replace the starting pattern of the current Life run and go back to generation 0
+function setLifeSeed(seed) {
+  const L = walk.life;
+  L.seed.set(seed);
   L.seedAlive = L.seed.reduce((a, v) => a + (v === 1), 0);
   L.seedDying = L.seed.reduce((a, v) => a + (v > 1), 0);
   restart();
-  $('status').textContent = `Champion loaded: ${lifetimeWords(hunt.best)} (${fmt(L.seedAlive)} live cells at the start)`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Setups: save, share and reload the whole configuration              *
+ * ------------------------------------------------------------------ */
+/* A setup is a flat object of short keys, the same for the page link (#…), the saved setups in
+ * this browser (localStorage) and the JSON export. Only the keys that matter are written. */
+let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
+let pendingView = null;   // camera, view, position and champion to restore once a setup is built
+
+// Cells as base64url, packing 1, 2 or 4 bits per cell depending on the number of states
+function encodeCells(cells, C) {
+  const bits = C <= 2 ? 1 : C <= 4 ? 2 : 4, per = 8 / bits;
+  const bytes = new Uint8Array(Math.ceil(cells.length / per));
+  cells.forEach((v, i) => { bytes[Math.floor(i / per)] |= v << ((i % per) * bits); });
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return `${C}.${btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+}
+function decodeCells(code, n) {
+  const [c, data] = code.split('.');
+  const C = Number(c), bits = C <= 2 ? 1 : C <= 4 ? 2 : 4, per = 8 / bits;
+  const s = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+  const cells = new Uint8Array(n);
+  for (let i = 0; i < n; i++) cells[i] = ((s.charCodeAt(Math.floor(i / per)) || 0) >> ((i % per) * bits)) & ((1 << bits) - 1);
+  return cells;
+}
+
+function getSetup() {
+  const w = $('mode').value, mode = MODES[w], n = $('constant').value, s = { n, w };
+  if (n === 'fraction') s.fr = $('fraction').value;
+  if (n === 'mersenne') s.mp = $('mersenneP').value;
+  if (n === 'primorial') s.pr = $('primorialP').value;
+  if (n === 'randomPrime') s.ps = $('primeSize').value;
+  if (n === 'random' || n === 'randomPrime') s.rd = currentDraw;
+  if (!mode.life) s.d = $('digits').value;
+  if (mode.lattice === 'sphere') s.s = $('sphereF').value;
+  if (mode.life) s.r = $('lifeRule').value;
+  s.c = $('colorMode').value;
+  s.g = +$('showGrid').checked;
+  s.af = +$('autoFit').checked;
+  if (walk.is3d) {
+    s.sk = $('sky').value;
+    s.ar = +$('autoRotate').checked;
+    s.pe = +$('perspective').checked;
+    s.cam = `${cam.yaw.toFixed(3)},${cam.pitch.toFixed(3)}`;
+  }
+  s.sp = Number($('speed').value).toFixed(2);
+  if (!$('autoFit').checked) {  // zoom and the world point at the centre of the screen
+    const r = (v) => Math.round(v * 1000) / 1000;
+    s.v = `${r(view.scale)},${r((cw / 2 - view.ox) / view.scale)},${r((ch / 2 - view.oy) / view.scale)}`;
+  }
+  if (walk.life ? cur > 0 : cur < walk.n) s.at = cur;
+  if (championCode) s.ch = championCode;
+  return s;
+}
+
+function applySetup(s) {
+  const set = (id, v) => { if (v !== undefined && v !== null) $(id).value = v; };
+  const tick = (id, v) => { if (v !== undefined) $(id).checked = v === 1 || v === '1'; };
+  if (!CONSTANTS[s.n] || !MODES[s.w]) return false;
+  set('constant', s.n);
+  set('fraction', s.fr);
+  set('mersenneP', s.mp);
+  set('primorialP', s.pr);
+  set('primeSize', s.ps);
+  set('digits', s.d);
+  set('mode', s.w);
+  if (MODES[s.w].sphere) { fillSphereSizes(MODES[s.w].sphere); set('sphereF', s.s); }
+  if (s.r) {
+    $('lifeRule').value = s.r;
+    const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
+    $('lifePreset').value = preset ? s.r : 'custom';
+  }
+  set('colorMode', s.c);
+  tick('showGrid', s.g);
+  tick('autoFit', s.af);
+  set('sky', s.sk);
+  tick('autoRotate', s.ar);
+  tick('perspective', s.pe);
+  if (s.sp !== undefined) { $('speed').value = s.sp; updateSpeedLabel(); }
+  pendingDraw = s.rd !== undefined ? Number(s.rd) : null;
+  pendingView = { cam: s.cam, v: s.v, at: s.at, ch: s.ch };
+  compute();  // the rest (camera, view, position, champion) follows once the walk is built
+  return true;
+}
+
+// Called when a walk has just been built: restore what a loaded setup asked for
+function applyPendingView() {
+  const p = pendingView;
+  pendingView = null;
+  if (!p) return;
+  if (p.ch && walk.life) {
+    setLifeSeed(decodeCells(p.ch, walk.life.seed.length));
+    championCode = p.ch;
+  }
+  if (p.cam && walk.is3d) {
+    const [yaw, pitch] = p.cam.split(',').map(Number);
+    cam.yaw = yaw;
+    cam.pitch = pitch;
+    project();
+    if (walk.sphere) needsFull = true;
+    else rotateView(0, 0);
+  }
+  if (p.at !== undefined) {
+    restart();
+    advanceTo(Number(p.at));
+  }
+  if (p.v && !$('autoFit').checked) {
+    const [scale, x, y] = p.v.split(',').map(Number);
+    view.scale = scale;
+    view.ox = cw / 2 - x * scale;
+    view.oy = ch / 2 - y * scale;
+    needsFull = true;
+  }
+}
+
+// The page link always holds the current setup (#n=pi&w=turtle&…), for bookmarks and sharing.
+// A champion is left out of the link when too long: saved setups and JSON files keep it.
+const toHash = (s) => new URLSearchParams(Object.entries(s).filter(([k, v]) => k !== 'ch' || v.length < 3000)).toString();
+function parseHash() {
+  if (location.hash.length < 2) return null;
+  const s = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+  return s.n && s.w ? s : null;
+}
+function syncLink() {
+  if ($('compute').disabled || pendingView) return;  // not while a setup is still being built
+  const h = `#${toHash(getSetup())}`;
+  if (h !== location.hash) history.replaceState(null, '', h);
+}
+
+// Saved setups in this browser (localStorage), as { name, setup, saved }
+const SETUPS_KEY = 'walkingPi.setups';
+function readSetups() {
+  try { return JSON.parse(localStorage.getItem(SETUPS_KEY)) || []; } catch { return []; }
+}
+function writeSetups(list) {
+  try { localStorage.setItem(SETUPS_KEY, JSON.stringify(list)); return true; } catch { return false; }
+}
+function fillSetupList(selected = '') {
+  const sel = $('setupList');
+  sel.replaceChildren(new Option(readSetups().length ? '— choose a saved setup —' : '— no saved setup yet —', ''),
+    ...readSetups().map((x) => new Option(x.name, x.name)));
+  sel.value = selected;
+}
+const setupNote = (text) => { $('setupStatus').textContent = text; };
+
+function saveSetup() {
+  const mode = $('mode').options[$('mode').selectedIndex].text.split(' — ')[0];
+  const rule = walk.life ? ` · ${walk.life.ruleText}` : '';
+  const name = prompt('Name this setup', `${$('titleSym').textContent} · ${mode}${rule}`);
+  if (!name) return;
+  const list = readSetups().filter((x) => x.name !== name);
+  list.push({ name, setup: getSetup(), saved: new Date().toISOString() });
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  setupNote(writeSetups(list) ? `Saved “${name}” in this browser.` : 'This browser does not allow saving (private window?).');
+  fillSetupList(name);
+}
+
+function deleteSetup() {
+  const name = $('setupList').value;
+  if (!name) { setupNote('Choose a saved setup to delete.'); return; }
+  writeSetups(readSetups().filter((x) => x.name !== name));
+  fillSetupList();
+  setupNote(`Deleted “${name}”.`);
+}
+
+function exportSetups() {
+  const list = readSetups();
+  if (!list.length) { setupNote('Nothing to export yet: save a setup first.'); return; }
+  const blob = new Blob([JSON.stringify({ app: 'Walking Pi', version: 1, setups: list }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'walking-pi-setups.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setupNote(`Exported ${list.length} setup${list.length > 1 ? 's' : ''}.`);
+}
+
+async function importSetups(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    const incoming = (data.setups || []).filter((x) => x && x.name && x.setup && x.setup.n && x.setup.w);
+    const list = readSetups();
+    for (const x of incoming) {  // a name already used gets a suffix instead of overwriting
+      let name = x.name;
+      for (let k = 2; list.some((y) => y.name === name); k++) name = `${x.name} (${k})`;
+      list.push({ ...x, name });
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    writeSetups(list);
+    fillSetupList();
+    setupNote(`Imported ${incoming.length} setup${incoming.length === 1 ? '' : 's'}.`);
+  } catch {
+    setupNote('This file is not a Walking Pi setups file.');
+  }
+}
+
+async function copyLink() {
+  syncLink();
+  try {
+    await navigator.clipboard.writeText(location.href);
+    setupNote('Link copied: it opens this exact setup.');
+  } catch {
+    setupNote('Copy the address bar: it holds this exact setup.');
+  }
 }
 
 function key(x, y) {
@@ -2547,8 +2781,27 @@ $('mode').addEventListener('change', () => {
   compute();
 });
 
+$('setupSave').addEventListener('click', saveSetup);
+$('setupDelete').addEventListener('click', deleteSetup);
+$('setupLink').addEventListener('click', copyLink);
+$('setupExport').addEventListener('click', exportSetups);
+$('setupImport').addEventListener('click', () => $('setupFile').click());
+$('setupFile').addEventListener('change', () => {
+  if ($('setupFile').files[0]) importSetups($('setupFile').files[0]);
+  $('setupFile').value = '';
+});
+$('setupList').addEventListener('change', () => {
+  const x = readSetups().find((y) => y.name === $('setupList').value);
+  if (x && applySetup(x.setup)) setupNote(`Loaded “${x.name}”.`);
+});
+// a setup link pasted into this tab
+window.addEventListener('hashchange', () => { const s = parseHash(); if (s) applySetup(s); });
+
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
 requestAnimationFrame(tick);
-compute();
+fillSetupList();
+const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
+if (!linked || !applySetup(linked)) compute();
+setInterval(syncLink, 700);  // keep the link up to date with the setup
