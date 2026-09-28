@@ -657,7 +657,24 @@ function setCurrent(entry) {
  * selected tab as a list. Picking a choice sets the menu and fires its change event, so the rest
  * of the page only ever deals with the menu. */
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
-const tabName = (label) => (label.startsWith('Game of Life') ? 'Life' : label);
+const tabName = (label) => ({ 'Game of Life on 3D shapes': '3D Cellular', Experimental: '🧪' }[label] || label);
+
+// Icon of each walk mode's shape, for the list of choices
+const MODE_ICONS = {
+  turtle: '▦', cardinal: '✥', triLR: '▲', triFixed: '△', hexRel: '⬢', hexFixed: '⬡',
+  cubeRel: '⧉', cubeFixed: '▣', torusWalk: '◎', cubeFlat: '◼', tetraLR: '▲', octaLR: '◆', icosaLR: '⬟',
+  lifeTorus: '◎', lifeCube: '◼', lifeTetra: '▲', lifeOcta: '◆', lifeIcosa: '⬟',
+  spiral: '▦', triSpiral: '▲', hexSpiral: '⬢', jump10: '⤳', jump64: '⤳', search10: '⌕', search64: '⌕',
+};
+
+// "Cubes — base₅ (5 relative turns)" → name "Cubes", base "base₅", detail "5 relative turns"
+function splitModeLabel(text) {
+  const [head, tail = ''] = text.replace(/^Life — /, '').split(' — ');
+  const m = tail.match(/^(base\S+)\s*(?:\((.*)\))?$/) || [null, '', ''];
+  const inName = head.match(/^(.*?)\s*\((.*)\)$/);  // "torus (square grid)"
+  const name = inName ? inName[1] : head;
+  return { name: name[0].toUpperCase() + name.slice(1), base: m[1] || '', detail: m[2] || (inName ? inName[2] : '') };
+}
 
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
@@ -675,8 +692,12 @@ function renderModePicker() {
   const group = groups.find((g) => g.label === modeTab);
   $('modeList').replaceChildren(...Array.from(group.children).map((o) => {
     const b = document.createElement('button');
-    const text = o.text.replace(/^Life — /, '');  // the Life tab already says it
-    b.textContent = text[0].toUpperCase() + text.slice(1);
+    const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
+    const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
+    const words = document.createElement('span');
+    words.append(part('mode-name', name), ...(detail ? [part('mode-detail', detail)] : []));
+    b.append(part('mode-icon', MODE_ICONS[o.value] || '•'), words, ...(base ? [part('mode-base', base)] : []));
+    b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
     b.addEventListener('click', () => {
