@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20260929f">
+  <link rel="stylesheet" href="style.css?v=20260929g">
 </head>
 <body>
   <header>
@@ -78,15 +78,18 @@
         <label id="sphereRow" hidden>Surface
           <select id="sphereF"></select>
         </label>
-        <label id="lifeRuleRow" hidden>Rule (births / survivals / states)
-          <input id="lifeRule" type="text" value="B3/S23" autocomplete="off" list="lifeRules">
-          <datalist id="lifeRules">
-            <option value="B3/S23">Life (2 states)</option>
-            <option value="B45/S345/C4">4 states: lasting sparse activity on triangles</option>
-            <option value="B34/S2/C4">4 states: on the edge of extinction on triangles</option>
-            <option value="B2/S/C3">Brian's Brain (3 states): permanent chaos</option>
-            <option value="B2/S345/C4">Star Wars (4 states, square-grid classic)</option>
-          </datalist>
+        <label id="lifeRuleRow" hidden>Rule
+          <select id="lifePreset">
+            <option value="B3/S23">B3/S23 — Life (2 states)</option>
+            <option value="B45/S345/C4">B45/S345/C4 — lasting sparse activity (4 states)</option>
+            <option value="B34/S2/C4">B34/S2/C4 — on the edge of extinction (4 states)</option>
+            <option value="B2/S/C3">B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
+            <option value="B2/S345/C4">B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </label>
+        <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C…)
+          <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
         </label>
         <label>Number of digits
           <input id="digits" type="number" min="10" max="1000000" step="1000" value="20000">
@@ -147,6 +150,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20260929f"></script>
+  <script src="main.js?v=20260929g"></script>
 </body>
 </html>

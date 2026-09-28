@@ -623,6 +623,7 @@ function compute() {
   if (!mode.life) $('digits').value = n;
   relabelColours(!!mode.life);
   $('lifeRuleRow').hidden = !mode.life;
+  $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('titleSym').textContent = sym;
   $('fractionRow').hidden = id !== 'fraction';
   $('mersenneRow').hidden = id !== 'mersenne';
@@ -2198,6 +2199,14 @@ $('perspective').addEventListener('change', () => {
   project();
   if (walk.sphere) needsFull = true;
   else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
+});
+// Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
+$('lifePreset').addEventListener('change', () => {
+  const custom = $('lifePreset').value === 'custom';
+  $('lifeCustomRow').hidden = !custom;
+  if (custom) { $('lifeRule').focus(); return; }
+  $('lifeRule').value = $('lifePreset').value;
+  if (MODES[$('mode').value].life) compute();
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23 or B2/S/C3 (2 to 10 states)'; return; }
