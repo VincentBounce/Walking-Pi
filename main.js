@@ -2154,7 +2154,7 @@ function lifetimeText(L) {
   if (!s) return L.seen.size >= LIFE_TRACK ? `not settled after ${fmt(LIFE_TRACK)} generations` : 'not settled yet';
   if (s.extinct) return `dies out at generation ${fmt(s.T)}`;
   if (s.P === 1) return `frozen from generation ${fmt(s.T)}`;
-  return `loops from generation ${fmt(s.T)}, period ${fmt(s.P)}`;
+  return `period-${fmt(s.P)} loop from generation ${fmt(s.T)}`;
 }
 
 function updateStats() {
