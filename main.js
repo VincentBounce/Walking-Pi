@@ -630,7 +630,7 @@ function compute() {
   $('primeSizeRow').hidden = id !== 'randomPrime';
   $('sphereRow').hidden = MODES[$('mode').value].lattice !== 'sphere';
   const integer = INTEGER_IDS.includes(id);
-  const { base } = MODES[$('mode').value];
+  const base = mode.life ? lifeStates() : mode.base;  // Life: the number of states of the rule
   const key = `${info.key}/${base}`;
   const label = (count) => `${fmt(count)} base${SUB(base)} digits of ${sym}`;
   updateRuleText();
@@ -1344,13 +1344,19 @@ function cornerNeighbours(g) {
   return (g.life = { start, list: new Int32Array(list) });
 }
 
-// "B3/S23" → birth and survival tables indexed by the number of live neighbours
+// "B3/S23" or "B2/S/C3" → birth and survival tables indexed by the number of live neighbours,
+// and C, the number of states: 2 for Life, more for "Generations" rules (dying stages)
 function parseRule(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B(\d*)\/S(\d*)$/);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B(\d*)\/S(\d*)(?:\/C(\d+))?$/);
   if (!m) return null;
+  const C = m[3] ? Number(m[3]) : 2;
+  if (C < 2 || C > 10) return null;  // one digit per cell in base C: bases 2 to 10
   const table = (digits) => { const a = new Uint8Array(13); for (const d of digits) a[+d] = 1; return a; };
-  return { B: table(m[1]), S: table(m[2]), text: `B${m[1]}/S${m[2]}` };
+  return { B: table(m[1]), S: table(m[2]), C, text: `B${m[1]}/S${m[2]}${C > 2 ? `/C${C}` : ''}` };
 }
+
+// Number of states of the current Life rule = the base the number is written in
+const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
 
 function buildLife(seq, kind) {
   fillSphereSizes(kind);
@@ -1360,15 +1366,16 @@ function buildLife(seq, kind) {
   const rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
   $('lifeRule').value = rule.text;
   const seed = new Uint8Array(g.n);
-  seed.set(seq.subarray(0, g.n));  // one binary digit per cell, 1 = alive
+  seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
   const n = g.n;
-  walk.life = { nbr: cornerNeighbours(g), B: rule.B, S: rule.S, ruleText: rule.text, seed,
-                seedAlive: seed.reduce((a, b) => a + b, 0),
+  walk.life = { nbr: cornerNeighbours(g), B: rule.B, S: rule.S, C: rule.C, ruleText: rule.text, seed,
+                seedAlive: seed.reduce((a, v) => a + (v === 1), 0),
+                seedDying: seed.reduce((a, v) => a + (v > 1), 0),
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   const one = new Float64Array(1);
   Object.assign(walk, { n: LIFE_GENERATIONS, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
-                        maxDist: null, base: 2, counts: null, lattice: 'sphere', skipZeros: false, points: false,
+                        maxDist: null, base: rule.C, counts: null, lattice: 'sphere', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
                         xs: new Float64Array(1), ys: new Float64Array(1) });
@@ -1380,36 +1387,49 @@ function buildLife(seq, kind) {
 
 function lifeReset() {
   const L = walk.life;
-  L.alive.set(L.seed);
-  for (let t = 0; t < L.alive.length; t++) L.age[t] = L.alive[t];
+  L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying
+  for (let t = 0; t < L.alive.length; t++) {
+    L.age[t] = L.alive[t] === 1 ? 1 : 0;
+    L.ever[t] = L.alive[t] === 1 ? 1 : 0;
+  }
   L.died.fill(-1e9);
   L.activity.fill(0);
-  L.ever.set(L.seed);
   L.maxActivity = 0;
   L.aliveCount = L.everAlive = L.seedAlive;
+  L.dyingCount = L.seedDying;
   L.born = L.dead = 0;
 }
 
 // One generation. A cell dying at generation g + 1 records died = g + 1 for the fading trail.
+// One generation. Only alive cells (state 1) count as live neighbours. With C > 2 states a
+// cell that fails to survive goes through the dying states 2 … C−1 and cannot be born again
+// until it is dead (state 0). A cell dying at generation g records died = g (fading trail).
 function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, a = L.alive, b = L.next, gen = cur + 1;
-  let alive = 0;
+  const L = walk.life, { start, list } = L.nbr, a = L.alive, b = L.next, gen = cur + 1, C = L.C;
+  let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
-    let c = 0;
-    for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]];
-    const now = a[t] ? L.S[c] : L.B[c];
+    const was = a[t];
+    let now;
+    if (was >= 2) {
+      now = was + 1 < C ? was + 1 : 0;  // one more dying stage, or dead
+    } else {
+      let c = 0;
+      for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
+      now = was ? (L.S[c] ? 1 : C > 2 ? 2 : 0) : L.B[c];
+    }
     b[t] = now;
-    alive += now;
-    if (now === a[t]) {
-      if (now && L.age[t] < 65535) L.age[t]++;
+    if (now === 1) alive++;
+    else if (now >= 2) dying++;
+    if (now === was) {
+      if (now === 1 && L.age[t] < 65535) L.age[t]++;
       continue;
     }
     L.maxActivity = Math.max(L.maxActivity, ++L.activity[t]);
-    if (now) {
+    if (now === 1) {
       L.born++;
       L.age[t] = 1;
       if (!L.ever[t]) { L.ever[t] = 1; L.everAlive++; }
-    } else {
+    } else if (was === 1) {
       L.dead++;
       L.age[t] = 0;
       L.died[t] = gen;
@@ -1418,6 +1438,7 @@ function lifeStep() {
   L.alive = b;
   L.next = a;
   L.aliveCount = alive;
+  L.dyingCount = dying;
 }
 
 function key(x, y) {
@@ -1771,15 +1792,21 @@ function drawSphere() {
   const L = walk.life;
   if (L) {
     const colour = $('colorMode').value;
+    // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
+    const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
     if (colour === 'mono') {
-      palette = [null, '#e6edf3'];
-      levelOf = (t) => L.alive[t];
+      palette = [null, '#e6edf3', ...LIFE_TRAIL];
+      levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t]) : 0);
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
-    } else {  // age of live cells (cyan = newborn … orange = old), then a trail fading after death
+    } else {  // age of live cells (cyan = newborn … orange = old); dying stages, or a trail fading after death
       palette = [null, ...grad, ...LIFE_TRAIL];
-      levelOf = (t) => (L.alive[t] ? Math.min(LEVELS, logLevel(L.age[t], 64))
-        : cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0);
+      levelOf = (t) => {
+        const st = L.alive[t];
+        if (st === 1) return Math.min(LEVELS, logLevel(L.age[t], 64));
+        if (st >= 2) return LEVELS + dyingShade(st);
+        return L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
+      };
     }
   }
   const buckets = Array.from({ length: palette.length }, () => []);
@@ -1957,12 +1984,13 @@ function updateStats() {
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
     $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
-    $('sPos').textContent = pc(L.aliveCount);
+    $('sPos').textContent = pc(L.aliveCount) + (L.C > 2 ? ` · ${fmt(L.dyingCount)} dying` : '');
     $('sDist').textContent = fmt(L.born);
     $('sMax').textContent = fmt(L.dead);
     $('sCells').textContent = pc(L.everAlive);
     $('sCountsLabel').hidden = $('sCounts').hidden = true;
-    $('digitStrip').textContent = `Rule ${L.ruleText} · ${fmt(n)} cells, ${fmt(L.seedAlive)} alive at generation 0`;
+    $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base${SUB(L.C)} · ${fmt(n)} cells, ` +
+      `${fmt(L.seedAlive)} alive${L.C > 2 ? ` and ${fmt(L.seedDying)} dying` : ''} at generation 0`;
     return;
   }
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
@@ -2172,8 +2200,8 @@ $('perspective').addEventListener('change', () => {
   else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
 });
 $('lifeRule').addEventListener('change', () => {
-  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23'; return; }
-  if (current && MODES[$('mode').value].life) buildWalk();  // restart from generation 0 with the new rule
+  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23 or B2/S/C3 (2 to 10 states)'; return; }
+  if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
 $('sphereF').addEventListener('change', () => {
   if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits

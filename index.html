@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20260929d">
+  <link rel="stylesheet" href="style.css?v=20260929f">
 </head>
 <body>
   <header>
@@ -78,8 +78,15 @@
         <label id="sphereRow" hidden>Surface
           <select id="sphereF"></select>
         </label>
-        <label id="lifeRuleRow" hidden>Rule (births / survivals)
-          <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
+        <label id="lifeRuleRow" hidden>Rule (births / survivals / states)
+          <input id="lifeRule" type="text" value="B3/S23" autocomplete="off" list="lifeRules">
+          <datalist id="lifeRules">
+            <option value="B3/S23">Life (2 states)</option>
+            <option value="B45/S345/C4">4 states: lasting sparse activity on triangles</option>
+            <option value="B34/S2/C4">4 states: on the edge of extinction on triangles</option>
+            <option value="B2/S/C3">Brian's Brain (3 states): permanent chaos</option>
+            <option value="B2/S345/C4">Star Wars (4 states, square-grid classic)</option>
+          </datalist>
         </label>
         <label>Number of digits
           <input id="digits" type="number" min="10" max="1000000" step="1000" value="20000">
@@ -140,6 +147,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20260929d"></script>
+  <script src="main.js?v=20260929f"></script>
 </body>
 </html>
