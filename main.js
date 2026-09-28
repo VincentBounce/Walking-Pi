@@ -545,7 +545,7 @@ function numberInfo(id) {
 function localDigits(id, n, base) {
   const digits = new Uint8Array(n);
   if (id === 'random') {
-    const buf = new Uint8Array(n * 2);
+    const buf = new Uint8Array(Math.min(n * 2, 65536));  // getRandomValues gives at most 65,536 bytes per call
     crypto.getRandomValues(buf);
     const lim = 256 - (256 % base);             // rejection sampling for a uniform distribution
     let j = 0;
