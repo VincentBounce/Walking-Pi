@@ -1708,9 +1708,11 @@ function setLifeSeed(seed) {
  * Setups: save, share and reload the whole configuration              *
  * ------------------------------------------------------------------ */
 /* A setup is a flat object of short keys, the same for the page link (#…), the saved setups in
- * this browser (localStorage) and the JSON export. Only the keys that matter are written. */
+ * this browser (localStorage) and the JSON export. It only holds what determines the result:
+ * the number and its options, the walk mode, surface, rule, digits, random draw and champion.
+ * Display choices (colours, grid, sky, camera, zoom…) and the speed are never saved. */
 let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
-let pendingView = null;   // camera, view and champion to restore once a setup is built
+let pendingChampion = null;  // a champion to restore once a loaded setup is built
 
 // Cells as base64url, packing 1, 2 or 4 bits per cell depending on the number of states
 function encodeCells(cells, C) {
@@ -1740,27 +1742,12 @@ function getSetup() {
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (mode.life) s.r = $('lifeRule').value;
-  s.c = $('colorMode').value;
-  s.g = +$('showGrid').checked;
-  s.af = +$('autoFit').checked;
-  if (walk.is3d) {
-    s.sk = $('sky').value;
-    s.ar = +$('autoRotate').checked;
-    s.pe = +$('perspective').checked;
-    s.cam = `${cam.yaw.toFixed(3)},${cam.pitch.toFixed(3)}`;
-  }
-  s.sp = Number($('speed').value).toFixed(2);
-  if (!$('autoFit').checked) {  // zoom and the world point at the centre of the screen
-    const r = (v) => Math.round(v * 1000) / 1000;
-    s.v = `${r(view.scale)},${r((cw / 2 - view.ox) / view.scale)},${r((ch / 2 - view.oy) / view.scale)}`;
-  }
   if (championCode) s.ch = championCode;
   return s;
 }
 
 function applySetup(s) {
   const set = (id, v) => { if (v !== undefined && v !== null) $(id).value = v; };
-  const tick = (id, v) => { if (v !== undefined) $(id).checked = v === 1 || v === '1'; };
   if (!CONSTANTS[s.n] || !MODES[s.w]) return false;
   set('constant', s.n);
   set('fraction', s.fr);
@@ -1775,42 +1762,23 @@ function applySetup(s) {
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
     $('lifePreset').value = preset ? s.r : 'custom';
   }
-  set('colorMode', s.c);
-  tick('showGrid', s.g);
-  tick('autoFit', s.af);
-  set('sky', s.sk);
-  tick('autoRotate', s.ar);
-  tick('perspective', s.pe);
-  if (s.sp !== undefined) { $('speed').value = s.sp; updateSpeedLabel(); }
+  // the display is not part of a setup: it takes the defaults of the walk mode, as when choosing it
+  $('perspective').checked = !!MODES[s.w].perspective;
+  $('colorMode').value = MODES[s.w].life ? 'mono' : 'gradient';
+  $('autoFit').checked = true;
   pendingDraw = s.rd !== undefined ? Number(s.rd) : null;
-  pendingView = { cam: s.cam, v: s.v, ch: s.ch };
-  compute();  // the rest (camera, view, champion) follows once the walk is built
+  pendingChampion = s.ch || null;
+  compute();  // a champion follows once the walk is built
   return true;
 }
 
-// Called when a walk has just been built: restore what a loaded setup asked for
+// Called when a walk has just been built: restore a loaded setup's champion
 function applyPendingView() {
-  const p = pendingView;
-  pendingView = null;
-  if (!p) return;
-  if (p.ch && walk.life) {
-    setLifeSeed(decodeCells(p.ch, walk.life.seed.length));
-    championCode = p.ch;
-  }
-  if (p.cam && walk.is3d) {
-    const [yaw, pitch] = p.cam.split(',').map(Number);
-    cam.yaw = yaw;
-    cam.pitch = pitch;
-    project();
-    if (walk.sphere) needsFull = true;
-    else rotateView(0, 0);
-  }
-  if (p.v && !$('autoFit').checked) {
-    const [scale, x, y] = p.v.split(',').map(Number);
-    view.scale = scale;
-    view.ox = cw / 2 - x * scale;
-    view.oy = ch / 2 - y * scale;
-    needsFull = true;
+  const ch = pendingChampion;
+  pendingChampion = null;
+  if (ch && walk.life) {
+    setLifeSeed(decodeCells(ch, walk.life.seed.length));
+    championCode = ch;
   }
 }
 
@@ -1823,7 +1791,7 @@ function parseHash() {
   return s.n && s.w ? s : null;
 }
 function syncLink() {
-  if ($('compute').disabled || pendingView) return;  // not while a setup is still being built
+  if ($('compute').disabled || pendingChampion) return;  // not while a setup is still being built
   const h = `#${toHash(getSetup())}`;
   if (h !== location.hash) history.replaceState(null, '', h);
 }
