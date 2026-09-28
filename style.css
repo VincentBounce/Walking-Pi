@@ -41,7 +41,7 @@ main { flex: 1; display: flex; min-height: 0; }
   border-right: 1px solid var(--border);
   padding: 8px 16px 16px;
 }
-.panel section { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.panel section { padding: 10px 0; border-bottom: 2px solid var(--accent); }
 .panel section:last-child { border-bottom: 0; }
 h2 {
   margin: 4px 0 10px;

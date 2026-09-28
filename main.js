@@ -717,7 +717,8 @@ const computeLabel = () => (MODES[$('mode').value].life ? 'New random draw' : 'C
 function setBusy(busy) {
   $('compute').disabled = busy;
   $('compute').textContent = busy ? 'Computing…' : computeLabel();
-  $('progressBar').style.width = busy ? '0' : '100%';
+  $('progressBar').style.width = '0';
+  $('progress').hidden = !busy;  // the bar only shows while computing
 }
 
 function buildWalk() {
