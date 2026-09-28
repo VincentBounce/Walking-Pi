@@ -1591,7 +1591,6 @@ function userMovedView() {
 function drawGrid() {
   const ctx = layers.grid;
   ctx.clearRect(0, 0, cw, ch);
-  if (walk.is3d) drawHalo(ctx);
   if (!$('showGrid').checked) return;
   const s = view.scale;
   let stepCells = 1;
@@ -1623,27 +1622,6 @@ function drawGrid() {
   ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
   ctx.moveTo(0, Math.round(view.oy) + 0.5); ctx.lineTo(cw, Math.round(view.oy) + 0.5);
   ctx.stroke();
-}
-
-// 3D: a soft light halo behind the object, so its silhouette stands out from the dark background
-function drawHalo(ctx) {
-  let centre, radius;  // in world units
-  if (walk.sphere) {
-    centre = [0, 0, 0];
-    radius = walk.geo.flat ? walk.R * walk.geo.extent : sphereOutline();
-  } else {
-    const [x0, x1, y0, y1, z0, z1] = bounds3;
-    centre = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
-    radius = Math.max(3, Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2);
-  }
-  const [px, py] = projectPoint(...centre);
-  const x = view.ox + px * view.scale, y = view.oy + py * view.scale, r = radius * view.scale * 1.9;
-  const halo = ctx.createRadialGradient(x, y, 0, x, y, r);
-  halo.addColorStop(0, 'rgba(110, 135, 175, 0.24)');
-  halo.addColorStop(0.55, 'rgba(110, 135, 175, 0.09)');
-  halo.addColorStop(1, 'rgba(110, 135, 175, 0)');
-  ctx.fillStyle = halo;
-  ctx.fillRect(0, 0, cw, ch);
 }
 
 // 3D: wireframe bounding box of the walk + axis gizmo in the top-left corner
