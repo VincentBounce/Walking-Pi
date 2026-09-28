@@ -362,9 +362,11 @@ const CONSTANTS = {
   mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
   primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes' },
   primeConst: { sym: 'ρ', name: 'Prime barcode (Ulam)', group: 'Primes',
-                note: 'digit k = 0 if k is not prime, else k mod b' },
+                note: (b) => `digit k = 0 if k is not prime, else k mod ${b}` },
+  primeReal: { sym: 'ρ₂', name: 'Prime constant (binary barcode, converted)', group: 'Primes',
+               note: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}` },
   primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes',
-               note: 'one digit per gap between odd primes: (gap / 2) mod b' },
+               note: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}` },
   randomPrime: { sym: '🎲', name: 'Random prime', group: 'Primes' },
 };
 
@@ -577,6 +579,18 @@ function localDigits(id, n, base) {
     for (let k = 2; k <= n; k++) if (!composite[k]) digits[k - 1] = k % base || 1;
     return { intPart: '0', digits };
   }
+  if (id === 'primeReal') {
+    // the real number ρ = Σ 2^(−p): its binary expansion is the barcode (bit k = 1 when k is prime).
+    // Keep enough bits (+ 64 guard bits), then its first n digits in base b are ⌊ρ·b^n⌋.
+    const bits = Math.ceil(n * Math.log2(base)) + 64;
+    const composite = sieve(bits);
+    let barcode = '';
+    for (let k = 1; k <= bits; k++) barcode += composite[k] ? '0' : '1';
+    const scaled = (BigInt(`0b${barcode}`) * BigInt(base) ** BigInt(n)) >> BigInt(bits);
+    const s = digitString(scaled, base).padStart(n, '0');
+    for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(i) - 48;
+    return { intPart: '0', digits };
+  }
   if (id === 'primeGaps') {
     // gaps between consecutive odd primes (3→5, 5→7, 7→11, …) are even: digit = (gap / 2) mod b.
     // The n-th prime is below n·(ln n + ln ln n) for n ≥ 6.
@@ -665,7 +679,7 @@ function compute() {
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
 
-  if (['random', 'champernowne', 'fraction', 'primeConst', 'primeGaps'].includes(id)) {
+  if (['random', 'champernowne', 'fraction', 'primeConst', 'primeReal', 'primeGaps'].includes(id)) {
     const entry = localDigits(id, n, base);
     if (!entry) {
       $('status').textContent = 'Enter a fraction like 22/7';
@@ -673,7 +687,7 @@ function compute() {
     }
     setCurrent(entry);
     const { note } = CONSTANTS[id];
-    $('status').textContent = note ? `${label(n)} — ${note}` : label(n);
+    $('status').textContent = note ? `${label(n)} — ${note(base)}` : label(n);
     buildWalk();
     showAll();
     return;
