@@ -771,6 +771,22 @@ function projectPoint(x, y, z) {
   return [cx + (px - cx) * k, cy + (py - cy) * k];
 }
 
+// Same projection as projectPoint, with the trigonometry computed once: for drawing many points
+function projector() {
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const P = walk.persp;
+  const [ccx, ccy] = P ? orthoPoint(...P.c) : [0, 0];
+  return (x, y, z) => {
+    let X = x * cy - y * sy, Y = -(z * cp + (x * sy + y * cy) * sp);
+    if (P) {
+      const k = P.D / (P.D - ((z - P.c[2]) * sp - ((x - P.c[0]) * sy + (y - P.c[1]) * cy) * cp));
+      X = ccx + (X - ccx) * k;
+      Y = ccy + (Y - ccy) * k;
+    }
+    return [X, Y];
+  };
+}
+
 // Projection of the whole 3D walk (xs, ys), same formula as projectPoint
 function project() {
   const { wx, wy, wz, xs, ys } = walk;
@@ -1160,7 +1176,19 @@ function cubeFlat(n) {
       for (let j = 0; j < n; j++) quads.push([at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
     }
   }
-  return (meshCache[key] = finishMesh(verts, quads, 4, n, true));
+  const mesh = finishMesh(verts, quads, 4, n, true);
+  // each face as one big square, with its grid lines, for cheap drawing
+  mesh.faces = faces.map(([N, U, W]) => {
+    const pt = (a, b) => [0, 1, 2].map((d) => N[d] + U[d] * a + W[d] * b);
+    const lines = [];
+    for (let i = 0; i <= n; i++) {
+      const c = 2 * i / n - 1;
+      lines.push([pt(c, -1), pt(c, 1)], [pt(-1, c), pt(1, c)]);
+    }
+    return { corners: [pt(-1, -1), pt(1, -1), pt(1, 1), pt(-1, 1)], normal: N, lines };
+  });
+  mesh.perFace = n * n;
+  return (meshCache[key] = mesh);
 }
 
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
@@ -1194,7 +1222,24 @@ function flatPolyhedron(name, f) {
       }
     }
   }
-  return (meshCache[key] = finishMesh(verts, tris, 3, f, true));
+  const mesh = finishMesh(verts, tris, 3, f, true);
+  // each face as one big triangle, with its three families of grid lines, for cheap drawing
+  mesh.faces = faces.map((face) => {
+    const [A, B, C] = face.map((v) => P[v]);
+    const mix = (p, q, t) => [0, 1, 2].map((d) => p[d] + (q[d] - p[d]) * t);
+    const lines = [];
+    for (let i = 0; i <= f; i++) {
+      const t = i / f;
+      lines.push([mix(A, B, t), mix(A, C, t)], [mix(B, A, t), mix(B, C, t)], [mix(C, A, t), mix(C, B, t)]);
+    }
+    const m = [0, 1, 2].map((d) => A[d] + B[d] + C[d]);
+    let normal = cross(A.map((v, d) => B[d] - v), A.map((v, d) => C[d] - v));
+    if (normal[0] * m[0] + normal[1] * m[1] + normal[2] * m[2] < 0) normal = normal.map((v) => -v);
+    const l = Math.hypot(...normal);
+    return { corners: [A, B, C], normal: normal.map((v) => v / l), lines };
+  });
+  mesh.perFace = f * f;
+  return (meshCache[key] = mesh);
 }
 
 const SPHERES = {
@@ -1677,15 +1722,20 @@ function towardViewer(x, y, z) {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   return z * sp - (x * Math.sin(cam.yaw) + y * Math.cos(cam.yaw)) * cp;
 }
-// Is tile t on the visible side? Orthographic: its normal points towards the viewer.
-// Perspective: its normal points towards the camera position, seen from the tile.
-function tileVisible(t) {
-  const g = walk.geo, n = [g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]];
+// Is a plane (outward normal n through point p) facing us? Orthographic: n points towards the
+// viewer. Perspective: n points towards the camera position, seen from p.
+function planeVisible(n, p) {
   const P = walk.persp;
   if (!P) return towardViewer(...n) > 0;
   const cp = Math.cos(cam.pitch);
   const eye = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)].map((v, d) => P.c[d] + v * P.D);
-  return [0, 1, 2].reduce((sum, d) => sum + n[d] * (eye[d] - g.cen[3 * t + d] * walk.R), 0) > 0;
+  return n[0] * (eye[0] - p[0]) + n[1] * (eye[1] - p[1]) + n[2] * (eye[2] - p[2]) > 0;
+}
+
+function tileVisible(t) {
+  const g = walk.geo, R = walk.R;
+  return planeVisible([g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]],
+                      [g.cen[3 * t] * R, g.cen[3 * t + 1] * R, g.cen[3 * t + 2] * R]);
 }
 const facing = (i) => tileVisible(walk.tile[i]);  // is the tile of point i on the visible side?
 
@@ -1697,10 +1747,21 @@ function drawSphere() {
   const { scale: s, ox, oy } = view;
   const nv = g.verts.length / 3;
   const px = new Float32Array(nv), py = new Float32Array(nv);
+  const proj = projector();
   for (let v = 0; v < nv; v++) {
-    const [x, y] = projectPoint(g.verts[3 * v] * R, g.verts[3 * v + 1] * R, g.verts[3 * v + 2] * R);
+    const [x, y] = proj(g.verts[3 * v] * R, g.verts[3 * v + 1] * R, g.verts[3 * v + 2] * R);
     px[v] = ox + x * s; py[v] = oy + y * s;
   }
+  // flat solids: visibility is decided once per face, and faces are drawn as single polygons
+  const faceVisible = g.faces ? g.faces.map((f) => planeVisible(f.normal, f.corners[0].map((v) => v * R))) : null;
+  const facePath = (f, close = true) => {
+    ctx.beginPath();
+    f.corners.forEach((c, i) => {
+      const [x, y] = proj(c[0] * R, c[1] * R, c[2] * R);
+      ctx[i ? 'lineTo' : 'moveTo'](ox + x * s, oy + y * s);
+    });
+    if (close) ctx.closePath();
+  };
   const LEVELS = 32;
   const grad = Array.from({ length: LEVELS }, (_, i) => GRADIENT[Math.round((i / (LEVELS - 1)) * (BANDS - 1))]);
   const logLevel = (v, max) => 1 + Math.round((Math.log(v) / Math.log(Math.max(2, max))) * (LEVELS - 1));
@@ -1723,7 +1784,7 @@ function drawSphere() {
   }
   const buckets = Array.from({ length: palette.length }, () => []);
   for (let t = 0; t < g.n; t++) {
-    if (tileVisible(t)) buckets[levelOf(t)].push(t);
+    if (faceVisible ? faceVisible[Math.floor(t / g.perFace)] : tileVisible(t)) buckets[levelOf(t)].push(t);
   }
   const k = g.sides;
   const outline = (list) => {
@@ -1737,13 +1798,13 @@ function drawSphere() {
   };
   // background: anti-aliasing seams between tiles show this colour instead of black
   ctx.fillStyle = '#1f2630';
-  if (g.flat) {
-    outline(buckets.flat());
+  if (g.faces) {
+    g.faces.forEach((f, i) => { if (faceVisible[i]) { facePath(f); ctx.fill(); } });
   } else {
     ctx.beginPath();
     ctx.arc(ox, oy, sphereOutline() * s, 0, Math.PI * 2);
+    ctx.fill();
   }
-  ctx.fill();
   buckets.forEach((list, level) => {
     if (!list.length || level === 0) return;
     outline(list);
@@ -1751,26 +1812,31 @@ function drawSphere() {
     ctx.fill();
   });
   if ($('showGrid').checked && s > 6) {  // tile edges once they are big enough
-    outline(buckets.flat());
+    if (g.faces) {  // long straight lines across each visible face
+      ctx.beginPath();
+      g.faces.forEach((f, i) => {
+        if (!faceVisible[i]) return;
+        for (const [a, b] of f.lines) {
+          const [x1, y1] = proj(a[0] * R, a[1] * R, a[2] * R), [x2, y2] = proj(b[0] * R, b[1] * R, b[2] * R);
+          ctx.moveTo(ox + x1 * s, oy + y1 * s);
+          ctx.lineTo(ox + x2 * s, oy + y2 * s);
+        }
+      });
+    } else {
+      outline(buckets.flat());
+    }
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.lineWidth = 0.6;
     ctx.stroke();
   }
-  if (g.flat) {
+  if (g.faces) {
     // shading: each flat face darker the more it turns away from the viewer
-    const faces = new Map();
-    for (const t of buckets.flat()) {
-      const k3 = 3 * t, key = `${g.nrm[k3].toFixed(3)},${g.nrm[k3 + 1].toFixed(3)},${g.nrm[k3 + 2].toFixed(3)}`;
-      if (!faces.has(key)) faces.set(key, []);
-      faces.get(key).push(t);
-    }
-    for (const list of faces.values()) {
-      const t = list[0];
-      const toward = towardViewer(g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]);
-      outline(list);
-      ctx.fillStyle = `rgba(0, 0, 0, ${(0.55 * (1 - toward)).toFixed(3)})`;
+    g.faces.forEach((f, i) => {
+      if (!faceVisible[i]) return;
+      facePath(f);
+      ctx.fillStyle = `rgba(0, 0, 0, ${(0.55 * (1 - towardViewer(...f.normal))).toFixed(3)})`;
       ctx.fill();
-    }
+    });
   } else {
     // shading: darker towards the rim
     const Rs = sphereOutline() * s;
