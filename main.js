@@ -207,6 +207,40 @@ function constantWorker() {
         total = atanTerms(5) + atanTerms(239);
         v = 16n * atanInv(5) - 4n * atanInv(239);
         break;
+      case 'pi2': { // π² = (π·S)² / S
+        total = atanTerms(5) + atanTerms(239);
+        const p = 16n * atanInv(5) - 4n * atanInv(239);
+        v = (p * p) / S;
+        break;
+      }
+      case 'epi': { // Gelfond: e^π = (e^(π / 2^r))^(2^r), in binary fixed point with W fractional bits
+        const bits = Math.ceil(prec * Math.log2(base));
+        const r = Math.max(1, Math.round(Math.sqrt(bits) / 2));  // halvings: balance series terms and squarings
+        const W = BigInt(bits + 2 * r + 64);                        // guard bits absorb the 2^r error growth
+        const one = 1n << W;
+        total = bits / r + r;
+        const atanBin = (x) => {  // 2^W·arctan(1/x)
+          const bx = BigInt(x), x2 = bx * bx;
+          let t = one / bx, sum = t;
+          for (let k = 1; ; k++) {
+            t /= x2;
+            if (t === 0n) break;
+            const q = t / BigInt(2 * k + 1);
+            sum += k % 2 ? -q : q;
+          }
+          return sum;
+        };
+        const y = (16n * atanBin(5) - 4n * atanBin(239)) >> BigInt(r);  // π / 2^r
+        let term = one, sum = one;
+        for (let k = 1; term !== 0n; k++) {  // Σ y^k / k!
+          term = ((term * y) >> W) / BigInt(k);
+          sum += term;
+          progress(k);
+        }
+        for (let i = 0; i < r; i++) sum = (sum * sum) >> W;
+        v = (sum * S) >> W;
+        break;
+      }
       case 'ln2': // ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749)
         total = atanTerms(26) + atanTerms(4801) + atanTerms(8749);
         v = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
@@ -306,7 +340,9 @@ const MONO = '#f0b429';
 
 const CONSTANTS = {
   pi:    { sym: 'π',    name: 'Pi' },
+  pi2:   { sym: 'π²',   name: 'Pi squared' },
   e:     { sym: 'e',    name: "Euler's number" },
+  epi:   { sym: 'e^π',  name: "Gelfond's constant" },
   phi:   { sym: 'φ',    name: 'Golden ratio' },
   ln2:   { sym: 'ln 2', name: 'Natural log of 2' },
   zeta3: { sym: 'ζ(3)', name: "Apéry's constant" },
@@ -320,7 +356,7 @@ const CONSTANTS = {
   sqrt7: { sym: '√7',   name: 'Square root of 7', group: 'Roots' },
   sqrt8: { sym: '√8',   name: 'Square root of 8 (= 2√2)', group: 'Roots' },
   cbrt2: { sym: '∛2',   name: 'Cube root of 2', group: 'Roots' },
-  random: { sym: 'rand', name: 'Random digits', group: 'Comparisons' },
+  random: { sym: '🎲', name: 'Random digits', group: 'Comparisons' },
   champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons' },
   fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons' },
   mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
@@ -363,7 +399,7 @@ const MODES = {
               rule: 'Base-2 digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
               rule: 'Base-2 digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
-  cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1],
+  cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1], perspective: true,
               rule: 'Base-3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   /* Cube sphere, hidden for now (its mesh, cubeSphere(), is kept):
   cubeSphere: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1],
@@ -583,7 +619,7 @@ function compute() {
     const { note } = CONSTANTS[id];
     $('status').textContent = note ? `${label(n)} — ${note}` : label(n);
     buildWalk();
-    play(true);
+    showAll();
     return;
   }
 
@@ -595,7 +631,7 @@ function compute() {
       : integer ? label(total) : label(n);
     $('status').textContent = `${what} ${how}${integer && total > n ? ` — walking the first ${fmt(n)}` : ''}`;
     buildWalk();
-    play(true);
+    showAll();
   };
   const hit = info.key && cache[key];
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
@@ -723,7 +759,7 @@ function project() {
   }
 }
 
-// Perspective can apply to every 3D view (checkbox; on by default only for the 3D cube walks)
+// Perspective can apply to every 3D view (checkbox; on by default for the cube walks and the cube surface)
 const perspectiveAllowed = () => walk.is3d;
 
 // Apparent radius of a sphere of radius R: R in orthographic view, R·D / √(D² − R²) in perspective
@@ -1212,13 +1248,13 @@ function key(x, y) {
 /* ------------------------------------------------------------------ *
  * Animation                                                          *
  * ------------------------------------------------------------------ */
-function stepsPerFrame() {
+function stepsPerSecond() {
   const v = Number($('speed').value) / 100;
-  return 10 ** (v * 5 - 1); // 0.1 → 10,000 steps per frame
+  return 6 * 10 ** (v * 5); // 6 → 600,000 steps per second (logarithmic slider)
 }
 
 function updateSpeedLabel() {
-  const s = stepsPerFrame() * 60;
+  const s = stepsPerSecond();
   $('speedLabel').textContent = `${s < 100 ? s.toFixed(s < 10 ? 1 : 0) : fmt(Math.round(s))} steps/s`;
 }
 
@@ -1246,6 +1282,11 @@ function advanceTo(target) {
 function play(on) {
   playing = on && walk.n > 0 && cur < walk.n;
   $('play').textContent = playing ? '❚❚ Pause' : '▶︎ Play';
+}
+
+// A new walk is shown complete at once; Play replays it from the start
+function showAll() {
+  advanceTo(walk.n);
 }
 
 function restart() {
@@ -1724,10 +1765,13 @@ function updateStats() {
   strip.innerHTML = html + (b < walk.n ? '…' : '');
 }
 
-function tick() {
+let lastTick = 0;
+function tick(now = performance.now()) {
+  const dt = Math.min(0.1, (now - (lastTick || now)) / 1000);  // seconds since the last frame (capped)
+  lastTick = now;
   if (walk.is3d && $('autoRotate').checked) rotateView(0.004, 0);
   if (playing) {
-    acc += stepsPerFrame();
+    acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
     acc -= k;
     if (k > 0) advanceTo(cur + k);
@@ -1886,13 +1930,13 @@ $('perspective').addEventListener('change', () => {
 $('sphereF').addEventListener('change', () => {
   if (!current) return;
   buildWalk();
-  play(true);
+  showAll();
 });
 $('constant').addEventListener('change', compute);
 $('mersenneP').addEventListener('change', compute);
 $('fraction').addEventListener('change', compute);
 $('mode').addEventListener('change', () => {
-  $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default only for the 3D cube walks
+  $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default for the cube modes only
   compute();
 });
 
