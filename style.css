@@ -129,6 +129,13 @@ button.primary {
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage-button {  /* over the view, top right */
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(14, 17, 22, 0.75);
+  backdrop-filter: blur(4px);
+}
 .hint {
   position: absolute;
   right: 12px;

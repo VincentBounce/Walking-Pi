@@ -405,7 +405,7 @@ const MODES = {
               rule: 'Base₂ digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
               rule: 'Base₂ digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
-  torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', turns: [3, 2, 1], perspective: true,
+  torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', turns: [3, 2, 1], perspective: true, round: true,
               rule: 'Base₃ digits on the surface of a torus of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1], perspective: true,
               rule: 'Base₃ digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
@@ -415,9 +415,9 @@ const MODES = {
   */
   octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', turns: [2, 1],
               rule: 'Base₂ digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
-  icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
+  icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1], round: true,
               rule: 'Base₂ digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
-  lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true,
+  lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus (a square grid that wraps around both ways)' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'flat', life: true, perspective: true,
                 where: 'the surface of a cube' },
@@ -425,7 +425,7 @@ const MODES = {
                 where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', life: true,
                 where: 'an octahedron of triangles' },
-  lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true,
+  lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true, round: true,
                 where: 'an icosahedron of triangles' },
   lifeSphere: { base: 2, lattice: 'sphere', sphere: 'geo', life: true,
                 where: 'a geodesic sphere of triangles' },
@@ -769,6 +769,7 @@ function setBusy(busy) {
 }
 
 function buildWalk() {
+  walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
   const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
   // n digits in total: the integer part (always included) then the digits after the point
   const head = current.head.subarray(0, n);
@@ -891,7 +892,8 @@ function setPerspective() {
   $('perspectiveRow').hidden = !perspectiveAllowed();
   if (!perspectiveAllowed() || !$('perspective').checked) { walk.persp = null; return; }
   if (walk.sphere) {
-    walk.persp = { c: [0, 0, 0], D: 2.5 * walk.R * walk.geo.extent };
+    // a shape that changes keeps one camera distance for both forms (the flat torus is wider)
+    walk.persp = { c: [0, 0, 0], D: 2.5 * walk.R * (walk.shape ? walk.shape.maxExtent : walk.geo.extent) };
     return;
   }
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -932,6 +934,7 @@ function updateHint() {
   $('autoRotateRow').hidden = !walk.is3d;
   $('skyRow').hidden = !walk.is3d;
   $('perspectiveRow').hidden = !perspectiveAllowed();
+  updateMorphButton();  // shown only for surfaces that can change shape
 }
 
 /* Each stepper takes a digit and returns [key, x, y, z]: a unique key
@@ -1135,7 +1138,8 @@ function vertexStore(normalise = true) {
   const add = (x, y, z) => {
     const l = normalise ? Math.hypot(x, y, z) : 1;
     x /= l; y /= l; z /= l;
-    const k = `${x.toFixed(9)},${y.toFixed(9)},${z.toFixed(9)}`;
+    const f = (v) => (Math.abs(v) < 5e-10 ? 0 : v).toFixed(9);  // no "-0.000000000" apart from "0.000000000"
+    const k = `${f(x)},${f(y)},${f(z)}`;
     if (!index.has(k)) { index.set(k, verts.length / 3); verts.push(x, y, z); }
     return index.get(k);
   };
@@ -1322,16 +1326,31 @@ function flatPolyhedron(name, f) {
  * major radius 1 and tube radius TORUS_TUBE. Every square has 4 edge neighbours and 8 corner
  * neighbours with no exception: it is the square grid that wraps around both ways. */
 const TORUS_TUBE = 0.4;
+
+/* Grid point (i, j) of an nu × nv torus, rolled up by m ∈ [0, 1]: at m = 0 a flat rectangle
+ * (2π by 2π·TUBE, in the x–z plane), at m = 1 the torus. The rectangle first curls into a tube
+ * (m from 0 to ½: its short side bends into a circle), then the tube bends into a ring (½ to 1).
+ * Bending a length L into an arc of a circle whose circumference is L / k keeps lengths along it. */
+function torusPoint(i, j, nu, nv, m) {
+  const b = Math.min(1, 2 * m), c = Math.max(0, 2 * m - 1);  // tube bend, then ring bend
+  const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
+  let w = 0, h = Y;  // w: offset away from the ring's centre, h: height
+  if (b > 1e-6) {
+    const rt = TORUS_TUBE / b, th = Y / rt;
+    w = rt * (Math.cos(th) - 1) + TORUS_TUBE * b;
+    h = rt * Math.sin(th);
+  }
+  if (c < 1e-6) return [X, w, h];
+  const rr = 1 / c, ph = X / rr;
+  return [(rr + w) * Math.sin(ph), (rr + w) * Math.cos(ph) - rr + 1, h];
+}
+
 function torusMesh(nv) {
   const key = `torus${nv}`;
   if (meshCache[key]) return meshCache[key];
   const nu = Math.round(nv / TORUS_TUBE);  // squares about as long around the ring as around the tube
   const { verts, add } = vertexStore(false);
-  const at = (i, j) => {
-    const u = (2 * Math.PI * (i % nu)) / nu, v = (2 * Math.PI * (j % nv)) / nv;
-    const ring = 1 + TORUS_TUBE * Math.cos(v);
-    return add(ring * Math.cos(u), ring * Math.sin(u), TORUS_TUBE * Math.sin(v));
-  };
+  const at = (i, j) => add(...torusPoint(i, j, nu, nv, 1));  // i = nu and i = 0 meet (same for j)
   const quads = [];
   for (let i = 0; i < nu; i++) {
     for (let j = 0; j < nv; j++) quads.push([at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
@@ -1340,7 +1359,107 @@ function torusMesh(nv) {
   const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
   const mesh = finishMesh(verts, quads, 4, nv, true, fromTubeAxis);
   mesh.torus = true;
+  mesh.nu = nu;
+  mesh.nv = nv;
   return (meshCache[key] = mesh);
+}
+
+/* ------------------------------------------------------------------ *
+ * Flat ↔ round: the same tiles and neighbours, shown flat or inflated *
+ * ------------------------------------------------------------------ */
+/* walk.shape = { m, target, corners, cen, nrm, extent } for surfaces that can change shape:
+ * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
+ * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
+ * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
+const MORPHABLE = ['flat', 'tetra', 'octa', 'icosa', 'torus'];
+
+function shapeAt(g, m) {
+  const k = g.sides, n = g.n;
+  const corners = new Float64Array(3 * k * n), cen = new Float64Array(3 * n), nrm = new Float64Array(3 * n);
+  if (g.torus) {
+    // per tile, from its grid indices (tile i·nv + j): at m < 1 the seams open, so corners are not shared
+    const { nu, nv } = g;
+    for (let t = 0; t < n; t++) {
+      const i = Math.floor(t / nv), j = t % nv;
+      [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].forEach(([a, b], q) => corners.set(torusPoint(a, b, nu, nv, m), 3 * (k * t + q)));
+    }
+  } else {
+    const nv = g.verts.length / 3, R0 = g.extent, moved = new Float64Array(3 * nv);
+    for (let v = 0; v < nv; v++) {  // slide towards the sphere through the corners
+      const x = g.verts[3 * v], y = g.verts[3 * v + 1], z = g.verts[3 * v + 2], s = 1 + m * (R0 / Math.hypot(x, y, z) - 1);
+      moved.set([x * s, y * s, z * s], 3 * v);
+    }
+    for (let t = 0; t < n; t++) {
+      for (let q = 0; q < k; q++) corners.set(moved.subarray(3 * g.poly[k * t + q], 3 * g.poly[k * t + q] + 3), 3 * (k * t + q));
+    }
+  }
+  let extent = 0;
+  const sign = shapeSign(g);
+  for (let t = 0; t < n; t++) {
+    const P = (q) => corners.subarray(3 * (k * t + q), 3 * (k * t + q) + 3);
+    const c = [0, 1, 2].map((d) => { let sum = 0; for (let q = 0; q < k; q++) sum += P(q)[d]; return sum / k; });
+    const d1 = [0, 1, 2].map((d) => P(2)[d] - P(0)[d]), d2 = [0, 1, 2].map((d) => P(k - 1)[d] - P(1)[d]);
+    const nr = cross(d1, d2), l = (Math.hypot(...nr) || 1) * sign;
+    cen.set(c, 3 * t);
+    nrm.set(nr.map((v) => v / l), 3 * t);
+    for (let q = 0; q < k; q++) extent = Math.max(extent, Math.hypot(...P(q)));
+  }
+  return { m, corners, cen, nrm, extent };
+}
+
+// Torus corners are listed in grid order, which may run against the mesh's outward order: the sign
+// that makes their normals point outwards, found once by comparing with the mesh at m = 1
+function shapeSign(g) {
+  if (!g.torus) return 1;
+  if (g.shapeSign) return g.shapeSign;
+  const { nu, nv } = g, P = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => torusPoint(a, b, nu, nv, 1));
+  const nr = cross([0, 1, 2].map((d) => P[2][d] - P[0][d]), [0, 1, 2].map((d) => P[3][d] - P[1][d]));
+  g.shapeSign = nr[0] * g.nrm[0] + nr[1] * g.nrm[1] + nr[2] * g.nrm[2] >= 0 ? 1 : -1;
+  return g.shapeSign;
+}
+
+// A new surface starts in its mode's default form: round for the icosahedron and the torus, flat otherwise
+function initShape(kind) {
+  if (!MORPHABLE.includes(kind)) { walk.shape = null; updateMorphButton(); return; }
+  const g = walk.geo, m = MODES[current.mode].round ? 1 : 0;
+  const maxExtent = Math.max(shapeAt(g, 0).extent, shapeAt(g, 1).extent);
+  walk.shape = { ...shapeAt(g, m), target: m, maxExtent };
+}
+
+// Put the current shape in place: tile centres of the walk's points, the frame and the view
+function applyShape() {
+  const sh = walk.shape, R = walk.R;
+  if (!walk.life) {  // walk points sit on their tiles' centres
+    const { wx, wy, wz, tile } = walk;
+    for (let i = 0; i <= walk.n; i++) {
+      const t = tile[i];
+      wx[i] = sh.cen[3 * t] * R; wy[i] = sh.cen[3 * t + 1] * R; wz[i] = sh.cen[3 * t + 2] * R;
+    }
+  }
+  project();
+  const F = R * sh.extent;
+  bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
+  bounds3 = [-F, F, -F, F, -F, F];
+  if ($('autoFit').checked) fitToBounds(padBounds(bounds));
+  needsFull = true;
+  updateMorphButton();
+}
+
+function updateMorphButton() {
+  const sh = walk.shape, btn = $('morphBtn');
+  btn.hidden = !sh;
+  if (!sh) return;
+  const round = sh.target === 1;
+  btn.textContent = walk.geo.torus ? (round ? '▭ Unroll' : '◎ Roll up') : (round ? '◇ Flatten' : '● Inflate');
+}
+
+// One animation frame of the change of shape (about 0.7 s from flat to round)
+function morphStep(dt) {
+  const sh = walk.shape;
+  if (!sh || sh.m === sh.target) return;
+  const m = sh.target > sh.m ? Math.min(sh.target, sh.m + dt / 0.7) : Math.max(sh.target, sh.m - dt / 0.7);
+  Object.assign(sh, shapeAt(walk.geo, m));
+  applyShape();
 }
 
 const SPHERES = {
@@ -1414,10 +1533,12 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
                         sphere: true, geo: g, R, tile, coverStep, visits: new Int32Array(g.n), maxVisits: 0,
                         life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
+  initShape(kind);
   setPerspective();
   project();
   updateHint();
   restart();
+  if (walk.shape) applyShape();
 }
 
 /* ------------------------------------------------------------------ *
@@ -1482,10 +1603,12 @@ function buildLife(seq, kind) {
                         keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
                         xs: new Float64Array(1), ys: new Float64Array(1) });
+  initShape(kind);
   setPerspective();
   project();
   updateHint();
   restart();
+  if (walk.shape) applyShape();
 }
 
 function lifeReset() {
@@ -1937,7 +2060,8 @@ function restart() {
   bounds3 = [0, 0, 0, 0, 0, 0];
   if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
     const R = walk.R;
-    const F = walk.geo.flat ? R * walk.geo.extent : sphereOutline();  // corners of a flat solid stick out beyond R
+    const F = walk.shape ? R * walk.shape.extent  // the current form, flat or round
+      : walk.geo.flat ? R * walk.geo.extent : sphereOutline();  // corners of a flat solid stick out beyond R
     bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
@@ -2143,7 +2267,7 @@ const sphereDraw = { at: 0, cost: 0 };
 function drawSphereCursor(ctx) {
   const P = (i) => [walk.wx[i], walk.wy[i], walk.wz[i]];
   const p = P(cur);
-  const t = walk.tile[cur], nr = walk.geo.nrm;
+  const t = walk.tile[cur], nr = (walk.shape || walk.geo).nrm;
   const nrm = [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]];  // outward normal of the current tile
   const pos = p.map((v, d) => v + nrm[d] * walk.R * 0.003);  // just above the surface
   // heading: last step (or the next one at the start), minus its normal component
@@ -2155,8 +2279,9 @@ function drawSphereCursor(ctx) {
   h = h.map((v) => v / hl);
   const side = cross(nrm, h);
   // scale to the tile: the arrow is 1.6·size long, about half an edge, centred on the tile centre
-  const g = walk.geo, v0 = g.poly[0], v1 = g.poly[1];
-  const edge = walk.R * Math.hypot(...[0, 1, 2].map((d) => g.verts[3 * v0 + d] - g.verts[3 * v1 + d]));
+  const g = walk.geo, v0 = g.poly[0], v1 = g.poly[1], sc = walk.shape && walk.shape.corners;
+  const edge = walk.R * (sc ? Math.hypot(sc[0] - sc[3], sc[1] - sc[4], sc[2] - sc[5])
+    : Math.hypot(...[0, 1, 2].map((d) => g.verts[3 * v0 + d] - g.verts[3 * v1 + d])));
   const size = 0.3 * edge;
   const at = (fwd, lat) => {
     fwd -= 0.2;  // the arrow spans −0.6 … 1 along its axis: shift it so it is centred
@@ -2179,7 +2304,7 @@ function drawSphereCursor(ctx) {
 // i.e. yaw and pitch such that towardViewer(walker) = 1 (then it projects onto the centre)
 function followWalker() {
   // on a torus the position does not say which way the surface faces: use the tile's normal
-  const t = walk.tile[cur], nr = walk.geo.nrm;
+  const t = walk.tile[cur], nr = (walk.shape || walk.geo).nrm;
   const [x, y, z] = walk.geo.torus ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]] : [walk.wx[cur], walk.wy[cur], walk.wz[cur]];
   const l = Math.hypot(x, y, z);
   const pitch = Math.asin(z / l), yaw = Math.atan2(-x, -y);
@@ -2205,11 +2330,11 @@ function planeVisible(n, p) {
 }
 
 function tileVisible(t) {
-  const g = walk.geo, R = walk.R;
-  return planeVisible([g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]],
-                      [g.cen[3 * t] * R, g.cen[3 * t + 1] * R, g.cen[3 * t + 2] * R]);
+  const { cen, nrm } = walk.shape || walk.geo, R = walk.R;  // the current form when the shape can change
+  return planeVisible([nrm[3 * t], nrm[3 * t + 1], nrm[3 * t + 2]], [cen[3 * t] * R, cen[3 * t + 1] * R, cen[3 * t + 2] * R]);
 }
-const facing = (i) => tileVisible(walk.tile[i]);  // is the tile of point i on the visible side?
+// is the tile of point i on the visible side? (an unrolled torus shows both sides)
+const facing = (i) => (walk.shape && walk.geo.torus && walk.shape.m < 1) || tileVisible(walk.tile[i]);
 
 // Sphere: visible tiles coloured by visit count (log scale) and shading
 function drawSphere() {
@@ -2260,8 +2385,9 @@ function drawSphere() {
       };
     }
   }
-  if (g.torus) {  // not convex: tiles facing us can hide each other, so draw them back to front
-    drawTorusTiles(ctx, g, px, py, palette, levelOf);
+  // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form
+  if (walk.shape && (g.torus || walk.shape.m > 0)) {
+    drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf);
     return;
   }
   const buckets = Array.from({ length: palette.length }, () => []);
@@ -2362,28 +2488,36 @@ function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an 
   return shadeCache.get(key);
 }
 
-function drawTorusTiles(ctx, g, px, py, palette, levelOf) {
-  const R = walk.R, P = walk.persp, cp = Math.cos(cam.pitch);
+// Tiles of a shape (torus, or an inflated polyhedron): the visible ones sorted from far to near
+// (painter's algorithm: a torus is not convex, so tiles facing us can hide each other), each
+// filled with its colour darkened by how much it turns away from the viewer, then outlined
+function drawShapeTiles(ctx, sh, k, palette, levelOf) {
+  const R = walk.R, P = walk.persp, cp = Math.cos(cam.pitch), n = walk.geo.n;
+  const { scale: s, ox, oy } = view, proj = projector();
   const dir = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)];  // towards the viewer
   const eye = P ? dir.map((v, d) => P.c[d] + v * P.D) : null;
+  const twoSided = walk.geo.torus && sh.m < 1;  // an unrolled torus is an open surface: both sides show
   const visible = [];
-  for (let t = 0; t < g.n; t++) {
-    if (!tileVisible(t)) continue;
-    const c = [g.cen[3 * t] * R, g.cen[3 * t + 1] * R, g.cen[3 * t + 2] * R];
+  for (let t = 0; t < n; t++) {
+    if (!twoSided && !tileVisible(t)) continue;
+    const c = [sh.cen[3 * t] * R, sh.cen[3 * t + 1] * R, sh.cen[3 * t + 2] * R];
     const near = eye ? -Math.hypot(c[0] - eye[0], c[1] - eye[1], c[2] - eye[2]) : c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2];
     visible.push([near, t]);
   }
   visible.sort((a, b) => a[0] - b[0]);
-  const grid = $('showGrid').checked && view.scale > 6;
+  const grid = $('showGrid').checked && s > 6;
   ctx.lineWidth = 0.6;
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
   for (const [, t] of visible) {
     const level = levelOf(t);
-    const toward = towardViewer(g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]);
+    let toward = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]);
+    if (twoSided) toward = Math.abs(toward);  // the back of a tile is lit like its front
     ctx.fillStyle = shaded(level ? palette[level] : '#1f2630', Math.round((1 - Math.max(0, toward)) * 8) / 8);
     ctx.beginPath();
-    ctx.moveTo(px[g.poly[4 * t]], py[g.poly[4 * t]]);
-    for (let j = 1; j < 4; j++) ctx.lineTo(px[g.poly[4 * t + j]], py[g.poly[4 * t + j]]);
+    for (let q = 0; q < k; q++) {
+      const i = 3 * (k * t + q), [x, y] = proj(sh.corners[i] * R, sh.corners[i + 1] * R, sh.corners[i + 2] * R);
+      ctx[q ? 'lineTo' : 'moveTo'](ox + x * s, oy + y * s);
+    }
     ctx.closePath();
     ctx.fill();
     if (grid) ctx.stroke();
@@ -2569,6 +2703,7 @@ function tick(now = performance.now()) {
     fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
+    morphStep(dt);  // flat ↔ round, while it is changing
     if (walk.n && !walk.life && $('autoFit').checked && !$('autoRotate').checked) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
@@ -2705,6 +2840,13 @@ $('primorialP').value = '392113,1';
 $('primorialP').addEventListener('change', computeFramed);
 $('primeSize').addEventListener('change', computeFramed);
 $('sky').addEventListener('change', () => { needsFull = true; });
+// flat ↔ round: the animation runs in tick (morphStep); the walk or Life run goes on meanwhile
+$('morphBtn').addEventListener('click', () => {
+  if (!walk.shape) return;
+  walk.shape.target = walk.shape.target === 1 ? 0 : 1;
+  updateMorphButton();
+});
+$('morphBtn').addEventListener('pointerdown', (e) => e.stopPropagation());  // not a drag of the view
 $('perspective').addEventListener('change', () => {
   setPerspective();
   project();
