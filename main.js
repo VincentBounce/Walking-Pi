@@ -361,7 +361,7 @@ const CONSTANTS = {
   random: { sym: '🎲', name: 'Random digits', group: 'Comparisons' },
   mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
   primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes' },
-  primeConst: { sym: 'ρ', name: 'Prime constant (Ulam)', group: 'Primes',
+  primeConst: { sym: 'ρ', name: 'Prime barcode (Ulam)', group: 'Primes',
                 note: 'digit k = 0 if k is not prime, else k mod b' },
   primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes',
                note: 'one digit per gap between odd primes: (gap / 2) mod b' },
@@ -370,45 +370,45 @@ const CONSTANTS = {
 
 const MODES = {
   turtle:   { base: 3, lattice: 'square',
-              rule: 'Base-3 digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
+              rule: 'Base₃ digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
   cardinal: { base: 4, lattice: 'square',
-              rule: 'Base-4 digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
+              rule: 'Base₄ digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
-              rule: 'Base-2 digits along a square spiral (Ulam spiral) — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+              rule: 'Base₂ digits along a square spiral (Ulam spiral) — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
-              rule: 'Base-10 digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
+              rule: 'Base₁₀ digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
   jump64:   { base: 64, lattice: 'square', points: 'jump',
-              rule: 'Base-64 digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
+              rule: 'Base₆₄ digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
   search10: { base: 10, lattice: 'square', points: 'search',
-              rule: 'Ulam spiral, base 10 — cell <b>n</b> is marked when the digits of n appear in the digits of the number' },
+              rule: 'Ulam spiral, base₁₀ — cell <b>n</b> is marked when the digits of n appear in the digits of the number' },
   search64: { base: 64, lattice: 'square', points: 'search',
-              rule: 'Ulam spiral, base 64 — cell <b>n</b> is marked when the base-64 digits of n appear in the base-64 digits of the number' },
+              rule: 'Ulam spiral, base₆₄ — cell <b>n</b> is marked when the base₆₄ digits of n appear in the base₆₄ digits of the number' },
   triSpiral: { base: 2, lattice: 'tri', skipZeros: true,
-              rule: 'Base-2 digits along a spiral of triangles — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+              rule: 'Base₂ digits along a spiral of triangles — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
   hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
-              rule: 'Base-2 digits along a spiral of hexagons — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+              rule: 'Base₂ digits along a spiral of hexagons — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
   triLR:    { base: 2, lattice: 'tri',
-              rule: 'Base-2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
+              rule: 'Base₂ digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
   triFixed: { base: 3, lattice: 'tri',
-              rule: 'Base-3 digits on triangle tiles — cross the <b>0</b> = horizontal edge, <b>1</b> = “/” edge, <b>2</b> = “\\” edge' },
+              rule: 'Base₃ digits on triangle tiles — cross the <b>0</b> = horizontal edge, <b>1</b> = “/” edge, <b>2</b> = “\\” edge' },
   hexRel:   { base: 5, lattice: 'hex',
-              rule: 'Base-5 digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
+              rule: 'Base₅ digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
   hexFixed: { base: 6, lattice: 'hex',
-              rule: 'Base-6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
+              rule: 'Base₆ digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
   sphereLR: { base: 2, lattice: 'sphere', sphere: 'geo', turns: [2, 1],
-              rule: 'Base-2 digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'Base₂ digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
-              rule: 'Base-2 digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'Base₂ digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1], perspective: true,
-              rule: 'Base-3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+              rule: 'Base₃ digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   /* Cube sphere, hidden for now (its mesh, cubeSphere(), is kept):
   cubeSphere: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1],
-              rule: 'Base-3 digits on a cube sphere of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+              rule: 'Base₃ digits on a cube sphere of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   */
   octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', turns: [2, 1],
-              rule: 'Base-2 digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'Base₂ digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
-              rule: 'Base-2 digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'Base₂ digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'flat', life: true, perspective: true,
                 rule: 'Game of Life on the surface of a cube — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
@@ -420,9 +420,9 @@ const MODES = {
   lifeSphere: { base: 2, lattice: 'sphere', sphere: 'geo', life: true,
                 rule: 'Game of Life on a geodesic sphere of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
   cubeRel:  { base: 5, lattice: 'cube', perspective: true,
-              rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
+              rule: 'Base₅ digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
   cubeFixed: { base: 6, lattice: 'cube', perspective: true,
-              rule: 'Base-6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
+              rule: 'Base₆ digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
 };
 
 // Exponents p of the known Mersenne primes (from 127 up)
@@ -632,7 +632,7 @@ function compute() {
   const integer = INTEGER_IDS.includes(id);
   const { base } = MODES[$('mode').value];
   const key = `${info.key}/${base}`;
-  const label = (count) => `${fmt(count)} base-${base} digits of ${sym}`;
+  const label = (count) => `${fmt(count)} base${SUB(base)} digits of ${sym}`;
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
 
@@ -673,7 +673,7 @@ function compute() {
   const slow = (id === 'mersenne' && info.p > 20_000_000) || (id === 'randomPrime' && info.size > 1000);
   $('status').textContent =
     (id === 'randomPrime' ? `Searching for a random ${fmt(info.size)}-digit prime…`
-      : `Computing ${integer ? `base-${base} digits of ${sym}` : label(n)}…`) +
+      : `Computing ${integer ? `base${SUB(base)} digits of ${sym}` : label(n)}…`) +
     (slow ? ' (this can take a minute or more)' : '');
   worker.onmessage = (e) => {
     if (e.data.type === 'progress') {
