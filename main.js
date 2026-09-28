@@ -882,6 +882,7 @@ function updateHint() {
     ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: fit'
     : 'Wheel: zoom · Drag: pan · Double-click: fit';
   $('autoRotateRow').hidden = !walk.is3d;
+  $('skyRow').hidden = !walk.is3d;
   $('perspectiveRow').hidden = !perspectiveAllowed();
 }
 
@@ -1591,6 +1592,7 @@ function userMovedView() {
 function drawGrid() {
   const ctx = layers.grid;
   ctx.clearRect(0, 0, cw, ch);
+  if (walk.is3d) drawSky(ctx);
   if (!$('showGrid').checked) return;
   const s = view.scale;
   let stepCells = 1;
@@ -1622,6 +1624,20 @@ function drawGrid() {
   ctx.moveTo(Math.round(view.ox) + 0.5, 0); ctx.lineTo(Math.round(view.ox) + 0.5, ch);
   ctx.moveTo(0, Math.round(view.oy) + 0.5); ctx.lineTo(cw, Math.round(view.oy) + 0.5);
   ctx.stroke();
+}
+
+// 3D background: a vertical sky gradient behind the scene (twilight, deep blue, or none)
+const SKIES = {
+  twilight: [[0, '#0a1530'], [0.45, '#1c2852'], [0.75, '#433262'], [0.92, '#7a4a5e'], [1, '#9c5f52']],
+  blue:     [[0, '#07122b'], [1, '#17315f']],
+};
+function drawSky(ctx) {
+  const stops = SKIES[$('sky').value];
+  if (!stops) return;  // dark: the page background shows through
+  const sky = ctx.createLinearGradient(0, 0, 0, ch);
+  for (const [at, colour] of stops) sky.addColorStop(at, colour);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, cw, ch);
 }
 
 // 3D: wireframe bounding box of the walk + axis gizmo in the top-left corner
@@ -2219,6 +2235,7 @@ for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
 $('primorialP').value = '392113,1';
 $('primorialP').addEventListener('change', computeFramed);
 $('primeSize').addEventListener('change', computeFramed);
+$('sky').addEventListener('change', () => { needsFull = true; });
 $('perspective').addEventListener('change', () => {
   setPerspective();
   project();
