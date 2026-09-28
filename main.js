@@ -854,6 +854,7 @@ function rotateView(dyaw, dpitch) {
 }
 
 function updateHint() {
+  $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   $('hint').textContent = walk.is3d
     ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: fit'
     : 'Wheel: zoom · Drag: pan · Double-click: fit';
@@ -1321,7 +1322,7 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
 /* ------------------------------------------------------------------ *
  * Game of Life on the tiled surfaces                                 *
  * ------------------------------------------------------------------ */
-const LIFE_GENERATIONS = 2000;
+const LIFE_JUMP = 2000;  // the Game of Life has no end: ⏭ jumps this many generations ahead
 // fading trail after a cell dies: from a light slate grey down to the background
 const LIFE_TRAIL = Array.from({ length: 8 }, (_, i) => {
   const f = 1 - i / 8, mix = (a, b) => Math.round(b + (a - b) * f);
@@ -1375,7 +1376,7 @@ function buildLife(seq, kind) {
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   const one = new Float64Array(1);
-  Object.assign(walk, { n: LIFE_GENERATIONS, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
+  Object.assign(walk, { n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
                         maxDist: null, base: rule.C, counts: null, lattice: 'sphere', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
@@ -1984,7 +1985,7 @@ function updateStats() {
   STAT_LABELS[walk.life ? 'life' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
-    $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('sStep').textContent = fmt(cur);
     $('sPos').textContent = pc(L.aliveCount) + (L.C > 2 ? ` · ${fmt(L.dyingCount)} dying` : '');
     $('sDist').textContent = fmt(L.born);
     $('sMax').textContent = fmt(L.dead);
@@ -2108,7 +2109,8 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
   restart();
   play(wasPlaying);
 });
-$('end').addEventListener('click', () => { advanceTo(walk.n); });
+// ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
+$('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('fit').addEventListener('click', fitNow);
 $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; });
