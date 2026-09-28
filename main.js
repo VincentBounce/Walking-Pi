@@ -657,6 +657,11 @@ function compute() {
   if (!mode.life) $('digits').value = n;
   relabelColours(!!mode.life);
   $('lifeRuleRow').hidden = !mode.life;
+  // a new number, surface, size or rule ends any hunt: its champion would not fit any more
+  $('huntRow').hidden = !mode.life;
+  stopHunt();
+  $('huntStatus').textContent = '';
+  $('huntLoad').hidden = true;
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
   // Life recomputes on every change: Compute is only kept to redraw a random number
   $('compute').hidden = !!mode.life && !['random', 'randomPrime'].includes($('constant').value);
@@ -1545,6 +1550,132 @@ function lifeStep() {
   lifeTrack(gen);
 }
 
+/* ------------------------------------------------------------------ *
+ * Methuselah hunt: the starting pattern that lasts longest            *
+ * ------------------------------------------------------------------ */
+/* Runs in a Web Worker. Lifetime = T, the generation where the run starts repeating (dying out,
+ * frozen or looping), found with the same state fingerprints as the Lifetime stat.
+ * Phase 1: random starts (each cell a uniform random state). Phase 2: hill climbing — flip 1 to 3
+ * random cells of the best start and keep the change when it lasts at least as long. */
+function huntWorker() {
+  self.onmessage = (e) => {
+    const { n, start, list, B, S, C, own, randomRuns, tweaks, cap } = e.data;
+    const step = (a, b) => {
+      for (let t = 0; t < n; t++) {
+        const was = a[t];
+        if (was >= 2) { b[t] = was + 1 < C ? was + 1 : 0; continue; }
+        let c = 0;
+        for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
+        b[t] = was ? (S[c] ? 1 : C > 2 ? 2 : 0) : B[c];
+      }
+    };
+    const fingerprint = (s) => {
+      let h1 = 0x811c9dc5, h2 = 0x01000193;
+      for (let t = 0; t < n; t++) {
+        h1 = Math.imul(h1 ^ s[t], 0x01000193);
+        h2 = Math.imul(h2 ^ (s[t] + t), 0x5bd1e995);
+      }
+      return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
+    };
+    const lifetime = (seed) => {  // { T, P } — P = 0 when still unsettled at the cap
+      let a = Uint8Array.from(seed), b = new Uint8Array(n);
+      const seen = new Map([[fingerprint(a), 0]]);
+      for (let g = 1; g <= cap; g++) {
+        step(a, b);
+        [a, b] = [b, a];
+        const k = fingerprint(a), first = seen.get(k);
+        if (first !== undefined) return { T: first, P: g - first };
+        seen.set(k, g);
+      }
+      return { T: cap, P: 0 };
+    };
+    const randomSeed = () => { const s = new Uint8Array(n); for (let t = 0; t < n; t++) s[t] = Math.floor(Math.random() * C); return s; };
+
+    const ownLife = lifetime(own);
+    let best = null, bestSeed = null;
+    const times = [];
+    const report = (phase, i, total, improved) => self.postMessage({
+      type: 'progress', phase, i, total, best, ownLife, below: times.filter((T) => T < ownLife.T).length, runs: times.length,
+      seed: improved ? bestSeed.slice() : null });
+    for (let i = 1; i <= randomRuns; i++) {
+      const seed = randomSeed(), r = lifetime(seed);
+      times.push(r.T);
+      const improved = !best || r.T > best.T;
+      if (improved) { best = r; bestSeed = seed; }
+      report(1, i, randomRuns, improved);
+    }
+    for (let i = 1; i <= tweaks; i++) {
+      const seed = bestSeed.slice();
+      const flips = 1 + Math.floor(Math.random() * 3);
+      for (let f = 0; f < flips; f++) seed[Math.floor(Math.random() * n)] = Math.floor(Math.random() * C);
+      const r = lifetime(seed);
+      const improved = r.T > best.T;
+      if (r.T >= best.T) { best = r; bestSeed = seed; }  // equal lifetimes are accepted too, to drift
+      report(2, i, tweaks, improved);
+    }
+    self.postMessage({ type: 'done' });
+  };
+}
+
+const hunt = { worker: null, key: null, best: null, seed: null };
+
+// A hunt belongs to one surface, size and rule: anything else makes its champion meaningless
+const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? walk.life.ruleText : ''}`;
+
+function stopHunt() {
+  if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
+  $('huntBtn').textContent = '🔍 Hunt';
+}
+
+function lifetimeWords(r) {
+  if (!r.P) return `still changing after ${fmt(r.T)} generations`;
+  return r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`;
+}
+
+function startHunt() {
+  const L = walk.life;
+  if (!L) return;
+  stopHunt();
+  const [randomRuns, tweaks] = $('huntSize').value.split(',').map(Number);
+  const src = `(${huntWorker.toString()})()`;
+  hunt.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+  hunt.key = huntKey();
+  hunt.best = hunt.seed = null;
+  $('huntBtn').textContent = '■ Stop';
+  $('huntLoad').hidden = true;
+  $('huntStatus').textContent = `Measuring ${$('titleSym').textContent}…`;
+  hunt.worker.onmessage = (e) => {
+    const d = e.data;
+    if (d.type === 'done') {
+      stopHunt();
+      $('huntStatus').textContent = `Done. ${$('huntStatus').textContent}`;
+      return;
+    }
+    hunt.best = d.best;
+    if (d.seed) hunt.seed = d.seed;
+    $('huntLoad').hidden = !hunt.seed;
+    const phase = d.phase === 1 ? `random start ${fmt(d.i)} / ${fmt(d.total)}` : `tweak ${fmt(d.i)} / ${fmt(d.total)}`;
+    const own = `${$('titleSym').textContent} ${lifetimeWords(d.ownLife)} — longer than ${Math.round((100 * d.below) / d.runs)} % of ${fmt(d.runs)} random starts`;
+    $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)} · ${own}`;
+  };
+  hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, B: L.B, S: L.S, C: L.C,
+                            own: L.seed, randomRuns, tweaks, cap: 50000 });
+}
+
+// Load the champion as the starting pattern of the current Life run
+function loadChampion() {
+  const L = walk.life;
+  if (!L || !hunt.seed || hunt.key !== huntKey()) {
+    $('huntStatus').textContent = 'The champion was found for another surface, size or rule: hunt again.';
+    return;
+  }
+  L.seed.set(hunt.seed);
+  L.seedAlive = L.seed.reduce((a, v) => a + (v === 1), 0);
+  L.seedDying = L.seed.reduce((a, v) => a + (v > 1), 0);
+  restart();
+  $('status').textContent = `Champion loaded: ${lifetimeWords(hunt.best)} (${fmt(L.seedAlive)} live cells at the start)`;
+}
+
 function key(x, y) {
   return (x + 2 ** 21) * 2 ** 22 + (y + 2 ** 21);
 }
@@ -2381,6 +2512,8 @@ $('perspective').addEventListener('change', () => {
   if (walk.sphere) needsFull = true;
   else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
 });
+$('huntBtn').addEventListener('click', () => (hunt.worker ? stopHunt() : startHunt()));
+$('huntLoad').addEventListener('click', loadChampion);
 // Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
 $('lifePreset').addEventListener('change', () => {
   const custom = $('lifePreset').value === 'custom';
