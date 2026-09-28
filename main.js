@@ -640,6 +640,9 @@ function compute() {
   relabelColours(!!mode.life);
   $('lifeRuleRow').hidden = !mode.life;
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
+  // Life recomputes on every change: Compute is only kept to redraw a random number
+  $('compute').hidden = !!mode.life && !['random', 'randomPrime'].includes($('constant').value);
+  if (!$('compute').disabled) $('compute').textContent = computeLabel();
   $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('titleSym').textContent = sym;
   $('fractionRow').hidden = id !== 'fraction';
@@ -708,9 +711,12 @@ function compute() {
   worker.postMessage({ id, n, base, p: info.p, sign: info.sign, size: info.size });
 }
 
+// Label of the Compute button: in Life it is only useful to draw a new random seed
+const computeLabel = () => (MODES[$('mode').value].life ? 'New random draw' : 'Compute');
+
 function setBusy(busy) {
   $('compute').disabled = busy;
-  $('compute').textContent = busy ? 'Computing…' : 'Compute';
+  $('compute').textContent = busy ? 'Computing…' : computeLabel();
   $('progressBar').style.width = busy ? '0' : '100%';
 }
 
