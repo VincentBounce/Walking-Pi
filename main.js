@@ -653,8 +653,45 @@ function setCurrent(entry) {
   current = { head, digits: entry.digits, mode: $('mode').value };
 }
 
+/* Walk mode picker: the categories of the (hidden) mode menu as tabs, and every choice of the
+ * selected tab as a list. Picking a choice sets the menu and fires its change event, so the rest
+ * of the page only ever deals with the menu. */
+let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
+const tabName = (label) => (label.startsWith('Game of Life') ? 'Life' : label);
+
+function renderModePicker() {
+  const groups = Array.from($('mode').querySelectorAll('optgroup'));
+  const currentGroup = $('mode').selectedOptions[0].parentElement.label;
+  if (!modeTab) modeTab = currentGroup;
+  $('modeTabs').replaceChildren(...groups.map((g) => {
+    const b = document.createElement('button');
+    b.textContent = tabName(g.label);
+    b.title = g.label;
+    b.setAttribute('role', 'tab');
+    b.classList.toggle('active', g.label === modeTab);
+    b.addEventListener('click', () => { modeTab = g.label; renderModePicker(); });
+    return b;
+  }));
+  const group = groups.find((g) => g.label === modeTab);
+  $('modeList').replaceChildren(...Array.from(group.children).map((o) => {
+    const b = document.createElement('button');
+    const text = o.text.replace(/^Life — /, '');  // the Life tab already says it
+    b.textContent = text[0].toUpperCase() + text.slice(1);
+    b.setAttribute('role', 'option');
+    b.classList.toggle('active', o.value === $('mode').value);
+    b.addEventListener('click', () => {
+      if (o.value === $('mode').value) return;
+      $('mode').value = o.value;
+      $('mode').dispatchEvent(new Event('change'));
+    });
+    return b;
+  }));
+}
+
 function compute() {
   const mode = MODES[$('mode').value];
+  modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
+  renderModePicker();
   if (mode.sphere) fillSphereSizes(mode.sphere);
   const n = digitsNeeded();
   const id = $('constant').value;

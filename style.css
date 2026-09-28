@@ -94,6 +94,15 @@ button.primary {
   font-weight: 600;
 }
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
+.field-label { margin-bottom: 4px; }
+
+/* Walk mode: one tab per category, then every choice of that category */
+.tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.tabs button { flex: 1 1 auto; padding: 5px 6px; font-size: 12px; }
+.tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+.mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.mode-list button { text-align: left; padding: 6px 8px; font-size: 13px; line-height: 1.3; }
+.mode-list button.active { border-color: var(--accent); color: var(--accent); }
 .row button { white-space: nowrap; }
 .row button:first-child { flex: 1; }
 
