@@ -1919,8 +1919,8 @@ for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
   $('primorialP').append(group);
 }
 $('primorialP').value = '392113,1';
-$('primorialP').addEventListener('change', compute);
-$('primeSize').addEventListener('change', compute);
+$('primorialP').addEventListener('change', computeFramed);
+$('primeSize').addEventListener('change', computeFramed);
 $('perspective').addEventListener('change', () => {
   setPerspective();
   project();
@@ -1932,9 +1932,14 @@ $('sphereF').addEventListener('change', () => {
   buildWalk();
   showAll();
 });
-$('constant').addEventListener('change', compute);
-$('mersenneP').addEventListener('change', compute);
-$('fraction').addEventListener('change', compute);
+$('constant').addEventListener('change', computeFramed);
+$('mersenneP').addEventListener('change', computeFramed);
+$('fraction').addEventListener('change', computeFramed);
+// A new number (or a new prime, size or fraction) starts framed
+function computeFramed() {
+  $('autoFit').checked = true;
+  compute();
+}
 $('mode').addEventListener('change', () => {
   $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default for the cube modes only
   $('autoFit').checked = true;  // a new walk mode starts framed
