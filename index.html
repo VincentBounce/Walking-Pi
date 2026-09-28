@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001i">
+  <link rel="stylesheet" href="style.css?v=20261001j">
 </head>
 <body>
   <header>
@@ -23,21 +23,21 @@
         <label hidden>Walk mode (menu kept as the source of truth for the tabs above)
           <select id="mode">
             <optgroup label="2D">
-              <option value="turtle">Squares turtle — base₃ (left / forward / right)</option>
-              <option value="cardinal">Squares cardinal — base₄ (N / E / S / W)</option>
-              <option value="triLR">Triangles — base₂ (left / right)</option>
-              <option value="triFixed">Triangles — base₃ (3 fixed edges)</option>
-              <option value="hexRel">Hexagons — base₅ (5 relative turns)</option>
-              <option value="hexFixed">Hexagons — base₆ (6 fixed directions)</option>
+              <option value="turtle">Squares turtle — base 3 (left / forward / right)</option>
+              <option value="cardinal">Squares cardinal — base 4 (N / E / S / W)</option>
+              <option value="triLR">Triangles — base 2 (left / right)</option>
+              <option value="triFixed">Triangles — base 3 (3 fixed edges)</option>
+              <option value="hexRel">Hexagons — base 5 (5 relative turns)</option>
+              <option value="hexFixed">Hexagons — base 6 (6 fixed directions)</option>
             </optgroup>
             <optgroup label="3D">
-              <option value="cubeRel">Cubes — base₅ (5 relative turns)</option>
-              <option value="cubeFixed">Cubes — base₆ (6 fixed directions)</option>
-              <option value="torusWalk">Torus — base₃ (left / forward / right)</option>
-              <option value="cubeFlat">Cube surface — base₃ (left / forward / right)</option>
-              <option value="tetraLR">Tetrahedron — base₂ (left / right)</option>
-              <option value="octaLR">Octahedron — base₂ (left / right)</option>
-              <option value="icosaLR">Icosahedron — base₂ (left / right)</option>
+              <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
+              <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
+              <option value="torusWalk">Torus — base 3 (left / forward / right)</option>
+              <option value="cubeFlat">Cube surface — base 3 (left / forward / right)</option>
+              <option value="tetraLR">Tetrahedron — base 2 (left / right)</option>
+              <option value="octaLR">Octahedron — base 2 (left / right)</option>
+              <option value="icosaLR">Icosahedron — base 2 (left / right)</option>
             </optgroup>
             <optgroup label="Game of Life on 3D shapes">
               <option value="lifeTorus">Life — torus (square grid)</option>
@@ -47,13 +47,13 @@
               <option value="lifeIcosa">Life — icosahedron</option>
             </optgroup>
             <optgroup label="Experimental">
-              <option value="spiral">Ulam square spiral — base₂ (1 = draw, 0 = skip)</option>
-              <option value="triSpiral">Ulam triangle spiral — base₂ (1 = draw, 0 = skip)</option>
-              <option value="hexSpiral">Ulam hexagon spiral — base₂ (1 = draw, 0 = skip)</option>
-              <option value="jump10">Ulam spiral jumps — base₁₀</option>
-              <option value="jump64">Ulam spiral jumps — base₆₄</option>
-              <option value="search10">Ulam spiral search — base₁₀</option>
-              <option value="search64">Ulam spiral search — base₆₄</option>
+              <option value="spiral">Ulam square spiral — base 2 (1 = draw, 0 = skip)</option>
+              <option value="triSpiral">Ulam triangle spiral — base 2 (1 = draw, 0 = skip)</option>
+              <option value="hexSpiral">Ulam hexagon spiral — base 2 (1 = draw, 0 = skip)</option>
+              <option value="jump10">Ulam spiral jumps — base 10</option>
+              <option value="jump64">Ulam spiral jumps — base 64</option>
+              <option value="search10">Ulam spiral search — base 10</option>
+              <option value="search64">Ulam spiral search — base 64</option>
             </optgroup>
           </select>
         </label>
@@ -201,6 +201,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261001i"></script>
+  <script src="main.js?v=20261001j"></script>
 </body>
 </html>
