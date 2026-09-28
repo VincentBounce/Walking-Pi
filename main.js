@@ -1773,7 +1773,7 @@ function applySetup(s) {
   return true;
 }
 
-// Called when a walk has just been built: restore a loaded setup's champion
+// Called when a walk has just been built: restore a loaded setup's champion, then write the link
 function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
@@ -1781,6 +1781,7 @@ function applyPendingView() {
     setLifeSeed(decodeCells(ch, walk.life.seed.length));
     championCode = ch;
   }
+  syncLink();  // at once, not at the next periodic update
 }
 
 // The page link always holds the current setup (#n=pi&w=turtle&…), for bookmarks and sharing.
