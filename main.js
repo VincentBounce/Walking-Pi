@@ -356,16 +356,16 @@ const CONSTANTS = {
   sqrt7: { sym: '√7',   name: 'Square root of 7', group: 'Roots' },
   sqrt8: { sym: '√8',   name: 'Square root of 8 (= 2√2)', group: 'Roots' },
   cbrt2: { sym: '∛2',   name: 'Cube root of 2', group: 'Roots' },
-  random: { sym: '🎲', name: 'Random digits', group: 'Comparisons' },
   champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons' },
   fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons' },
+  random: { sym: '🎲', name: 'Random digits', group: 'Comparisons' },
   mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
   primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes' },
-  randomPrime: { sym: 'p', name: 'Random prime', group: 'Primes' },
   primeConst: { sym: 'ρ', name: 'Prime constant (Ulam)', group: 'Primes',
                 note: 'digit k = 0 if k is not prime, else k mod b' },
   primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes',
                note: 'one digit per gap between odd primes: (gap / 2) mod b' },
+  randomPrime: { sym: '🎲', name: 'Random prime', group: 'Primes' },
 };
 
 const MODES = {
@@ -492,7 +492,7 @@ function numberInfo(id) {
   }
   if (id === 'randomPrime') {
     const size = Number($('primeSize').value);
-    return { sym: `p${SUB(size)}`, key: null, size };  // never cached: a new prime each time
+    return { sym: `🎲 p${SUB(size)}`, key: null, size };  // never cached: a new prime each time
   }
   if (id === 'fraction') {
     const txt = $('fraction').value.replace(/\s/g, '');
