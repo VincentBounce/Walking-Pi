@@ -82,7 +82,7 @@ With the prime constant ρ, the square binary spiral draws the classic Ulam spir
 
 - **Animation** from a few steps to 600,000 steps per second, with step-by-step and jump-to-end.
 - **Navigation:** zoom with the mouse wheel, pan by dragging, and auto-fit.
-- **3D view:** perspective (can be turned off), drag to rotate, Shift+drag to pan, optional auto-rotate. Rotation is around the centre of the scene.
+- **3D view:** perspective (on by default for the cube walks, available in every 3D mode), drag to rotate, Shift+drag to pan, optional auto-rotate. Rotation is around the centre of the scene.
 - **Surfaces:** in auto-fit, the camera turns to keep the walker in the middle, and a small arrow lying on the surface shows its heading.
 - **Colours:** gradient along the walk, by digit, or monochrome.
 - **Grids:** squares, triangles and hexagons in 2D, and a bounding box with axes in 3D.

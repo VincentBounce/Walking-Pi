@@ -373,9 +373,9 @@ const MODES = {
               rule: 'Base-2 digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
               rule: 'Base-2 digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
-  cubeRel:  { base: 5, lattice: 'cube',
+  cubeRel:  { base: 5, lattice: 'cube', perspective: true,
               rule: 'Base-5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
-  cubeFixed: { base: 6, lattice: 'cube',
+  cubeFixed: { base: 6, lattice: 'cube', perspective: true,
               rule: 'Base-6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
 };
 
@@ -723,7 +723,7 @@ function project() {
   }
 }
 
-// Perspective applies to every 3D view (the checkbox can turn it off)
+// Perspective can apply to every 3D view (checkbox; on by default only for the 3D cube walks)
 const perspectiveAllowed = () => walk.is3d;
 
 // Apparent radius of a sphere of radius R: R in orthographic view, R·D / √(D² − R²) in perspective
@@ -1891,7 +1891,10 @@ $('sphereF').addEventListener('change', () => {
 $('constant').addEventListener('change', compute);
 $('mersenneP').addEventListener('change', compute);
 $('fraction').addEventListener('change', compute);
-$('mode').addEventListener('change', compute);
+$('mode').addEventListener('change', () => {
+  $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default only for the 3D cube walks
+  compute();
+});
 
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
