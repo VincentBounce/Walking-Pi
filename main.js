@@ -399,6 +399,8 @@ const MODES = {
               rule: 'Base₂ digits on a geodesic sphere of triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
               rule: 'Base₂ digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', turns: [3, 2, 1], perspective: true,
+              rule: 'Base₃ digits on the surface of a torus of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'flat', turns: [3, 2, 1], perspective: true,
               rule: 'Base₃ digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   /* Cube sphere, hidden for now (its mesh, cubeSphere(), is kept):
@@ -409,6 +411,8 @@ const MODES = {
               rule: 'Base₂ digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
               rule: 'Base₂ digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+  lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true,
+                where: 'a torus (a square grid that wraps around both ways)' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'flat', life: true, perspective: true,
                 where: 'the surface of a cube' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
@@ -1097,7 +1101,8 @@ function vertexStore(normalise = true) {
 
 // Orient every tile counterclockwise, compute centres, outward normals and edge adjacency.
 // On a sphere the centre is pushed onto the surface and the normal is the centre's direction.
-function finishMesh(verts, tiles, sides, size, flat = false) {
+// outwardRef(centre) gives a vector pointing outwards near a tile (default: from the solid's centre)
+function finishMesh(verts, tiles, sides, size, flat = false, outwardRef = (m) => m) {
   const n = tiles.length;
   const poly = new Int32Array(sides * n), cen = new Float64Array(3 * n), nrmOut = new Float64Array(3 * n);
   const V = (v) => [verts[3 * v], verts[3 * v + 1], verts[3 * v + 2]];
@@ -1108,7 +1113,8 @@ function finishMesh(verts, tiles, sides, size, flat = false) {
     const d1 = [0, 1, 2].map((d) => P[2][d] - P[0][d]);
     const d2 = [0, 1, 2].map((d) => P[sides - 1][d] - P[1][d]);
     const nrm = cross(d1, d2);
-    const inward = nrm[0] * m[0] + nrm[1] * m[1] + nrm[2] * m[2] < 0;
+    const ref = outwardRef(m.map((v) => v / sides));
+    const inward = nrm[0] * ref[0] + nrm[1] * ref[1] + nrm[2] * ref[2] < 0;
     poly.set(inward ? [t[0], ...t.slice(1).reverse()] : t, sides * i);
     if (flat) {
       const l = Math.hypot(...nrm) * (inward ? -1 : 1);
@@ -1269,6 +1275,31 @@ function flatPolyhedron(name, f) {
   return (meshCache[key] = mesh);
 }
 
+/* Torus (a ring or "donut"): nu × nv squares, nu around the ring and nv around the tube, with
+ * major radius 1 and tube radius TORUS_TUBE. Every square has 4 edge neighbours and 8 corner
+ * neighbours with no exception: it is the square grid that wraps around both ways. */
+const TORUS_TUBE = 0.4;
+function torusMesh(nv) {
+  const key = `torus${nv}`;
+  if (meshCache[key]) return meshCache[key];
+  const nu = Math.round(nv / TORUS_TUBE);  // squares about as long around the ring as around the tube
+  const { verts, add } = vertexStore(false);
+  const at = (i, j) => {
+    const u = (2 * Math.PI * (i % nu)) / nu, v = (2 * Math.PI * (j % nv)) / nv;
+    const ring = 1 + TORUS_TUBE * Math.cos(v);
+    return add(ring * Math.cos(u), ring * Math.sin(u), TORUS_TUBE * Math.sin(v));
+  };
+  const quads = [];
+  for (let i = 0; i < nu; i++) {
+    for (let j = 0; j < nv; j++) quads.push([at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+  }
+  // outwards = away from the circle running through the middle of the tube
+  const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
+  const mesh = finishMesh(verts, quads, 4, nv, true, fromTubeAxis);
+  mesh.torus = true;
+  return (meshCache[key] = mesh);
+}
+
 const SPHERES = {
   geo:  { mesh: geodesic, radius: (f) => f * 1.05,       // triangle edge ≈ 1 unit
           sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
@@ -1277,6 +1308,8 @@ const SPHERES = {
   flat: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
+  torus: { mesh: torusMesh, radius: (nv) => nv / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+          sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => Math.round(nv / TORUS_TUBE) * nv, unit: 'squares' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
@@ -1771,7 +1804,9 @@ function drawSphereCursor(ctx) {
 // Auto-fit on the sphere: ease the camera towards the walker so that it faces the viewer,
 // i.e. yaw and pitch such that towardViewer(walker) = 1 (then it projects onto the centre)
 function followWalker() {
-  const x = walk.wx[cur], y = walk.wy[cur], z = walk.wz[cur];
+  // on a torus the position does not say which way the surface faces: use the tile's normal
+  const t = walk.tile[cur], nr = walk.geo.nrm;
+  const [x, y, z] = walk.geo.torus ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]] : [walk.wx[cur], walk.wy[cur], walk.wz[cur]];
   const l = Math.hypot(x, y, z);
   const pitch = Math.asin(z / l), yaw = Math.atan2(-x, -y);
   let dyaw = yaw - cam.yaw;
@@ -1850,6 +1885,10 @@ function drawSphere() {
         return L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
       };
     }
+  }
+  if (g.torus) {  // not convex: tiles facing us can hide each other, so draw them back to front
+    drawTorusTiles(ctx, g, px, py, palette, levelOf);
+    return;
   }
   const buckets = Array.from({ length: palette.length }, () => []);
   for (let t = 0; t < g.n; t++) {
@@ -1931,6 +1970,50 @@ function drawSphere() {
   }
   ctx.stroke();
   */
+}
+
+// Torus tiles: the visible ones sorted from far to near (painter's algorithm), each filled with
+// its colour darkened by how much it turns away from the viewer, then outlined if large enough
+const shadeCache = new Map();
+const colourProbe = document.createElement('canvas').getContext('2d');
+function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
+  const key = `${colour}|${shade}`;
+  if (!shadeCache.has(key)) {
+    const probe = colourProbe;
+    probe.fillStyle = colour;  // the canvas normalises any CSS colour to #rrggbb
+    const hex = probe.fillStyle, k = 1 - 0.6 * shade;
+    const [r, g, b] = [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k));
+    shadeCache.set(key, `rgb(${r}, ${g}, ${b})`);
+  }
+  return shadeCache.get(key);
+}
+
+function drawTorusTiles(ctx, g, px, py, palette, levelOf) {
+  const R = walk.R, P = walk.persp, cp = Math.cos(cam.pitch);
+  const dir = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)];  // towards the viewer
+  const eye = P ? dir.map((v, d) => P.c[d] + v * P.D) : null;
+  const visible = [];
+  for (let t = 0; t < g.n; t++) {
+    if (!tileVisible(t)) continue;
+    const c = [g.cen[3 * t] * R, g.cen[3 * t + 1] * R, g.cen[3 * t + 2] * R];
+    const near = eye ? -Math.hypot(c[0] - eye[0], c[1] - eye[1], c[2] - eye[2]) : c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2];
+    visible.push([near, t]);
+  }
+  visible.sort((a, b) => a[0] - b[0]);
+  const grid = $('showGrid').checked && view.scale > 6;
+  ctx.lineWidth = 0.6;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  for (const [, t] of visible) {
+    const level = levelOf(t);
+    const toward = towardViewer(g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]);
+    ctx.fillStyle = shaded(level ? palette[level] : '#1f2630', Math.round((1 - Math.max(0, toward)) * 8) / 8);
+    ctx.beginPath();
+    ctx.moveTo(px[g.poly[4 * t]], py[g.poly[4 * t]]);
+    for (let j = 1; j < 4; j++) ctx.lineTo(px[g.poly[4 * t + j]], py[g.poly[4 * t + j]]);
+    ctx.closePath();
+    ctx.fill();
+    if (grid) ctx.stroke();
+  }
 }
 
 // Draw segments [from, to): segment i joins point i to point i+1.

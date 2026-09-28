@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20260929t">
+  <link rel="stylesheet" href="style.css?v=20260929u">
 </head>
 <body>
   <header>
@@ -61,6 +61,7 @@
               <option value="cubeRel">Cubes — base₅ (5 relative turns)</option>
               <option value="cubeFixed">Cubes — base₆ (6 fixed directions)</option>
               <!-- <option value="cubeSphere">Cube sphere — base₃ (left / forward / right)</option> -->
+              <option value="torusWalk">Torus — base₃ (left / forward / right)</option>
               <option value="cubeFlat">Cube surface — base₃ (left / forward / right)</option>
               <option value="tetraLR">Tetrahedron — base₂ (left / right)</option>
               <option value="octaLR">Octahedron — base₂ (left / right)</option>
@@ -68,6 +69,7 @@
               <option value="sphereLR">Geodesic sphere — base₂ (left / right)</option>
             </optgroup>
             <optgroup label="Game of Life">
+              <option value="lifeTorus">Life — torus (square grid)</option>
               <option value="lifeCube">Life — cube surface</option>
               <option value="lifeTetra">Life — tetrahedron</option>
               <option value="lifeOcta">Life — octahedron</option>
@@ -95,6 +97,11 @@
             <option value="B34/S2/C4">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
             <option value="B2/S/C3">■ B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
             <option value="B2/S345/C4">■ B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
+            <option value="B36/S23">■ B36/S23 — HighLife, with a replicator</option>
+            <option value="B3/S12345">■ B3/S12345 — Maze, grows corridors</option>
+            <option value="B3/S1234">■ B3/S1234 — Mazectric, longer corridors</option>
+            <option value="B3678/S34678">■ B3678/S34678 — Day &amp; Night, alive and dead are symmetric</option>
+            <option value="B2/S">■ B2/S — Seeds, explosive</option>
             <option value="custom">Custom…</option>
           </select>
         </label>
@@ -161,6 +168,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20260929t"></script>
+  <script src="main.js?v=20260929u"></script>
 </body>
 </html>
