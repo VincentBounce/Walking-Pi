@@ -410,15 +410,15 @@ const MODES = {
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1],
               rule: 'Base₂ digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'flat', life: true, perspective: true,
-                rule: 'Game of Life on the surface of a cube — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+                where: 'the surface of a cube' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
-                rule: 'Game of Life on a tetrahedron of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+                where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', life: true,
-                rule: 'Game of Life on an octahedron of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+                where: 'an octahedron of triangles' },
   lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true,
-                rule: 'Game of Life on an icosahedron of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+                where: 'an icosahedron of triangles' },
   lifeSphere: { base: 2, lattice: 'sphere', sphere: 'geo', life: true,
-                rule: 'Game of Life on a geodesic sphere of triangles — the binary digits seed the cells (<b>1</b> = alive); neighbours share an edge or a corner' },
+                where: 'a geodesic sphere of triangles' },
   cubeRel:  { base: 5, lattice: 'cube', perspective: true,
               rule: 'Base₅ digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
   cubeFixed: { base: 6, lattice: 'cube', perspective: true,
@@ -476,23 +476,32 @@ let cw = 0, ch = 0;
  * Computing digits and building the walk                             *
  * ------------------------------------------------------------------ */
 function updateRuleText() {
-  const { base, rule } = MODES[$('mode').value];
-  $('rule').innerHTML = rule;
+  const { base, rule, life, where } = MODES[$('mode').value];
+  $('rule').innerHTML = life ? lifeSubtitle(where) : rule;
   $('sCountsLabel').textContent = Array.from({ length: base }, (_, i) => i).join(' / ');
   $('sCountsLabel').hidden = $('sCounts').hidden = base > 6 || !!MODES[$('mode').value].life;  // nothing useful to list
 }
 
-// Game of Life needs one binary digit per cell; walks use the requested number of digits
+// Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value];
   return mode.life ? SPHERES[mode.sphere].tiles(Number($('sphereF').value)) : requestedDigits();
 }
 
-// The colour menu means something else for the Game of Life
+// Game of Life subtitle: where it is played and how the base-C digits seed the cells
+function lifeSubtitle(where) {
+  const C = lifeStates();
+  const states = C > 2 ? `, <b>2</b>${C > 3 ? `–<b>${C - 1}</b>` : ''} = dying` : '';
+  return `Game of Life on ${where} — the base${SUB(C)} digits seed the cells (<b>0</b> = dead, <b>1</b> = alive${states}); ` +
+    'neighbours share an edge or a corner';
+}
+
+// The colour menu means something else for the Game of Life, and depends on its number of states
 function relabelColours(life) {
-  const names = life
-    ? { gradient: 'Age (+ fading trail)', digit: 'Activity (state changes)', mono: 'Alive / dead' }
-    : { gradient: 'Gradient (order)', digit: 'By digit', mono: 'Monochrome' };
+  const multi = life && lifeStates() > 2;  // Generations rules have real dying stages instead of a trail
+  const names = !life ? { gradient: 'Gradient (order)', digit: 'By digit', mono: 'Monochrome' }
+    : multi ? { gradient: 'Age + dying stages', digit: 'Activity (state changes)', mono: 'Alive / dying / dead' }
+    : { gradient: 'Age (+ fading trail)', digit: 'Activity (state changes)', mono: 'Alive / dead' };
   for (const o of $('colorMode').options) o.text = names[o.value];
 }
 
