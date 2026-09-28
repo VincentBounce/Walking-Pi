@@ -1814,8 +1814,7 @@ function applyPendingView() {
   }
 }
 
-// A shared link carries a setup after # (#n=pi&w=turtle&…). The address bar itself stays clean:
-// the link is only built when copied, and a link that is opened is cleaned once applied.
+// The page link always holds the current setup (#n=pi&w=turtle&…), for bookmarks and sharing.
 // A champion is left out of the link when too long: saved setups and JSON files keep it.
 const toHash = (s) => new URLSearchParams(Object.entries(s).filter(([k, v]) => k !== 'ch' || v.length < 3000)).toString();
 function parseHash() {
@@ -1823,10 +1822,10 @@ function parseHash() {
   const s = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
   return s.n && s.w ? s : null;
 }
-function openLinkedSetup() {  // true when the address held a setup, now applied
-  const s = parseHash();
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
-  return !!s && applySetup(s);
+function syncLink() {
+  if ($('compute').disabled || pendingView) return;  // not while a setup is still being built
+  const h = `#${toHash(getSetup())}`;
+  if (h !== location.hash) history.replaceState(null, '', h);
 }
 
 // Saved setups in this browser (localStorage), as { name, setup, saved }
@@ -1897,12 +1896,12 @@ async function importSetups(file) {
 }
 
 async function copyLink() {
-  const link = `${location.origin}${location.pathname}#${toHash(getSetup())}`;
+  syncLink();
   try {
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(location.href);
     setupNote('Link copied: it opens this exact setup.');
   } catch {
-    setupNote(`Copy this link: ${link}`);  // clipboard not allowed here
+    setupNote('Copy the address bar: it holds this exact setup.');
   }
 }
 
@@ -2791,11 +2790,13 @@ $('setupList').addEventListener('change', () => {
   if (x && applySetup(x.setup)) setupNote(`Loaded “${x.name}”.`);
 });
 // a setup link pasted into this tab
-window.addEventListener('hashchange', openLinkedSetup);
+window.addEventListener('hashchange', () => { const s = parseHash(); if (s) applySetup(s); });
 
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
 requestAnimationFrame(tick);
 fillSetupList();
-if (!openLinkedSetup()) compute();  // a link with a setup opens that setup; otherwise the default one
+const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
+if (!linked || !applySetup(linked)) compute();
+setInterval(syncLink, 700);  // keep the link up to date with the setup
