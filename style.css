@@ -124,7 +124,11 @@ button.primary {
   border-radius: 999px;
   color: var(--muted);
 }
-.number-list .mode-icon { font-size: 13px; }
+/* Number tiles: the symbol only, several per row (name and formula in the tooltip) */
+.number-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 4px; margin-bottom: 10px; }
+.number-grid button { padding: 6px 2px; font-size: 14px; white-space: nowrap; background: var(--panel); }
+.number-grid button:hover { background: var(--bg); }
+.number-grid button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .mode-list button.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .mode-list button.active .mode-name,
 .mode-list button.active .mode-icon { color: var(--accent); }
