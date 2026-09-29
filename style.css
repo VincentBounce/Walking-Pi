@@ -124,6 +124,9 @@ button.primary {
   border-radius: 999px;
   color: var(--muted);
 }
+.number-list button { grid-template-columns: 34px 1fr; }  /* symbols like ζ(3) or 16/9 are wider */
+.number-list .mode-icon { font-size: 13px; }
+.formula-hint { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 .mode-list button.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .mode-list button.active .mode-name,
 .mode-list button.active .mode-icon { color: var(--accent); }

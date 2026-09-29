@@ -486,37 +486,35 @@ const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
 const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'];
 const MONO = '#f0b429';
 
-// The Number menu: each choice writes a formula (see Number formulas). Choices with a helper menu
-// (Mersenne, primorial, random prime) or a random seed build it when picked.
+// The Number cards, in tabs: each card writes a formula (see Number formulas). Cards with a helper
+// menu (Mersenne, primorial, random prime) or a random seed build it when picked. detail: the
+// formula shown on the card when it is not a plain one.
+const NUMBER_TABS = ['Constants', 'Primes', 'Sequences', 'Misc'];
 const PRESETS = {
-  pi:    { sym: 'π',    name: 'Pi', f: 'pi' },
-  pi2:   { sym: 'π²',   name: 'Pi squared', f: 'pi^2' },
-  e:     { sym: 'e',    name: "Euler's number", f: 'e' },
-  epi:   { sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
-  phi:   { sym: 'φ',    name: 'Golden ratio', f: 'phi' },
-  ln2:   { sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
-  zeta3: { sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
-  erdos: { sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
-  catalan: { sym: 'G',  name: "Catalan's constant", f: 'catalan' },
-  gamma: { sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
-  sqrt2: { sym: '√2',   name: 'Square root of 2', group: 'Roots', f: 'sqrt(2)' },
-  sqrt3: { sym: '√3',   name: 'Square root of 3', group: 'Roots', f: 'sqrt(3)' },
-  sqrt5: { sym: '√5',   name: 'Square root of 5', group: 'Roots', f: 'sqrt(5)' },
-  sqrt6: { sym: '√6',   name: 'Square root of 6', group: 'Roots', f: 'sqrt(6)' },
-  sqrt7: { sym: '√7',   name: 'Square root of 7', group: 'Roots', f: 'sqrt(7)' },
-  sqrt8: { sym: '√8',   name: 'Square root of 8 (= 2√2)', group: 'Roots', f: 'sqrt(8)' },
-  cbrt2: { sym: '∛2',   name: 'Cube root of 2', group: 'Roots', f: 'cbrt(2)' },
-  champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons', f: 'champernowne' },
-  fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons', f: '22/7' },
-  random: { sym: '🎲', name: 'Random digits', group: 'Comparisons', f: () => `random(${freshDraw()})` },
-  mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes', f: () => `2^${$('mersenneP').value}-1` },
-  primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes',
+  pi:      { tab: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
+  e:       { tab: 'Constants', sym: 'e',    name: "Euler's number", f: 'e' },
+  phi:     { tab: 'Constants', sym: 'φ',    name: 'Golden ratio', f: 'phi' },
+  epi:     { tab: 'Constants', sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
+  ln2:     { tab: 'Constants', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
+  zeta3:   { tab: 'Constants', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
+  gamma:   { tab: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
+  catalan: { tab: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
+  erdos:   { tab: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
+  mersenne: { tab: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
+  primorial: { tab: 'Primes', sym: 'p#', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
-  primeConst: { sym: 'ρ', name: 'Prime barcode (Ulam)', group: 'Primes', f: 'primes' },
-  primeReal: { sym: 'ρ₂', name: 'Prime constant (binary barcode, converted)', group: 'Primes', f: 'primes2' },
-  primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes', f: 'primegaps' },
-  randomPrime: { sym: '🎲', name: 'Random prime', group: 'Primes', f: () => `randprime(${$('primeSize').value},${freshDraw()})` },
-  custom: { sym: '✎', name: 'Custom formula', group: 'Formula' },
+  randomPrime: { tab: 'Primes', sym: '🎲', name: 'Random prime', detail: 'randprime(size)',
+                 f: () => `randprime(${$('primeSize').value},${freshDraw()})` },
+  primeReal: { tab: 'Primes', sym: 'ρ₂', name: 'Prime constant', f: 'primes2' },
+  random:  { tab: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random', f: () => `random(${freshDraw()})` },
+  champernowne: { tab: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
+  primeConst: { tab: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
+  primeGaps: { tab: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
+  sqrt2:   { tab: 'Misc', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
+  cbrt2:   { tab: 'Misc', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
+  pi2:     { tab: 'Misc', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
+  frac4_3: { tab: 'Misc', sym: '4/3', name: 'Four thirds', f: '4/3' },
+  frac16_9: { tab: 'Misc', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
 };
 const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
 
@@ -927,7 +925,7 @@ function readFormula() {
   }
 }
 
-// The menu choice a formula comes from, with the value of its helper menu; else Custom formula
+// The card a formula comes from, with the value of its helper menu; none for a formula of its own
 function presetOf(text) {
   const found = Object.keys(PRESETS).find((id) => PRESETS[id].f === text);
   if (found) return { id: found };
@@ -941,18 +939,44 @@ function presetOf(text) {
   if ((m = text.match(/^randprime\((\d+),\d+\)$/)) && Array.from($('primeSize').options).some((o) => o.value === m[1])) {
     return { id: 'randomPrime', primeSize: m[1] };
   }
-  if (/^\d+\/\d+$/.test(text)) return { id: 'fraction' };
-  return { id: 'custom' };
+  return { id: null };  // a formula of its own: no card
 }
 
-// The menu and its helper menus follow the formula
+// The cards and their helper menus follow the formula
+let numberTab = 'Constants';  // tab shown: the one of the formula's card, else the last one shown
 function syncNumberMenu() {
   const p = presetOf($('formula').value);
-  $('constant').value = p.id;
+  if (p.id) numberTab = PRESETS[p.id].tab;
+  renderNumberPicker(p.id);
   for (const helper of ['mersenneP', 'primorialP', 'primeSize']) if (p[helper]) $(helper).value = p[helper];
   $('mersenneRow').hidden = p.id !== 'mersenne';
   $('primorialRow').hidden = p.id !== 'primorial';
   $('primeSizeRow').hidden = p.id !== 'randomPrime';
+}
+
+// Tabs and cards like the walk modes; another tab starts on its first card
+function renderNumberPicker(active) {
+  const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
+  $('numberTabs').replaceChildren(...NUMBER_TABS.map((tab) => {
+    const b = document.createElement('button');
+    b.textContent = tab;
+    b.setAttribute('role', 'tab');
+    b.classList.toggle('active', tab === numberTab);
+    b.addEventListener('click', () => {
+      if (tab !== numberTab) pickPreset(Object.keys(PRESETS).find((id) => PRESETS[id].tab === tab));
+    });
+    return b;
+  }));
+  $('numberList').replaceChildren(...Object.entries(PRESETS).filter(([, p]) => p.tab === numberTab).map(([id, p]) => {
+    const b = document.createElement('button');
+    const words = document.createElement('span');
+    words.append(part('mode-name', p.name), part('mode-detail formula-hint', p.detail ?? p.f));
+    b.append(part('mode-icon', p.sym), words);
+    b.setAttribute('role', 'option');
+    b.classList.toggle('active', id === active);
+    b.addEventListener('click', () => pickPreset(id));  // again on 🎲: another draw
+    return b;
+  }));
 }
 
 const isRandomDigits = () => /^random\(\d+\)$/.test(formulaInUse);
@@ -3305,15 +3329,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-const groups = {};
-for (const [id, { sym, name, group = 'Constants' }] of Object.entries(PRESETS)) {
-  if (!groups[group]) {
-    groups[group] = document.createElement('optgroup');
-    groups[group].label = group;
-    $('constant').append(groups[group]);
-  }
-  groups[group].append(new Option(`${sym} — ${name}`, id));
-}
 for (const p of MERSENNE) {
   const decimals = Math.floor(p * Math.log10(2)) + 1;
   $('mersenneP').add(new Option(`M${SUB(p)} — ${fmt(decimals)} decimal digits`, p));
@@ -3366,11 +3381,6 @@ $('sphereF').addEventListener('change', () => {
   if (!current) return;
   buildWalk();
   showAll();
-});
-$('constant').addEventListener('change', () => {
-  if ($('constant').value !== 'custom') { pickPreset($('constant').value); return; }
-  $('formula').focus();  // Custom formula: type it
-  $('formula').select();
 });
 $('formula').addEventListener('change', computeFramed);
 // A new number (or a new prime, size or fraction) starts framed
