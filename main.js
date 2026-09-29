@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.102';
+const VERSION = '0.1.103';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1597,11 +1597,13 @@ function setPerspective() {
   walk.persp = { c: [0, 1, 2].map((d) => (lo[d] + hi[d]) / 2), D: 2.5 * radius };
 }
 
-// Rotate around the centre of the bounding box, which keeps its position
-// on screen. Then recompute the projection and the 2D bounds.
+// Rotate around a centre that keeps its position on screen: the solid's own centre (the origin)
+// for a surface, else the centre of the walk's bounding box. (On a surface that box grows
+// unevenly with the walk: turning around it made the solid slide while auto-fit followed the
+// walker.) Then recompute the projection and the 2D bounds.
 function rotateView(dyaw, dpitch) {
   const [x0, x1, y0, y1, z0, z1] = bounds3 || [0, 0, 0, 0, 0, 0];
-  const c = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+  const c = walk.sphere ? [0, 0, 0] : [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
   const before = projectPoint(...c);
   cam.yaw += dyaw;
   cam.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam.pitch + dpitch));
@@ -3742,7 +3744,7 @@ stage.addEventListener('pointermove', (e) => {
     view.oy += dy;
     userMovedView();
   } else {
-    if (walk.sphere) $('autoFit').checked = false;  // stop following the walker while the user rotates
+    userMovedView();  // a hand rotation ends auto-fit, as a pan or a zoom does
     rotateView(dx * 0.008, dy * 0.008);
   }
 });
