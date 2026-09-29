@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001w">
+  <link rel="stylesheet" href="style.css?v=20261001x">
 </head>
 <body>
   <header>
-    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.83</span></h1>
+    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.84</span></h1>
     <p id="rule" class="subtitle"></p>
   </header>
 
@@ -109,7 +109,7 @@
         </label>
         <label>Formula
           <input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off"
-                 title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, zeta(3), ln(2), sqrt(3), cbrt(2), root(x, k), 22/7, 4/3, 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps. Press Enter to compute">
+                 title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, sqrt(3), cbrt(2), root(x, k), ln(x), exp(x), log(x, b), zeta(k), 22/7, 2^pi, 8^(1/3), 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps. Press Enter to compute">
         </label>
         <label id="digitsRow">Number of digits
           <input id="digits" type="number" min="5000" max="1000000" step="5000" value="20000">
@@ -197,6 +197,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261001w"></script>
+  <script src="main.js?v=20261001x"></script>
 </body>
 </html>

@@ -204,34 +204,6 @@ function formulaWorker() {
           total = atanTerms(5) + atanTerms(239);
           v = 16n * atanInv(5) - 4n * atanInv(239);
           break;
-        case 'epi': { // Gelfond: e^π = (e^(π / 2^r))^(2^r), in binary fixed point with W fractional bits
-          const bits = Math.ceil(prec * Math.log2(base));
-          const r = Math.max(1, Math.round(Math.sqrt(bits) / 2));  // halvings: balance series terms and squarings
-          const W = BigInt(bits + 2 * r + 64);                        // guard bits absorb the 2^r error growth
-          const one = 1n << W;
-          total = bits / r + r;
-          const atanBin = (x) => {  // 2^W·arctan(1/x)
-            const bx = BigInt(x), x2 = bx * bx;
-            let t = one / bx, sum = t;
-            for (let k = 1; ; k++) {
-              t /= x2;
-              if (t === 0n) break;
-              const q = t / BigInt(2 * k + 1);
-              sum += k % 2 ? -q : q;
-            }
-            return sum;
-          };
-          const y = (16n * atanBin(5) - 4n * atanBin(239)) >> BigInt(r);  // π / 2^r
-          let term = one, sum = one;
-          for (let k = 1; term !== 0n; k++) {  // Σ y^k / k!
-            term = ((term * y) >> W) / BigInt(k);
-            sum += term;
-            progress(k);
-          }
-          for (let i = 0; i < r; i++) sum = (sum * sum) >> W;
-          v = (sum * S) >> W;
-          break;
-        }
         case 'ln2': // ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749)
           total = atanTerms(26) + atanTerms(4801) + atanTerms(8749);
           v = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
@@ -313,6 +285,89 @@ function formulaWorker() {
       return (memo[name] = v);
     }
 
+    // S·v^k for S·v and a whole k (squaring)
+    function powFixed(v, k) {
+      let r = S, sq = v;
+      for (let e = Math.abs(k); e > 0; e >>= 1) {
+        if (e & 1) r = (r * sq) / S;
+        if (e > 1) sq = (sq * sq) / S;
+      }
+      if (k >= 0) return r;
+      if (r === 0n) throw new Error('division by zero');
+      return (S * S) / r;
+    }
+
+    // S·e^x for S·x: e^x = (e^(x / 2^r))^(2^r), the series Σ y^k / k! in binary fixed point with W
+    // fractional bits; r halvings balance series terms and squarings, and cover the integer part of x
+    function expFixed(x) {
+      if (x < 0n) return (S * S) / expFixed(-x);
+      const bits = Math.ceil(prec * Math.log2(base));
+      const r = Math.max(1, Math.round(Math.sqrt(bits) / 2)) + (x / S).toString(2).length;
+      const W = BigInt(bits + 2 * r + 64);  // guard bits absorb the 2^r error growth
+      const one = 1n << W;
+      done = 0;
+      total = bits / r + r;
+      const y = ((x << W) / S) >> BigInt(r);
+      let term = one, sum = one;
+      for (let k = 1; term !== 0n; k++) {
+        term = ((term * y) >> W) / BigInt(k);
+        sum += term;
+        progress(k);
+      }
+      for (let i = 0; i < r; i++) sum = (sum * sum) >> W;
+      return (sum * S) >> W;
+    }
+
+    // S·ln x for S·x > 0, in binary fixed point with W fractional bits: x = 2^k·m with m in
+    // [1/√2, √2]; r square roots bring m very close to 1, then ln m = 2^r·2·artanh((m − 1)/(m + 1)),
+    // a series that now gains 2r bits per term
+    function lnFixed(x) {
+      if (x <= 0n) throw new Error('logarithm of a number ≤ 0');
+      const bits = Math.ceil(prec * Math.log2(base));
+      const r = Math.max(1, Math.round(Math.sqrt(bits) / 4));
+      const W = BigInt(bits + r + 64), one = 1n << W;  // r guard bits: the 2^r at the end
+      let k = x.toString(2).length - S.toString(2).length;
+      let m = k >= 0 ? (x << W) / (S << BigInt(k)) : (x << (W + BigInt(-k))) / S;
+      while (m * m > 2n * one * one) { m >>= 1n; k++; }
+      while (2n * m * m < one * one) { m <<= 1n; k--; }
+      done = 0;
+      total = r + bits / (2 * r + 3);
+      for (let i = 1; i <= r; i++) { m = isqrt(m << W); progress(i); }
+      // |t| only: >> on a negative BigInt rounds towards −∞ and would never reach 0
+      const below = m < one, t = ((below ? one - m : m - one) << W) / (m + one), t2 = (t * t) >> W;
+      let term = t, sum = t;
+      for (let j = 1; ; j++) {
+        term = (term * t2) >> W;
+        if (term === 0n) break;
+        sum += term / BigInt(2 * j + 1);
+        progress(r + j);
+      }
+      const lnm = ((below ? -2n : 2n) * sum) << BigInt(r);
+      return ((lnm * S) >> W) + (k ? BigInt(k) * constant('ln2') : 0n);
+    }
+
+    // S·ζ(s) for a whole s ≥ 2 (Borwein): ζ(s) = −Σ (−1)^k (d_k − d_N)/(k + 1)^s / (d_N·(1 − 2^(1−s))),
+    // d_k = Σ_{i≤k} N·(N+i−1)!·4^i / ((N−i)!·(2i)!), with an error below 3/(3 + √8)^N. d_N comes first,
+    // then the sum, so the d_k are never all kept at once.
+    function zetaFixed(s) {
+      const N = Math.ceil(lnS / Math.log(3 + Math.sqrt(8))) + 10, n = BigInt(N), K = BigInt(s);
+      const next = (term, i) => { const I = BigInt(i); return (term * 4n * (n + I - 1n) * (n - I + 1n)) / (2n * I * (2n * I - 1n)); };
+      let term = 1n, dN = 1n;
+      for (let i = 1; i <= N; i++) { term = next(term, i); dN += term; }
+      done = 0;
+      total = N;
+      let d = 1n, sum = 0n;
+      term = 1n;
+      for (let k = 0; k < N; k++) {
+        if (k > 0) { term = next(term, k); d += term; }
+        const t = (d - dN) / BigInt(k + 1) ** K;
+        sum += k % 2 ? -t : t;
+        progress(k);
+      }
+      const half = 1n << (K - 1n);  // 1 − 2^(1−s) = (2^(s−1) − 1) / 2^(s−1)
+      return (-sum * S * half) / (dN * (half - 1n));
+    }
+
     // Exact values [p, q]: arithmetic in exactValue, the rest here
     const exact = (x) => x.kind === 'int' || x.kind === 'rat';
     const exactOf = (x) => exactValue(x, (c) => {
@@ -350,15 +405,13 @@ function formulaWorker() {
           return (real(x.a) * S) / d;
         }
         case '^': {
-          if (x.epi) return constant('epi');
-          let r = S, sq = real(x.a);
-          for (let k = Math.abs(x.exp); k > 0; k >>= 1) {
-            if (k & 1) r = (r * sq) / S;
-            if (k > 1) sq = (sq * sq) / S;
+          if (x.exp !== undefined) return powFixed(real(x.a), x.exp);
+          if (x.eBase) return expFixed(real(x.b));  // e^y
+          if (x.rootExp) {  // a^(p/q) with a small q: the q-th root of a^p
+            const [p, q] = x.rootExp;
+            return iroot(nonNegative(powFixed(real(x.a), p)) * S ** BigInt(q - 1), q);
           }
-          if (x.exp >= 0) return r;
-          if (r === 0n) throw new Error('division by zero');
-          return (S * S) / r;
+          return expFixed((real(x.b) * lnFixed(real(x.a))) / S);  // a^b = e^(b·ln a)
         }
         case 'call': {
           const a = x.args[0];
@@ -366,8 +419,14 @@ function formulaWorker() {
             case 'sqrt': return isqrt(nonNegative(real(a)) * S);
             case 'cbrt': { const v = real(a); return v < 0n ? -icbrt(-v * S * S) : icbrt(v * S * S); }
             case 'root': { const k = Number(x.args[1].v); return iroot(nonNegative(real(a)) * S ** BigInt(k - 1), k); }
-            case 'ln': return constant('ln2');     // checkFormula only lets ln(2) through
-            case 'zeta': return constant('apery'); // and zeta(3)
+            case 'ln': return a.k === 'num' && a.v === '2' ? constant('ln2') : lnFixed(real(a));
+            case 'exp': return expFixed(real(a));
+            case 'log': {  // log(x, b) = ln x / ln b
+              const d = lnFixed(real(x.args[1]));
+              if (d === 0n) throw new Error('log(x, 1) does not exist');
+              return (lnFixed(real(a)) * S) / d;
+            }
+            case 'zeta': return a.v === '3' ? constant('apery') : zetaFixed(Number(a.v));
           }
         }
       }
@@ -448,6 +507,10 @@ function exactValue(node, leaf) {
       }
       case '^': {
         const [p, q] = ev(x.a);
+        if (x.rootExp) {  // a^(e/r) that checkFormula found exact: r-th roots of a^e
+          const [e, r] = x.rootExp, [a, b] = e >= 0 ? [power(p, e), power(q, e)] : [power(q, -e), power(p, -e)];
+          return norm(iroot(a, r), iroot(b, r));
+        }
         if (x.exp >= 0) return [power(p, x.exp), power(q, x.exp)];
         if (p === 0n) throw new Error('division by zero');
         return norm(power(q, -x.exp), power(p, -x.exp));
@@ -698,7 +761,7 @@ const FORMULA_NAMES = {  // name: [kind, symbol shown]
   erdos: ['real', 'E'], primes2: ['real', 'ρ₂'],
   champernowne: ['seq', 'C'], primes: ['seq', 'ρ'], primegaps: ['seq', 'Δp'],
 };
-const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, zeta: 1, primorial: 1, random: 1, randprime: 2 };
+const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, exp: 1, log: 2, zeta: 1, primorial: 1, random: 1, randprime: 2 };
 const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
                  erdos: 1.6066951524, primes2: 0.4146825099 };
 const PREC = { '+': 1, '-': 1, '*': 2, '/': 2, neg: 3, '^': 4 };  // anything else binds tighter (5)
@@ -804,7 +867,9 @@ function pretty(x) {
     case 'call': {
       const [a, b] = x.args;
       return { sqrt: () => `√${arg(a)}`, cbrt: () => `∛${arg(a)}`, root: () => `${SUP(b.v)}√${arg(a)}`,
-               ln: () => `ln ${arg(a)}`, zeta: () => `ζ(${pretty(a)})`, primorial: () => `${fmt(Number(a.v))}#`,
+               ln: () => (a.k === 'num' || a.k === 'name' ? `ln ${pretty(a)}` : `ln(${pretty(a)})`),
+               exp: () => `exp(${pretty(a)})`, zeta: () => `ζ(${pretty(a)})`,
+               log: () => (b.k === 'num' && !b.v.includes('.') ? `log${SUB(b.v)} ${arg(a)}` : `log(${pretty(a)}, ${pretty(b)})`), primorial: () => `${fmt(Number(a.v))}#`,
                random: () => '🎲', randprime: () => `🎲 p${SUB(a.v)}` }[x.f]();
     }
     default: {
@@ -824,9 +889,14 @@ function formulaLog10(x) {
     case '+': case '-': return Math.max(L(x.a), L(x.b)) + 0.302;
     case '*': return L(x.a) + L(x.b);
     case '/': return L(x.a) - L(x.b);
-    case '^': return x.epi ? 1.364 : x.exp * L(x.a);
+    case '^': {  // a^b: b·log10 a, with b ≈ ±10^L(b) when it is not a whole number
+      if (x.exp !== undefined) return x.exp * L(x.a);
+      return Math.min(1e9, 10 ** Math.min(9, L(x.b))) * Math.abs(L(x.a));
+    }
     default: return { sqrt: () => L(a) / 2, cbrt: () => L(a) / 3, root: () => L(a) / Number(x.args[1].v),
-                      ln: () => -0.159, zeta: () => 0.08, primorial: () => Number(a.v) / Math.LN10,
+                      ln: () => Math.log10(Math.max(Math.abs(L(a)) * Math.LN10, 0.01)), log: () => 0,
+                      exp: () => Math.min(1e9, 10 ** Math.min(9, L(a))) / Math.LN10,
+                      zeta: () => 0.2, primorial: () => Number(a.v) / Math.LN10,
                       randprime: () => Number(a.v) - 1, random: () => 0 }[x.f]();
   }
 }
@@ -838,8 +908,8 @@ function smallExact(x) {
   try { return exactValue(x, () => { throw new Error('not small'); }); } catch { return null; }
 }
 
-// Checks a parsed formula, fills in the random seeds left out, and sets node.kind (and node.exp,
-// node.epi for powers). Throws an Error with a readable message.
+// Checks a parsed formula, fills in the random seeds left out, and sets node.kind (and for powers
+// node.exp, node.eBase or node.rootExp). Throws an Error with a readable message.
 function checkFormula(root) {
   const noSeq = (x) => {
     if (x.kind === 'seq') throw new Error(`${canonical(x)} is a sequence of digits, not a number: use it alone`);
@@ -873,11 +943,25 @@ function checkFormula(root) {
         break;
       case '^': {
         noSeq(x.a); noSeq(x.b);
-        if (x.a.k === 'name' && x.a.v === 'e' && x.b.k === 'name' && x.b.v === 'pi') { x.epi = true; x.kind = 'real'; break; }
         const k = x.b.kind === 'int' ? smallExact(x.b) : null;
-        if (!k || k[0] > 100_000_000n || k[0] < -100_000_000n) throw new Error('powers must be whole numbers (e^pi is the only other one)');
-        x.exp = Number(k[0]);
-        x.kind = x.a.kind === 'real' ? 'real' : x.exp < 0 ? 'rat' : x.a.kind;
+        if (k && k[0] <= 100_000_000n && k[0] >= -100_000_000n) {  // a whole power: exact when a is
+          x.exp = Number(k[0]);
+          x.kind = x.a.kind === 'real' ? 'real' : x.exp < 0 ? 'rat' : x.a.kind;
+          break;
+        }
+        // any other power: e^y, a^(p/q) with a small q (a root, exact when a^p is a perfect q-th power),
+        // else e^(y·ln a)
+        x.kind = 'real';
+        if (x.a.k === 'name' && x.a.v === 'e') { x.eBase = true; break; }
+        const r = x.b.kind === 'rat' ? smallExact(x.b) : null;
+        if (r && r[1] <= 64n && r[0] <= 1000n && r[0] >= -1000n) {
+          x.rootExp = [Number(r[0]), Number(r[1])];
+          const v = smallExact(x.a);
+          if (v && v[0] >= 0n) {
+            const [e, q] = x.rootExp, K = BigInt(q), up = e >= 0 ? [v[0] ** BigInt(e), v[1] ** BigInt(e)] : [v[1] ** BigInt(-e), v[0] ** BigInt(-e)];
+            if (up[1] !== 0n && iroot(up[0], q) ** K === up[0] && iroot(up[1], q) ** K === up[1]) x.kind = x.a.kind === 'int' && e >= 0 ? 'int' : 'rat';
+          }
+        }
         break;
       }
       case 'call':
@@ -889,8 +973,9 @@ function checkFormula(root) {
             x.kind = 'int';
             break;
           case 'primorial': whole(x.args[0], 2, 20_000_000, 'p in primorial(p)'); x.kind = 'int'; break;
-          case 'ln': if (canonical(x.args[0]) !== '2') throw new Error('only ln(2) for now'); x.kind = 'real'; break;
-          case 'zeta': if (canonical(x.args[0]) !== '3') throw new Error('only zeta(3) for now'); x.kind = 'real'; break;
+          case 'ln': case 'exp': noSeq(x.args[0]); x.kind = 'real'; break;
+          case 'log': noSeq(x.args[0]); noSeq(x.args[1]); x.kind = 'real'; break;
+          case 'zeta': whole(x.args[0], 2, 100, 'k in zeta(k)'); x.kind = 'real'; break;
           default: {  // sqrt, cbrt, root: exact when the value is a perfect power
             noSeq(x.args[0]);
             const k = x.f === 'sqrt' ? 2 : x.f === 'cbrt' ? 3 : whole(x.args[1], 2, 64, 'The degree k in root(x, k)');
