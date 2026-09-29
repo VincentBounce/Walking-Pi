@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.100';
+const VERSION = '0.1.101';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3532,12 +3532,12 @@ const STAT_LABELS = {
 };
 
 // Lifetime of the current Life run: when it settles (frozen or looping), or not yet
+// Short enough for one line of the stats: "gen 898, period-2 loop"
 function lifetimeText(L) {
   const s = L.stable;
-  if (!s) return L.seen.size >= LIFE_TRACK ? `not settled after ${fmt(LIFE_TRACK)} generations` : 'not settled yet';
-  if (s.extinct) return `dies out at generation ${fmt(s.T)}`;
-  if (s.P === 1) return `frozen from generation ${fmt(s.T)}`;
-  return `period-${fmt(s.P)} loop from generation ${fmt(s.T)}`;
+  if (!s) return L.seen.size >= LIFE_TRACK ? `not settled after ${fmt(LIFE_TRACK)} gen` : 'not settled yet';
+  const what = s.extinct ? 'dies out' : s.P === 1 ? 'frozen' : `period-${fmt(s.P)} loop`;
+  return `gen ${fmt(s.T)}, ${what}`;
 }
 
 function updateStats() {

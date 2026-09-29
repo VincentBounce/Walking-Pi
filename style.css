@@ -160,6 +160,7 @@ button.primary {
   min-height: 2.8em;
 }
 .strip.line { white-space: nowrap; overflow: hidden; }  /* digits: always one full line */
+.strip:not(.line) { font-family: inherit; word-break: normal; }  /* texts (Life rule, marked cells): normal font, whole words */
 .strip .cur { color: var(--accent-text); background: var(--accent); border-radius: 2px; }
 .strip .dim { opacity: 0.5; }  /* the "0." of a number below 1: shown, not walked */
 
