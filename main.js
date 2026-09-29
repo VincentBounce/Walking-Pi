@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.108';
+const VERSION = '0.1.109';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -646,15 +646,15 @@ const PRESETS = {
   pi:      { group: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
   e:       { group: 'Constants', sym: 'e',    name: "Euler's number", f: 'e' },
   phi:     { group: 'Constants', sym: 'φ',    name: 'Golden ratio', f: 'phi' },
-  epi:     { group: 'Constants', sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
-  ln2:     { group: 'Constants', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
-  zeta3:   { group: 'Constants', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
   gamma:   { group: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
   catalan: { group: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
   erdos:   { group: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
   sqrt2:   { group: '𝑓', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
   cbrt2:   { group: '𝑓', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
   pi2:     { group: '𝑓', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
+  epi:     { group: '𝑓', sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
+  ln2:     { group: '𝑓', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
+  zeta3:   { group: '𝑓', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
   frac4_3: { group: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
   frac16_9: { group: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
   mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
