@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.97';
+const VERSION = '0.1.98';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3552,6 +3552,7 @@ function updateStats() {
     $('sCells').textContent = pc(L.everAlive);
     $('sLifetime').textContent = lifetimeText(L);
     $('sCountsLabel').hidden = $('sCounts').hidden = true;
+    $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base ${L.C} · ${fmt(n)} cells, ` +
       `${fmt(L.seedAlive)} alive${L.C > 2 ? ` and ${fmt(L.seedDying)} dying` : ''} at generation 0`;
     return;
@@ -3575,6 +3576,7 @@ function updateStats() {
   }
   // digit strip around the current step
   const strip = $('digitStrip');
+  strip.classList.remove('line');  // one line of digits; the other texts may wrap
   if (!walk.n) { strip.textContent = ''; return; }
   if (walk.points) {  // point modes: list the most recent marked cell numbers
     const a = Math.max(0, cur - 8);
@@ -3583,11 +3585,18 @@ function updateStats() {
     strip.innerHTML = `Marked cells: ${a > 0 ? '… ' : ''}${list.join(', ')}`;
     return;
   }
-  const before = 36, after = 20;
-  const a = Math.max(0, cur - before);
-  const b = Math.min(walk.n, cur + after);
-  const d = walk.digits;
-  const intLen = Math.min(current.head.length, walk.n);
+  // One line of digits, exactly as many as fit (the strip is monospace, so it is a column count).
+  // The head sits at 60 % of the line; at the start the line begins with the first digit, at the
+  // end it finishes with the last one. The window then shrinks until "…", "0." and "." fit too.
+  strip.classList.add('line');
+  const cols = stripColumns(strip), n = walk.n, d = walk.digits;
+  const intLen = Math.min(current.head.length, n);
+  let b = Math.min(n, Math.max(0, cur - Math.floor(cols * 0.6)) + cols), a = Math.max(0, b - cols);
+  const marks = () => (a > 0 ? 1 : intLen ? 0 : 2) + (intLen - 1 >= a && intLen - 1 < b && intLen < n ? 1 : 0) + (b < n ? 1 : 0);
+  while (b - a + marks() > cols && b - a > 1) {
+    if (b - 1 > cur && (a === 0 || b - cur > (cur - a) * 0.67)) b--;
+    else a++;
+  }
   // a number below 1 does not walk its integer part (every such number would start the same
   // way): its "0." is only shown, greyed
   let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
@@ -3597,7 +3606,20 @@ function updateStats() {
     html += i === cur ? `<span class="cur">${d[i]}</span>` : d[i];
     if (i === intLen - 1 && intLen < walk.n) html += '.';
   }
-  strip.innerHTML = html + (b < walk.n ? '…' : '');
+  strip.innerHTML = html + (b < n ? '…' : '');
+}
+
+// How many characters fit on one line of the strip, measured again only when its font or width changes
+const stripMeasure = { key: '', cols: 0, ctx: null };
+function stripColumns(el) {
+  const st = getComputedStyle(el), font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`, key = `${font}|${el.clientWidth}`;
+  if (stripMeasure.key !== key) {
+    stripMeasure.ctx ??= document.createElement('canvas').getContext('2d');
+    stripMeasure.ctx.font = font;
+    stripMeasure.cols = Math.max(8, Math.floor((el.clientWidth * 20) / stripMeasure.ctx.measureText('0'.repeat(20)).width));
+    stripMeasure.key = key;
+  }
+  return stripMeasure.cols;
 }
 
 /* ---- 11.6 The frame loop --------------------------------------------------------------------- */

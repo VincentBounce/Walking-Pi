@@ -159,6 +159,7 @@ button.primary {
   color: var(--muted);
   min-height: 2.8em;
 }
+.strip.line { white-space: nowrap; overflow: hidden; }  /* digits: always one full line */
 .strip .cur { color: var(--accent-text); background: var(--accent); border-radius: 2px; }
 .strip .dim { opacity: 0.5; }  /* the "0." of a number below 1: shown, not walked */
 
