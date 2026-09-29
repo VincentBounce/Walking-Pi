@@ -35,6 +35,10 @@
  *   Part 12  Interactions and start-up
  */
 
+// The version shown after the title, and the only place it is written: 0.1.0 was the first
+// commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
+const VERSION = '0.1.90';
+
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
  * ==============================================================================================
@@ -3787,6 +3791,7 @@ new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
 requestAnimationFrame(tick);
+$('version').textContent = `v${VERSION}`;
 fillSetupList();
 const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
 if (!linked || !applySetup(linked)) compute();
