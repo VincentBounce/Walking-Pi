@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261002r">
+  <link rel="stylesheet" href="style.css?v=20261002s">
 </head>
 <body>
   <header>
@@ -33,15 +33,16 @@
             <optgroup label="3D">
               <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
-              <option value="torusWalk">Torus — base 3 (left / forward / right)</option>
+              <option value="torusWalk">Torus — base 3 (squares · left / forward / right)</option>
+              <option value="hexTorusWalk">Torus — base 5 (hexagons · 5 relative turns)</option>
               <option value="cubeFlat">Cube surface — base 3 (left / forward / right)</option>
               <option value="tetraLR">Tetrahedron — base 2 (left / right)</option>
               <option value="octaLR">Octahedron — base 2 (left / right)</option>
               <option value="icosaLR">Icosahedron — base 2 (left / right)</option>
             </optgroup>
-            <optgroup label="Game of Life on 3D shapes">
-              <option value="lifeTorus">Life — torus (square grid)</option>
-              <option value="lifeHexTorus">Life — torus (hexagons)</option>
+            <optgroup label="Cellular automata on surfaces">
+              <option value="lifeTorus">Life — torus</option>
+              <option value="lifeHexTorus">Life — torus</option>
               <option value="lifeCube">Life — cube surface</option>
               <option value="lifeTetra">Life — tetrahedron</option>
               <option value="lifeOcta">Life — octahedron</option>
@@ -199,6 +200,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261002r"></script>
+  <script src="main.js?v=20261002s"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.104';
+const VERSION = '0.1.105';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -711,6 +711,9 @@ const MODES = {
               rule: 'Base 2 digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', turns: [3, 2, 1], perspective: true, round: true,
               rule: 'Base 3 digits on the surface of a torus of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+  // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
+  hexTorusWalk: { base: 5, lattice: 'sphere', sphere: 'hextorus', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
+                  rule: 'Base 5 digits on the surface of a torus of hexagons — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1], perspective: true,
               rule: 'Base 3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
   octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', turns: [2, 1],
@@ -1294,12 +1297,12 @@ function setCurrent(entry) {
 // list. Picking a choice sets the menu and fires its change event, so the rest of the page only
 // ever deals with the menu.
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
-const tabName = (label) => ({ 'Game of Life on 3D shapes': '3D Cellular', Experimental: '🧪' }[label] || label);
+const tabName = (label) => ({ 'Cellular automata on surfaces': 'Automata', Experimental: '🧪' }[label] || label);
 
 // Icon of each walk mode's shape, for the list of choices
 const MODE_ICONS = {
   turtle: '▦', cardinal: '✥', triLR: '▲', triFixed: '△', hexRel: '⬢', hexFixed: '⬡',
-  cubeRel: '⧉', cubeFixed: '▣', torusWalk: '◎', cubeFlat: '◼', tetraLR: '▲', octaLR: '◆', icosaLR: '⬟',
+  cubeRel: '⧉', cubeFixed: '▣', torusWalk: '◎', hexTorusWalk: '⬡', cubeFlat: '◼', tetraLR: '▲', octaLR: '◆', icosaLR: '⬟',
   lifeTorus: '◎', lifeHexTorus: '⬡', lifeCube: '◼', lifeTetra: '▲', lifeOcta: '◆', lifeIcosa: '⬟',
   spiral: '▦', triSpiral: '▲', hexSpiral: '⬢', jump10: '⤳', jump64: '⤳', search10: '⌕', search64: '⌕',
 };
@@ -1335,10 +1338,12 @@ function renderModePicker() {
   $('modeList').replaceChildren(...Array.from(group.children).map((o) => {
     const b = document.createElement('button');
     const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
+    // an automaton's pill tells the shape of its cells, where a walk's tells its base
+    const mode = MODES[o.value], pill = mode.life ? SPHERES[mode.sphere].unit : base, info = mode.life ? '' : detail;
     const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
     const words = document.createElement('span');
-    words.append(part('mode-name', name), ...(detail ? [part('mode-detail', detail)] : []));
-    b.append(part('mode-icon', MODE_ICONS[o.value] || '•'), words, ...(base ? [part('mode-base', base)] : []));
+    words.append(part('mode-name', name), ...(info ? [part('mode-detail', info)] : []));
+    b.append(part('mode-icon', MODE_ICONS[o.value] || '•'), words, ...(pill ? [part('mode-base', pill)] : []));
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
