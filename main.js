@@ -1767,7 +1767,7 @@ const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? wa
 function stopHunt(loadBest = false) {
   if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
   hunt.phase = 0;
-  $('huntBtn').textContent = '🔍 Hunt';
+  renderHuntList();
   if (loadBest && hunt.seed) loadChampion();
 }
 
@@ -1800,7 +1800,7 @@ function startHunt() {
     compute();
   }
   stopHunt();
-  const { patch, radius, all } = huntPlan($('huntSize').value);
+  const { patch, radius, all } = huntPlan(huntZone);
   Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, tried: 0,
                         exhaustive: all, tweaks: all ? 0 : HUNT_TWEAKS });
   $('huntStatus').textContent = 'Starting…';
@@ -1815,18 +1815,49 @@ function huntPlan(zone) {
   return { patch, radius, all: count <= 20000 ? count : 0 };  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
 }
 
-// The menu gives the real numbers of the current surface and rule: cells in each radius, and
-// whether every start is tried or random ones
-function fillHuntMenu() {
+// Where the starts go, as cards like the walk modes: the whole surface or a radius of 1, 2 or 3,
+// with the real cell counts of the current surface. The hunt button tells how many starts it tries.
+let huntZone = 'all';
+const HUNT_ICONS = { all: '▦', radius1: '∙', radius2: '•', radius3: '●' };
+function renderHuntList() {
   if (!walk.life || !walk.geo) return;
-  const sel = $('huntSize'), keep = sel.value || 'all';
-  const option = (zone) => {
-    const { patch, radius, all } = huntPlan(zone);
-    const how = all ? `all ${fmt(all)} starts` : `${fmt(HUNT_STARTS)} random starts`;
-    return new Option(patch ? `Radius ${radius} · ${fmt(patch.length)} cells — ${how}` : `Whole surface — ${how}`, zone);
-  };
-  sel.replaceChildren(...['all', 'radius1', 'radius2', 'radius3'].map(option));
-  sel.value = keep;
+  const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
+  $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3'].map((zone) => {
+    const { patch, radius } = huntPlan(zone);
+    const b = document.createElement('button');
+    const words = document.createElement('span');
+    words.append(part('mode-name', patch ? `Radius ${radius}` : 'Whole surface'),
+                 part('mode-detail', `${fmt(patch ? patch.length : walk.geo.n)} cells`));
+    b.append(part('mode-icon', HUNT_ICONS[zone]), words);
+    b.setAttribute('role', 'option');
+    b.classList.toggle('active', zone === huntZone);
+    b.disabled = !!hunt.worker;  // the zone is fixed while a hunt runs
+    b.addEventListener('click', () => pickHuntZone(zone));
+    return b;
+  }));
+  if (hunt.worker) return;
+  const { all } = huntPlan(huntZone);
+  $('huntBtn').textContent = all ? `🔍 Hunt all ${fmt(all)}` : `🔍 Hunt ${fmt(HUNT_STARTS)} first`;
+  $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then load the best. Click again to keep the best so far`
+    : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it is loaded. Click again to skip to the tweaks, then to keep the best so far`;
+}
+
+// Choosing a zone shows a first random start in it at once (clicking again draws another one):
+// the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
+function pickHuntZone(zone) {
+  huntZone = zone;
+  if (zone === 'all' || $('constant').value !== 'random') {
+    $('constant').value = 'random';
+    compute();  // a new draw (built at once: random digits need no worker)
+    if (zone === 'all') return;
+  }
+  const L = walk.life, { patch, radius } = huntPlan(zone), seed = new Uint8Array(L.seed.length);
+  for (const t of patch) seed[t] = Math.floor(Math.random() * L.C);
+  setLifeSeed(seed);
+  championCode = encodeCells(seed, L.C);  // the link keeps this start
+  $('status').textContent = `A random start within radius ${radius} (${fmt(patch.length)} cells), the rest dead · ${fmt(L.seedAlive)} live cells`;
+  $('huntStatus').textContent = 'Press ▶︎ Play to watch it, or 🔍 Hunt for one that lasts longer.';
+  renderHuntList();
 }
 
 function skipToTweaks() {
@@ -1846,6 +1877,7 @@ function runHuntWorker(job) {
   const src = `(${huntWorker.toString()})()`;
   hunt.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setHuntPhase(job.randomRuns ? 1 : 2);
+  renderHuntList();
   hunt.worker.onmessage = (e) => {
     const d = e.data;
     if (d.type === 'done') {
@@ -2013,7 +2045,7 @@ function applyPendingView() {
     setLifeSeed(decodeCells(ch, walk.life.seed.length));
     championCode = encodeCells(walk.life.seed, walk.life.C);  // in its shortest form, for the link
   }
-  fillHuntMenu();
+  renderHuntList();
   syncLink();  // at once, not at the next periodic update
 }
 

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001t">
+  <link rel="stylesheet" href="style.css?v=20261001u">
 </head>
 <body>
   <header>
-    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.80</span></h1>
+    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.81</span></h1>
     <p id="rule" class="subtitle"></p>
   </header>
 
@@ -79,11 +79,8 @@
           <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
         </label>
         <div id="huntRow" hidden>
-          <label>Methuselah hunt
-            <select id="huntSize" title="Where the random starts go. Radius r: the cells at most r steps from a centre cell, one step going to a neighbour (through an edge or a corner) — 3×3, 5×5 and 7×7 on squares, a small disc on triangles. Every start is tried when there are at most 20,000; the rest of the surface starts dead">
-              <option value="all">Whole surface</option>
-            </select>
-          </label>
+          <div class="field-label">Methuselah hunt</div>
+          <div id="huntList" class="mode-list" role="listbox" title="Where the random starts go. Radius r: the cells at most r steps from a centre cell, one step going to a neighbour (through an edge or a corner) — 3×3, 5×5 and 7×7 on squares, a small disc on triangles. The rest of the surface starts dead"></div>
           <div class="row">
             <button id="huntBtn" title="1,000 random starts, then 2,000 tweaks of the best one, then it is loaded. Click again to skip to the tweaks, then to keep the best so far">🔍 Hunt</button>
           </div>
@@ -199,6 +196,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261001t"></script>
+  <script src="main.js?v=20261001u"></script>
 </body>
 </html>
