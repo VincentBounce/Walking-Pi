@@ -1603,6 +1603,10 @@ function rotateView(dyaw, dpitch) {
   const after = projectPoint(...c);
   view.ox += (before[0] - after[0]) * view.scale;
   view.oy += (before[1] - after[1]) * view.scale;
+  if (viewGoal) {  // a smooth auto-fit under way follows the same shift
+    viewGoal.cx -= before[0] - after[0];
+    viewGoal.cy -= before[1] - after[1];
+  }
   project();
   if (walk.sphere) { needsFull = true; return; }  // bounds are the fixed sphere
   const done = cur;
@@ -2947,21 +2951,50 @@ function restart() {
 }
 
 /* ---- 11.2 View: zoom, pan and fit ------------------------------------------------------------ */
-function fitToBounds(b) {
+// A view as { scale, cx, cy }: the zoom and the world point at the centre of the screen. Easing
+// works on this form: the scale on a log scale (a steady feeling of zoom at any size) and the
+// centre in world units, so zooming out does not drift sideways.
+function viewFor(b) {
   const w = b.maxX - b.minX + 2;
   const h = b.maxY - b.minY + 2;
-  view.scale = Math.min(40, Math.max(0.01, Math.min(cw / w, ch / h) * 0.85));
-  view.ox = cw / 2 - ((b.minX + b.maxX) / 2) * view.scale;
-  view.oy = ch / 2 - ((b.minY + b.maxY) / 2) * view.scale;
+  const scale = Math.min(40, Math.max(0.01, Math.min(cw / w, ch / h) * 0.85));
+  return { scale, cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
+}
+function setView(v) {
+  view.scale = v.scale;
+  view.ox = cw / 2 - v.cx * v.scale;
+  view.oy = ch / 2 - v.cy * v.scale;
   needsFull = true;
 }
 
-function boundsOffscreen() {
-  const m = 16;
-  return view.ox + bounds.minX * view.scale < m ||
-         view.ox + bounds.maxX * view.scale > cw - m ||
-         view.oy + bounds.minY * view.scale < m ||
-         view.oy + bounds.maxY * view.scale > ch - m;
+// Frame b at once (Fit view, a new walk, a resize); this cancels any smooth auto-fit
+function fitToBounds(b) {
+  viewGoal = null;
+  setView(viewFor(b));
+}
+
+// Does the walk go past the edges of view v (the current view, or where auto-fit is heading)?
+function boundsOffscreen(v = view) {
+  const m = 16, ox = v.ox ?? cw / 2 - v.cx * v.scale, oy = v.oy ?? ch / 2 - v.cy * v.scale;
+  return ox + bounds.minX * v.scale < m ||
+         ox + bounds.maxX * v.scale > cw - m ||
+         oy + bounds.minY * v.scale < m ||
+         oy + bounds.maxY * v.scale > ch - m;
+}
+
+// Smooth auto-fit: when the walk leaves the screen, the view eases towards a new frame (about
+// 0.4 s, time constant 0.15 s) instead of jumping; the goal follows the walk if it keeps growing
+let viewGoal = null;
+function easeView(dt) {
+  if (!viewGoal) return;
+  const k = 1 - Math.exp(-dt / 0.15);
+  const cx = (cw / 2 - view.ox) / view.scale, cy = (ch / 2 - view.oy) / view.scale;
+  const scale = view.scale * (viewGoal.scale / view.scale) ** k;
+  const next = { scale, cx: cx + (viewGoal.cx - cx) * k, cy: cy + (viewGoal.cy - cy) * k };
+  const arrived = Math.abs(Math.log(scale / viewGoal.scale)) < 1e-3
+    && Math.hypot(next.cx - viewGoal.cx, next.cy - viewGoal.cy) * scale < 0.5;
+  setView(arrived ? viewGoal : next);
+  if (arrived) viewGoal = null;
 }
 
 function resize() {
@@ -2984,6 +3017,7 @@ function padBounds(b) {
 }
 
 function userMovedView() {
+  viewGoal = null;
   $('autoFit').checked = false;
   needsFull = true;
 }
@@ -3531,11 +3565,12 @@ function tick(now = performance.now()) {
     if (k > 0) advanceTo(cur + k);
   }
   includeBox();
-  if (walk.n && $('autoFit').checked && boundsOffscreen()) {
+  if (walk.n && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow
     const b = padBounds(bounds);
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
-    fitToBounds({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
+    viewGoal = viewFor({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
+  easeView(dt);
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
     morphStep(dt);  // flat ↔ round, while it is changing
     if (walk.n && !walk.life && $('autoFit').checked && !$('autoRotate').checked) followWalker();
