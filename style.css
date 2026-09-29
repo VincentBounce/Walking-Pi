@@ -183,7 +183,10 @@ button.primary {
   border-radius: 8px;
   cursor: default;
 }
-.stage-bar .row { margin-bottom: 6px; }
+.stage-bar .stats { font-size: 12px; gap: 2px 12px; }  /* the stats sit above the controls */
+.stage-bar .strip { margin: 6px 0 0; min-height: 0; font-size: 12px; }
+.stage-bar .strip:empty { display: none; }
+.stage-bar .row { margin: 8px 0 6px; padding-top: 8px; border-top: 1px solid var(--border); }
 .stage-bar label { margin: 0; font-size: 12px; color: var(--muted); }
 .hint {
   position: absolute;

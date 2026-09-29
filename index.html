@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261002h">
+  <link rel="stylesheet" href="style.css?v=20261002i">
 </head>
 <body>
   <header>
@@ -167,9 +167,14 @@
         <input id="setupFile" type="file" accept="application/json,.json" hidden>
         <p id="setupStatus" class="muted"></p>
       </section>
+    </aside>
 
-      <section>
-        <h2>Stats</h2>
+    <div id="stage" class="stage">
+      <canvas id="gridLayer"></canvas>
+      <canvas id="pathLayer"></canvas>
+      <canvas id="overlayLayer"></canvas>
+      <div id="hint" class="hint">Wheel: zoom · Drag: pan · Double-click: fit</div>
+      <div id="animBar" class="stage-bar" aria-label="Animation and stats">
         <dl class="stats">
           <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
           <dt id="lStat1">Position</dt><dd id="sPos">(0, 0)</dd>
@@ -180,15 +185,6 @@
           <dt id="sCountsLabel">0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
         </dl>
         <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
-      </section>
-    </aside>
-
-    <div id="stage" class="stage">
-      <canvas id="gridLayer"></canvas>
-      <canvas id="pathLayer"></canvas>
-      <canvas id="overlayLayer"></canvas>
-      <div id="hint" class="hint">Wheel: zoom · Drag: pan · Double-click: fit</div>
-      <div id="animBar" class="stage-bar" aria-label="Animation">
         <div class="row">
           <button id="play" class="primary" title="Play / pause (Space)">▶︎ Play</button>
           <button id="step" title="One step (→)">Step</button>
@@ -203,6 +199,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261002h"></script>
+  <script src="main.js?v=20261002i"></script>
 </body>
 </html>
