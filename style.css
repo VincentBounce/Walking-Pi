@@ -28,6 +28,7 @@ header {
 }
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; }
 h1 .pi { color: var(--accent); }
+h1 .version { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
 .subtitle { margin: 2px 0 0; color: var(--muted); }
 .subtitle b { color: var(--text); }
 
