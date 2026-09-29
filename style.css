@@ -125,6 +125,7 @@ button.primary {
   color: var(--muted);
 }
 /* Number tiles: the symbol only, several per row (name and formula in the tooltip) */
+.number-group-label { margin: 2px 0 4px; font-size: 12px; color: var(--muted); }
 .number-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 4px; margin-bottom: 10px; }
 .number-grid button { padding: 6px 2px; font-size: 14px; white-space: nowrap; background: var(--panel); }
 .number-grid button:hover { background: var(--bg); }

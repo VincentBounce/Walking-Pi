@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.107';
+const VERSION = '0.1.108';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -637,36 +637,36 @@ const MONO = '#f0b429';
 /* ---- 2.2 Number cards ------------------------------------------------------------------------ */
 // The formula is the single source of truth: a card only writes one, and lights up again when the
 // formula matches it (presetOf, Part 4). Nothing else remembers which card was clicked.
-// The Number cards, in tabs: each card writes a formula (see Number formulas). Cards with a helper
+// The Number cards, in groups: each card writes a formula (see Number formulas). Cards with a helper
 // menu (Mersenne, primorial, random prime) or a random seed build it when picked. A card is a
 // small tile showing the symbol; its name and formula (detail, when the formula is built) are
 // in its tooltip, and the Formula field shows what it wrote.
-const NUMBER_TABS = ['Constants', '𝑓', 'Primes', 'Sequences'];
+const NUMBER_GROUPS = ['Constants', '𝑓', 'Primes', 'Sequences'];
 const PRESETS = {
-  pi:      { tab: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
-  e:       { tab: 'Constants', sym: 'e',    name: "Euler's number", f: 'e' },
-  phi:     { tab: 'Constants', sym: 'φ',    name: 'Golden ratio', f: 'phi' },
-  epi:     { tab: 'Constants', sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
-  ln2:     { tab: 'Constants', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
-  zeta3:   { tab: 'Constants', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
-  gamma:   { tab: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
-  catalan: { tab: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
-  erdos:   { tab: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
-  sqrt2:   { tab: '𝑓', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
-  cbrt2:   { tab: '𝑓', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
-  pi2:     { tab: '𝑓', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
-  frac4_3: { tab: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
-  frac16_9: { tab: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
-  mersenne: { tab: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
-  primorial: { tab: 'Primes', sym: 'p#', name: 'Primorial prime', detail: 'primorial(p)±1',
+  pi:      { group: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
+  e:       { group: 'Constants', sym: 'e',    name: "Euler's number", f: 'e' },
+  phi:     { group: 'Constants', sym: 'φ',    name: 'Golden ratio', f: 'phi' },
+  epi:     { group: 'Constants', sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
+  ln2:     { group: 'Constants', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
+  zeta3:   { group: 'Constants', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
+  gamma:   { group: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
+  catalan: { group: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
+  erdos:   { group: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
+  sqrt2:   { group: '𝑓', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
+  cbrt2:   { group: '𝑓', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
+  pi2:     { group: '𝑓', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
+  frac4_3: { group: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
+  frac16_9: { group: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
+  mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
+  primorial: { group: 'Primes', sym: 'p#', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
-  randomPrime: { tab: 'Primes', sym: '🎲 p', name: 'Random prime', detail: 'randprime(size, seed)',
+  randomPrime: { group: 'Primes', sym: '🎲 p', name: 'Random prime', detail: 'randprime(size, seed)',
                  f: () => `randprime(${$('primeSize').value},${freshDraw()})` },
-  primeReal: { tab: 'Primes', sym: 'ρ₂', name: 'Prime constant', f: 'primes2' },
-  random:  { tab: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random(seed)', f: () => `random(${freshDraw()})` },
-  champernowne: { tab: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
-  primeConst: { tab: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
-  primeGaps: { tab: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
+  primeReal: { group: 'Primes', sym: 'ρ₂', name: 'Prime constant', f: 'primes2' },
+  random:  { group: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random(seed)', f: () => `random(${freshDraw()})` },
+  champernowne: { group: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
+  primeConst: { group: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
+  primeGaps: { group: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
 };
 const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
 
@@ -1175,10 +1175,8 @@ function presetOf(text) {
 }
 
 // The cards and their helper menus follow the formula
-let numberTab = 'Constants';  // tab shown: the one of the formula's card, else the last one shown
 function syncNumberMenu() {
   const p = presetOf($('formula').value);
-  if (p.id) numberTab = PRESETS[p.id].tab;
   renderNumberPicker(p.id);
   for (const helper of ['mersenneP', 'primorialP', 'primeSize']) if (p[helper]) $(helper).value = p[helper];
   $('mersenneRow').hidden = p.id !== 'mersenne';
@@ -1186,27 +1184,28 @@ function syncNumberMenu() {
   $('primeSizeRow').hidden = p.id !== 'randomPrime';
 }
 
-// Tabs and cards like the walk modes; another tab starts on its first card
+// Every number at once, in small groups (Constants, 𝑓, Primes, Sequences): tiles showing the
+// symbol, several per row, the name and the formula on hover. The helper menus of the primes
+// (which Mersenne, which primorial, what size) sit right under the Primes group.
 function renderNumberPicker(active) {
-  $('numberTabs').replaceChildren(...NUMBER_TABS.map((tab) => {
-    const b = document.createElement('button');
-    b.textContent = tab;
-    b.setAttribute('role', 'tab');
-    b.classList.toggle('active', tab === numberTab);
-    b.addEventListener('click', () => {
-      if (tab !== numberTab) pickPreset(Object.keys(PRESETS).find((id) => PRESETS[id].tab === tab));
-    });
-    return b;
-  }));
-  // small tiles showing the symbol, several per row; the name and the formula on hover
-  $('numberList').replaceChildren(...Object.entries(PRESETS).filter(([, p]) => p.tab === numberTab).map(([id, p]) => {
-    const b = document.createElement('button');
-    b.textContent = p.sym;
-    b.title = `${p.name} — ${p.detail ?? p.f}`;
-    b.setAttribute('role', 'option');
-    b.classList.toggle('active', id === active);
-    b.addEventListener('click', () => pickPreset(id));  // again on 🎲: another draw
-    return b;
+  $('numberList').replaceChildren(...NUMBER_GROUPS.map((group) => {
+    const box = document.createElement('div'), label = document.createElement('div'), grid = document.createElement('div');
+    label.className = 'number-group-label';
+    label.textContent = group;
+    grid.className = 'number-grid';
+    grid.setAttribute('role', 'listbox');
+    grid.append(...Object.entries(PRESETS).filter(([, p]) => p.group === group).map(([id, p]) => {
+      const b = document.createElement('button');
+      b.textContent = p.sym;
+      b.title = `${p.name} — ${p.detail ?? p.f}`;
+      b.setAttribute('role', 'option');
+      b.classList.toggle('active', id === active);
+      b.addEventListener('click', () => pickPreset(id));  // again on 🎲: another draw
+      return b;
+    }));
+    box.append(label, grid);
+    if (group === 'Primes') box.append($('mersenneRow'), $('primorialRow'), $('primeSizeRow'));
+    return box;
   }));
 }
 
