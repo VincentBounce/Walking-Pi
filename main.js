@@ -3681,6 +3681,8 @@ $('morphBtn').addEventListener('click', () => {
   updateMorphButton();
 });
 $('morphBtn').addEventListener('pointerdown', (e) => e.stopPropagation());  // not a drag of the view
+// the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
+for (const type of ['pointerdown', 'dblclick', 'wheel']) $('animBar').addEventListener(type, (e) => e.stopPropagation());
 $('perspective').addEventListener('change', () => {
   setPerspective();
   project();

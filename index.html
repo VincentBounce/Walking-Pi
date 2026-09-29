@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001z">
+  <link rel="stylesheet" href="style.css?v=20261002a">
 </head>
 <body>
   <header>
-    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.86</span></h1>
+    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.87</span></h1>
     <p id="rule" class="subtitle"></p>
   </header>
 
@@ -120,19 +120,6 @@
       </section>
 
       <section>
-        <h2>Animation</h2>
-        <div class="row">
-          <button id="play" class="primary" title="Play / pause (Space)">▶︎ Play</button>
-          <button id="step" title="One step (→)">Step</button>
-          <button id="restart" title="Jump to start (R)">⏮</button>
-          <button id="end" title="Jump to end (E)">⏭</button>
-        </div>
-        <label>Speed: <span id="speedLabel"></span>
-          <input id="speed" type="range" min="0" max="100" step="any" value="27.96">
-        </label>
-      </section>
-
-      <section>
         <h2>Display</h2>
         <label>Colors
           <select id="colorMode">
@@ -193,10 +180,21 @@
       <canvas id="pathLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
       <div id="hint" class="hint">Wheel: zoom · Drag: pan · Double-click: fit</div>
+      <div id="animBar" class="stage-bar" aria-label="Animation">
+        <div class="row">
+          <button id="play" class="primary" title="Play / pause (Space)">▶︎ Play</button>
+          <button id="step" title="One step (→)">Step</button>
+          <button id="restart" title="Jump to start (R)">⏮</button>
+          <button id="end" title="Jump to end (E)">⏭</button>
+        </div>
+        <label>Speed: <span id="speedLabel"></span>
+          <input id="speed" type="range" min="0" max="100" step="any" value="27.96">
+        </label>
+      </div>
       <button id="morphBtn" class="stage-button" hidden title="Switch between the flat and the round form (same cells, same walk)">● Inflate</button>
     </div>
   </main>
 
-  <script src="main.js?v=20261001z"></script>
+  <script src="main.js?v=20261002a"></script>
 </body>
 </html>
