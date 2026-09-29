@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.105';
+const VERSION = '0.1.106';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3656,7 +3656,9 @@ function tick(now = performance.now()) {
   easeView(dt);
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
     morphStep(dt);  // flat ↔ round, while it is changing
-    if (walk.n && !walk.life && $('autoFit').checked && !$('autoRotate').checked) followWalker();
+    // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays
+    // put and the walk is seen covering it
+    if (walk.n && !walk.life && !walk.geo.torus && $('autoFit').checked && !$('autoRotate').checked) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
