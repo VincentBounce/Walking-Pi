@@ -634,8 +634,8 @@ const MONO = '#f0b429';
 // The formula is the single source of truth: a card only writes one, and lights up again when the
 // formula matches it (presetOf, Part 4). Nothing else remembers which card was clicked.
 // The Number cards, in tabs: each card writes a formula (see Number formulas). Cards with a helper
-// menu (Mersenne, primorial, random prime) or a random seed build it when picked. detail: the
-// formula shown on the card when it is not a plain one.
+// menu (Mersenne, primorial, random prime) or a random seed build it when picked. The formula
+// field shows what a card wrote; a card only shows its symbol and name.
 const NUMBER_TABS = ['Constants', 'Primes', 'Sequences', 'Misc'];
 const PRESETS = {
   pi:      { tab: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
@@ -647,13 +647,13 @@ const PRESETS = {
   gamma:   { tab: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
   catalan: { tab: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
   erdos:   { tab: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
-  mersenne: { tab: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
-  primorial: { tab: 'Primes', sym: 'p#', name: 'Primorial prime', detail: 'primorial(p)±1',
+  mersenne: { tab: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', f: () => `2^${$('mersenneP').value}-1` },
+  primorial: { tab: 'Primes', sym: 'p#', name: 'Primorial prime',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
-  randomPrime: { tab: 'Primes', sym: '🎲', name: 'Random prime', detail: 'randprime(size)',
+  randomPrime: { tab: 'Primes', sym: '🎲', name: 'Random prime',
                  f: () => `randprime(${$('primeSize').value},${freshDraw()})` },
   primeReal: { tab: 'Primes', sym: 'ρ₂', name: 'Prime constant', f: 'primes2' },
-  random:  { tab: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random', f: () => `random(${freshDraw()})` },
+  random:  { tab: 'Sequences', sym: '🎲', name: 'Random digits', f: () => `random(${freshDraw()})` },
   champernowne: { tab: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
   primeConst: { tab: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
   primeGaps: { tab: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
@@ -1192,8 +1192,9 @@ function renderNumberPicker(active) {
   $('numberList').replaceChildren(...Object.entries(PRESETS).filter(([, p]) => p.tab === numberTab).map(([id, p]) => {
     const b = document.createElement('button');
     const words = document.createElement('span');
-    words.append(part('mode-name', p.name), part('mode-detail formula-hint', p.detail ?? p.f));
+    words.append(part('mode-name', p.name));
     b.append(part('mode-icon', p.sym), words);
+    b.title = typeof p.f === 'string' ? p.f : '';  // the formula it writes, on hover
     b.setAttribute('role', 'option');
     b.classList.toggle('active', id === active);
     b.addEventListener('click', () => pickPreset(id));  // again on 🎲: another draw

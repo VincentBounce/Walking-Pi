@@ -100,12 +100,12 @@ button.primary {
 
 /* Walk mode: one tab per category, then every choice of that category */
 .tabs { display: flex; gap: 4px; margin-bottom: 6px; }
-.tabs button { flex: 1 1 auto; padding: 5px 6px; font-size: 12px; }
+.tabs button { flex: 1 1 auto; padding: 5px 4px; font-size: 12px; }  /* 4 tabs fit the panel */
 .tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .mode-list button {
   display: grid;
-  grid-template-columns: 20px 1fr auto;
+  grid-template-columns: 34px 1fr auto;  /* one icon column for every list, wide enough for ζ(3) or 16/9 */
   align-items: center;
   gap: 8px;
   padding: 5px 8px;
@@ -124,9 +124,7 @@ button.primary {
   border-radius: 999px;
   color: var(--muted);
 }
-.number-list button { grid-template-columns: 34px 1fr; }  /* symbols like ζ(3) or 16/9 are wider */
 .number-list .mode-icon { font-size: 13px; }
-.formula-hint { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 .mode-list button.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .mode-list button.active .mode-name,
 .mode-list button.active .mode-icon { color: var(--accent); }
