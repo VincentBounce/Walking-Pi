@@ -2895,9 +2895,16 @@ function advanceTo(target) {
     if (ys[i] < bounds.minY) bounds.minY = ys[i];
     if (ys[i] > bounds.maxY) bounds.maxY = ys[i];
   }
+  const reachedEnd = target >= walk.n && cur < walk.n;
   if (target !== cur) statsDirty = true;
   cur = Math.max(cur, target);
   if (cur >= walk.n) play(false);
+  // the walk has just ended: auto-fit framed it with room to grow, so ease to the final frame,
+  // the one Fit view gives (surfaces follow the walker instead)
+  if (reachedEnd && !walk.sphere && $('autoFit').checked) {
+    includeBox();
+    viewGoal = viewFor(padBounds(bounds));
+  }
 }
 
 function play(on) {
