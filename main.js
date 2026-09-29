@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.96';
+const VERSION = '0.1.97';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3588,10 +3588,13 @@ function updateStats() {
   const b = Math.min(walk.n, cur + after);
   const d = walk.digits;
   const intLen = Math.min(current.head.length, walk.n);
-  let html = a > 0 ? '…' : (intLen ? '' : '0.');
+  // a number below 1 does not walk its integer part (every such number would start the same
+  // way): its "0." is only shown, greyed
+  let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
   for (let i = a; i < b; i++) {
-    // the digit just played is filled; before the first step, the one it will play is outlined
-    html += i === cur - 1 ? `<span class="cur">${d[i]}</span>` : cur === 0 && i === 0 ? `<span class="next">${d[i]}</span>` : d[i];
+    // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
+    // describe the digits to its left. At the end there is no next digit, so none is highlighted.
+    html += i === cur ? `<span class="cur">${d[i]}</span>` : d[i];
     if (i === intLen - 1 && intLen < walk.n) html += '.';
   }
   strip.innerHTML = html + (b < walk.n ? '…' : '');

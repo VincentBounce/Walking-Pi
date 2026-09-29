@@ -160,7 +160,7 @@ button.primary {
   min-height: 2.8em;
 }
 .strip .cur { color: var(--accent-text); background: var(--accent); border-radius: 2px; }
-.strip .next { color: var(--accent); outline: 1px solid var(--accent); outline-offset: -1px; border-radius: 2px; }
+.strip .dim { opacity: 0.5; }  /* the "0." of a number below 1: shown, not walked */
 
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
