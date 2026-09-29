@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.91';
+const VERSION = '0.1.92';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -719,6 +719,8 @@ const MODES = {
               rule: 'Base 2 digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus (a square grid that wraps around both ways)' },
+  lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
+                  where: 'a torus of hexagons (6 neighbours each)' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true, perspective: true,
                 where: 'the surface of a cube' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
@@ -1298,7 +1300,7 @@ const tabName = (label) => ({ 'Game of Life on 3D shapes': '3D Cellular', Experi
 const MODE_ICONS = {
   turtle: '▦', cardinal: '✥', triLR: '▲', triFixed: '△', hexRel: '⬢', hexFixed: '⬡',
   cubeRel: '⧉', cubeFixed: '▣', torusWalk: '◎', cubeFlat: '◼', tetraLR: '▲', octaLR: '◆', icosaLR: '⬟',
-  lifeTorus: '◎', lifeCube: '◼', lifeTetra: '▲', lifeOcta: '◆', lifeIcosa: '⬟',
+  lifeTorus: '◎', lifeHexTorus: '⬡', lifeCube: '◼', lifeTetra: '▲', lifeOcta: '◆', lifeIcosa: '⬟',
   spiral: '▦', triSpiral: '▲', hexSpiral: '⬢', jump10: '⤳', jump64: '⤳', search10: '⌕', search64: '⌕',
 };
 
@@ -2024,17 +2026,47 @@ function torusMesh(nv) {
   const nu = Math.round(nv / TORUS_TUBE);  // squares about as long around the ring as around the tube
   const { verts, add } = vertexStore();
   const at = (i, j) => add(...torusPoint(i, j, nu, nv, 1));  // i = nu and i = 0 meet (same for j)
-  const quads = [];
+  const quads = [], uv = [];
   for (let i = 0; i < nu; i++) {
-    for (let j = 0; j < nv; j++) quads.push([at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+    for (let j = 0; j < nv; j++) {
+      const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
+      quads.push(c.map(([a, b]) => at(a, b)));
+      uv.push(...c.flat());
+    }
   }
+  return (meshCache[key] = finishTorus(verts, quads, 4, nu, nv, uv));
+}
+
+// A torus mesh keeps the sheet coordinates (i, j) of every tile corner (uv, in listing order):
+// when unrolled (m < 1) its seams open, so shapeAt places corners per tile, not per vertex
+function finishTorus(verts, tiles, sides, nu, nv, uv) {
   // outwards = away from the circle running through the middle of the tube
   const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
-  const mesh = finishMesh(verts, quads, 4, nv, fromTubeAxis);
-  mesh.torus = true;
-  mesh.nu = nu;
-  mesh.nv = nv;
-  return (meshCache[key] = mesh);
+  const mesh = finishMesh(verts, tiles, sides, nv, fromTubeAxis);
+  Object.assign(mesh, { torus: true, nu, nv, uv: new Float64Array(uv) });
+  return mesh;
+}
+
+/* Torus of regular hexagons (flat-topped): nu columns around the ring, nv rows around the tube;
+ * odd columns sit half a row higher, so nu must be even for the columns to close up. In sheet
+ * units a column is 1.5·R wide and a row √3·R high; the sheet is 2π by 2π·TUBE, so the hexagons
+ * are regular when nu / nv = √3 / (1.5·TUBE). Every hexagon has 6 neighbours, all across an edge. */
+const hexTorusColumns = (nv) => 2 * Math.round((nv * Math.sqrt(3)) / (3 * TORUS_TUBE));
+function hexTorusMesh(nv) {
+  const key = `hextorus${nv}`;
+  if (meshCache[key]) return meshCache[key];
+  const nu = hexTorusColumns(nv);
+  const { verts, add } = vertexStore();
+  const hexes = [], uv = [];
+  for (let c = 0; c < nu; c++) {
+    for (let r = 0; r < nv; r++) {  // tile c·nv + r, like the square torus
+      const ci = c, cj = r + (c % 2) / 2;
+      const corners = [0, 1, 2, 3, 4, 5].map((k) => [ci + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]);
+      hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+      uv.push(...corners.flat());
+    }
+  }
+  return (meshCache[key] = finishTorus(verts, hexes, 6, nu, nv, uv));
 }
 
 /* ---- 7.5 Flat ↔ round: the same tiles and neighbours, shown flat or inflated ----------------- */
@@ -2042,18 +2074,15 @@ function torusMesh(nv) {
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus'];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus'];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
   const corners = new Float64Array(3 * k * n), cen = new Float64Array(3 * n), nrm = new Float64Array(3 * n);
   if (g.torus) {
-    // per tile, from its grid indices (tile i·nv + j): at m < 1 the seams open, so corners are not shared
-    const { nu, nv } = g;
-    for (let t = 0; t < n; t++) {
-      const i = Math.floor(t / nv), j = t % nv;
-      [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]].forEach(([a, b], q) => corners.set(torusPoint(a, b, nu, nv, m), 3 * (k * t + q)));
-    }
+    // per tile, from the sheet coordinates of its corners: at m < 1 the seams open, so corners are not shared
+    const { nu, nv, uv } = g;
+    for (let q = 0; q < k * n; q++) corners.set(torusPoint(uv[2 * q], uv[2 * q + 1], nu, nv, m), 3 * q);
   } else {
     const nv = g.verts.length / 3, R0 = g.extent, moved = new Float64Array(3 * nv);
     for (let v = 0; v < nv; v++) {  // slide towards the sphere through the corners
@@ -2078,13 +2107,14 @@ function shapeAt(g, m) {
   return { m, corners, cen, nrm, extent };
 }
 
-// Torus corners are listed in grid order, which may run against the mesh's outward order: the sign
+// Torus corners are listed in sheet order, which may run against the mesh's outward order: the sign
 // that makes their normals point outwards, found once by comparing with the mesh at m = 1
 function shapeSign(g) {
   if (!g.torus) return 1;
   if (g.shapeSign) return g.shapeSign;
-  const { nu, nv } = g, P = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b]) => torusPoint(a, b, nu, nv, 1));
-  const nr = cross([0, 1, 2].map((d) => P[2][d] - P[0][d]), [0, 1, 2].map((d) => P[3][d] - P[1][d]));
+  const { nu, nv, uv } = g, k = g.sides;
+  const P = Array.from({ length: k }, (_, q) => torusPoint(uv[2 * q], uv[2 * q + 1], nu, nv, 1));  // tile 0
+  const nr = cross([0, 1, 2].map((d) => P[2][d] - P[0][d]), [0, 1, 2].map((d) => P[k - 1][d] - P[1][d]));
   g.shapeSign = nr[0] * g.nrm[0] + nr[1] * g.nrm[1] + nr[2] * g.nrm[2] >= 0 ? 1 : -1;
   return g.shapeSign;
 }
@@ -2141,6 +2171,9 @@ const SPHERES = {
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   torus: { mesh: torusMesh, radius: (nv) => nv / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => Math.round(nv / TORUS_TUBE) * nv, unit: 'squares' },
+  // hexagon edge = 1 unit: the tube is nv rows of √3 around
+  hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
+              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => hexTorusColumns(nv) * nv, unit: 'hexagons' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
