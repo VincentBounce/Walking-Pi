@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.98';
+const VERSION = '0.1.99';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3592,7 +3592,8 @@ function updateStats() {
   const cols = stripColumns(strip), n = walk.n, d = walk.digits;
   const intLen = Math.min(current.head.length, n);
   let b = Math.min(n, Math.max(0, cur - Math.floor(cols * 0.6)) + cols), a = Math.max(0, b - cols);
-  const marks = () => (a > 0 ? 1 : intLen ? 0 : 2) + (intLen - 1 >= a && intLen - 1 < b && intLen < n ? 1 : 0) + (b < n ? 1 : 0);
+  const marks = () => (a > 0 ? 1 : intLen ? 0 : 2) + (intLen - 1 >= a && intLen - 1 < b && intLen < n ? 1 : 0)
+    + (b < n ? 1 : cur >= n ? 1 : 0);  // "…" after, or the head on a blank past the last digit
   while (b - a + marks() > cols && b - a > 1) {
     if (b - 1 > cur && (a === 0 || b - cur > (cur - a) * 0.67)) b--;
     else a++;
@@ -3602,21 +3603,24 @@ function updateStats() {
   let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
   for (let i = a; i < b; i++) {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
-    // describe the digits to its left. At the end there is no next digit, so none is highlighted.
+    // describe the digits to its left. At the end it sits on a blank after the last digit.
     html += i === cur ? `<span class="cur">${d[i]}</span>` : d[i];
     if (i === intLen - 1 && intLen < walk.n) html += '.';
   }
-  strip.innerHTML = html + (b < n ? '…' : '');
+  strip.innerHTML = html + (b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '');
 }
 
 // How many characters fit on one line of the strip, measured again only when its font or width changes
 const stripMeasure = { key: '', cols: 0, ctx: null };
 function stripColumns(el) {
-  const st = getComputedStyle(el), font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`, key = `${font}|${el.clientWidth}`;
+  // the width of the box it sits in: the strip itself is hidden while empty (width 0)
+  const box = el.parentElement, bs = getComputedStyle(box);
+  const width = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
+  const st = getComputedStyle(el), font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`, key = `${font}|${width}`;
   if (stripMeasure.key !== key) {
     stripMeasure.ctx ??= document.createElement('canvas').getContext('2d');
     stripMeasure.ctx.font = font;
-    stripMeasure.cols = Math.max(8, Math.floor((el.clientWidth * 20) / stripMeasure.ctx.measureText('0'.repeat(20)).width));
+    stripMeasure.cols = Math.max(8, Math.floor((width * 20) / stripMeasure.ctx.measureText('0'.repeat(20)).width));
     stripMeasure.key = key;
   }
   return stripMeasure.cols;
