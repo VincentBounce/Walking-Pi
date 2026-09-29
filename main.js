@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.90';
+const VERSION = '0.1.91';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -640,7 +640,7 @@ const MONO = '#f0b429';
 // The Number cards, in tabs: each card writes a formula (see Number formulas). Cards with a helper
 // menu (Mersenne, primorial, random prime) or a random seed build it when picked. The formula
 // field shows what a card wrote; a card only shows its symbol and name.
-const NUMBER_TABS = ['Constants', 'Primes', 'Sequences', 'Misc'];
+const NUMBER_TABS = ['Constants', '𝑓', 'Primes', 'Sequences'];
 const PRESETS = {
   pi:      { tab: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
   e:       { tab: 'Constants', sym: 'e',    name: "Euler's number", f: 'e' },
@@ -651,6 +651,11 @@ const PRESETS = {
   gamma:   { tab: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
   catalan: { tab: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
   erdos:   { tab: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
+  sqrt2:   { tab: '𝑓', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
+  cbrt2:   { tab: '𝑓', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
+  pi2:     { tab: '𝑓', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
+  frac4_3: { tab: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
+  frac16_9: { tab: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
   mersenne: { tab: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', f: () => `2^${$('mersenneP').value}-1` },
   primorial: { tab: 'Primes', sym: 'p#', name: 'Primorial prime',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
@@ -661,11 +666,6 @@ const PRESETS = {
   champernowne: { tab: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
   primeConst: { tab: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
   primeGaps: { tab: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
-  sqrt2:   { tab: 'Misc', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
-  cbrt2:   { tab: 'Misc', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
-  pi2:     { tab: 'Misc', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
-  frac4_3: { tab: 'Misc', sym: '4/3', name: 'Four thirds', f: '4/3' },
-  frac16_9: { tab: 'Misc', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
 };
 const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
 
