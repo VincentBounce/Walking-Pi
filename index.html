@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003a">
+  <link rel="stylesheet" href="style.css?v=20261003b">
 </head>
 <body>
   <header>
@@ -126,10 +126,14 @@
           <input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off"
                  title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, sqrt(3), cbrt(2), root(x, k), ln(x), exp(x), log(x, b), zeta(k), 22/7, 2^pi, 8^(1/3), 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps. Press Enter to compute">
         </label>
-        <label id="digitsRow">Number of digits
-          <input id="digits" type="number" min="5000" max="1000000" step="5000" value="20000">
-        </label>
-        <button id="compute" class="primary">Compute</button>
+        <div id="digitsRow">
+          <div class="stepper">
+            <button id="digitsDown" title="Fewer digits">−</button>
+            <span id="digitsLabel"></span>
+            <button id="digitsUp" title="More digits">+</button>
+          </div>
+          <input id="digits" type="hidden" value="20000">
+        </div>
         <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
         <p id="status" class="muted">—</p>
       </section>
@@ -206,6 +210,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261003a"></script>
+  <script src="main.js?v=20261003b"></script>
 </body>
 </html>

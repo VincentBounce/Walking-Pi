@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.113';
+const VERSION = '0.1.114';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -840,6 +840,23 @@ function requestedDigits() {
   return Math.min(1_000_000, Math.max(10, n || 10));
 }
 
+// The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
+// DIGIT_STEPS and recomputes at once. A link may hold any other count: a step goes to the next one.
+const DIGIT_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+function syncDigitsStepper() {
+  const n = requestedDigits();
+  $('digitsLabel').textContent = `${fmt(n)} digits`;
+  $('digitsDown').disabled = n <= DIGIT_STEPS[0];
+  $('digitsUp').disabled = n >= DIGIT_STEPS.at(-1);
+}
+function stepDigits(delta) {
+  const n = requestedDigits();
+  const next = delta > 0 ? DIGIT_STEPS.find((v) => v > n) : DIGIT_STEPS.findLast((v) => v < n);
+  if (next === undefined) return;
+  $('digits').value = next;
+  compute();
+}
+
 const SUB = (v) => String(v).replace(/\d/g, (c) => '₀₁₂₃₄₅₆₇₈₉'[c]);
 
 
@@ -1359,6 +1376,7 @@ function compute() {
   if (mode.sphere) fillSphereSizes(mode.sphere);
   const n = digitsNeeded();
   if (!mode.life) $('digits').value = n;
+  syncDigitsStepper();
   relabelColours(!!mode.life);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
@@ -1373,9 +1391,6 @@ function compute() {
   championCode = null;  // a new start: no loaded champion any more
   const F = readFormula();
   syncNumberMenu();
-  // Compute applies a new number of digits: Life needs none (one digit per cell, recomputed on every
-  // change), and a new random draw is a click on its 🎲 tile again
-  $('compute').hidden = !!mode.life;
   if (F.error) {
     $('status').textContent = `Formula: ${F.error}`;
     return;
@@ -1449,11 +1464,12 @@ function compute() {
   worker.postMessage({ ast: F.ast, n, base, mag: F.mag, nodes: F.nodes });
 }
 
-function setBusy(busy) {
-  $('compute').disabled = busy;
-  $('compute').textContent = busy ? 'Computing…' : 'Compute';
+// While the worker computes: the progress bar shows, and the link waits for the result
+let busy = false;
+function setBusy(on) {
+  busy = on;
   $('progressBar').style.width = '0';
-  $('progress').hidden = !busy;  // the bar only shows while computing
+  $('progress').hidden = !on;  // the bar only shows while computing
 }
 
 /* ---- 5.3 Building the walk ------------------------------------------------------------------- */
@@ -2823,7 +2839,7 @@ function parseHash() {
   } catch { return null; }
 }
 function syncLink() {
-  if ($('compute').disabled || pendingChampion) return;  // not while a setup is still being built
+  if (busy || pendingChampion) return;  // not while a setup is still being built
   const h = `#${toHash(getSetup())}`;
   if (h !== location.hash) history.replaceState(null, '', h);
 }
@@ -3708,7 +3724,8 @@ function tick(now = performance.now()) {
  */
 
 /* ---- 12.1 Buttons, menus, keyboard and mouse ------------------------------------------------- */
-$('compute').addEventListener('click', compute);
+$('digitsDown').addEventListener('click', () => stepDigits(-1));
+$('digitsUp').addEventListener('click', () => stepDigits(1));
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
   play(!playing);
