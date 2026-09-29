@@ -1800,14 +1800,33 @@ function startHunt() {
     compute();
   }
   stopHunt();
-  const L = walk.life, zone = $('huntSize').value;
-  const patch = zone === 'all' ? null : lifePatch(Number(zone.slice(5)));
-  // a small patch: every start when there are few enough (then no tweaks), else random ones
-  const exhaustive = !!patch && L.C ** patch.length <= 20000;  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
-  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, tried: 0,
-                        exhaustive: exhaustive ? L.C ** patch.length : 0, tweaks: exhaustive ? 0 : HUNT_TWEAKS });
+  const { patch, radius, all } = huntPlan($('huntSize').value);
+  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, tried: 0,
+                        exhaustive: all, tweaks: all ? 0 : HUNT_TWEAKS });
   $('huntStatus').textContent = 'Starting…';
-  runHuntWorker({ randomRuns: hunt.exhaustive || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive });
+  runHuntWorker({ randomRuns: all || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive: !!all });
+}
+
+// Where the starts go: the whole surface, or the cells within a radius of 1, 2 or 3 steps.
+// all: the number of possible starts when few enough to try them all (then no tweaks), else 0.
+function huntPlan(zone) {
+  if (zone === 'all') return { patch: null, radius: 0, all: 0 };
+  const radius = Number(zone.slice(6)), patch = lifePatch(radius), count = walk.life.C ** patch.length;
+  return { patch, radius, all: count <= 20000 ? count : 0 };  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
+}
+
+// The menu gives the real numbers of the current surface and rule: cells in each radius, and
+// whether every start is tried or random ones
+function fillHuntMenu() {
+  if (!walk.life || !walk.geo) return;
+  const sel = $('huntSize'), keep = sel.value || 'all';
+  const option = (zone) => {
+    const { patch, radius, all } = huntPlan(zone);
+    const how = all ? `all ${fmt(all)} starts` : `${fmt(HUNT_STARTS)} random starts`;
+    return new Option(patch ? `Radius ${radius} · ${fmt(patch.length)} cells — ${how}` : `Whole surface — ${how}`, zone);
+  };
+  sel.replaceChildren(...['all', 'radius1', 'radius2', 'radius3'].map(option));
+  sel.value = keep;
 }
 
 function skipToTweaks() {
@@ -1883,7 +1902,7 @@ function loadChampion() {
   const how = (hunt.exhaustive ? (hunt.tried >= hunt.exhaustive ? `the best of all ${fmt(hunt.exhaustive)} starts`
       : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
     : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
-    + (hunt.patch ? ` in a patch of ${fmt(hunt.patch.length)} cells` : '');
+    + (hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
   $('status').textContent = `🎲 champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
   $('huntStatus').textContent = 'Champion loaded: press ▶︎ Play to watch it.';
 }
@@ -1994,6 +2013,7 @@ function applyPendingView() {
     setLifeSeed(decodeCells(ch, walk.life.seed.length));
     championCode = encodeCells(walk.life.seed, walk.life.C);  // in its shortest form, for the link
   }
+  fillHuntMenu();
   syncLink();  // at once, not at the next periodic update
 }
 
