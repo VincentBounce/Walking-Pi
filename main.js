@@ -1,19 +1,70 @@
 'use strict';
 
-/* ------------------------------------------------------------------ *
- * Digit computation in base b (Web Worker, BigInt)                   *
- * The worker evaluates a checked formula (see checkFormula):          *
- * - exact integers and fractions are computed exactly;                *
- * - a real value is computed as the integer x·b^(N+G), where G guard  *
- *   digits absorb rounding errors; the result is divided by b^G and   *
- *   printed with toString(b).                                         *
- * ------------------------------------------------------------------ */
+/* ==============================================================================================
+ * WALKING π — main.js
+ * ==============================================================================================
+ *
+ * A walk (or a Game of Life) driven by the digits of a number. Everything runs in the browser,
+ * with no build step and no dependency: index.html, style.css and this file. The heavy work
+ * runs in Web Workers created from functions of this file (their source text becomes a Blob),
+ * so the page stays one plain script.
+ *
+ * How it fits together
+ *   1. The Number is a formula (Part 4). It is parsed and checked on the page, then evaluated
+ *      in a worker (Part 1), which sends back its digits in the base the mode needs.
+ *   2. The walk mode turns each digit into a move: on a lattice or along a spiral (Part 6), or
+ *      from tile to tile on a surface (Part 7). The Game of Life (Part 8) instead reads one
+ *      digit per tile of a surface as its starting state.
+ *   3. The whole walk is built at once (arrays of positions, Part 5); the animation (Part 11)
+ *      only reveals it step by step, so jumping anywhere is instant.
+ *   4. A setup (Part 10) — number, mode, surface, rule, Life start — lives in the page link, in
+ *      the saved setups and in JSON files. Display choices are never part of it.
+ *
+ * Contents
+ *   Part 1   Digits: the formula worker (BigInt, exact or with guard digits)
+ *   Part 2   Catalogues and state
+ *   Part 3   Labels, digit counts and random draws
+ *   Part 4   Number formulas: the language, its checks and the Number cards
+ *   Part 5   Picking a mode, computing, building the walk, 3D projection
+ *   Part 6   Walks on lattices and spirals
+ *   Part 7   Tiled surfaces: meshes, flat ↔ round, walks on surfaces
+ *   Part 8   Game of Life on the surfaces
+ *   Part 9   Methuselah hunt
+ *   Part 10  Setups and links
+ *   Part 11  Animation, view and rendering
+ *   Part 12  Interactions and start-up
+ */
+
+/* ==============================================================================================
+ * PART 1 — DIGITS: THE FORMULA WORKER
+ * ==============================================================================================
+ *
+ * The worker receives a checked formula tree (Part 4) and a number of digits n in base b, and
+ * sends back the integer part and the n digits after the point.
+ *
+ * Why BigInt rather than floating point: a double holds about 16 significant digits, while walks
+ * use up to 1,000,000 digits, in any base from 2 to 64. So every value is an exact integer:
+ * - an exact integer or fraction (2^127-1, 22/7) is computed exactly, as a pair [p, q];
+ * - a real (pi, sqrt(2), ln(3)…) is computed in fixed point, as the integer x·b^(n+G), where G
+ *   guard digits absorb the rounding of each operation. The result is divided by b^G and written
+ *   in base b. G grows with the number of operations and with the size of the values met on the
+ *   way (checkFormula estimates both), so a cancellation like 10^30·π − 3141… keeps its digits.
+ * - When the guard digits come out all 0 or all b − 1, the value sits extremely close to a number
+ *   with a short expansion (√2·√2 gives 1.999…): the status line then warns that the last digits
+ *   could be off by one, rather than silently showing a wrong digit.
+ *
+ * Why a worker: a million digits can take seconds; the page keeps animating meanwhile, and a new
+ * request simply terminates the old worker.
+ */
+
 function formulaWorker() {
   self.onmessage = (e) => {
     const { ast, n, base, mag, nodes } = e.data;
     const B = BigInt(base);
     const t0 = performance.now();
     let S, prec, lnS, guard, primeTests;
+
+    /* ---- 1.1 Primes: small primes, primorials, random probable primes ------------------------ */
 
     function smallPrimes(limit) {
       const composite = new Uint8Array(limit + 1);
@@ -103,6 +154,11 @@ function formulaWorker() {
         start += 2n * BigInt(W);
       }
     }
+    /* ---- 1.2 Series and integer roots: the building blocks ----------------------------------- */
+    // Most constants are sums of series whose terms shrink geometrically. Terms are integers in fixed
+    // point (scaled by S = b^prec); binary splitting keeps long products exact and fast. progress()
+    // reports to the page every 500 terms, for the progress bar.
+
     let done = 0, total = 1;
     const progress = (i) => {
       if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
@@ -191,6 +247,10 @@ function formulaWorker() {
       while (x * x * x > v) x--;
       return x;
     }
+
+    /* ---- 1.3 Named constants ----------------------------------------------------------------- */
+    // Each one with a classic fast formula that works well with integers. A constant is computed once
+    // per formula (memo), however many times the formula uses it.
 
     // S·c for a named constant, computed once per formula
     const memo = {};
@@ -285,6 +345,11 @@ function formulaWorker() {
       return (memo[name] = v);
     }
 
+    /* ---- 1.4 General functions: whole powers, exp, ln, zeta ---------------------------------- */
+    // exp and ln work in binary fixed point (W fractional bits), where shifts are much cheaper than
+    // divisions by powers of b. Both first reduce their argument (halvings for exp, square roots for
+    // ln) so that their series converge fast, then undo the reduction (squarings, a factor 2^r).
+
     // S·v^k for S·v and a whole k (squaring)
     function powFixed(v, k) {
       let r = S, sq = v;
@@ -367,6 +432,11 @@ function formulaWorker() {
       const half = 1n << (K - 1n);  // 1 − 2^(1−s) = (2^(s−1) − 1) / 2^(s−1)
       return (-sum * S * half) / (dN * (half - 1n));
     }
+
+    /* ---- 1.5 Evaluating the formula ---------------------------------------------------------- */
+    // Exact nodes (kind 'int' or 'rat') stay exact as long as possible; a node becomes fixed point
+    // only where it must. Multiplying or dividing by an exact value uses its numerator and denominator
+    // directly, so 10^50·π or π/10^50 lose no precision.
 
     // Exact values [p, q]: arithmetic in exactValue, the rest here
     const exact = (x) => x.kind === 'int' || x.kind === 'rat';
@@ -480,6 +550,11 @@ function formulaWorker() {
   };
 }
 
+/* ---- 1.6 Helpers shared by the page and the worker ------------------------------------------- */
+// A worker cannot see this file's functions: compute() builds its source from the text of
+// formulaWorker plus these helpers (digitString, seededRandom, exactValue, iroot). The page uses
+// them too, to check small exact values while reading a formula.
+
 // Exact value [p, q] (BigInt, q > 0, reduced) of an exact formula node (kind 'int' or 'rat'):
 // numbers and + − × ÷ ^ here, function calls through leaf(node). Also used inside the worker.
 function exactValue(node, leaf) {
@@ -535,9 +610,14 @@ function iroot(v, k) {
   return x;
 }
 
-/* ------------------------------------------------------------------ *
- * State                                                              *
- * ------------------------------------------------------------------ */
+/* ==============================================================================================
+ * PART 2 — CATALOGUES AND STATE
+ * ==============================================================================================
+ *
+ * The fixed lists (Number cards, walk modes, known primes) and the global state of the page.
+ */
+
+/* ---- 2.1 Helpers, directions and colours ----------------------------------------------------- */
 const $ = (id) => document.getElementById(id);
 const fmt = (v) => v.toLocaleString('en');
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, W (screen y points down)
@@ -549,6 +629,10 @@ const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
 const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'];
 const MONO = '#f0b429';
 
+
+/* ---- 2.2 Number cards ------------------------------------------------------------------------ */
+// The formula is the single source of truth: a card only writes one, and lights up again when the
+// formula matches it (presetOf, Part 4). Nothing else remembers which card was clicked.
 // The Number cards, in tabs: each card writes a formula (see Number formulas). Cards with a helper
 // menu (Mersenne, primorial, random prime) or a random seed build it when picked. detail: the
 // formula shown on the card when it is not a plain one.
@@ -588,6 +672,10 @@ const FORMULA_NOTES = {
   primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
 };
 
+/* ---- 2.3 Walk modes -------------------------------------------------------------------------- */
+// base: the base the digits are written in; lattice: how a step is taken ('square', 'tri', 'hex',
+// 'cube' or 'sphere' for a tiled surface); life: a Game of Life instead of a walk. The (hidden)
+// mode menu in index.html lists them, grouped as the tabs of the Walk section.
 const MODES = {
   turtle:   { base: 3, lattice: 'square',
               rule: 'Base 3 digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
@@ -641,6 +729,8 @@ const MODES = {
               rule: 'Base 6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
 };
 
+
+/* ---- 2.4 Known primes ------------------------------------------------------------------------ */
 // Exponents p of the known Mersenne primes (from 127 up)
 const MERSENNE = [127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937, 21701,
   23209, 44497, 86243, 110503, 132049, 216091, 756839, 859433, 1257787, 1398269, 2976221, 3021377,
@@ -654,6 +744,10 @@ const PRIMORIAL_PLUS = [379, 1019, 1021, 2657, 3229, 4547, 4787, 11549, 13649, 1
 const PRIMORIAL_MINUS = [317, 337, 991, 1873, 2053, 2377, 4093, 4297, 4583, 6569, 13033, 15877, 843301,
   1098133, 3267113, 4778027, 6354977, 6533299];
 
+
+/* ---- 2.5 Global state ------------------------------------------------------------------------ */
+// Digits already computed stay in the cache (key: canonical formula + base), so going back to a
+// number or a mode is instant.
 const cache = {};        // key → { intPart: "10", digits: Uint8Array (fractional part) }
 let current = null;      // { head: integer-part digits, digits, mode }
 let worker = null;
@@ -688,9 +782,12 @@ const layers = {
 };
 let cw = 0, ch = 0;
 
-/* ------------------------------------------------------------------ *
- * Computing digits and building the walk                             *
- * ------------------------------------------------------------------ */
+/* ==============================================================================================
+ * PART 3 — LABELS, DIGIT COUNTS AND RANDOM DRAWS
+ * ==============================================================================================
+ */
+
+/* ---- 3.1 Subtitle, colour menu and number of digits ------------------------------------------ */
 function updateRuleText() {
   const { base, rule, life, where } = MODES[$('mode').value];
   $('rule').innerHTML = life ? lifeSubtitle(where) : rule;
@@ -735,6 +832,11 @@ function requestedDigits() {
 
 const SUB = (v) => String(v).replace(/\d/g, (c) => '₀₁₂₃₄₅₆₇₈₉'[c]);
 
+
+/* ---- 3.2 Seeded random draws ----------------------------------------------------------------- */
+// Random things are reproducible: random digits and random primes come from a seed written in the
+// formula (random(81244), randprime(300,81244)), so a link or a saved setup always gives back the
+// same digits. freshDraw only picks a new seed; the formula keeps it.
 // Seeded pseudo-random generator (mulberry32): a draw number gives a reproducible stream of 32-bit
 // integers, so random digits and random primes can be saved and shared as just that number
 function seededRandom(seed) {
@@ -748,14 +850,37 @@ function seededRandom(seed) {
 }
 const freshDraw = () => crypto.getRandomValues(new Uint32Array(1))[0] % 1e9;
 
-/* ------------------------------------------------------------------ *
- * Number formulas                                                    *
- * ------------------------------------------------------------------ */
-/* Every number is a formula: pi, sqrt(2), (1+sqrt(5))/2, 2^127-1, primorial(392113)+1, 22/7,
- * random(81244), champernowne… The Number menu only writes formulas, and a setup stores the
- * canonical form, so pi typed or picked is stored the same way. Each node gets a kind:
- * 'int' and 'rat' are exact, 'real' is computed with guard digits, 'seq' is a sequence of digits
- * defined base by base (champernowne, primes, primegaps, random), which only stands alone. */
+/* ==============================================================================================
+ * PART 4 — NUMBER FORMULAS
+ * ==============================================================================================
+ *
+ * Every number is a formula: pi, sqrt(2), (1+sqrt(5))/2, 2^pi, ln(3), zeta(5), 22/7, 2^127-1,
+ * primorial(392113)+1, randprime(300,81244), random(81244), champernowne… The Number cards only
+ * write formulas, and a setup stores the formula: one uniform way to store every number.
+ *
+ * Why a language of our own rather than math.js or another library: they compute with floating
+ * point (about 16 digits) or with a fixed-precision decimal type, while we need up to a million
+ * exact digits in any base, computed in a worker with the algorithms of Part 1. So only the
+ * syntax is borrowed (the usual calculator one: + − * / ^, sqrt(…), ln(…)); the parser, the
+ * checks and the evaluation are ours, a few hundred lines, with no dependency.
+ *
+ * Canonical form: what is stored is the formula as written, tidied up — no spaces, lower case,
+ * π → pi, × → *, only the parentheses needed. So "PI", " π " and a click on the π card all store
+ * "pi". It is deliberately not algebra: pi*pi stays pi*pi and does not become pi^2. Simplifying
+ * would need a computer algebra system and would rewrite the user's formula under their eyes; two
+ * writings of one value just give two links, with the same digits.
+ *
+ * Kinds, set on every node by checkFormula:
+ *   'int'   an exact integer             2^127-1, primorial(11)+1, sqrt(16)
+ *   'rat'   an exact fraction            22/7, 2^-1, (16/81)^(3/4)
+ *   'real'  computed with guard digits   pi, sqrt(2), 2^pi, ln(3)
+ *   'seq'   a sequence of digits defined base by base (random, champernowne, primes, primegaps).
+ *           It is not a number, so it only stands alone: random(5)+1 is refused.
+ * The kind decides where digits come from: sequences on the page (seqDigits), everything else in
+ * the worker. An integer is walked through its own digits only (no digits after the point).
+ */
+
+/* ---- 4.1 Vocabulary -------------------------------------------------------------------------- */
 const FORMULA_NAMES = {  // name: [kind, symbol shown]
   pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
   erdos: ['real', 'E'], primes2: ['real', 'ρ₂'],
@@ -769,6 +894,9 @@ const precOf = (x) => PREC[x.k] ?? 5;
 const formulaKids = (x) => (x.k === 'call' ? x.args : x.k === 'neg' ? [x.a] : x.a ? [x.a, x.b] : []);
 const formulaNodes = (x) => [x, ...formulaKids(x).flatMap(formulaNodes)];
 
+/* ---- 4.2 Parser ------------------------------------------------------------------------------ */
+// A small recursive-descent parser, one function per precedence level (expr → term → unary →
+// power → primary). Unicode input is turned into plain names first, so the rest only sees ASCII.
 // Text → tree of { k: 'num' | 'name' | 'call' | 'neg' | '+' | '-' | '*' | '/' | '^', … }.
 // Accepts π φ γ √ ∛ − × · ÷, any case, and implicit products like 2pi.
 function parseFormula(text) {
@@ -841,6 +969,8 @@ function parseFormula(text) {
   return ast;
 }
 
+
+/* ---- 4.3 Printing: the canonical text and the symbol shown ----------------------------------- */
 // The canonical text: no spaces, lower case, explicit *, only the parentheses needed
 function canonical(x) {
   const wrap = (y, need) => (need ? `(${canonical(y)})` : canonical(y));
@@ -879,6 +1009,9 @@ function pretty(x) {
   }
 }
 
+/* ---- 4.4 Checking: sizes, small exact values and kinds --------------------------------------- */
+// Sizes are estimated as log10, which never overflows even for 2^136279841-1 or exp(10^9): they
+// give the guard digits, and refuse what is too large before any work starts.
 // ≈ log10 of the value of a checked node, never overflowing (sizes and guard digits)
 function formulaLog10(x) {
   const L = formulaLog10, a = x.args?.[0];
@@ -989,6 +1122,8 @@ function checkFormula(root) {
   visit(root);
 }
 
+
+/* ---- 4.5 Reading the Formula field ----------------------------------------------------------- */
 // The formula of the Formula field, checked and written back in canonical form
 let formulaInUse = 'pi';  // the last formula that was valid, for the link and the saved setups
 function readFormula() {
@@ -1010,6 +1145,8 @@ function readFormula() {
   }
 }
 
+
+/* ---- 4.6 Number cards: from a formula to its card and back ----------------------------------- */
 // The card a formula comes from, with the value of its helper menu; none for a formula of its own
 function presetOf(text) {
   const found = Object.keys(PRESETS).find((id) => PRESETS[id].f === text);
@@ -1068,6 +1205,8 @@ const isRandomDigits = () => /^random\(\d+\)$/.test(formulaInUse);
 // Compute on random(…) or randprime(…) draws another one: the formula gets a new seed
 const reseedFormula = () => { $('formula').value = formulaInUse.replace(/\d+\)$/, `${freshDraw()})`); };
 
+
+/* ---- 4.7 Sequences and digit helpers --------------------------------------------------------- */
 // Digits of a sequence (kind 'seq'), computed on the main thread
 function seqDigits(ast, n, base) {
   const digits = new Uint8Array(n), name = ast.k === 'call' ? ast.f : ast.v;
@@ -1134,9 +1273,19 @@ function setCurrent(entry) {
   current = { head, digits: entry.digits, mode: $('mode').value };
 }
 
-/* Walk mode picker: the categories of the (hidden) mode menu as tabs, and every choice of the
- * selected tab as a list. Picking a choice sets the menu and fires its change event, so the rest
- * of the page only ever deals with the menu. */
+/* ==============================================================================================
+ * PART 5 — PICKING A MODE, COMPUTING, BUILDING THE WALK
+ * ==============================================================================================
+ *
+ * compute() is the one entry point: any change (number, mode, surface, rule, digits) calls it. It
+ * reads the formula, shows the controls the mode needs, takes the digits from the cache or from
+ * the worker, then builds the whole walk (buildWalk) and shows it complete.
+ */
+
+/* ---- 5.1 Walk mode picker -------------------------------------------------------------------- */
+// The categories of the (hidden) mode menu as tabs, and every choice of the selected tab as a
+// list. Picking a choice sets the menu and fires its change event, so the rest of the page only
+// ever deals with the menu.
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
 const tabName = (label) => ({ 'Game of Life on 3D shapes': '3D Cellular', Experimental: '🧪' }[label] || label);
 
@@ -1195,6 +1344,7 @@ function renderModePicker() {
   }));
 }
 
+/* ---- 5.2 compute(): from the formula to a built walk ----------------------------------------- */
 function compute() {
   const mode = MODES[$('mode').value];
   modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
@@ -1302,6 +1452,9 @@ function setBusy(busy) {
   $('progress').hidden = !busy;  // the bar only shows while computing
 }
 
+/* ---- 5.3 Building the walk ------------------------------------------------------------------- */
+// All positions, distances and counts are computed once into typed arrays: the animation, the
+// stats and the jumps only read them.
 function buildWalk() {
   walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
   const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
@@ -1359,6 +1512,8 @@ function buildWalk() {
   restart();
 }
 
+
+/* ---- 5.4 3D projection and camera ------------------------------------------------------------ */
 // Orthographic projection of a 3D point onto the screen plane (world units)
 function orthoPoint(x, y, z) {
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
@@ -1467,6 +1622,20 @@ function updateHint() {
   updateMorphButton();  // shown only for surfaces that can change shape
 }
 
+/* ==============================================================================================
+ * PART 6 — WALKS ON LATTICES AND SPIRALS
+ * ==============================================================================================
+ *
+ * A stepper turns one digit into the next cell. Cells are identified by a numeric key, cheaper
+ * than strings in the Sets that count distinct cells; positions are the cell centres.
+ */
+
+/* ---- 6.1 Square grid ------------------------------------------------------------------------- */
+// Key of the 2D cell (x, y), for |x| and |y| below 2^21
+function key(x, y) {
+  return (x + 2 ** 21) * 2 ** 22 + (y + 2 ** 21);
+}
+
 /* Each stepper takes a digit and returns [key, x, y, z]: a unique key
  * for the cell and the position of its centre (z = 0 in 2D; in 2D, y
  * points down the screen; in 3D, z points up).                       */
@@ -1509,6 +1678,7 @@ const STEPPERS = {
   cubeFixed: () => cubeStepper(false),
 };
 
+/* ---- 6.2 Cubic lattice ----------------------------------------------------------------------- */
 /* Cubic lattice: x = east, y = north, z = up.
  * Fixed: 0 = N, 1 = E, 2 = up, 3 = S, 4 = W, 5 = down (opposites are 3 apart).
  * Relative: frame (forward f, up u), left = u × f.
@@ -1541,6 +1711,7 @@ function key3(x, y, z) {
   return ((x + 2 ** 16) * 2 ** 17 + (y + 2 ** 16)) * 2 ** 17 + (z + 2 ** 16);
 }
 
+/* ---- 6.3 Hexagons ---------------------------------------------------------------------------- */
 /* Hexagonal tiling (flat-topped hexagons, centres 1 apart).
  * Position = a·u0 + b·u1 with u0 = N = (0, −1) and u1 = NE = (H, −1/2) on screen.
  * Directions clockwise: 0 = N, 1 = NE, 2 = SE, 3 = S, 4 = SW, 5 = NW. */
@@ -1564,6 +1735,7 @@ function hexStepper(kind) {
   };
 }
 
+/* ---- 6.4 Triangles --------------------------------------------------------------------------- */
 /* Triangle tiling: cell (c, r) points up when c + r is even.
  * Edges: 0 = horizontal, 1 = “/”, 2 = “\”.
  * ▲ triangle: 0 → below (c, r+1), 1 → left (c−1, r), 2 → right (c+1, r)
@@ -1596,6 +1768,7 @@ function triStepper(kind) {
   };
 }
 
+/* ---- 6.5 Ulam spiral: jumps and searches ----------------------------------------------------- */
 /* Ulam-spiral point modes: the walk is the list of marked cells, in order, and
  * point i + 1 is the i-th mark (point 0 is cell 1, the centre).
  * jump:   read the digits one by one; jump ahead digit + 1 cells and mark the landing cell.
@@ -1657,6 +1830,22 @@ function buildPointWalk(seq, { base, points: kind }) {
   restart();
 }
 
+/* ==============================================================================================
+ * PART 7 — TILED SURFACES
+ * ==============================================================================================
+ *
+ * A surface is a mesh of tiles (squares or triangles) with, for every edge, the tile across it.
+ * Walks go from tile to tile through those edges, and the Game of Life uses the same adjacency,
+ * so both work the same way on a cube, a polyhedron or a torus.
+ *
+ * Flat ↔ round: the cube, the polyhedra and the torus can be shown flat (the faces of the solid,
+ * an unrolled torus) or round (inflated onto a sphere, a rolled-up torus). Only the 3D positions
+ * change: the tiles, their neighbours, the walk and the Life run stay the same, which is why the
+ * change can be animated while the walk goes on. The torus rolls up away from the default
+ * camera, so the middle of the sheet — where the hunt puts its small starts — stays in front.
+ */
+
+/* ---- 7.1 Meshes ------------------------------------------------------------------------------ */
 /* Tiled surfaces. A mesh lists each tile's vertices counterclockwise seen from outside
  * (poly[sides·t + k]); nbr[sides·t + k] is the tile across edge k (vertex k to vertex k + 1)
  * and nbrEdge[…] the index of that same edge in the neighbour. */
@@ -1711,6 +1900,7 @@ function finishMesh(verts, tiles, sides, size, outwardRef = (m) => m) {
   return { size, n, sides, extent, verts: new Float64Array(verts), poly, cen, nrm: nrmOut, nbr, nbrEdge };
 }
 
+/* ---- 7.2 Cube -------------------------------------------------------------------------------- */
 /* Cube: each face cut into n × n squares. */
 function cubeFlat(n) {
   const key = `flat${n}`;
@@ -1742,6 +1932,7 @@ function cubeFlat(n) {
   return (meshCache[key] = mesh);
 }
 
+/* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
  * tetrahedron (4 faces, corners shared by 3 triangles instead of 6), octahedron (8 faces,
  * corners shared by 4) and icosahedron (20 faces, corners shared by 5). */
@@ -1793,6 +1984,7 @@ function flatPolyhedron(name, f) {
   return (meshCache[key] = mesh);
 }
 
+/* ---- 7.4 Torus ------------------------------------------------------------------------------- */
 /* Torus (a ring or "donut"): nu × nv squares, nu around the ring and nv around the tube, with
  * major radius 1 and tube radius TORUS_TUBE. Every square has 4 edge neighbours and 8 corner
  * neighbours with no exception: it is the square grid that wraps around both ways. */
@@ -1836,9 +2028,7 @@ function torusMesh(nv) {
   return (meshCache[key] = mesh);
 }
 
-/* ------------------------------------------------------------------ *
- * Flat ↔ round: the same tiles and neighbours, shown flat or inflated *
- * ------------------------------------------------------------------ */
+/* ---- 7.5 Flat ↔ round: the same tiles and neighbours, shown flat or inflated ----------------- */
 /* walk.shape = { m, target, corners, cen, nrm, extent } for surfaces that can change shape:
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
@@ -1934,6 +2124,8 @@ function morphStep(dt) {
   applyShape();
 }
 
+
+/* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
@@ -2007,9 +2199,17 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
   if (walk.shape) applyShape();
 }
 
-/* ------------------------------------------------------------------ *
- * Game of Life on the tiled surfaces                                 *
- * ------------------------------------------------------------------ */
+/* ==============================================================================================
+ * PART 8 — GAME OF LIFE ON THE SURFACES
+ * ==============================================================================================
+ *
+ * One digit per tile, in base C (the number of states of the rule), gives the starting state:
+ * 0 dead, 1 alive, 2… the dying stages of "Generations" rules. Neighbours share an edge or a
+ * corner (8 on squares, 12 on triangles). A surface has no border, so nothing escapes: every run
+ * ends up frozen or looping, and the Lifetime stat is the generation where it starts repeating,
+ * found with a fingerprint of the whole state.
+ */
+
 const LIFE_JUMP = 2000;  // the Game of Life has no end: ⏭ jumps this many generations ahead
 // fading trail after a cell dies: from a light slate grey down to the background
 const LIFE_TRAIL = Array.from({ length: 8 }, (_, i) => {
@@ -2159,9 +2359,23 @@ function lifeStep() {
   lifeTrack(gen);
 }
 
-/* ------------------------------------------------------------------ *
- * Methuselah hunt: the starting pattern that lasts longest            *
- * ------------------------------------------------------------------ */
+/* ==============================================================================================
+ * PART 9 — METHUSELAH HUNT
+ * ==============================================================================================
+ *
+ * A methuselah is a small start that takes very long to settle. The hunt looks for the start with
+ * the longest lifetime on the current surface, size and rule:
+ * - Where: the whole surface, or a patch of radius 1, 2 or 3 around a centre cell. A radius counts
+ *   Life-neighbour steps, so it is a 3×3, 5×5 or 7×7 square on squares and a small disc on
+ *   triangles: one word for both. The rest of the surface starts dead.
+ * - How: when a patch has at most 20,000 possible starts, all of them are tried, and the result is
+ *   then the true record for that patch; otherwise 1,000 random starts, then 2,000 tweaks of the
+ *   best one (hill climbing). For the same lifetime, the start with fewer live cells wins.
+ * - One button: 🔍 Hunt, then ⏭ skip to the tweaks, then ■ keep the best so far.
+ * The search runs in a worker with its own copy of the Life step, so the page stays fluid.
+ */
+
+/* ---- 9.1 The hunt worker --------------------------------------------------------------------- */
 /* Runs in a Web Worker. Lifetime = T, the generation where the run starts repeating (dying out,
  * frozen or looping), found with the same state fingerprints as the Lifetime stat.
  * Phase 1: random starts (each cell a uniform random state). Phase 2: hill climbing — flip 1 to 3
@@ -2234,6 +2448,7 @@ function huntWorker() {
   };
 }
 
+/* ---- 9.2 Hunt state and the one-button flow -------------------------------------------------- */
 const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, exhaustive: 0, tried: 0,
                tweaks: 0, phase: 0 };  // phase: 1 random starts, 2 tweaks
 
@@ -2285,6 +2500,8 @@ function startHunt() {
   runHuntWorker({ randomRuns: all || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive: !!all });
 }
 
+
+/* ---- 9.3 Zones: the whole surface or a radius, as cards -------------------------------------- */
 // Where the starts go: the whole surface, or the cells within a radius of 1, 2 or 3 steps.
 // all: the number of possible starts when few enough to try them all (then no tweaks), else 0.
 function huntPlan(zone) {
@@ -2375,6 +2592,7 @@ function runHuntWorker(job) {
                             cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), ...job });
 }
 
+/* ---- 9.4 Patches ----------------------------------------------------------------------------- */
 // The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
 // else the tile that faces the default camera
 function patchCentre() {
@@ -2403,6 +2621,8 @@ function lifePatch(r) {
   return [...seen];
 }
 
+
+/* ---- 9.5 Loading a start --------------------------------------------------------------------- */
 // Load the champion as the starting pattern of the current Life run
 function loadChampion() {
   const L = walk.life;
@@ -2426,13 +2646,20 @@ function setLifeSeed(seed) {
   restart();
 }
 
-/* ------------------------------------------------------------------ *
- * Setups: save, share and reload the whole configuration              *
- * ------------------------------------------------------------------ */
-/* A setup is a flat object of short keys, the same for the page link (#…), the saved setups in
- * this browser (localStorage) and the JSON export. It only holds what determines the result:
- * the number and its options, the walk mode, surface, rule, digits, random draw and champion.
- * Display choices (colours, grid, sky, camera, zoom…) and the speed are never saved. */
+/* ==============================================================================================
+ * PART 10 — SETUPS AND LINKS
+ * ==============================================================================================
+ *
+ * A setup is a flat object of short keys, the same for the page link (#…), the saved setups in
+ * this browser (localStorage) and the JSON export:
+ *   x   the formula          w   the walk mode        d    the number of digits (walks)
+ *   s   the surface size     r   the Life rule        ch   a Life start (champion or patch)
+ * It only holds what determines the result. Display choices (colours, grid, sky, camera, zoom…),
+ * the speed and the current step are never saved: a link opens with the mode's default view. A
+ * Life start does not depend on the number: it replaces the digits.
+ */
+
+/* ---- 10.1 Life starts as short codes --------------------------------------------------------- */
 let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
 let pendingChampion = null;  // a champion to restore once a loaded setup is built
 
@@ -2475,6 +2702,8 @@ function decodeCells(code, n) {
   return cells;
 }
 
+
+/* ---- 10.2 The setup object ------------------------------------------------------------------- */
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = { x: formulaInUse, w };
   if (!mode.life) s.d = $('digits').value;
@@ -2518,7 +2747,8 @@ function applyPendingView() {
   syncLink();  // at once, not at the next periodic update
 }
 
-// The page link always holds the current setup (#n=pi&w=turtle&…), for bookmarks and sharing.
+/* ---- 10.3 The page link ---------------------------------------------------------------------- */
+// The page link always holds the current setup (#x=pi&w=turtle&…), for bookmarks and sharing.
 // Readable links: #x=(1+sqrt(5))/2&w=turtle — formulas and rules keep / + ^ , : as they are
 const toHash = (s) => Object.entries(s)
   .map(([k, v]) => `${k}=${encodeURIComponent(String(v)).replace(/%(2F|2B|5E|2C|3A)/g, (c) => decodeURIComponent(c))}`)
@@ -2539,6 +2769,7 @@ function syncLink() {
   if (h !== location.hash) history.replaceState(null, '', h);
 }
 
+/* ---- 10.4 Saved setups and JSON files -------------------------------------------------------- */
 // Saved setups in this browser (localStorage), as { name, setup, saved }
 const SETUPS_KEY = 'walkingPi.setups';
 function readSetups() {
@@ -2616,13 +2847,17 @@ async function copyLink() {
   }
 }
 
-function key(x, y) {
-  return (x + 2 ** 21) * 2 ** 22 + (y + 2 ** 21);
-}
+/* ==============================================================================================
+ * PART 11 — ANIMATION, VIEW AND RENDERING
+ * ==============================================================================================
+ *
+ * The walk is already built: animating only moves cur forward and draws the new segments on the
+ * path layer. Three stacked canvases (grid, path, overlay) mean each frame costs only what
+ * changed; everything is redrawn when the view moves (needsFull). Surfaces are redrawn whole,
+ * far tiles first (painter's algorithm), and not more often than their drawing time allows.
+ */
 
-/* ------------------------------------------------------------------ *
- * Animation                                                          *
- * ------------------------------------------------------------------ */
+/* ---- 11.1 Animation -------------------------------------------------------------------------- */
 function stepsPerSecond() {
   const v = Number($('speed').value) / 100;
   return 6 * 10 ** (v * 5); // 6 → 600,000 steps per second (logarithmic slider)
@@ -2710,9 +2945,7 @@ function restart() {
   play(false);
 }
 
-/* ------------------------------------------------------------------ *
- * View (zoom / pan)                                                  *
- * ------------------------------------------------------------------ */
+/* ---- 11.2 View: zoom, pan and fit ------------------------------------------------------------ */
 function fitToBounds(b) {
   const w = b.maxX - b.minX + 2;
   const h = b.maxY - b.minY + 2;
@@ -2754,9 +2987,7 @@ function userMovedView() {
   needsFull = true;
 }
 
-/* ------------------------------------------------------------------ *
- * Rendering                                                          *
- * ------------------------------------------------------------------ */
+/* ---- 11.3 Grids, sky and 3D frame ------------------------------------------------------------ */
 function drawGrid() {
   const ctx = layers.grid;
   ctx.clearRect(0, 0, cw, ch);
@@ -2890,6 +3121,7 @@ function styleColor(k) {
   }
 }
 
+/* ---- 11.4 Surfaces --------------------------------------------------------------------------- */
 const sphereDraw = { at: 0, cost: 0 };
 
 // Cursor lying on the sphere: an arrow in the tangent plane at the walker, pointing along the
@@ -3130,6 +3362,8 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf) {
   }
 }
 
+
+/* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -3283,6 +3517,7 @@ function updateStats() {
   strip.innerHTML = html + (b < walk.n ? '…' : '');
 }
 
+/* ---- 11.6 The frame loop --------------------------------------------------------------------- */
 let lastTick = 0;
 function tick(now = performance.now()) {
   const dt = Math.min(0.1, (now - (lastTick || now)) / 1000);  // seconds since the last frame (capped)
@@ -3336,9 +3571,12 @@ function tick(now = performance.now()) {
   requestAnimationFrame(tick);
 }
 
-/* ------------------------------------------------------------------ *
- * Interactions                                                       *
- * ------------------------------------------------------------------ */
+/* ==============================================================================================
+ * PART 12 — INTERACTIONS AND START-UP
+ * ==============================================================================================
+ */
+
+/* ---- 12.1 Buttons, menus, keyboard and mouse ------------------------------------------------- */
 $('compute').addEventListener('click', () => {
   if (readFormula().random) reseedFormula();
   compute();
@@ -3496,6 +3734,10 @@ $('setupList').addEventListener('change', () => {
 // a setup link pasted into this tab
 window.addEventListener('hashchange', () => { const s = parseHash(); if (s) applySetup(s); });
 
+
+/* ---- 12.2 Start-up --------------------------------------------------------------------------- */
+// A link with a setup opens that setup; otherwise π on the turtle walk. The link then follows the
+// setup: at once after each build, and every 700 ms for the other changes.
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
