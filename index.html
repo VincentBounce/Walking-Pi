@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001p">
+  <link rel="stylesheet" href="style.css?v=20261001r">
 </head>
 <body>
   <header>
@@ -81,16 +81,14 @@
         <div id="huntRow" hidden>
           <label>Methuselah hunt
             <select id="huntSize">
-              <option value="50,100">Quick — 50 random starts + 100 tweaks</option>
-              <option value="200,400" selected>Standard — 200 random starts + 400 tweaks</option>
-              <option value="1000,2000">Long — 1,000 random starts + 2,000 tweaks</option>
+              <option value="all">Whole surface</option>
               <option value="patch1">Patch 3×3 — every start (random when too many)</option>
-              <option value="patch2">Patch 5×5 — 1,000 random starts + 500 tweaks</option>
-              <option value="patch3">Patch 7×7 — 1,000 random starts + 500 tweaks</option>
+              <option value="patch2">Patch 5×5</option>
+              <option value="patch3">Patch 7×7</option>
             </select>
           </label>
           <div class="row">
-            <button id="huntBtn" title="Search random starts for the one that lasts longest, then load it">🔍 Hunt</button>
+            <button id="huntBtn" title="1,000 random starts, then 2,000 tweaks of the best one, then it is loaded. Click again to skip to the tweaks, then to keep the best so far">🔍 Hunt</button>
           </div>
           <p id="huntStatus" class="muted"></p>
         </div>
@@ -204,6 +202,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261001p"></script>
+  <script src="main.js?v=20261001r"></script>
 </body>
 </html>

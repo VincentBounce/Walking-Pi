@@ -1690,7 +1690,7 @@ function lifeStep() {
  * random cells of the best start and keep the change when it lasts at least as long. */
 function huntWorker() {
   self.onmessage = (e) => {
-    const { n, start, list, B, S, C, randomRuns, tweaks, cap, patch, exhaustive } = e.data;
+    const { n, start, list, B, S, C, randomRuns, tweaks, cap, patch, exhaustive, from, fromBest } = e.data;
     const step = (a, b) => {
       for (let t = 0; t < n; t++) {
         const was = a[t];
@@ -1730,9 +1730,10 @@ function huntWorker() {
     };
     const live = (s) => { let c = 0; for (const t of free) c += s[t] > 0; return c; };
 
-    let best = null, bestSeed = null, kept = 0;  // kept: tweaks applied to the champion
+    // from: a champion to go on tweaking (the random starts were skipped)
+    let best = fromBest || null, bestSeed = from ? Uint8Array.from(from) : null, kept = 0;  // kept: tweaks applied
     const report = (phase, i, total, changed) => {
-      if (changed || i % 500 === 0 || i === total) self.postMessage({
+      if (changed || i % 100 === 0 || i === total) self.postMessage({
         type: 'progress', phase, i, total, best, kept, exhaustive, seed: changed ? bestSeed.slice() : null });
     };
     for (let i = 1; i <= randomRuns; i++) {
@@ -1755,7 +1756,8 @@ function huntWorker() {
   };
 }
 
-const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, exhaustive: 0, tried: 0 };
+const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, exhaustive: 0, tried: 0,
+               tweaks: 0, phase: 0 };  // phase: 1 random starts, 2 tweaks
 
 // A hunt belongs to one surface, size and rule: anything else makes its champion meaningless
 const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? walk.life.ruleText : ''}`;
@@ -1764,6 +1766,7 @@ const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? wa
 // when something else changed (number, surface, rule…) it is simply dropped.
 function stopHunt(loadBest = false) {
   if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
+  hunt.phase = 0;
   $('huntBtn').textContent = '🔍 Hunt';
   if (loadBest && hunt.seed) loadChampion();
 }
@@ -1771,6 +1774,22 @@ function stopHunt(loadBest = false) {
 function lifetimeWords(r) {
   if (!r.P) return `still changing after ${fmt(r.T)} generations`;
   return r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`;
+}
+
+// One button runs the whole hunt: 🔍 Hunt starts the random starts, ⏭ skips to the tweaks,
+// ■ keeps the best so far. A worker cannot hear a click in the middle of its loop, so skipping
+// ends it and starts another one on the tweaks, from the best start found.
+const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;
+function huntClick() {
+  if (!hunt.worker) startHunt();
+  else if (hunt.phase === 1 && hunt.tweaks) skipToTweaks();
+  else stopHunt(true);
+}
+
+function setHuntPhase(phase) {
+  if (phase === hunt.phase) return;
+  hunt.phase = phase;
+  $('huntBtn').textContent = phase === 1 && hunt.tweaks ? '⏭ Skip to the tweaks' : '■ Keep the best so far';
 }
 
 // The hunt works on random starts, so the number becomes 🎲 Random digits first
@@ -1781,30 +1800,40 @@ function startHunt() {
     compute();
   }
   stopHunt();
+  const L = walk.life, zone = $('huntSize').value;
+  const patch = zone === 'all' ? null : lifePatch(Number(zone.slice(5)));
+  // a small patch: every start when there are few enough (then no tweaks), else random ones
+  const exhaustive = !!patch && L.C ** patch.length <= 20000;  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
+  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, tried: 0,
+                        exhaustive: exhaustive ? L.C ** patch.length : 0, tweaks: exhaustive ? 0 : HUNT_TWEAKS });
+  $('huntStatus').textContent = 'Starting…';
+  runHuntWorker({ randomRuns: hunt.exhaustive || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive });
+}
+
+function skipToTweaks() {
+  hunt.worker.terminate();
+  hunt.worker = null;
+  if (!hunt.seed) {  // not even one start finished
+    stopHunt();
+    $('huntStatus').textContent = 'Stopped before the first start was measured.';
+    return;
+  }
+  runHuntWorker({ randomRuns: 0, tweaks: hunt.tweaks, exhaustive: false, from: hunt.seed, fromBest: hunt.best });
+  setHuntPhase(2);
+}
+
+function runHuntWorker(job) {
   const L = walk.life;
-  const size = $('huntSize').value;
-  let randomRuns, tweaks, patch = null, exhaustive = false;
-  if (size.startsWith('patch')) {  // a small patch: every start when there are few enough, else random ones
-    patch = lifePatch(Number(size.slice(5)));
-    exhaustive = L.C ** patch.length <= 20000;  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
-    [randomRuns, tweaks] = exhaustive ? [L.C ** patch.length, 0] : [1000, 500];
-  } else [randomRuns, tweaks] = size.split(',').map(Number);
-  hunt.patch = patch;
-  hunt.exhaustive = exhaustive && randomRuns;  // the number of starts to try, all of them
-  hunt.tried = 0;
   const src = `(${huntWorker.toString()})()`;
   hunt.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-  hunt.key = huntKey();
-  hunt.best = hunt.seed = null;
-  hunt.kept = 0;
-  $('huntBtn').textContent = '■ Keep the best so far';
-  $('huntStatus').textContent = 'Starting…';
+  setHuntPhase(job.randomRuns ? 1 : 2);
   hunt.worker.onmessage = (e) => {
     const d = e.data;
     if (d.type === 'done') {
       stopHunt(true);
       return;
     }
+    setHuntPhase(d.phase);
     hunt.best = d.best;
     hunt.kept = d.kept;
     if (d.phase === 1) hunt.tried = d.i;
@@ -1814,7 +1843,7 @@ function startHunt() {
     $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)}`;
   };
   hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, B: L.B, S: L.S, C: L.C,
-                            randomRuns, tweaks, cap: 50000, patch: patch && Int32Array.from(patch), exhaustive });
+                            cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), ...job });
 }
 
 // The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
@@ -1878,20 +1907,41 @@ function setLifeSeed(seed) {
 let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
 let pendingChampion = null;  // a champion to restore once a loaded setup is built
 
-// Cells as base64url, packing 1, 2 or 4 bits per cell depending on the number of states
+// Cells as a short code, whichever is shorter:
+// - dense "C.base64url", packing 1, 2 or 4 bits per cell depending on the number of states C;
+// - sparse "sC.gap-gap_state-…", the live cells only: each gap (base 36) counts the dead cells
+//   since the previous live one, and "_state" follows when the state is not 1 (small starts)
 function encodeCells(cells, C) {
   const bits = C <= 2 ? 1 : C <= 4 ? 2 : 4, per = 8 / bits;
   const bytes = new Uint8Array(Math.ceil(cells.length / per));
   cells.forEach((v, i) => { bytes[Math.floor(i / per)] |= v << ((i % per) * bits); });
   let s = '';
   for (const b of bytes) s += String.fromCharCode(b);
-  return `${C}.${btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  const dense = `${C}.${btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  const items = [];
+  let prev = -1;
+  cells.forEach((v, i) => {
+    if (!v) return;
+    items.push((i - prev - 1).toString(36) + (v === 1 ? '' : `_${v}`));
+    prev = i;
+  });
+  const sparse = `s${C}.${items.join('-')}`;
+  return sparse.length < dense.length ? sparse : dense;
 }
 function decodeCells(code, n) {
+  const cells = new Uint8Array(n);
   const [c, data] = code.split('.');
+  if (c.startsWith('s')) {
+    let i = -1;
+    for (const item of data ? data.split('-') : []) {
+      const [gap, v] = item.split('_');
+      i += parseInt(gap, 36) + 1;
+      if (i < n) cells[i] = v ? Number(v) : 1;
+    }
+    return cells;
+  }
   const C = Number(c), bits = C <= 2 ? 1 : C <= 4 ? 2 : 4, per = 8 / bits;
   const s = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
-  const cells = new Uint8Array(n);
   for (let i = 0; i < n; i++) cells[i] = ((s.charCodeAt(Math.floor(i / per)) || 0) >> ((i % per) * bits)) & ((1 << bits) - 1);
   return cells;
 }
@@ -1942,14 +1992,13 @@ function applyPendingView() {
   pendingChampion = null;
   if (ch && walk.life) {
     setLifeSeed(decodeCells(ch, walk.life.seed.length));
-    championCode = ch;
+    championCode = encodeCells(walk.life.seed, walk.life.C);  // in its shortest form, for the link
   }
   syncLink();  // at once, not at the next periodic update
 }
 
 // The page link always holds the current setup (#n=pi&w=turtle&…), for bookmarks and sharing.
-// A champion is left out of the link when too long: saved setups and JSON files keep it.
-const toHash = (s) => new URLSearchParams(Object.entries(s).filter(([k, v]) => k !== 'ch' || v.length < 3000)).toString();
+const toHash = (s) => new URLSearchParams(s).toString();
 function parseHash() {
   if (location.hash.length < 2) return null;
   const s = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
@@ -2873,7 +2922,7 @@ $('perspective').addEventListener('change', () => {
   if (walk.sphere) needsFull = true;
   else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
 });
-$('huntBtn').addEventListener('click', () => (hunt.worker ? stopHunt(true) : startHunt()));
+$('huntBtn').addEventListener('click', huntClick);
 // Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
 $('lifePreset').addEventListener('change', () => {
   const custom = $('lifePreset').value === 'custom';
