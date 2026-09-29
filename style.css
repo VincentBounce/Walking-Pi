@@ -130,6 +130,7 @@ button.primary {
 .pattern-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; }
 .pattern-list button { padding: 5px 8px; text-align: left; line-height: 1.25; background: var(--panel); }
 .pattern-list button:hover { background: var(--bg); }
+.pattern-list button:last-child:nth-child(odd) { grid-column: 1 / -1; }  /* an odd last one takes the whole row */
 .pattern-list button.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .pattern-list button.active .mode-name { color: var(--accent); }
 .row button { white-space: nowrap; }

@@ -1828,8 +1828,11 @@ function setLifeSeed(seed) {
  * come back around, so the lifespan there differs. Cells are [x, y], rows going down. */
 const PATTERNS = {
   rpent:   { name: 'R-pentomino', gens: 1103, cells: [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]] },
+  switch:  { name: 'Switch engine', gens: 2971, cells: [[1, 0], [3, 0], [0, 1], [1, 2], [4, 2], [3, 3], [4, 3], [5, 3]] },
+  multum:  { name: 'Multum in parvo', gens: 3933, cells: [[3, 0], [4, 0], [5, 0], [2, 1], [5, 1], [1, 2], [0, 3]] },
   acorn:   { name: 'Acorn', gens: 5206, cells: [[1, 0], [3, 1], [0, 2], [1, 2], [4, 2], [5, 2], [6, 2]] },
   rabbits: { name: 'Rabbits', gens: 17331, cells: [[0, 0], [4, 0], [5, 0], [6, 0], [0, 1], [1, 1], [2, 1], [5, 1], [1, 2]] },
+  bunnies: { name: 'Bunnies', gens: 17332, cells: [[0, 0], [6, 0], [2, 1], [6, 1], [2, 2], [5, 2], [7, 2], [1, 3], [3, 3]] },
   lidka:   { name: 'Lidka', gens: 29053, cells: [[1, 0], [0, 1], [2, 1], [1, 2], [8, 10], [6, 11], [8, 11], [5, 12],
                                                  [6, 12], [8, 12], [4, 14], [5, 14], [6, 14]] },
 };
