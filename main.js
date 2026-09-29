@@ -686,7 +686,12 @@ function renderModePicker() {
     b.title = g.label;
     b.setAttribute('role', 'tab');
     b.classList.toggle('active', g.label === modeTab);
-    b.addEventListener('click', () => { modeTab = g.label; renderModePicker(); });
+    b.addEventListener('click', () => {  // another tab starts on its first choice
+      if (g.label === modeTab) return;
+      modeTab = g.label;
+      $('mode').value = g.querySelector('option').value;
+      $('mode').dispatchEvent(new Event('change'));
+    });
     return b;
   }));
   const group = groups.find((g) => g.label === modeTab);
@@ -1333,9 +1338,10 @@ function torusPoint(i, j, nu, nv, m) {
     w = rt * (Math.cos(th) - 1) + TORUS_TUBE * b;
     h = rt * Math.sin(th);
   }
-  if (c < 1e-6) return [X, w, h];
+  // it rolls up away from the default camera (towards +y), so the middle of the sheet stays in front
+  if (c < 1e-6) return [X, -w, h];
   const rr = 1 / c, ph = X / rr;
-  return [(rr + w) * Math.sin(ph), (rr + w) * Math.cos(ph) - rr + 1, h];
+  return [(rr + w) * Math.sin(ph), rr - c - (rr + w) * Math.cos(ph), h];  // − c: no jump from the flat sheet
 }
 
 function torusMesh(nv) {
