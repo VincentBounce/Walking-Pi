@@ -723,6 +723,7 @@ function compute() {
   $('lifeRuleRow').hidden = !mode.life;
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   $('huntRow').hidden = !mode.life;
+  $('patternRow').hidden = !PATTERN_MODES.includes($('mode').value);
   stopHunt();
   $('huntStatus').textContent = '';
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
@@ -747,6 +748,11 @@ function compute() {
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
   championCode = null;  // a new start: no loaded champion any more
+  // a famous start stays (re-centred) on a new size or surface, as long as it is still Life on random digits
+  if (!pendingPattern && patternId && PATTERN_MODES.includes($('mode').value) && id === 'random'
+      && $('lifeRule').value === 'B3/S23') pendingPattern = patternId;
+  patternId = null;
+  renderPatterns();
   const random = id === 'random' || id === 'randomPrime';
   if (random) { currentDraw = pendingDraw ?? freshDraw(); pendingDraw = null; }
   const draw = random ? ` · draw #${currentDraw}` : '';
@@ -1795,6 +1801,8 @@ function loadChampion() {
   if (!L || !hunt.seed || hunt.key !== huntKey()) return;
   setLifeSeed(hunt.seed);
   championCode = encodeCells(hunt.seed, L.C);
+  patternId = null;
+  renderPatterns();
   const how = hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start';
   $('status').textContent = `🎲 champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
   $('huntStatus').textContent = 'Champion loaded: press ▶︎ Play to watch it.';
@@ -1807,6 +1815,61 @@ function setLifeSeed(seed) {
   L.seedAlive = L.seed.reduce((a, v) => a + (v === 1), 0);
   L.seedDying = L.seed.reduce((a, v) => a + (v > 1), 0);
   restart();
+}
+
+/* Famous methuselahs: small B3/S23 starts that take thousands of generations to settle on an
+ * infinite plane (lifespans checked by simulation). On a torus or a cube their debris and gliders
+ * come back around, so the lifespan there differs. Cells are [x, y], rows going down. */
+const PATTERNS = {
+  rpent:   { name: 'R-pentomino', gens: 1103, cells: [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]] },
+  acorn:   { name: 'Acorn', gens: 5206, cells: [[1, 0], [3, 1], [0, 2], [1, 2], [4, 2], [5, 2], [6, 2]] },
+  rabbits: { name: 'Rabbits', gens: 17331, cells: [[0, 0], [4, 0], [5, 0], [6, 0], [0, 1], [1, 1], [2, 1], [5, 1], [1, 2]] },
+  lidka:   { name: 'Lidka', gens: 29053, cells: [[1, 0], [0, 1], [2, 1], [1, 2], [8, 10], [6, 11], [8, 11], [5, 12],
+                                                 [6, 12], [8, 12], [4, 14], [5, 14], [6, 14]] },
+};
+const PATTERN_MODES = ['lifeTorus', 'lifeCube'];
+let patternId = null;       // the famous start in use (a setup key: pt)
+let pendingPattern = null;  // one to place once the walk is built
+
+// The pattern alone, centred on the unrolled torus, or on the cube face that faces the default
+// camera (−Y: i runs along x, j along z). Upright: j grows upwards, so rows go down in j.
+function patternSeed(id) {
+  const g = walk.geo, cells = PATTERNS[id].cells;
+  const w = Math.max(...cells.map(([x]) => x)) + 1, h = Math.max(...cells.map(([, y]) => y)) + 1;
+  const seed = new Uint8Array(walk.life.seed.length);
+  const [nu, nv, base] = g.torus ? [g.nu, g.nv, 0] : [g.size, g.size, 3 * g.size * g.size];
+  const i0 = Math.floor((nu - w) / 2), j0 = Math.floor((nv - h) / 2);
+  for (const [x, y] of cells) seed[base + (i0 + x) * nv + j0 + (h - 1 - y)] = 1;
+  return seed;
+}
+
+function loadPattern(id) {
+  setLifeSeed(patternSeed(id));
+  patternId = id;
+  const p = PATTERNS[id];
+  $('status').textContent = `${p.name}: ${p.cells.length} live cells, the rest dead · settles after ${fmt(p.gens)} generations on an infinite plane`;
+  renderPatterns();
+}
+
+function renderPatterns() {
+  $('patternList').replaceChildren(...Object.entries(PATTERNS).map(([id, p]) => {
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="mode-name">${p.name}</span><span class="mode-detail">${p.cells.length} cells · ${fmt(p.gens)} gen.</span>`;
+    b.title = `${p.name}: ${p.cells.length} cells that settle after ${fmt(p.gens)} generations on an infinite plane — placed alone in the middle, rule B3/S23`;
+    b.classList.toggle('active', id === patternId);
+    b.addEventListener('click', () => pickPattern(id));
+    return b;
+  }));
+}
+
+// A famous start is made of 🎲 Random digits whose cells are all dead but the pattern's, under Life
+function pickPattern(id) {
+  stopHunt();
+  $('lifePreset').value = $('lifeRule').value = 'B3/S23';
+  $('lifeCustomRow').hidden = true;
+  $('constant').value = 'random';
+  pendingPattern = id;
+  compute();
 }
 
 /* ------------------------------------------------------------------ *
@@ -1843,11 +1906,12 @@ function getSetup() {
   if (n === 'mersenne') s.mp = $('mersenneP').value;
   if (n === 'primorial') s.pr = $('primorialP').value;
   if (n === 'randomPrime') s.ps = $('primeSize').value;
-  if (n === 'random' || n === 'randomPrime') s.rd = currentDraw;
+  if ((n === 'random' || n === 'randomPrime') && !patternId) s.rd = currentDraw;  // a famous start uses no digit
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (mode.life) s.r = $('lifeRule').value;
   if (championCode) s.ch = championCode;
+  if (patternId) s.pt = patternId;
   return s;
 }
 
@@ -1873,6 +1937,7 @@ function applySetup(s) {
   $('autoFit').checked = true;
   pendingDraw = s.rd !== undefined ? Number(s.rd) : null;
   pendingChampion = s.ch || null;
+  pendingPattern = PATTERNS[s.pt] ? s.pt : null;
   compute();  // a champion follows once the walk is built
   return true;
 }
@@ -1885,6 +1950,9 @@ function applyPendingView() {
     setLifeSeed(decodeCells(ch, walk.life.seed.length));
     championCode = ch;
   }
+  const pt = pendingPattern;
+  pendingPattern = null;
+  if (pt && walk.life && walk.geo && PATTERN_MODES.includes($('mode').value)) loadPattern(pt);
   syncLink();  // at once, not at the next periodic update
 }
 
@@ -1897,7 +1965,7 @@ function parseHash() {
   return s.n && s.w ? s : null;
 }
 function syncLink() {
-  if ($('compute').disabled || pendingChampion) return;  // not while a setup is still being built
+  if ($('compute').disabled || pendingChampion || pendingPattern) return;  // not while a setup is still being built
   const h = `#${toHash(getSetup())}`;
   if (h !== location.hash) history.replaceState(null, '', h);
 }
@@ -2702,7 +2770,7 @@ function tick(now = performance.now()) {
 /* ------------------------------------------------------------------ *
  * Interactions                                                       *
  * ------------------------------------------------------------------ */
-$('compute').addEventListener('click', compute);
+$('compute').addEventListener('click', () => { patternId = null; compute(); });  // a new draw drops a famous start
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
   play(!playing);
