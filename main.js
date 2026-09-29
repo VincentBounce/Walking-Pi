@@ -463,7 +463,8 @@ let needsFull = true;
 let statsDirty = true;
 let bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 const view = { scale: 20, ox: 0, oy: 0 };
-const cam = { yaw: -0.6, pitch: 0.5 };   // 3D view rotation (radians)
+const CAM0 = { yaw: -0.6, pitch: 0.5 };  // the default 3D view
+const cam = { ...CAM0 };                 // 3D view rotation (radians)
 let bounds3 = null;                        // 3D bounding box of points 0..cur
 
 const stage = $('stage');
@@ -1695,7 +1696,7 @@ function lifeStep() {
  * random cells of the best start and keep the change when it lasts at least as long. */
 function huntWorker() {
   self.onmessage = (e) => {
-    const { n, start, list, B, S, C, randomRuns, tweaks, cap } = e.data;
+    const { n, start, list, B, S, C, randomRuns, tweaks, cap, patch, exhaustive } = e.data;
     const step = (a, b) => {
       for (let t = 0; t < n; t++) {
         const was = a[t];
@@ -1725,21 +1726,32 @@ function huntWorker() {
       }
       return { T: cap, P: 0 };
     };
-    const randomSeed = () => { const s = new Uint8Array(n); for (let t = 0; t < n; t++) s[t] = Math.floor(Math.random() * C); return s; };
+    // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
+    const free = patch || Array.from({ length: n }, (_, t) => t);
+    const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * C); return s; };
+    const nthSeed = (k) => {  // start number k of an exhaustive search: k written in base C over the patch
+      const s = new Uint8Array(n);
+      for (const t of free) { s[t] = k % C; k = Math.floor(k / C); }
+      return s;
+    };
+    const live = (s) => { let c = 0; for (const t of free) c += s[t] > 0; return c; };
 
     let best = null, bestSeed = null, kept = 0;  // kept: tweaks applied to the champion
-    const report = (phase, i, total, changed) => self.postMessage({
-      type: 'progress', phase, i, total, best, kept, seed: changed ? bestSeed.slice() : null });
+    const report = (phase, i, total, changed) => {
+      if (changed || i % 500 === 0 || i === total) self.postMessage({
+        type: 'progress', phase, i, total, best, kept, exhaustive, seed: changed ? bestSeed.slice() : null });
+    };
     for (let i = 1; i <= randomRuns; i++) {
-      const seed = randomSeed(), r = lifetime(seed);
-      const improved = !best || r.T > best.T;
+      const seed = exhaustive ? nthSeed(i - 1) : randomSeed(), r = lifetime(seed);
+      // longest first; for the same lifetime, the start with fewer live cells
+      const improved = !best || r.T > best.T || (r.T === best.T && live(seed) < live(bestSeed));
       if (improved) { best = r; bestSeed = seed; }
       report(1, i, randomRuns, improved);
     }
     for (let i = 1; i <= tweaks; i++) {
       const seed = bestSeed.slice();
       const flips = 1 + Math.floor(Math.random() * 3);
-      for (let f = 0; f < flips; f++) seed[Math.floor(Math.random() * n)] = Math.floor(Math.random() * C);
+      for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * C);
       const r = lifetime(seed);
       const accepted = r.T >= best.T;  // equal lifetimes are accepted too, to drift
       if (accepted) { best = r; bestSeed = seed; kept++; }
@@ -1749,7 +1761,7 @@ function huntWorker() {
   };
 }
 
-const hunt = { worker: null, key: null, best: null, seed: null, kept: 0 };
+const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, exhaustive: 0, tried: 0 };
 
 // A hunt belongs to one surface, size and rule: anything else makes its champion meaningless
 const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? walk.life.ruleText : ''}`;
@@ -1776,7 +1788,16 @@ function startHunt() {
   }
   stopHunt();
   const L = walk.life;
-  const [randomRuns, tweaks] = $('huntSize').value.split(',').map(Number);
+  const size = $('huntSize').value;
+  let randomRuns, tweaks, patch = null, exhaustive = false;
+  if (size.startsWith('patch')) {  // a small patch: every start when there are few enough, else random ones
+    patch = lifePatch(Number(size.slice(5)));
+    exhaustive = L.C ** patch.length <= 20000;  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
+    [randomRuns, tweaks] = exhaustive ? [L.C ** patch.length, 0] : [1000, 500];
+  } else [randomRuns, tweaks] = size.split(',').map(Number);
+  hunt.patch = patch;
+  hunt.exhaustive = exhaustive && randomRuns;  // the number of starts to try, all of them
+  hunt.tried = 0;
   const src = `(${huntWorker.toString()})()`;
   hunt.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   hunt.key = huntKey();
@@ -1792,13 +1813,42 @@ function startHunt() {
     }
     hunt.best = d.best;
     hunt.kept = d.kept;
+    if (d.phase === 1) hunt.tried = d.i;
     if (d.seed) hunt.seed = d.seed;
-    const phase = d.phase === 1 ? `random start ${fmt(d.i)} / ${fmt(d.total)}`
+    const phase = d.phase === 1 ? `${d.exhaustive ? 'start' : 'random start'} ${fmt(d.i)} / ${fmt(d.total)}`
       : `tweak ${fmt(d.i)} / ${fmt(d.total)} (${fmt(d.kept)} kept)`;
     $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)}`;
   };
   hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, B: L.B, S: L.S, C: L.C,
-                            randomRuns, tweaks, cap: 50000 });
+                            randomRuns, tweaks, cap: 50000, patch: patch && Int32Array.from(patch), exhaustive });
+}
+
+// The cell where small starts go: the middle of the unrolled torus, of the cube face in front
+// (as for the famous methuselahs), else the tile that faces the default camera
+function patchCentre() {
+  const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
+  if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
+  if (g.sides === 4) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);
+  const cp = Math.cos(CAM0.pitch), dir = [-Math.sin(CAM0.yaw) * cp, -Math.cos(CAM0.yaw) * cp, Math.sin(CAM0.pitch)];
+  let best = 0, bestDot = -Infinity;
+  for (let t = 0; t < g.n; t++) {
+    const c = g.cen.subarray(3 * t, 3 * t + 3), dot = (c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2]) / Math.hypot(...c);
+    if (dot > bestDot) { bestDot = dot; best = t; }
+  }
+  return best;
+}
+
+// The cells at most r Life-neighbour steps from the centre: a 3×3, 5×5 or 7×7 square on square
+// grids (r = 1, 2, 3), a small disc of triangles on the polyhedra
+function lifePatch(r) {
+  const { start, list } = walk.life.nbr, seen = new Set([patchCentre()]);
+  let ring = [...seen];
+  for (let k = 0; k < r; k++) {
+    const next = [];
+    for (const t of ring) for (let q = start[t]; q < start[t + 1]; q++) if (!seen.has(list[q])) { seen.add(list[q]); next.push(list[q]); }
+    ring = next;
+  }
+  return [...seen];
 }
 
 // Load the champion as the starting pattern of the current Life run
@@ -1809,7 +1859,10 @@ function loadChampion() {
   championCode = encodeCells(hunt.seed, L.C);
   patternId = null;
   renderPatterns();
-  const how = hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start';
+  const how = (hunt.exhaustive ? (hunt.tried >= hunt.exhaustive ? `the best of all ${fmt(hunt.exhaustive)} starts`
+      : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
+    : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
+    + (hunt.patch ? ` in a patch of ${fmt(hunt.patch.length)} cells` : '');
   $('status').textContent = `🎲 champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
   $('huntStatus').textContent = 'Champion loaded: press ▶︎ Play to watch it.';
 }
