@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.109';
+const VERSION = '0.1.110';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1190,7 +1190,7 @@ function syncNumberMenu() {
 function renderNumberPicker(active) {
   $('numberList').replaceChildren(...NUMBER_GROUPS.map((group) => {
     const box = document.createElement('div'), label = document.createElement('div'), grid = document.createElement('div');
-    label.className = 'number-group-label';
+    label.className = 'field-label';  // styled like Formula and Number of digits
     label.textContent = group;
     grid.className = 'number-grid';
     grid.setAttribute('role', 'listbox');
@@ -1363,14 +1363,14 @@ function compute() {
   const n = digitsNeeded();
   if (!mode.life) $('digits').value = n;
   relabelColours(!!mode.life);
-  $('lifeRuleRow').hidden = !mode.life;
+  $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
-  $('huntRow').hidden = !mode.life;
   stopHunt();
   $('huntStatus').textContent = '';
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
   $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('sphereRow').hidden = mode.lattice !== 'sphere';
+  syncSizeStepper();
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
   championCode = null;  // a new start: no loaded champion any more
@@ -2186,6 +2186,21 @@ const SPHERES = {
   icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
           sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
 };
+
+// The surface size as a stepper: [ − ] 6,144 squares [ + ] goes through the sizes of the (hidden)
+// menu one by one; the menu stays the source of truth, as for the walk modes
+function syncSizeStepper() {
+  const sel = $('sphereF');
+  $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
+  $('sizeDown').disabled = sel.selectedIndex <= 0;
+  $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
+}
+function stepSize(delta) {
+  const sel = $('sphereF'), i = sel.selectedIndex + delta;
+  if (i < 0 || i >= sel.options.length) return;
+  sel.selectedIndex = i;
+  sel.dispatchEvent(new Event('change'));
+}
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 function fillSphereSizes(kind) {
@@ -3820,7 +3835,10 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23 or B2/S/C3 (2 to 10 states)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
+$('sizeDown').addEventListener('click', () => stepSize(-1));
+$('sizeUp').addEventListener('click', () => stepSize(1));
 $('sphereF').addEventListener('change', () => {
+  syncSizeStepper();
   if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits
   if (!current) return;
   buildWalk();

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261002w">
+  <link rel="stylesheet" href="style.css?v=20261002x">
 </head>
 <body>
   <header>
@@ -59,10 +59,20 @@
             </optgroup>
           </select>
         </label>
-        <label id="sphereRow" hidden>Surface
-          <select id="sphereF"></select>
-        </label>
-        <label id="lifeRuleRow" hidden>Rule
+        <div id="sphereRow" hidden>
+          <div class="field-label">Surface</div>
+          <div class="stepper">
+            <button id="sizeDown" title="Smaller surface">−</button>
+            <span id="sizeLabel"></span>
+            <button id="sizeUp" title="Bigger surface">+</button>
+          </div>
+          <select id="sphereF" hidden></select>
+        </div>
+      </section>
+
+      <section id="automataSection" hidden>
+        <h2>Automata</h2>
+        <label id="lifeRuleRow">Rule
           <select id="lifePreset">
             <option value="B3/S23">■▲ B3/S23 — Life (2 states)</option>
             <option value="B45/S345/C4">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
@@ -87,7 +97,7 @@
         <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C…)
           <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
         </label>
-        <div id="huntRow" hidden>
+        <div id="huntRow">
           <div class="field-label">Methuselah hunt</div>
           <div id="huntList" class="mode-list" role="listbox" title="Where the random starts go. Radius r: the cells at most r steps from a centre cell, one step going to a neighbour (through an edge or a corner) — 3×3, 5×5 and 7×7 on squares, a small disc on triangles. The rest of the surface starts dead"></div>
           <div class="row">
@@ -198,6 +208,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261002w"></script>
+  <script src="main.js?v=20261002x"></script>
 </body>
 </html>
