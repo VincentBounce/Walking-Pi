@@ -190,6 +190,8 @@ button.primary {
 .stage-bar .strip { margin: 6px 0 0; min-height: 0; font-size: 12px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 8px 0 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+.stage-bar .row button:first-child { flex: none; }  /* ⏮ comes first: Play is the one that stretches */
+.stage-bar #play { flex: 1; }
 .stage-bar label { margin: 0; font-size: 12px; color: var(--muted); }
 .hint {
   position: absolute;
