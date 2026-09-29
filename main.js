@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.99';
+const VERSION = '0.1.100';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1625,8 +1625,8 @@ function rotateView(dyaw, dpitch) {
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   $('hint').textContent = walk.is3d
-    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: fit'
-    : 'Wheel: zoom · Drag: pan · Double-click: fit';
+    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: auto-fit'
+    : 'Wheel: zoom · Drag: pan · Double-click: auto-fit';
   $('autoRotateRow').hidden = !walk.is3d;
   $('skyRow').hidden = !walk.is3d;
   $('perspectiveRow').hidden = !perspectiveAllowed();
