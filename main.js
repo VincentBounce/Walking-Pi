@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.103';
+const VERSION = '0.1.104';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3431,7 +3431,9 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf) {
     const level = levelOf(t);
     let toward = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]);
     if (twoSided) toward = Math.abs(toward);  // the back of a tile is lit like its front
-    ctx.fillStyle = shaded(level ? palette[level] : '#1f2630', Math.round((1 - Math.max(0, toward)) * 8) / 8);
+    // 64 shades: fine enough that a tile's colour turns smoothly with the view (8 made visible
+    // jumps of about 7 % in brightness), coarse enough to keep the cache of shaded colours small
+    ctx.fillStyle = shaded(level ? palette[level] : '#1f2630', Math.round((1 - Math.max(0, toward)) * 64) / 64);
     ctx.beginPath();
     for (let q = 0; q < k; q++) {
       const i = 3 * (k * t + q), [x, y] = proj(sh.corners[i] * R, sh.corners[i + 1] * R, sh.corners[i + 2] * R);
