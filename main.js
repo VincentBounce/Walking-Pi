@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.110';
+const VERSION = '0.1.111';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2170,9 +2170,12 @@ function morphStep(dt) {
 
 
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
+// Sizes (cuts per edge): each step multiplies the number of tiles by about 2 (×2.25, then ×1.78),
+// not by 4 as doubling would
+const STEPS_128 = [8, 12, 16, 24, 32, 48, 64, 96, 128];
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
-          sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
+          sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   torus: { mesh: torusMesh, radius: (nv) => nv / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => Math.round(nv / TORUS_TUBE) * nv, unit: 'squares' },
@@ -2180,11 +2183,11 @@ const SPHERES = {
   hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => hexTorusColumns(nv) * nv, unit: 'hexagons' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
-          sizes: [8, 16, 32, 64, 128], initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
+          sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
-          sizes: [8, 16, 32, 64, 128], initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
+          sizes: STEPS_128, initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
   icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
-          sizes: [8, 16, 32, 64], initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
+          sizes: STEPS_128.slice(0, -2), initial: 16, tiles: (f) => 20 * f * f, unit: 'triangles' },
 };
 
 // The surface size as a stepper: [ − ] 6,144 squares [ + ] goes through the sizes of the (hidden)
