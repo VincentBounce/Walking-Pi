@@ -2,26 +2,18 @@
 
 /* ------------------------------------------------------------------ *
  * Digit computation in base b (Web Worker, BigInt)                   *
- * A constant c is computed as the integer c·b^(N+G), where G guard   *
- * digits absorb rounding errors; the result is divided by b^G and    *
- * printed with toString(b).                                          *
+ * The worker evaluates a checked formula (see checkFormula):          *
+ * - exact integers and fractions are computed exactly;                *
+ * - a real value is computed as the integer x·b^(N+G), where G guard  *
+ *   digits absorb rounding errors; the result is divided by b^G and   *
+ *   printed with toString(b).                                         *
  * ------------------------------------------------------------------ */
-function constantWorker() {
+function formulaWorker() {
   self.onmessage = (e) => {
-    const { id, n, base } = e.data;
+    const { ast, n, base, mag, nodes } = e.data;
     const B = BigInt(base);
     const t0 = performance.now();
-    // Large integers (primes): no fractional part. Only the first n digits
-    // (the ones the walk uses) are sent back, plus the total digit count.
-    const integer = { mersenne: () => (1n << BigInt(e.data.p)) - 1n, primorial, randomPrime }[id];
-    if (integer) {
-      const N = integer();
-      const all = digitString(N, base);
-      self.postMessage({ type: 'done', intPart: all.slice(0, n), total: all.length, digits: new Uint8Array(0),
-                         decimals: id === 'randomPrime' ? e.data.size : undefined, tests: integer.tests,
-                         ms: performance.now() - t0 });
-      return;
-    }
+    let S, prec, lnS, guard, primeTests;
 
     function smallPrimes(limit) {
       const composite = new Uint8Array(limit + 1);
@@ -34,15 +26,15 @@ function constantWorker() {
       return list;
     }
 
-    // p# ± 1, where p# is the product of all primes ≤ p (multiplied as a balanced product tree)
-    function primorial() {
-      let level = smallPrimes(e.data.p).map(BigInt);
+    // p#, the product of all primes ≤ p (multiplied as a balanced product tree)
+    function primorial(p) {
+      let level = smallPrimes(p).map(BigInt);
       while (level.length > 1) {
         const next = [];
         for (let i = 0; i < level.length; i += 2) next.push(i + 1 < level.length ? level[i] * level[i + 1] : level[i]);
         level = next;
       }
-      return level[0] + BigInt(e.data.sign);
+      return level[0];
     }
 
     // uniform enough in [0, below): 64 extra random bits, then reduce. With rng (a seeded
@@ -80,14 +72,13 @@ function constantWorker() {
 
     // Random prime with the requested number of decimal digits: pick a random odd start, sieve a
     // window of candidates by small primes, then Miller–Rabin (base 2, then 24 random bases).
-    function randomPrime() {
-      const size = e.data.size;
+    function randomPrime(size, seed) {
       const lo = 10n ** BigInt(size - 1);
       const primes = smallPrimes(20000).slice(1);  // odd primes only
       const expected = size * Math.log(10) * 0.0567;  // ≈ Miller–Rabin tests before a prime shows up
       const W = 8192;
-      // the start comes from the draw number, so the same draw always finds the same prime
-      let start = lo + randomBigInt(9n * lo - 2n * BigInt(W), seededRandom(e.data.seed >>> 0));
+      // the start comes from the seed, so the same seed always finds the same prime
+      let start = lo + randomBigInt(9n * lo - 2n * BigInt(W), seededRandom(seed >>> 0));
       if ((start & 1n) === 0n) start++;
       let tests = 0;
       for (;;) {
@@ -105,17 +96,13 @@ function constantWorker() {
           let ok = true;
           for (let k = 0; k < 24 && ok; k++) ok = millerRabin(c, 2n + randomBigInt(c - 3n));
           if (ok) {
-            randomPrime.tests = tests;
+            primeTests = tests;
             return c;
           }
         }
         start += 2n * BigInt(W);
       }
     }
-    const guard = 30 + Math.ceil(Math.log(n) / Math.log(base));
-    const prec = n + guard;
-    const S = B ** BigInt(prec);
-    const lnS = prec * Math.log(base);
     let done = 0, total = 1;
     const progress = (i) => {
       if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
@@ -205,127 +192,284 @@ function constantWorker() {
       return x;
     }
 
-    let v;
-    switch (id) {
-      case 'pi': // Machin: π = 16·arctan(1/5) − 4·arctan(1/239)
-        total = atanTerms(5) + atanTerms(239);
-        v = 16n * atanInv(5) - 4n * atanInv(239);
-        break;
-      case 'pi2': { // π² = (π·S)² / S
-        total = atanTerms(5) + atanTerms(239);
-        const p = 16n * atanInv(5) - 4n * atanInv(239);
-        v = (p * p) / S;
-        break;
-      }
-      case 'epi': { // Gelfond: e^π = (e^(π / 2^r))^(2^r), in binary fixed point with W fractional bits
-        const bits = Math.ceil(prec * Math.log2(base));
-        const r = Math.max(1, Math.round(Math.sqrt(bits) / 2));  // halvings: balance series terms and squarings
-        const W = BigInt(bits + 2 * r + 64);                        // guard bits absorb the 2^r error growth
-        const one = 1n << W;
-        total = bits / r + r;
-        const atanBin = (x) => {  // 2^W·arctan(1/x)
-          const bx = BigInt(x), x2 = bx * bx;
-          let t = one / bx, sum = t;
-          for (let k = 1; ; k++) {
-            t /= x2;
-            if (t === 0n) break;
-            const q = t / BigInt(2 * k + 1);
-            sum += k % 2 ? -q : q;
+    // S·c for a named constant, computed once per formula
+    const memo = {};
+    function constant(name) {
+      if (memo[name] !== undefined) return memo[name];
+      done = 0;
+      total = 1;
+      let v;
+      switch (name) {
+        case 'pi': // Machin: π = 16·arctan(1/5) − 4·arctan(1/239)
+          total = atanTerms(5) + atanTerms(239);
+          v = 16n * atanInv(5) - 4n * atanInv(239);
+          break;
+        case 'epi': { // Gelfond: e^π = (e^(π / 2^r))^(2^r), in binary fixed point with W fractional bits
+          const bits = Math.ceil(prec * Math.log2(base));
+          const r = Math.max(1, Math.round(Math.sqrt(bits) / 2));  // halvings: balance series terms and squarings
+          const W = BigInt(bits + 2 * r + 64);                        // guard bits absorb the 2^r error growth
+          const one = 1n << W;
+          total = bits / r + r;
+          const atanBin = (x) => {  // 2^W·arctan(1/x)
+            const bx = BigInt(x), x2 = bx * bx;
+            let t = one / bx, sum = t;
+            for (let k = 1; ; k++) {
+              t /= x2;
+              if (t === 0n) break;
+              const q = t / BigInt(2 * k + 1);
+              sum += k % 2 ? -q : q;
+            }
+            return sum;
+          };
+          const y = (16n * atanBin(5) - 4n * atanBin(239)) >> BigInt(r);  // π / 2^r
+          let term = one, sum = one;
+          for (let k = 1; term !== 0n; k++) {  // Σ y^k / k!
+            term = ((term * y) >> W) / BigInt(k);
+            sum += term;
+            progress(k);
           }
-          return sum;
-        };
-        const y = (16n * atanBin(5) - 4n * atanBin(239)) >> BigInt(r);  // π / 2^r
-        let term = one, sum = one;
-        for (let k = 1; term !== 0n; k++) {  // Σ y^k / k!
-          term = ((term * y) >> W) / BigInt(k);
-          sum += term;
-          progress(k);
+          for (let i = 0; i < r; i++) sum = (sum * sum) >> W;
+          v = (sum * S) >> W;
+          break;
         }
-        for (let i = 0; i < r; i++) sum = (sum * sum) >> W;
-        v = (sum * S) >> W;
-        break;
-      }
-      case 'ln2': // ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749)
-        total = atanTerms(26) + atanTerms(4801) + atanTerms(8749);
-        v = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
-        break;
-      case 'e': { // e = Σ 1/k!
-        total = 1;
-        for (let lf = 0; lf < lnS; total++) lf += Math.log(total);
-        let term = S;
-        v = S;
-        for (let k = 1; term > 0n; k++) {
-          term /= BigInt(k);
-          v += term;
-          progress(k);
+        case 'ln2': // ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749)
+          total = atanTerms(26) + atanTerms(4801) + atanTerms(8749);
+          v = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
+          break;
+        case 'e': { // e = Σ 1/k!
+          total = 1;
+          for (let lf = 0; lf < lnS; total++) lf += Math.log(total);
+          let term = S;
+          v = S;
+          for (let k = 1; term > 0n; k++) {
+            term /= BigInt(k);
+            v += term;
+            progress(k);
+          }
+          break;
         }
-        break;
-      }
-      case 'zeta3': { // Amdeberhan–Zeilberger: ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
-        total = lnS / Math.log(1024);
-        let t = S;
-        v = 0n;
-        for (let k = 0; t > 0n; k++) {
-          const K = BigInt(k);
-          const p = (205n * K * K + 250n * K + 77n) * t;
-          v += k % 2 ? -p : p;
-          t = (t * (K + 1n) ** 5n) / (32n * (2n * K + 3n) ** 5n);
-          progress(k);
+        case 'apery': { // Amdeberhan–Zeilberger: ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
+          total = lnS / Math.log(1024);
+          let t = S;
+          v = 0n;
+          for (let k = 0; t > 0n; k++) {
+            const K = BigInt(k);
+            const p = (205n * K * K + 250n * K + 77n) * t;
+            v += k % 2 ? -p : p;
+            t = (t * (K + 1n) ** 5n) / (32n * (2n * K + 3n) ** 5n);
+            progress(k);
+          }
+          v /= 64n;
+          break;
         }
-        v /= 64n;
-        break;
-      }
-      case 'E': { // Erdős–Borwein: E = Σ 1/(2^n − 1) = Σ 2^(−n²)·(2^n + 1)/(2^n − 1)
-        v = 0n;
-        for (let k = 1; ; k++) {
-          const K = BigInt(k);
-          const p = 1n << K;
-          const t = ((S * (p + 1n)) >> (K * K)) / (p - 1n);
-          if (t === 0n) break;
-          v += t;
+        case 'erdos': { // Erdős–Borwein: E = Σ 1/(2^n − 1) = Σ 2^(−n²)·(2^n + 1)/(2^n − 1)
+          v = 0n;
+          for (let k = 1; ; k++) {
+            const K = BigInt(k);
+            const p = 1n << K;
+            const t = ((S * (p + 1n)) >> (K * K)) / (p - 1n);
+            if (t === 0n) break;
+            v += t;
+          }
+          break;
         }
-        break;
-      }
-      case 'phi': v = (S + isqrt(5n * S * S)) / 2n; break;
-      case 'sqrt2': case 'sqrt3': case 'sqrt5': case 'sqrt6': case 'sqrt7': case 'sqrt8':
-        v = isqrt(BigInt(id.slice(4)) * S * S);
-        break;
-      case 'cbrt2': v = icbrt(2n * S * S * S); break;
-      case 'catalan': { // Lupaș series, by binary splitting:
-        // G = 1/18 Σ_{k≥0} (40m²−24m+3) Π_{j=1..k} −32j³(2j−1)/((4j+1)²(4j+3)²), with m = k+1
-        const K = Math.ceil(lnS / Math.log(4)) + 10;
-        total = K;
-        const J = (j) => BigInt(j);
-        const [, Q, T] = binarySplit(0, K,
-          (j) => (j === 0 ? 1n : -32n * J(j) ** 3n * (2n * J(j) - 1n)),
-          (j) => (j === 0 ? 1n : (4n * J(j) + 1n) ** 2n * (4n * J(j) + 3n) ** 2n),
-          (k) => 40n * J(k + 1) ** 2n - 24n * J(k + 1) + 3n);
-        v = (T * S) / (18n * Q);
-        break;
-      }
-      case 'gamma': { // Brent–McMillan by binary splitting, with m = 2^i·3^j ≥ ln(S)/4 so that ln m is cheap
-        let m = Infinity, i2 = 0, j3 = 0;
-        for (let i = 0; i < 64; i++) for (let j = 0; j < 40; j++) {
-          const c = 2 ** i * 3 ** j;
-          if (c >= lnS / 4 + 1 && c < m) { m = c; i2 = i; j3 = j; }
+        case 'phi': v = (S + isqrt(5n * S * S)) / 2n; break;
+        case 'primes2': { // ρ = Σ 2^(−p): its binary expansion is the prime barcode (bit k = 1 when k is prime)
+          const bits = Math.ceil(prec * Math.log2(base)) + 64;
+          const prime = new Uint8Array(bits + 1);
+          for (const q of smallPrimes(bits)) prime[q] = 1;
+          let barcode = '';
+          for (let k = 1; k <= bits; k++) barcode += prime[k] ? '1' : '0';
+          v = (BigInt(`0b${barcode}`) * S) >> BigInt(bits);
+          break;
         }
-        const K = Math.ceil(3.6 * m) + 10;  // (m^k/k!)² is negligible beyond ≈ 3.59·m
-        total = atanTerms(26) + atanTerms(4801) + atanTerms(8749) + atanTerms(5) + K;
-        const ln2 = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
-        const ln3 = ln2 + 2n * atanInv(5, true);
-        const [, Q, T, D, , V] = harmonicSplit(1, K, BigInt(m) * BigInt(m));
-        v = (V * S) / (D * (Q + T)) - (BigInt(i2) * ln2 + BigInt(j3) * ln3);
-        break;
+        case 'catalan': { // Lupaș series, by binary splitting:
+          // G = 1/18 Σ_{k≥0} (40m²−24m+3) Π_{j=1..k} −32j³(2j−1)/((4j+1)²(4j+3)²), with m = k+1
+          const K = Math.ceil(lnS / Math.log(4)) + 10;
+          total = K;
+          const J = (j) => BigInt(j);
+          const [, Q, T] = binarySplit(0, K,
+            (j) => (j === 0 ? 1n : -32n * J(j) ** 3n * (2n * J(j) - 1n)),
+            (j) => (j === 0 ? 1n : (4n * J(j) + 1n) ** 2n * (4n * J(j) + 3n) ** 2n),
+            (k) => 40n * J(k + 1) ** 2n - 24n * J(k + 1) + 3n);
+          v = (T * S) / (18n * Q);
+          break;
+        }
+        case 'gamma': { // Brent–McMillan by binary splitting, with m = 2^i·3^j ≥ ln(S)/4 so that ln m is cheap
+          let m = Infinity, i2 = 0, j3 = 0;
+          for (let i = 0; i < 64; i++) for (let j = 0; j < 40; j++) {
+            const c = 2 ** i * 3 ** j;
+            if (c >= lnS / 4 + 1 && c < m) { m = c; i2 = i; j3 = j; }
+          }
+          const K = Math.ceil(3.6 * m) + 10;  // (m^k/k!)² is negligible beyond ≈ 3.59·m
+          total = atanTerms(26) + atanTerms(4801) + atanTerms(8749) + atanTerms(5) + K;
+          const ln2 = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
+          const ln3 = ln2 + 2n * atanInv(5, true);
+          const [, Q, T, D, , V] = harmonicSplit(1, K, BigInt(m) * BigInt(m));
+          v = (V * S) / (D * (Q + T)) - (BigInt(i2) * ln2 + BigInt(j3) * ln3);
+          break;
+        }
       }
+      return (memo[name] = v);
     }
 
-    self.postMessage({ type: 'progress', p: 1 });
-    const s = digitString(v / B ** BigInt(guard), base).padStart(n + 1, '0');
-    const intPart = s.slice(0, s.length - n);
-    const digits = new Uint8Array(n);
-    for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(intPart.length + i) - 48;
-    self.postMessage({ type: 'done', intPart, digits, ms: performance.now() - t0 }, [digits.buffer]);
+    // Exact values [p, q]: arithmetic in exactValue, the rest here
+    const exact = (x) => x.kind === 'int' || x.kind === 'rat';
+    const exactOf = (x) => exactValue(x, (c) => {
+      const arg = (i) => Number(c.args[i].v);
+      if (c.f === 'primorial') return [primorial(arg(0)), 1n];
+      if (c.f === 'randprime') return [randomPrime(arg(0), arg(1)), 1n];
+      const k = c.f === 'sqrt' ? 2 : c.f === 'cbrt' ? 3 : arg(1);  // a root found exact by checkFormula
+      const [p, q] = exactOf(c.args[0]);
+      return [iroot(p, k), iroot(q, k)];
+    });
+
+    // S·x for a real formula; exact parts stay exact as long as possible
+    const nonNegative = (v) => { if (v < 0n) throw new Error('root of a negative number'); return v; };
+    function real(x) {
+      if (exact(x)) { const [p, q] = exactOf(x); return (p * S) / q; }
+      switch (x.k) {
+        case 'name': return constant(x.v);
+        case 'neg': return -real(x.a);
+        case '+': return real(x.a) + real(x.b);
+        case '-': return real(x.a) - real(x.b);
+        case '*': {
+          if (exact(x.a)) { const [p, q] = exactOf(x.a); return (real(x.b) * p) / q; }
+          if (exact(x.b)) { const [p, q] = exactOf(x.b); return (real(x.a) * p) / q; }
+          return (real(x.a) * real(x.b)) / S;
+        }
+        case '/': {
+          if (exact(x.b)) {
+            const [p, q] = exactOf(x.b);
+            if (p === 0n) throw new Error('division by zero');
+            return (real(x.a) * q) / p;
+          }
+          const d = real(x.b);
+          if (d === 0n) throw new Error('division by zero');
+          if (exact(x.a)) { const [p, q] = exactOf(x.a); return (p * S * S) / (q * d); }
+          return (real(x.a) * S) / d;
+        }
+        case '^': {
+          if (x.epi) return constant('epi');
+          let r = S, sq = real(x.a);
+          for (let k = Math.abs(x.exp); k > 0; k >>= 1) {
+            if (k & 1) r = (r * sq) / S;
+            if (k > 1) sq = (sq * sq) / S;
+          }
+          if (x.exp >= 0) return r;
+          if (r === 0n) throw new Error('division by zero');
+          return (S * S) / r;
+        }
+        case 'call': {
+          const a = x.args[0];
+          switch (x.f) {
+            case 'sqrt': return isqrt(nonNegative(real(a)) * S);
+            case 'cbrt': { const v = real(a); return v < 0n ? -icbrt(-v * S * S) : icbrt(v * S * S); }
+            case 'root': { const k = Number(x.args[1].v); return iroot(nonNegative(real(a)) * S ** BigInt(k - 1), k); }
+            case 'ln': return constant('ln2');     // checkFormula only lets ln(2) through
+            case 'zeta': return constant('apery'); // and zeta(3)
+          }
+        }
+      }
+      throw new Error(`cannot compute ${x.k}`);
+    }
+
+    const negative = () => new Error('the number is negative: only numbers ≥ 0 can be walked');
+    try {
+      if (ast.kind === 'int') {  // an integer (a prime…): its digits only, the first n sent back
+        const [N] = exactOf(ast);
+        if (N < 0n) throw negative();
+        const all = digitString(N, base);
+        self.postMessage({ type: 'done', intPart: all.slice(0, n), total: all.length, digits: new Uint8Array(0),
+                           tests: primeTests, ms: performance.now() - t0 });
+        return;
+      }
+      if (ast.kind === 'rat') {  // a fraction: long division
+        const [p, q] = exactOf(ast);
+        if (p < 0n) throw negative();
+        const digits = new Uint8Array(n);
+        let r = p % q;
+        for (let i = 0; i < n; i++) {
+          r *= B;
+          digits[i] = Number(r / q);
+          r %= q;
+        }
+        self.postMessage({ type: 'done', intPart: digitString(p / q, base), digits, ms: performance.now() - t0 }, [digits.buffer]);
+        return;
+      }
+      // a real: guard digits for rounding, for each operation, and for large or small values met on the way
+      guard = 30 + Math.ceil(Math.log(n) / Math.log(base)) + 3 * nodes + Math.ceil((mag * Math.LN10) / Math.log(base));
+      prec = n + guard;
+      S = B ** BigInt(prec);
+      lnS = prec * Math.log(base);
+      const v = real(ast);
+      if (v < 0n) throw negative();
+      self.postMessage({ type: 'progress', p: 1 });
+      const G = B ** BigInt(guard);
+      const s = digitString(v / G, base).padStart(n + 1, '0');
+      const intPart = s.slice(0, s.length - n);
+      const digits = new Uint8Array(n);
+      for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(intPart.length + i) - 48;
+      // the first guard digits all 0 or all b − 1: the value is extremely close to a round number,
+      // and the last digits kept could be off by one
+      const top = (v % G) / B ** BigInt(guard - 12);
+      const uncertain = top === 0n || top === B ** 12n - 1n;
+      self.postMessage({ type: 'done', intPart, digits, uncertain, ms: performance.now() - t0 }, [digits.buffer]);
+    } catch (err) {
+      self.postMessage({ type: 'error', message: err.message });
+    }
   };
+}
+
+// Exact value [p, q] (BigInt, q > 0, reduced) of an exact formula node (kind 'int' or 'rat'):
+// numbers and + − × ÷ ^ here, function calls through leaf(node). Also used inside the worker.
+function exactValue(node, leaf) {
+  const gcd = (a, b) => { a = a < 0n ? -a : a; while (b) [a, b] = [b, a % b]; return a; };
+  const norm = (p, q) => {
+    if (q < 0n) { p = -p; q = -q; }
+    if (q === 1n) return [p, q];
+    const g = gcd(p, q);
+    return [p / g, q / g];
+  };
+  const power = (v, k) => (v === 2n ? 1n << BigInt(k) : v ** BigInt(k));
+  const ev = (x) => {
+    switch (x.k) {
+      case 'num': { const [i, f = ''] = x.v.split('.'); return norm(BigInt(i + f), 10n ** BigInt(f.length)); }
+      case 'neg': { const [p, q] = ev(x.a); return [-p, q]; }
+      case '+': case '-': {
+        const [a, b] = ev(x.a), [c, d] = ev(x.b), sign = x.k === '+' ? 1n : -1n;
+        return b === 1n && d === 1n ? [a + sign * c, 1n] : norm(a * d + sign * c * b, b * d);
+      }
+      case '*': { const [a, b] = ev(x.a), [c, d] = ev(x.b); return norm(a * c, b * d); }
+      case '/': {
+        const [a, b] = ev(x.a), [c, d] = ev(x.b);
+        if (c === 0n) throw new Error('division by zero');
+        return norm(a * d, b * c);
+      }
+      case '^': {
+        const [p, q] = ev(x.a);
+        if (x.exp >= 0) return [power(p, x.exp), power(q, x.exp)];
+        if (p === 0n) throw new Error('division by zero');
+        return norm(power(q, -x.exp), power(p, -x.exp));
+      }
+      default: return leaf(x);
+    }
+  };
+  return ev(node);
+}
+
+// ⌊v^(1/k)⌋ for a BigInt v ≥ 0 (Newton from above). Also used inside the worker.
+function iroot(v, k) {
+  if (v < 2n) return v;
+  const K = BigInt(k);
+  let x = 1n << BigInt(Math.ceil(v.toString(2).length / k));  // at least the root
+  for (;;) {
+    const y = ((K - 1n) * x + v / x ** (K - 1n)) / K;
+    if (y >= x) break;
+    x = y;
+  }
+  while (x ** K > v) x--;
+  return x;
 }
 
 /* ------------------------------------------------------------------ *
@@ -342,36 +486,45 @@ const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
 const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'];
 const MONO = '#f0b429';
 
-const CONSTANTS = {
-  pi:    { sym: 'π',    name: 'Pi' },
-  pi2:   { sym: 'π²',   name: 'Pi squared' },
-  e:     { sym: 'e',    name: "Euler's number" },
-  epi:   { sym: 'e^π',  name: "Gelfond's constant" },
-  phi:   { sym: 'φ',    name: 'Golden ratio' },
-  ln2:   { sym: 'ln 2', name: 'Natural log of 2' },
-  zeta3: { sym: 'ζ(3)', name: "Apéry's constant" },
-  E:     { sym: 'E',    name: 'Erdős–Borwein constant' },
-  catalan: { sym: 'G',  name: "Catalan's constant" },
-  gamma: { sym: 'γ',    name: 'Euler–Mascheroni constant' },
-  sqrt2: { sym: '√2',   name: 'Square root of 2', group: 'Roots' },
-  sqrt3: { sym: '√3',   name: 'Square root of 3', group: 'Roots' },
-  sqrt5: { sym: '√5',   name: 'Square root of 5', group: 'Roots' },
-  sqrt6: { sym: '√6',   name: 'Square root of 6', group: 'Roots' },
-  sqrt7: { sym: '√7',   name: 'Square root of 7', group: 'Roots' },
-  sqrt8: { sym: '√8',   name: 'Square root of 8 (= 2√2)', group: 'Roots' },
-  cbrt2: { sym: '∛2',   name: 'Cube root of 2', group: 'Roots' },
-  champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons' },
-  fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons' },
-  random: { sym: '🎲', name: 'Random digits', group: 'Comparisons' },
-  mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes' },
-  primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes' },
-  primeConst: { sym: 'ρ', name: 'Prime barcode (Ulam)', group: 'Primes',
-                note: (b) => `digit k = 0 if k is not prime, else k mod ${b}` },
-  primeReal: { sym: 'ρ₂', name: 'Prime constant (binary barcode, converted)', group: 'Primes',
-               note: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}` },
-  primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes',
-               note: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}` },
-  randomPrime: { sym: '🎲', name: 'Random prime', group: 'Primes' },
+// The Number menu: each choice writes a formula (see Number formulas). Choices with a helper menu
+// (Mersenne, primorial, random prime) or a random seed build it when picked.
+const PRESETS = {
+  pi:    { sym: 'π',    name: 'Pi', f: 'pi' },
+  pi2:   { sym: 'π²',   name: 'Pi squared', f: 'pi^2' },
+  e:     { sym: 'e',    name: "Euler's number", f: 'e' },
+  epi:   { sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
+  phi:   { sym: 'φ',    name: 'Golden ratio', f: 'phi' },
+  ln2:   { sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
+  zeta3: { sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
+  erdos: { sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
+  catalan: { sym: 'G',  name: "Catalan's constant", f: 'catalan' },
+  gamma: { sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
+  sqrt2: { sym: '√2',   name: 'Square root of 2', group: 'Roots', f: 'sqrt(2)' },
+  sqrt3: { sym: '√3',   name: 'Square root of 3', group: 'Roots', f: 'sqrt(3)' },
+  sqrt5: { sym: '√5',   name: 'Square root of 5', group: 'Roots', f: 'sqrt(5)' },
+  sqrt6: { sym: '√6',   name: 'Square root of 6', group: 'Roots', f: 'sqrt(6)' },
+  sqrt7: { sym: '√7',   name: 'Square root of 7', group: 'Roots', f: 'sqrt(7)' },
+  sqrt8: { sym: '√8',   name: 'Square root of 8 (= 2√2)', group: 'Roots', f: 'sqrt(8)' },
+  cbrt2: { sym: '∛2',   name: 'Cube root of 2', group: 'Roots', f: 'cbrt(2)' },
+  champernowne: { sym: 'C', name: 'Champernowne constant', group: 'Comparisons', f: 'champernowne' },
+  fraction: { sym: 'p/q', name: 'Fraction', group: 'Comparisons', f: '22/7' },
+  random: { sym: '🎲', name: 'Random digits', group: 'Comparisons', f: () => `random(${freshDraw()})` },
+  mersenne: { sym: 'Mₚ', name: 'Mersenne prime 2ᵖ − 1', group: 'Primes', f: () => `2^${$('mersenneP').value}-1` },
+  primorial: { sym: 'p# ± 1', name: 'Primorial prime', group: 'Primes',
+               f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
+  primeConst: { sym: 'ρ', name: 'Prime barcode (Ulam)', group: 'Primes', f: 'primes' },
+  primeReal: { sym: 'ρ₂', name: 'Prime constant (binary barcode, converted)', group: 'Primes', f: 'primes2' },
+  primeGaps: { sym: 'Δp', name: 'Prime gaps', group: 'Primes', f: 'primegaps' },
+  randomPrime: { sym: '🎲', name: 'Random prime', group: 'Primes', f: () => `randprime(${$('primeSize').value},${freshDraw()})` },
+  custom: { sym: '✎', name: 'Custom formula', group: 'Formula' },
+};
+const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
+
+// What the sequences and ρ₂ mean, for the status line
+const FORMULA_NOTES = {
+  primes: (b) => `digit k = 0 if k is not prime, else k mod ${b}`,
+  primes2: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
+  primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
 };
 
 const MODES = {
@@ -439,7 +592,6 @@ const PRIMORIAL_PLUS = [379, 1019, 1021, 2657, 3229, 4547, 4787, 11549, 13649, 1
   145823, 366439, 392113, 4328927, 5256037, 6369619, 7351117, 9562633];
 const PRIMORIAL_MINUS = [317, 337, 991, 1873, 2053, 2377, 4093, 4297, 4583, 6569, 13033, 15877, 843301,
   1098133, 3267113, 4778027, 6354977, 6533299];
-const INTEGER_IDS = ['mersenne', 'primorial', 'randomPrime'];
 
 const cache = {};        // key → { intPart: "10", digits: Uint8Array (fractional part) }
 let current = null;      // { head: integer-part digits, digits, mode }
@@ -533,72 +685,302 @@ function seededRandom(seed) {
     return (t ^ (t >>> 14)) >>> 0;
   };
 }
-let currentDraw = 0;      // draw number of the random number shown
-let pendingDraw = null;   // draw number to reuse at the next compute (a loaded setup), else a fresh one
 const freshDraw = () => crypto.getRandomValues(new Uint32Array(1))[0] % 1e9;
 
-// Display name and cache key of the selected number
-function numberInfo(id) {
-  if (id === 'mersenne') {
-    const p = $('mersenneP').value;
-    return { sym: `M${SUB(p)}`, key: `mersenne${p}`, p: Number(p) };
+/* ------------------------------------------------------------------ *
+ * Number formulas                                                    *
+ * ------------------------------------------------------------------ */
+/* Every number is a formula: pi, sqrt(2), (1+sqrt(5))/2, 2^127-1, primorial(392113)+1, 22/7,
+ * random(81244), champernowne… The Number menu only writes formulas, and a setup stores the
+ * canonical form, so pi typed or picked is stored the same way. Each node gets a kind:
+ * 'int' and 'rat' are exact, 'real' is computed with guard digits, 'seq' is a sequence of digits
+ * defined base by base (champernowne, primes, primegaps, random), which only stands alone. */
+const FORMULA_NAMES = {  // name: [kind, symbol shown]
+  pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
+  erdos: ['real', 'E'], primes2: ['real', 'ρ₂'],
+  champernowne: ['seq', 'C'], primes: ['seq', 'ρ'], primegaps: ['seq', 'Δp'],
+};
+const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, zeta: 1, primorial: 1, random: 1, randprime: 2 };
+const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
+                 erdos: 1.6066951524, primes2: 0.4146825099 };
+const PREC = { '+': 1, '-': 1, '*': 2, '/': 2, neg: 3, '^': 4 };  // anything else binds tighter (5)
+const precOf = (x) => PREC[x.k] ?? 5;
+const formulaKids = (x) => (x.k === 'call' ? x.args : x.k === 'neg' ? [x.a] : x.a ? [x.a, x.b] : []);
+const formulaNodes = (x) => [x, ...formulaKids(x).flatMap(formulaNodes)];
+
+// Text → tree of { k: 'num' | 'name' | 'call' | 'neg' | '+' | '-' | '*' | '/' | '^', … }.
+// Accepts π φ γ √ ∛ − × · ÷, any case, and implicit products like 2pi.
+function parseFormula(text) {
+  const src = text.replace(/π/g, ' pi ').replace(/φ/g, ' phi ').replace(/γ/g, ' gamma ')
+    .replace(/[−–]/g, '-').replace(/[×·]/g, '*').replace(/÷/g, '/');
+  const tokens = [], re = /(\d+(?:\.\d+)?)|([a-z_][a-z0-9_]*)|([-+*/^(),√∛])/iy;
+  for (let pos = 0; pos < src.length;) {
+    if (/\s/.test(src[pos])) { pos++; continue; }
+    re.lastIndex = pos;
+    const m = re.exec(src);
+    if (!m) throw new Error(`unexpected “${src[pos]}”`);
+    pos = re.lastIndex;
+    if (m[1]) {  // number without useless zeros: 007 → 7, 1.50 → 1.5
+      const [i, f = ''] = m[1].split('.'), int = i.replace(/^0+(?=\d)/, ''), frac = f.replace(/0+$/, '');
+      tokens.push({ t: 'num', v: frac ? `${int}.${frac}` : int });
+    } else tokens.push(m[2] ? { t: 'id', v: m[2].toLowerCase() } : { t: m[3] });
   }
-  if (id === 'primorial') {
-    const [p, sign] = $('primorialP').value.split(',');
-    return { sym: `${fmt(Number(p))}# ${sign > 0 ? '+' : '−'} 1`, key: `primorial${p}${sign}`,
-             p: Number(p), sign: Number(sign) };
-  }
-  if (id === 'randomPrime') {
-    const size = Number($('primeSize').value);
-    return { sym: `🎲 p${SUB(size)}`, key: null, size };  // never cached: a new prime each time
-  }
-  if (id === 'fraction') {
-    const txt = $('fraction').value.replace(/\s/g, '');
-    return { sym: txt, key: `fraction${txt}` };
-  }
-  return { sym: CONSTANTS[id].sym, key: id };
+  let i = 0;
+  const peek = () => tokens[i]?.t;
+  const expect = (t) => { if (peek() !== t) throw new Error(`“${t}” expected`); i++; };
+  const expr = () => {
+    let a = term();
+    while (peek() === '+' || peek() === '-') a = { k: tokens[i++].t, a, b: term() };
+    return a;
+  };
+  const term = () => {
+    let a = unary();
+    for (;;) {
+      if (peek() === '*' || peek() === '/') a = { k: tokens[i++].t, a, b: unary() };
+      else if (['num', 'id', '(', '√', '∛'].includes(peek())) a = { k: '*', a, b: power() };  // 2pi
+      else return a;
+    }
+  };
+  const unary = () => {
+    if (peek() === '-') { i++; return { k: 'neg', a: unary() }; }
+    if (peek() === '+') { i++; return unary(); }
+    return power();
+  };
+  const power = () => {
+    const a = primary();
+    if (peek() !== '^') return a;
+    i++;
+    return { k: '^', a, b: unary() };  // right to left: 2^3^2 = 2^(3^2)
+  };
+  const primary = () => {
+    const x = tokens[i++];
+    if (!x) throw new Error('the formula is incomplete');
+    if (x.t === 'num') return { k: 'num', v: x.v };
+    if (x.t === '(') { const a = expr(); expect(')'); return a; }
+    if (x.t === '√' || x.t === '∛') return { k: 'call', f: x.t === '√' ? 'sqrt' : 'cbrt', args: [power()] };
+    if (x.t === 'id' && FORMULA_FUNCTIONS[x.v] !== undefined) {
+      const args = [];
+      if (peek() === '(') {  // random and randprime(300) may leave out their seed
+        i++;
+        if (peek() !== ')') {
+          args.push(expr());
+          while (peek() === ',') { i++; args.push(expr()); }
+        }
+        expect(')');
+      }
+      return { k: 'call', f: x.v, args };
+    }
+    if (x.t === 'id' && FORMULA_NAMES[x.v]) return { k: 'name', v: x.v };
+    if (x.t === 'id') throw new Error(`unknown name “${x.v}”`);
+    throw new Error(`unexpected “${x.t}”`);
+  };
+  if (!tokens.length) throw new Error('empty');
+  const ast = expr();
+  if (i < tokens.length) throw new Error(`unexpected “${tokens[i].v ?? tokens[i].t}”`);
+  return ast;
 }
 
-// Digits computed directly on the main thread: random, Champernowne, fraction
-function localDigits(id, n, base) {
-  const digits = new Uint8Array(n);
-  if (id === 'random') {  // reproducible: the same draw number always gives the same digits
-    const rng = seededRandom(currentDraw);
+// The canonical text: no spaces, lower case, explicit *, only the parentheses needed
+function canonical(x) {
+  const wrap = (y, need) => (need ? `(${canonical(y)})` : canonical(y));
+  switch (x.k) {
+    case 'num': case 'name': return x.v;
+    case 'call': return `${x.f}(${x.args.map(canonical).join(',')})`;
+    case 'neg': return `-${wrap(x.a, precOf(x.a) <= 3)}`;  // -(a+b), -(-a)
+    case '^': return `${wrap(x.a, precOf(x.a) <= 4)}^${wrap(x.b, precOf(x.b) < 3)}`;
+    default: return `${wrap(x.a, precOf(x.a) < PREC[x.k])}${x.k}${wrap(x.b, precOf(x.b) <= PREC[x.k])}`;
+  }
+}
+
+// The symbol shown in the title and the status: π², √2, e^π, 392,113# + 1, 🎲…
+const SUP = (v) => String(v).replace(/\d/g, (c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[c]);
+function pretty(x) {
+  const wrap = (y, need) => (need ? `(${pretty(y)})` : pretty(y));
+  const arg = (y) => wrap(y, y.k !== 'num' && y.k !== 'name');
+  switch (x.k) {
+    case 'num': return x.v;
+    case 'name': return FORMULA_NAMES[x.v][1];
+    case 'neg': return `−${wrap(x.a, precOf(x.a) <= 3)}`;
+    case '^': return x.b.k === 'num' && !x.b.v.includes('.') && x.b.v.length <= 3
+      ? `${wrap(x.a, precOf(x.a) <= 4)}${SUP(x.b.v)}` : `${wrap(x.a, precOf(x.a) <= 4)}^${wrap(x.b, precOf(x.b) < 3)}`;
+    case 'call': {
+      const [a, b] = x.args;
+      return { sqrt: () => `√${arg(a)}`, cbrt: () => `∛${arg(a)}`, root: () => `${SUP(b.v)}√${arg(a)}`,
+               ln: () => `ln ${arg(a)}`, zeta: () => `ζ(${pretty(a)})`, primorial: () => `${fmt(Number(a.v))}#`,
+               random: () => '🎲', randprime: () => `🎲 p${SUB(a.v)}` }[x.f]();
+    }
+    default: {
+      const op = { '+': ' + ', '-': ' − ', '*': '·', '/': '/' }[x.k];
+      return `${wrap(x.a, precOf(x.a) < PREC[x.k])}${op}${wrap(x.b, precOf(x.b) <= PREC[x.k])}`;
+    }
+  }
+}
+
+// ≈ log10 of the value of a checked node, never overflowing (sizes and guard digits)
+function formulaLog10(x) {
+  const L = formulaLog10, a = x.args?.[0];
+  switch (x.k) {
+    case 'num': { const f = Math.log10(Number(x.v)); return Number.isFinite(f) ? f : f > 0 ? x.v.split('.')[0].length - 1 : 0; }
+    case 'name': return x.kind === 'seq' ? 0 : Math.log10(APPROX[x.v]);
+    case 'neg': return L(x.a);
+    case '+': case '-': return Math.max(L(x.a), L(x.b)) + 0.302;
+    case '*': return L(x.a) + L(x.b);
+    case '/': return L(x.a) - L(x.b);
+    case '^': return x.epi ? 1.364 : x.exp * L(x.a);
+    default: return { sqrt: () => L(a) / 2, cbrt: () => L(a) / 3, root: () => L(a) / Number(x.args[1].v),
+                      ln: () => -0.159, zeta: () => 0.08, primorial: () => Number(a.v) / Math.LN10,
+                      randprime: () => Number(a.v) - 1, random: () => 0 }[x.f]();
+  }
+}
+
+// Exact value of a small exact node, else null (while checking: perfect powers, exponents)
+function smallExact(x) {
+  if (x.kind !== 'int' && x.kind !== 'rat') return null;
+  if (formulaNodes(x).some((y) => y.k === 'call') || Math.abs(formulaLog10(x)) > 1000) return null;
+  try { return exactValue(x, () => { throw new Error('not small'); }); } catch { return null; }
+}
+
+// Checks a parsed formula, fills in the random seeds left out, and sets node.kind (and node.exp,
+// node.epi for powers). Throws an Error with a readable message.
+function checkFormula(root) {
+  const noSeq = (x) => {
+    if (x.kind === 'seq') throw new Error(`${canonical(x)} is a sequence of digits, not a number: use it alone`);
+  };
+  const whole = (x, lo, hi, what) => {
+    if (x.k !== 'num' || x.v.includes('.') || Number(x.v) < lo || Number(x.v) > hi) {
+      throw new Error(`${what} must be a whole number from ${fmt(lo)} to ${fmt(hi)}`);
+    }
+    return Number(x.v);
+  };
+  const visit = (x) => {
+    if (x.k === 'call') {
+      if (x.f === 'random' && !x.args.length) x.args.push({ k: 'num', v: String(freshDraw()) });
+      if (x.f === 'randprime' && x.args.length === 1) x.args.push({ k: 'num', v: String(freshDraw()) });
+      const arity = FORMULA_FUNCTIONS[x.f];
+      if (x.args.length !== arity) throw new Error(`${x.f}(…) takes ${arity} value${arity > 1 ? 's' : ''}`);
+    }
+    formulaKids(x).forEach(visit);
+    switch (x.k) {
+      case 'num': x.kind = x.v.includes('.') ? 'rat' : 'int'; break;
+      case 'name': x.kind = FORMULA_NAMES[x.v][0]; break;
+      case 'neg': noSeq(x.a); x.kind = x.a.kind; break;
+      case '+': case '-': case '*':
+        noSeq(x.a); noSeq(x.b);
+        x.kind = x.a.kind === 'real' || x.b.kind === 'real' ? 'real' : x.a.kind === 'int' && x.b.kind === 'int' ? 'int' : 'rat';
+        break;
+      case '/':
+        noSeq(x.a); noSeq(x.b);
+        if (x.a.kind === 'real' || x.b.kind === 'real') x.kind = 'real';
+        else { x.kind = 'rat'; const v = smallExact(x); if (v && v[1] === 1n) x.kind = 'int'; }
+        break;
+      case '^': {
+        noSeq(x.a); noSeq(x.b);
+        if (x.a.k === 'name' && x.a.v === 'e' && x.b.k === 'name' && x.b.v === 'pi') { x.epi = true; x.kind = 'real'; break; }
+        const k = x.b.kind === 'int' ? smallExact(x.b) : null;
+        if (!k || k[0] > 100_000_000n || k[0] < -100_000_000n) throw new Error('powers must be whole numbers (e^pi is the only other one)');
+        x.exp = Number(k[0]);
+        x.kind = x.a.kind === 'real' ? 'real' : x.exp < 0 ? 'rat' : x.a.kind;
+        break;
+      }
+      case 'call':
+        switch (x.f) {
+          case 'random': whole(x.args[0], 0, 4294967295, 'The seed of random(…)'); x.kind = 'seq'; break;
+          case 'randprime':
+            whole(x.args[0], 10, 5000, 'The size of randprime(size, seed)');
+            whole(x.args[1], 0, 4294967295, 'The seed of randprime(size, seed)');
+            x.kind = 'int';
+            break;
+          case 'primorial': whole(x.args[0], 2, 20_000_000, 'p in primorial(p)'); x.kind = 'int'; break;
+          case 'ln': if (canonical(x.args[0]) !== '2') throw new Error('only ln(2) for now'); x.kind = 'real'; break;
+          case 'zeta': if (canonical(x.args[0]) !== '3') throw new Error('only zeta(3) for now'); x.kind = 'real'; break;
+          default: {  // sqrt, cbrt, root: exact when the value is a perfect power
+            noSeq(x.args[0]);
+            const k = x.f === 'sqrt' ? 2 : x.f === 'cbrt' ? 3 : whole(x.args[1], 2, 64, 'The degree k in root(x, k)');
+            const v = smallExact(x.args[0]), K = BigInt(k);
+            const perfect = v && v[0] >= 0n && iroot(v[0], k) ** K === v[0] && iroot(v[1], k) ** K === v[1];
+            x.kind = perfect ? x.args[0].kind : 'real';
+          }
+        }
+    }
+  };
+  visit(root);
+}
+
+// The formula of the Formula field, checked and written back in canonical form
+let formulaInUse = 'pi';  // the last formula that was valid, for the link and the saved setups
+function readFormula() {
+  try {
+    const ast = parseFormula($('formula').value);
+    checkFormula(ast);
+    const text = canonical(ast), nodes = formulaNodes(ast);
+    const mag = Math.max(...nodes.map((x) => Math.abs(formulaLog10(x))));
+    if (ast.kind === 'int' && formulaLog10(ast) > 45e6) throw new Error('too large: more than 45 million decimal digits');
+    if (ast.kind === 'real' && mag > 1e5) throw new Error('too large or too small for a computation with guard digits');
+    $('formula').value = formulaInUse = text;
+    const m = text.match(/^2\^(\d+)-1$/);  // a Mersenne prime shows as M₁₂₇
+    const sym = m && MERSENNE.includes(Number(m[1])) ? `M${SUB(m[1])}` : pretty(ast);
+    const root = ast.k === 'name' ? ast.v : ast.k === 'call' ? ast.f : null;
+    return { ast, text, sym, root, kind: ast.kind, mag, nodes: nodes.length, log10: formulaLog10(ast),
+             random: root === 'random' || root === 'randprime' };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+// The menu choice a formula comes from, with the value of its helper menu; else Custom formula
+function presetOf(text) {
+  const found = Object.keys(PRESETS).find((id) => PRESETS[id].f === text);
+  if (found) return { id: found };
+  let m;
+  if ((m = text.match(/^2\^(\d+)-1$/)) && MERSENNE.includes(Number(m[1]))) return { id: 'mersenne', mersenneP: m[1] };
+  if ((m = text.match(/^primorial\((\d+)\)([+-])1$/))
+      && (m[2] === '+' ? PRIMORIAL_PLUS : PRIMORIAL_MINUS).includes(Number(m[1]))) {
+    return { id: 'primorial', primorialP: `${m[1]},${m[2] === '+' ? 1 : -1}` };
+  }
+  if (/^random\(\d+\)$/.test(text)) return { id: 'random' };
+  if ((m = text.match(/^randprime\((\d+),\d+\)$/)) && Array.from($('primeSize').options).some((o) => o.value === m[1])) {
+    return { id: 'randomPrime', primeSize: m[1] };
+  }
+  if (/^\d+\/\d+$/.test(text)) return { id: 'fraction' };
+  return { id: 'custom' };
+}
+
+// The menu and its helper menus follow the formula
+function syncNumberMenu() {
+  const p = presetOf($('formula').value);
+  $('constant').value = p.id;
+  for (const helper of ['mersenneP', 'primorialP', 'primeSize']) if (p[helper]) $(helper).value = p[helper];
+  $('mersenneRow').hidden = p.id !== 'mersenne';
+  $('primorialRow').hidden = p.id !== 'primorial';
+  $('primeSizeRow').hidden = p.id !== 'randomPrime';
+}
+
+const isRandomDigits = () => /^random\(\d+\)$/.test(formulaInUse);
+// Compute on random(…) or randprime(…) draws another one: the formula gets a new seed
+const reseedFormula = () => { $('formula').value = formulaInUse.replace(/\d+\)$/, `${freshDraw()})`); };
+
+// Digits of a sequence (kind 'seq'), computed on the main thread
+function seqDigits(ast, n, base) {
+  const digits = new Uint8Array(n), name = ast.k === 'call' ? ast.f : ast.v;
+  if (name === 'random') {  // reproducible: the same seed always gives the same digits
+    const rng = seededRandom(Number(ast.args[0].v));
     const lim = 2 ** 32 - (2 ** 32 % base);  // rejection sampling for a uniform distribution
     for (let i = 0; i < n; i++) {
       let r;
       do r = rng(); while (r >= lim);
       digits[i] = r % base;
     }
-    return { intPart: '0', digits };
-  }
-  if (id === 'champernowne') {                  // 0.1 2 3 … written in base b one after another
+  } else if (name === 'champernowne') {  // 0.1 2 3 … written in base b one after another
     for (let i = 0, k = 1; i < n; k++) {
       const t = digitString(k, base);
       for (let c = 0; c < t.length && i < n; c++) digits[i++] = t.charCodeAt(c) - 48;
     }
-    return { intPart: '0', digits };
-  }
-  if (id === 'primeConst') {
+  } else if (name === 'primes') {
     // digit k (k = 1, 2, …) is 0 if k is not prime, else k mod b; a prime equal to b counts as 1.
-    // In base 2 this is exactly the prime constant ρ = Σ 2^(−p) = 0.0110101000101…
+    // In base 2 this is exactly the binary expansion of the prime constant ρ = Σ 2^(−p)
     const composite = sieve(n);
     for (let k = 2; k <= n; k++) if (!composite[k]) digits[k - 1] = k % base || 1;
-    return { intPart: '0', digits };
-  }
-  if (id === 'primeReal') {
-    // the real number ρ = Σ 2^(−p): its binary expansion is the barcode (bit k = 1 when k is prime).
-    // Keep enough bits (+ 64 guard bits), then its first n digits in base b are ⌊ρ·b^n⌋.
-    const bits = Math.ceil(n * Math.log2(base)) + 64;
-    const composite = sieve(bits);
-    let barcode = '';
-    for (let k = 1; k <= bits; k++) barcode += composite[k] ? '0' : '1';
-    const scaled = (BigInt(`0b${barcode}`) * BigInt(base) ** BigInt(n)) >> BigInt(bits);
-    const s = digitString(scaled, base).padStart(n, '0');
-    for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(i) - 48;
-    return { intPart: '0', digits };
-  }
-  if (id === 'primeGaps') {
+  } else {  // primegaps
     // gaps between consecutive odd primes (3→5, 5→7, 7→11, …) are even: digit = (gap / 2) mod b.
     // The n-th prime is below n·(ln n + ln ln n) for n ≥ 6.
     const limit = Math.ceil((n + 2) * (Math.log(n + 2) + Math.log(Math.log(n + 2)))) + 100;
@@ -609,19 +991,8 @@ function localDigits(id, n, base) {
       digits[i++] = ((k - prev) / 2) % base;
       prev = k;
     }
-    return { intPart: '0', digits };
   }
-  // fraction p/q: long division in base b
-  const m = $('fraction').value.replace(/\s/g, '').match(/^(\d+)(?:\/(\d+))?$/);
-  if (!m || BigInt(m[2] ?? 1) === 0n) return null;
-  const p = BigInt(m[1]), q = BigInt(m[2] ?? 1), B = BigInt(base);
-  let r = p % q;
-  for (let i = 0; i < n; i++) {
-    r *= B;
-    digits[i] = Number(r / q);
-    r %= q;
-  }
-  return { intPart: digitString(p / q, base), digits };
+  return { intPart: '0', digits };
 }
 
 // Digits of a non-negative integer (Number or BigInt) in base b, one character per digit
@@ -721,9 +1092,6 @@ function compute() {
   renderModePicker();
   if (mode.sphere) fillSphereSizes(mode.sphere);
   const n = digitsNeeded();
-  const id = $('constant').value;
-  const info = numberInfo(id);
-  const { sym } = info;
   if (!mode.life) $('digits').value = n;
   relabelColours(!!mode.life);
   $('lifeRuleRow').hidden = !mode.life;
@@ -732,86 +1100,87 @@ function compute() {
   stopHunt();
   $('huntStatus').textContent = '';
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
-  // Life recomputes on every change: Compute is only kept to redraw a random number
-  $('compute').hidden = !!mode.life && !['random', 'randomPrime'].includes($('constant').value);
-  if (!$('compute').disabled) $('compute').textContent = computeLabel();
   $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
+  $('sphereRow').hidden = mode.lattice !== 'sphere';
+  updateRuleText();
+  if (worker) { worker.terminate(); worker = null; setBusy(false); }
+  championCode = null;  // a new start: no loaded champion any more
+  const F = readFormula();
+  syncNumberMenu();
+  // Life recomputes on every change: Compute is only kept to draw a new random number
+  $('compute').hidden = !!mode.life && !F.random;
+  if (!$('compute').disabled) $('compute').textContent = computeLabel();
+  if (F.error) {
+    $('status').textContent = `Formula: ${F.error}`;
+    return;
+  }
+  const { sym, kind } = F;
   $('titleSym').textContent = sym;
-  $('fractionRow').hidden = id !== 'fraction';
-  $('mersenneRow').hidden = id !== 'mersenne';
-  $('primorialRow').hidden = id !== 'primorial';
-  $('primeSizeRow').hidden = id !== 'randomPrime';
-  $('sphereRow').hidden = MODES[$('mode').value].lattice !== 'sphere';
-  const integer = INTEGER_IDS.includes(id);
   const base = mode.life ? lifeStates() : mode.base;  // Life: the number of states of the rule
-  const key = `${info.key}/${base}`;
+  const key = `${F.text}/${base}`;
   // Status wording: "π in base 3 · 20,000 digits" for walks, "10,240 cells seeded with π in base 3" for Life
   const cells = mode.life ? n : 0;
   const label = (count) => (!mode.life ? `${sym} in base ${base} · ${fmt(count)} digits`
     : count < cells ? `${fmt(count)} of ${fmt(cells)} cells seeded with ${sym} in base ${base} (the others start dead)`
     : `${fmt(cells)} cells seeded with ${sym} in base ${base}`);
-  updateRuleText();
-  if (worker) { worker.terminate(); worker = null; setBusy(false); }
-  championCode = null;  // a new start: no loaded champion any more
-  const random = id === 'random' || id === 'randomPrime';
-  if (random) { currentDraw = pendingDraw ?? freshDraw(); pendingDraw = null; }
-  const draw = random ? ` · draw #${currentDraw}` : '';
+  const note = FORMULA_NOTES[F.root] ? ` — ${FORMULA_NOTES[F.root](base)}` : '';
 
-  if (['random', 'champernowne', 'fraction', 'primeConst', 'primeReal', 'primeGaps'].includes(id)) {
-    const entry = localDigits(id, n, base);
-    if (!entry) {
-      $('status').textContent = 'Enter a fraction like 22/7';
-      return;
-    }
-    setCurrent(entry);
-    const { note } = CONSTANTS[id];
-    $('status').textContent = (note ? `${label(n)} — ${note(base)}` : label(n)) + draw;
+  if (kind === 'seq') {
+    setCurrent(seqDigits(F.ast, n, base));
+    $('status').textContent = label(n) + note;
     buildWalk();
     showAll();
     applyPendingView();
     return;
   }
 
+  const integer = kind === 'int';
   const done = (entry, how) => {
     setCurrent(entry);
     const total = entry.total ?? current.head.length + current.digits.length;
-    const what = id === 'randomPrime'
-      ? `${label(total)}: a random ${fmt(info.size)}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`
-      : integer ? label(total) : label(n);
-    $('status').textContent = `${what} ${how}${integer && total > n && !mode.life ? ` — walking the first ${fmt(n)}` : ''}${draw}`;
+    const what = F.root === 'randprime'
+      ? `${label(total)}: a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`
+      : integer ? label(total) : label(n) + note;
+    const warning = entry.uncertain ? ' ⚠ the value is extremely close to a round number: the last digits could be off by one' : '';
+    $('status').textContent = `${what} ${how}${integer && total > n && !mode.life ? ` — walking the first ${fmt(n)}` : ''}${warning}`;
     buildWalk();
     showAll();
     applyPendingView();
   };
-  const hit = info.key && cache[key];
+  const hit = cache[key];
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
                          : hit && hit.digits.length >= n;
   if (enough) {
     done(hit, '(cached)');
     return;
   }
-  // the worker also needs digitString and seededRandom
-  const src = `${digitString.toString()}\n${seededRandom.toString()}\n(${constantWorker.toString()})()`;
+  // the worker also needs digitString, seededRandom, exactValue and iroot
+  const src = [digitString, seededRandom, exactValue, iroot].map(String).join('\n') + `\n(${formulaWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
-  const slow = (id === 'mersenne' && info.p > 20_000_000) || (id === 'randomPrime' && info.size > 1000);
+  const slow = F.log10 > 6e6 || (F.root === 'randprime' && Number(F.ast.args[0].v) > 1000);
   $('status').textContent =
-    (id === 'randomPrime' ? `Searching for a random ${fmt(info.size)}-digit prime…`
+    (F.root === 'randprime' ? `Searching for a random ${fmt(Number(F.ast.args[0].v))}-digit prime…`
       : `Computing ${integer || mode.life ? `${sym} in base ${base}` : label(n)}…`) +
     (slow ? ' (this can take a minute or more)' : '');
   worker.onmessage = (e) => {
-    if (e.data.type === 'progress') {
-      $('progressBar').style.width = `${Math.min(100, e.data.p * 100)}%`;
-    } else {
-      const entry = { intPart: e.data.intPart, digits: e.data.digits, total: e.data.total, tests: e.data.tests };
-      if (info.key) cache[key] = entry;
-      worker.terminate();
-      worker = null;
-      setBusy(false);
-      done(entry, `(${(e.data.ms / 1000).toFixed(2)} s)`);
+    const d = e.data;
+    if (d.type === 'progress') {
+      $('progressBar').style.width = `${Math.min(100, d.p * 100)}%`;
+      return;
     }
+    worker.terminate();
+    worker = null;
+    setBusy(false);
+    if (d.type === 'error') {
+      $('status').textContent = `Formula: ${d.message}`;
+      return;
+    }
+    const entry = { intPart: d.intPart, digits: d.digits, total: d.total, tests: d.tests, uncertain: d.uncertain };
+    cache[key] = entry;
+    done(entry, `(${(d.ms / 1000).toFixed(2)} s)`);
   };
-  worker.postMessage({ id, n, base, p: info.p, sign: info.sign, size: info.size, seed: currentDraw });
+  worker.postMessage({ ast: F.ast, n, base, mag: F.mag, nodes: F.nodes });
 }
 
 // Label of the Compute button: in Life it is only useful to draw a new random seed
@@ -1795,8 +2164,8 @@ function setHuntPhase(phase) {
 // The hunt works on random starts, so the number becomes 🎲 Random digits first
 function startHunt() {
   if (!walk.life) return;
-  if ($('constant').value !== 'random') {
-    $('constant').value = 'random';
+  if (!isRandomDigits()) {
+    $('formula').value = presetFormula('random');
     compute();
   }
   stopHunt();
@@ -1846,8 +2215,8 @@ function renderHuntList() {
 // the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
 function pickHuntZone(zone) {
   huntZone = zone;
-  if (zone === 'all' || $('constant').value !== 'random') {
-    $('constant').value = 'random';
+  if (zone === 'all' || !isRandomDigits()) {
+    $('formula').value = presetFormula('random');
     compute();  // a new draw (built at once: random digits need no worker)
     if (zone === 'all') return;
   }
@@ -1998,12 +2367,7 @@ function decodeCells(code, n) {
 }
 
 function getSetup() {
-  const w = $('mode').value, mode = MODES[w], n = $('constant').value, s = { n, w };
-  if (n === 'fraction') s.fr = $('fraction').value;
-  if (n === 'mersenne') s.mp = $('mersenneP').value;
-  if (n === 'primorial') s.pr = $('primorialP').value;
-  if (n === 'randomPrime') s.ps = $('primeSize').value;
-  if (n === 'random' || n === 'randomPrime') s.rd = currentDraw;
+  const w = $('mode').value, mode = MODES[w], s = { x: formulaInUse, w };
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (mode.life) s.r = $('lifeRule').value;
@@ -2013,12 +2377,9 @@ function getSetup() {
 
 function applySetup(s) {
   const set = (id, v) => { if (v !== undefined && v !== null) $(id).value = v; };
-  if (!CONSTANTS[s.n] || !MODES[s.w]) return false;
-  set('constant', s.n);
-  set('fraction', s.fr);
-  set('mersenneP', s.mp);
-  set('primorialP', s.pr);
-  set('primeSize', s.ps);
+  if (typeof s.x !== 'string' || !MODES[s.w]) return false;
+  $('formula').value = s.x;
+  if (readFormula().error) return false;
   set('digits', s.d);
   set('mode', s.w);
   if (MODES[s.w].sphere) { fillSphereSizes(MODES[s.w].sphere); set('sphereF', s.s); }
@@ -2031,7 +2392,6 @@ function applySetup(s) {
   $('perspective').checked = !!MODES[s.w].perspective;
   $('colorMode').value = MODES[s.w].life ? 'mono' : 'gradient';
   $('autoFit').checked = true;
-  pendingDraw = s.rd !== undefined ? Number(s.rd) : null;
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
   return true;
@@ -2050,11 +2410,19 @@ function applyPendingView() {
 }
 
 // The page link always holds the current setup (#n=pi&w=turtle&…), for bookmarks and sharing.
-const toHash = (s) => new URLSearchParams(s).toString();
+// Readable links: #x=(1+sqrt(5))/2&w=turtle — formulas and rules keep / + ^ , : as they are
+const toHash = (s) => Object.entries(s)
+  .map(([k, v]) => `${k}=${encodeURIComponent(String(v)).replace(/%(2F|2B|5E|2C|3A)/g, (c) => decodeURIComponent(c))}`)
+  .join('&');
 function parseHash() {
   if (location.hash.length < 2) return null;
-  const s = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
-  return s.n && s.w ? s : null;
+  try {
+    const s = Object.fromEntries(location.hash.slice(1).split('&').map((kv) => {
+      const at = kv.indexOf('=');
+      return [kv.slice(0, at), decodeURIComponent(kv.slice(at + 1))];
+    }));
+    return s.x && s.w ? s : null;
+  } catch { return null; }
 }
 function syncLink() {
   if ($('compute').disabled || pendingChampion) return;  // not while a setup is still being built
@@ -2862,7 +3230,10 @@ function tick(now = performance.now()) {
 /* ------------------------------------------------------------------ *
  * Interactions                                                       *
  * ------------------------------------------------------------------ */
-$('compute').addEventListener('click', compute);
+$('compute').addEventListener('click', () => {
+  if (readFormula().random) reseedFormula();
+  compute();
+});
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
   play(!playing);
@@ -2935,7 +3306,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 const groups = {};
-for (const [id, { sym, name, group = 'Constants' }] of Object.entries(CONSTANTS)) {
+for (const [id, { sym, name, group = 'Constants' }] of Object.entries(PRESETS)) {
   if (!groups[group]) {
     groups[group] = document.createElement('optgroup');
     groups[group].label = group;
@@ -2958,8 +3329,11 @@ for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
   $('primorialP').append(group);
 }
 $('primorialP').value = '392113,1';
-$('primorialP').addEventListener('change', computeFramed);
-$('primeSize').addEventListener('change', computeFramed);
+// A menu choice, or a new value in its helper menu, writes its formula
+const pickPreset = (id) => { $('formula').value = presetFormula(id); computeFramed(); };
+$('mersenneP').addEventListener('change', () => pickPreset('mersenne'));
+$('primorialP').addEventListener('change', () => pickPreset('primorial'));
+$('primeSize').addEventListener('change', () => pickPreset('randomPrime'));
 $('sky').addEventListener('change', () => { needsFull = true; });
 // flat ↔ round: the animation runs in tick (morphStep); the walk or Life run goes on meanwhile
 $('morphBtn').addEventListener('click', () => {
@@ -2993,9 +3367,12 @@ $('sphereF').addEventListener('change', () => {
   buildWalk();
   showAll();
 });
-$('constant').addEventListener('change', computeFramed);
-$('mersenneP').addEventListener('change', computeFramed);
-$('fraction').addEventListener('change', computeFramed);
+$('constant').addEventListener('change', () => {
+  if ($('constant').value !== 'custom') { pickPreset($('constant').value); return; }
+  $('formula').focus();  // Custom formula: type it
+  $('formula').select();
+});
+$('formula').addEventListener('change', computeFramed);
 // A new number (or a new prime, size or fraction) starts framed
 function computeFramed() {
   $('autoFit').checked = true;

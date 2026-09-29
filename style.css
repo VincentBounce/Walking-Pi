@@ -73,6 +73,7 @@ input[type=number], input[type=text], select {
   border-radius: 6px;
   font: inherit;
 }
+#formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 input[type=checkbox] { accent-color: var(--accent); }
 

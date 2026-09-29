@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261001u">
+  <link rel="stylesheet" href="style.css?v=20261001v">
 </head>
 <body>
   <header>
-    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.81</span></h1>
+    <h1>Walking <span id="titleSym" class="pi">π</span> <span class="version" title="0.1.0 = first commit, +1 per commit">v0.1.82</span></h1>
     <p id="rule" class="subtitle"></p>
   </header>
 
@@ -93,8 +93,9 @@
         <label>Number
           <select id="constant"></select>
         </label>
-        <label id="fractionRow" hidden>Fraction p/q
-          <input id="fraction" type="text" value="22/7" inputmode="numeric" autocomplete="off">
+        <label>Formula
+          <input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off"
+                 title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, zeta(3), ln(2), sqrt(3), cbrt(2), root(x, k), 22/7, 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps. Press Enter to compute">
         </label>
         <label id="mersenneRow" hidden>Prime
           <select id="mersenneP"></select>
@@ -196,6 +197,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261001u"></script>
+  <script src="main.js?v=20261001v"></script>
 </body>
 </html>
