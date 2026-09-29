@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.112';
+const VERSION = '0.1.113';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1148,8 +1148,7 @@ function readFormula() {
     const m = text.match(/^2\^(\d+)-1$/);  // a Mersenne prime shows as M₁₂₇
     const sym = m && MERSENNE.includes(Number(m[1])) ? `M${SUB(m[1])}` : pretty(ast);
     const root = ast.k === 'name' ? ast.v : ast.k === 'call' ? ast.f : null;
-    return { ast, text, sym, root, kind: ast.kind, mag, nodes: nodes.length, log10: formulaLog10(ast),
-             random: root === 'random' || root === 'randprime' };
+    return { ast, text, sym, root, kind: ast.kind, mag, nodes: nodes.length, log10: formulaLog10(ast) };
   } catch (err) {
     return { error: err.message };
   }
@@ -1210,8 +1209,6 @@ function renderNumberPicker(active) {
 }
 
 const isRandomDigits = () => /^random\(\d+\)$/.test(formulaInUse);
-// Compute on random(…) or randprime(…) draws another one: the formula gets a new seed
-const reseedFormula = () => { $('formula').value = formulaInUse.replace(/\d+\)$/, `${freshDraw()})`); };
 
 
 /* ---- 4.7 Sequences and digit helpers --------------------------------------------------------- */
@@ -1376,9 +1373,9 @@ function compute() {
   championCode = null;  // a new start: no loaded champion any more
   const F = readFormula();
   syncNumberMenu();
-  // Life recomputes on every change: Compute is only kept to draw a new random number
-  $('compute').hidden = !!mode.life && !F.random;
-  if (!$('compute').disabled) $('compute').textContent = computeLabel();
+  // Compute applies a new number of digits: Life needs none (one digit per cell, recomputed on every
+  // change), and a new random draw is a click on its 🎲 tile again
+  $('compute').hidden = !!mode.life;
   if (F.error) {
     $('status').textContent = `Formula: ${F.error}`;
     return;
@@ -1452,12 +1449,9 @@ function compute() {
   worker.postMessage({ ast: F.ast, n, base, mag: F.mag, nodes: F.nodes });
 }
 
-// Label of the Compute button: in Life it is only useful to draw a new random seed
-const computeLabel = () => (MODES[$('mode').value].life ? 'New random draw' : 'Compute');
-
 function setBusy(busy) {
   $('compute').disabled = busy;
-  $('compute').textContent = busy ? 'Computing…' : computeLabel();
+  $('compute').textContent = busy ? 'Computing…' : 'Compute';
   $('progressBar').style.width = '0';
   $('progress').hidden = !busy;  // the bar only shows while computing
 }
@@ -3714,10 +3708,7 @@ function tick(now = performance.now()) {
  */
 
 /* ---- 12.1 Buttons, menus, keyboard and mouse ------------------------------------------------- */
-$('compute').addEventListener('click', () => {
-  if (readFormula().random) reseedFormula();
-  compute();
-});
+$('compute').addEventListener('click', compute);
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
   play(!playing);
