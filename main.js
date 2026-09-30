@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.127';
+const VERSION = '0.1.128';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -852,7 +852,7 @@ function describe(base, available) {
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
 // Walks on surfaces have no Colors: their tiles are coloured by the number of visits.
 const DISPLAY_BY_TAB = {
-  '2D walks': ['colors', 'fill', 'grid', 'autoFit'],
+  '2D walks': ['colors', 'fill', 'cells', 'grid', 'autoFit'],
   '3D walks': ['colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
@@ -871,15 +871,16 @@ function updateDisplayMenu() {
 function relabelColours(mode) {
   const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
-  const names = !life ? { gradient: 'Gradient (order)', fill: 'Fill areas', digit: 'By digit', mono: 'Monochrome' }
+  const names = !life ? { gradient: 'Gradient (order)', fill: 'Fill areas', cells: 'Fill cells', digit: 'By digit', mono: 'Monochrome' }
     : { mono: `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
-        digit: 'Activity (state changes)', fill: '' };
+        digit: 'Activity (state changes)', fill: '', cells: '' };
   const sel = $('colorMode');
-  const order = life ? ['mono', 'gradient', 'digit', 'fill'] : ['gradient', 'fill', 'digit', 'mono'];
+  const order = life ? ['mono', 'gradient', 'digit', 'fill', 'cells'] : ['gradient', 'fill', 'cells', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   byValue.fill.hidden = !shows('fill');
+  byValue.cells.hidden = !shows('cells');
   if (sel.selectedOptions[0]?.hidden) sel.value = 'gradient';
   renderColorButtons();
 }
@@ -3568,12 +3569,39 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf) {
 
 
 /* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
+// Fill cells: the tile around a point of a 2D walk, as a path on the canvas (world → screen)
+function tilePath(ctx, x, y) {
+  const { scale: s, ox, oy } = view, X = (u) => ox + u * s, Y = (v) => oy + v * s;
+  if (walk.lattice === 'square') { ctx.rect(X(x - 0.5), Y(y - 0.5), s, s); return; }
+  let pts;
+  if (walk.lattice === 'tri') {  // ▲ has its centre 2/3 down its row, ▼ 1/3 (see triStepper)
+    const top = TRI_Y0 + Math.floor((y - TRI_Y0) / H) * H, up = y - top > H / 2;
+    pts = up ? [[x, top], [x + 0.5, top + H], [x - 0.5, top + H]] : [[x - 0.5, top], [x + 0.5, top], [x, top + H]];
+  } else {  // flat-topped hexagon of radius 1/√3 (see hexStepper)
+    pts = [0, 1, 2, 3, 4, 5].map((k) => [x + Math.cos((k * Math.PI) / 3) / Math.sqrt(3), y - Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]);
+  }
+  ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
+  for (let k = 1; k < pts.length; k++) ctx.lineTo(X(pts[k][0]), Y(pts[k][1]));
+  ctx.closePath();
+}
+
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
   const ctx = layers.path;
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
+  if ($('colorMode').value === 'cells' && shows('cells')) {  // Fill cells: the tile of each point, in its step's colour
+    if (from === 0) { ctx.beginPath(); tilePath(ctx, xs[0], ys[0]); ctx.fillStyle = styleColor(styleKey(0)); ctx.fill(); }
+    for (let i = from; i < to;) {
+      const k = styleKey(i);
+      ctx.beginPath();
+      for (; i < to && styleKey(i) === k; i++) tilePath(ctx, xs[i + 1], ys[i + 1]);
+      ctx.fillStyle = styleColor(k);
+      ctx.fill();
+    }
+    return;
+  }
   ctx.lineWidth = Math.max(0.6, Math.min(s * 0.3, 6));
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
