@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.124';
+const VERSION = '0.1.125';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1384,7 +1384,7 @@ function renderModePicker() {
   if (!modeTab) modeTab = currentGroup;
   $('modeTabs').replaceChildren(...groups.map((g) => {
     const b = document.createElement('button');
-    b.textContent = b.dataset.label = tabName(g.label);  // data-label: see .tabs button::after (style.css)
+    b.textContent = tabName(g.label);
     b.title = g.label;
     b.setAttribute('role', 'tab');
     b.classList.toggle('active', g.label === modeTab);
