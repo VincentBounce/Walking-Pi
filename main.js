@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.120';
+const VERSION = '0.1.121';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2219,12 +2219,20 @@ function applyShape() {
   updateMorphButton();
 }
 
+// Flat | Inflated (Unrolled | Rolled for a torus) in the Display menu, for surfaces that can change
+// shape; the animation runs in tick (morphStep) and the walk or Life run goes on meanwhile
 function updateMorphButton() {
-  const sh = walk.shape, btn = $('morphBtn');
-  btn.hidden = !sh;
+  const sh = walk.shape;
+  $('shapeRow').hidden = !sh;
   if (!sh) return;
-  const round = sh.target === 1;
-  btn.textContent = walk.geo.torus ? (round ? '▭ Unroll' : '◎ Roll up') : (round ? '◇ Flatten' : '● Inflate');
+  const names = walk.geo.torus ? ['Unrolled', 'Rolled'] : ['Flat', 'Inflated'];
+  $('shapeButtons').replaceChildren(...names.map((name, m) => {
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.classList.toggle('active', sh.target === m);
+    b.addEventListener('click', () => { walk.shape.target = m; updateMorphButton(); });
+    return b;
+  }));
 }
 
 // One animation frame of the change of shape (about 0.7 s from flat to round)
@@ -3848,8 +3856,8 @@ function updateStats() {
 // How many characters fit on one line of the strip, measured again only when its font or width changes
 const stripMeasure = { key: '', cols: 0, ctx: null };
 function stripColumns(el) {
-  // the width of the box it sits in: the strip itself is hidden while empty (width 0)
-  const box = el.parentElement, bs = getComputedStyle(box);
+  // the width of the box it sits in, which keeps its width even while its details are folded away
+  const box = el.closest('.stage-box') ?? el.parentElement, bs = getComputedStyle(box);
   const width = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
   const st = getComputedStyle(el), font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`, key = `${font}|${width}`;
   if (stripMeasure.key !== key) {
@@ -4022,12 +4030,6 @@ $('primorialP').addEventListener('change', () => pickPreset('primorial'));
 $('primeSize').addEventListener('change', () => pickPreset('randomPrime'));
 $('sky').addEventListener('change', () => { needsFull = true; renderSkyButtons(); });
 renderSkyButtons();
-// flat ↔ round: the animation runs in tick (morphStep); the walk or Life run goes on meanwhile
-$('morphBtn').addEventListener('click', () => {
-  if (!walk.shape) return;
-  walk.shape.target = walk.shape.target === 1 ? 0 : 1;
-  updateMorphButton();
-});
 // the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
 for (const type of ['pointerdown', 'dblclick', 'wheel']) {
   $('animBar').addEventListener(type, (e) => e.stopPropagation());

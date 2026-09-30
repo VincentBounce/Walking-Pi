@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003h">
+  <link rel="stylesheet" href="style.css?v=20261003i">
 </head>
 <body>
   <header>
@@ -163,62 +163,63 @@
       <canvas id="pathLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
       <div id="hint" class="hint">Wheel: zoom · Drag: pan · Double-click: auto-fit</div>
-      <div id="animBar" class="stage-bar" aria-label="Animation and stats">
-        <dl class="stats">
-          <dt id="lifetimeLabel" hidden>Lifetime</dt><dd id="sLifetime" hidden>—</dd>
-          <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
-          <dt id="lStat1">Position</dt><dd id="sPos">(0, 0)</dd>
-          <dt id="lStat2">Distance</dt><dd id="sDist">0</dd>
-          <dt id="lStat3">Max distance</dt><dd id="sMax">0</dd>
-          <dt id="lStat4">Cells visited</dt><dd id="sCells">1</dd>
-          <dt id="sCountsLabel">0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
-        </dl>
-        <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
+      <div id="animBar" class="stage-box stage-bar" aria-label="Animation and stats">
+        <div class="stage-more">  <!-- shown on hover, above the Play row -->
+          <dl class="stats">
+            <dt id="lifetimeLabel" hidden>Lifetime</dt><dd id="sLifetime" hidden>—</dd>
+            <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
+            <dt id="lStat1">Position</dt><dd id="sPos">(0, 0)</dd>
+            <dt id="lStat2">Distance</dt><dd id="sDist">0</dd>
+            <dt id="lStat3">Max distance</dt><dd id="sMax">0</dd>
+            <dt id="lStat4">Cells visited</dt><dd id="sCells">1</dd>
+            <dt id="sCountsLabel">0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
+          </dl>
+          <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
+          <label>Speed: <span id="speedLabel"></span>
+            <input id="speed" type="range" min="0" max="100" step="any" value="27.96">
+          </label>
+        </div>
         <div class="row">
           <button id="restart" title="Jump to start (R)">⏮</button>
           <button id="play" class="primary" title="Play / pause (Space)">▶︎ Play</button>
           <button id="step" title="One step (→)">Step</button>
           <button id="end" title="Jump to end (E)">⏭</button>
         </div>
-        <label>Speed: <span id="speedLabel"></span>
-          <input id="speed" type="range" min="0" max="100" step="any" value="27.96">
-        </label>
       </div>
-      <div id="viewTools" class="stage-tools">
-        <button id="morphBtn" class="stage-button" hidden title="Switch between the flat and the round form (same cells, same walk)">● Inflate</button>
-        <div class="display-menu">
-          <button class="stage-button" title="Display settings">◐ Display</button>
-          <div class="display-panel">
-            <div class="display-box">
-              <div class="field-label">Colors</div>
-              <div id="colorButtons" class="choice-list"></div>
-              <select id="colorMode" hidden>
-                <option value="gradient">Gradient (order)</option>
-                <option value="fill">Fill areas</option>
-                <option value="digit">By digit</option>
-                <option value="mono">Monochrome</option>
-              </select>
-              <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
-              <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
-              <div id="skyRow" hidden>
-                <div class="field-label">Sky (3D)</div>
-                <div id="skyButtons" class="choice-row"></div>
-                <select id="sky" hidden>
-                  <option value="twilight">Twilight</option>
-                  <option value="blue">Deep blue</option>
-                  <option value="dark">Dark</option>
-                </select>
-              </div>
-              <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate (3D)</label>
-              <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective (3D)</label>
-              <button id="fit">Fit view (F)</button>
-            </div>
+      <div id="viewTools" class="stage-box display-menu">
+        <button class="stage-head" title="Display settings">◐ Display</button>
+        <div class="stage-more">  <!-- shown on hover, below -->
+          <div id="shapeRow" hidden>
+            <div class="field-label">Shape</div>
+            <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
           </div>
+          <div class="field-label">Colors</div>
+          <div id="colorButtons" class="choice-list"></div>
+          <select id="colorMode" hidden>
+            <option value="gradient">Gradient (order)</option>
+            <option value="fill">Fill areas</option>
+            <option value="digit">By digit</option>
+            <option value="mono">Monochrome</option>
+          </select>
+          <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
+          <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
+          <div id="skyRow" hidden>
+            <div class="field-label">Sky (3D)</div>
+            <div id="skyButtons" class="choice-row"></div>
+            <select id="sky" hidden>
+              <option value="twilight">Twilight</option>
+              <option value="blue">Deep blue</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate (3D)</label>
+          <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective (3D)</label>
+          <button id="fit">Fit view (F)</button>
         </div>
       </div>
     </div>
   </main>
 
-  <script src="main.js?v=20261003h"></script>
+  <script src="main.js?v=20261003i"></script>
 </body>
 </html>

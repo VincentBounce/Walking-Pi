@@ -176,39 +176,10 @@ button.primary {
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.stage-tools {  /* over the view, top right: Inflate / Unroll and the Display menu */
+/* The two boxes over the view (Play bottom left, Display top right): the same frame and
+   translucency; hovering one opens the rest of it in the same frame (on touch screens, a tap) */
+.stage-box {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  cursor: default;
-}
-.stage-button { background: rgba(14, 17, 22, 0.75); backdrop-filter: blur(4px); }
-/* Display: a small button that opens its settings on hover (or on focus, for touch screens) */
-.display-menu { position: relative; }
-.display-panel { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 2; }
-.display-menu:hover .display-panel, .display-menu:focus-within .display-panel { display: block; }
-.display-box {
-  width: 230px;
-  padding: 10px;
-  background: rgba(14, 17, 22, 0.92);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-.choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
-.choice-row { display: flex; gap: 4px; margin-bottom: 10px; }  /* a few short choices side by side */
-.choice-row button { flex: 1; padding: 5px 4px; font-size: 12px; background: var(--panel); white-space: nowrap; }
-.choice-row button.active,
-.choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
-.stage-bar {  /* the animation controls over the view, bottom left: facing the stage button */
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  width: 250px;
   padding: 8px;
   background: rgba(14, 17, 22, 0.75);
   backdrop-filter: blur(4px);
@@ -216,13 +187,29 @@ button.primary {
   border-radius: 8px;
   cursor: default;
 }
+.stage-more { display: none; }
+.stage-box:hover .stage-more { display: block; }
+@media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
+.display-menu { top: 12px; right: 12px; }
+.display-menu:hover { width: 230px; }
+@media (hover: none) { .display-menu:focus-within { width: 230px; } }
+.stage-head { width: 100%; padding: 2px 6px; border: 0; background: none; text-align: left; font-weight: 600; }
+.display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
+.choice-row { display: flex; gap: 4px; margin-bottom: 10px; }  /* a few short choices side by side */
+.choice-row button { flex: 1; padding: 5px 4px; font-size: 12px; background: var(--panel); white-space: nowrap; }
+.choice-row button.active,
+.choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
+.stage-bar { left: 12px; bottom: 12px; width: 250px; }  /* grows upwards: the Play row stays at the bottom */
+.stage-bar .stage-more { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 .stage-bar .stats { font-size: 12px; gap: 2px 12px; }  /* the stats sit above the controls */
 .stage-bar .strip { margin: 6px 0 0; min-height: 0; font-size: 12px; }
 .stage-bar .strip:empty { display: none; }
-.stage-bar .row { margin: 8px 0 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+.stage-bar .row { margin: 0; }
 .stage-bar .row button:first-child { flex: none; }  /* ⏮ comes first: Play is the one that stretches */
 .stage-bar #play { flex: 1; }
-.stage-bar label { margin: 0; font-size: 12px; color: var(--muted); }
+.stage-bar label { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .hint {
   position: absolute;
   right: 12px;
