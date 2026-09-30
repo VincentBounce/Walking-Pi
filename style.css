@@ -243,10 +243,12 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .stage-more { display: block; }
 @media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
 .display-menu { top: 12px; right: 12px; }
-/* the number that Copy puts on the clipboard, shown over the view while the button is hovered */
+/* the number that Copy puts on the clipboard, in place of the whole view while the button is hovered */
 .number-preview {
-  inset: 56px 12px 64px;
-  padding: 12px 14px;
+  position: absolute;
+  inset: 0;
+  padding: 16px 20px;
+  background: var(--bg);
   overflow: hidden;
   font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
   word-break: break-all;
