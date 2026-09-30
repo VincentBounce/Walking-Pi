@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.128';
+const VERSION = '0.1.129';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -852,7 +852,7 @@ function describe(base, available) {
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
 // Walks on surfaces have no Colors: their tiles are coloured by the number of visits.
 const DISPLAY_BY_TAB = {
-  '2D walks': ['colors', 'fill', 'cells', 'grid', 'autoFit'],
+  '2D walks': ['colors', 'fill', 'cells', 'visits', 'grid', 'autoFit'],
   '3D walks': ['colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
@@ -871,16 +871,17 @@ function updateDisplayMenu() {
 function relabelColours(mode) {
   const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
-  const names = !life ? { gradient: 'Gradient (order)', fill: 'Fill areas', cells: 'Fill cells', digit: 'By digit', mono: 'Monochrome' }
+  const names = !life ? { gradient: 'Gradient (order)', fill: 'Fill areas', cells: 'Fill cells', visits: 'Visits', digit: 'By digit', mono: 'Monochrome' }
     : { mono: `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
-        digit: 'Activity (state changes)', fill: '', cells: '' };
+        digit: 'Activity (state changes)', fill: '', cells: '', visits: '' };
   const sel = $('colorMode');
-  const order = life ? ['mono', 'gradient', 'digit', 'fill', 'cells'] : ['gradient', 'fill', 'cells', 'digit', 'mono'];
+  const order = life ? ['mono', 'gradient', 'digit', 'fill', 'cells', 'visits'] : ['gradient', 'fill', 'cells', 'visits', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   byValue.fill.hidden = !shows('fill');
   byValue.cells.hidden = !shows('cells');
+  byValue.visits.hidden = !shows('visits');
   if (sel.selectedOptions[0]?.hidden) sel.value = 'gradient';
   renderColorButtons();
 }
@@ -1556,6 +1557,7 @@ function setBusy(on) {
 // All positions, distances and counts are computed once into typed arrays: the animation, the
 // stats and the jumps only read them.
 function buildWalk() {
+  visitData = null;  // and its cells' visits too
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -3585,21 +3587,49 @@ function tilePath(ctx, x, y) {
   ctx.closePath();
 }
 
+// Visits: the cell of every point and the most visits of any cell over the whole walk, which fixes
+// the log scale once, so a painted cell only changes colour when the walk comes back to it
+let visitData = null;  // { cell, max, seen } for the current walk
+function visitCells() {
+  if (visitData) return visitData;
+  const { xs, ys, lattice: lat } = walk, n = walk.n, index = new Map(), cell = new Int32Array(n + 1), total = [];
+  for (let i = 0; i <= n; i++) {  // whole-number coordinates of each cell centre, per tiling
+    const kx = lat === 'hex' ? Math.round(xs[i] / H) : Math.round(2 * xs[i]);
+    const ky = lat === 'tri' ? Math.round(((ys[i] - TRI_Y0) * 3) / H) : Math.round(2 * ys[i]);
+    const k = (kx + 33554432) * 67108864 + (ky + 33554432);
+    let c = index.get(k);
+    if (c === undefined) { c = total.length; index.set(k, c); total.push(0); }
+    cell[i] = c;
+    total[c]++;
+  }
+  let max = 1;
+  for (const t of total) if (t > max) max = t;
+  return (visitData = { cell, max, seen: new Int32Array(total.length) });
+}
+
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
   const ctx = layers.path;
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
-  if ($('colorMode').value === 'cells' && shows('cells')) {  // Fill cells: the tile of each point, in its step's colour
-    if (from === 0) { ctx.beginPath(); tilePath(ctx, xs[0], ys[0]); ctx.fillStyle = styleColor(styleKey(0)); ctx.fill(); }
-    for (let i = from; i < to;) {
-      const k = styleKey(i);
-      ctx.beginPath();
-      for (; i < to && styleKey(i) === k; i++) tilePath(ctx, xs[i + 1], ys[i + 1]);
-      ctx.fillStyle = styleColor(k);
-      ctx.fill();
+  const mode = $('colorMode').value;
+  if ((mode === 'cells' && shows('cells')) || (mode === 'visits' && shows('visits'))) {
+    // the tile of each point: Fill cells in its step's colour, Visits by its visits so far (log scale)
+    let colourOf = (p) => styleColor(styleKey(Math.max(0, p - 1)));
+    if (mode === 'visits') {
+      const V = visitCells(), scale = (BANDS - 1) / Math.log(Math.max(2, V.max));
+      if (from === 0) V.seen.fill(0);
+      colourOf = (p) => GRADIENT[Math.round(Math.log(++V.seen[V.cell[p]]) * scale)];
     }
+    let batch = null;  // one path per run of tiles of the same colour, filled when the colour changes
+    const flush = () => { if (batch) { ctx.fillStyle = batch; ctx.fill(); } };
+    for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
+      const c = colourOf(p);
+      if (c !== batch) { flush(); ctx.beginPath(); batch = c; }
+      tilePath(ctx, xs[p], ys[p]);
+    }
+    flush();
     return;
   }
   ctx.lineWidth = Math.max(0.6, Math.min(s * 0.3, 6));
