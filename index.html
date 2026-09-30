@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003e">
+  <link rel="stylesheet" href="style.css?v=20261003f">
 </head>
 <body>
   <header>
@@ -139,29 +139,6 @@
       </section>
 
       <section>
-        <h2>Display</h2>
-        <label>Colors
-          <select id="colorMode">
-            <option value="gradient">Gradient (order)</option>
-            <option value="digit">By digit</option>
-            <option value="mono">Monochrome</option>
-          </select>
-        </label>
-        <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
-        <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
-        <label id="skyRow" hidden>Sky (3D)
-          <select id="sky">
-            <option value="twilight">Twilight</option>
-            <option value="blue">Deep blue</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-        <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate (3D)</label>
-        <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective (3D)</label>
-        <button id="fit">Fit view (F)</button>
-      </section>
-
-      <section>
         <h2>Setups</h2>
         <label>Saved setups
           <select id="setupList"></select>
@@ -206,10 +183,39 @@
           <input id="speed" type="range" min="0" max="100" step="any" value="27.96">
         </label>
       </div>
-      <button id="morphBtn" class="stage-button" hidden title="Switch between the flat and the round form (same cells, same walk)">● Inflate</button>
+      <div id="viewTools" class="stage-tools">
+        <button id="morphBtn" class="stage-button" hidden title="Switch between the flat and the round form (same cells, same walk)">● Inflate</button>
+        <div class="display-menu">
+          <button class="stage-button" title="Display settings">◐ Display</button>
+          <div class="display-panel">
+            <div class="display-box">
+              <div class="field-label">Colors</div>
+              <div id="colorButtons" class="choice-list"></div>
+              <select id="colorMode" hidden>
+                <option value="gradient">Gradient (order)</option>
+                <option value="fill">Fill areas</option>
+                <option value="digit">By digit</option>
+                <option value="mono">Monochrome</option>
+              </select>
+              <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
+              <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
+              <label id="skyRow" hidden>Sky (3D)
+                <select id="sky">
+                  <option value="twilight">Twilight</option>
+                  <option value="blue">Deep blue</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate (3D)</label>
+              <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective (3D)</label>
+              <button id="fit">Fit view (F)</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
-  <script src="main.js?v=20261003e"></script>
+  <script src="main.js?v=20261003f"></script>
 </body>
 </html>

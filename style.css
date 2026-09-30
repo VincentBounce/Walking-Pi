@@ -176,13 +176,31 @@ button.primary {
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.stage-button {  /* over the view, top right */
+.stage-tools {  /* over the view, top right: Inflate / Unroll and the Display menu */
   position: absolute;
   top: 12px;
   right: 12px;
-  background: rgba(14, 17, 22, 0.75);
-  backdrop-filter: blur(4px);
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  cursor: default;
 }
+.stage-button { background: rgba(14, 17, 22, 0.75); backdrop-filter: blur(4px); }
+/* Display: a small button that opens its settings on hover (or on focus, for touch screens) */
+.display-menu { position: relative; }
+.display-panel { display: none; position: absolute; top: 100%; right: 0; padding-top: 6px; z-index: 2; }
+.display-menu:hover .display-panel, .display-menu:focus-within .display-panel { display: block; }
+.display-box {
+  width: 230px;
+  padding: 10px;
+  background: rgba(14, 17, 22, 0.92);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
+.choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .stage-bar {  /* the animation controls over the view, bottom left: facing the stage button */
   position: absolute;
   left: 12px;

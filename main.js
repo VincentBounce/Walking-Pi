@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.117';
+const VERSION = '0.1.118';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -841,19 +841,38 @@ function lifeSubtitle(where) {
 }
 
 // The colour menu means something else for the Game of Life, and depends on its number of states.
-// In Life the plain states come first (the default); walks keep the gradient first.
-function relabelColours(life) {
-  const C = life ? lifeStates() : 2;
+// In Life the plain states come first (the default); walks keep the gradient first. Fill areas is
+// only for the 2D walks that draw a path on a tiling (not the 3D ones, surfaces or point modes).
+const fillable = (mode) => !mode.life && ['square', 'tri', 'hex'].includes(mode.lattice) && !mode.points;
+function relabelColours(mode) {
+  const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
-  const names = !life ? { gradient: 'Gradient (order)', digit: 'By digit', mono: 'Monochrome' }
+  const names = !life ? { gradient: 'Gradient (order)', fill: 'Fill areas', digit: 'By digit', mono: 'Monochrome' }
     : { mono: `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
-        digit: 'Activity (state changes)' };
-  const sel = $('colorMode'), chosen = sel.value;
-  const order = life ? ['mono', 'gradient', 'digit'] : ['gradient', 'digit', 'mono'];
+        digit: 'Activity (state changes)', fill: '' };
+  const sel = $('colorMode');
+  const order = life ? ['mono', 'gradient', 'digit', 'fill'] : ['gradient', 'fill', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
-  sel.value = chosen;
+  byValue.fill.hidden = !fillable(mode);
+  if (sel.selectedOptions[0]?.hidden) sel.value = 'gradient';
+  renderColorButtons();
+}
+
+// The colours as buttons clicked directly; the (hidden) menu stays the source of truth
+function renderColorButtons() {
+  const sel = $('colorMode');
+  $('colorButtons').replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
+    const b = document.createElement('button');
+    b.textContent = o.text;
+    b.classList.toggle('active', o.value === sel.value);
+    b.addEventListener('click', () => {
+      sel.value = o.value;
+      sel.dispatchEvent(new Event('change'));
+    });
+    return b;
+  }));
 }
 
 function requestedDigits() {
@@ -1406,7 +1425,7 @@ function compute() {
   const n = digitsNeeded();
   if (!mode.life) $('digits').value = n;
   syncDigitsStepper();
-  relabelColours(!!mode.life);
+  relabelColours(mode);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
@@ -1510,6 +1529,7 @@ function setBusy(on) {
 // All positions, distances and counts are computed once into typed arrays: the animation, the
 // stats and the jumps only read them.
 function buildWalk() {
+  fill = null;  // a new walk: its enclosed areas are computed again
   walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
   const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
   // n digits in total: the integer part (always included) then the digits after the point
@@ -3549,6 +3569,143 @@ function drawSegments(from, to) {
   }
 }
 
+/* ---- Fill areas ------------------------------------------------------------------------------ */
+// The regions the path closes off are filled, each coloured like the path when it was closed. The
+// regions are read at the vertices of the tiling: two neighbouring vertices are separated by the
+// path when the walk crossed the tile edge between them (the step's midpoint is that edge's
+// midpoint, for squares, triangles and hexagons alike). Whatever can be reached from outside the
+// path's bounding box without crossing the path is open; the rest is enclosed. Each enclosed
+// vertex is filled with the polygon of the tile centres around it: those polygons tile the plane,
+// so the fill follows the path exactly.
+const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill (the status says so)
+let fill = null;                   // { upto, groups: Map colour → polygons } for the walk up to step upto
+let fillAt = 0;                    // when it was last computed (while playing, at most every 0.4 s)
+const fillOn = () => $('colorMode').value === 'fill' && walk.n && !walk.is3d && fillable(MODES[current.mode]);
+
+function computeFill(upto) {
+  const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3);
+  // integer keys: every vertex, centre and midpoint of a lattice falls on a finer integer grid
+  const q = lat === 'square' ? (x, y) => [Math.round(2 * x), Math.round(2 * y)]
+    : lat === 'tri' ? (x, y) => [Math.round(4 * x), Math.round((6 * (y - TRI_Y0)) / H)]
+    : (x, y) => [Math.round((6 * x) / H), Math.round(4 * y)];
+  const K = (x, y) => { const [a, b] = q(x, y); return (a + 8388608) * 16777216 + (b + 8388608); };
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i <= upto; i++) {
+    minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]);
+    minY = Math.min(minY, ys[i]); maxY = Math.max(maxY, ys[i]);
+  }
+  const tileArea = lat === 'square' ? 1 : lat === 'tri' ? H / 2 : H;
+  if (((maxX - minX + 4) * (maxY - minY + 4)) / tileArea > FILL_MAX_TILES) return { upto, groups: new Map(), tooBig: true };
+  const crossed = new Map();  // midpoint of each drawn step → the step
+  for (let i = 0; i < upto; i++) {
+    if (walk.skipZeros && walk.digits[i] === 0) continue;  // a spiral's 0 draws nothing
+    const k = K((xs[i] + xs[i + 1]) / 2, (ys[i] + ys[i + 1]) / 2);
+    if (!crossed.has(k)) crossed.set(k, i);
+  }
+  // the tiles over the bounding box (and a margin), with their corners
+  const forTiles = (f) => {
+    if (lat === 'square') {
+      for (let x = Math.floor(minX) - 1; x <= Math.ceil(maxX) + 1; x++) {
+        for (let y = Math.floor(minY) - 1; y <= Math.ceil(maxY) + 1; y++) {
+          f(x, y, [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]]);
+        }
+      }
+    } else if (lat === 'tri') {  // cell (c, r): ▲ when c + r is even (see triStepper)
+      for (let c = Math.floor(2 * minX) - 2; c <= Math.ceil(2 * maxX) + 2; c++) {
+        for (let r = Math.floor((minY - TRI_Y0) / H) - 1; r <= Math.ceil((maxY - TRI_Y0) / H) + 1; r++) {
+          const up = ((c + r) & 1) === 0, x = c / 2, top = TRI_Y0 + r * H, bot = top + H;
+          f(x, top + (up ? (2 * H) / 3 : H / 3), up ? [[x, top], [x + 0.5, bot], [x - 0.5, bot]] : [[x - 0.5, top], [x + 0.5, top], [x, bot]]);
+        }
+      }
+    } else {  // flat-topped hexagons at (b·H, −a − b/2), radius 1/√3 (see hexStepper)
+      for (let b = Math.floor(minX / H) - 1; b <= Math.ceil(maxX / H) + 1; b++) {
+        for (let a = Math.floor(-maxY - b / 2) - 1; a <= Math.ceil(-minY - b / 2) + 1; a++) {
+          const cx = b * H, cy = -a - b / 2;
+          f(cx, cy, [0, 1, 2, 3, 4, 5].map((k) => [cx + R * Math.cos((k * Math.PI) / 3), cy - R * Math.sin((k * Math.PI) / 3)]));
+        }
+      }
+    }
+  };
+  // the graph of vertices: an edge per tile edge, carrying the step that crossed it (−1: open)
+  const index = new Map(), vx = [], vy = [], around = [], eu = [], ev = [], es = [], seen = new Set();
+  const vid = (x, y) => {
+    const k = K(x, y);
+    let i = index.get(k);
+    if (i === undefined) { i = vx.length; index.set(k, i); vx.push(x); vy.push(y); around.push([]); }
+    return i;
+  };
+  forTiles((cx, cy, V) => {
+    const ids = V.map(([x, y]) => vid(x, y));
+    for (const i of ids) around[i].push(cx, cy);
+    for (let k = 0; k < ids.length; k++) {
+      const a = ids[k], b = ids[(k + 1) % ids.length], e = a < b ? a * 4194304 + b : b * 4194304 + a;
+      if (seen.has(e)) continue;
+      seen.add(e);
+      const [p, r] = [V[k], V[(k + 1) % V.length]];
+      eu.push(a); ev.push(b); es.push(crossed.get(K((p[0] + r[0]) / 2, (p[1] + r[1]) / 2)) ?? -1);
+    }
+  });
+  const n = vx.length, start = new Int32Array(n + 1), adj = new Int32Array(2 * eu.length), fillPos = new Int32Array(n);
+  for (let e = 0; e < eu.length; e++) { start[eu[e] + 1]++; start[ev[e] + 1]++; }
+  for (let i = 0; i < n; i++) start[i + 1] += start[i];
+  for (let e = 0; e < eu.length; e++) { adj[start[eu[e]] + fillPos[eu[e]]++] = e; adj[start[ev[e]] + fillPos[ev[e]]++] = e; }
+  // open: reachable from outside the path's box without crossing it
+  const state = new Int8Array(n), stack = [];  // 0 unknown, 1 open, 2 enclosed (grouped)
+  for (let i = 0; i < n; i++) if (vx[i] < minX || vx[i] > maxX || vy[i] < minY || vy[i] > maxY) { state[i] = 1; stack.push(i); }
+  const other = (e, i) => (eu[e] === i ? ev[e] : eu[e]);
+  while (stack.length) {
+    const i = stack.pop();
+    for (let q2 = start[i]; q2 < start[i + 1]; q2++) {
+      const e = adj[q2], j = other(e, i);
+      if (es[e] < 0 && !state[j]) { state[j] = 1; stack.push(j); }
+    }
+  }
+  // each enclosed region: coloured like the path at the step that closed it (its latest border step)
+  const groups = new Map();
+  for (let s0 = 0; s0 < n; s0++) {
+    if (state[s0]) continue;
+    const region = [s0];
+    state[s0] = 2;
+    let closedAt = 0;
+    for (let r = 0; r < region.length; r++) {
+      const i = region[r];
+      for (let q2 = start[i]; q2 < start[i + 1]; q2++) {
+        const e = adj[q2], j = other(e, i);
+        if (es[e] >= 0) closedAt = Math.max(closedAt, es[e]);
+        else if (!state[j]) { state[j] = 2; region.push(j); }
+      }
+    }
+    const colour = GRADIENT[Math.min(BANDS - 1, Math.floor((closedAt * BANDS) / walk.n))];
+    if (!groups.has(colour)) groups.set(colour, []);
+    const polys = groups.get(colour);
+    for (const i of region) {  // the tile centres around the vertex, in angular order
+      const c = around[i], pts = [];
+      for (let k = 0; k < c.length; k += 2) pts.push([c[k], c[k + 1]]);
+      pts.sort((u, w) => Math.atan2(u[1] - vy[i], u[0] - vx[i]) - Math.atan2(w[1] - vy[i], w[0] - vx[i]));
+      polys.push(pts);
+    }
+  }
+  return { upto, groups, tooBig: false };
+}
+
+// Under the path: the enclosed regions of the walk up to the current step
+function drawFill() {
+  if (!fill || fill.upto !== cur) { fill = computeFill(cur); fillAt = performance.now(); }
+  const ctx = layers.path, { scale: s, ox, oy } = view;
+  ctx.globalAlpha = 0.45;
+  for (const [colour, polys] of fill.groups) {
+    ctx.beginPath();
+    for (const pts of polys) {
+      ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
+      ctx.closePath();
+    }
+    ctx.fillStyle = colour;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawOverlay() {
   const ctx = layers.overlay;
   ctx.clearRect(0, 0, cw, ch);
@@ -3736,9 +3893,12 @@ function tick(now = performance.now()) {
     return;
   }
   if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // the 3D box grows with the walk
+  // Fill areas: the fill follows the walk, recomputed at most every 0.4 s while playing
+  if (fillOn() && (!fill || fill.upto !== cur) && (!playing || now - fillAt > 400)) needsFull = true;
   if (needsFull) {
     layers.path.clearRect(0, 0, cw, ch);
     drawn = 0;
+    if (fillOn()) drawFill();
   }
   if (walk.n && drawn < cur) {
     drawSegments(drawn, cur);
@@ -3776,7 +3936,7 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('fit').addEventListener('click', fitNow);
 $('speed').addEventListener('input', updateSpeedLabel);
-$('colorMode').addEventListener('change', () => { needsFull = true; });
+$('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
 
@@ -3860,9 +4020,11 @@ $('morphBtn').addEventListener('click', () => {
   walk.shape.target = walk.shape.target === 1 ? 0 : 1;
   updateMorphButton();
 });
-$('morphBtn').addEventListener('pointerdown', (e) => e.stopPropagation());  // not a drag of the view
 // the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
-for (const type of ['pointerdown', 'dblclick', 'wheel']) $('animBar').addEventListener(type, (e) => e.stopPropagation());
+for (const type of ['pointerdown', 'dblclick', 'wheel']) {
+  $('animBar').addEventListener(type, (e) => e.stopPropagation());
+  $('viewTools').addEventListener(type, (e) => e.stopPropagation());  // Inflate and the Display menu too
+}
 $('perspective').addEventListener('change', () => {
   setPerspective();
   project();
