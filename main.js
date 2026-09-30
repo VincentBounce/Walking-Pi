@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.154';
+const VERSION = '0.1.155';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2695,9 +2695,10 @@ function lifeStep() {
  *   Life-neighbour steps, so it is a 3×3, 5×5 or 7×7 square on squares and a small disc on
  *   triangles: one word for both. The rest of the surface starts dead.
  * - Duel (on the cube, with two civilisations): a blue patch and a red patch of radius 1 on two
- *   opposite faces. The hunt finds the most durable blue start alone on its face, then the most
- *   durable red start alone on the other one (all 512 starts of 9 cells each time), then plays the
- *   two together.
+ *   opposite faces. The hunt finds the most durable blue start alone on its face (all 512 starts
+ *   of its 9 cells), then the red start that does best against that blue one (all 512 again, each
+ *   played with the blue one): red winning first, then red still alive when the run settles (by how
+ *   many more red cells than blue), then red lasting longest before it is wiped out. Then it plays.
  * - How: when a patch has at most 20,000 possible starts, all of them are tried, and the result is
  *   then the true record for that patch; otherwise 1,000 random starts, then 2,000 tweaks of the
  *   best one (hill climbing). For the same lifetime, the start with fewer live cells wins.
@@ -2712,7 +2713,7 @@ function lifeStep() {
  * random cells of the best start and keep the change when it lasts at least as long. */
 function huntWorker() {
   self.onmessage = (e) => {
-    const { n, start, list, B, S, C, two, randomRuns, tweaks, cap, patch, colours, exhaustive, from, fromBest } = e.data;
+    const { n, start, list, B, S, C, two, randomRuns, tweaks, cap, patch, colours, against, exhaustive, from, fromBest } = e.data;
     const step = (a, b) => {
       for (let t = 0; t < n; t++) {  // the same generation as lifeStep
         const was = a[t];
@@ -2736,25 +2737,34 @@ function huntWorker() {
       }
       return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
     };
-    const lifetime = (seed) => {  // { T, P } — P = 0 when still unsettled at the cap
+    // with an opponent (against: red is hunted against a fixed blue start), the red and blue cells
+    const civs = (s) => { let red = 0, blue = 0; for (let t = 0; t < n; t++) { red += s[t] === 1; blue += s[t] === 2; } return { red, blue }; };
+    // { T, P } — P = 0 when still unsettled at the cap. Against an opponent: { T, winner } as soon as
+    // a civilisation is wiped out, else also the red and blue cells when it settles
+    const lifetime = (seed) => {
       let a = Uint8Array.from(seed), b = new Uint8Array(n);
       const seen = new Map([[fingerprint(a), 0]]);
       for (let g = 1; g <= cap; g++) {
         step(a, b);
         [a, b] = [b, a];
+        const count = against && civs(a);
+        if (count && !(count.red && count.blue)) return { T: g, P: 0, winner: count.red ? 'red' : 'blue' };
         const k = fingerprint(a), first = seen.get(k);
-        if (first !== undefined) return { T: first, P: g - first };
+        if (first !== undefined) return { T: first, P: g - first, ...count };
         seen.set(k, g);
       }
-      return { T: cap, P: 0 };
+      return { T: cap, P: 0, ...(against && civs(a)) };
     };
+    // how good a run is: its lifetime; against an opponent, red winning (sooner is better), then red
+    // alive at the end (by its lead in cells), then red wiped out (later is better)
+    const score = (r) => (!against ? r.T : r.winner === 'red' ? 2e9 - r.T : r.winner ? r.T : 1e9 + r.red - r.blue);
     // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
     const free = patch || Array.from({ length: n }, (_, t) => t);
     const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * C); return s; };
     // start number k of an exhaustive search: k written in base C over the patch; with colours (one
     // side of a duel) in base 2, each cell dead or of its colour
     const nthSeed = (k) => {
-      const s = new Uint8Array(n), base = colours ? 2 : C;
+      const s = against ? Uint8Array.from(against) : new Uint8Array(n), base = colours ? 2 : C;
       free.forEach((t, i) => { const d = k % base; k = Math.floor(k / base); s[t] = colours ? d * colours[i] : d; });
       return s;
     };
@@ -2768,8 +2778,8 @@ function huntWorker() {
     };
     for (let i = 1; i <= randomRuns; i++) {
       const seed = exhaustive ? nthSeed(i - 1) : randomSeed(), r = lifetime(seed);
-      // longest first; for the same lifetime, the start with fewer live cells
-      const improved = !best || r.T > best.T || (r.T === best.T && live(seed) < live(bestSeed));
+      // best score first; for the same score, the start with fewer live cells
+      const improved = !best || score(r) > score(best) || (score(r) === score(best) && live(seed) < live(bestSeed));
       if (improved) { best = r; bestSeed = seed; }
       report(1, i, randomRuns, improved);
     }
@@ -2778,7 +2788,7 @@ function huntWorker() {
       const flips = 1 + Math.floor(Math.random() * 3);
       for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * C);
       const r = lifetime(seed);
-      const accepted = r.T >= best.T;  // equal lifetimes are accepted too, to drift
+      const accepted = score(r) >= score(best);  // equal scores are accepted too, to drift
       if (accepted) { best = r; bestSeed = seed; kept++; }
       report(2, i, tweaks, accepted);
     }
@@ -2805,8 +2815,10 @@ function stopHunt(loadBest = false) {
 }
 
 function lifetimeWords(r) {
-  if (!r.P) return `still changing after ${fmt(r.T)} generations`;
-  return r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`;
+  if (r.winner) return `${r.winner} wins at generation ${fmt(r.T)}`;
+  const both = r.red === undefined ? '' : `, ${fmt(r.red)} red and ${fmt(r.blue)} blue`;  // a duel that settles
+  if (!r.P) return `still changing after ${fmt(r.T)} generations${both}`;
+  return (r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`) + both;
 }
 
 // One button runs the whole hunt: 🔍 Hunt starts the random starts, ⏭ skips to the tweaks,
@@ -2884,7 +2896,7 @@ function renderHuntList() {
                  part('mode-detail', zone === 'duel' ? '9 red cells, 9 blue on the opposite face'
                    : zone === 'duel90' ? 'blue R-pentomino, the red one turned 90° on the opposite face'
                    : `${fmt(patch ? patch.length : walk.geo.n)} cells`));
-    if (zone === 'duel') b.title = 'The most durable blue start alone on its face, then the most durable red one on the opposite face, then both together';
+    if (zone === 'duel') b.title = 'The most durable blue start alone on its face, then the red start that does best against it on the opposite face, then the duel plays';
     if (zone === 'duel90') b.title = 'The R-pentomino in blue, and in red turned by 90° on the opposite face: no longer mirror images, so one can win';
     const pic = part('mode-icon', '');
     pic.innerHTML = icon(HUNT_ICONS[zone]);
@@ -2904,7 +2916,7 @@ function renderHuntList() {
   const { all, sides } = huntPlan(zoneInUse());
   if (sides) {
     $('huntBtn').innerHTML = `${icon('search')} Hunt blue, then red`;
-    $('huntBtn').title = 'All 512 blue starts alone, then all 512 red ones alone: the most durable of each, then they play together';
+    $('huntBtn').title = 'All 512 blue starts alone, the most durable one; then all 512 red starts against it, the best one; then the duel plays';
     return;
   }
   $('huntBtn').innerHTML = `${icon('search')} ${all ? `Hunt all ${fmt(all)}` : `Hunt ${fmt(HUNT_STARTS)} first`}`;
@@ -2934,19 +2946,21 @@ function pickHuntZone(zone) {
   renderHuntList();
 }
 
-// A duel hunt: each side in turn, alone on its face, all its 512 starts; then the best of each together
+// A duel hunt: all 512 blue starts alone on their face, then all 512 red starts against the best blue
+// one; the red champion comes with that blue start, so it is the duel to play
 function runDuelSide() {
-  const side = hunt.duel.sides[hunt.duel.found.length], all = 2 ** side.patch.length;
+  const { sides, found } = hunt.duel, side = sides[found.length], all = 2 ** side.patch.length;
   Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch: side.patch, radius: 1, tried: 0,
                         colours: new Uint8Array(side.patch.length).fill(side.colour), exhaustive: all, tweaks: 0 });
-  runHuntWorker({ randomRuns: all, tweaks: 0, exhaustive: true });
+  runHuntWorker({ randomRuns: all, tweaks: 0, exhaustive: true, against: found[0]?.seed ?? null });
   const last = hunt.duel.found.length === hunt.duel.sides.length - 1;
   $('huntBtn').innerHTML = last ? `${icon('play')} Play the duel` : `${icon('end')} Skip to ${hunt.duel.sides[1].name}`;
 }
 function nextDuelSide() {
   if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
   const { sides, found } = hunt.duel;
-  if (hunt.seed) found.push({ name: sides[found.length].name, seed: hunt.seed, best: hunt.best });
+  const side = sides[found.length];
+  if (hunt.seed) found.push({ ...side, seed: hunt.seed, best: hunt.best });
   else found.push(null);  // skipped before its first start: this side starts empty
   if (found.length < sides.length) { runDuelSide(); return; }
   hunt.duel = null;
@@ -2955,8 +2969,8 @@ function nextDuelSide() {
   for (const f of found) if (f) f.seed.forEach((v, t) => { if (v) seed[t] = v; });
   setLifeSeed(seed);
   championCode = encodeCells(seed, L.C);
-  $('status').innerHTML = `${icon('dice')} duel: ` + found.filter(Boolean)
-    .map((f) => `${f.name} alone ${lifetimeWords(f.best)} (${fmt(f.seed.reduce((a, v) => a + (v > 0), 0))} cells)`).join(' · ');
+  $('status').innerHTML = `${icon('dice')} duel: ` + found.filter(Boolean).map((f, i) =>
+    `${f.name} ${i ? 'against it' : 'alone'}: ${lifetimeWords(f.best)} (${fmt(f.seed.reduce((a, v) => a + (v === f.colour), 0))} cells)`).join(' · ');
   $('huntStatus').textContent = '';
   play(true);
 }
