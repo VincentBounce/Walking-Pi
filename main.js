@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.114';
+const VERSION = '0.1.115';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -168,22 +168,25 @@ function formulaWorker() {
       if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
     };
 
-    // S·arctan(1/x), or S·artanh(1/x) when hyperbolic
+    // S·arctan(1/x), or S·artanh(1/x) when hyperbolic: Σ (∓1)^k / ((2k+1)·x^(2k+1)), by binary
+    // splitting (Haible–Papanikolaou). Over a range of terms, exact integers P, Q, B, T give the sum
+    // T / (B·Q); halves are merged with a few big products instead of one division per term, so the
+    // time grows about as n·log²n instead of n² (a million digits: seconds instead of minutes).
     const atanTerms = (x) => lnS / (2 * Math.log(x));
     function atanInv(x, hyperbolic) {
-      const bx = BigInt(x);
-      const x2 = bx * bx;
-      let term = S / bx;
-      let sum = term;
-      for (let k = 1; ; k++) {
-        term /= x2;
-        if (term === 0n) break;
-        const t = term / BigInt(2 * k + 1);
-        sum += hyperbolic || k % 2 === 0 ? t : -t;
-        progress(k);
-      }
+      const bx = BigInt(x), x2 = bx * bx;
+      const split = (a, b) => {
+        if (b - a === 1) {
+          progress(a);
+          const p = a === 0 || hyperbolic ? 1n : -1n;
+          return [p, a === 0 ? bx : x2, BigInt(2 * a + 1), p];
+        }
+        const m = (a + b) >> 1, [P1, Q1, B1, T1] = split(a, m), [P2, Q2, B2, T2] = split(m, b);
+        return [P1 * P2, Q1 * Q2, B1 * B2, B2 * Q2 * T1 + B1 * P1 * T2];
+      };
+      const [, Q, B, T] = split(0, Math.ceil(atanTerms(x)) + 2);
       done += atanTerms(x);
-      return sum;
+      return (S * T) / (B * Q);
     }
 
     // Integer square root (Newton, with recursively doubled precision)
@@ -264,24 +267,39 @@ function formulaWorker() {
       total = 1;
       let v;
       switch (name) {
-        case 'pi': // Machin: π = 16·arctan(1/5) − 4·arctan(1/239)
-          total = atanTerms(5) + atanTerms(239);
-          v = 16n * atanInv(5) - 4n * atanInv(239);
+        case 'pi': { // Chudnovsky, by binary splitting: π = 426880·√10005·Q / T, about 14 decimal digits
+          // per term (10 million base-3 digits in seconds, where Machin's arctangents took hours)
+          const C3_24 = 640320n ** 3n / 24n;
+          const split = (a, b) => {
+            if (b - a === 1) {
+              progress(a);
+              if (a === 0) return [1n, 1n, 13591409n];
+              const A = BigInt(a), P = (6n * A - 5n) * (2n * A - 1n) * (6n * A - 1n);
+              const T = P * (13591409n + 545140134n * A);
+              return [P, A * A * A * C3_24, a % 2 ? -T : T];
+            }
+            const m = (a + b) >> 1, [P1, Q1, T1] = split(a, m), [P2, Q2, T2] = split(m, b);
+            return [P1 * P2, Q1 * Q2, T1 * Q2 + P1 * T2];
+          };
+          total = Math.ceil(lnS / Math.log(151931373056000)) + 2;  // 640320³ / 1728 per term
+          const [, Q, T] = split(0, total);
+          v = (426880n * isqrt(10005n * S * S) * Q) / T;
           break;
+        }
         case 'ln2': // ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749)
           total = atanTerms(26) + atanTerms(4801) + atanTerms(8749);
           v = 18n * atanInv(26, true) - 2n * atanInv(4801, true) + 8n * atanInv(8749, true);
           break;
-        case 'e': { // e = Σ 1/k!
+        case 'e': { // e = 1 + Σ 1/k!, by binary splitting: P/Q = Σ_{k=a+1..b} 1/((a+1)···k), Q = (a+1)···b
           total = 1;
-          for (let lf = 0; lf < lnS; total++) lf += Math.log(total);
-          let term = S;
-          v = S;
-          for (let k = 1; term > 0n; k++) {
-            term /= BigInt(k);
-            v += term;
-            progress(k);
-          }
+          for (let lf = 0; lf < lnS + 10; total++) lf += Math.log(total);  // K! > S
+          const split = (a, b) => {
+            if (b - a === 1) { progress(a); return [1n, BigInt(b)]; }
+            const m = (a + b) >> 1, [P1, Q1] = split(a, m), [P2, Q2] = split(m, b);
+            return [P1 * Q2 + P2, Q1 * Q2];
+          };
+          const [P, Q] = split(0, total);
+          v = S + (S * P) / Q;
           break;
         }
         case 'apery': { // Amdeberhan–Zeilberger: ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
@@ -837,12 +855,12 @@ function relabelColours(life) {
 
 function requestedDigits() {
   const n = Math.round(Number($('digits').value));
-  return Math.min(1_000_000, Math.max(10, n || 10));
+  return Math.min(10_000_000, Math.max(10, n || 10));
 }
 
 // The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
 // DIGIT_STEPS and recomputes at once. A link may hold any other count: a step goes to the next one.
-const DIGIT_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+const DIGIT_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7];
 function syncDigitsStepper() {
   const n = requestedDigits();
   $('digitsLabel').textContent = `${fmt(n)} digits`;
@@ -1439,7 +1457,12 @@ function compute() {
   const src = [digitString, seededRandom, exactValue, iroot].map(String).join('\n') + `\n(${formulaWorker.toString()})()`;
   worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
   setBusy(true);
-  const slow = F.log10 > 6e6 || (F.root === 'randprime' && Number(F.ast.args[0].v) > 1000);
+  // π, e, ln 2, roots, exact numbers and sequences stay fast at millions of digits; the other series
+  // grow as the square of the digits
+  const quadratic = formulaNodes(F.ast).some((x) => (x.k === 'name' && ['gamma', 'catalan'].includes(x.v))
+    || (x.k === 'call' && (['exp', 'zeta', 'log'].includes(x.f) || (x.f === 'ln' && canonical(x.args[0]) !== '2')))
+    || (x.k === '^' && x.exp === undefined && !x.rootExp));
+  const slow = F.log10 > 6e6 || (F.root === 'randprime' && Number(F.ast.args[0].v) > 1000) || (F.kind === 'real' && quadratic && n > 1e6);
   $('status').textContent =
     (F.root === 'randprime' ? `Searching for a random ${fmt(Number(F.ast.args[0].v))}-digit prime…`
       : `Computing ${integer || mode.life ? `${sym} in base ${base}` : label(n)}…`) +
