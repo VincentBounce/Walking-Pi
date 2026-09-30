@@ -104,7 +104,7 @@ button.primary {
 .stepper button { width: 36px; padding: 5px 0; }
 
 /* Walk mode: one tab per category, then every choice of that category */
-.tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }  /* five tabs: two lines if needed */
 .tabs button { flex: 1 1 auto; padding: 5px 4px; font-size: 12px; }  /* 4 tabs fit the panel */
 .tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
@@ -194,7 +194,9 @@ button.primary {
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 .stage-head { width: 100%; padding: 2px 6px; border: 0; background: none; text-align: left; font-weight: 600; }
-.display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+/* hovered, the Display title gives way to the settings (on touch screens it stays, to be tapped) */
+.display-menu:hover .stage-head { display: none; }
+@media (hover: none) { .display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); } }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
 .choice-row { display: flex; gap: 4px; margin-bottom: 10px; }  /* a few short choices side by side */

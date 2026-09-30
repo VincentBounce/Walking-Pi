@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003i">
+  <link rel="stylesheet" href="style.css?v=20261003j">
 </head>
 <body>
   <header>
@@ -32,6 +32,8 @@
             <optgroup label="3D">
               <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
+            </optgroup>
+            <optgroup label="2D on volumes">
               <option value="torusWalk">Square torus — base 3 (left / forward / right)</option>
               <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
               <option value="cubeFlat">Cube surface — base 3 (left / forward / right)</option>
@@ -47,7 +49,7 @@
               <option value="lifeOcta">Life — octahedron</option>
               <option value="lifeIcosa">Life — icosahedron</option>
             </optgroup>
-            <optgroup label="Experimental">
+            <optgroup label="2D spirals">
               <option value="spiral">Ulam square spiral — base 2 (1 = draw, 0 = skip)</option>
               <option value="triSpiral">Ulam triangle spiral — base 2 (1 = draw, 0 = skip)</option>
               <option value="hexSpiral">Ulam hexagon spiral — base 2 (1 = draw, 0 = skip)</option>
@@ -204,7 +206,7 @@
           <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
           <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
           <div id="skyRow" hidden>
-            <div class="field-label">Sky (3D)</div>
+            <div class="field-label">Sky</div>
             <div id="skyButtons" class="choice-row"></div>
             <select id="sky" hidden>
               <option value="twilight">Twilight</option>
@@ -212,14 +214,14 @@
               <option value="dark">Dark</option>
             </select>
           </div>
-          <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate (3D)</label>
-          <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective (3D)</label>
+          <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate</label>
+          <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
           <button id="fit">Fit view (F)</button>
         </div>
       </div>
     </div>
   </main>
 
-  <script src="main.js?v=20261003i"></script>
+  <script src="main.js?v=20261003j"></script>
 </body>
 </html>
