@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.148';
+const VERSION = '0.1.149';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1485,10 +1485,11 @@ function digitsInUse() {
 
 // The number as copied: "pi^2 base 5 = 14.41332…", with every digit in use. Up to base 36 one
 // character per digit (0–9, then a–z); above that each digit as a decimal number, space-separated.
-function numberText() {
-  const { head, frac } = digitsInUse(), b = current.base;
+// limit: at most that many digits after the point (for a preview).
+function numberText(limit = Infinity) {
+  const { head, frac } = digitsInUse(), b = current.base, shown = frac.subarray(0, limit);
   const write = (ds) => (b <= 36 ? Array.from(ds, (v) => v.toString(36)).join('') : Array.from(ds).join(' '));
-  return `${formulaInUse} base ${b} = ${head.length ? write(head) : '0'}${frac.length ? `.${write(frac)}` : ''}`;
+  return `${formulaInUse} base ${b} = ${head.length ? write(head) : '0'}${shown.length ? `.${write(shown)}` : ''}`;
 }
 
 /* ==============================================================================================
@@ -4268,6 +4269,9 @@ $('copyNumber').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(numberText()); say('Copied'); } catch { say('Not allowed'); }
   setTimeout(() => say('Copy number to clipboard'), 1500);
 });
+// Hovering the button shows what it copies over the view (the start of it: as much as fits)
+$('copyNumber').addEventListener('mouseenter', () => { $('numberPreview').textContent = numberText(20000); $('numberPreview').hidden = false; });
+$('copyNumber').addEventListener('mouseleave', () => { $('numberPreview').hidden = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
 $('sphereF').addEventListener('change', () => {

@@ -243,6 +243,15 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .stage-more { display: block; }
 @media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
 .display-menu { top: 12px; right: 12px; }
+/* the number that Copy puts on the clipboard, shown over the view while the button is hovered */
+.number-preview {
+  inset: 56px 12px 64px;
+  padding: 12px 14px;
+  overflow: hidden;
+  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  word-break: break-all;
+  pointer-events: none;
+}
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 /* Fit view stays at the top right; hovering opens the settings below it */
