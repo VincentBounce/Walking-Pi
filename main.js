@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.137';
+const VERSION = '0.1.138';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -873,7 +873,8 @@ function updateDisplayMenu() {
 function relabelColours(mode) {
   const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
-  const names = !life ? { gradient: 'By time', cells: 'By time, filled cells', visits: 'By visits', digit: 'By digit', mono: 'One colour' }
+  const names = !life ? { gradient: 'Rainbow along the walk', cells: 'Rainbow cells along the walk', visits: 'Rainbow by number of visits',
+                      digit: 'One colour per digit', mono: 'One colour' }
     : { mono: `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
@@ -883,7 +884,8 @@ function relabelColours(mode) {
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   byValue.cells.hidden = !shows('cells');
   byValue.visits.hidden = !shows('visits');
-  if (sel.selectedOptions[0]?.hidden) sel.value = 'gradient';
+  byValue.gradient.disabled = !!mode.points;  // a point mode has no line: its marks are always cells
+  if (sel.selectedOptions[0]?.hidden || sel.selectedOptions[0]?.disabled) sel.value = mode.points ? 'cells' : 'gradient';
   renderColorButtons();
 }
 
@@ -893,6 +895,7 @@ function renderChoiceButtons(sel, box) {
     const b = document.createElement('button');
     b.textContent = o.text;
     b.classList.toggle('active', o.value === sel.value);
+    b.disabled = o.disabled;
     b.addEventListener('click', () => {
       sel.value = o.value;
       sel.dispatchEvent(new Event('change'));

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003y">
+  <link rel="stylesheet" href="style.css?v=20261003z">
 </head>
 <body>
   <header>
@@ -195,10 +195,10 @@
         <div class="stage-more">  <!-- shown on hover, below -->
           <div id="colorsRow"><div id="colorButtons" class="choice-list"></div></div>
           <select id="colorMode" hidden>
-            <option value="gradient">By time</option>
-            <option value="cells">By time, filled cells</option>
-            <option value="visits">By visits</option>
-            <option value="digit">By digit</option>
+            <option value="gradient">Rainbow along the walk</option>
+            <option value="cells">Rainbow cells along the walk</option>
+            <option value="visits">Rainbow by number of visits</option>
+            <option value="digit">One colour per digit</option>
             <option value="mono">One colour</option>
           </select>
           <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas</label>
@@ -224,6 +224,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261003y"></script>
+  <script src="main.js?v=20261003z"></script>
 </body>
 </html>
