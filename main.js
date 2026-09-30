@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.145';
+const VERSION = '0.1.146';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1483,18 +1483,12 @@ function digitsInUse() {
   return { head, frac: current.digits.subarray(0, n - head.length) };
 }
 
-// The number as written in its base: up to base 36 one character per digit (0–9, then a–z), above
-// that each digit as a decimal number, separated by spaces. limit: how many digits after the point.
-function numberText(limit = Infinity) {
-  const { head, frac } = digitsInUse(), b = current.base, shown = frac.subarray(0, limit);
+// The number as copied: "pi^2 base 5 = 14.41332…", with every digit in use. Up to base 36 one
+// character per digit (0–9, then a–z); above that each digit as a decimal number, space-separated.
+function numberText() {
+  const { head, frac } = digitsInUse(), b = current.base;
   const write = (ds) => (b <= 36 ? Array.from(ds, (v) => v.toString(36)).join('') : Array.from(ds).join(' '));
-  return (head.length ? write(head) : '0') + (frac.length ? `.${write(shown)}${shown.length < frac.length ? '…' : ''}` : '');
-}
-
-// Under the number of digits: "π² base 5 = 14.30214…", and the button that copies all of it
-function showNumber() {
-  $('numberText').innerHTML = `<span class="pi">${withIcons(shownSym)}</span> base ${current.base} = ${numberText(80)}`;
-  $('numberLine').hidden = false;
+  return `${formulaInUse} base ${b} = ${head.length ? write(head) : '0'}${frac.length ? `.${write(frac)}` : ''}`;
 }
 
 /* ==============================================================================================
@@ -1602,7 +1596,7 @@ function compute() {
   syncNumberMenu();
   if (F.error) {
     $('status').textContent = `Formula: ${F.error}`;
-    $('numberLine').hidden = true;
+    $('copyNumber').hidden = true;
     return;
   }
   const { sym, kind } = F;
@@ -1618,7 +1612,7 @@ function compute() {
     $('status').textContent = note;
     buildWalk();
     describe(base, n);
-    showNumber();
+    $('copyNumber').hidden = false;
     showAll();
     applyPendingView();
     return;
@@ -1637,7 +1631,7 @@ function compute() {
     ].filter(Boolean).join(' · ');
     buildWalk();
     describe(base, total);
-    showNumber();
+    $('copyNumber').hidden = false;
     showAll();
     applyPendingView();
   };
@@ -4272,7 +4266,7 @@ $('lifeRule').addEventListener('change', () => {
 $('copyNumber').addEventListener('click', async () => {
   const say = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
   try { await navigator.clipboard.writeText(numberText()); say('Copied'); } catch { say('Not allowed'); }
-  setTimeout(() => say('Copy'), 1500);
+  setTimeout(() => say('Copy number to clipboard'), 1500);
 });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
