@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261004l">
+  <link rel="stylesheet" href="style.css?v=20261004m">
 </head>
 <body>
   <header>
@@ -77,6 +77,7 @@
         <label id="lifeRuleRow">Rule
           <select id="lifePreset">
             <option value="B3/S23">■▲ B3/S23 — Life (2 states)</option>
+            <option value="B3/S23/Immigration">■▲ B3/S23/Immigration — Life with two civilisations, red and blue (3 states)</option>
             <option value="B45/S345/C4">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
             <option value="B34/S2/C4">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
             <option value="B2/S/C3">■ B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
@@ -96,7 +97,7 @@
             <option value="custom">Custom…</option>
           </select>
         </label>
-        <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C…)
+        <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C… or B…/S…/Immigration)
           <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
         </label>
         <div id="huntRow">
@@ -226,6 +227,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261004l"></script>
+  <script src="main.js?v=20261004m"></script>
 </body>
 </html>
