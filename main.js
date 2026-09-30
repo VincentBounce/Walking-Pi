@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.122';
+const VERSION = '0.1.123';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1359,7 +1359,7 @@ function setCurrent(entry) {
 // list. Picking a choice sets the menu and fires its change event, so the rest of the page only
 // ever deals with the menu.
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
-const tabName = (label) => ({ 'Cellular automata on surfaces': 'Automata' }[label] || label);
+const tabName = (label) => label;  // the menu's group labels are the tab names
 
 // Icon of each walk mode's shape, for the list of choices
 const MODE_ICONS = {

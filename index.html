@@ -5,23 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003j">
+  <link rel="stylesheet" href="style.css?v=20261003k">
 </head>
 <body>
   <header>
-    <h1>Walking <span id="titleSym" class="pi">π</span> <span id="version" class="version" title="0.1.0 = first commit, +1 per commit"></span></h1>
-    <p id="rule" class="subtitle"></p>
+    <div class="header-row">
+      <div id="modeTabs" class="tabs" role="tablist"></div>
+      <h1>Walking <span class="pi">π</span> <span id="version" class="version" title="0.1.0 = first commit, +1 per commit"></span></h1>
+    </div>
+    <p class="subtitle"><span class="walking">Walking <span id="titleSym" class="pi">π</span></span> · <span id="rule"></span></p>
   </header>
 
   <main>
     <aside class="panel">
       <section>
         <h2>Walk</h2>
-        <div id="modeTabs" class="tabs" role="tablist"></div>
         <div id="modeList" class="mode-list" role="listbox"></div>
-        <label hidden>Walk mode (menu kept as the source of truth for the tabs above)
+        <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
-            <optgroup label="2D">
+            <optgroup label="2D walks">
               <option value="turtle">Squares turtle — base 3 (left / forward / right)</option>
               <option value="cardinal">Squares cardinal — base 4 (N / E / S / W)</option>
               <option value="triLR">Triangles — base 2 (left / right)</option>
@@ -29,11 +31,11 @@
               <option value="hexRel">Hexagons — base 5 (5 relative turns)</option>
               <option value="hexFixed">Hexagons — base 6 (6 fixed directions)</option>
             </optgroup>
-            <optgroup label="3D">
+            <optgroup label="3D walks">
               <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
             </optgroup>
-            <optgroup label="2D on volumes">
+            <optgroup label="Walks on surfaces">
               <option value="torusWalk">Square torus — base 3 (left / forward / right)</option>
               <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
               <option value="cubeFlat">Cube surface — base 3 (left / forward / right)</option>
@@ -41,7 +43,7 @@
               <option value="octaLR">Octahedron — base 2 (left / right)</option>
               <option value="icosaLR">Icosahedron — base 2 (left / right)</option>
             </optgroup>
-            <optgroup label="Cellular automata on surfaces">
+            <optgroup label="Automata on surfaces">
               <option value="lifeTorus">Life — torus</option>
               <option value="lifeHexTorus">Life — torus</option>
               <option value="lifeCube">Life — cube surface</option>
@@ -222,6 +224,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261003j"></script>
+  <script src="main.js?v=20261003k"></script>
 </body>
 </html>
