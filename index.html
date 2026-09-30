@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261004e">
+  <link rel="stylesheet" href="style.css?v=20261004f">
 </head>
 <body>
   <header>
@@ -103,7 +103,7 @@
           <div class="field-label">Methuselah hunt</div>
           <div id="huntList" class="mode-list" role="listbox" title="Where the random starts go. Radius r: the cells at most r steps from a centre cell, one step going to a neighbour (through an edge or a corner) — 3×3, 5×5 and 7×7 on squares, a small disc on triangles. The rest of the surface starts dead"></div>
           <div class="row">
-            <button id="huntBtn" title="1,000 random starts, then 2,000 tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far">🔍 Hunt</button>
+            <button id="huntBtn" title="1,000 random starts, then 2,000 tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far">Hunt</button>
           </div>
           <p id="huntStatus" class="muted"></p>
         </div>
@@ -148,9 +148,9 @@
           <select id="setupList"></select>
         </label>
         <div class="row">
-          <button id="setupSave" title="Save the whole current setup in this browser">★ Save</button>
+          <button id="setupSave" data-icon="star" title="Save the whole current setup in this browser">Save</button>
           <button id="setupDelete" title="Delete the selected saved setup">Delete</button>
-          <button id="setupLink" title="Copy a link that opens this exact setup">🔗 Link</button>
+          <button id="setupLink" data-icon="link" title="Copy a link that opens this exact setup">Link</button>
         </div>
         <div class="row">
           <button id="setupExport" title="Download all saved setups as a JSON file">Export JSON</button>
@@ -184,10 +184,10 @@
           </label>
         </div>
         <div class="row">
-          <button id="restart" title="Jump to start (R)">⏮</button>
-          <button id="play" title="Play / pause (Space)">▶︎ Play</button>
+          <button id="restart" data-icon="start" title="Jump to start (R)" aria-label="Jump to start"></button>
+          <button id="play" title="Play / pause (Space)">Play</button>
           <button id="step" title="One step (→)">Step</button>
-          <button id="end" title="Jump to end (E)">⏭</button>
+          <button id="end" data-icon="end" title="Jump to end (E)" aria-label="Jump to end"></button>
         </div>
       </div>
       <div id="viewTools" class="stage-box display-menu">
@@ -224,6 +224,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261004e"></script>
+  <script src="main.js?v=20261004f"></script>
 </body>
 </html>

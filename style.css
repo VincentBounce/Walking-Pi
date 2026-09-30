@@ -112,6 +112,12 @@ input[type=checkbox]:disabled { cursor: default; }
 input[type=checkbox]:checked { background: var(--accent); }
 input[type=checkbox]:checked::before { transform: translateX(12px); }
 
+/* the icons drawn in main.js (3.3): lines in the text's colour, "f" parts filled */
+.icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.icon .f { fill: currentColor; stroke: none; }
+.icon .thin { stroke-width: 1.1; }
+button:has(.icon) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
 button {
   padding: 6px 12px;
   background: var(--bg);

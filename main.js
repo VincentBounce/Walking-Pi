@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.143';
+const VERSION = '0.1.144';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -837,7 +837,7 @@ function digitsNeeded() {
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
 function describe(base, available) {
-  const mode = MODES[$('mode').value], sym = `<span class="pi">${shownSym}</span>`;
+  const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
   if (!mode.life) {
     $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${fmt(walk.n)} base-${base} digits ${mode.rule}`;
     return;
@@ -951,6 +951,103 @@ function seededRandom(seed) {
   };
 }
 const freshDraw = () => crypto.getRandomValues(new Uint32Array(1))[0] % 1e9;
+
+/* ---- 3.3 Icons ------------------------------------------------------------------------------- */
+// Every icon is a small SVG drawn here, in a 24 × 24 box, with lines in the text's colour
+// (currentColor): grey on a card, yellow when it is the active one, dark on a filled button. No
+// emoji and no icon font, so they look the same on every system and match the flat design. The
+// shapes are computed (regular polygons, spirals, the dragon curve), the rest is a few paths.
+const r2 = (v) => Math.round(v * 100) / 100;
+const pathOf = (pts, close = true) => `M${pts.map(([x, y]) => `${r2(x)} ${r2(y)}`).join('L')}${close ? 'Z' : ''}`;
+const ngon = (n, r, rot = -90, cx = 12, cy = 12) => Array.from({ length: n }, (_, k) => {
+  const a = ((rot + (k * 360) / n) * Math.PI) / 180;
+  return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+});
+const seg = (a, b) => pathOf([a, b], false);
+// Scale and centre a polyline in the box (size × size, around 12, 12)
+function fitIn(pts, size = 18) {
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0, h = Math.max(...ys) - y0;
+  const s = size / Math.max(w, h, 1e-9);
+  return pts.map(([x, y]) => [12 + (x - x0 - w / 2) * s, 12 + (y - y0 - h / 2) * s]);
+}
+// A walk turning by the given angle (degrees, + = left) after each step of the given length,
+// starting towards angle a (−90: up)
+function turtlePath(turns, lengths = turns.map(() => 1), a = -90) {
+  let x = 0, y = 0;
+  const pts = [[0, 0]];
+  turns.forEach((t, k) => {
+    x += lengths[k] * Math.cos((a * Math.PI) / 180); y += lengths[k] * Math.sin((a * Math.PI) / 180);
+    pts.push([x, y]);
+    a -= t;
+  });
+  return pts;
+}
+// A polygonal spiral: n turns per round, each side a little longer than the previous one, the
+// last (longest) side at the bottom
+const spiralOf = (n, sides) => fitIn(turtlePath(Array(sides).fill(360 / n), Array.from({ length: sides }, (_, k) => 1 + k),
+  (360 / n) * (sides - 1)), 19);
+// The dragon curve: turn k is the paper fold k (1 = left, 0 = right)
+const dragonOf = (turns) => fitIn(turtlePath(Array.from({ length: turns }, (_, k) => {
+  let j = k + 1;
+  while (j % 2 === 0) j /= 2;
+  return j % 4 === 1 ? 90 : -90;
+})), 20);
+const dots = (list, r) => list.map(([x, y]) => `<circle class="f" cx="${x}" cy="${y}" r="${r}"/>`).join('');
+const pathEl = (d, cls) => `<path${cls ? ` class="${cls}"` : ''} d="${d}"/>`;
+
+const ICONS = (() => {
+  const hex = ngon(6, 9.5), tri = ngon(3, 10, -90, 12, 14), sq = [[4, 4], [20, 4], [20, 20], [4, 20]];
+  const cube = (fillTop) => pathEl(pathOf(hex)) + [0, 2, 4].map((k) => pathEl(seg([12, 12], hex[k]))).join('')
+    + (fillTop ? pathEl(pathOf([[12, 12], hex[4], hex[5], hex[0]]), 'f') : '');
+  const torus = '<ellipse cx="12" cy="12" rx="10" ry="7"/>' + pathEl('M5.5 11Q12 17 18.5 11M7.8 12.6Q12 8 16.2 12.6');
+  const [a, b, c, d] = [[12, 3], [3, 19], [21, 19], [13, 14.5]];
+  const icoOut = ngon(6, 10), icoIn = ngon(3, 5, 90);
+  const ico = pathEl(pathOf(icoOut)) + pathEl(pathOf(icoIn))
+    + [[0, 1], [0, 2], [2, 0], [2, 2], [4, 0], [4, 1], [1, 2], [3, 0], [5, 1]].map(([o, i]) => pathEl(seg(icoOut[o], icoIn[i]))).join('');
+  return {
+    // walk modes
+    grid: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
+    compass: pathEl('M12 3V21M3 12H21') + pathEl('M9 6L12 3L15 6M9 18L12 21L15 18M6 9L3 12L6 15M18 9L21 12L18 15'),
+    triangle: pathEl(pathOf(tri)),
+    triangleFilled: pathEl(pathOf(tri), 'f'),
+    hexagon: pathEl(pathOf(hex)),
+    hexagonFilled: pathEl(pathOf(hex), 'f'),
+    cube: cube(false),
+    cubeFilled: cube(true),
+    torus,
+    tetrahedron: pathEl(pathOf([a, b, c])) + [a, b, c].map((p) => pathEl(seg(p, d))).join(''),
+    octahedron: pathEl('M12 2L21 12L12 22L3 12Z') + [[12, 2], [21, 12], [12, 22], [3, 12]].map((p) => pathEl(seg(p, [10, 14]))).join(''),
+    icosahedron: ico,
+    spiral: pathEl(pathOf(spiralOf(4, 11), false)),
+    triSpiral: pathEl(pathOf(spiralOf(3, 7), false)),
+    hexSpiral: pathEl(pathOf(spiralOf(6, 15), false)),
+    jump: pathEl('M3 17Q7.5 8 12 17Q16.5 8 21 17') + pathEl('M17.5 14.5L21 17L17 18.5'),
+    search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + pathEl('M15.5 15.5L21 21'),
+    // tabs
+    walk2d: pathEl('M3 20V15H8V10H12V16H17V6H21V3'),  // a walk on the square grid
+    glider: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20')
+      + [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]].map(([x, y]) => `<rect class="f" x="${r2(4 + x * 5.33)}" y="${r2(4 + y * 5.33)}" width="5.33" height="5.33"/>`).join(''),
+    // hunt zones: the whole surface, then a patch of radius 1, 2 or 3
+    zoneAll: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20'),
+    zone1: dots([[12, 12]], 2.5),
+    zone2: dots([[12, 12]], 4),
+    zone3: dots([[12, 12]], 6),
+    // numbers
+    dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' + dots([[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]], 1.4),
+    dragon: `<path class="thin" d="${pathOf(dragonOf(63), false)}"/>`,
+    // buttons
+    play: pathEl('M7 4.5L19.5 12L7 19.5Z', 'f'),
+    pause: '<rect class="f" x="6" y="5" width="4" height="14" rx="1"/><rect class="f" x="14" y="5" width="4" height="14" rx="1"/>',
+    start: pathEl('M5.5 5V19') + pathEl('M19 5L9 12L19 19Z', 'f'),
+    end: pathEl('M18.5 5V19') + pathEl('M5 5L15 12L5 19Z', 'f'),
+    star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
+    link: pathEl('M9.5 14.5L14.5 9.5') + pathEl('M8.5 11.5L6.5 13.5A3.5 3.5 0 0 0 10.5 17.5L12.5 15.5M15.5 12.5L17.5 10.5A3.5 3.5 0 0 0 13.5 6.5L11.5 8.5'),
+  };
+})();
+const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+// A text that may hold 🎲 or 🐉 (a random number, the dragon), as HTML with their icons
+const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon'));
 
 /* ==============================================================================================
  * PART 4 — NUMBER FORMULAS
@@ -1287,7 +1384,7 @@ function renderNumberPicker(active) {
     grid.setAttribute('role', 'listbox');
     grid.append(...Object.entries(PRESETS).filter(([, p]) => p.group === group).map(([id, p]) => {
       const b = document.createElement('button');
-      b.textContent = p.sym;
+      b.innerHTML = withIcons(p.sym);
       b.title = `${p.name} — ${p.detail ?? p.f}`;
       b.setAttribute('role', 'option');
       b.classList.toggle('active', id === active);
@@ -1392,14 +1489,16 @@ function setCurrent(entry) {
 // list. Picking a choice sets the menu and fires its change event, so the rest of the page only
 // ever deals with the menu.
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
-const tabName = (label) => label;  // the menu's group labels are the tab names
-
-// Icon of each walk mode's shape, for the list of choices
+// The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
+// Filled: the relative modes (turn from your heading); outlined: the fixed directions.
+const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
+                    'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
 const MODE_ICONS = {
-  turtle: '▦', cardinal: '✥', triLR: '▲', triFixed: '△', hexRel: '⬢', hexFixed: '⬡',
-  cubeRel: '⧉', cubeFixed: '▣', torusWalk: '◎', hexTorusWalk: '⬡', cubeFlat: '◼', tetraLR: '▲', octaLR: '◆', icosaLR: '⬟',
-  lifeTorus: '◎', lifeHexTorus: '⬡', lifeCube: '◼', lifeTetra: '▲', lifeOcta: '◆', lifeIcosa: '⬟',
-  spiral: '▦', triSpiral: '▲', hexSpiral: '⬢', jump10: '⤳', jump64: '⤳', search10: '⌕', search64: '⌕',
+  turtle: 'grid', cardinal: 'compass', triLR: 'triangleFilled', triFixed: 'triangle', hexRel: 'hexagonFilled', hexFixed: 'hexagon',
+  cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
+  tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
+  lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron',
+  spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
 
 // "Cubes — base 5 (5 relative turns)" → name "Cubes", base "base 5", detail "5 relative turns"
@@ -1420,8 +1519,7 @@ function renderModePicker() {
   if (!modeTab) modeTab = currentGroup;
   $('modeTabs').replaceChildren(...groups.map((g) => {
     const b = document.createElement('button');
-    b.textContent = tabName(g.label);
-    b.title = g.label;
+    b.innerHTML = `${icon(TAB_ICONS[g.label])} ${g.label}`;
     b.setAttribute('role', 'tab');
     b.classList.toggle('active', g.label === modeTab);
     b.addEventListener('click', () => {  // another tab starts on its first choice
@@ -1442,7 +1540,9 @@ function renderModePicker() {
     const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
     const words = document.createElement('span');
     words.append(part('mode-name', name), ...(info ? [part('mode-detail', info)] : []));
-    b.append(part('mode-icon', MODE_ICONS[o.value] || '•'), words, ...(pill ? [part('mode-base', pill)] : []));
+    const pic = part('mode-icon', '');
+    pic.innerHTML = icon(MODE_ICONS[o.value]);
+    b.append(pic, words, ...(pill ? [part('mode-base', pill)] : []));
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
@@ -2662,7 +2762,7 @@ function huntClick() {
 function setHuntPhase(phase) {
   if (phase === hunt.phase) return;
   hunt.phase = phase;
-  $('huntBtn').textContent = phase === 1 && hunt.tweaks ? '⏭ Skip to the tweaks' : '▶︎ Play the best so far';
+  $('huntBtn').innerHTML = phase === 1 && hunt.tweaks ? `${icon('end')} Skip to the tweaks` : `${icon('play')} Play the best so far`;
 }
 
 // The hunt works on random starts, so the number becomes 🎲 Random digits first
@@ -2693,7 +2793,7 @@ function huntPlan(zone) {
 // Where the starts go, as cards like the walk modes: the whole surface or a radius of 1, 2 or 3,
 // with the real cell counts of the current surface. The hunt button tells how many starts it tries.
 let huntZone = 'all';
-const HUNT_ICONS = { all: '▦', radius1: '∙', radius2: '•', radius3: '●' };
+const HUNT_ICONS = { all: 'zoneAll', radius1: 'zone1', radius2: 'zone2', radius3: 'zone3' };
 function renderHuntList() {
   if (!walk.life || !walk.geo) return;
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
@@ -2703,7 +2803,9 @@ function renderHuntList() {
     const words = document.createElement('span');
     words.append(part('mode-name', patch ? `Radius ${radius}` : 'Whole surface'),
                  part('mode-detail', `${fmt(patch ? patch.length : walk.geo.n)} cells`));
-    b.append(part('mode-icon', HUNT_ICONS[zone]), words);
+    const pic = part('mode-icon', '');
+    pic.innerHTML = icon(HUNT_ICONS[zone]);
+    b.append(pic, words);
     b.setAttribute('role', 'option');
     b.classList.toggle('active', zone === huntZone);
     b.disabled = !!hunt.worker;  // the zone is fixed while a hunt runs
@@ -2712,7 +2814,7 @@ function renderHuntList() {
   }));
   if (hunt.worker) return;
   const { all } = huntPlan(huntZone);
-  $('huntBtn').textContent = all ? `🔍 Hunt all ${fmt(all)}` : `🔍 Hunt ${fmt(HUNT_STARTS)} first`;
+  $('huntBtn').innerHTML = `${icon('search')} ${all ? `Hunt all ${fmt(all)}` : `Hunt ${fmt(HUNT_STARTS)} first`}`;
   $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then play the best. Click again to play the best so far`
     : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far`;
 }
@@ -2813,7 +2915,7 @@ function loadChampion() {
       : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
     : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
     + (hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
-  $('status').textContent = `🎲 champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
+  $('status').innerHTML = `${icon('dice')} champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
   $('huntStatus').textContent = '';
   play(true);  // watch it at once
 }
@@ -3085,7 +3187,7 @@ function advanceTo(target) {
 
 function play(on) {
   playing = on && walk.n > 0 && cur < walk.n;
-  $('play').textContent = playing ? '❚❚ Pause' : '▶︎ Play';
+  $('play').innerHTML = playing ? `${icon('pause')} Pause` : `${icon('play')} Play`;
   $('play').classList.toggle('on', playing);
 }
 
@@ -4208,6 +4310,8 @@ updateSpeedLabel();
 resize();
 requestAnimationFrame(tick);
 $('version').textContent = `v${VERSION}`;
+for (const b of document.querySelectorAll('[data-icon]')) b.insertAdjacentHTML('afterbegin', icon(b.dataset.icon));
+play(false);  // the Play button with its icon
 fillSetupList();
 const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
 if (!linked || !applySetup(linked)) compute();
