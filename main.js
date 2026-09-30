@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.156';
+const VERSION = '0.1.157';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2935,20 +2935,26 @@ function renderHuntList() {
 
 // Choosing a zone shows a first random start in it at once (clicking again draws another one):
 // the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
-// Each click is a new random number: the whole surface takes its digits, a radius its first ones
-// (so the formula shown is what seeds the cells), a duel its first ones as dead or its side's colour
+// Each click is a new random number, and the zone is placed once it is built (see placeZone)
 function pickHuntZone(zone) {
   huntZone = zone;
   if (zone.startsWith('duel') && !walk.life.two) $('lifePreset').value = $('lifeRule').value = 'B3/S23/Immigration';
   $('formula').value = presetFormula('random');
   compute();  // built at once: random digits need no worker
+  $('huntStatus').textContent = '';
+  if (zone === 'duel90') play(true);  // nothing drawn: the duel plays at once
+}
+
+// After every build of a Life run (new number, surface, size or rule), the chosen zone's start: the
+// whole surface keeps the number's digits, a radius takes its first ones (so the formula shown is
+// what seeds the cells), a duel its first ones as dead or its side's colour, or the two R-pentominoes
+function placeZone() {
+  const zone = zoneInUse();
   if (zone === 'all') return;
-  if (zone === 'duel90') { playPentominoDuel(); return; }
+  if (zone === 'duel90') { placePentominoDuel(); return; }
   const { patch, radius, colours } = huntPlan(zone), d = walk.digits, seed = new Uint8Array(walk.life.seed.length);
   patch.forEach((t, k) => { seed[t] = colours ? (d[k] % 2) * colours[k] : d[k]; });
   setLifeSeed(seed, colours ? 'duel' : { radius, cells: patch.length });
-  $('huntStatus').textContent = '';
-  renderHuntList();
 }
 
 // A duel hunt: all 512 blue starts alone on their face, then all 512 red starts against the best blue
@@ -2991,8 +2997,8 @@ function skipToTweaks() {
   setHuntPhase(2);
 }
 
-// Blue R-pentomino on the face behind, red one turned by 90° on the face in front, then play
-function playPentominoDuel() {
+// Blue R-pentomino on the face behind, red one turned by 90° on the face in front
+function placePentominoDuel() {
   const L = walk.life, g = walk.geo, c = patchCentre(), face = Math.floor(c / g.perFace);
   const blue = c + ((face ^ 1) - face) * g.perFace, seed = new Uint8Array(L.seed.length);
   for (const [r, k] of R_PENTOMINO) {
@@ -3001,9 +3007,6 @@ function playPentominoDuel() {
   }
   setLifeSeed(seed, 'duel');
   $('status').textContent = 'Duel: a blue R-pentomino against a red one turned by 90°, on opposite faces';
-  $('huntStatus').textContent = '';
-  renderHuntList();
-  play(true);
 }
 
 function runHuntWorker(job) {
@@ -3180,13 +3183,13 @@ function applySetup(s) {
   return true;
 }
 
-// Called when a walk has just been built: restore a loaded setup's champion, then write the link
+// Called when a walk has just been built: restore a loaded setup's champion, or place the chosen
+// hunt zone's start, then write the link
 function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
-  if (ch && walk.life) {
-    setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
-  }
+  if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
+  else if (walk.life) placeZone();
   renderHuntList();
   syncLink();  // at once, not at the next periodic update
 }
