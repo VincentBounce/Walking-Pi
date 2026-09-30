@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.119';
+const VERSION = '0.1.120';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -808,6 +808,7 @@ let bounds3 = null;                        // 3D bounding box of points 0..cur
 const stage = $('stage');
 const layers = {
   grid: $('gridLayer').getContext('2d'),
+  fill: $('fillLayer').getContext('2d'),  // Fill areas, under the path
   path: $('pathLayer').getContext('2d'),
   overlay: $('overlayLayer').getContext('2d'),
 };
@@ -1530,7 +1531,9 @@ function setBusy(on) {
 // All positions, distances and counts are computed once into typed arrays: the animation, the
 // stats and the jumps only read them.
 function buildWalk() {
-  fill = null;  // a new walk: its enclosed areas are computed again
+  fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
+  fillDone = 0;
+  layers.fill.clearRect(0, 0, cw, ch);
   walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
   const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
   // n digits in total: the integer part (always included) then the digits after the point
@@ -3573,34 +3576,36 @@ function drawSegments(from, to) {
 }
 
 /* ---- Fill areas ------------------------------------------------------------------------------ */
-// The regions the path closes off are filled, each coloured like the path when it was closed. The
-// regions are read at the vertices of the tiling: two neighbouring vertices are separated by the
-// path when the walk crossed the tile edge between them (the step's midpoint is that edge's
-// midpoint, for squares, triangles and hexagons alike). Whatever can be reached from outside the
-// path's bounding box without crossing the path is open; the rest is enclosed. Each enclosed
-// vertex is filled with the polygon of the tile centres around it: those polygons tile the plane,
-// so the fill follows the path exactly.
-const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill (the status says so)
-let fill = null;                   // { upto, groups: Map colour → polygons } for the walk up to step upto
-let fillAt = 0;                    // when it was last computed (while playing, at most every 0.4 s)
+// The regions the path closes off are filled, each at the step that closes it and in the path's
+// colour at that step. The regions are read at the vertices of the tiling: two neighbouring
+// vertices are separated by the path once the walk has crossed the tile edge between them (the
+// step's midpoint is that edge's midpoint, for squares, triangles and hexagons alike). A vertex that
+// cannot be reached from outside the path's box without crossing the path is enclosed, and stays
+// so: the path only ever adds walls. So each vertex gets, once for the whole walk, the step from
+// which it is enclosed; the animation then paints each region when it forms, on a layer of its own
+// under the path. A vertex is painted as the polygon of the tile centres around it: those polygons
+// tile the plane, so the fill follows the path exactly.
+const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
+let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
+let fillDone = 0;                  // how many of fill.order are painted on the fill layer
 const fillOn = () => $('colorMode').value === 'fill' && walk.n && !walk.is3d && fillable(MODES[current.mode]);
 
-function computeFill(upto) {
-  const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3);
+function computeFill() {
+  const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3), last = walk.n;
   // integer keys: every vertex, centre and midpoint of a lattice falls on a finer integer grid
   const q = lat === 'square' ? (x, y) => [Math.round(2 * x), Math.round(2 * y)]
     : lat === 'tri' ? (x, y) => [Math.round(4 * x), Math.round((6 * (y - TRI_Y0)) / H)]
     : (x, y) => [Math.round((6 * x) / H), Math.round(4 * y)];
   const K = (x, y) => { const [a, b] = q(x, y); return (a + 8388608) * 16777216 + (b + 8388608); };
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (let i = 0; i <= upto; i++) {
+  for (let i = 0; i <= last; i++) {
     minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]);
     minY = Math.min(minY, ys[i]); maxY = Math.max(maxY, ys[i]);
   }
   const tileArea = lat === 'square' ? 1 : lat === 'tri' ? H / 2 : H;
-  if (((maxX - minX + 4) * (maxY - minY + 4)) / tileArea > FILL_MAX_TILES) return { upto, groups: new Map(), tooBig: true };
-  const crossed = new Map();  // midpoint of each drawn step → the step
-  for (let i = 0; i < upto; i++) {
+  if (((maxX - minX + 4) * (maxY - minY + 4)) / tileArea > FILL_MAX_TILES) return { order: [], tooBig: true };
+  const crossed = new Map();  // midpoint of each drawn step → the first step through it
+  for (let i = 0; i < last; i++) {
     if (walk.skipZeros && walk.digits[i] === 0) continue;  // a spiral's 0 draws nothing
     const k = K((xs[i] + xs[i + 1]) / 2, (ys[i] + ys[i + 1]) / 2);
     if (!crossed.has(k)) crossed.set(k, i);
@@ -3629,7 +3634,7 @@ function computeFill(upto) {
       }
     }
   };
-  // the graph of vertices: an edge per tile edge, carrying the step that crossed it (−1: open)
+  // the graph of vertices: an edge per tile edge, carrying the step that crossed it (−1: never)
   const index = new Map(), vx = [], vy = [], around = [], eu = [], ev = [], es = [], seen = new Set();
   const vid = (x, y) => {
     const k = K(x, y);
@@ -3648,65 +3653,64 @@ function computeFill(upto) {
       eu.push(a); ev.push(b); es.push(crossed.get(K((p[0] + r[0]) / 2, (p[1] + r[1]) / 2)) ?? -1);
     }
   });
-  const n = vx.length, start = new Int32Array(n + 1), adj = new Int32Array(2 * eu.length), fillPos = new Int32Array(n);
-  for (let e = 0; e < eu.length; e++) { start[eu[e] + 1]++; start[ev[e] + 1]++; }
-  for (let i = 0; i < n; i++) start[i + 1] += start[i];
-  for (let e = 0; e < eu.length; e++) { adj[start[eu[e]] + fillPos[eu[e]]++] = e; adj[start[ev[e]] + fillPos[ev[e]]++] = e; }
-  // open: reachable from outside the path's box without crossing it
-  const state = new Int8Array(n), stack = [];  // 0 unknown, 1 open, 2 enclosed (grouped)
-  for (let i = 0; i < n; i++) if (vx[i] < minX || vx[i] > maxX || vy[i] < minY || vy[i] > maxY) { state[i] = 1; stack.push(i); }
-  const other = (e, i) => (eu[e] === i ? ev[e] : eu[e]);
-  while (stack.length) {
-    const i = stack.pop();
-    for (let q2 = start[i]; q2 < start[i + 1]; q2++) {
-      const e = adj[q2], j = other(e, i);
-      if (es[e] < 0 && !state[j]) { state[j] = 1; stack.push(j); }
-    }
+  // Back in time with a union–find: start from the whole walk (crossed edges closed), then reopen
+  // the edges from the last crossing to the first. When reopening the edge crossed at step s joins
+  // a region to the outside, that region was enclosed from step s + 1 on. Each root keeps its
+  // members as a linked list (head, tail, next) until it joins the outside.
+  const n = vx.length, parent = new Int32Array(n), out = new Uint8Array(n);
+  const head = new Int32Array(n), tail = new Int32Array(n), next = new Int32Array(n).fill(-1), at = new Int32Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    parent[i] = head[i] = tail[i] = i;
+    out[i] = vx[i] < minX || vx[i] > maxX || vy[i] < minY || vy[i] > maxY ? 1 : 0;
   }
-  // each enclosed region: coloured like the path at the step that closed it (its latest border step)
-  const groups = new Map();
-  for (let s0 = 0; s0 < n; s0++) {
-    if (state[s0]) continue;
-    const region = [s0];
-    state[s0] = 2;
-    let closedAt = 0;
-    for (let r = 0; r < region.length; r++) {
-      const i = region[r];
-      for (let q2 = start[i]; q2 < start[i + 1]; q2++) {
-        const e = adj[q2], j = other(e, i);
-        if (es[e] >= 0) closedAt = Math.max(closedAt, es[e]);
-        else if (!state[j]) { state[j] = 2; region.push(j); }
-      }
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const join = (e, step) => {
+    let a = find(eu[e]), b = find(ev[e]);
+    if (a === b) return;
+    if (out[a] !== out[b] && step >= 0) {  // an enclosed region meets the outside
+      const inside = out[a] ? b : a;
+      for (let m = head[inside]; m >= 0; m = next[m]) at[m] = step + 1;
     }
-    const colour = GRADIENT[Math.min(BANDS - 1, Math.floor((closedAt * BANDS) / walk.n))];
-    if (!groups.has(colour)) groups.set(colour, []);
-    const polys = groups.get(colour);
-    for (const i of region) {  // the tile centres around the vertex, in angular order
-      const c = around[i], pts = [];
-      for (let k = 0; k < c.length; k += 2) pts.push([c[k], c[k + 1]]);
-      pts.sort((u, w) => Math.atan2(u[1] - vy[i], u[0] - vx[i]) - Math.atan2(w[1] - vy[i], w[0] - vx[i]));
-      polys.push(pts);
-    }
-  }
-  return { upto, groups, tooBig: false };
+    if (out[b] && !out[a]) [a, b] = [b, a];
+    parent[b] = a;
+    out[a] |= out[b];
+    next[tail[a]] = head[b];
+    tail[a] = tail[b];
+  };
+  for (let e = 0; e < eu.length; e++) if (es[e] < 0) join(e, -1);
+  const byStep = Array.from(eu, (_, e) => e).filter((e) => es[e] >= 0).sort((x, y) => es[y] - es[x]);
+  for (const e of byStep) join(e, es[e]);
+  // the enclosed vertices in the order they close, each with its polygon
+  const order = [];
+  for (let i = 0; i < n; i++) if (at[i] >= 0) order.push(i);
+  order.sort((x, y) => at[x] - at[y]);
+  const polys = order.map((i) => {
+    const c = around[i], pts = [];
+    for (let k = 0; k < c.length; k += 2) pts.push([c[k], c[k + 1]]);
+    pts.sort((u, w) => Math.atan2(u[1] - vy[i], u[0] - vx[i]) - Math.atan2(w[1] - vy[i], w[0] - vx[i]));
+    return pts;
+  });
+  return { order: order.map((i) => at[i]), polys, tooBig: false };  // order[k]: the step closing polygon k
 }
 
-// Under the path: the enclosed regions of the walk up to the current step
-function drawFill() {
-  if (!fill || fill.upto !== cur) { fill = computeFill(cur); fillAt = performance.now(); }
-  const ctx = layers.path, { scale: s, ox, oy } = view;
-  ctx.globalAlpha = 0.45;
-  for (const [colour, polys] of fill.groups) {
+// Paint the regions closed by the walk up to step to (from where the fill layer got to), opaque,
+// in the path's colour at the step that closed them
+function drawFill(to) {
+  fill ??= computeFill();
+  const ctx = layers.fill, { scale: s, ox, oy } = view, { order, polys } = fill;
+  while (fillDone < order.length && order[fillDone] <= to) {
+    const band = Math.min(BANDS - 1, Math.floor(((order[fillDone] - 1) * BANDS) / walk.n));
     ctx.beginPath();
-    for (const pts of polys) {
+    for (; fillDone < order.length && order[fillDone] <= to
+         && Math.min(BANDS - 1, Math.floor(((order[fillDone] - 1) * BANDS) / walk.n)) === band; fillDone++) {
+      const pts = polys[fillDone];
       ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
       for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
       ctx.closePath();
     }
-    ctx.fillStyle = colour;
+    ctx.fillStyle = GRADIENT[band];
     ctx.fill();
   }
-  ctx.globalAlpha = 1;
 }
 
 function drawOverlay() {
@@ -3896,13 +3900,13 @@ function tick(now = performance.now()) {
     return;
   }
   if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // the 3D box grows with the walk
-  // Fill areas: the fill follows the walk, recomputed at most every 0.4 s while playing
-  if (fillOn() && (!fill || fill.upto !== cur) && (!playing || now - fillAt > 400)) needsFull = true;
   if (needsFull) {
     layers.path.clearRect(0, 0, cw, ch);
+    layers.fill.clearRect(0, 0, cw, ch);
     drawn = 0;
-    if (fillOn()) drawFill();
+    fillDone = 0;
   }
+  if (fillOn()) drawFill(cur);  // each region when it closes, under the path
   if (walk.n && drawn < cur) {
     drawSegments(drawn, cur);
     drawn = cur;
