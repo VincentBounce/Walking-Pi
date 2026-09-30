@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.153';
+const VERSION = '0.1.154';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2814,7 +2814,8 @@ function lifetimeWords(r) {
 // ends it and starts another one on the tweaks, from the best start found.
 const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;
 function huntClick() {
-  if (!hunt.worker) startHunt();
+  if (!hunt.worker && zoneInUse() === 'duel90') pickHuntZone('duel90');  // nothing to hunt: play it again
+  else if (!hunt.worker) startHunt();
   else if (hunt.duel) nextDuelSide();
   else if (hunt.phase === 1 && hunt.tweaks) skipToTweaks();
   else stopHunt(true);
@@ -2862,21 +2863,29 @@ function huntPlan(zone) {
 // Where the starts go, as cards like the walk modes: the whole surface or a radius of 1, 2 or 3,
 // with the real cell counts of the current surface. The hunt button tells how many starts it tries.
 let huntZone = 'all';
-const HUNT_ICONS = { all: 'zoneAll', radius1: 'zone1', radius2: 'zone2', radius3: 'zone3', duel: 'duel' };
+const HUNT_ICONS = { all: 'zoneAll', radius1: 'zone1', radius2: 'zone2', radius3: 'zone3', duel: 'duel', duel90: 'duel' };
+// The R-pentomino (..X / XXX / .X.), as (row, column) around a face's centre cell: the most durable
+// 9-cell start, the one the duel hunt finds on both sides. Found for both, it gives two mirror images
+// that stay mirror images (a draw); the duel90 zone turns the red one by 90° to break that symmetry.
+const R_PENTOMINO = [[-1, 1], [0, -1], [0, 0], [0, 1], [1, 0]];
 // The duel needs two opposite faces: the cube (its faces come in opposite pairs 0–1, 2–3, 4–5)
 const duelPossible = () => walk.geo.sides === 4 && !walk.geo.torus;
 // The zone chosen, or the whole surface when a duel no longer fits (another surface or rule)
-const zoneInUse = () => (huntZone === 'duel' && !(duelPossible() && walk.life.two) ? 'all' : huntZone);
+const zoneInUse = () => (huntZone.startsWith('duel') && !(duelPossible() && walk.life.two) ? 'all' : huntZone);
 function renderHuntList() {
   if (!walk.life || !walk.geo) return;
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
-  $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3', 'duel'].map((zone) => {
-    const duel = zone === 'duel', { patch, radius } = duel && !duelPossible() ? { patch: null } : huntPlan(zone);
+  $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3', 'duel', 'duel90'].map((zone) => {
+    const duel = zone.startsWith('duel'), { patch, radius } = duel ? { patch: null } : huntPlan(zone);
     const b = document.createElement('button');
     const words = document.createElement('span');
-    words.append(part('mode-name', duel ? 'Radius duel' : patch ? `Radius ${radius}` : 'Whole surface'),
-                 part('mode-detail', duel ? '9 red cells, 9 blue on the opposite face' : `${fmt(patch ? patch.length : walk.geo.n)} cells`));
-    if (duel) b.title = 'Red against blue on two opposite faces of the cube (two civilisations): the run ends when one of them has disappeared';
+    words.append(part('mode-name', zone === 'duel' ? 'Radius duel' : zone === 'duel90' ? 'Radius duel R-pentomino 90°'
+                   : patch ? `Radius ${radius}` : 'Whole surface'),
+                 part('mode-detail', zone === 'duel' ? '9 red cells, 9 blue on the opposite face'
+                   : zone === 'duel90' ? 'blue R-pentomino, the red one turned 90° on the opposite face'
+                   : `${fmt(patch ? patch.length : walk.geo.n)} cells`));
+    if (zone === 'duel') b.title = 'The most durable blue start alone on its face, then the most durable red one on the opposite face, then both together';
+    if (zone === 'duel90') b.title = 'The R-pentomino in blue, and in red turned by 90° on the opposite face: no longer mirror images, so one can win';
     const pic = part('mode-icon', '');
     pic.innerHTML = icon(HUNT_ICONS[zone]);
     b.append(pic, words);
@@ -2887,6 +2896,11 @@ function renderHuntList() {
     return b;
   }));
   if (hunt.worker) return;
+  if (zoneInUse() === 'duel90') {
+    $('huntBtn').innerHTML = `${icon('play')} Play the duel`;
+    $('huntBtn').title = 'Start the R-pentomino duel again';
+    return;
+  }
   const { all, sides } = huntPlan(zoneInUse());
   if (sides) {
     $('huntBtn').innerHTML = `${icon('search')} Hunt blue, then red`;
@@ -2902,13 +2916,14 @@ function renderHuntList() {
 // the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
 function pickHuntZone(zone) {
   huntZone = zone;
-  const toTwo = zone === 'duel' && !walk.life.two;  // a duel needs the two civilisations
+  const toTwo = zone.startsWith('duel') && !walk.life.two;  // a duel needs the two civilisations
   if (toTwo) $('lifePreset').value = $('lifeRule').value = 'B3/S23/Immigration';
   if (zone === 'all' || toTwo || !isRandomDigits()) {
     $('formula').value = presetFormula('random');
     compute();  // a new draw (built at once: random digits need no worker)
     if (zone === 'all') return;
   }
+  if (zone === 'duel90') { playPentominoDuel(); return; }
   const L = walk.life, { patch, radius, colours } = huntPlan(zone), seed = new Uint8Array(L.seed.length);
   patch.forEach((t, k) => { seed[t] = colours ? (Math.random() < 0.5 ? colours[k] : 0) : Math.floor(Math.random() * L.C); });
   setLifeSeed(seed);
@@ -2956,6 +2971,22 @@ function skipToTweaks() {
   }
   runHuntWorker({ randomRuns: 0, tweaks: hunt.tweaks, exhaustive: false, from: hunt.seed, fromBest: hunt.best });
   setHuntPhase(2);
+}
+
+// Blue R-pentomino on the face behind, red one turned by 90° on the face in front, then play
+function playPentominoDuel() {
+  const L = walk.life, g = walk.geo, c = patchCentre(), face = Math.floor(c / g.perFace);
+  const blue = c + ((face ^ 1) - face) * g.perFace, seed = new Uint8Array(L.seed.length);
+  for (const [r, k] of R_PENTOMINO) {
+    seed[blue + r * g.size + k] = 2;
+    seed[c + k * g.size - r] = 1;  // (row, column) → (column, −row): a quarter turn
+  }
+  setLifeSeed(seed);
+  championCode = encodeCells(seed, L.C);
+  $('status').textContent = 'Duel: a blue R-pentomino against a red one turned by 90°, on opposite faces';
+  $('huntStatus').textContent = '';
+  renderHuntList();
+  play(true);
 }
 
 function runHuntWorker(job) {
