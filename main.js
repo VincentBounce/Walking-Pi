@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.140';
+const VERSION = '0.1.141';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2551,7 +2551,7 @@ function lifeStep() {
  * - How: when a patch has at most 20,000 possible starts, all of them are tried, and the result is
  *   then the true record for that patch; otherwise 1,000 random starts, then 2,000 tweaks of the
  *   best one (hill climbing). For the same lifetime, the start with fewer live cells wins.
- * - One button: 🔍 Hunt, then ⏭ skip to the tweaks, then ■ keep the best so far.
+ * - One button: 🔍 Hunt, then ⏭ skip to the tweaks, then ▶︎ play the best so far.
  * The search runs in a worker with its own copy of the Life step, so the page stays fluid.
  */
 
@@ -2635,8 +2635,8 @@ const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: 
 // A hunt belongs to one surface, size and rule: anything else makes its champion meaningless
 const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? walk.life.ruleText : ''}`;
 
-// Stop the hunt. When it ends normally or with ■ Keep the best so far, the best start found is loaded at once;
-// when something else changed (number, surface, rule…) it is simply dropped.
+// Stop the hunt. When it ends normally or with ▶︎ Play the best so far, the best start found is
+// loaded and played at once; when something else changed (number, surface, rule…) it is dropped.
 function stopHunt(loadBest = false) {
   if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
   hunt.phase = 0;
@@ -2650,7 +2650,7 @@ function lifetimeWords(r) {
 }
 
 // One button runs the whole hunt: 🔍 Hunt starts the random starts, ⏭ skips to the tweaks,
-// ■ keeps the best so far. A worker cannot hear a click in the middle of its loop, so skipping
+// ▶︎ plays the best so far. A worker cannot hear a click in the middle of its loop, so skipping
 // ends it and starts another one on the tweaks, from the best start found.
 const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;
 function huntClick() {
@@ -2662,7 +2662,7 @@ function huntClick() {
 function setHuntPhase(phase) {
   if (phase === hunt.phase) return;
   hunt.phase = phase;
-  $('huntBtn').textContent = phase === 1 && hunt.tweaks ? '⏭ Skip to the tweaks' : '■ Keep the best so far';
+  $('huntBtn').textContent = phase === 1 && hunt.tweaks ? '⏭ Skip to the tweaks' : '▶︎ Play the best so far';
 }
 
 // The hunt works on random starts, so the number becomes 🎲 Random digits first
@@ -2713,8 +2713,8 @@ function renderHuntList() {
   if (hunt.worker) return;
   const { all } = huntPlan(huntZone);
   $('huntBtn').textContent = all ? `🔍 Hunt all ${fmt(all)}` : `🔍 Hunt ${fmt(HUNT_STARTS)} first`;
-  $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then load the best. Click again to keep the best so far`
-    : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it is loaded. Click again to skip to the tweaks, then to keep the best so far`;
+  $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then play the best. Click again to play the best so far`
+    : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far`;
 }
 
 // Choosing a zone shows a first random start in it at once (clicking again draws another one):
@@ -2731,7 +2731,7 @@ function pickHuntZone(zone) {
   setLifeSeed(seed);
   championCode = encodeCells(seed, L.C);  // the link keeps this start
   $('status').textContent = `A random start within radius ${radius} (${fmt(patch.length)} cells), the rest dead · ${fmt(L.seedAlive)} live cells`;
-  $('huntStatus').textContent = 'Press ▶︎ Play to watch it, or 🔍 Hunt for one that lasts longer.';
+  $('huntStatus').textContent = '';
   renderHuntList();
 }
 
