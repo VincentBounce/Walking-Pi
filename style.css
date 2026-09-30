@@ -200,6 +200,9 @@ button.primary {
 }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
+.choice-row { display: flex; gap: 4px; margin-bottom: 10px; }  /* a few short choices side by side */
+.choice-row button { flex: 1; padding: 5px 4px; font-size: 12px; background: var(--panel); white-space: nowrap; }
+.choice-row button.active,
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .stage-bar {  /* the animation controls over the view, bottom left: facing the stage button */
   position: absolute;

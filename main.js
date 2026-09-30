@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.118';
+const VERSION = '0.1.119';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -860,10 +860,9 @@ function relabelColours(mode) {
   renderColorButtons();
 }
 
-// The colours as buttons clicked directly; the (hidden) menu stays the source of truth
-function renderColorButtons() {
-  const sel = $('colorMode');
-  $('colorButtons').replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
+// Choices as buttons clicked directly (colours, sky); the (hidden) menu stays the source of truth
+function renderChoiceButtons(sel, box) {
+  box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
     const b = document.createElement('button');
     b.textContent = o.text;
     b.classList.toggle('active', o.value === sel.value);
@@ -874,6 +873,8 @@ function renderColorButtons() {
     return b;
   }));
 }
+const renderColorButtons = () => renderChoiceButtons($('colorMode'), $('colorButtons'));
+const renderSkyButtons = () => renderChoiceButtons($('sky'), $('skyButtons'));
 
 function requestedDigits() {
   const n = Math.round(Number($('digits').value));
@@ -3180,8 +3181,10 @@ function drawGrid() {
     draw3DFrame(ctx);
     return;
   }
-  const x0 = ((view.ox % px) + px) % px;
-  const y0 = ((view.oy % px) + px) % px;
+  // the lines bound the cells (the walk joins cell centres, at whole coordinates), as for the
+  // triangles and the hexagons: they sit half a cell away from the centres
+  const x0 = (((view.ox + s / 2) % px) + px) % px;
+  const y0 = (((view.oy + s / 2) % px) + px) % px;
   for (let x = x0; x < cw; x += px) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, ch); }
   for (let y = y0; y < ch; y += px) { ctx.moveTo(0, Math.round(y) + 0.5); ctx.lineTo(cw, Math.round(y) + 0.5); }
   ctx.stroke();
@@ -4013,7 +4016,8 @@ const pickPreset = (id) => { $('formula').value = presetFormula(id); computeFram
 $('mersenneP').addEventListener('change', () => pickPreset('mersenne'));
 $('primorialP').addEventListener('change', () => pickPreset('primorial'));
 $('primeSize').addEventListener('change', () => pickPreset('randomPrime'));
-$('sky').addEventListener('change', () => { needsFull = true; });
+$('sky').addEventListener('change', () => { needsFull = true; renderSkyButtons(); });
+renderSkyButtons();
 // flat ↔ round: the animation runs in tick (morphStep); the walk or Life run goes on meanwhile
 $('morphBtn').addEventListener('click', () => {
   if (!walk.shape) return;
