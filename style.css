@@ -198,10 +198,11 @@ button.primary {
 .display-menu { top: 12px; right: 12px; }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
-.stage-head { width: 100%; padding: 2px 6px; border: 0; background: none; text-align: left; font-weight: 600; }
-/* hovered, the Display title gives way to the settings (on touch screens it stays, to be tapped) */
-.display-menu:hover .stage-head { display: none; }
-@media (hover: none) { .display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); } }
+/* Fit view stays at the top right; hovering opens the settings below it */
+.display-menu .stage-head { display: block; margin-left: auto; }
+.display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
+.form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
 .choice-row { display: flex; gap: 4px; margin-bottom: 10px; }  /* a few short choices side by side */

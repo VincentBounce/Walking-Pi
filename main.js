@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.130';
+const VERSION = '0.1.131';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1556,9 +1556,9 @@ function setBusy(on) {
 /* ---- 5.3 Building the walk ------------------------------------------------------------------- */
 // All positions, distances and counts are computed once into typed arrays: the animation, the
 // stats and the jumps only read them.
-let previousShape = null;  // the form of the surface just replaced: { target, tab }
+let previousShape = null;  // the form of the surface just replaced: { target, mode }
 function buildWalk() {
-  previousShape = walk.shape && { target: walk.shape.target, tab: walk.shape.tab };
+  previousShape = walk.shape && { target: walk.shape.target, mode: walk.shape.mode };
   visitData = null;  // and its cells' visits too
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   fillDone = 0;
@@ -2217,14 +2217,14 @@ function shapeSign(g) {
   return g.shapeSign;
 }
 
-// A new surface starts in its mode's default form (round for the icosahedron and the torus, flat
-// otherwise), except in Walks on surfaces, where it keeps the form of the surface it replaces
+// A new walk mode starts in its default form (round for the icosahedron and the torus, flat
+// otherwise); the same mode rebuilt (another size, number or rule) keeps the form it had
 function initShape(kind) {
   if (!MORPHABLE.includes(kind)) { walk.shape = null; updateMorphButton(); return; }
-  const tab = modeTabOf(), keep = previousShape && previousShape.tab === tab && tab === 'Walks on surfaces';
-  const g = walk.geo, m = keep ? previousShape.target : MODES[current.mode].round ? 1 : 0;
+  const mode = current.mode, keep = previousShape && previousShape.mode === mode;
+  const g = walk.geo, m = keep ? previousShape.target : MODES[mode].round ? 1 : 0;
   const maxExtent = Math.max(shapeAt(g, 0).extent, shapeAt(g, 1).extent);
-  walk.shape = { ...shapeAt(g, m), target: m, maxExtent, tab };
+  walk.shape = { ...shapeAt(g, m), target: m, maxExtent, mode };
 }
 
 // Put the current shape in place: tile centres of the walk's points, the frame and the view
@@ -2896,6 +2896,7 @@ function applySetup(s) {
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab
   displayDefaults();
+  $('perspective').checked = !!MODES[s.w].perspective;
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
   return true;
@@ -4146,7 +4147,6 @@ function computeFramed() {
 let displayTab = null;
 const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
-  $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default for the cube modes only
   $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
   $('showGrid').checked = true;
@@ -4157,6 +4157,9 @@ function displayDefaults() {
 }
 $('mode').addEventListener('change', () => {
   if (modeTabOf() !== displayTab) displayDefaults();
+  // the form of the view belongs to the walk mode: its perspective (and its flat or round form,
+  // see initShape) come back with every new mode
+  $('perspective').checked = !!MODES[$('mode').value].perspective;
   compute();
 });
 

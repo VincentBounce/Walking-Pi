@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003r">
+  <link rel="stylesheet" href="style.css?v=20261003s">
 </head>
 <body>
   <header>
@@ -191,12 +191,8 @@
         </div>
       </div>
       <div id="viewTools" class="stage-box display-menu">
-        <button class="stage-head" title="Display settings">◐ Display</button>
+        <button id="fit" class="stage-head" title="Fit the view to the walk and keep it fitted (F); hover for the display settings">Fit view (F)</button>
         <div class="stage-more">  <!-- shown on hover, below -->
-          <div id="shapeRow" hidden>
-            <div class="field-label">Shape</div>
-            <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
-          </div>
           <div id="colorsRow">
             <div class="field-label">Colors</div>
             <div id="colorButtons" class="choice-list"></div>
@@ -221,13 +217,17 @@
             </select>
           </div>
           <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate</label>
-          <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
-          <button id="fit">Fit view (F)</button>
+          <div id="formSection" class="form-section">  <!-- the form of the view, set by each walk mode -->
+            <div id="shapeRow" hidden>
+              <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
+            </div>
+            <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
+          </div>
         </div>
       </div>
     </div>
   </main>
 
-  <script src="main.js?v=20261003r"></script>
+  <script src="main.js?v=20261003s"></script>
 </body>
 </html>
