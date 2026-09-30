@@ -68,6 +68,9 @@ h2 {
 
 label { display: block; margin-bottom: 10px; }
 label.check { display: flex; align-items: center; gap: 8px; }
+/* over the view, a setting you switch on is a button framed in yellow, like a chosen colour */
+.stage-box label.check { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; }
+.stage-box label.check:has(input:checked) { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 
 input[type=number], input[type=text], select {
   display: block;
@@ -199,7 +202,7 @@ button.primary {
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 /* Fit view stays at the top right; hovering opens the settings below it */
-.display-menu .stage-head { display: block; margin-left: auto; }
+.display-menu .stage-head { width: fit-content; margin: 0 0 0 auto; }
 .display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 .form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }

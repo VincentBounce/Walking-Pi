@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.132';
+const VERSION = '0.1.133';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -852,15 +852,15 @@ function describe(base, available) {
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
 // Walks on surfaces have no Colors: their tiles are coloured by the number of visits.
 const DISPLAY_BY_TAB = {
-  '2D walks': ['colors', 'fill', 'cells', 'visits', 'grid', 'autoFit'],
-  '3D walks': ['colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
-  'Automata on surfaces': ['shape', 'colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['colors', 'cells', 'grid', 'autoFit'],
+  '2D walks': ['colors', 'fill', 'cells', 'visits', 'grid'],
+  '3D walks': ['colors', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surfaces': ['shape', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Automata on surfaces': ['shape', 'colors', 'grid', 'sky', 'autoRotate', 'perspective'],
+  '2D spirals': ['colors', 'cells', 'grid'],
 };
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
 function updateDisplayMenu() {
-  const rows = { colors: 'colorsRow', grid: 'gridRow', autoFit: 'autoFitRow', sky: 'skyRow',
+  const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit heads the box: always there
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   updateMorphButton();  // Shape: only for a surface that can change shape
@@ -3079,7 +3079,7 @@ function play(on) {
 function showAll() {
   if (walk.life) return;  // the Game of Life starts at generation 0 instead
   advanceTo(walk.n);
-  if ($('autoFit').checked) fitWhole();  // framed like Fit view, without the margin kept for growing
+  if ($('autoFit').checked) fitWhole();  // framed like F or a double-click, without the margin kept for growing
 }
 
 // 3D walks: keep the bounding box in the frame too (in perspective its near corners stick out)
@@ -4024,7 +4024,6 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
-$('fit').addEventListener('click', fitNow);
 $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
