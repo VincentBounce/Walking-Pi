@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003m">
+  <link rel="stylesheet" href="style.css?v=20261003n">
 </head>
 <body>
   <header>
@@ -197,16 +197,18 @@
             <div class="field-label">Shape</div>
             <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
           </div>
-          <div class="field-label">Colors</div>
-          <div id="colorButtons" class="choice-list"></div>
+          <div id="colorsRow">
+            <div class="field-label">Colors</div>
+            <div id="colorButtons" class="choice-list"></div>
+          </div>
           <select id="colorMode" hidden>
             <option value="gradient">Gradient (order)</option>
             <option value="fill">Fill areas</option>
             <option value="digit">By digit</option>
             <option value="mono">Monochrome</option>
           </select>
-          <label class="check"><input id="showGrid" type="checkbox" checked> Grid</label>
-          <label class="check"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
+          <label class="check" id="gridRow"><input id="showGrid" type="checkbox" checked> Grid</label>
+          <label class="check" id="autoFitRow"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
           <div id="skyRow" hidden>
             <div class="field-label">Sky</div>
             <div id="skyButtons" class="choice-row"></div>
@@ -224,6 +226,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261003m"></script>
+  <script src="main.js?v=20261003n"></script>
 </body>
 </html>

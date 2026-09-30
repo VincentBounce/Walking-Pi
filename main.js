@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.125';
+const VERSION = '0.1.126';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -841,10 +841,25 @@ function lifeSubtitle(where) {
     'neighbours share an edge or a corner';
 }
 
+// What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
+// Walks on surfaces have no Colors: their tiles are coloured by the number of visits.
+const DISPLAY_BY_TAB = {
+  '2D walks': ['colors', 'fill', 'grid', 'autoFit'],
+  '3D walks': ['colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surfaces': ['shape', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
+  'Automata on surfaces': ['shape', 'colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
+  '2D spirals': ['colors', 'grid', 'autoFit'],
+};
+const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
+function updateDisplayMenu() {
+  const rows = { colors: 'colorsRow', grid: 'gridRow', autoFit: 'autoFitRow', sky: 'skyRow',
+                 autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
+  for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
+  updateMorphButton();  // Shape: only for a surface that can change shape
+}
+
 // The colour menu means something else for the Game of Life, and depends on its number of states.
-// In Life the plain states come first (the default); walks keep the gradient first. Fill areas is
-// only for the 2D walks that draw a path on a tiling (not the 3D ones, surfaces or point modes).
-const fillable = (mode) => !mode.life && ['square', 'tri', 'hex'].includes(mode.lattice) && !mode.points;
+// In Life the plain states come first (the default); walks keep the gradient first.
 function relabelColours(mode) {
   const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
@@ -856,7 +871,7 @@ function relabelColours(mode) {
   const order = life ? ['mono', 'gradient', 'digit', 'fill'] : ['gradient', 'fill', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
-  byValue.fill.hidden = !fillable(mode);
+  byValue.fill.hidden = !shows('fill');
   if (sel.selectedOptions[0]?.hidden) sel.value = 'gradient';
   renderColorButtons();
 }
@@ -1585,7 +1600,7 @@ function buildWalk() {
                         points: false, keys: seq, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
-  if (is3d) { setPerspective(); project(); } else { walk.persp = null; $('perspectiveRow').hidden = true; }
+  if (is3d) { setPerspective(); project(); } else walk.persp = null;
   updateHint();
   restart();
 }
@@ -1652,7 +1667,6 @@ const perspectiveAllowed = () => walk.is3d;
 // Set walk.persp from the checkbox: centre and size from the whole walk (or the solid), camera
 // at 2.5 × that radius, i.e. a field of view of roughly 45°
 function setPerspective() {
-  $('perspectiveRow').hidden = !perspectiveAllowed();
   if (!perspectiveAllowed() || !$('perspective').checked) { walk.persp = null; return; }
   if (walk.sphere) {
     // one camera distance for both forms of the shape (the flat torus is wider)
@@ -1700,10 +1714,7 @@ function updateHint() {
   $('hint').textContent = walk.is3d
     ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: auto-fit'
     : 'Wheel: zoom · Drag: pan · Double-click: auto-fit';
-  $('autoRotateRow').hidden = !walk.is3d;
-  $('skyRow').hidden = !walk.is3d;
-  $('perspectiveRow').hidden = !perspectiveAllowed();
-  updateMorphButton();  // shown only for surfaces that can change shape
+  updateDisplayMenu();
 }
 
 /* ==============================================================================================
@@ -2223,7 +2234,7 @@ function applyShape() {
 // shape; the animation runs in tick (morphStep) and the walk or Life run goes on meanwhile
 function updateMorphButton() {
   const sh = walk.shape;
-  $('shapeRow').hidden = !sh;
+  $('shapeRow').hidden = !sh || !shows('shape');
   if (!sh) return;
   const names = walk.geo.torus ? ['Unrolled', 'Rolled'] : ['Flat', 'Inflated'];
   $('shapeButtons').replaceChildren(...names.map((name, m) => {
@@ -3596,7 +3607,7 @@ function drawSegments(from, to) {
 const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
-const fillOn = () => $('colorMode').value === 'fill' && walk.n && !walk.is3d && fillable(MODES[current.mode]);
+const fillOn = () => $('colorMode').value === 'fill' && walk.n && !walk.is3d && shows('fill');
 
 function computeFill() {
   const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3), last = walk.n;
