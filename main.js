@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.116';
+const VERSION = '0.1.117';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -685,6 +685,8 @@ const PRESETS = {
   champernowne: { group: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
   primeConst: { group: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
   primeGaps: { group: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
+  dragon:  { group: 'Sequences', sym: '🐉', name: 'Dragon (paperfolding)',
+             detail: 'dragon · a fractal on Triangles left/right, Squares turtle and Hexagons relative', f: 'dragon' },
 };
 const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
 
@@ -693,6 +695,7 @@ const FORMULA_NOTES = {
   primes: (b) => `digit k = 0 if k is not prime, else k mod ${b}`,
   primes2: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
   primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
+  dragon: () => 'the folds of a strip folded in two again and again (0 and 1): the dragon curve, as turns',
 };
 
 /* ---- 2.3 Walk modes -------------------------------------------------------------------------- */
@@ -929,7 +932,7 @@ const freshDraw = () => crypto.getRandomValues(new Uint32Array(1))[0] % 1e9;
 const FORMULA_NAMES = {  // name: [kind, symbol shown]
   pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
   erdos: ['real', 'E'], primes2: ['real', 'ρ₂'],
-  champernowne: ['seq', 'C'], primes: ['seq', 'ρ'], primegaps: ['seq', 'Δp'],
+  champernowne: ['seq', 'C'], primes: ['seq', 'ρ'], primegaps: ['seq', 'Δp'], dragon: ['seq', '🐉'],
 };
 const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, exp: 1, log: 2, zeta: 1, primorial: 1, random: 1, randprime: 2 };
 const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
@@ -1268,6 +1271,14 @@ function seqDigits(ast, n, base) {
     // In base 2 this is exactly the binary expansion of the prime constant ρ = Σ 2^(−p)
     const composite = sieve(n);
     for (let k = 2; k <= n; k++) if (!composite[k]) digits[k - 1] = k % base || 1;
+  } else if (name === 'dragon') {
+    // regular paperfolding sequence: fold n (n = 1, 2, …) is 0 when n / 2^k (odd) ≡ 1 mod 4, else 1.
+    // Read as turns (left / right) it is the dragon curve; its digits are 0 and 1 in every base.
+    for (let i = 0; i < n; i++) {
+      let k = i + 1;
+      while (k % 2 === 0) k /= 2;
+      digits[i] = k % 4 === 1 ? 0 : 1;
+    }
   } else {  // primegaps
     // gaps between consecutive odd primes (3→5, 5→7, 7→11, …) are even: digit = (gap / 2) mod b.
     // The n-th prime is below n·(ln n + ln ln n) for n ≥ 6.
