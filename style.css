@@ -112,6 +112,9 @@ button.primary {
 .tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }  /* five tabs: two lines if needed */
 .tabs button { flex: 1 1 auto; padding: 5px 4px; font-size: 12px; }  /* 4 tabs fit the panel */
 .tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+/* bold text is wider: an invisible, zero-height bold copy of the label (data-label) gives every tab
+   its bold width, so the active one does not push the others */
+.tabs button::after { content: attr(data-label); display: block; height: 0; overflow: hidden; visibility: hidden; font-weight: 600; }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .mode-list button {
   display: grid;
