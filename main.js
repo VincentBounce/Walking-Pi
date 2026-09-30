@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.142';
+const VERSION = '0.1.143';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3002,7 +3002,7 @@ function exportSetups() {
 async function importSetups(file) {
   try {
     const data = JSON.parse(await file.text());
-    const incoming = (data.setups || []).filter((x) => x && x.name && x.setup && x.setup.n && x.setup.w);
+    const incoming = (data.setups || []).filter((x) => x && x.name && x.setup && x.setup.x && x.setup.w);
     const list = readSetups();
     for (const x of incoming) {  // a name already used gets a suffix instead of overwriting
       let name = x.name;
