@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.152';
+const VERSION = '0.1.153';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2694,9 +2694,10 @@ function lifeStep() {
  * - Where: the whole surface, or a patch of radius 1, 2 or 3 around a centre cell. A radius counts
  *   Life-neighbour steps, so it is a 3×3, 5×5 or 7×7 square on squares and a small disc on
  *   triangles: one word for both. The rest of the surface starts dead.
- * - Duel (on the cube, with two civilisations): a red patch and a blue patch of radius 1 on two
- *   opposite faces. The run then ends as soon as one civilisation has disappeared, so the hunt
- *   looks for the longest fight (or, failing that, the longest time before the two settle).
+ * - Duel (on the cube, with two civilisations): a blue patch and a red patch of radius 1 on two
+ *   opposite faces. The hunt finds the most durable blue start alone on its face, then the most
+ *   durable red start alone on the other one (all 512 starts of 9 cells each time), then plays the
+ *   two together.
  * - How: when a patch has at most 20,000 possible starts, all of them are tried, and the result is
  *   then the true record for that patch; otherwise 1,000 random starts, then 2,000 tweaks of the
  *   best one (hill climbing). For the same lifetime, the start with fewer live cells wins.
@@ -2735,21 +2736,12 @@ function huntWorker() {
       }
       return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
     };
-    // a duel ends when a civilisation has disappeared: end = the winner ('red', 'blue') or 'both' dead
-    const duelEnd = (s) => {
-      let red = 0, blue = 0;
-      for (let t = 0; t < n; t++) { red += s[t] === 1; blue += s[t] === 2; }
-      return red && blue ? null : red ? 'red' : blue ? 'blue' : 'both';
-    };
-    const lifetime = (seed) => {  // { T, P, end } — P = 0 when still unsettled at the cap (or a duel ended)
+    const lifetime = (seed) => {  // { T, P } — P = 0 when still unsettled at the cap
       let a = Uint8Array.from(seed), b = new Uint8Array(n);
       const seen = new Map([[fingerprint(a), 0]]);
-      if (colours && duelEnd(a)) return { T: 0, P: 0, end: duelEnd(a) };
       for (let g = 1; g <= cap; g++) {
         step(a, b);
         [a, b] = [b, a];
-        const end = colours && duelEnd(a);
-        if (end) return { T: g, P: 0, end };
         const k = fingerprint(a), first = seen.get(k);
         if (first !== undefined) return { T: first, P: g - first };
         seen.set(k, g);
@@ -2758,12 +2750,12 @@ function huntWorker() {
     };
     // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
     const free = patch || Array.from({ length: n }, (_, t) => t);
-    // a random state for free cell k: any state, or in a duel dead or the colour of its side
-    const pick = (k) => (colours ? (Math.random() < 0.5 ? colours[k] : 0) : Math.floor(Math.random() * C));
-    const randomSeed = () => { const s = new Uint8Array(n); free.forEach((t, k) => { s[t] = pick(k); }); return s; };
-    const nthSeed = (k) => {  // start number k of an exhaustive search: k written in base C over the patch
-      const s = new Uint8Array(n);
-      for (const t of free) { s[t] = k % C; k = Math.floor(k / C); }
+    const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * C); return s; };
+    // start number k of an exhaustive search: k written in base C over the patch; with colours (one
+    // side of a duel) in base 2, each cell dead or of its colour
+    const nthSeed = (k) => {
+      const s = new Uint8Array(n), base = colours ? 2 : C;
+      free.forEach((t, i) => { const d = k % base; k = Math.floor(k / base); s[t] = colours ? d * colours[i] : d; });
       return s;
     };
     const live = (s) => { let c = 0; for (const t of free) c += s[t] > 0; return c; };
@@ -2784,7 +2776,7 @@ function huntWorker() {
     for (let i = 1; i <= tweaks; i++) {
       const seed = bestSeed.slice();
       const flips = 1 + Math.floor(Math.random() * 3);
-      for (let f = 0; f < flips; f++) { const k = Math.floor(Math.random() * free.length); seed[free[k]] = pick(k); }
+      for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * C);
       const r = lifetime(seed);
       const accepted = r.T >= best.T;  // equal lifetimes are accepted too, to drift
       if (accepted) { best = r; bestSeed = seed; kept++; }
@@ -2795,8 +2787,9 @@ function huntWorker() {
 }
 
 /* ---- 9.2 Hunt state and the one-button flow -------------------------------------------------- */
-const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, exhaustive: 0, tried: 0,
-               tweaks: 0, phase: 0 };  // phase: 1 random starts, 2 tweaks
+const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, colours: null, exhaustive: 0, tried: 0,
+               tweaks: 0, phase: 0,  // phase: 1 random starts, 2 tweaks
+               duel: null };  // a duel: { sides, found }, its sides hunted one after the other
 
 // A hunt belongs to one surface, size and rule: anything else makes its champion meaningless
 const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? walk.life.ruleText : ''}`;
@@ -2805,13 +2798,13 @@ const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? wa
 // loaded and played at once; when something else changed (number, surface, rule…) it is dropped.
 function stopHunt(loadBest = false) {
   if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
+  hunt.duel = null;
   hunt.phase = 0;
   renderHuntList();
   if (loadBest && hunt.seed) loadChampion();
 }
 
 function lifetimeWords(r) {
-  if (r.end) return r.end === 'both' ? `both civilisations die out at generation ${fmt(r.T)}` : `${r.end} wins at generation ${fmt(r.T)}`;
   if (!r.P) return `still changing after ${fmt(r.T)} generations`;
   return r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`;
 }
@@ -2822,6 +2815,7 @@ function lifetimeWords(r) {
 const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;
 function huntClick() {
   if (!hunt.worker) startHunt();
+  else if (hunt.duel) nextDuelSide();
   else if (hunt.phase === 1 && hunt.tweaks) skipToTweaks();
   else stopHunt(true);
 }
@@ -2840,8 +2834,10 @@ function startHunt() {
     compute();
   }
   stopHunt();
-  const { patch, radius, all, colours } = huntPlan(zoneInUse());
-  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, colours, tried: 0,
+  const { patch, radius, all, sides } = huntPlan(zoneInUse());
+  if (sides) { hunt.duel = { sides, found: [] }; runDuelSide(); return; }
+  hunt.duel = null;
+  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, colours: null, tried: 0,
                         exhaustive: all, tweaks: all ? 0 : HUNT_TWEAKS });
   $('huntStatus').textContent = 'Starting…';
   runHuntWorker({ randomRuns: all || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive: !!all });
@@ -2856,7 +2852,8 @@ function huntPlan(zone) {
   if (zone === 'duel') {  // red around the usual centre, blue around the same cell of the opposite face
     const g = walk.geo, c = patchCentre(), face = Math.floor(c / g.perFace);
     const red = lifePatch(1, c), blue = lifePatch(1, c + ((face ^ 1) - face) * g.perFace);
-    return { patch: [...red, ...blue], radius: 1, all: 0, colours: Uint8Array.from([...red.map(() => 1), ...blue.map(() => 2)]) };
+    return { patch: [...red, ...blue], radius: 1, all: 0, colours: Uint8Array.from([...red.map(() => 1), ...blue.map(() => 2)]),
+             sides: [{ name: 'blue', patch: blue, colour: 2 }, { name: 'red', patch: red, colour: 1 }] };
   }
   const radius = Number(zone.slice(6)), patch = lifePatch(radius), count = walk.life.C ** patch.length;
   return { patch, radius, all: count <= 20000 ? count : 0 };  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
@@ -2890,7 +2887,12 @@ function renderHuntList() {
     return b;
   }));
   if (hunt.worker) return;
-  const { all } = huntPlan(zoneInUse());
+  const { all, sides } = huntPlan(zoneInUse());
+  if (sides) {
+    $('huntBtn').innerHTML = `${icon('search')} Hunt blue, then red`;
+    $('huntBtn').title = 'All 512 blue starts alone, then all 512 red ones alone: the most durable of each, then they play together';
+    return;
+  }
   $('huntBtn').innerHTML = `${icon('search')} ${all ? `Hunt all ${fmt(all)}` : `Hunt ${fmt(HUNT_STARTS)} first`}`;
   $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then play the best. Click again to play the best so far`
     : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far`;
@@ -2917,6 +2919,33 @@ function pickHuntZone(zone) {
   renderHuntList();
 }
 
+// A duel hunt: each side in turn, alone on its face, all its 512 starts; then the best of each together
+function runDuelSide() {
+  const side = hunt.duel.sides[hunt.duel.found.length], all = 2 ** side.patch.length;
+  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch: side.patch, radius: 1, tried: 0,
+                        colours: new Uint8Array(side.patch.length).fill(side.colour), exhaustive: all, tweaks: 0 });
+  runHuntWorker({ randomRuns: all, tweaks: 0, exhaustive: true });
+  const last = hunt.duel.found.length === hunt.duel.sides.length - 1;
+  $('huntBtn').innerHTML = last ? `${icon('play')} Play the duel` : `${icon('end')} Skip to ${hunt.duel.sides[1].name}`;
+}
+function nextDuelSide() {
+  if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
+  const { sides, found } = hunt.duel;
+  if (hunt.seed) found.push({ name: sides[found.length].name, seed: hunt.seed, best: hunt.best });
+  else found.push(null);  // skipped before its first start: this side starts empty
+  if (found.length < sides.length) { runDuelSide(); return; }
+  hunt.duel = null;
+  stopHunt();
+  const L = walk.life, seed = new Uint8Array(L.seed.length);
+  for (const f of found) if (f) f.seed.forEach((v, t) => { if (v) seed[t] = v; });
+  setLifeSeed(seed);
+  championCode = encodeCells(seed, L.C);
+  $('status').innerHTML = `${icon('dice')} duel: ` + found.filter(Boolean)
+    .map((f) => `${f.name} alone ${lifetimeWords(f.best)} (${fmt(f.seed.reduce((a, v) => a + (v > 0), 0))} cells)`).join(' · ');
+  $('huntStatus').textContent = '';
+  play(true);
+}
+
 function skipToTweaks() {
   hunt.worker.terminate();
   hunt.worker = null;
@@ -2938,7 +2967,8 @@ function runHuntWorker(job) {
   hunt.worker.onmessage = (e) => {
     const d = e.data;
     if (d.type === 'done') {
-      stopHunt(true);
+      if (hunt.duel) nextDuelSide();
+      else stopHunt(true);
       return;
     }
     setHuntPhase(d.phase);
@@ -2946,7 +2976,8 @@ function runHuntWorker(job) {
     hunt.kept = d.kept;
     if (d.phase === 1) hunt.tried = d.i;
     if (d.seed) hunt.seed = d.seed;
-    const phase = d.phase === 1 ? `${d.exhaustive ? 'start' : 'random start'} ${fmt(d.i)} / ${fmt(d.total)}`
+    const phase = d.phase === 1 ? `${hunt.duel ? `${hunt.duel.sides[hunt.duel.found.length].name} start`
+      : d.exhaustive ? 'start' : 'random start'} ${fmt(d.i)} / ${fmt(d.total)}`
       : `tweak ${fmt(d.i)} / ${fmt(d.total)} (${fmt(d.kept)} kept)`;
     $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)}`;
   };
@@ -2994,8 +3025,7 @@ function loadChampion() {
   const how = (hunt.exhaustive ? (hunt.tried >= hunt.exhaustive ? `the best of all ${fmt(hunt.exhaustive)} starts`
       : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
     : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
-    + (hunt.colours ? `, duel: ${fmt(hunt.patch.length / 2)} + ${fmt(hunt.patch.length / 2)} cells`
-      : hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
+    + (hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
   $('status').innerHTML = `${icon('dice')} champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
   $('huntStatus').textContent = '';
   play(true);  // watch it at once
