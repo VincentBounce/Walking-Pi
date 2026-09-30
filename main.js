@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.115';
+const VERSION = '0.1.116';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3054,10 +3054,12 @@ function restart() {
 // A view as { scale, cx, cy }: the zoom and the world point at the centre of the screen. Easing
 // works on this form: the scale on a log scale (a steady feeling of zoom at any size) and the
 // centre in world units, so zooming out does not drift sideways.
+const MIN_SCALE = 1e-6;  // pixels per cell, the farthest zoom out
 function viewFor(b) {
   const w = b.maxX - b.minX + 2;
   const h = b.maxY - b.minY + 2;
-  const scale = Math.min(40, Math.max(0.01, Math.min(cw / w, ch / h) * 0.85));
+  // down to 10⁻⁶ pixel per cell: a walk of 10 million steps can drift millions of cells away
+  const scale = Math.min(40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * 0.85));
   return { scale, cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
 }
 function setView(v) {
@@ -3777,7 +3779,7 @@ stage.addEventListener('wheel', (e) => {
   const r = stage.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
   const k = Math.exp(-e.deltaY * 0.0015);
-  const s = Math.min(200, Math.max(0.005, view.scale * k));
+  const s = Math.min(200, Math.max(MIN_SCALE, view.scale * k));
   const f = s / view.scale;
   view.ox = mx - (mx - view.ox) * f;
   view.oy = my - (my - view.oy) * f;
