@@ -69,6 +69,7 @@ h2 {
 label { display: block; margin-bottom: 10px; }
 label.check { display: flex; align-items: center; gap: 8px; }
 label.check { cursor: pointer; }
+label.check:has(input:disabled) { opacity: 0.4; cursor: default; }  /* shown, but of no use here */
 
 input[type=number], input[type=text], select {
   display: block;
@@ -107,6 +108,7 @@ input[type=checkbox]::before {
   background: #fff;
   transition: transform 0.15s;
 }
+input[type=checkbox]:disabled { cursor: default; }
 input[type=checkbox]:checked { background: var(--accent); }
 input[type=checkbox]:checked::before { transform: translateX(12px); }
 

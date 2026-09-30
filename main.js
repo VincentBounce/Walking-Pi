@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.136';
+const VERSION = '0.1.137';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -863,7 +863,8 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit heads the box: always there
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  $('fillAreasRow').hidden = !fillAreasApply();  // a switch over the colours that have one path colour
+  $('fillAreasRow').hidden = !shows('fill');
+  $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 
@@ -872,7 +873,7 @@ function updateDisplayMenu() {
 function relabelColours(mode) {
   const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
-  const names = !life ? { gradient: 'Gradient (order)', cells: 'Fill cells', visits: 'Visits', digit: 'By digit', mono: 'Monochrome' }
+  const names = !life ? { gradient: 'By time', cells: 'By time, filled cells', visits: 'By visits', digit: 'By digit', mono: 'One colour' }
     : { mono: `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
