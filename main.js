@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.155';
+const VERSION = '0.1.156';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -836,6 +836,7 @@ function digitsNeeded() {
 // a square grid: 0 turn left + step, …" (the digits actually walked). An automaton: "4/3 in base 2
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
+let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
   if (!mode.life) {
@@ -847,8 +848,11 @@ function describe(base, available) {
   const states = walk.life.two ? '<b>0</b> dead, <b>1</b> red, <b>2</b> blue, a newborn taking the colour of most of its neighbours'
     : `<b>0</b> dead, <b>1</b> alive${dying}`;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
-  $('description').innerHTML = `<span class="walking">${sym}</span> in base ${C} seeds ${seeded} of ${mode.where}: ` +
-    `${states} · rule ${walk.life.ruleText} · neighbours share an edge or a corner`;
+  const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
+  const lead = start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
+    : start ? `${{ hunt: 'A start found by the hunt', duel: 'A duel start', saved: 'A saved start' }[start]} on ${mode.where}`
+    : `${number} ${seeded} of ${mode.where}`;
+  $('description').innerHTML = `${lead}: ${states} · rule ${walk.life.ruleText} · neighbours share an edge or a corner`;
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
@@ -1549,6 +1553,10 @@ function renderModePicker() {
       if (g.label === modeTab) return;
       modeTab = g.label;
       $('mode').value = g.querySelector('option').value;
+      if (MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
+        $('formula').value = presetFormula('random');
+        huntZone = 'all';
+      }
       $('mode').dispatchEvent(new Event('change'));
     });
     return b;
@@ -2581,6 +2589,7 @@ function buildLife(seq, kind) {
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
+  lifeStart = null;  // the number's digits
   const one = new Float64Array(1);
   Object.assign(walk, { n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
                         maxDist: null, base: rule.C, counts: null, lattice: 'sphere', skipZeros: false, points: false,
@@ -2926,22 +2935,18 @@ function renderHuntList() {
 
 // Choosing a zone shows a first random start in it at once (clicking again draws another one):
 // the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
+// Each click is a new random number: the whole surface takes its digits, a radius its first ones
+// (so the formula shown is what seeds the cells), a duel its first ones as dead or its side's colour
 function pickHuntZone(zone) {
   huntZone = zone;
-  const toTwo = zone.startsWith('duel') && !walk.life.two;  // a duel needs the two civilisations
-  if (toTwo) $('lifePreset').value = $('lifeRule').value = 'B3/S23/Immigration';
-  if (zone === 'all' || toTwo || !isRandomDigits()) {
-    $('formula').value = presetFormula('random');
-    compute();  // a new draw (built at once: random digits need no worker)
-    if (zone === 'all') return;
-  }
+  if (zone.startsWith('duel') && !walk.life.two) $('lifePreset').value = $('lifeRule').value = 'B3/S23/Immigration';
+  $('formula').value = presetFormula('random');
+  compute();  // built at once: random digits need no worker
+  if (zone === 'all') return;
   if (zone === 'duel90') { playPentominoDuel(); return; }
-  const L = walk.life, { patch, radius, colours } = huntPlan(zone), seed = new Uint8Array(L.seed.length);
-  patch.forEach((t, k) => { seed[t] = colours ? (Math.random() < 0.5 ? colours[k] : 0) : Math.floor(Math.random() * L.C); });
-  setLifeSeed(seed);
-  championCode = encodeCells(seed, L.C);  // the link keeps this start
-  $('status').textContent = (colours ? `A random red start and blue start of radius 1 on opposite faces (${fmt(patch.length / 2)} cells each)`
-    : `A random start within radius ${radius} (${fmt(patch.length)} cells)`) + `, the rest dead · ${fmt(L.seedAlive)} live cells`;
+  const { patch, radius, colours } = huntPlan(zone), d = walk.digits, seed = new Uint8Array(walk.life.seed.length);
+  patch.forEach((t, k) => { seed[t] = colours ? (d[k] % 2) * colours[k] : d[k]; });
+  setLifeSeed(seed, colours ? 'duel' : { radius, cells: patch.length });
   $('huntStatus').textContent = '';
   renderHuntList();
 }
@@ -2967,8 +2972,7 @@ function nextDuelSide() {
   stopHunt();
   const L = walk.life, seed = new Uint8Array(L.seed.length);
   for (const f of found) if (f) f.seed.forEach((v, t) => { if (v) seed[t] = v; });
-  setLifeSeed(seed);
-  championCode = encodeCells(seed, L.C);
+  setLifeSeed(seed, 'duel');
   $('status').innerHTML = `${icon('dice')} duel: ` + found.filter(Boolean).map((f, i) =>
     `${f.name} ${i ? 'against it' : 'alone'}: ${lifetimeWords(f.best)} (${fmt(f.seed.reduce((a, v) => a + (v === f.colour), 0))} cells)`).join(' · ');
   $('huntStatus').textContent = '';
@@ -2995,8 +2999,7 @@ function playPentominoDuel() {
     seed[blue + r * g.size + k] = 2;
     seed[c + k * g.size - r] = 1;  // (row, column) → (column, −row): a quarter turn
   }
-  setLifeSeed(seed);
-  championCode = encodeCells(seed, L.C);
+  setLifeSeed(seed, 'duel');
   $('status').textContent = 'Duel: a blue R-pentomino against a red one turned by 90°, on opposite faces';
   $('huntStatus').textContent = '';
   renderHuntList();
@@ -3065,8 +3068,7 @@ function lifePatch(r, centre = patchCentre()) {
 function loadChampion() {
   const L = walk.life;
   if (!L || !hunt.seed || hunt.key !== huntKey()) return;
-  setLifeSeed(hunt.seed);
-  championCode = encodeCells(hunt.seed, L.C);
+  setLifeSeed(hunt.seed, 'hunt');
   const how = (hunt.exhaustive ? (hunt.tried >= hunt.exhaustive ? `the best of all ${fmt(hunt.exhaustive)} starts`
       : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
     : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
@@ -3076,11 +3078,16 @@ function loadChampion() {
   play(true);  // watch it at once
 }
 
-// Replace the starting pattern of the current Life run and go back to generation 0
-function setLifeSeed(seed) {
+// Replace the starting pattern of the current Life run and go back to generation 0. how: where it
+// comes from, for the description — { radius, cells } (a zone filled with the number's first
+// digits), 'hunt', 'duel' or 'saved' (a link or a saved setup). The link keeps the cells.
+function setLifeSeed(seed, how) {
   const L = walk.life;
   L.seed.set(seed);
   countSeed(L);
+  championCode = encodeCells(L.seed, L.C);  // in its shortest form
+  lifeStart = how;
+  describe(L.C, Infinity);
   restart();
 }
 
@@ -3178,8 +3185,7 @@ function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
   if (ch && walk.life) {
-    setLifeSeed(decodeCells(ch, walk.life.seed.length));
-    championCode = encodeCells(walk.life.seed, walk.life.C);  // in its shortest form, for the link
+    setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
   }
   renderHuntList();
   syncLink();  // at once, not at the next periodic update
