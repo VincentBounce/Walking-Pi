@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.144';
+const VERSION = '0.1.145';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1042,6 +1042,7 @@ const ICONS = (() => {
     start: pathEl('M5.5 5V19') + pathEl('M19 5L9 12L19 19Z', 'f'),
     end: pathEl('M18.5 5V19') + pathEl('M5 5L15 12L5 19Z', 'f'),
     star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
+    copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/>' + pathEl('M15.5 8.5V5.5A2 2 0 0 0 13.5 3.5H5.5A2 2 0 0 0 3.5 5.5V13.5A2 2 0 0 0 5.5 15.5H8.5'),
     link: pathEl('M9.5 14.5L14.5 9.5') + pathEl('M8.5 11.5L6.5 13.5A3.5 3.5 0 0 0 10.5 17.5L12.5 15.5M15.5 12.5L17.5 10.5A3.5 3.5 0 0 0 13.5 6.5L11.5 8.5'),
   };
 })();
@@ -1468,11 +1469,32 @@ function sieve(limit) {
   return composite;
 }
 
-function setCurrent(entry) {
+function setCurrent(entry, base) {
   const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
-  current = { head, digits: entry.digits, mode: $('mode').value };
+  current = { head, digits: entry.digits, base, mode: $('mode').value };
+}
+
+// The digits in use: n in total, the integer part (always included) then the digits after the point
+function digitsInUse() {
+  const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
+  const head = current.head.subarray(0, n);
+  return { head, frac: current.digits.subarray(0, n - head.length) };
+}
+
+// The number as written in its base: up to base 36 one character per digit (0–9, then a–z), above
+// that each digit as a decimal number, separated by spaces. limit: how many digits after the point.
+function numberText(limit = Infinity) {
+  const { head, frac } = digitsInUse(), b = current.base, shown = frac.subarray(0, limit);
+  const write = (ds) => (b <= 36 ? Array.from(ds, (v) => v.toString(36)).join('') : Array.from(ds).join(' '));
+  return (head.length ? write(head) : '0') + (frac.length ? `.${write(shown)}${shown.length < frac.length ? '…' : ''}` : '');
+}
+
+// Under the number of digits: "π² base 5 = 14.30214…", and the button that copies all of it
+function showNumber() {
+  $('numberText').innerHTML = `<span class="pi">${withIcons(shownSym)}</span> base ${current.base} = ${numberText(80)}`;
+  $('numberLine').hidden = false;
 }
 
 /* ==============================================================================================
@@ -1580,6 +1602,7 @@ function compute() {
   syncNumberMenu();
   if (F.error) {
     $('status').textContent = `Formula: ${F.error}`;
+    $('numberLine').hidden = true;
     return;
   }
   const { sym, kind } = F;
@@ -1591,10 +1614,11 @@ function compute() {
   const note = FORMULA_NOTES[F.root] ? FORMULA_NOTES[F.root](base) : '';
 
   if (kind === 'seq') {
-    setCurrent(seqDigits(F.ast, n, base));
+    setCurrent(seqDigits(F.ast, n, base), base);
     $('status').textContent = note;
     buildWalk();
     describe(base, n);
+    showNumber();
     showAll();
     applyPendingView();
     return;
@@ -1602,7 +1626,7 @@ function compute() {
 
   const integer = kind === 'int';
   const done = (entry, how) => {
-    setCurrent(entry);
+    setCurrent(entry, base);
     const total = entry.total ?? current.head.length + current.digits.length;
     $('status').textContent = [
       how,
@@ -1613,6 +1637,7 @@ function compute() {
     ].filter(Boolean).join(' · ');
     buildWalk();
     describe(base, total);
+    showNumber();
     showAll();
     applyPendingView();
   };
@@ -1676,10 +1701,7 @@ function buildWalk() {
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
   walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
-  const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
-  // n digits in total: the integer part (always included) then the digits after the point
-  const head = current.head.subarray(0, n);
-  const frac = current.digits.subarray(0, n - head.length);
+  const { head, frac } = digitsInUse();
   const seq = new Uint8Array(head.length + frac.length);
   seq.set(head);
   seq.set(frac, head.length);
@@ -4246,6 +4268,11 @@ $('lifePreset').addEventListener('change', () => {
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23 or B2/S/C3 (2 to 10 states)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
+});
+$('copyNumber').addEventListener('click', async () => {
+  const say = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
+  try { await navigator.clipboard.writeText(numberText()); say('Copied'); } catch { say('Not allowed'); }
+  setTimeout(() => say('Copy'), 1500);
 });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 $('sizeUp').addEventListener('click', () => stepSize(1));

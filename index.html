@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261004f">
+  <link rel="stylesheet" href="style.css?v=20261004g">
 </head>
 <body>
   <header>
@@ -138,6 +138,10 @@
           </div>
           <input id="digits" type="hidden" value="20000">
         </div>
+        <div id="numberLine" class="number-line" hidden>
+          <span id="numberText"></span>
+          <button id="copyNumber" data-icon="copy" title="Copy the number, written in this base, with all its digits">Copy</button>
+        </div>
         <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
         <p id="status" class="muted">—</p>
       </section>
@@ -224,6 +228,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261004f"></script>
+  <script src="main.js?v=20261004g"></script>
 </body>
 </html>
