@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261004a">
+  <link rel="stylesheet" href="style.css?v=20261004b">
 </head>
 <body>
   <header>
@@ -19,7 +19,7 @@
   <main>
     <aside class="panel">
       <section>
-        <h2>Walk</h2>
+        <h2 id="walkHeading">Walk</h2>
         <div id="modeList" class="mode-list" role="listbox"></div>
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
@@ -38,7 +38,7 @@
             <optgroup label="Walks on surfaces">
               <option value="torusWalk">Square torus — base 3 (left / forward / right)</option>
               <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
-              <option value="cubeFlat">Cube surface — base 3 (left / forward / right)</option>
+              <option value="cubeFlat">Cube — base 3 (left / forward / right)</option>
               <option value="tetraLR">Tetrahedron — base 2 (left / right)</option>
               <option value="octaLR">Octahedron — base 2 (left / right)</option>
               <option value="icosaLR">Icosahedron — base 2 (left / right)</option>
@@ -46,7 +46,7 @@
             <optgroup label="Automata on surfaces">
               <option value="lifeTorus">Life — torus</option>
               <option value="lifeHexTorus">Life — torus</option>
-              <option value="lifeCube">Life — cube surface</option>
+              <option value="lifeCube">Life — cube</option>
               <option value="lifeTetra">Life — tetrahedron</option>
               <option value="lifeOcta">Life — octahedron</option>
               <option value="lifeIcosa">Life — icosahedron</option>
@@ -224,6 +224,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261004a"></script>
+  <script src="main.js?v=20261004b"></script>
 </body>
 </html>

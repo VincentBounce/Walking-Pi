@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.139';
+const VERSION = '0.1.140';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1411,6 +1411,9 @@ function splitModeLabel(text) {
   return { name: name[0].toUpperCase() + name.slice(1), base: m[1] || '', detail: m[2] || (inName ? inName[2] : '') };
 }
 
+// The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
+const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
+
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
@@ -1430,6 +1433,7 @@ function renderModePicker() {
     return b;
   }));
   const group = groups.find((g) => g.label === modeTab);
+  $('walkHeading').textContent = WALK_HEADINGS[modeTab] ?? 'Walk';
   $('modeList').replaceChildren(...Array.from(group.children).map((o) => {
     const b = document.createElement('button');
     const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
@@ -2810,7 +2814,8 @@ function loadChampion() {
     : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
     + (hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
   $('status').textContent = `🎲 champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
-  $('huntStatus').textContent = 'Champion loaded: press ▶︎ Play to watch it.';
+  $('huntStatus').textContent = '';
+  play(true);  // watch it at once
 }
 
 // Replace the starting pattern of the current Life run and go back to generation 0
