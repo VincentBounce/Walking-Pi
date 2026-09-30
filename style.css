@@ -226,7 +226,7 @@ button.primary {
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 /* Fit view stays at the top right; hovering opens the settings below it */
 .display-menu .stage-head { width: fit-content; margin: 0 0 0 auto; }
-.display-menu .stage-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.display-menu .stage-more { margin-top: 8px; }
 .form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
@@ -236,13 +236,15 @@ button.primary {
 .choice-row button.active,
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .stage-bar { left: 12px; bottom: 12px; width: 250px; }  /* grows upwards: the Play row stays at the bottom */
-.stage-bar .stage-more { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.stage-bar .stage-more { margin-bottom: 8px; }
 .stage-bar .stats { font-size: 12px; gap: 2px 12px; }  /* the stats sit above the controls */
 .stage-bar .strip { margin: 6px 0 0; min-height: 0; font-size: 12px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 0; }
-.stage-bar .row button:first-child { flex: none; }  /* ⏮ comes first: Play is the one that stretches */
-.stage-bar #play { flex: 1; }
+.stage-bar .row button { flex: none; width: 48px; padding: 6px 0; font-weight: 600; }  /* ⏮ Step ⏭: all alike */
+/* Play stretches, so Play and Pause have the same width: outlined in yellow, filled while playing */
+.stage-bar #play { flex: 1; width: auto; color: var(--accent); border-color: var(--accent); }
+.stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .stage-bar label { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .hint {
   position: absolute;
