@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.126';
+const VERSION = '0.1.127';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -704,48 +704,48 @@ const FORMULA_NOTES = {
 // mode menu in index.html lists them, grouped as the tabs of the Walk section.
 const MODES = {
   turtle:   { base: 3, lattice: 'square',
-              rule: 'Base 3 digits on a square grid — <b>0</b> = turn left + step, <b>1</b> = step forward, <b>2</b> = turn right + step' },
+              rule: 'on a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
   cardinal: { base: 4, lattice: 'square',
-              rule: 'Base 4 digits on a square grid — <b>0</b> = step north, <b>1</b> = east, <b>2</b> = south, <b>3</b> = west' },
+              rule: 'on a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
-              rule: 'Base 2 digits along a square spiral (Ulam spiral) — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+              rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
-              rule: 'Base 10 digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
+              rule: 'on the Ulam spiral: jump ahead <b>digit + 1</b> cells and mark the landing cell' },
   jump64:   { base: 64, lattice: 'square', points: 'jump',
-              rule: 'Base 64 digits on the Ulam spiral — jump ahead <b>digit + 1</b> cells and mark the landing cell' },
+              rule: 'on the Ulam spiral: jump ahead <b>digit + 1</b> cells and mark the landing cell' },
   search10: { base: 10, lattice: 'square', points: 'search',
-              rule: 'Ulam spiral, base 10 — cell <b>n</b> is marked when the digits of n appear in the digits of the number' },
+              rule: 'on the Ulam spiral: cell <b>n</b> is marked when the digits of n appear among them' },
   search64: { base: 64, lattice: 'square', points: 'search',
-              rule: 'Ulam spiral, base 64 — cell <b>n</b> is marked when the base 64 digits of n appear in the base 64 digits of the number' },
+              rule: 'on the Ulam spiral: cell <b>n</b> is marked when the base-64 digits of n appear among them' },
   triSpiral: { base: 2, lattice: 'tri', skipZeros: true,
-              rule: 'Base 2 digits along a spiral of triangles — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+              rule: 'along a spiral of triangles: <b>1</b> draw the step, <b>0</b> move without drawing' },
   hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
-              rule: 'Base 2 digits along a spiral of hexagons — <b>1</b> = draw the step, <b>0</b> = move without drawing' },
+              rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
   triLR:    { base: 2, lattice: 'tri',
-              rule: 'Base 2 digits on triangle tiles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge' },
+              rule: 'on triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   triFixed: { base: 3, lattice: 'tri',
-              rule: 'Base 3 digits on triangle tiles — cross the <b>0</b> = horizontal edge, <b>1</b> = “/” edge, <b>2</b> = “\\” edge' },
+              rule: 'on triangles: cross the <b>0</b> horizontal, <b>1</b> “/” or <b>2</b> “\\” edge' },
   hexRel:   { base: 5, lattice: 'hex',
-              rule: 'Base 5 digits on hexagonal tiles, relative to the edge you came in through — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right' },
+              rule: 'on hexagons, relative to the edge you came in through: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   hexFixed: { base: 6, lattice: 'hex',
-              rule: 'Base 6 digits on hexagonal tiles — <b>0</b> = N, <b>1</b> = NE, <b>2</b> = SE, <b>3</b> = S, <b>4</b> = SW, <b>5</b> = NW' },
+              rule: 'on hexagons: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
   tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
-              rule: 'Base 2 digits on the surface of a tetrahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', turns: [3, 2, 1], perspective: true, round: true,
-              rule: 'Base 3 digits on the surface of a torus of squares — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+              rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right · colour = number of visits' },
   // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
   hexTorusWalk: { base: 5, lattice: 'sphere', sphere: 'hextorus', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
-                  rule: 'Base 5 digits on the surface of a torus of hexagons — <b>0</b> = sharp left, <b>1</b> = left, <b>2</b> = straight, <b>3</b> = right, <b>4</b> = sharp right · colour = number of visits' },
+                  rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right · colour = number of visits' },
   cubeFlat: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1], perspective: true,
-              rule: 'Base 3 digits on the surface of a cube — <b>0</b> = turn left, <b>1</b> = straight on, <b>2</b> = turn right · colour = number of visits' },
+              rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right · colour = number of visits' },
   octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', turns: [2, 1],
-              rule: 'Base 2 digits on the surface of an octahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1], round: true,
-              rule: 'Base 2 digits on the surface of an icosahedron cut into triangles — <b>0</b> = exit through the left edge, <b>1</b> = exit through the right edge · colour = number of visits' },
+              rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
-                where: 'a torus (a square grid that wraps around both ways)' },
+                where: 'a torus of squares (a grid that wraps around both ways)' },
   lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
-                  where: 'a torus of hexagons (6 neighbours each)' },
+                  where: 'a torus of hexagons' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true, perspective: true,
                 where: 'the surface of a cube' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
@@ -755,9 +755,9 @@ const MODES = {
   lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true, round: true,
                 where: 'an icosahedron of triangles' },
   cubeRel:  { base: 5, lattice: 'cube', perspective: true,
-              rule: 'Base 5 digits in 3D cubes, relative to your heading — <b>0</b> = turn left, <b>1</b> = turn up, <b>2</b> = straight, <b>3</b> = turn down, <b>4</b> = turn right' },
+              rule: 'in 3D cubes, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
   cubeFixed: { base: 6, lattice: 'cube', perspective: true,
-              rule: 'Base 6 digits in 3D cubes — <b>0</b> = north, <b>1</b> = east, <b>2</b> = up, <b>3</b> = south, <b>4</b> = west, <b>5</b> = down' },
+              rule: 'in 3D cubes: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
 };
 
 
@@ -821,8 +821,7 @@ let cw = 0, ch = 0;
 
 /* ---- 3.1 Subtitle, colour menu and number of digits ------------------------------------------ */
 function updateRuleText() {
-  const { base, rule, life, where } = MODES[$('mode').value];
-  $('rule').innerHTML = life ? lifeSubtitle(where) : rule;
+  const { base } = MODES[$('mode').value];
   $('sCountsLabel').textContent = Array.from({ length: base }, (_, i) => i).join(' / ');
   $('sCountsLabel').hidden = $('sCounts').hidden = base > 6 || !!MODES[$('mode').value].life;  // nothing useful to list
 }
@@ -833,12 +832,21 @@ function digitsNeeded() {
   return mode.life ? SPHERES[mode.sphere].tiles(Number($('sphereF').value)) : requestedDigits();
 }
 
-// Game of Life subtitle: where it is played and how the base-C digits seed the cells
-function lifeSubtitle(where) {
-  const C = lifeStates();
-  const states = C > 2 ? `, <b>2</b>${C > 3 ? `–<b>${C - 1}</b>` : ''} = dying` : '';
-  return `Game of Life on ${where} — the base-${C} digits seed the cells (<b>0</b> = dead, <b>1</b> = alive${states}); ` +
-    'neighbours share an edge or a corner';
+// The line under the tabs says what is shown, by tab. A walk: "Walking π · 20,000 base-3 digits on
+// a square grid: 0 turn left + step, …" (the digits actually walked). An automaton: "4/3 in base 2
+// seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
+let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
+function describe(base, available) {
+  const mode = MODES[$('mode').value], sym = `<span class="pi">${shownSym}</span>`;
+  if (!mode.life) {
+    $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${fmt(walk.n)} base-${base} digits ${mode.rule}`;
+    return;
+  }
+  const cells = walk.life.seed.length, C = base;
+  const dying = C > 2 ? `, <b>2</b>${C > 3 ? `–<b>${C - 1}</b>` : ''} dying` : '';
+  const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
+  $('description').innerHTML = `<span class="walking">${sym}</span> in base ${C} seeds ${seeded} of ${mode.where}: ` +
+    `<b>0</b> dead, <b>1</b> alive${dying} · rule ${walk.life.ruleText} · neighbours share an edge or a corner`;
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
@@ -1461,20 +1469,18 @@ function compute() {
     return;
   }
   const { sym, kind } = F;
-  $('titleSym').textContent = sym;
+  shownSym = sym;
   const base = mode.life ? lifeStates() : mode.base;  // Life: the number of states of the rule
   const key = `${F.text}/${base}`;
-  // Status wording: "π in base 3 · 20,000 digits" for walks, "10,240 cells seeded with π in base 3" for Life
-  const cells = mode.life ? n : 0;
-  const label = (count) => (!mode.life ? `${sym} in base ${base} · ${fmt(count)} digits`
-    : count < cells ? `${fmt(count)} of ${fmt(cells)} cells seeded with ${sym} in base ${base} (the others start dead)`
-    : `${fmt(cells)} cells seeded with ${sym} in base ${base}`);
-  const note = FORMULA_NOTES[F.root] ? ` — ${FORMULA_NOTES[F.root](base)}` : '';
+  // The status line under the Number: how the digits came (time, cache), what the number is, and
+  // warnings; what is shown is in the description (describe)
+  const note = FORMULA_NOTES[F.root] ? FORMULA_NOTES[F.root](base) : '';
 
   if (kind === 'seq') {
     setCurrent(seqDigits(F.ast, n, base));
-    $('status').textContent = label(n) + note;
+    $('status').textContent = note;
     buildWalk();
+    describe(base, n);
     showAll();
     applyPendingView();
     return;
@@ -1484,12 +1490,15 @@ function compute() {
   const done = (entry, how) => {
     setCurrent(entry);
     const total = entry.total ?? current.head.length + current.digits.length;
-    const what = F.root === 'randprime'
-      ? `${label(total)}: a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`
-      : integer ? label(total) : label(n) + note;
-    const warning = entry.uncertain ? ' ⚠ the value is extremely close to a round number: the last digits could be off by one' : '';
-    $('status').textContent = `${what} ${how}${integer && total > n && !mode.life ? ` — walking the first ${fmt(n)}` : ''}${warning}`;
+    $('status').textContent = [
+      how,
+      F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
+      integer && total > n && !mode.life && `the first ${fmt(n)} of its ${fmt(total)} digits`,
+      note,
+      entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
+    ].filter(Boolean).join(' · ');
     buildWalk();
+    describe(base, total);
     showAll();
     applyPendingView();
   };
@@ -1497,7 +1506,7 @@ function compute() {
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
                          : hit && hit.digits.length >= n;
   if (enough) {
-    done(hit, '(cached)');
+    done(hit, 'Cached');
     return;
   }
   // the worker also needs digitString, seededRandom, exactValue and iroot
@@ -1512,7 +1521,7 @@ function compute() {
   const slow = F.log10 > 6e6 || (F.root === 'randprime' && Number(F.ast.args[0].v) > 1000) || (F.kind === 'real' && quadratic && n > 1e6);
   $('status').textContent =
     (F.root === 'randprime' ? `Searching for a random ${fmt(Number(F.ast.args[0].v))}-digit prime…`
-      : `Computing ${integer || mode.life ? `${sym} in base ${base}` : label(n)}…`) +
+      : `Computing ${sym} in base ${base}${integer || mode.life ? '' : ` · ${fmt(n)} digits`}…`) +
     (slow ? ' (this can take a minute or more)' : '');
   worker.onmessage = (e) => {
     const d = e.data;
@@ -1529,7 +1538,7 @@ function compute() {
     }
     const entry = { intPart: d.intPart, digits: d.digits, total: d.total, tests: d.tests, uncertain: d.uncertain };
     cache[key] = entry;
-    done(entry, `(${(d.ms / 1000).toFixed(2)} s)`);
+    done(entry, `Computed in ${(d.ms / 1000).toFixed(2)} s`);
   };
   worker.postMessage({ ast: F.ast, n, base, mag: F.mag, nodes: F.nodes });
 }
@@ -2941,7 +2950,7 @@ const setupNote = (text) => { $('setupStatus').textContent = text; };
 function saveSetup() {
   const mode = $('mode').options[$('mode').selectedIndex].text.split(' — ')[0];
   const rule = walk.life ? ` · ${walk.life.ruleText}` : '';
-  const name = prompt('Name this setup', `${$('titleSym').textContent} · ${mode}${rule}`);
+  const name = prompt('Name this setup', `${shownSym} · ${mode}${rule}`);
   if (!name) return;
   const list = readSetups().filter((x) => x.name !== name);
   list.push({ name, setup: getSetup(), saved: new Date().toISOString() });
