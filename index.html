@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261003w">
+  <link rel="stylesheet" href="style.css?v=20261003x">
 </head>
 <body>
   <header>
@@ -199,12 +199,12 @@
           </div>
           <select id="colorMode" hidden>
             <option value="gradient">Gradient (order)</option>
-            <option value="fill">Fill areas</option>
             <option value="cells">Fill cells</option>
             <option value="visits">Visits</option>
             <option value="digit">By digit</option>
             <option value="mono">Monochrome</option>
           </select>
+          <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas</label>
           <label class="check" id="gridRow"><input id="showGrid" type="checkbox" checked> Grid</label>
           <div id="skyRow" hidden>
             <div class="field-label">Sky</div>
@@ -227,6 +227,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261003w"></script>
+  <script src="main.js?v=20261003x"></script>
 </body>
 </html>

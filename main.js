@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.135';
+const VERSION = '0.1.136';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -863,6 +863,7 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit heads the box: always there
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
+  $('fillAreasRow').hidden = !fillAreasApply();  // a switch over the colours that have one path colour
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 
@@ -871,15 +872,14 @@ function updateDisplayMenu() {
 function relabelColours(mode) {
   const life = !!mode.life, C = life ? lifeStates() : 2;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
-  const names = !life ? { gradient: 'Gradient (order)', fill: 'Fill areas', cells: 'Fill cells', visits: 'Visits', digit: 'By digit', mono: 'Monochrome' }
+  const names = !life ? { gradient: 'Gradient (order)', cells: 'Fill cells', visits: 'Visits', digit: 'By digit', mono: 'Monochrome' }
     : { mono: `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
-        digit: 'Activity (state changes)', fill: '', cells: '', visits: '' };
+        digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
-  const order = life ? ['mono', 'gradient', 'digit', 'fill', 'cells', 'visits'] : ['gradient', 'fill', 'cells', 'visits', 'digit', 'mono'];
+  const order = life ? ['mono', 'gradient', 'digit', 'cells', 'visits'] : ['gradient', 'cells', 'visits', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
-  byValue.fill.hidden = !shows('fill');
   byValue.cells.hidden = !shows('cells');
   byValue.visits.hidden = !shows('visits');
   if (sel.selectedOptions[0]?.hidden) sel.value = 'gradient';
@@ -3672,7 +3672,9 @@ function drawSegments(from, to) {
 const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
-const fillOn = () => $('colorMode').value === 'fill' && walk.n && !walk.is3d && shows('fill');
+// Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
+const fillAreasApply = () => shows('fill') && !['visits', 'digit'].includes($('colorMode').value);
+const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
 function computeFill() {
   const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3), last = walk.n;
@@ -3782,17 +3784,17 @@ function computeFill() {
 function drawFill(to) {
   fill ??= computeFill();
   const ctx = layers.fill, { scale: s, ox, oy } = view, { order, polys } = fill;
+  const colourAt = (k) => styleColor(styleKey(order[k] - 1));
   while (fillDone < order.length && order[fillDone] <= to) {
-    const band = Math.min(BANDS - 1, Math.floor(((order[fillDone] - 1) * BANDS) / walk.n));
+    const colour = colourAt(fillDone);
     ctx.beginPath();
-    for (; fillDone < order.length && order[fillDone] <= to
-         && Math.min(BANDS - 1, Math.floor(((order[fillDone] - 1) * BANDS) / walk.n)) === band; fillDone++) {
+    for (; fillDone < order.length && order[fillDone] <= to && colourAt(fillDone) === colour; fillDone++) {
       const pts = polys[fillDone];
       ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
       for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
       ctx.closePath();
     }
-    ctx.fillStyle = GRADIENT[band];
+    ctx.fillStyle = colour;
     ctx.fill();
   }
 }
@@ -4026,7 +4028,8 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('speed').addEventListener('input', updateSpeedLabel);
-$('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); });
+$('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
+$('fillAreas').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
 
@@ -4150,6 +4153,7 @@ const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
   $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
+  $('fillAreas').checked = false;
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
   $('sky').value = 'twilight';
