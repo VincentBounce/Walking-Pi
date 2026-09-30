@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.138';
+const VERSION = '0.1.139';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -856,9 +856,12 @@ const DISPLAY_BY_TAB = {
   '3D walks': ['colors', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['colors', 'cells', 'grid'],
+  '2D spirals': ['colors', 'fill', 'cells', 'visits', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
+// Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once
+const DISPLAY_GREYED = { '2D spirals': ['fill', 'visits'] };
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
+const useful = (item) => shows(item) && !DISPLAY_GREYED[$('mode').selectedOptions[0].parentElement.label]?.includes(item);
 function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit heads the box: always there
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
@@ -885,6 +888,7 @@ function relabelColours(mode) {
   byValue.cells.hidden = !shows('cells');
   byValue.visits.hidden = !shows('visits');
   byValue.gradient.disabled = !!mode.points;  // a point mode has no line: its marks are always cells
+  byValue.visits.disabled = !useful('visits');
   if (sel.selectedOptions[0]?.hidden || sel.selectedOptions[0]?.disabled) sel.value = mode.points ? 'cells' : 'gradient';
   renderColorButtons();
 }
@@ -3623,7 +3627,7 @@ function drawSegments(from, to) {
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
-  if (walk.points || (mode === 'cells' && shows('cells')) || (mode === 'visits' && shows('visits'))) {
+  if (walk.points || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
     // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
     // Visits by the visits so far (log scale)
     let colourOf = (p) => styleColor(styleKey(Math.max(0, p - 1)));
@@ -3677,7 +3681,7 @@ const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
-const fillAreasApply = () => shows('fill') && !['visits', 'digit'].includes($('colorMode').value);
+const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
 function computeFill() {
