@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.131';
+const VERSION = '0.1.132';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2897,6 +2897,7 @@ function applySetup(s) {
   // the display is not part of a setup: it takes the defaults of the walk mode's tab
   displayDefaults();
   $('perspective').checked = !!MODES[s.w].perspective;
+  Object.assign(cam, CAM0);
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
   return true;
@@ -4157,9 +4158,11 @@ function displayDefaults() {
 }
 $('mode').addEventListener('change', () => {
   if (modeTabOf() !== displayTab) displayDefaults();
-  // the form of the view belongs to the walk mode: its perspective (and its flat or round form,
-  // see initShape) come back with every new mode
+  // the form of the view belongs to the walk mode: its perspective, the camera's starting angle
+  // (auto-fit may have turned it to follow a walker) and its flat or round form (see initShape)
+  // come back with every new mode
   $('perspective').checked = !!MODES[$('mode').value].perspective;
+  Object.assign(cam, CAM0);
   compute();
 });
 
