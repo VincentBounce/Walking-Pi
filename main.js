@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.129';
+const VERSION = '0.1.130';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -856,7 +856,7 @@ const DISPLAY_BY_TAB = {
   '3D walks': ['colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'grid', 'autoFit', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['colors', 'grid', 'autoFit'],
+  '2D spirals': ['colors', 'cells', 'grid', 'autoFit'],
 };
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
 function updateDisplayMenu() {
@@ -1556,7 +1556,9 @@ function setBusy(on) {
 /* ---- 5.3 Building the walk ------------------------------------------------------------------- */
 // All positions, distances and counts are computed once into typed arrays: the animation, the
 // stats and the jumps only read them.
+let previousShape = null;  // the form of the surface just replaced: { target, tab }
 function buildWalk() {
+  previousShape = walk.shape && { target: walk.shape.target, tab: walk.shape.tab };
   visitData = null;  // and its cells' visits too
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   fillDone = 0;
@@ -2215,12 +2217,14 @@ function shapeSign(g) {
   return g.shapeSign;
 }
 
-// A new surface starts in its mode's default form: round for the icosahedron and the torus, flat otherwise
+// A new surface starts in its mode's default form (round for the icosahedron and the torus, flat
+// otherwise), except in Walks on surfaces, where it keeps the form of the surface it replaces
 function initShape(kind) {
   if (!MORPHABLE.includes(kind)) { walk.shape = null; updateMorphButton(); return; }
-  const g = walk.geo, m = MODES[current.mode].round ? 1 : 0;
+  const tab = modeTabOf(), keep = previousShape && previousShape.tab === tab && tab === 'Walks on surfaces';
+  const g = walk.geo, m = keep ? previousShape.target : MODES[current.mode].round ? 1 : 0;
   const maxExtent = Math.max(shapeAt(g, 0).extent, shapeAt(g, 1).extent);
-  walk.shape = { ...shapeAt(g, m), target: m, maxExtent };
+  walk.shape = { ...shapeAt(g, m), target: m, maxExtent, tab };
 }
 
 // Put the current shape in place: tile centres of the walk's points, the frame and the view
@@ -2890,10 +2894,8 @@ function applySetup(s) {
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
     $('lifePreset').value = preset ? s.r : 'custom';
   }
-  // the display is not part of a setup: it takes the defaults of the walk mode, as when choosing it
-  $('perspective').checked = !!MODES[s.w].perspective;
-  $('colorMode').value = MODES[s.w].life ? 'mono' : 'gradient';
-  $('autoFit').checked = true;
+  // the display is not part of a setup: it takes the defaults of the walk mode's tab
+  displayDefaults();
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
   return true;
@@ -3614,8 +3616,9 @@ function drawSegments(from, to) {
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
-  if ((mode === 'cells' && shows('cells')) || (mode === 'visits' && shows('visits'))) {
-    // the tile of each point: Fill cells in its step's colour, Visits by its visits so far (log scale)
+  if (walk.points || (mode === 'cells' && shows('cells')) || (mode === 'visits' && shows('visits'))) {
+    // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
+    // Visits by the visits so far (log scale)
     let colourOf = (p) => styleColor(styleKey(Math.max(0, p - 1)));
     if (mode === 'visits') {
       const V = visitCells(), scale = (BANDS - 1) / Math.log(Math.max(2, V.max));
@@ -3624,7 +3627,9 @@ function drawSegments(from, to) {
     }
     let batch = null;  // one path per run of tiles of the same colour, filled when the colour changes
     const flush = () => { if (batch) { ctx.fillStyle = batch; ctx.fill(); } };
-    for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
+    // a point mode's point 0 is the spiral's centre, not a mark; a spiral's 0 draws nothing
+    for (let p = from === 0 && !walk.points ? 0 : from + 1; p <= to; p++) {
+      if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
       const c = colourOf(p);
       if (c !== batch) { flush(); ctx.beginPath(); batch = c; }
       tilePath(ctx, xs[p], ys[p]);
@@ -3639,16 +3644,6 @@ function drawSegments(from, to) {
   while (i < to) {
     const k = styleKey(i);
     ctx.strokeStyle = styleColor(k);
-    if (walk.points) {  // point modes: a square on each marked cell
-      ctx.fillStyle = ctx.strokeStyle;
-      // true cell size: when zoomed out, sub-pixel squares blend, so brightness shows the density
-      const w = s * 0.85;
-      while (i < to && styleKey(i) === k) {
-        ctx.fillRect(ox + xs[i + 1] * s - w / 2, oy + ys[i + 1] * s - w / 2, w, w);
-        i++;
-      }
-      continue;
-    }
     ctx.beginPath();
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
     while (i < to && styleKey(i) === k) {
@@ -4147,10 +4142,21 @@ function computeFramed() {
   $('autoFit').checked = true;
   compute();
 }
-$('mode').addEventListener('change', () => {
+// Another mode in the same tab keeps the Display settings; another tab starts from its defaults
+let displayTab = null;
+const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
+function displayDefaults() {
   $('perspective').checked = !!MODES[$('mode').value].perspective;  // on by default for the cube modes only
   $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
-  $('autoFit').checked = true;  // a new walk mode starts framed
+  $('autoFit').checked = true;  // framed
+  $('showGrid').checked = true;
+  $('autoRotate').checked = false;
+  $('sky').value = 'twilight';
+  renderSkyButtons();
+  displayTab = modeTabOf();
+}
+$('mode').addEventListener('change', () => {
+  if (modeTabOf() !== displayTab) displayDefaults();
   compute();
 });
 
