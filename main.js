@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.151';
+const VERSION = '0.1.152';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1038,6 +1038,7 @@ const ICONS = (() => {
     zone1: dots([[12, 12]], 2.5),
     zone2: dots([[12, 12]], 4),
     zone3: dots([[12, 12]], 6),
+    duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // numbers
     dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' + dots([[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]], 1.4),
     dragon: `<path class="thin" d="${pathOf(dragonOf(63), false)}"/>`,
@@ -2693,6 +2694,9 @@ function lifeStep() {
  * - Where: the whole surface, or a patch of radius 1, 2 or 3 around a centre cell. A radius counts
  *   Life-neighbour steps, so it is a 3×3, 5×5 or 7×7 square on squares and a small disc on
  *   triangles: one word for both. The rest of the surface starts dead.
+ * - Duel (on the cube, with two civilisations): a red patch and a blue patch of radius 1 on two
+ *   opposite faces. The run then ends as soon as one civilisation has disappeared, so the hunt
+ *   looks for the longest fight (or, failing that, the longest time before the two settle).
  * - How: when a patch has at most 20,000 possible starts, all of them are tried, and the result is
  *   then the true record for that patch; otherwise 1,000 random starts, then 2,000 tweaks of the
  *   best one (hill climbing). For the same lifetime, the start with fewer live cells wins.
@@ -2707,7 +2711,7 @@ function lifeStep() {
  * random cells of the best start and keep the change when it lasts at least as long. */
 function huntWorker() {
   self.onmessage = (e) => {
-    const { n, start, list, B, S, C, two, randomRuns, tweaks, cap, patch, exhaustive, from, fromBest } = e.data;
+    const { n, start, list, B, S, C, two, randomRuns, tweaks, cap, patch, colours, exhaustive, from, fromBest } = e.data;
     const step = (a, b) => {
       for (let t = 0; t < n; t++) {  // the same generation as lifeStep
         const was = a[t];
@@ -2731,12 +2735,21 @@ function huntWorker() {
       }
       return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
     };
-    const lifetime = (seed) => {  // { T, P } — P = 0 when still unsettled at the cap
+    // a duel ends when a civilisation has disappeared: end = the winner ('red', 'blue') or 'both' dead
+    const duelEnd = (s) => {
+      let red = 0, blue = 0;
+      for (let t = 0; t < n; t++) { red += s[t] === 1; blue += s[t] === 2; }
+      return red && blue ? null : red ? 'red' : blue ? 'blue' : 'both';
+    };
+    const lifetime = (seed) => {  // { T, P, end } — P = 0 when still unsettled at the cap (or a duel ended)
       let a = Uint8Array.from(seed), b = new Uint8Array(n);
       const seen = new Map([[fingerprint(a), 0]]);
+      if (colours && duelEnd(a)) return { T: 0, P: 0, end: duelEnd(a) };
       for (let g = 1; g <= cap; g++) {
         step(a, b);
         [a, b] = [b, a];
+        const end = colours && duelEnd(a);
+        if (end) return { T: g, P: 0, end };
         const k = fingerprint(a), first = seen.get(k);
         if (first !== undefined) return { T: first, P: g - first };
         seen.set(k, g);
@@ -2745,7 +2758,9 @@ function huntWorker() {
     };
     // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
     const free = patch || Array.from({ length: n }, (_, t) => t);
-    const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * C); return s; };
+    // a random state for free cell k: any state, or in a duel dead or the colour of its side
+    const pick = (k) => (colours ? (Math.random() < 0.5 ? colours[k] : 0) : Math.floor(Math.random() * C));
+    const randomSeed = () => { const s = new Uint8Array(n); free.forEach((t, k) => { s[t] = pick(k); }); return s; };
     const nthSeed = (k) => {  // start number k of an exhaustive search: k written in base C over the patch
       const s = new Uint8Array(n);
       for (const t of free) { s[t] = k % C; k = Math.floor(k / C); }
@@ -2769,7 +2784,7 @@ function huntWorker() {
     for (let i = 1; i <= tweaks; i++) {
       const seed = bestSeed.slice();
       const flips = 1 + Math.floor(Math.random() * 3);
-      for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * C);
+      for (let f = 0; f < flips; f++) { const k = Math.floor(Math.random() * free.length); seed[free[k]] = pick(k); }
       const r = lifetime(seed);
       const accepted = r.T >= best.T;  // equal lifetimes are accepted too, to drift
       if (accepted) { best = r; bestSeed = seed; kept++; }
@@ -2796,6 +2811,7 @@ function stopHunt(loadBest = false) {
 }
 
 function lifetimeWords(r) {
+  if (r.end) return r.end === 'both' ? `both civilisations die out at generation ${fmt(r.T)}` : `${r.end} wins at generation ${fmt(r.T)}`;
   if (!r.P) return `still changing after ${fmt(r.T)} generations`;
   return r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`;
 }
@@ -2824,8 +2840,8 @@ function startHunt() {
     compute();
   }
   stopHunt();
-  const { patch, radius, all } = huntPlan(huntZone);
-  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, tried: 0,
+  const { patch, radius, all, colours } = huntPlan(zoneInUse());
+  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, colours, tried: 0,
                         exhaustive: all, tweaks: all ? 0 : HUNT_TWEAKS });
   $('huntStatus').textContent = 'Starting…';
   runHuntWorker({ randomRuns: all || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive: !!all });
@@ -2837,6 +2853,11 @@ function startHunt() {
 // all: the number of possible starts when few enough to try them all (then no tweaks), else 0.
 function huntPlan(zone) {
   if (zone === 'all') return { patch: null, radius: 0, all: 0 };
+  if (zone === 'duel') {  // red around the usual centre, blue around the same cell of the opposite face
+    const g = walk.geo, c = patchCentre(), face = Math.floor(c / g.perFace);
+    const red = lifePatch(1, c), blue = lifePatch(1, c + ((face ^ 1) - face) * g.perFace);
+    return { patch: [...red, ...blue], radius: 1, all: 0, colours: Uint8Array.from([...red.map(() => 1), ...blue.map(() => 2)]) };
+  }
   const radius = Number(zone.slice(6)), patch = lifePatch(radius), count = walk.life.C ** patch.length;
   return { patch, radius, all: count <= 20000 ? count : 0 };  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
 }
@@ -2844,27 +2865,32 @@ function huntPlan(zone) {
 // Where the starts go, as cards like the walk modes: the whole surface or a radius of 1, 2 or 3,
 // with the real cell counts of the current surface. The hunt button tells how many starts it tries.
 let huntZone = 'all';
-const HUNT_ICONS = { all: 'zoneAll', radius1: 'zone1', radius2: 'zone2', radius3: 'zone3' };
+const HUNT_ICONS = { all: 'zoneAll', radius1: 'zone1', radius2: 'zone2', radius3: 'zone3', duel: 'duel' };
+// The duel needs two opposite faces: the cube (its faces come in opposite pairs 0–1, 2–3, 4–5)
+const duelPossible = () => walk.geo.sides === 4 && !walk.geo.torus;
+// The zone chosen, or the whole surface when a duel no longer fits (another surface or rule)
+const zoneInUse = () => (huntZone === 'duel' && !(duelPossible() && walk.life.two) ? 'all' : huntZone);
 function renderHuntList() {
   if (!walk.life || !walk.geo) return;
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
-  $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3'].map((zone) => {
-    const { patch, radius } = huntPlan(zone);
+  $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3', 'duel'].map((zone) => {
+    const duel = zone === 'duel', { patch, radius } = duel && !duelPossible() ? { patch: null } : huntPlan(zone);
     const b = document.createElement('button');
     const words = document.createElement('span');
-    words.append(part('mode-name', patch ? `Radius ${radius}` : 'Whole surface'),
-                 part('mode-detail', `${fmt(patch ? patch.length : walk.geo.n)} cells`));
+    words.append(part('mode-name', duel ? 'Radius duel' : patch ? `Radius ${radius}` : 'Whole surface'),
+                 part('mode-detail', duel ? '9 red cells, 9 blue on the opposite face' : `${fmt(patch ? patch.length : walk.geo.n)} cells`));
+    if (duel) b.title = 'Red against blue on two opposite faces of the cube (two civilisations): the run ends when one of them has disappeared';
     const pic = part('mode-icon', '');
     pic.innerHTML = icon(HUNT_ICONS[zone]);
     b.append(pic, words);
     b.setAttribute('role', 'option');
-    b.classList.toggle('active', zone === huntZone);
-    b.disabled = !!hunt.worker;  // the zone is fixed while a hunt runs
+    b.classList.toggle('active', zone === zoneInUse());
+    b.disabled = !!hunt.worker || (duel && !duelPossible());  // the zone is fixed while a hunt runs
     b.addEventListener('click', () => pickHuntZone(zone));
     return b;
   }));
   if (hunt.worker) return;
-  const { all } = huntPlan(huntZone);
+  const { all } = huntPlan(zoneInUse());
   $('huntBtn').innerHTML = `${icon('search')} ${all ? `Hunt all ${fmt(all)}` : `Hunt ${fmt(HUNT_STARTS)} first`}`;
   $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then play the best. Click again to play the best so far`
     : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far`;
@@ -2874,16 +2900,19 @@ function renderHuntList() {
 // the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
 function pickHuntZone(zone) {
   huntZone = zone;
-  if (zone === 'all' || !isRandomDigits()) {
+  const toTwo = zone === 'duel' && !walk.life.two;  // a duel needs the two civilisations
+  if (toTwo) $('lifePreset').value = $('lifeRule').value = 'B3/S23/Immigration';
+  if (zone === 'all' || toTwo || !isRandomDigits()) {
     $('formula').value = presetFormula('random');
     compute();  // a new draw (built at once: random digits need no worker)
     if (zone === 'all') return;
   }
-  const L = walk.life, { patch, radius } = huntPlan(zone), seed = new Uint8Array(L.seed.length);
-  for (const t of patch) seed[t] = Math.floor(Math.random() * L.C);
+  const L = walk.life, { patch, radius, colours } = huntPlan(zone), seed = new Uint8Array(L.seed.length);
+  patch.forEach((t, k) => { seed[t] = colours ? (Math.random() < 0.5 ? colours[k] : 0) : Math.floor(Math.random() * L.C); });
   setLifeSeed(seed);
   championCode = encodeCells(seed, L.C);  // the link keeps this start
-  $('status').textContent = `A random start within radius ${radius} (${fmt(patch.length)} cells), the rest dead · ${fmt(L.seedAlive)} live cells`;
+  $('status').textContent = (colours ? `A random red start and blue start of radius 1 on opposite faces (${fmt(patch.length / 2)} cells each)`
+    : `A random start within radius ${radius} (${fmt(patch.length)} cells)`) + `, the rest dead · ${fmt(L.seedAlive)} live cells`;
   $('huntStatus').textContent = '';
   renderHuntList();
 }
@@ -2922,7 +2951,7 @@ function runHuntWorker(job) {
     $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)}`;
   };
   hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, B: L.B, S: L.S, C: L.C, two: L.two,
-                            cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), ...job });
+                            cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), colours: hunt.colours, ...job });
 }
 
 /* ---- 9.4 Patches ----------------------------------------------------------------------------- */
@@ -2943,8 +2972,8 @@ function patchCentre() {
 
 // The cells at most r Life-neighbour steps from the centre: a 3×3, 5×5 or 7×7 square on square
 // grids (r = 1, 2, 3), a small disc of triangles on the polyhedra
-function lifePatch(r) {
-  const { start, list } = walk.life.nbr, seen = new Set([patchCentre()]);
+function lifePatch(r, centre = patchCentre()) {
+  const { start, list } = walk.life.nbr, seen = new Set([centre]);
   let ring = [...seen];
   for (let k = 0; k < r; k++) {
     const next = [];
@@ -2965,7 +2994,8 @@ function loadChampion() {
   const how = (hunt.exhaustive ? (hunt.tried >= hunt.exhaustive ? `the best of all ${fmt(hunt.exhaustive)} starts`
       : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
     : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
-    + (hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
+    + (hunt.colours ? `, duel: ${fmt(hunt.patch.length / 2)} + ${fmt(hunt.patch.length / 2)} cells`
+      : hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
   $('status').innerHTML = `${icon('dice')} champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
   $('huntStatus').textContent = '';
   play(true);  // watch it at once
@@ -3193,7 +3223,7 @@ async function copyLink() {
 /* ---- 11.1 Animation -------------------------------------------------------------------------- */
 function stepsPerSecond() {
   const v = Number($('speed').value) / 100;
-  return 6 * 10 ** (v * 5); // 6 → 600,000 steps per second (logarithmic slider)
+  return 6 * 10 ** (v * 5); // 6 → 600,000 steps per second (logarithmic slider; 50 by default)
 }
 
 function updateSpeedLabel() {
@@ -4299,7 +4329,7 @@ $('lifePreset').addEventListener('change', () => {
   if (MODES[$('mode').value].life) compute();
 });
 $('lifeRule').addEventListener('change', () => {
-  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23 or B2/S/C3 (2 to 10 states)'; return; }
+  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or B3/S23/Immigration'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
 $('copyNumber').addEventListener('click', async () => {
