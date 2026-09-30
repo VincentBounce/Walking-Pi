@@ -23,18 +23,16 @@ html, body {
 body { display: flex; flex-direction: column; }
 
 header {
-  padding: 10px 20px;
+  padding: 0 20px 10px;
   border-bottom: 1px solid var(--border);
 }
-/* the walk tabs on the left; the app's name, fixed, and its version on the right */
-.header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.header-row .tabs { margin: 0; flex-wrap: nowrap; }
-.header-row .tabs button { flex: none; padding: 5px 12px; font-size: 13px; }
+/* the walk tabs at the very top on the left, on a hairline; the app's name and version on the right */
+.header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
 h1 .pi, .subtitle .pi { color: var(--accent); }
 .subtitle .walking { color: var(--text); font-weight: 600; }  /* what is walked: Walking ln 2 · … */
 h1 .version { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
-.subtitle { margin: 6px 0 0; color: var(--muted); }
+.subtitle { margin: 8px 0 0; color: var(--muted); }
 .subtitle b { color: var(--text); }
 
 main { flex: 1; display: flex; min-height: 0; }
@@ -144,9 +142,23 @@ button.primary {
 button.wide { width: 100%; margin-bottom: 10px; }
 
 /* Walk mode: one tab per category, then every choice of that category */
-.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }  /* five tabs: two lines if needed */
-.tabs button { flex: 1 1 auto; padding: 5px 4px; font-size: 12px; font-weight: 600; }  /* always bold: the active tab keeps its width */
-.tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+/* Tabs: text only, the active one in yellow and underlined on the header's hairline; always bold,
+   so the active tab keeps its width */
+.tabs { display: flex; flex-wrap: wrap; gap: 0 4px; align-self: stretch; }
+.tabs button {
+  padding: 14px 12px 11px;
+  margin-bottom: -1px;               /* the underline covers the hairline */
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tabs button:hover:not(.active) { color: var(--text); border-bottom-color: var(--border); }
+.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .mode-list button {
   display: grid;
@@ -269,5 +281,4 @@ button.wide { width: 100%; margin-bottom: 10px; }
   .panel { width: auto; max-height: 45vh; border-right: 0; border-bottom: 1px solid var(--border); }
   .stage { min-height: 55vh; }
   .hint { display: none; }
-  .header-row .tabs { flex-wrap: wrap; }
 }
