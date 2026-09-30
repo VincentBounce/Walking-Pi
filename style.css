@@ -68,9 +68,7 @@ h2 {
 
 label { display: block; margin-bottom: 10px; }
 label.check { display: flex; align-items: center; gap: 8px; }
-/* over the view, a setting you switch on is a button framed in yellow, like a chosen colour */
-.stage-box label.check { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; }
-.stage-box label.check:has(input:checked) { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
+label.check { cursor: pointer; }
 
 input[type=number], input[type=text], select {
   display: block;
@@ -85,7 +83,32 @@ input[type=number], input[type=text], select {
 }
 #formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
-input[type=checkbox] { accent-color: var(--accent); }
+/* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
+input[type=checkbox] {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 9px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+input[type=checkbox]::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+input[type=checkbox]:checked { background: var(--accent); }
+input[type=checkbox]:checked::before { transform: translateX(12px); }
 
 button {
   padding: 6px 12px;
