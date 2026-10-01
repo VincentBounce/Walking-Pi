@@ -82,10 +82,8 @@ input[type=number], input[type=text], select {
 }
 /* the Custom formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
-#formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; text-align: center; background: transparent; border-color: transparent; }
-#formula:hover { border-color: var(--border); }
-#formula.custom { color: var(--accent); font-weight: 600; }
-#formula:focus { outline: none; border-color: var(--accent); background: var(--bg); color: var(--text); font-weight: 400; }
+#formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; text-align: center; }
+#formula.custom { color: var(--accent); font-weight: 600; }  /* the number chosen: no card matches it */
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
 input[type=checkbox] {
@@ -144,9 +142,18 @@ button.primary {
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }  /* the setup at a glance */
 /* the number of digits can be typed: a field that looks like the label until it is hovered or used */
-.stepper input { min-width: 0; margin: 0; padding: 4px; background: transparent; border-color: transparent; cursor: text; }
-.stepper input:hover { border-color: var(--border); }
-.stepper input:focus { outline: none; border-color: var(--accent); background: var(--bg); color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 400; }  /* editing: plain digits, like the Custom formula */
+.stepper input { min-width: 0; margin: 0; padding: 6px 8px; cursor: text; }
+/* The Custom formula and the number of digits: outlined like the choice buttons, and edited alike,
+   in plain monospace on a yellow-framed field */
+#formula, .stepper input { background: transparent; border-color: var(--border); }
+#formula:hover, .stepper input:hover { border-color: var(--muted); }
+#formula:focus, .stepper input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  font: 400 13px ui-monospace, "SF Mono", Menlo, monospace;
+}
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
 
