@@ -47,15 +47,21 @@ Binary splitting and Newton's method cost a few multiplications of huge integers
 | `zeta(3)` | Amdeberhan–Zeilberger series, by binary splitting | 0.2 s | 4.0 s |
 | `catalan` | Lupaș series, by binary splitting | 1.2 s | 24 s |
 | `gamma` | Brent–McMillan, by binary splitting | 2.0 s | 41 s |
-| `ln(3)`, `log(1000, 7)`, `ln(22/7)` | ln of a fraction: k·ln 2 + 2·artanh(r) with a small fraction r, by binary splitting | 0.2 s | 3.5 s |
+| `ln(3)`, `log(1000, 7)`, `ln(22/7)` | ln of a **small** fraction: k·ln 2 + 2·artanh(r) with a small fraction r, by binary splitting. A fraction with long numbers, like `ln(10^500+1)`, goes to the general ln below | 0.2 s | 3.5 s |
 | `exp(2)`, `e^(1/3)` | exp, "bit-burst": the argument in chunks of 32, 32, 64, 128… bits, each series by binary splitting | 0.04 s | 0.7 s |
 | `e^pi`, `2^pi`, `x^y` | exp as above (x^y = e^(y·ln x)) | 0.4–0.5 s | 10–12 s |
-| `ln(pi)`, `log(pi, 10)` | ln of any value: Newton's method on exp, doubling its precision | 0.7 s | 16 s |
+| `ln(pi)`, `log(pi, 10)` | ln of any value (and of fractions with long numbers): Newton's method on exp, doubling its precision | 0.7 s | 16 s |
 | `zeta(5)`, `zeta(7)`… | Borwein's series, term by term | 29 s | too long |
 | `22/7` | long division | instant | instant |
 | `2^136279841-1` | exact `BigInt`, then its digits (all 41,024,320 of them, whatever the count asked) | 15 s | 15 s |
 | `primorial(9562633)+1` | exact `BigInt`, primes multiplied as a balanced tree | 1.3 s | 1.3 s |
 | `randprime(size, seed)` | sieve, then Miller–Rabin; the time depends on the size, not on the digits asked | 300 digits: 0.05 s, 1,000: 1.5 s | 2,000 digits: minutes |
+
+**When one function has two methods.** The choice depends on the formula, never on the number of digits asked:
+- **ln of a fraction:** by binary splitting when, once brought between 1/√2 and √2, its gap to 1 has a short numerator (64 bits, about 19 decimal digits): `ln(3)`, `ln(22/7)`, `ln(2^127-1)`. Otherwise every term of the series would carry the long numbers, and the general ln is faster.
+- **Powers a^b**, by the exponent: a whole number up to a billion (`2^127`, `pi^2`, `10^-50`) by repeated squaring, exact when a is; a fraction with a small denominator (`8^(1/3)`, `pi^(2/3)`) as a root, exact when it can be; any other exponent (`2^pi`, `pi^pi`) as e^(b·ln a).
+- **ζ(k):** ζ(3) has its own fast series; ζ(5), ζ(7)… go through Borwein's series, term by term.
+- **ln 2** has its own formula, also used inside every other logarithm.
 
 ### Formula language
 
