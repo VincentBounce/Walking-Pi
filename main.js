@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.198';
+const VERSION = '0.1.199';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -776,6 +776,20 @@ const MODES = {
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1], round: true,
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
+  // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
+  // to them as the edges at a corner allow
+  torusGrid: { base: 3, lattice: 'sphere', sphere: 'torus', grid: true, turns: [90, 0, -90], perspective: true, round: true,
+               rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
+  hexTorusGrid: { base: 2, lattice: 'sphere', sphere: 'hextorus', grid: true, turns: [60, -60], perspective: true, round: true,
+                  rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
+  cubeGrid:  { base: 3, lattice: 'sphere', sphere: 'cube', grid: true, turns: [90, 0, -90], perspective: true,
+               rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
+  tetraGrid: { base: 5, lattice: 'sphere', sphere: 'tetra', grid: true, turns: [120, 60, 0, -60, -120],
+               rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
+  octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', grid: true, turns: [120, 60, 0, -60, -120],
+               rule: 'along the edges of an octahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
+  icosaGrid: { base: 5, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
+               rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
   lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
@@ -907,11 +921,12 @@ function describe(base, available) {
 // (Fill cells) in the colour of their first visit, those it encloses (Fill areas) in the colour of
 // the step that closed them; or the tiles coloured by their visits.
 const DISPLAY_BY_TAB = {
-  '2D walks': ['colors', 'fill', 'cells', 'visits', 'digit', 'mono', 'grid'],
+  '2D walks': ['colors', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surfaces': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surface grids': ['shape', 'colors', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],  // areas follow the path
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['colors', 'fill', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
+  '2D spirals': ['colors', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
@@ -932,7 +947,7 @@ function updateDisplayMenu() {
   $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
-  $('fillTranslucentRow').hidden = !shows('fill');
+  $('fillTranslucentRow').hidden = !shows('translucent');
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   updateMorphButton();  // Shape: only for a surface that can change shape
@@ -1608,12 +1623,13 @@ function numberText(limit = Infinity) {
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
-const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
+const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus', 'Walks on surface grids': 'icosahedron',
                     'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triLR: 'triangleFilled', triFixed: 'triangle', hexRel: 'hexagonFilled', hexFixed: 'hexagon',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
+  torusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron', icosaGrid: 'icosahedron',
   lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
@@ -1628,7 +1644,7 @@ function splitModeLabel(text) {
 }
 
 // The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
-const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
+const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Walks on surface grids': 'Walk along', 'Automata on surfaces': 'Populate' };
 
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
@@ -1812,7 +1828,7 @@ function buildWalk() {
     return;
   }
   if (MODES[current.mode].lattice === 'sphere') {
-    buildSphereWalk(seq, MODES[current.mode]);
+    (MODES[current.mode].grid ? buildGridWalk : buildSphereWalk)(seq, MODES[current.mode]);
     return;
   }
   const len = seq.length;
@@ -1840,7 +1856,7 @@ function buildWalk() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
   }
-  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
+  Object.assign(walk, { vert: null, stepTiles: null, n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice,
                         skipZeros: !!MODES[current.mode].skipZeros,
                         points: false, keys: seq, labels: null, sphere: false, life: null,
@@ -2163,7 +2179,7 @@ function buildPointWalk(seq, { base, points: kind }) {
     maxDist[i + 1] = m;
   }
   walk.persp = null;
-  Object.assign(walk, { n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
+  Object.assign(walk, { vert: null, stepTiles: null, n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
                         counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
                         sphere: false, life: null,
                         xs, ys });
@@ -2462,7 +2478,13 @@ function initShape(kind) {
 // Put the current shape in place: tile centres of the walk's points, the frame and the view
 function applyShape() {
   const sh = walk.shape, R = walk.R;
-  if (!walk.life) {  // walk points sit on their tiles' centres
+  if (walk.vert) {  // a walk along the grid: its points sit on the tiles' corners
+    const { wx, wy, wz, vert } = walk, G = walk.geo.grid, k = walk.geo.sides;
+    for (let i = 0; i <= walk.n; i++) {
+      const c = 3 * (k * G.tileOf[vert[i]] + G.cornerOf[vert[i]]);
+      wx[i] = sh.corners[c] * R; wy[i] = sh.corners[c + 1] * R; wz[i] = sh.corners[c + 2] * R;
+    }
+  } else if (!walk.life) {  // walk points sit on their tiles' centres
     const { wx, wy, wz, tile } = walk;
     for (let i = 0; i <= walk.n; i++) {
       const t = tile[i];
@@ -2553,6 +2575,88 @@ function fillSphereSizes(kind) {
 // Walk from tile to tile. Entering a tile through edge k (vertices counterclockwise), the digit d
 // leaves through edge k + turns[d]: k + 1 is on the right, k − 1 on the left, k + 2 straight on
 // (for squares).
+/* Walks on surface grids: from corner to corner along the tile edges. Arriving at a corner, the digit
+ * gives a turn (degrees, left positive, measured in the plane tangent to the surface there) and the
+ * walker leaves by the edge closest to it: on squares, left, straight on or right; on triangles, five
+ * turns of 60°. Where fewer edges meet (a cube's corners, a polyhedron's), the nearest edge is
+ * taken, the first one on a tie. */
+// The grid of a mesh: each corner's neighbours, a tile it belongs to (and which corner of it it is),
+// the tiles on each side of each edge, and the corner's normal (the mean of its tiles' normals)
+function gridGraph(g) {
+  if (g.grid) return g.grid;
+  const nv = g.verts.length / 3, k = g.sides, V = g.verts;
+  const nbrs = Array.from({ length: nv }, () => []), tileOf = new Int32Array(nv).fill(-1), cornerOf = new Int32Array(nv);
+  const edgeTiles = new Map(), normal = new Float64Array(3 * nv);
+  const key = (a, b) => (a < b ? a * nv + b : b * nv + a);
+  for (let t = 0; t < g.n; t++) {
+    const [a, b, c] = [0, 1, 2].map((j) => g.poly[k * t + j]);
+    const n = cross([0, 1, 2].map((d) => V[3 * b + d] - V[3 * a + d]), [0, 1, 2].map((d) => V[3 * c + d] - V[3 * a + d]));
+    for (let j = 0; j < k; j++) {
+      const p = g.poly[k * t + j], q = g.poly[k * t + (j + 1) % k];
+      if (!nbrs[p].includes(q)) { nbrs[p].push(q); nbrs[q].push(p); }
+      const e = key(p, q);
+      edgeTiles.set(e, [...(edgeTiles.get(e) ?? []), t]);
+      if (tileOf[p] < 0) { tileOf[p] = t; cornerOf[p] = j; }
+      for (let d = 0; d < 3; d++) normal[3 * p + d] += n[d];
+    }
+  }
+  return (g.grid = { nv, nbrs, tileOf, cornerOf, edgeTiles, normal, key });
+}
+
+function buildGridWalk(seq, { sphere: kind, turns, base }) {
+  fillSphereSizes(kind);
+  const { mesh, radius } = SPHERES[kind];
+  const size = Number($('sphereF').value), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
+  const len = seq.length, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
+  const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
+  const vert = new Int32Array(len + 1), tile = new Int32Array(len + 1), cells = new Int32Array(len + 1);
+  const maxDist = new Float64Array(len + 1), counts = new Int32Array(base * (len + 1)), stepTiles = new Int32Array(2 * len);
+  const seen = new Uint8Array(G.nv), angles = turns.map((a) => (a * Math.PI) / 180);
+  let v = g.poly[0], from = G.nbrs[v][0], distinct = 1, m = 0, coverStep = -1;
+  seen[v] = 1;
+  const start = at(v);
+  const put = (i) => {
+    const p = at(v);
+    wx[i] = p[0] * R; wy[i] = p[1] * R; wz[i] = p[2] * R;
+    vert[i] = v; tile[i] = G.tileOf[v]; cells[i] = distinct;
+    m = Math.max(m, R * Math.hypot(p[0] - start[0], p[1] - start[1], p[2] - start[2]));
+    maxDist[i] = m;
+  };
+  put(0);
+  for (let i = 0; i < len; i++) {
+    // the heading and each way out, flattened onto the plane tangent at v; the signed angle between them
+    const n = [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n), p = at(v);
+    const flat = (q) => { const e = [0, 1, 2].map((d) => q[d] - p[d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl); return e.map((x, d) => x - s * n[d]); };
+    const h = flat(at(from)).map((x) => -x);
+    let next = -1, err = Infinity;
+    for (const w of G.nbrs[v]) {
+      if (w === from) continue;
+      const e = flat(at(w)), c = cross(h, e);
+      const turn = Math.atan2((c[0] * n[0] + c[1] * n[1] + c[2] * n[2]) / nl, h[0] * e[0] + h[1] * e[1] + h[2] * e[2]);
+      const off = Math.abs(turn - angles[seq[i]]);
+      if (off < err - 1e-9) { err = off; next = w; }
+    }
+    const sides = G.edgeTiles.get(G.key(v, next));
+    stepTiles[2 * i] = sides[0]; stepTiles[2 * i + 1] = sides[1] ?? sides[0];
+    from = v; v = next;
+    if (!seen[v]) { seen[v] = 1; distinct++; if (distinct === G.nv) coverStep = i + 1; }
+    put(i + 1);
+    for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
+    counts[base * (i + 1) + seq[i]]++;
+  }
+  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
+                        lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
+                        sphere: true, geo: g, R, tile, vert, stepTiles, nodes: G.nv, coverStep,
+                        visits: new Int32Array(g.n), maxVisits: 0, life: null,
+                        xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
+  initShape(kind);
+  setPerspective();
+  project();
+  updateHint();
+  restart();
+  if (walk.shape) applyShape();
+}
+
 function buildSphereWalk(seq, { sphere: kind, turns, base }) {
   fillSphereSizes(kind);
   const { mesh, radius } = SPHERES[kind];
@@ -2589,7 +2693,8 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
   }
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
-                        sphere: true, geo: g, R, tile, coverStep, visits: new Int32Array(g.n), maxVisits: 0,
+                        sphere: true, geo: g, R, tile, vert: null, stepTiles: null, nodes: g.n, coverStep,
+                        visits: new Int32Array(g.n), maxVisits: 0,
                         life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
   initShape(kind);
   setPerspective();
@@ -2680,7 +2785,7 @@ function buildLife(seq, kind) {
   countSeed(walk.life);
   lifeStart = null;  // the number's digits
   const one = new Float64Array(1);
-  Object.assign(walk, { n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
+  Object.assign(walk, { vert: null, stepTiles: null, n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
                         maxDist: null, base: rule.C, counts: null, lattice: 'sphere', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
@@ -3414,7 +3519,9 @@ function advanceTo(target) {
   }
   const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
-    if (walk.sphere) walk.maxVisits = Math.max(walk.maxVisits, ++walk.visits[walk.tile[i]]);
+    if (walk.stepTiles) {  // along the grid: the tiles on both sides of the edge just walked
+      for (const t of [walk.stepTiles[2 * i - 2], walk.stepTiles[2 * i - 1]]) walk.maxVisits = Math.max(walk.maxVisits, ++walk.visits[t]);
+    } else if (walk.sphere) walk.maxVisits = Math.max(walk.maxVisits, ++walk.visits[walk.tile[i]]);
     if (is3d) {
       const b = bounds3;
       b[0] = Math.min(b[0], wx[i]); b[1] = Math.max(b[1], wx[i]);
@@ -3480,7 +3587,8 @@ function restart() {
     bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
-    walk.visits[walk.tile[0]] = walk.maxVisits = 1;
+    walk.maxVisits = 1;
+    if (!walk.stepTiles) walk.visits[walk.tile[0]] = 1;  // a tile walk starts on its first tile
     if (walk.life) lifeReset();
   }
   if ($('autoFit').checked) fitToBounds(walk.sphere ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
@@ -3805,9 +3913,9 @@ function drawSphere() {
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
   const L = walk.life, line = !L && $('colorMode').value === 'gradient';
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
-    const cells = $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && areaSteps();
+    const cells = shows('fillCells') && $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
-    palette = [null, ...grad, ...($('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
+    palette = [null, ...grad, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
       : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
@@ -3895,34 +4003,52 @@ function firstVisits() {
   return (firstVisitData = first);
 }
 
-// Fill areas on a surface, as for a 2D walk (see Fill areas in 11.5): the regions are read at the
-// corners of the tiles, two neighbouring corners being separated once the walk has crossed the tile
-// edge between them. A closed surface has no outside: the largest region left at the end of the walk plays it.
-// Going back in time with a union–find, each corner gets the step from which it is enclosed; a
-// tile is filled once all its corners are (the tiles the walk passes through are the Fill cells).
+// Fill areas on a surface, as for a 2D walk (see Fill areas in 11.5). A closed surface has no
+// outside: the largest region left at the end of the walk plays it.
+// - A walk from tile to tile: the regions are read at the tiles' corners, two neighbouring corners
+//   being separated once the walk has crossed the tile edge between them; a tile is filled once all
+//   its corners are enclosed (the tiles the walk passes through are the Fill cells).
+// - A walk along the grid: the regions are made of tiles, two neighbouring tiles being separated
+//   once the walk has gone along the edge between them, so the areas follow the path exactly.
 let areaData = null;
 function areaSteps() {
   if (areaData) return areaData;
-  const g = walk.geo, k = g.sides, nv = g.verts.length / 3, tile = walk.tile;
-  const key = (a, b) => (a < b ? a * nv + b : b * nv + a);
-  const edgeOf = new Map(), eu = [], ev = [];
-  for (let t = 0; t < g.n; t++) {
-    for (let j = 0; j < k; j++) {
-      const a = g.poly[k * t + j], b = g.poly[k * t + (j + 1) % k];
-      if (!edgeOf.has(key(a, b))) { edgeOf.set(key(a, b), eu.length); eu.push(a); ev.push(b); }
+  const g = walk.geo, k = g.sides, G = gridGraph(g), eu = [], ev = [], crossed = [];
+  if (walk.stepTiles) {  // nodes: tiles; links: the edges with a tile on each side
+    const index = new Map();
+    for (const [e, sides] of G.edgeTiles) if (sides.length === 2) { index.set(e, eu.length); eu.push(sides[0]); ev.push(sides[1]); crossed.push(-1); }
+    for (let i = 0; i < walk.n; i++) {
+      const j = index.get(G.key(walk.vert[i], walk.vert[i + 1]));
+      if (j !== undefined && crossed[j] < 0) crossed[j] = i;
     }
+    return (areaData = enclosedFrom(g.n, eu, ev, crossed));
   }
-  const crossed = new Int32Array(eu.length).fill(-1);  // the first step through each edge
+  const index = new Map(), tile = walk.tile;  // nodes: corners; links: the tile edges
+  for (const e of G.edgeTiles.keys()) { index.set(e, eu.length); eu.push(Math.floor(e / G.nv)); ev.push(e % G.nv); crossed.push(-1); }
   for (let i = 0; i < walk.n; i++) {
     const A = tile[i], B = tile[i + 1], shared = [];
     for (let p = 0; p < k; p++) for (let q = 0; q < k; q++) if (g.poly[k * A + p] === g.poly[k * B + q]) shared.push(g.poly[k * A + p]);
     if (shared.length !== 2) continue;
-    const e = edgeOf.get(key(shared[0], shared[1]));
-    if (crossed[e] < 0) crossed[e] = i;
+    const j = index.get(G.key(shared[0], shared[1]));
+    if (crossed[j] < 0) crossed[j] = i;
   }
-  const parent = Int32Array.from({ length: nv }, (_, i) => i), size = new Int32Array(nv).fill(1), out = new Uint8Array(nv);
-  const head = Int32Array.from({ length: nv }, (_, i) => i), tail = Int32Array.from(head), next = new Int32Array(nv).fill(-1);
-  const at = new Int32Array(nv).fill(-1);
+  const at = enclosedFrom(G.nv, eu, ev, crossed), steps = new Int32Array(g.n);
+  for (let t = 0; t < g.n; t++) {  // a tile: once all its corners are enclosed (−1: never)
+    let s = 0;
+    for (let j = 0; j < k && s >= 0; j++) s = at[g.poly[k * t + j]] < 0 ? -1 : Math.max(s, at[g.poly[k * t + j]]);
+    steps[t] = s;
+  }
+  return (areaData = steps);
+}
+
+// The step from which each node is enclosed (−1: never), for links eu[e]–ev[e] cut at step crossed[e]
+// (−1: never): going back in time with a union–find, from the regions at the end, the links are
+// restored from the last cut to the first; restoring one that joins a region to the outside means
+// that region was enclosed from the step after it. Each region keeps its nodes as a linked list.
+function enclosedFrom(n, eu, ev, crossed) {
+  const parent = Int32Array.from({ length: n }, (_, i) => i), size = new Int32Array(n).fill(1), out = new Uint8Array(n);
+  const head = Int32Array.from({ length: n }, (_, i) => i), tail = Int32Array.from(head), next = new Int32Array(n).fill(-1);
+  const at = new Int32Array(n).fill(-1);
   const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
   const join = (e, step) => {
     let a = find(eu[e]), b = find(ev[e]);
@@ -3937,17 +4063,11 @@ function areaSteps() {
   };
   for (let e = 0; e < eu.length; e++) if (crossed[e] < 0) join(e, -1);  // the regions at the end
   let largest = find(0);
-  for (let v = 0; v < nv; v++) if (find(v) === v && size[v] > size[largest]) largest = v;
+  for (let v = 0; v < n; v++) if (find(v) === v && size[v] > size[largest]) largest = v;
   out[largest] = 1;
   const byStep = Array.from(eu, (_, e) => e).filter((e) => crossed[e] >= 0).sort((x, y) => crossed[y] - crossed[x]);
   for (const e of byStep) join(e, crossed[e]);
-  const steps = new Int32Array(g.n);  // the step from which each tile is enclosed (−1: never)
-  for (let t = 0; t < g.n; t++) {
-    let s = 0;
-    for (let j = 0; j < k && s >= 0; j++) s = at[g.poly[k * t + j]] < 0 ? -1 : Math.max(s, at[g.poly[k * t + j]]);
-    steps[t] = s;
-  }
-  return (areaData = steps);
+  return at;
 }
 
 // Rainbow along the walk on a surface: the path through the tile centres up to the current step,
@@ -3956,7 +4076,11 @@ const surfaceLineWidth = () => {  // about a fifth of a tile edge on screen
   const sc = walk.shape.corners;
   return Math.max(1, Math.min(walk.R * Math.hypot(sc[0] - sc[3], sc[1] - sc[4], sc[2] - sc[5]) * view.scale * 0.2, 3));
 };
-// On a flat polyhedron (convex, faces drawn whole): every step whose two tiles face the viewer
+// A step is in sight when its tiles face the viewer: both its ends' tiles, or along the grid one of
+// the two tiles beside its edge
+const stepVisible = (i) => (walk.stepTiles ? tileVisible(walk.stepTiles[2 * i]) || tileVisible(walk.stepTiles[2 * i + 1])
+  : facing(i) && facing(i + 1));
+// On a flat polyhedron (convex, faces drawn whole): every step in sight
 function drawSurfacePath(ctx) {
   const { xs, ys, n } = walk, { scale: s, ox, oy } = view;
   ctx.lineWidth = surfaceLineWidth();
@@ -3970,7 +4094,7 @@ function drawSurfacePath(ctx) {
       ctx.strokeStyle = GRADIENT[b];
       ctx.beginPath();
     }
-    if (!facing(i) || !facing(i + 1)) continue;
+    if (!stepVisible(i)) continue;
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
     ctx.lineTo(ox + xs[i + 1] * s, oy + ys[i + 1] * s);
   }
@@ -3979,7 +4103,8 @@ function drawSurfacePath(ctx) {
 // On a torus or an inflated shape (drawn tile by tile, far to near): each step split in two halves,
 // from each tile centre to the middle of the step, listed by tile so that drawShapeTiles draws a
 // tile's halves right after the tile, and nearer tiles cover them. A half longer than its tile is
-// a jump across the sheet of an unrolled torus: it is left out.
+// a jump across the sheet of an unrolled torus: it is left out. Along the grid, a step is an edge:
+// drawn whole after each of the two tiles beside it.
 function pathHalves() {
   const halves = Array.from({ length: walk.geo.n }, () => []), { tile, wx, wy, wz } = walk;
   const c = walk.shape.corners, k = walk.geo.sides;
@@ -3989,9 +4114,15 @@ function pathHalves() {
   };
   for (let i = 0; i < cur; i++) {
     const half = Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) / 2;
-    if (half > size(tile[i]) || half > size(tile[i + 1])) continue;
-    halves[tile[i]].push(i, i + 1);  // from point i towards the middle of step i, on its tile
-    halves[tile[i + 1]].push(i + 1, i);
+    const [a, b] = walk.stepTiles ? [walk.stepTiles[2 * i], walk.stepTiles[2 * i + 1]] : [tile[i], tile[i + 1]];
+    if (half > size(a) || half > size(b)) continue;
+    if (walk.stepTiles) {  // the whole edge, with each of its tiles
+      halves[a].push(i, i + 1, i + 1, i);
+      if (b !== a) halves[b].push(i, i + 1, i + 1, i);
+    } else {
+      halves[a].push(i, i + 1);  // from point i towards the middle of step i, on its tile
+      halves[b].push(i + 1, i);
+    }
   }
   return halves;
 }
@@ -4350,6 +4481,7 @@ function drawOverlay() {
 
 const STAT_LABELS = {
   walk: ['Steps', 'Position', 'Distance', 'Max distance', 'Cells visited'],
+  grid: ['Steps', 'Position', 'Distance', 'Max distance', 'Corners visited'],
   life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
 };
 
@@ -4363,7 +4495,7 @@ function lifetimeText(L) {
 }
 
 function updateStats() {
-  STAT_LABELS[walk.life ? 'life' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
+  STAT_LABELS[walk.life ? 'life' : walk.vert ? 'grid' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
   $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
@@ -4390,9 +4522,9 @@ function updateStats() {
   $('sDist').textContent = Math.hypot(x, y, z).toFixed(1);
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
   $('sCells').textContent = !walk.n ? '1' : walk.sphere
-    ? `${fmt(walk.cells[cur])} / ${fmt(walk.geo.n)}` +
+    ? `${fmt(walk.cells[cur])} / ${fmt(walk.nodes)}` +
       (walk.coverStep >= 0 && cur >= walk.coverStep ? ` (all by step ${fmt(walk.coverStep)})`
-                                                     : ` (${(100 * walk.cells[cur] / walk.geo.n).toFixed(1)} %)`)
+                                                     : ` (${(100 * walk.cells[cur] / walk.nodes).toFixed(1)} %)`)
     : fmt(walk.cells[cur]);
   if (walk.n && walk.counts) {
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
