@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.201';
+const VERSION = '0.1.202';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -794,6 +794,8 @@ const MODES = {
                 rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> front right (at a corner of the solid, the nearest edge)' },
   icosaGrid3: { base: 3, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [60, 0, -60], round: true,
                 rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
+  hexSphereGrid: { base: 2, lattice: 'sphere', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
+                   rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
   icosaGrid: { base: 5, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
@@ -1636,7 +1638,7 @@ const MODE_ICONS = {
   cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
-  icosaGrid: 'icosahedron', icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron',
+  icosaGrid: 'icosahedron', icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', hexSphereGrid: 'hexagon',
   lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
@@ -2422,6 +2424,31 @@ function hexTorusMesh(nv) {
   return (meshCache[key] = finishTorus(verts, hexes, 6, nu, nv, uv));
 }
 
+/* Sphere of hexagons (a Goldberg polyhedron, the football's pattern): the dual of the icosahedron
+ * of triangles. Each corner of its triangles becomes a cell, outlined by the centres of the
+ * triangles around it: 6 around most corners, 5 around the 12 corners of the icosahedron, so 12
+ * pentagons among the hexagons, as on any sphere tiled with hexagons. A pentagon is stored as a
+ * hexagon whose last corner is repeated (a zero-length edge), so that every cell has 6 corners. */
+function hexSphereMesh(f) {
+  const key = `hexsphere${f}`;
+  if (meshCache[key]) return meshCache[key];
+  const ico = flatPolyhedron('icosa', f), V = ico.verts, nv = V.length / 3;
+  const around = Array.from({ length: nv }, () => []);
+  for (let t = 0; t < ico.n; t++) for (let q = 0; q < 3; q++) around[ico.poly[3 * t + q]].push(t);
+  const cells = around.map((tris, v) => {
+    // the triangles around corner v, counterclockwise seen from outside (angles in the plane ⟂ v)
+    const n = [V[3 * v], V[3 * v + 1], V[3 * v + 2]], a = cross(n, Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]), b = cross(n, a);
+    const angle = (t) => {
+      const c = [0, 1, 2].map((d) => ico.cen[3 * t + d] - n[d]);
+      return Math.atan2(c[0] * b[0] + c[1] * b[1] + c[2] * b[2], c[0] * a[0] + c[1] * a[1] + c[2] * a[2]);
+    };
+    const ring = tris.slice().sort((x, y) => angle(x) - angle(y));
+    return ring.length === 6 ? ring : [...ring, ring[ring.length - 1]];
+  });
+  const mesh = finishMesh(Array.from(ico.cen), cells, 6, f);  // the triangles' centres are the corners
+  return (meshCache[key] = mesh);
+}
+
 /* Torus of equilateral triangles: nv rows around the tube (nv even), every other row shifted by half
  * a triangle, nu corners along each row. In sheet units a triangle is 1 wide and its row √3/2 high;
  * the sheet is 2π by 2π·TUBE, so the triangles are equilateral when nu / nv = √3 / (2·TUBE).
@@ -2454,7 +2481,7 @@ function triTorusMesh(nv) {
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus'];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus', 'hexsphere'];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -2573,6 +2600,9 @@ const SPHERES = {
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => hexTorusColumns(nv) * nv, unit: 'hexagons' },
+  // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
+  hexsphere: { mesh: hexSphereMesh, radius: (f) => (f * Math.sqrt(3)) / 2,
+               sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 10 * f * f + 2, unit: 'hexagons' },
   // triangle edge = 1 unit: the tube is nv rows of √3/2 around
   tritorus: { mesh: triTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => 2 * triTorusColumns(nv) * nv, unit: 'triangles' },
@@ -2630,6 +2660,7 @@ function gridGraph(g) {
     const n = cross([0, 1, 2].map((d) => V[3 * b + d] - V[3 * a + d]), [0, 1, 2].map((d) => V[3 * c + d] - V[3 * a + d]));
     for (let j = 0; j < k; j++) {
       const p = g.poly[k * t + j], q = g.poly[k * t + (j + 1) % k];
+      if (p === q) continue;  // a pentagon's repeated corner (sphere of hexagons)
       if (!nbrs[p].includes(q)) { nbrs[p].push(q); nbrs[q].push(p); }
       const e = key(p, q);
       edgeTiles.set(e, [...(edgeTiles.get(e) ?? []), t]);
@@ -3980,7 +4011,7 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
-  if (g.torus || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
+  if (g.torus || !g.faces || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
     drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, line && pathHalves());
     return;
   }
