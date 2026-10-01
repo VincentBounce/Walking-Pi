@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.185';
+const VERSION = '0.1.186';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -359,7 +359,7 @@ function formulaWorker() {
           break;
         }
         case 'phi': v = (S + isqrt(5n * S * S)) / 2n; break;
-        case 'primes2': { // ρ = Σ 2^(−p): its binary expansion is the prime barcode (bit k = 1 when k is prime)
+        case 'rho': { // ρ = Σ 2^(−p), the prime constant: its binary expansion is the prime barcode (bit k = 1 when k is prime)
           const bits = Math.ceil(prec * Math.log2(base)) + 64;
           const prime = new Uint8Array(bits + 1);
           for (const q of smallPrimes(bits)) prime[q] = 1;
@@ -708,15 +708,15 @@ const PRESETS = {
   frac4_3: { group: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
   frac16_9: { group: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
   mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
-  primorial: { group: 'Primes', sym: 'p#', name: 'Primorial prime', detail: 'primorial(p)±1',
+  primorial: { group: 'Primes', sym: 'p#±1', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
   randomPrime: { group: 'Primes', sym: '🎲 p', name: 'Random prime', detail: 'randprime(size, seed)',
                  f: () => `randprime(${randomPrimeSize() ?? 300},${freshDraw()})` },  // a new draw, same size
-  primeReal: { group: 'Primes', sym: 'ρ₂', name: 'Prime constant', f: 'primes2' },
+  primeConstant: { group: 'Primes', sym: 'ρ', name: 'Prime constant', detail: 'rho = Σ 2^(−p)', f: 'rho' },
   random:  { group: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random(seed)', f: () => `random(${freshDraw()})` },
   champernowne: { group: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
-  primeConst: { group: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
-  primeGaps: { group: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
+  primeBarcode: { group: 'Sequences', sym: '▮', name: 'Prime barcode (Ulam)', detail: 'primes · χ_P, the characteristic function of the primes', f: 'primes' },
+  primeGaps: { group: 'Sequences', sym: 'gₙ', name: 'Prime gaps', detail: 'primegaps · gₙ = pₙ₊₁ − pₙ', f: 'primegaps' },
   dragon:  { group: 'Sequences', sym: '🐉', name: 'Dragon (paperfolding)',
              detail: 'dragon · a fractal on Triangles turtle, Squares turtle and Hexagons turtle', f: 'dragon' },
 };
@@ -725,7 +725,7 @@ const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id]
 // What the sequences and ρ₂ mean, for the status line
 const FORMULA_NOTES = {
   primes: (b) => `digit k = 0 if k is not prime, else k mod ${b}`,
-  primes2: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
+  rho: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
   primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
   dragon: () => 'the folds of a strip folded in two again and again (0 and 1): the dragon curve, as turns',
 };
@@ -1115,6 +1115,7 @@ const ICONS = (() => {
     // numbers
     dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' + dots([[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]], 1.4),
     dragon: `<path class="thin" d="${pathOf(dragonOf(63), false)}"/>`,
+    barcode: [2, 3, 5, 7, 11, 13].map((k) => pathEl(`M${2 + 1.5 * k} 5V19`)).join(''),  // a bar at each prime
     // buttons
     play: pathEl('M7 4.5L19.5 12L7 19.5Z', 'f'),
     pause: '<rect class="f" x="6" y="5" width="4" height="14" rx="1"/><rect class="f" x="14" y="5" width="4" height="14" rx="1"/>',
@@ -1126,8 +1127,8 @@ const ICONS = (() => {
   };
 })();
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
-// A text that may hold 🎲 or 🐉 (a random number, the dragon), as HTML with their icons
-const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon'));
+// A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
+const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
 
 /* ==============================================================================================
  * PART 4 — NUMBER FORMULAS
@@ -1162,12 +1163,12 @@ const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g,
 /* ---- 4.1 Vocabulary -------------------------------------------------------------------------- */
 const FORMULA_NAMES = {  // name: [kind, symbol shown]
   pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
-  erdos: ['real', 'E'], primes2: ['real', 'ρ₂'],
-  champernowne: ['seq', 'C'], primes: ['seq', 'ρ'], primegaps: ['seq', 'Δp'], dragon: ['seq', '🐉'],
+  erdos: ['real', 'E'], rho: ['real', 'ρ'],
+  champernowne: ['seq', 'C'], primes: ['seq', '▮'], primegaps: ['seq', 'gₙ'], dragon: ['seq', '🐉'],
 };
 const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, exp: 1, log: 2, zeta: 1, primorial: 1, random: 1, randprime: 2 };
 const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
-                 erdos: 1.6066951524, primes2: 0.4146825099 };
+                 erdos: 1.6066951524, rho: 0.4146825099 };
 const PREC = { '+': 1, '-': 1, '*': 2, '/': 2, neg: 3, '^': 4 };  // anything else binds tighter (5)
 const precOf = (x) => PREC[x.k] ?? 5;
 const formulaKids = (x) => (x.k === 'call' ? x.args : x.k === 'neg' ? [x.a] : x.a ? [x.a, x.b] : []);
@@ -1177,9 +1178,9 @@ const formulaNodes = (x) => [x, ...formulaKids(x).flatMap(formulaNodes)];
 // A small recursive-descent parser, one function per precedence level (expr → term → unary →
 // power → primary). Unicode input is turned into plain names first, so the rest only sees ASCII.
 // Text → tree of { k: 'num' | 'name' | 'call' | 'neg' | '+' | '-' | '*' | '/' | '^', … }.
-// Accepts π φ γ √ ∛ − × · ÷, any case, and implicit products like 2pi.
+// Accepts π φ γ ρ √ ∛ − × · ÷, any case, and implicit products like 2pi.
 function parseFormula(text) {
-  const src = text.replace(/π/g, ' pi ').replace(/φ/g, ' phi ').replace(/γ/g, ' gamma ')
+  const src = text.replace(/π/g, ' pi ').replace(/φ/g, ' phi ').replace(/γ/g, ' gamma ').replace(/ρ/g, ' rho ')
     .replace(/[−–]/g, '-').replace(/[×·]/g, '*').replace(/÷/g, '/');
   const tokens = [], re = /(\d+(?:\.\d+)?)|([a-z_][a-z0-9_]*)|([-+*/^(),√∛])/iy;
   for (let pos = 0; pos < src.length;) {
