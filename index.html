@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261005z">
+  <link rel="stylesheet" href="style.css?v=20261006a">
 </head>
 <body>
   <header>
@@ -184,7 +184,10 @@
         </div>
       </div>
       <div id="viewTools" class="stage-box display-menu">
-        <label class="check stage-head" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click); hover for the display settings"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
+        <div class="stage-head">  <!-- Grid on the left while the box is open, Auto-fit always on the right -->
+          <label class="check open-only" id="gridRow"><input id="showGrid" type="checkbox" checked> Grid</label>
+          <label class="check" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click); hover for the display settings"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
+        </div>
         <div class="stage-more">  <!-- shown on hover, below -->
           <div id="colorsRow"><div id="colorButtons" class="choice-list"></div></div>
           <select id="colorMode" hidden>
@@ -196,7 +199,6 @@
           </select>
           <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas</label>
           <label class="check" id="fillTranslucentRow" hidden><input id="fillTranslucent" type="checkbox"> Translucent fill</label>
-          <label class="check" id="gridRow"><input id="showGrid" type="checkbox" checked> Grid</label>
           <div id="skyRow" hidden>
             <div class="field-label">Sky</div>
             <div id="skyButtons" class="choice-row"></div>
@@ -219,6 +221,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261005z"></script>
+  <script src="main.js?v=20261006a"></script>
 </body>
 </html>

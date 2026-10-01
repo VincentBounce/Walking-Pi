@@ -283,8 +283,14 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
-/* Fit view stays at the top right; hovering opens the settings below it */
-.display-menu .stage-head { width: fit-content; margin: 0 0 0 auto; }
+/* Auto-fit stays at the top right; hovering opens the settings, Grid beside it and the rest below */
+.display-menu .stage-head { display: flex; justify-content: flex-end; gap: 16px; }
+.display-menu .stage-head .check { margin: 0; }
+#gridRow { margin-right: auto; }  /* Grid on the left, Auto-fit on the right */
+/* shown only while the box is open, like its other settings */
+.stage-box .open-only { display: none; }
+.stage-box:hover .open-only { display: flex; }
+@media (hover: none) { .stage-box:focus-within .open-only { display: flex; } }
 .display-menu .stage-more { margin-top: 8px; }
 .form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
