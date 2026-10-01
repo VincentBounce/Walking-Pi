@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.182';
+const VERSION = '0.1.183';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -806,6 +806,16 @@ const PRIMORIAL_PLUS = [379, 1019, 1021, 2657, 3229, 4547, 4787, 11549, 13649, 1
   145823, 366439, 392113, 4328927, 5256037, 6369619, 7351117, 9562633];
 const PRIMORIAL_MINUS = [317, 337, 991, 1873, 2053, 2377, 4093, 4297, 4583, 6569, 13033, 15877, 843301,
   1098133, 3267113, 4778027, 6354977, 6533299];
+// Decimal digits of p# ± 1 (those of p#: ⌊Σ log10 q over the primes q ≤ p⌋ + 1), computed once with
+// exact decimals rather than at every load, which would sieve the primes up to 9.5 million
+const PRIMORIAL_DIGITS = {
+  317: 131, 337: 136, 379: 154, 991: 413, 1019: 425, 1021: 428, 1873: 790, 2053: 866, 2377: 1007,
+  2657: 1115, 3229: 1368, 4093: 1750, 4297: 1844, 4547: 1939, 4583: 1953, 4787: 2038, 6569: 2811,
+  11549: 4951, 13033: 5610, 13649: 5862, 15877: 6845, 18523: 8002, 23801: 10273, 24029: 10387, 42209:
+  18241, 145823: 63142, 366439: 158936, 392113: 169966, 843301: 365851, 1098133: 476311, 3267113:
+  1418398, 4328927: 1878843, 4778027: 2073926, 5256037: 2281955, 6354977: 2758832, 6369619: 2765105,
+  6533299: 2835864, 7351117: 3191401, 9562633: 4151498,
+};
 
 
 /* ---- 2.5 Global state ------------------------------------------------------------------------ */
@@ -973,13 +983,17 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
   const m = $('formula').value.match(/^\s*randprime\(\s*(\d+)\s*,\s*\d+\s*\)\s*$/);
   return m ? Number(m[1]) : null;
 };
+// A whole number (a prime…) has a fixed count of digits, known once computed: the label then says
+// "all 344 digits" when it is shorter than the count asked, "20,000 of 352,987" when it is longer.
 function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : `${fmt(n)} digits`;
+  const total = !size && current?.whole && current.formula === formulaInUse ? current.total : null;
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : total === null ? `${fmt(n)} digits`
+    : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
   $('digitsDown').disabled = n <= steps[0];
-  $('digitsUp').disabled = n >= steps.at(-1);
+  $('digitsUp').disabled = n >= steps.at(-1) || (total !== null && total <= n);
 }
 function stepDigits(delta) {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
@@ -1536,7 +1550,8 @@ function setCurrent(entry, base) {
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
   // total: how many digits the whole number has (a whole number's are only sent up to the count used)
-  current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value };
+  current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value,
+              whole: entry.total !== undefined, formula: formulaInUse };  // whole: a whole number, its digits all known
 }
 
 // The digits in use: n in total, the integer part (always included) then the digits after the point
@@ -1688,24 +1703,23 @@ function compute() {
     return;
   }
 
-  const integer = kind === 'int';
   const done = (entry, how) => {
     setCurrent(entry, base);
     const total = entry.total ?? current.head.length + current.digits.length;
     $('status').textContent = [
       how,
       F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
-      integer && total > n && !mode.life && `the first ${fmt(n)} of its ${fmt(total)} digits`,
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
     ].filter(Boolean).join(' · ');
     buildWalk();
     describe(base, total);
+    syncDigitsStepper();  // a whole number's digits are now known
     $('copyNumber').hidden = false;
     showAll();
     applyPendingView();
   };
-  const hit = cache[key];
+  const hit = cache[key], integer = kind === 'int';
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
                          : hit && hit.digits.length >= n;
   if (enough) {
@@ -4457,17 +4471,18 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-for (const p of MERSENNE) {
-  const decimals = Math.floor(p * Math.log10(2)) + 1;
-  $('mersenneP').add(new Option(`M${SUB(p)} — ${fmt(decimals)} decimal digits`, p));
-}
+// The prime menus, each prime with its number of digits (in base 10, as prime sizes are given)
+for (const p of MERSENNE) $('mersenneP').add(new Option(`M${SUB(p)} · ${fmt(Math.floor(p * Math.log10(2)) + 1)} digits`, p));
 $('mersenneP').value = 44497;
-for (const [sign, list] of [[1, PRIMORIAL_PLUS], [-1, PRIMORIAL_MINUS]]) {
+// primorial primes by size, + 1 and − 1 together
+const primorials = [...PRIMORIAL_PLUS.map((p) => [p, 1]), ...PRIMORIAL_MINUS.map((p) => [p, -1])]
+  .sort((a, b) => PRIMORIAL_DIGITS[a[0]] - PRIMORIAL_DIGITS[b[0]]);
+for (const [low, top, label] of [[0, 1e3, 'up to 1,000 digits'], [1e3, 1e4, '1,000 to 10,000 digits'],
+    [1e4, 1e5, '10,000 to 100,000 digits'], [1e5, 1e6, '100,000 to 1,000,000 digits'], [1e6, Infinity, 'over 1,000,000 digits']]) {
   const group = document.createElement('optgroup');
-  group.label = sign > 0 ? 'p# + 1' : 'p# − 1';
-  for (const p of list) {
-    const decimals = Math.round(p / Math.LN10);  // ln(p#) ≈ p
-    group.append(new Option(`${fmt(p)}# ${sign > 0 ? '+' : '−'} 1 — ≈ ${fmt(decimals)} decimal digits`, `${p},${sign}`));
+  group.label = label;
+  for (const [p, sign] of primorials.filter(([q]) => PRIMORIAL_DIGITS[q] > low && PRIMORIAL_DIGITS[q] <= top)) {
+    group.append(new Option(`${fmt(p)}# ${sign > 0 ? '+' : '−'} 1 · ${fmt(PRIMORIAL_DIGITS[p])} digits`, `${p},${sign}`));
   }
   $('primorialP').append(group);
 }
