@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.190';
+const VERSION = '0.1.191';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3982,7 +3982,8 @@ function drawSegments(from, to) {
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
-  if (walk.points || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
+  // cells: always on a spiral (its line is greyed out), else for Fill cells and Visits
+  if (greyed('line') || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
     // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
     // Visits by the visits so far (log scale)
     let colourOf = (p) => styleColor(styleKey(Math.max(0, p - 1)));
