@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.166';
+const VERSION = '0.1.167';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1324,7 +1324,7 @@ function checkFormula(root) {
       case '^': {
         noSeq(x.a); noSeq(x.b);
         const k = x.b.kind === 'int' ? smallExact(x.b) : null;
-        if (k && k[0] <= 100_000_000n && k[0] >= -100_000_000n) {  // a whole power: exact when a is
+        if (k && k[0] <= 1_000_000_000n && k[0] >= -1_000_000_000n) {  // a whole power: exact when a is (its size is checked by readFormula)
           x.exp = Number(k[0]);
           x.kind = x.a.kind === 'real' ? 'real' : x.exp < 0 ? 'rat' : x.a.kind;
           break;

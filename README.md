@@ -12,21 +12,9 @@ Every number is a **formula**, computed in the browser with `BigInt` in a Web Wo
 
 The cards fill in the formula field; you can also type your own.
 
-**Constants**
-
-| Number | Method |
-|---|---|
-| π | Chudnovsky, by binary splitting |
-| e | Σ 1/k!, by binary splitting |
-| φ (golden ratio) | (1 + √5) / 2, integer square root |
-| γ (Euler–Mascheroni constant) | Brent–McMillan, by binary splitting |
-| G (Catalan's constant) | Lupaș series, by binary splitting |
-| E (Erdős–Borwein constant) | Σ 2^(−n²)·(2ⁿ+1)/(2ⁿ−1) |
+**Constants:** π, e, φ (golden ratio), γ (Euler–Mascheroni), G (Catalan), E (Erdős–Borwein).
 
 **𝑓 (formulas):** √2, ∛2, π², e^π, ln 2, ζ(3), 4/3, 16/9.
-
-- ln 2 = 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749).
-- ζ(3) uses the Amdeberhan–Zeilberger series.
 
 **Primes**
 - **Mersenne primes 2ᵖ − 1:** the known ones from M₁₂₇ to M₁₃₆₂₇₉₈₄₁. In base 2 or 4 their digits are trivial (111…1 and 1333…3).
@@ -39,7 +27,35 @@ The cards fill in the formula field; you can also type your own.
 - **Champernowne:** 1 2 3 4 … written one after another in the walk's base.
 - **Prime barcode ρ (Ulam):** digit k is 0 if k is not prime, else k mod b. On the square spiral it draws the Ulam spiral of the primes.
 - **Prime gaps Δp:** one digit per gap between consecutive odd primes, (gap / 2) mod b.
-- **Dragon (paperfolding):** the folds of a strip folded in two again and again. As turns, it draws the dragon curve on Triangles left/right, Squares turtle and Hexagons relative.
+- **Dragon (paperfolding):** the folds of a strip folded in two again and again. As turns, it draws the dragon curve on Triangles turtle, Squares turtle and Hexagons turtle.
+
+### How each number is computed
+
+Times are for one computation in the browser's worker, in base 10 (other bases are about the same), on a recent laptop. A formula costs the sum of its parts: π² costs about one π.
+
+Binary splitting and Newton's method cost a few multiplications of huge integers, so ten times more digits take about 15 to 25 times longer. A series summed term by term needs one long division per term, so ten times more digits take about a hundred times longer: only ζ(5), ζ(7)… still work that way.
+
+| Formula | Method | 100,000 digits | 1,000,000 digits |
+|---|---|--:|--:|
+| `pi` | Chudnovsky series, by binary splitting | 0.07 s | 1.3 s |
+| `e` | Σ 1/k!, by binary splitting | 0.03 s | 0.5 s |
+| `ln(2)` | 18·artanh(1/26) − 2·artanh(1/4801) + 8·artanh(1/8749), by binary splitting | 0.1 s | 2.1 s |
+| `phi`, `sqrt(x)` | integer square root, Newton doubling its precision | 0.03 s | 0.6 s |
+| `cbrt(x)` | integer cube root, Newton doubling its precision | 0.05 s | 0.9 s |
+| `root(x, k)` | integer k-th root, Newton at full precision | 0.3 s | 5.4 s |
+| `erdos` | Σ 2^(−k²)·(2^k + 1)/(2^k − 1), about √n terms | 0.07 s | 3.5 s |
+| `zeta(3)` | Amdeberhan–Zeilberger series, by binary splitting | 0.2 s | 4.0 s |
+| `catalan` | Lupaș series, by binary splitting | 1.2 s | 24 s |
+| `gamma` | Brent–McMillan, by binary splitting | 2.0 s | 41 s |
+| `ln(3)`, `log(1000, 7)`, `ln(22/7)` | ln of a fraction: k·ln 2 + 2·artanh(r) with a small fraction r, by binary splitting | 0.2 s | 3.5 s |
+| `exp(2)`, `e^(1/3)` | exp, "bit-burst": the argument in chunks of 32, 32, 64, 128… bits, each series by binary splitting | 0.04 s | 0.7 s |
+| `e^pi`, `2^pi`, `x^y` | exp as above (x^y = e^(y·ln x)) | 0.4–0.5 s | 10–12 s |
+| `ln(pi)`, `log(pi, 10)` | ln of any value: Newton's method on exp, doubling its precision | 0.7 s | 16 s |
+| `zeta(5)`, `zeta(7)`… | Borwein's series, term by term | 29 s | too long |
+| `22/7` | long division | instant | instant |
+| `2^136279841-1` | exact `BigInt`, then its digits (all 41,024,320 of them, whatever the count asked) | 15 s | 15 s |
+| `primorial(9562633)+1` | exact `BigInt`, primes multiplied as a balanced tree | 1.3 s | 1.3 s |
+| `randprime(size, seed)` | sieve, then Miller–Rabin; the time depends on the size, not on the digits asked | 300 digits: 0.05 s, 1,000: 1.5 s | 2,000 digits: minutes |
 
 ### Formula language
 
