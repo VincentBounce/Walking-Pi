@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.186';
+const VERSION = '0.1.187';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -985,19 +985,23 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 };
 // A whole number (a prime…) has a fixed count of digits, known once computed: the label then says
 // "all 344 digits" when it is shorter than the count asked, "20,000 of 352,987" when it is longer.
+// The whole number in use, if any: its count of digits (in the field, not formulaInUse: while a new
+// number is read, that one is still the old)
+const wholeTotal = () => (current?.whole && current.formula === $('formula').value ? current.total : null);
 function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  // the number in the field, not formulaInUse: while a new number is read, that one is still the old
-  const total = !size && current?.whole && current.formula === $('formula').value ? current.total : null;
+  const total = size ? null : wholeTotal();
   $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : total === null ? `${fmt(n)} digits`
     : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
-  $('digitsDown').disabled = n <= steps[0];
+  // − goes below what is walked: the whole number's own length when it is shorter than the count
+  $('digitsDown').disabled = Math.min(n, total ?? n) <= steps[0];
   $('digitsUp').disabled = n >= steps.at(-1) || (total !== null && total <= n);
 }
 function stepDigits(delta) {
-  const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
+  const size = randomPrimeSize(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
+  const n = size ?? Math.min(requestedDigits(), wholeTotal() ?? Infinity);  // what is walked
   const next = delta > 0 ? steps.find((v) => v > n) : steps.findLast((v) => v < n);
   if (next === undefined) return;
   if (size) setPrimeSize(next);
@@ -1115,7 +1119,9 @@ const ICONS = (() => {
     // numbers
     dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' + dots([[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]], 1.4),
     dragon: `<path class="thin" d="${pathOf(dragonOf(63), false)}"/>`,
-    barcode: [2, 3, 5, 7, 11, 13].map((k) => pathEl(`M${2 + 1.5 * k} 5V19`)).join(''),  // a bar at each prime
+    // a barcode: thick and thin bars, well apart so that it still reads at 15 px
+    barcode: [[3, 2.6], [7, 1.4], [10, 1.4], [13, 3], [18, 1.4], [20.6, 1.4]]
+      .map(([x, w]) => `<rect class="f" x="${x}" y="4" width="${w}" height="16" rx="0.3"/>`).join(''),
     // buttons
     play: pathEl('M7 4.5L19.5 12L7 19.5Z', 'f'),
     pause: '<rect class="f" x="6" y="5" width="4" height="14" rx="1"/><rect class="f" x="14" y="5" width="4" height="14" rx="1"/>',
