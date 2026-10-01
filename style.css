@@ -80,8 +80,12 @@ input[type=number], input[type=text], select {
   border-radius: 6px;
   font: inherit;
 }
-#formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
-#formula.custom { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
+/* the Custom formula, like the number of digits under it: a field that looks like a label until it
+   is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
+#formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; text-align: center; background: transparent; border-color: transparent; }
+#formula:hover { border-color: var(--border); }
+#formula.custom { color: var(--accent); font-weight: 600; }
+#formula:focus { outline: none; border-color: var(--accent); background: var(--bg); color: var(--text); font-weight: 400; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
 input[type=checkbox] {
