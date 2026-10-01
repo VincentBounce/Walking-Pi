@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.197';
+const VERSION = '0.1.198';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4706,10 +4706,12 @@ function computeFramed() {
 let displayTab = null;
 const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
-  $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
+  const mode = MODES[$('mode').value], surface = mode.lattice === 'sphere';
+  $('colorMode').value = mode.life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
-  $('fillAreas').checked = $('fillCells').checked = false;
-  $('fillTranslucent').checked = false;
+  $('fillAreas').checked = false;
+  $('fillCells').checked = surface;  // a surface walk shows its tiles filled
+  $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
   $('sky').value = 'twilight';
