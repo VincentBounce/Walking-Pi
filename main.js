@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.167';
+const VERSION = '0.1.169';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1414,6 +1414,7 @@ function presetOf(text) {
 function syncNumberMenu() {
   const p = presetOf($('formula').value);
   renderNumberPicker(p.id);
+  $('formula').classList.toggle('custom', !p.id);  // a formula of its own lights up like a chosen card
   for (const helper of ['mersenneP', 'primorialP', 'primeSize']) if (p[helper]) $(helper).value = p[helper];
   $('mersenneRow').hidden = p.id !== 'mersenne';
   $('primorialRow').hidden = p.id !== 'primorial';

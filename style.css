@@ -81,6 +81,7 @@ input[type=number], input[type=text], select {
   font: inherit;
 }
 #formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+#formula.custom { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
 input[type=checkbox] {
