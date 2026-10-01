@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.194';
+const VERSION = '0.1.195';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3831,9 +3831,8 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
-  if (g.torus || walk.shape.m > 0) {
-    drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf);
-    if (line) drawSurfacePath(ctx);
+  if (g.torus || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
+    drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, line && pathHalves());
     return;
   }
   const buckets = Array.from({ length: palette.length }, () => []);
@@ -3948,12 +3947,15 @@ function areaSteps() {
 }
 
 // Rainbow along the walk on a surface: the path through the tile centres up to the current step,
-// each step in its colour, over the tiles. A step is drawn when both its tiles face the viewer, and
-// not when it jumps across the sheet of an unrolled torus (its two ends then lie far apart).
+// each step in its colour, over the tiles.
+const surfaceLineWidth = () => {  // about a fifth of a tile edge on screen
+  const sc = walk.shape.corners;
+  return Math.max(1, Math.min(walk.R * Math.hypot(sc[0] - sc[3], sc[1] - sc[4], sc[2] - sc[5]) * view.scale * 0.2, 3));
+};
+// On a flat polyhedron (convex, faces drawn whole): every step whose two tiles face the viewer
 function drawSurfacePath(ctx) {
-  const { xs, ys, wx, wy, wz, n } = walk, { scale: s, ox, oy } = view, sc = walk.shape.corners;
-  const edge = walk.R * Math.hypot(sc[0] - sc[3], sc[1] - sc[4], sc[2] - sc[5]);
-  ctx.lineWidth = Math.max(1, Math.min(edge * s * 0.2, 3));
+  const { xs, ys, n } = walk, { scale: s, ox, oy } = view;
+  ctx.lineWidth = surfaceLineWidth();
   ctx.lineJoin = ctx.lineCap = 'round';
   let band = -1;
   for (let i = 0; i < cur; i++) {
@@ -3965,11 +3967,29 @@ function drawSurfacePath(ctx) {
       ctx.beginPath();
     }
     if (!facing(i) || !facing(i + 1)) continue;
-    if (Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) > 2 * edge) continue;
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
     ctx.lineTo(ox + xs[i + 1] * s, oy + ys[i + 1] * s);
   }
   if (band >= 0) ctx.stroke();
+}
+// On a torus or an inflated shape (drawn tile by tile, far to near): each step split in two halves,
+// from each tile centre to the middle of the step, listed by tile so that drawShapeTiles draws a
+// tile's halves right after the tile, and nearer tiles cover them. A half longer than its tile is
+// a jump across the sheet of an unrolled torus: it is left out.
+function pathHalves() {
+  const halves = Array.from({ length: walk.geo.n }, () => []), { tile, wx, wy, wz } = walk;
+  const c = walk.shape.corners, k = walk.geo.sides;
+  const size = (t) => {  // the first edge of tile t
+    const a = 3 * k * t;
+    return walk.R * Math.hypot(c[a] - c[a + 3], c[a + 1] - c[a + 4], c[a + 2] - c[a + 5]);
+  };
+  for (let i = 0; i < cur; i++) {
+    const half = Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) / 2;
+    if (half > size(tile[i]) || half > size(tile[i + 1])) continue;
+    halves[tile[i]].push(i, i + 1);  // from point i towards the middle of step i, on its tile
+    halves[tile[i + 1]].push(i + 1, i);
+  }
+  return halves;
 }
 
 // Torus tiles: the visible ones sorted from far to near (painter's algorithm), each filled with
@@ -3998,7 +4018,7 @@ function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an 
 // Tiles of a shape (torus, or an inflated polyhedron): the visible ones sorted from far to near
 // (painter's algorithm: a torus is not convex, so tiles facing us can hide each other), each
 // filled with its colour darkened by how much it turns away from the viewer, then outlined
-function drawShapeTiles(ctx, sh, k, palette, levelOf) {
+function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
   const R = walk.R, P = walk.persp, cp = Math.cos(cam.pitch), n = walk.geo.n;
   const { scale: s, ox, oy } = view, proj = projector();
   const dir = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)];  // towards the viewer
@@ -4030,7 +4050,24 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf) {
     ctx.closePath();
     ctx.fill();
     if (grid) ctx.stroke();
+    if (halves && halves[t].length) drawHalves(ctx, halves[t]);
   }
+}
+// The halves of steps on one tile (pairs of point indices: from the first towards the middle)
+function drawHalves(ctx, list) {
+  const { xs, ys, n } = walk, { scale: s, ox, oy } = view;
+  ctx.save();
+  ctx.lineWidth = surfaceLineWidth();
+  ctx.lineCap = 'round';
+  for (let j = 0; j < list.length; j += 2) {
+    const p = list[j], q = list[j + 1];
+    ctx.strokeStyle = GRADIENT[Math.floor((Math.min(p, q) * BANDS) / n)];
+    ctx.beginPath();
+    ctx.moveTo(ox + xs[p] * s, oy + ys[p] * s);
+    ctx.lineTo(ox + (xs[p] + xs[q]) * s / 2, oy + (ys[p] + ys[q]) * s / 2);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 
