@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.159';
+const VERSION = '0.1.160';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -839,18 +839,17 @@ let shownSym = 'π';  // the number's symbol, for the description and a saved se
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
-  const count = (v) => `<span class="count">${fmt(v)}</span>`;  // how many digits are used: the setup at a glance
   if (!mode.life) {
-    $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${count(walk.n)} base-${base} digits ${mode.rule}`;
+    $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${fmt(walk.n)} base-${base} digits ${mode.rule}`;
     return;
   }
   const cells = walk.life.seed.length, C = base;
   const dying = C > 2 ? `, <b>2</b>${C > 3 ? `–<b>${C - 1}</b>` : ''} dying` : '';
   const states = walk.life.two ? '<b>0</b> dead, <b>1</b> red, <b>2</b> blue, a newborn taking the colour of most of its neighbours'
     : `<b>0</b> dead, <b>1</b> alive${dying}`;
-  const seeded = available < cells ? `the first ${count(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${count(cells)} cells`;
+  const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
-  const lead = start?.radius ? `${number} the ${count(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
+  const lead = start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
     : start ? `${{ hunt: 'A start found by the hunt', duel: 'A duel start', saved: 'A saved start' }[start]} on ${mode.where}`
     : `${number} ${seeded} of ${mode.where}`;
   $('description').innerHTML = `${lead}: ${states} · rule ${walk.life.ruleText} · neighbours share an edge or a corner`;
@@ -3414,7 +3413,7 @@ function viewFor(b) {
   const w = b.maxX - b.minX + 2;
   const h = b.maxY - b.minY + 2;
   // down to 10⁻⁶ pixel per cell: a walk of 10 million steps can drift millions of cells away
-  const scale = Math.min(40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * 0.85));
+  const scale = Math.min(40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * 0.925));  // a 7.5 % margin
   return { scale, cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
 }
 function setView(v) {

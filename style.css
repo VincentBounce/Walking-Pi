@@ -31,7 +31,6 @@ header {
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
 h1 .pi, .subtitle .pi { color: var(--accent); }
 .subtitle .walking { color: var(--text); font-weight: 600; }  /* what is walked: Walking ln 2 · … */
-.subtitle .count { color: var(--accent); font-weight: 600; }  /* and how many of its digits */
 h1 .version { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
 .subtitle { margin: 8px 0 0; color: var(--muted); }
 .subtitle b { color: var(--text); }
@@ -138,7 +137,7 @@ button.primary {
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
 .field-label { margin-bottom: 4px; }
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-.stepper span { flex: 1; text-align: center; font-variant-numeric: tabular-nums; }
+.stepper span { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }  /* the setup at a glance */
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
 
