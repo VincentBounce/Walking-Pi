@@ -82,7 +82,7 @@ input[type=number], input[type=text], select {
 }
 /* the Custom formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
-#formula { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; text-align: center; }
+#formula { text-align: center; }  /* the page's font at rest, like the number of digits; monospace while edited */
 #formula.custom { color: var(--accent); font-weight: 600; }  /* the number chosen: no card matches it */
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
