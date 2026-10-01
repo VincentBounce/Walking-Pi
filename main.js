@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.165';
+const VERSION = '0.1.166';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -399,9 +399,11 @@ function formulaWorker() {
     }
 
     /* ---- 1.4 General functions: whole powers, exp, ln, zeta ---------------------------------- */
-    // exp and ln work in binary fixed point (W fractional bits), where shifts are much cheaper than
-    // divisions by powers of b. Both first reduce their argument (halvings for exp, square roots for
-    // ln) so that their series converge fast, then undo the reduction (squarings, a factor 2^r).
+    // exp and ln work in binary fixed point (a value v as V = v·2^W), where shifts are much cheaper
+    // than divisions by powers of b. exp sums series by binary splitting, like the constants (the
+    // "bit-burst" method); ln is then found by Newton's method on exp, doubling its precision at
+    // each step. Both cost a few big multiplications per doubling of the precision, so a million
+    // digits of 2^π or ln π take seconds, where term-by-term series took minutes.
 
     // S·v^k for S·v and a whole k (squaring)
     function powFixed(v, k) {
@@ -415,54 +417,53 @@ function formulaWorker() {
       return (S * S) / r;
     }
 
-    // S·e^x for S·x: e^x = (e^(x / 2^r))^(2^r), the series Σ y^k / k! in binary fixed point with W
-    // fractional bits; r halvings balance series terms and squarings, and cover the integer part of x
-    function expFixed(x) {
-      if (x < 0n) return (S * S) / expFixed(-x);
-      const bits = Math.ceil(prec * Math.log2(base));
-      const r = Math.max(1, Math.round(Math.sqrt(bits) / 2)) + (x / S).toString(2).length;
-      const W = BigInt(bits + 2 * r + 64);  // guard bits absorb the 2^r error growth
-      const one = 1n << W;
-      done = 0;
-      total = bits / r + r;
-      const y = ((x << W) / S) >> BigInt(r);
-      let term = one, sum = one;
-      for (let k = 1; term !== 0n; k++) {
-        term = ((term * y) >> W) / BigInt(k);
-        sum += term;
-        progress(k);
+    // The working precision in bits: the digits asked for, and guard bits for the rounding
+    const fixedBits = () => Math.ceil(prec * Math.log2(base)) + 96;
+    const toBin = (x, W) => (x << BigInt(W)) / S;   // S·v → v·2^W
+    const fromBin = (X, W) => (X * S) >> BigInt(W);  // and back
+
+    // e^(X / 2^W)·2^W (bit-burst). x = n + r_1 + r_2 + …: e^n by squaring e; each r_j is a chunk of
+    // the bits after the point (32, 32, 64, 128… of them), r_j = c / 2^s with c < 2^(s − lo), so
+    // e^r_j = Σ c^k / (k!·2^(s·k)) gains lo bits per term and is summed by binary splitting.
+    function expBin(X, W) {
+      const w = BigInt(W);
+      if (X < 0n) return (1n << (2n * w)) / expBin(-X, W);
+      const V = W + 64, v = BigInt(V);
+      let y = 1n << v, e = toBin(constant('e'), V);
+      for (let n = X >> w; n > 0n; n >>= 1n) {
+        if (n & 1n) y = (y * e) >> v;
+        if (n > 1n) e = (e * e) >> v;
       }
-      for (let i = 0; i < r; i++) sum = (sum * sum) >> W;
-      return (sum * S) >> W;
+      const F = (X & ((1n << w) - 1n)) << (v - w);  // the bits after the point, on V bits
+      for (let lo = 0, hi = 32; lo < V; lo = hi, hi *= 2) {
+        const s = Math.min(hi, V), c = (F >> BigInt(V - s)) & ((1n << BigInt(s - lo)) - 1n);
+        if (c === 0n) continue;
+        let K = 1;
+        for (let got = 0; got < V + 16; K++) got += lo + Math.log2(K);  // c^K / (K!·2^(sK)) < 2^−V
+        const [, Q, T] = binarySplit(0, K, (j) => (j === 0 ? 1n : c), (j) => (j === 0 ? 1n : BigInt(j) << BigInt(s)), () => 1n);
+        y = (y * ((T << v) / Q)) >> v;
+      }
+      return y >> (v - w);
     }
 
-    // S·ln x for S·x > 0, in binary fixed point with W fractional bits: x = 2^k·m with m in
-    // [1/√2, √2]; r square roots bring m very close to 1, then ln m = 2^r·2·artanh((m − 1)/(m + 1)),
-    // a series that now gains 2r bits per term
-    function lnFixed(x) {
-      if (x <= 0n) throw new Error('logarithm of a number ≤ 0');
-      const bits = Math.ceil(prec * Math.log2(base));
-      const r = Math.max(1, Math.round(Math.sqrt(bits) / 4));
-      const W = BigInt(bits + r + 64), one = 1n << W;  // r guard bits: the 2^r at the end
-      let k = x.toString(2).length - S.toString(2).length;
-      let m = k >= 0 ? (x << W) / (S << BigInt(k)) : (x << (W + BigInt(-k))) / S;
-      while (m * m > 2n * one * one) { m >>= 1n; k++; }
-      while (2n * m * m < one * one) { m <<= 1n; k--; }
-      done = 0;
-      total = r + bits / (2 * r + 3);
-      for (let i = 1; i <= r; i++) { m = isqrt(m << W); progress(i); }
-      // |t| only: >> on a negative BigInt rounds towards −∞ and would never reach 0
-      const below = m < one, t = ((below ? one - m : m - one) << W) / (m + one), t2 = (t * t) >> W;
-      let term = t, sum = t;
-      for (let j = 1; ; j++) {
-        term = (term * t2) >> W;
-        if (term === 0n) break;
-        sum += term / BigInt(2 * j + 1);
-        progress(r + j);
-      }
-      const lnm = ((below ? -2n : 2n) * sum) << BigInt(r);
-      return ((lnm * S) >> W) + (k ? BigInt(k) * constant('ln2') : 0n);
+    // ln(X / 2^W)·2^W: x = 2^k·m with m in [1, 2), then ln m by Newton on exp, y ← y + m·e^(−y) − 1,
+    // which doubles the number of correct bits: from a double's 50 bits to W, the last exp costing
+    // about as much as all the earlier ones together
+    function lnBin(X, W) {
+      if (X <= 0n) throw new Error('logarithm of a number ≤ 0');
+      const k = bitLength(X) - 1 - W, M = k >= 0 ? X >> BigInt(k) : X << BigInt(-k);
+      const lnUnit = (m, P) => {
+        if (P <= 50) return BigInt(Math.round(Math.log(Number(m) / 2 ** P) * 2 ** P));
+        const h = Math.ceil(P / 2) + 16, p = BigInt(P);
+        const y = lnUnit(m >> BigInt(P - h), h) << BigInt(P - h);
+        return y + (m << p) / expBin(y, P) - (1n << p);
+      };
+      return lnUnit(M, W) + BigInt(k) * toBin(constant('ln2'), W);
     }
+
+    // S·e^x and S·ln x for S·x
+    const expFixed = (x) => { const W = fixedBits(); return fromBin(expBin(toBin(x, W), W), W); };
+    const lnFixed = (x) => { const W = fixedBits(); return fromBin(lnBin(toBin(x, W), W), W); };
 
     // S·ζ(s) for a whole s ≥ 2 (Borwein): ζ(s) = −Σ (−1)^k (d_k − d_N)/(k + 1)^s / (d_N·(1 − 2^(1−s))),
     // d_k = Σ_{i≤k} N·(N+i−1)!·4^i / ((N−i)!·(2i)!), with an error below 3/(3 + √8)^N. d_N comes first,
