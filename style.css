@@ -137,7 +137,11 @@ button.primary {
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
 .field-label { margin-bottom: 4px; }
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-.stepper span { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }  /* the setup at a glance */
+.stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }  /* the setup at a glance */
+/* the number of digits can be typed: a field that looks like the label until it is hovered or used */
+.stepper input { min-width: 0; margin: 0; padding: 4px; background: transparent; border-color: transparent; cursor: text; }
+.stepper input:hover { border-color: var(--border); }
+.stepper input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
 

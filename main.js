@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.161';
+const VERSION = '0.1.162';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -929,11 +929,12 @@ function requestedDigits() {
 }
 
 // The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
-// DIGIT_STEPS and recomputes at once. A link may hold any other count: a step goes to the next one.
+// DIGIT_STEPS and recomputes at once. The count can also be typed in the middle; any other count
+// (typed, or from a link) then steps to the next one in DIGIT_STEPS.
 const DIGIT_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7];
 function syncDigitsStepper() {
   const n = requestedDigits();
-  $('digitsLabel').textContent = `${fmt(n)} digits`;
+  $('digitsLabel').value = `${fmt(n)} digits`;
   $('digitsDown').disabled = n <= DIGIT_STEPS[0];
   $('digitsUp').disabled = n >= DIGIT_STEPS.at(-1);
 }
@@ -4303,6 +4304,15 @@ function tick(now = performance.now()) {
 /* ---- 12.1 Buttons, menus, keyboard and mouse ------------------------------------------------- */
 $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
+// A typed count: 30000, 30 000, 30,000, 30k or 1.5M (compute keeps it within 10 … 10 million)
+$('digitsLabel').addEventListener('focus', () => $('digitsLabel').select());
+$('digitsLabel').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('digitsLabel').blur(); });
+$('digitsLabel').addEventListener('change', () => {
+  const m = $('digitsLabel').value.toLowerCase().replace(/[\s,_]|digits?/g, '').match(/^(\d+(?:\.\d+)?)([km]?)$/);
+  if (!m) { syncDigitsStepper(); return; }  // not a count: show the current one again
+  $('digits').value = Math.round(m[1] * { '': 1, k: 1e3, m: 1e6 }[m[2]]);
+  compute();
+});
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
   play(!playing);
