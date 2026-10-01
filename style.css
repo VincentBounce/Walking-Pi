@@ -31,6 +31,7 @@ header {
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
 h1 .pi, .subtitle .pi { color: var(--accent); }
 .subtitle .walking { color: var(--text); font-weight: 600; }  /* what is walked: Walking ln 2 · … */
+.subtitle .count { color: var(--accent); font-weight: 600; }  /* and how many of its digits */
 h1 .version { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
 .subtitle { margin: 8px 0 0; color: var(--muted); }
 .subtitle b { color: var(--text); }
