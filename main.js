@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.160';
+const VERSION = '0.1.161';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -686,7 +686,7 @@ const PRESETS = {
   primeConst: { group: 'Sequences', sym: 'ρ', name: 'Prime barcode (Ulam)', f: 'primes' },
   primeGaps: { group: 'Sequences', sym: 'Δp', name: 'Prime gaps', f: 'primegaps' },
   dragon:  { group: 'Sequences', sym: '🐉', name: 'Dragon (paperfolding)',
-             detail: 'dragon · a fractal on Triangles left/right, Squares turtle and Hexagons relative', f: 'dragon' },
+             detail: 'dragon · a fractal on Triangles turtle, Squares turtle and Hexagons turtle', f: 'dragon' },
 };
 const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
 
@@ -4450,7 +4450,8 @@ const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
   $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
-  $('fillAreas').checked = $('fillTranslucent').checked = false;
+  $('fillAreas').checked = false;
+  $('fillTranslucent').checked = true;  // ready for when Fill areas is switched on
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
   $('sky').value = 'twilight';
