@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.179';
+const VERSION = '0.1.180';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4343,13 +4343,16 @@ $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
 // 10 … 10 million
 // The two edited fields (Custom formula, number of digits): entering one shows the value in use,
-// selected (the plain number for the digits; formulaInUse is the last valid formula). Enter or ↵
+// the cursor at its end (the plain number for the digits; formulaInUse is the last valid formula). Enter or ↵
 // leaves the field, and leaving it computes; but a wrong formula keeps you in the field, with its
 // error. Esc undoes the edit: back to the value in use. For ↵, mousedown keeps the focus from
 // going to the button first.
 const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(requestedDigits()) };
 for (const input of document.querySelectorAll('.field input')) {
-  input.addEventListener('focus', () => { input.value = valueInUse[input.id](); input.select(); });
+  input.addEventListener('focus', () => {
+    input.value = valueInUse[input.id]();
+    setTimeout(() => input.setSelectionRange(input.value.length, input.value.length));  // after the click places it
+  });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { input.value = valueInUse[input.id](); input.blur(); }
     if (e.key !== 'Enter') return;
