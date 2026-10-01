@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.181';
+const VERSION = '0.1.182';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -711,7 +711,7 @@ const PRESETS = {
   primorial: { group: 'Primes', sym: 'p#', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
   randomPrime: { group: 'Primes', sym: '🎲 p', name: 'Random prime', detail: 'randprime(size, seed)',
-                 f: () => `randprime(${$('primeSize').value},${freshDraw()})` },
+                 f: () => `randprime(${randomPrimeSize() ?? 300},${freshDraw()})` },  // a new draw, same size
   primeReal: { group: 'Primes', sym: 'ρ₂', name: 'Prime constant', f: 'primes2' },
   random:  { group: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random(seed)', f: () => `random(${freshDraw()})` },
   champernowne: { group: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
@@ -860,8 +860,10 @@ function updateRuleText() {
 
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
-  const mode = MODES[$('mode').value];
-  return mode.life ? SPHERES[mode.sphere].tiles(Number($('sphereF').value)) : requestedDigits();
+  const mode = MODES[$('mode').value], size = randomPrimeSize();
+  if (mode.life) return SPHERES[mode.sphere].tiles(Number($('sphereF').value));
+  // a random prime is walked whole: its size (decimal digits) written in the walk's base
+  return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
 }
 
 // The line under the tabs says what is shown, by tab. A walk: "Walking π · 20,000 base-3 digits on
@@ -963,19 +965,34 @@ function requestedDigits() {
 // The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
 // DIGIT_STEPS and recomputes at once. The count can also be typed in the middle; any other count
 // (typed, or from a link) then steps to the next one in DIGIT_STEPS.
+// For a random prime, walked whole, the stepper sets the prime's size instead, in decimal digits:
+// [ − ] 300 digits (p) [ + ], through PRIME_STEPS (100 to 2,000).
 const DIGIT_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7];
+const PRIME_STEPS = [100, 200, 300, 500, 1000, 2000];
+const randomPrimeSize = () => {  // the size of the random prime in the Formula field, if it is one
+  const m = $('formula').value.match(/^\s*randprime\(\s*(\d+)\s*,\s*\d+\s*\)\s*$/);
+  return m ? Number(m[1]) : null;
+};
 function syncDigitsStepper() {
-  const n = requestedDigits();
-  $('digitsLabel').value = `${fmt(n)} digits`;
-  $('digitsDown').disabled = n <= DIGIT_STEPS[0];
-  $('digitsUp').disabled = n >= DIGIT_STEPS.at(-1);
+  const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : `${fmt(n)} digits`;
+  $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
+    : 'Type a number of digits, from 10 to 10,000,000, then Enter';
+  $('digitsDown').disabled = n <= steps[0];
+  $('digitsUp').disabled = n >= steps.at(-1);
 }
 function stepDigits(delta) {
-  const n = requestedDigits();
-  const next = delta > 0 ? DIGIT_STEPS.find((v) => v > n) : DIGIT_STEPS.findLast((v) => v < n);
+  const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
+  const next = delta > 0 ? steps.find((v) => v > n) : steps.findLast((v) => v < n);
   if (next === undefined) return;
-  $('digits').value = next;
-  compute();
+  if (size) setPrimeSize(next);
+  else { $('digits').value = next; compute(); }
+}
+// Another size for the random prime: a new prime of that size, from the same seed
+function setPrimeSize(size) {
+  const seed = $('formula').value.match(/,\s*(\d+)/)[1];
+  $('formula').value = `randprime(${Math.min(2000, Math.max(100, size))},${seed})`;
+  computeFramed();
 }
 
 const SUB = (v) => String(v).replace(/\d/g, (c) => '₀₁₂₃₄₅₆₇₈₉'[c]);
@@ -1404,9 +1421,7 @@ function presetOf(text) {
     return { id: 'primorial', primorialP: `${m[1]},${m[2] === '+' ? 1 : -1}` };
   }
   if (/^random\(\d+\)$/.test(text)) return { id: 'random' };
-  if ((m = text.match(/^randprime\((\d+),\d+\)$/)) && Array.from($('primeSize').options).some((o) => o.value === m[1])) {
-    return { id: 'randomPrime', primeSize: m[1] };
-  }
+  if (/^randprime\(\d+,\d+\)$/.test(text)) return { id: 'randomPrime' };
   return { id: null };  // a formula of its own: no card
 }
 
@@ -1415,10 +1430,9 @@ function syncNumberMenu() {
   const p = presetOf($('formula').value);
   renderNumberPicker(p.id);
   $('formula').classList.toggle('custom', !p.id);  // a formula of its own lights up like a chosen card
-  for (const helper of ['mersenneP', 'primorialP', 'primeSize']) if (p[helper]) $(helper).value = p[helper];
+  for (const helper of ['mersenneP', 'primorialP']) if (p[helper]) $(helper).value = p[helper];
   $('mersenneRow').hidden = p.id !== 'mersenne';
   $('primorialRow').hidden = p.id !== 'primorial';
-  $('primeSizeRow').hidden = p.id !== 'randomPrime';
 }
 
 // Every number at once, in small groups (Constants, 𝑓, Primes, Sequences): tiles showing the
@@ -1441,7 +1455,7 @@ function renderNumberPicker(active) {
       return b;
     }));
     box.append(label, grid);
-    if (group === 'Primes') box.append($('mersenneRow'), $('primorialRow'), $('primeSizeRow'));
+    if (group === 'Primes') box.append($('mersenneRow'), $('primorialRow'));
     return box;
   }));
 }
@@ -1527,7 +1541,7 @@ function setCurrent(entry, base) {
 
 // The digits in use: n in total, the integer part (always included) then the digits after the point
 function digitsInUse() {
-  const n = MODES[current.mode].life ? digitsNeeded() : requestedDigits();
+  const n = digitsNeeded();
   const head = current.head.subarray(0, n);
   return { head, frac: current.digits.subarray(0, n - head.length) };
 }
@@ -1634,7 +1648,7 @@ function compute() {
   renderModePicker();
   if (mode.sphere) fillSphereSizes(mode.sphere);
   const n = digitsNeeded();
-  if (!mode.life) $('digits').value = n;
+  if (!mode.life && !randomPrimeSize()) $('digits').value = n;  // a random prime keeps the count for later
   syncDigitsStepper();
   relabelColours(mode);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
@@ -4347,7 +4361,7 @@ $('digitsUp').addEventListener('click', () => stepDigits(1));
 // leaves the field, and leaving it computes; but a wrong formula keeps you in the field, with its
 // error. Esc undoes the edit: back to the value in use. For ↵, mousedown keeps the focus from
 // going to the button first.
-const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(requestedDigits()) };
+const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? requestedDigits()) };
 for (const input of document.querySelectorAll('.field input')) {
   input.addEventListener('focus', () => {
     input.value = valueInUse[input.id]();
@@ -4367,6 +4381,7 @@ $('digitsLabel').addEventListener('input', () => { $('digitsLabel').value = $('d
 $('digitsLabel').addEventListener('blur', syncDigitsStepper);  // "20,000 digits" again
 $('digitsLabel').addEventListener('change', () => {
   if (!$('digitsLabel').value) return;  // emptied: the blur shows the current count again
+  if (randomPrimeSize()) { setPrimeSize(Number($('digitsLabel').value)); return; }
   $('digits').value = $('digitsLabel').value;
   compute();
 });
@@ -4461,7 +4476,6 @@ $('primorialP').value = '392113,1';
 const pickPreset = (id) => { $('formula').value = presetFormula(id); computeFramed(); };
 $('mersenneP').addEventListener('change', () => pickPreset('mersenne'));
 $('primorialP').addEventListener('change', () => pickPreset('primorial'));
-$('primeSize').addEventListener('change', () => pickPreset('randomPrime'));
 $('sky').addEventListener('change', () => { needsFull = true; renderSkyButtons(); });
 renderSkyButtons();
 // the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
