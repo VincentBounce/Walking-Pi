@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.162';
+const VERSION = '0.1.163';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4304,14 +4304,13 @@ function tick(now = performance.now()) {
 /* ---- 12.1 Buttons, menus, keyboard and mouse ------------------------------------------------- */
 $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
-// A typed count: 30000, 30 000, 30,000, 30k or 1.5M (compute keeps it within 10 … 10 million)
-$('digitsLabel').addEventListener('focus', () => $('digitsLabel').select());
+// A typed count: while editing, the plain number (20000); compute keeps it within 10 … 10 million
+$('digitsLabel').addEventListener('focus', () => { $('digitsLabel').value = requestedDigits(); $('digitsLabel').select(); });
+$('digitsLabel').addEventListener('blur', syncDigitsStepper);  // "20,000 digits" again
 $('digitsLabel').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('digitsLabel').blur(); });
 $('digitsLabel').addEventListener('change', () => {
-  const m = $('digitsLabel').value.toLowerCase().replace(/[\s,_]|digits?/g, '').match(/^(\d+(?:\.\d+)?)([km]?)$/);
-  if (!m) { syncDigitsStepper(); return; }  // not a count: show the current one again
-  $('digits').value = Math.round(m[1] * { '': 1, k: 1e3, m: 1e6 }[m[2]]);
-  compute();
+  const n = Number($('digitsLabel').value);
+  if (n > 0) { $('digits').value = Math.round(n); compute(); }
 });
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
