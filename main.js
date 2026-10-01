@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.164';
+const VERSION = '0.1.165';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -168,26 +168,58 @@ function formulaWorker() {
       if (i % 500 === 0) self.postMessage({ type: 'progress', p: (done + i) / total });
     };
 
-    // S·arctan(1/x), or S·artanh(1/x) when hyperbolic: Σ (∓1)^k / ((2k+1)·x^(2k+1)), by binary
-    // splitting (Haible–Papanikolaou). Over a range of terms, exact integers P, Q, B, T give the sum
-    // T / (B·Q); halves are merged with a few big products instead of one division per term, so the
-    // time grows about as n·log²n instead of n² (a million digits: seconds instead of minutes).
-    const atanTerms = (x) => lnS / (2 * Math.log(x));
-    function atanInv(x, hyperbolic) {
-      const bx = BigInt(x), x2 = bx * bx;
+    // S·arctan(u/v), or S·artanh(u/v) when hyperbolic, for whole 0 < u < v: Σ (∓1)^k u^(2k+1) /
+    // ((2k+1)·v^(2k+1)), by binary splitting (Haible–Papanikolaou). Over a range of terms, exact
+    // integers P, Q, B, T give the sum T / (B·Q); halves are merged with a few big products instead
+    // of one division per term, so the time grows about as n·log²n instead of n² (a million digits:
+    // seconds instead of minutes).
+    const atanTerms = (x) => lnS / (2 * Math.log(x));  // terms for u/v = 1/x
+    const bitLength = (v) => v.toString(2).length;
+    const logBig = (v) => {  // ln v for a whole v > 0 of any size, as a double
+      const sh = Math.max(0, bitLength(v) - 53);
+      return Math.log(Number(v >> BigInt(sh))) + sh * Math.LN2;
+    };
+    function atanFrac(u, v, hyperbolic) {
+      const u2 = u * u, v2 = v * v, terms = lnS / (2 * (logBig(v) - logBig(u)));
       const split = (a, b) => {
         if (b - a === 1) {
           progress(a);
-          const p = a === 0 || hyperbolic ? 1n : -1n;
-          return [p, a === 0 ? bx : x2, BigInt(2 * a + 1), p];
+          const p = a === 0 ? u : hyperbolic ? u2 : -u2;
+          return [p, a === 0 ? v : v2, BigInt(2 * a + 1), p];
         }
         const m = (a + b) >> 1, [P1, Q1, B1, T1] = split(a, m), [P2, Q2, B2, T2] = split(m, b);
         return [P1 * P2, Q1 * Q2, B1 * B2, B2 * Q2 * T1 + B1 * P1 * T2];
       };
-      const [, Q, B, T] = split(0, Math.ceil(atanTerms(x)) + 2);
-      done += atanTerms(x);
+      const [, Q, B, T] = split(0, Math.ceil(terms) + 2);
+      done += terms;
       return (S * T) / (B * Q);
     }
+    const atanInv = (x, hyperbolic) => atanFrac(1n, BigInt(x), hyperbolic);  // S·arctan(1/x), S·artanh(1/x)
+
+    // S·ln(p/q) for a fraction p/q > 0, by binary splitting: p/q = 2^k·x with x in [1/√2, √2], and
+    // ln x = 2·artanh((x − 1)/(x + 1)) with |(x − 1)/(x + 1)| ≤ 0.172: 1.5 decimal digits per term.
+    // Only for a small x − 1 (ln 3, ln 10, ln(22/7), ln(2^127 − 1)): with hundreds of digits in it,
+    // every term would carry them, and the fixed-point lnFixed is faster.
+    function lnFraction(p, q) {
+      if (p <= 0n) throw new Error('logarithm of a number ≤ 0');
+      let k = bitLength(p) - bitLength(q), P = k < 0 ? p << BigInt(-k) : p, Q = k > 0 ? q << BigInt(k) : q;
+      if (P * P > 2n * Q * Q) { Q <<= 1n; k++; }
+      if (2n * P * P < Q * Q) { P <<= 1n; k--; }
+      const u = P - Q, abs = u < 0n ? -u : u, ln2k = k ? BigInt(k) * constant('ln2') : 0n;
+      if (abs === 0n) return ln2k;
+      if (bitLength(abs) > 64) return lnFixed((p * S) / q);
+      done = 0;
+      total = atanTerms(5.8);  // at most: 1/0.172 = 5.8
+      const t = 2n * atanFrac(abs, P + Q, true);
+      return ln2k + (u < 0n ? -t : t);
+    }
+    // S·ln x for a formula: a fraction (ln 3, ln 10, ln(22/7)) by binary splitting, any other value
+    // in fixed point
+    const lnOf = (x) => {
+      if (!exact(x)) return lnFixed(real(x));
+      const [p, q] = exactOf(x);
+      return lnFraction(p, q);
+    };
 
     // Integer square root (Newton, with recursively doubled precision)
     function isqrt(v) {
@@ -302,18 +334,17 @@ function formulaWorker() {
           v = S + (S * P) / Q;
           break;
         }
-        case 'apery': { // Amdeberhan–Zeilberger: ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5
-          total = lnS / Math.log(1024);
-          let t = S;
-          v = 0n;
-          for (let k = 0; t > 0n; k++) {
-            const K = BigInt(k);
-            const p = (205n * K * K + 250n * K + 77n) * t;
-            v += k % 2 ? -p : p;
-            t = (t * (K + 1n) ** 5n) / (32n * (2n * K + 3n) ** 5n);
-            progress(k);
-          }
-          v /= 64n;
+        case 'apery': { // Amdeberhan–Zeilberger, by binary splitting:
+          // ζ(3) = 1/64 Σ (−1)^k (205k²+250k+77)·(k!)^10/((2k+1)!)^5, each term −k^5/(32(2k+1)^5)
+          // times the previous one: about 3 decimal digits per term
+          const K = Math.ceil(lnS / Math.log(1024)) + 5;
+          total = K;
+          const J = (j) => BigInt(j);
+          const [, Q, T] = binarySplit(0, K,
+            (j) => (j === 0 ? 1n : -(J(j) ** 5n)),
+            (j) => (j === 0 ? 1n : 32n * (2n * J(j) + 1n) ** 5n),
+            (k) => 205n * J(k) ** 2n + 250n * J(k) + 77n);
+          v = (T * S) / (64n * Q);
           break;
         }
         case 'erdos': { // Erdős–Borwein: E = Σ 1/(2^n − 1) = Σ 2^(−n²)·(2^n + 1)/(2^n − 1)
@@ -503,7 +534,7 @@ function formulaWorker() {
             const [p, q] = x.rootExp;
             return iroot(nonNegative(powFixed(real(x.a), p)) * S ** BigInt(q - 1), q);
           }
-          return expFixed((real(x.b) * lnFixed(real(x.a))) / S);  // a^b = e^(b·ln a)
+          return expFixed((real(x.b) * lnOf(x.a)) / S);  // a^b = e^(b·ln a)
         }
         case 'call': {
           const a = x.args[0];
@@ -511,12 +542,12 @@ function formulaWorker() {
             case 'sqrt': return isqrt(nonNegative(real(a)) * S);
             case 'cbrt': { const v = real(a); return v < 0n ? -icbrt(-v * S * S) : icbrt(v * S * S); }
             case 'root': { const k = Number(x.args[1].v); return iroot(nonNegative(real(a)) * S ** BigInt(k - 1), k); }
-            case 'ln': return a.k === 'num' && a.v === '2' ? constant('ln2') : lnFixed(real(a));
+            case 'ln': return a.k === 'num' && a.v === '2' ? constant('ln2') : lnOf(a);
             case 'exp': return expFixed(real(a));
             case 'log': {  // log(x, b) = ln x / ln b
-              const d = lnFixed(real(x.args[1]));
+              const d = lnOf(x.args[1]);
               if (d === 0n) throw new Error('log(x, 1) does not exist');
-              return (lnFixed(real(a)) * S) / d;
+              return (lnOf(a) * S) / d;
             }
             case 'zeta': return a.v === '3' ? constant('apery') : zetaFixed(Number(a.v));
           }
@@ -1488,7 +1519,8 @@ function setCurrent(entry, base) {
   const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
-  current = { head, digits: entry.digits, base, mode: $('mode').value };
+  // total: how many digits the whole number has (a whole number's are only sent up to the count used)
+  current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value };
 }
 
 // The digits in use: n in total, the integer part (always included) then the digits after the point
@@ -1498,13 +1530,15 @@ function digitsInUse() {
   return { head, frac: current.digits.subarray(0, n - head.length) };
 }
 
-// The number as copied: "pi^2 base 5 = 14.41332…", with every digit in use. Up to base 36 one
+// The number as copied: "pi^2 base 5 ≈ 14.41332…", with every digit in use ("=" only for a whole
+// number with all its digits, the one case where nothing is cut off). Up to base 36 one
 // character per digit (0–9, then a–z); above that each digit as a decimal number, space-separated.
 // limit: at most that many digits after the point (for a preview).
 function numberText(limit = Infinity) {
   const { head, frac } = digitsInUse(), b = current.base, shown = frac.subarray(0, limit);
   const write = (ds) => (b <= 36 ? Array.from(ds, (v) => v.toString(36)).join('') : Array.from(ds).join(' '));
-  return `${formulaInUse} base ${b} = ${head.length ? write(head) : '0'}${shown.length ? `.${write(shown)}` : ''}`;
+  const sign = !current.digits.length && head.length === current.total ? '=' : '≈';
+  return `${formulaInUse} base ${b} ${sign} ${head.length ? write(head) : '0'}${shown.length ? `.${write(shown)}` : ''}`;
 }
 
 /* ==============================================================================================
