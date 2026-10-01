@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.192';
+const VERSION = '0.1.193';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -902,13 +902,15 @@ function describe(base, available) {
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
-// Walks on surfaces have no Colors: their tiles are coloured by the number of visits.
+// Colours: Rainbow along the walk always; cells, visits, one per digit, one colour where listed.
+// Walks on surfaces: tiles coloured by their visits, or the walk as a rainbow line, its tiles filled
+// (Fill cells) in the colour of their first visit.
 const DISPLAY_BY_TAB = {
-  '2D walks': ['colors', 'fill', 'cells', 'visits', 'grid'],
-  '3D walks': ['colors', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Automata on surfaces': ['shape', 'colors', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['colors', 'fill', 'cells', 'visits', 'grid'],  // the 2D walks' menu, some of it greyed out
+  '2D walks': ['colors', 'fill', 'cells', 'visits', 'digit', 'mono', 'grid'],
+  '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surfaces': ['shape', 'colors', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
+  '2D spirals': ['colors', 'fill', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
@@ -921,6 +923,7 @@ function updateDisplayMenu() {
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   $('fillAreasRow').hidden = !shows('fill');
+  $('fillLabel').textContent = MODES[$('mode').value].lattice === 'sphere' ? 'Fill cells' : 'Fill areas';
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('fill');
@@ -943,8 +946,7 @@ function relabelColours(mode) {
   const order = life ? ['mono', 'gradient', 'digit', 'cells', 'visits'] : ['gradient', 'cells', 'visits', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
-  byValue.cells.hidden = !shows('cells');
-  byValue.visits.hidden = !shows('visits');
+  for (const v of ['cells', 'visits', 'digit', 'mono']) byValue[v].hidden = !shows(v);
   byValue.gradient.disabled = greyed('line');  // Rainbow along the walk: no use on a spiral
   byValue.visits.disabled = !useful('visits');
   byValue.gradient.hidden = two;  // two civilisations: a cell's colour is its civilisation
@@ -1786,7 +1788,7 @@ function setBusy(on) {
 let previousShape = null;  // the form of the surface just replaced: { target, mode }
 function buildWalk() {
   previousShape = walk.shape && { target: walk.shape.target, mode: walk.shape.mode };
-  visitData = null;  // and its cells' visits too
+  visitData = firstVisitData = null;  // and its cells' visits too
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -3795,7 +3797,12 @@ function drawSphere() {
   // palette[0] is the unlit background; levelOf(t) picks each tile's palette entry
   let palette = [null, ...grad];
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
-  const L = walk.life;
+  const L = walk.life, line = !L && $('colorMode').value === 'gradient';
+  if (line) {  // Rainbow along the walk: each tile left dark, or filled in the colour of its first visit
+    const first = firstVisits(), fill = $('fillAreas').checked;
+    palette = [null, ...($('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
+    levelOf = (t) => (fill && first[t] >= 0 && first[t] <= cur ? 1 + Math.min(LEVELS - 1, Math.floor((first[t] * LEVELS) / (walk.n + 1))) : 0);
+  }
   if (L) {
     const colour = $('colorMode').value;
     // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
@@ -3822,6 +3829,7 @@ function drawSphere() {
   // a flat polyhedron is drawn face by face below
   if (g.torus || walk.shape.m > 0) {
     drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf);
+    if (line) drawSurfacePath(ctx);
     return;
   }
   const buckets = Array.from({ length: palette.length }, () => []);
@@ -3868,32 +3876,61 @@ function drawSphere() {
     ctx.fillStyle = `rgba(0, 0, 0, ${(0.55 * (1 - towardViewer(...f.normal))).toFixed(3)})`;
     ctx.fill();
   });
-  /* Recent trail (white line through the last 300 steps), disabled for now; may come back.
-  const from = Math.max(0, cur - 300);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.lineWidth = Math.max(1, Math.min(s * 0.15, 2.5));
+  if (line) drawSurfacePath(ctx);
+}
+
+// The step of the first visit of each tile (−1: never visited), once per walk
+let firstVisitData = null;
+function firstVisits() {
+  if (firstVisitData) return firstVisitData;
+  const first = new Int32Array(walk.geo.n).fill(-1);
+  for (let i = 0; i <= walk.n; i++) if (first[walk.tile[i]] < 0) first[walk.tile[i]] = i;
+  return (firstVisitData = first);
+}
+
+// Rainbow along the walk on a surface: the path through the tile centres up to the current step,
+// each step in its colour, over the tiles. A step is drawn when both its tiles face the viewer, and
+// not when it jumps across the sheet of an unrolled torus (its two ends then lie far apart).
+function drawSurfacePath(ctx) {
+  const { xs, ys, wx, wy, wz, n } = walk, { scale: s, ox, oy } = view, sc = walk.shape.corners;
+  const edge = walk.R * Math.hypot(sc[0] - sc[3], sc[1] - sc[4], sc[2] - sc[5]);
+  ctx.lineWidth = Math.max(1, Math.min(edge * s * 0.2, 3));
   ctx.lineJoin = ctx.lineCap = 'round';
-  ctx.beginPath();
-  for (let i = from; i < cur; i++) {
+  let band = -1;
+  for (let i = 0; i < cur; i++) {
+    const b = Math.floor((i * BANDS) / n);
+    if (b !== band) {
+      if (band >= 0) ctx.stroke();
+      band = b;
+      ctx.strokeStyle = GRADIENT[b];
+      ctx.beginPath();
+    }
     if (!facing(i) || !facing(i + 1)) continue;
-    ctx.moveTo(ox + walk.xs[i] * s, oy + walk.ys[i] * s);
-    ctx.lineTo(ox + walk.xs[i + 1] * s, oy + walk.ys[i + 1] * s);
+    if (Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) > 2 * edge) continue;
+    ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
+    ctx.lineTo(ox + xs[i + 1] * s, oy + ys[i + 1] * s);
   }
-  ctx.stroke();
-  */
+  if (band >= 0) ctx.stroke();
 }
 
 // Torus tiles: the visible ones sorted from far to near (painter's algorithm), each filled with
 // its colour darkened by how much it turns away from the viewer, then outlined if large enough
 const shadeCache = new Map();
 const colourProbe = document.createElement('canvas').getContext('2d');
+const rgbOf = (colour) => {  // [r, g, b] of any CSS colour (the canvas normalises it to #rrggbb)
+  colourProbe.fillStyle = colour;
+  const hex = colourProbe.fillStyle;
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+};
+// colour laid at opacity a over the dark tile background, as an rgb() string (translucent fill)
+function faded(colour, a) {
+  const [r, g, b] = rgbOf(colour), [R, G, B] = rgbOf('#1f2630');
+  return `rgb(${Math.round(R + (r - R) * a)}, ${Math.round(G + (g - G) * a)}, ${Math.round(B + (b - B) * a)})`;
+}
 function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
   const key = `${colour}|${shade}`;
   if (!shadeCache.has(key)) {
-    const probe = colourProbe;
-    probe.fillStyle = colour;  // the canvas normalises any CSS colour to #rrggbb
-    const hex = probe.fillStyle, k = 1 - 0.6 * shade;
-    const [r, g, b] = [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k));
+    const k = 1 - 0.6 * shade, [r, g, b] = rgbOf(colour).map((v) => Math.round(v * k));
     shadeCache.set(key, `rgb(${r}, ${g}, ${b})`);
   }
   return shadeCache.get(key);
@@ -4427,7 +4464,7 @@ $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? w
 $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
-$('fillTranslucent').addEventListener('change', updateDisplayMenu);
+$('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
 
@@ -4563,7 +4600,8 @@ function computeFramed() {
 let displayTab = null;
 const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
-  $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
+  const mode = MODES[$('mode').value];  // simplest view by default; a surface keeps its visits
+  $('colorMode').value = mode.life ? 'mono' : mode.lattice === 'sphere' ? 'visits' : 'gradient';
   $('autoFit').checked = true;  // framed
   $('fillAreas').checked = false;
   $('fillTranslucent').checked = true;  // ready for when Fill areas is switched on
