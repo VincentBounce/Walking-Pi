@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.175';
+const VERSION = '0.1.176';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4342,6 +4342,11 @@ $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
 // 10 … 10 million
+// ↵ at the end of a field: leaving the field computes (as Enter does); mousedown keeps the focus
+// from going to the button first
+for (const b of document.querySelectorAll('.field .enter')) {
+  b.addEventListener('mousedown', (e) => { e.preventDefault(); b.previousElementSibling.blur(); });
+}
 $('digitsLabel').addEventListener('focus', () => { $('digitsLabel').value = requestedDigits(); $('digitsLabel').select(); });
 $('digitsLabel').addEventListener('input', () => { $('digitsLabel').value = $('digitsLabel').value.replace(/\D/g, ''); });
 $('digitsLabel').addEventListener('blur', syncDigitsStepper);  // "20,000 digits" again
