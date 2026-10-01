@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.195';
+const VERSION = '0.1.196';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -920,9 +920,13 @@ const greyed = (item) => !!DISPLAY_GREYED[$('mode').selectedOptions[0].parentEle
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
 const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
-  const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit heads the box: always there
+  const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
+  // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
+  const spin = shows('autoRotate');
+  $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
+  $('viewSlot').append(spin ? $('autoFitRow') : $('autoRotateRow'));
   $('fillAreasRow').hidden = !shows('fill');
   $('fillCellsRow').hidden = !shows('fillCells');
   $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
@@ -4447,11 +4451,14 @@ function stripColumns(el) {
 }
 
 /* ---- 11.6 The frame loop --------------------------------------------------------------------- */
-let lastTick = 0;
+let lastTick = 0, spinPhase = 0;
 function tick(now = performance.now()) {
   const dt = Math.min(0.1, (now - (lastTick || now)) / 1000);  // seconds since the last frame (capped)
   lastTick = now;
-  if (walk.is3d && $('autoRotate').checked) rotateView(0.004, 0);
+  if (walk.is3d && $('autoRotate').checked) {  // turn, and sway up and down so the top and bottom show too
+    spinPhase += dt * 0.15;  // a sway every 40 s or so
+    rotateView(dt * 0.25, (0.6 * Math.sin(spinPhase) - cam.pitch) * Math.min(1, dt * 2));
+  }
   if (playing) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
@@ -4564,6 +4571,7 @@ $('fillTranslucent').addEventListener('change', () => { needsFull = true; update
 $('fillCells').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
+$('autoRotate').addEventListener('change', () => { if ($('autoRotate').checked) fitNow(); });  // turning starts framed
 
 function fitNow() {
   $('autoFit').checked = true;
@@ -4598,7 +4606,8 @@ stage.addEventListener('pointermove', (e) => {
     view.oy += dy;
     userMovedView();
   } else {
-    userMovedView();  // a hand rotation ends auto-fit, as a pan or a zoom does
+    userMovedView();  // a hand rotation ends auto-fit, as a pan or a zoom does, and auto-rotate
+    $('autoRotate').checked = false;
     rotateView(dx * 0.008, dy * 0.008);
   }
 });

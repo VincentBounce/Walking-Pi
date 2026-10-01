@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261006d">
+  <link rel="stylesheet" href="style.css?v=20261006e">
 </head>
 <body>
   <header>
@@ -184,7 +184,7 @@
         </div>
       </div>
       <div id="viewTools" class="stage-box display-menu">
-        <div class="stage-head">  <!-- Grid on the left while the box is open, Auto-fit always on the right -->
+        <div class="stage-head" id="viewHead">  <!-- Grid on the left while the box is open, Auto-fit (Auto-rotate in 3D) on the right -->
           <label class="check open-only" id="gridRow"><input id="showGrid" type="checkbox" checked> Grid</label>
           <label class="check" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click); hover for the display settings"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
         </div>
@@ -209,7 +209,9 @@
               <option value="dark">Dark</option>
             </select>
           </div>
-          <label class="check" id="autoRotateRow" hidden><input id="autoRotate" type="checkbox"> Auto-rotate</label>
+          <div id="viewSlot">  <!-- the other of Auto-fit and Auto-rotate -->
+            <label class="check" id="autoRotateRow" hidden title="Turn the view slowly, swaying up and down so that the top and the bottom show too; it starts Auto-fit, and a hand rotation stops it"><input id="autoRotate" type="checkbox"> Auto-rotate</label>
+          </div>
           <div id="formSection" class="form-section">  <!-- the form of the view, set by each walk mode -->
             <div id="shapeRow" hidden>
               <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
@@ -222,6 +224,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261006d"></script>
+  <script src="main.js?v=20261006e"></script>
 </body>
 </html>
