@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.177';
+const VERSION = '0.1.178';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -694,7 +694,7 @@ const MONO = '#f0b429';
 const NUMBER_GROUPS = ['Constants', '𝑓', 'Primes', 'Sequences'];
 const PRESETS = {
   pi:      { group: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
-  e:       { group: 'Constants', sym: 'e',    name: "Euler's number", f: 'e' },
+  e:       { group: 'Constants', sym: 'e',    name: "Euler's number", detail: 'e = exp(1)', f: 'e' },
   phi:     { group: 'Constants', sym: 'φ',    name: 'Golden ratio', f: 'phi' },
   gamma:   { group: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
   catalan: { group: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
@@ -702,7 +702,7 @@ const PRESETS = {
   sqrt2:   { group: '𝑓', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
   cbrt2:   { group: '𝑓', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
   pi2:     { group: '𝑓', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
-  epi:     { group: '𝑓', sym: 'e^π',  name: "Gelfond's constant", f: 'e^pi' },
+  epi:     { group: '𝑓', sym: 'e^π',  name: "Gelfond's constant", detail: 'e^pi = exp(pi)', f: 'e^pi' },
   ln2:     { group: '𝑓', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
   zeta3:   { group: '𝑓', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
   frac4_3: { group: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
@@ -4343,9 +4343,17 @@ $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
 // 10 … 10 million
 // The two edited fields (Custom formula, number of digits): Enter or ↵ leaves the field, and leaving
-// it computes. For ↵, mousedown keeps the focus from going to the button first.
+// it computes; but a wrong formula keeps you in the field, with its error. Esc undoes the edit: back
+// to the value in use (formulaInUse is the last valid formula). For ↵, mousedown keeps the focus
+// from going to the button first.
+const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(requestedDigits()) };
 for (const input of document.querySelectorAll('.field input')) {
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { input.value = valueInUse[input.id](); input.blur(); }
+    if (e.key !== 'Enter') return;
+    const error = input.id === 'formula' && readFormula().error;
+    if (error) { e.preventDefault(); $('status').textContent = `Formula: ${error}`; } else input.blur();
+  });
 }
 for (const b of document.querySelectorAll('.field .enter')) {
   b.addEventListener('mousedown', (e) => { e.preventDefault(); b.previousElementSibling.blur(); });
@@ -4493,7 +4501,13 @@ $('sphereF').addEventListener('change', () => {
   buildWalk();
   showAll();
 });
-$('formula').addEventListener('change', computeFramed);
+// A formula left wrong (by clicking elsewhere) is undone: the one in use comes back
+$('formula').addEventListener('change', () => {
+  const { error } = readFormula();
+  if (!error) { computeFramed(); return; }
+  $('formula').value = formulaInUse;
+  $('status').textContent = `Formula: ${error} · ${formulaInUse} kept`;
+});
 // A new number (or a new prime, size or fraction) starts framed
 function computeFramed() {
   $('autoFit').checked = true;
