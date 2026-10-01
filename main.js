@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.193';
+const VERSION = '0.1.194';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -903,12 +903,13 @@ function describe(base, available) {
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
 // Colours: Rainbow along the walk always; cells, visits, one per digit, one colour where listed.
-// Walks on surfaces: tiles coloured by their visits, or the walk as a rainbow line, its tiles filled
-// (Fill cells) in the colour of their first visit.
+// Walks on surfaces: the walk as a rainbow line over the tiles, the tiles it passes through filled
+// (Fill cells) in the colour of their first visit, those it encloses (Fill areas) in the colour of
+// the step that closed them; or the tiles coloured by their visits.
 const DISPLAY_BY_TAB = {
   '2D walks': ['colors', 'fill', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'colors', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surfaces': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   '2D spirals': ['colors', 'fill', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
@@ -923,7 +924,8 @@ function updateDisplayMenu() {
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   $('fillAreasRow').hidden = !shows('fill');
-  $('fillLabel').textContent = MODES[$('mode').value].lattice === 'sphere' ? 'Fill cells' : 'Fill areas';
+  $('fillCellsRow').hidden = !shows('fillCells');
+  $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('fill');
@@ -1788,7 +1790,7 @@ function setBusy(on) {
 let previousShape = null;  // the form of the surface just replaced: { target, mode }
 function buildWalk() {
   previousShape = walk.shape && { target: walk.shape.target, mode: walk.shape.mode };
-  visitData = firstVisitData = null;  // and its cells' visits too
+  visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -3798,10 +3800,12 @@ function drawSphere() {
   let palette = [null, ...grad];
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
   const L = walk.life, line = !L && $('colorMode').value === 'gradient';
-  if (line) {  // Rainbow along the walk: each tile left dark, or filled in the colour of its first visit
-    const first = firstVisits(), fill = $('fillAreas').checked;
-    palette = [null, ...($('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
-    levelOf = (t) => (fill && first[t] >= 0 && first[t] <= cur ? 1 + Math.min(LEVELS - 1, Math.floor((first[t] * LEVELS) / (walk.n + 1))) : 0);
+  if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
+    const cells = $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && areaSteps();
+    const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
+    palette = [null, ...grad, ...($('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
+    levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
+      : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
   if (L) {
     const colour = $('colorMode').value;
@@ -3886,6 +3890,61 @@ function firstVisits() {
   const first = new Int32Array(walk.geo.n).fill(-1);
   for (let i = 0; i <= walk.n; i++) if (first[walk.tile[i]] < 0) first[walk.tile[i]] = i;
   return (firstVisitData = first);
+}
+
+// Fill areas on a surface, as for a 2D walk (see Fill areas in 11.5): the regions are read at the
+// corners of the tiles, two neighbouring corners being separated once the walk has crossed the tile
+// edge between them. A closed surface has no outside: the largest region left at the end of the walk plays it.
+// Going back in time with a union–find, each corner gets the step from which it is enclosed; a
+// tile is filled once all its corners are (the tiles the walk passes through are the Fill cells).
+let areaData = null;
+function areaSteps() {
+  if (areaData) return areaData;
+  const g = walk.geo, k = g.sides, nv = g.verts.length / 3, tile = walk.tile;
+  const key = (a, b) => (a < b ? a * nv + b : b * nv + a);
+  const edgeOf = new Map(), eu = [], ev = [];
+  for (let t = 0; t < g.n; t++) {
+    for (let j = 0; j < k; j++) {
+      const a = g.poly[k * t + j], b = g.poly[k * t + (j + 1) % k];
+      if (!edgeOf.has(key(a, b))) { edgeOf.set(key(a, b), eu.length); eu.push(a); ev.push(b); }
+    }
+  }
+  const crossed = new Int32Array(eu.length).fill(-1);  // the first step through each edge
+  for (let i = 0; i < walk.n; i++) {
+    const A = tile[i], B = tile[i + 1], shared = [];
+    for (let p = 0; p < k; p++) for (let q = 0; q < k; q++) if (g.poly[k * A + p] === g.poly[k * B + q]) shared.push(g.poly[k * A + p]);
+    if (shared.length !== 2) continue;
+    const e = edgeOf.get(key(shared[0], shared[1]));
+    if (crossed[e] < 0) crossed[e] = i;
+  }
+  const parent = Int32Array.from({ length: nv }, (_, i) => i), size = new Int32Array(nv).fill(1), out = new Uint8Array(nv);
+  const head = Int32Array.from({ length: nv }, (_, i) => i), tail = Int32Array.from(head), next = new Int32Array(nv).fill(-1);
+  const at = new Int32Array(nv).fill(-1);
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const join = (e, step) => {
+    let a = find(eu[e]), b = find(ev[e]);
+    if (a === b) return;
+    if (out[a] !== out[b] && step >= 0) {  // an enclosed region meets the outside
+      const inside = out[a] ? b : a;
+      for (let m = head[inside]; m >= 0; m = next[m]) at[m] = step + 1;
+    }
+    if (out[b] && !out[a]) [a, b] = [b, a];
+    parent[b] = a; size[a] += size[b]; out[a] |= out[b];
+    next[tail[a]] = head[b]; tail[a] = tail[b];
+  };
+  for (let e = 0; e < eu.length; e++) if (crossed[e] < 0) join(e, -1);  // the regions at the end
+  let largest = find(0);
+  for (let v = 0; v < nv; v++) if (find(v) === v && size[v] > size[largest]) largest = v;
+  out[largest] = 1;
+  const byStep = Array.from(eu, (_, e) => e).filter((e) => crossed[e] >= 0).sort((x, y) => crossed[y] - crossed[x]);
+  for (const e of byStep) join(e, crossed[e]);
+  const steps = new Int32Array(g.n);  // the step from which each tile is enclosed (−1: never)
+  for (let t = 0; t < g.n; t++) {
+    let s = 0;
+    for (let j = 0; j < k && s >= 0; j++) s = at[g.poly[k * t + j]] < 0 ? -1 : Math.max(s, at[g.poly[k * t + j]]);
+    steps[t] = s;
+  }
+  return (areaData = steps);
 }
 
 // Rainbow along the walk on a surface: the path through the tile centres up to the current step,
@@ -4465,6 +4524,7 @@ $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
+$('fillCells').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
 
@@ -4600,10 +4660,9 @@ function computeFramed() {
 let displayTab = null;
 const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
-  const mode = MODES[$('mode').value];  // simplest view by default; a surface keeps its visits
-  $('colorMode').value = mode.life ? 'mono' : mode.lattice === 'sphere' ? 'visits' : 'gradient';
+  $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
-  $('fillAreas').checked = false;
+  $('fillAreas').checked = $('fillCells').checked = false;
   $('fillTranslucent').checked = true;  // ready for when Fill areas is switched on
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
