@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.202';
+const VERSION = '0.1.203';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2446,6 +2446,9 @@ function hexSphereMesh(f) {
     return ring.length === 6 ? ring : [...ring, ring[ring.length - 1]];
   });
   const mesh = finishMesh(Array.from(ico.cen), cells, 6, f);  // the triangles' centres are the corners
+  // a walk along its grid starts as the icosahedron's tile walk does: on triangle 0, come in
+  // through its edge 0, so that the same digits draw the same path in both tabs
+  mesh.gridStart = [0, ico.nbr[0]];
   return (meshCache[key] = mesh);
 }
 
@@ -2680,7 +2683,7 @@ function buildGridWalk(seq, { sphere: kind, turns, base }) {
   const vert = new Int32Array(len + 1), tile = new Int32Array(len + 1), cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1), counts = new Int32Array(base * (len + 1)), stepTiles = new Int32Array(2 * len);
   const seen = new Uint8Array(G.nv), angles = turns.map((a) => (a * Math.PI) / 180);
-  let v = g.poly[0], from = G.nbrs[v][0], distinct = 1, m = 0, coverStep = -1;
+  let [v, from] = g.gridStart ?? [g.poly[0], G.nbrs[g.poly[0]][0]], distinct = 1, m = 0, coverStep = -1;
   seen[v] = 1;
   const start = at(v);
   const put = (i) => {
