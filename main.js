@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.199';
+const VERSION = '0.1.200';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -780,6 +780,8 @@ const MODES = {
   // to them as the edges at a corner allow
   torusGrid: { base: 3, lattice: 'sphere', sphere: 'torus', grid: true, turns: [90, 0, -90], perspective: true, round: true,
                rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
+  triTorusGrid: { base: 5, lattice: 'sphere', sphere: 'tritorus', grid: true, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
+                  rule: 'along the edges of a torus of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   hexTorusGrid: { base: 2, lattice: 'sphere', sphere: 'hextorus', grid: true, turns: [60, -60], perspective: true, round: true,
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
   cubeGrid:  { base: 3, lattice: 'sphere', sphere: 'cube', grid: true, turns: [90, 0, -90], perspective: true,
@@ -788,6 +790,10 @@ const MODES = {
                rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', grid: true, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of an octahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
+  icosaGrid2: { base: 2, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [60, -60], round: true,
+                rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> front right (at a corner of the solid, the nearest edge)' },
+  icosaGrid3: { base: 3, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [60, 0, -60], round: true,
+                rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
   icosaGrid: { base: 5, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
@@ -917,13 +923,13 @@ function describe(base, available) {
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
 // Colours: Rainbow along the walk always; cells, visits, one per digit, one colour where listed.
-// Walks on surfaces: the walk as a rainbow line over the tiles, the tiles it passes through filled
+// Walks on surface cells: the walk as a rainbow line over the tiles, the tiles it passes through filled
 // (Fill cells) in the colour of their first visit, those it encloses (Fill areas) in the colour of
 // the step that closed them; or the tiles coloured by their visits.
 const DISPLAY_BY_TAB = {
   '2D walks': ['colors', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surface cells': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Walks on surface grids': ['shape', 'colors', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],  // areas follow the path
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   '2D spirals': ['colors', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
@@ -1623,13 +1629,14 @@ function numberText(limit = Infinity) {
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
-const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus', 'Walks on surface grids': 'icosahedron',
+const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surface cells': 'torus', 'Walks on surface grids': 'icosahedron',
                     'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triLR: 'triangleFilled', triFixed: 'triangle', hexRel: 'hexagonFilled', hexFixed: 'hexagon',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
-  torusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron', icosaGrid: 'icosahedron',
+  torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
+  icosaGrid: 'icosahedron', icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron',
   lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
@@ -1644,7 +1651,7 @@ function splitModeLabel(text) {
 }
 
 // The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
-const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Walks on surface grids': 'Walk along', 'Automata on surfaces': 'Populate' };
+const WALK_HEADINGS = { 'Walks on surface cells': 'Walk on', 'Walks on surface grids': 'Walk along', 'Automata on surfaces': 'Populate' };
 
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
@@ -2415,12 +2422,39 @@ function hexTorusMesh(nv) {
   return (meshCache[key] = finishTorus(verts, hexes, 6, nu, nv, uv));
 }
 
+/* Torus of equilateral triangles: nv rows around the tube (nv even), every other row shifted by half
+ * a triangle, nu corners along each row. In sheet units a triangle is 1 wide and its row √3/2 high;
+ * the sheet is 2π by 2π·TUBE, so the triangles are equilateral when nu / nv = √3 / (2·TUBE).
+ * Every corner has 6 edges: the triangular grid that wraps around both ways. */
+const triTorusColumns = (nv) => Math.round((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
+function triTorusMesh(nv) {
+  const key = `tritorus${nv}`;
+  if (meshCache[key]) return meshCache[key];
+  const nu = triTorusColumns(nv);
+  const { verts, add } = vertexStore();
+  const tris = [], uv = [];
+  const P = (i, j) => [i + (j % 2) / 2, j];  // sheet coordinates of corner i of row j
+  const put = (c) => { tris.push(c.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1)))); uv.push(...c.flat()); };
+  for (let j = 0; j < nv; j++) {
+    for (let i = 0; i < nu; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
+      if (j % 2 === 0) {
+        put([P(i, j), P(i + 1, j), P(i, j + 1)]);
+        put([P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]);
+      } else {
+        put([P(i, j), P(i + 1, j), P(i + 1, j + 1)]);
+        put([P(i, j), P(i + 1, j + 1), P(i, j + 1)]);
+      }
+    }
+  }
+  return (meshCache[key] = finishTorus(verts, tris, 3, nu, nv, uv));
+}
+
 /* ---- 7.5 Flat ↔ round: the same tiles and neighbours, shown flat or inflated ----------------- */
 /* walk.shape = { m, target, corners, cen, nrm, extent } for surfaces that can change shape:
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus'];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus'];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -2539,6 +2573,9 @@ const SPHERES = {
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => hexTorusColumns(nv) * nv, unit: 'hexagons' },
+  // triangle edge = 1 unit: the tube is nv rows of √3/2 around
+  tritorus: { mesh: triTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
+              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => 2 * triTorusColumns(nv) * nv, unit: 'triangles' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
@@ -4841,7 +4878,7 @@ function displayDefaults() {
   const mode = MODES[$('mode').value], surface = mode.lattice === 'sphere';
   $('colorMode').value = mode.life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
-  $('fillAreas').checked = false;
+  $('fillAreas').checked = true;
   $('fillCells').checked = surface;  // a surface walk shows its tiles filled
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
   $('showGrid').checked = true;

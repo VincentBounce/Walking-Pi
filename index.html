@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261006h">
+  <link rel="stylesheet" href="style.css?v=20261006i">
 </head>
 <body>
   <header>
@@ -35,7 +35,7 @@
               <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
             </optgroup>
-            <optgroup label="Walks on surfaces">
+            <optgroup label="Walks on surface cells">
               <option value="torusWalk">Square torus — base 3 (left / forward / right)</option>
               <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
               <option value="cubeFlat">Cube — base 3 (left / forward / right)</option>
@@ -45,11 +45,14 @@
             </optgroup>
             <optgroup label="Walks on surface grids">
               <option value="torusGrid">Square torus — base 3 (left / forward / right)</option>
+              <option value="triTorusGrid">Triangle torus — base 5 (5 relative turns)</option>
               <option value="hexTorusGrid">Hex torus — base 2 (left / right)</option>
               <option value="cubeGrid">Cube — base 3 (left / forward / right)</option>
               <option value="tetraGrid">Tetrahedron — base 5 (5 relative turns)</option>
               <option value="octaGrid">Octahedron — base 5 (5 relative turns)</option>
               <option value="icosaGrid">Icosahedron — base 5 (5 relative turns)</option>
+              <option value="icosaGrid2">Icosahedron — base 2 (front left / front right)</option>
+              <option value="icosaGrid3">Icosahedron — base 3 (front left / forward / front right)</option>
             </optgroup>
             <optgroup label="Automata on surfaces">
               <option value="lifeCube">Life — cube</option>
@@ -232,6 +235,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261006h"></script>
+  <script src="main.js?v=20261006i"></script>
 </body>
 </html>
