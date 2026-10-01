@@ -142,7 +142,7 @@ button.primary {
 /* the number of digits can be typed: a field that looks like the label until it is hovered or used */
 .stepper input { min-width: 0; margin: 0; padding: 4px; background: transparent; border-color: transparent; cursor: text; }
 .stepper input:hover { border-color: var(--border); }
-.stepper input:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+.stepper input:focus { outline: none; border-color: var(--accent); background: var(--bg); color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, monospace; }  /* editing: plain digits, like the Custom formula */
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
 
