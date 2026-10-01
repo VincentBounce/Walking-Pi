@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.184';
+const VERSION = '0.1.185';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -987,7 +987,8 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 // "all 344 digits" when it is shorter than the count asked, "20,000 of 352,987" when it is longer.
 function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  const total = !size && current?.whole && current.formula === formulaInUse ? current.total : null;
+  // the number in the field, not formulaInUse: while a new number is read, that one is still the old
+  const total = !size && current?.whole && current.formula === $('formula').value ? current.total : null;
   $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : total === null ? `${fmt(n)} digits`
     : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
