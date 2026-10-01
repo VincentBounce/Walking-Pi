@@ -150,7 +150,7 @@ button.primary {
 .formula-field { margin-bottom: 10px; }
 .field input { margin: 0; }
 .stepper .field { flex: 1; min-width: 0; }
-.field .enter { display: none; position: absolute; right: 4px; top: 4px; height: 26px; padding: 0 8px; border: 0; background: none; color: var(--muted); }
+.field .enter { display: none; position: absolute; right: 4px; top: 4px; width: auto; height: 26px; padding: 0 8px; border: 0; background: none; color: var(--muted); font-weight: 400; }  /* not the 36 px of the − / + buttons, nor the bold of the digits row */
 .field .enter:hover { color: var(--accent); }
 .field:focus-within .enter { display: block; }
 .field input:focus { padding-right: 32px; }
