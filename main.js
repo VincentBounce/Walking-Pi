@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.196';
+const VERSION = '0.1.197';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4709,7 +4709,7 @@ function displayDefaults() {
   $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
   $('fillAreas').checked = $('fillCells').checked = false;
-  $('fillTranslucent').checked = true;  // ready for when Fill areas is switched on
+  $('fillTranslucent').checked = false;
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
   $('sky').value = 'twilight';
