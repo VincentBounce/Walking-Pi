@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.157';
+const VERSION = '0.1.158';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -874,6 +874,10 @@ function updateDisplayMenu() {
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   $('fillAreasRow').hidden = !shows('fill');
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
+  // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
+  $('fillTranslucentRow').hidden = !shows('fill');
+  $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
+  $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 
@@ -4313,7 +4317,8 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
-$('fillAreas').addEventListener('change', () => { needsFull = true; });
+$('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
+$('fillTranslucent').addEventListener('change', updateDisplayMenu);
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
 
@@ -4445,7 +4450,7 @@ const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
   $('colorMode').value = MODES[$('mode').value].life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
-  $('fillAreas').checked = false;
+  $('fillAreas').checked = $('fillTranslucent').checked = false;
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
   $('sky').value = 'twilight';
