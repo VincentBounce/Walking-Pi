@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.187';
+const VERSION = '0.1.188';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -715,7 +715,7 @@ const PRESETS = {
   primeConstant: { group: 'Primes', sym: 'ρ', name: 'Prime constant', detail: 'rho = Σ 2^(−p)', f: 'rho' },
   random:  { group: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random(seed)', f: () => `random(${freshDraw()})` },
   champernowne: { group: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
-  primeBarcode: { group: 'Sequences', sym: '▮', name: 'Prime barcode (Ulam)', detail: 'primes · χ_P, the characteristic function of the primes', f: 'primes' },
+  primeBarcode: { group: 'Sequences', sym: '▮ p', name: 'Prime barcode (Ulam)', detail: 'primes · χ_P, the characteristic function of the primes', f: 'primes' },
   primeGaps: { group: 'Sequences', sym: 'gₙ', name: 'Prime gaps', detail: 'primegaps · gₙ = pₙ₊₁ − pₙ', f: 'primegaps' },
   dragon:  { group: 'Sequences', sym: '🐉', name: 'Dragon (paperfolding)',
              detail: 'dragon · a fractal on Triangles turtle, Squares turtle and Hexagons turtle', f: 'dragon' },
@@ -1170,7 +1170,7 @@ const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g,
 const FORMULA_NAMES = {  // name: [kind, symbol shown]
   pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
   erdos: ['real', 'E'], rho: ['real', 'ρ'],
-  champernowne: ['seq', 'C'], primes: ['seq', '▮'], primegaps: ['seq', 'gₙ'], dragon: ['seq', '🐉'],
+  champernowne: ['seq', 'C'], primes: ['seq', '▮ p'], primegaps: ['seq', 'gₙ'], dragon: ['seq', '🐉'],
 };
 const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, exp: 1, log: 2, zeta: 1, primorial: 1, random: 1, randprime: 2 };
 const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
