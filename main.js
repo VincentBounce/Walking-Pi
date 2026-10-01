@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.188';
+const VERSION = '0.1.189';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -715,7 +715,9 @@ const PRESETS = {
   primeConstant: { group: 'Primes', sym: 'ρ', name: 'Prime constant', detail: 'rho = Σ 2^(−p)', f: 'rho' },
   random:  { group: 'Sequences', sym: '🎲', name: 'Random digits', detail: 'random(seed)', f: () => `random(${freshDraw()})` },
   champernowne: { group: 'Sequences', sym: 'C', name: 'Champernowne', f: 'champernowne' },
-  primeBarcode: { group: 'Sequences', sym: '▮ p', name: 'Prime barcode (Ulam)', detail: 'primes · χ_P, the characteristic function of the primes', f: 'primes' },
+  primeBarcode: { group: 'Sequences', sym: '▮ p', name: 'Prime barcode',
+                  detail: "primes · χ_P, the characteristic function of the primes; on the Ulam square spiral (2D spirals, base 2) it draws Ulam's spiral of the primes",
+                  f: 'primes' },
   primeGaps: { group: 'Sequences', sym: 'gₙ', name: 'Prime gaps', detail: 'primegaps · gₙ = pₙ₊₁ − pₙ', f: 'primegaps' },
   dragon:  { group: 'Sequences', sym: '🐉', name: 'Dragon (paperfolding)',
              detail: 'dragon · a fractal on Triangles turtle, Squares turtle and Hexagons turtle', f: 'dragon' },
@@ -724,7 +726,7 @@ const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id]
 
 // What the sequences and ρ₂ mean, for the status line
 const FORMULA_NOTES = {
-  primes: (b) => `digit k = 0 if k is not prime, else k mod ${b}`,
+  primes: (b) => `digit k = 0 if k is not prime, else k mod ${b} (1 for k = ${b})`,
   rho: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
   primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
   dragon: () => 'the folds of a strip folded in two again and again (0 and 1): the dragon curve, as turns',
