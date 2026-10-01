@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.189';
+const VERSION = '0.1.190';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -910,10 +910,12 @@ const DISPLAY_BY_TAB = {
   'Automata on surfaces': ['shape', 'colors', 'grid', 'sky', 'autoRotate', 'perspective'],
   '2D spirals': ['colors', 'fill', 'cells', 'visits', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
-// Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once
-const DISPLAY_GREYED = { '2D spirals': ['fill', 'visits'] };
+// Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
+// and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
+const DISPLAY_GREYED = { '2D spirals': ['fill', 'visits', 'line'] };
+const greyed = (item) => !!DISPLAY_GREYED[$('mode').selectedOptions[0].parentElement.label]?.includes(item);
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
-const useful = (item) => shows(item) && !DISPLAY_GREYED[$('mode').selectedOptions[0].parentElement.label]?.includes(item);
+const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit heads the box: always there
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
@@ -943,7 +945,7 @@ function relabelColours(mode) {
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   byValue.cells.hidden = !shows('cells');
   byValue.visits.hidden = !shows('visits');
-  byValue.gradient.disabled = !!mode.points;  // a point mode has no line: its marks are always cells
+  byValue.gradient.disabled = greyed('line');  // Rainbow along the walk: no use on a spiral
   byValue.visits.disabled = !useful('visits');
   byValue.gradient.hidden = two;  // two civilisations: a cell's colour is its civilisation
   if (sel.selectedOptions[0]?.hidden || sel.selectedOptions[0]?.disabled) {
