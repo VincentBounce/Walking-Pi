@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.205';
+const VERSION = '0.1.206';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -869,8 +869,16 @@ let needsFull = true;
 let statsDirty = true;
 let bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 const view = { scale: 20, ox: 0, oy: 0 };
-const CAM0 = { yaw: -0.6, pitch: 0.5 };  // the default 3D view
-const cam = { ...CAM0 };                 // 3D view rotation (radians)
+// The 3D view: the screen's right (r), up (u) and towards-the-viewer (v) directions in world
+// coordinates, the rows of a rotation matrix, so the view turns freely (see rotateView). The
+// default looks from a heading of −0.6 rad, 0.5 rad above the horizon. A turn replaces the arrays,
+// never changes them, so Object.assign(cam, CAM0) is a reset.
+function camFrom(yaw, pitch) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  return { r: [cy, -sy, 0], u: [sy * sp, cy * sp, cp], v: [-sy * cp, -cy * cp, sp] };
+}
+const CAM0 = camFrom(-0.6, 0.5);
+const cam = { ...CAM0 };
 let bounds3 = null;                        // 3D bounding box of points 0..cur
 
 const stage = $('stage');
@@ -1882,9 +1890,8 @@ function buildWalk() {
 /* ---- 5.4 3D projection and camera ------------------------------------------------------------ */
 // Orthographic projection of a 3D point onto the screen plane (world units)
 function orthoPoint(x, y, z) {
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  return [x * cy - y * sy, -(z * cp + (x * sy + y * cy) * sp)];
+  const { r, u } = cam;
+  return [x * r[0] + y * r[1] + z * r[2], -(x * u[0] + y * u[1] + z * u[2])];
 }
 
 /* Perspective (walk.persp = { c, D }): a camera at distance D from the centre c, looking at it.
@@ -1901,13 +1908,13 @@ function projectPoint(x, y, z) {
 
 // Same projection as projectPoint, with the trigonometry computed once: for drawing many points
 function projector() {
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const [r0, r1, r2] = cam.r, [u0, u1, u2] = cam.u, [v0, v1, v2] = cam.v;
   const P = walk.persp;
   const [ccx, ccy] = P ? orthoPoint(...P.c) : [0, 0];
   return (x, y, z) => {
-    let X = x * cy - y * sy, Y = -(z * cp + (x * sy + y * cy) * sp);
+    let X = x * r0 + y * r1 + z * r2, Y = -(x * u0 + y * u1 + z * u2);
     if (P) {
-      const k = P.D / (P.D - ((z - P.c[2]) * sp - ((x - P.c[0]) * sy + (y - P.c[1]) * cy) * cp));
+      const k = P.D / (P.D - ((x - P.c[0]) * v0 + (y - P.c[1]) * v1 + (z - P.c[2]) * v2));
       X = ccx + (X - ccx) * k;
       Y = ccy + (Y - ccy) * k;
     }
@@ -1917,21 +1924,8 @@ function projector() {
 
 // Projection of the whole 3D walk (xs, ys), same formula as projectPoint
 function project() {
-  const { wx, wy, wz, xs, ys } = walk;
-  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  const P = walk.persp;
-  const [ccx, ccy] = P ? orthoPoint(...P.c) : [0, 0];
-  for (let i = 0; i < xs.length; i++) {
-    xs[i] = wx[i] * cy - wy[i] * sy;
-    ys[i] = -(wz[i] * cp + (wx[i] * sy + wy[i] * cy) * sp);
-    if (P) {
-      const t = (wz[i] - P.c[2]) * sp - ((wx[i] - P.c[0]) * sy + (wy[i] - P.c[1]) * cy) * cp;
-      const k = P.D / (P.D - t);
-      xs[i] = ccx + (xs[i] - ccx) * k;
-      ys[i] = ccy + (ys[i] - ccy) * k;
-    }
-  }
+  const { wx, wy, wz, xs, ys } = walk, proj = projector();
+  for (let i = 0; i < xs.length; i++) [xs[i], ys[i]] = proj(wx[i], wy[i], wz[i]);
 }
 
 // Perspective can apply to every 3D view (checkbox; on by default for the cube walks and the cube surface)
@@ -1955,16 +1949,34 @@ function setPerspective() {
   walk.persp = { c: [0, 1, 2].map((d) => (lo[d] + hi[d]) / 2), D: 2.5 * radius };
 }
 
-// Rotate around a centre that keeps its position on screen: the solid's own centre (the origin)
-// for a surface, else the centre of the walk's bounding box. (On a surface that box grows
-// unevenly with the walk: turning around it made the solid slide while auto-fit followed the
-// walker.) Then recompute the projection and the 2D bounds.
-function rotateView(dyaw, dpitch) {
+// Turn the object by the rotation vector w (world coordinates: the axis, scaled by the angle in
+// radians), i.e. the camera the other way (Rodrigues' formula), then make its rows orthonormal
+// again so that rounding errors never add up.
+function turnCam(w) {
+  const a = Math.hypot(...w);
+  if (!a) return;
+  const k = w.map((x) => x / a), c = Math.cos(a), s = -Math.sin(a);
+  const turn = (x) => {
+    const kx = cross(k, x), d = (1 - c) * (k[0] * x[0] + k[1] * x[1] + k[2] * x[2]);
+    return [0, 1, 2].map((i) => x[i] * c + kx[i] * s + k[i] * d);
+  };
+  const v = unit(turn(cam.v)), r0 = turn(cam.r), rv = r0[0] * v[0] + r0[1] * v[1] + r0[2] * v[2];
+  const r = unit(r0.map((x, i) => x - rv * v[i]));
+  Object.assign(cam, { r, u: cross(v, r), v });
+}
+const unit = (x) => { const l = Math.hypot(...x); return x.map((c) => c / l); };
+// A rotation vector given on the screen's axes (right, up, towards the viewer) → in world coordinates
+const screenTurn = (a, b, c) => [0, 1, 2].map((i) => a * cam.r[i] + b * cam.u[i] + c * cam.v[i]);
+
+// Rotate (rotation vector w, see turnCam) around a centre that keeps its position on screen: the
+// solid's own centre (the origin) for a surface, else the centre of the walk's bounding box. (On a
+// surface that box grows unevenly with the walk: turning around it made the solid slide while
+// auto-fit followed the walker.) Then recompute the projection and the 2D bounds.
+function rotateView(w) {
   const [x0, x1, y0, y1, z0, z1] = bounds3 || [0, 0, 0, 0, 0, 0];
   const c = walk.sphere ? [0, 0, 0] : [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
   const before = projectPoint(...c);
-  cam.yaw += dyaw;
-  cam.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cam.pitch + dpitch));
+  turnCam(w);
   if (!walk.is3d) return;
   const after = projectPoint(...c);
   view.ox += (before[0] - after[0]) * view.scale;
@@ -3381,7 +3393,7 @@ function patchCentre() {
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
   if (g.sides === 4) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);
-  const cp = Math.cos(CAM0.pitch), dir = [-Math.sin(CAM0.yaw) * cp, -Math.cos(CAM0.yaw) * cp, Math.sin(CAM0.pitch)];
+  const dir = CAM0.v;
   let best = 0, bestDot = -Infinity;
   for (let t = 0; t < g.n; t++) {
     const c = g.cen.subarray(3 * t, 3 * t + 3), dot = (c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2]) / Math.hypot(...c);
@@ -3991,32 +4003,27 @@ function drawSphereCursor(ctx) {
   ctx.fill();
 }
 
-// Auto-fit on the sphere: ease the camera towards the walker so that it faces the viewer,
-// i.e. yaw and pitch such that towardViewer(walker) = 1 (then it projects onto the centre)
+// Auto-fit on the sphere: ease the camera towards the walker so that it faces the viewer
+// (then it projects onto the centre), by the shortest turn: around the axis walker × viewer
 function followWalker() {
   // on a torus the position does not say which way the surface faces: use the tile's normal
   const t = walk.tile[cur], nr = walk.shape.nrm;
-  const [x, y, z] = walk.geo.torus ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]] : [walk.wx[cur], walk.wy[cur], walk.wz[cur]];
-  const l = Math.hypot(x, y, z);
-  const pitch = Math.asin(z / l), yaw = Math.atan2(-x, -y);
-  let dyaw = yaw - cam.yaw;
-  dyaw -= 2 * Math.PI * Math.round(dyaw / (2 * Math.PI));  // shortest way round
-  const dpitch = pitch - cam.pitch;
-  if (Math.abs(dyaw) + Math.abs(dpitch) > 1e-4) rotateView(dyaw * 0.12, dpitch * 0.12);
+  const d = unit(walk.geo.torus ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]] : [walk.wx[cur], walk.wy[cur], walk.wz[cur]]);
+  const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
+  if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle * 0.12));
 }
 
 // Component of a unit vector towards the viewer (> 0 on the visible half of the sphere)
 function towardViewer(x, y, z) {
-  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  return z * sp - (x * Math.sin(cam.yaw) + y * Math.cos(cam.yaw)) * cp;
+  const v = cam.v;
+  return x * v[0] + y * v[1] + z * v[2];
 }
 // Is a plane (outward normal n through point p) facing us? Orthographic: n points towards the
 // viewer. Perspective: n points towards the camera position, seen from p.
 function planeVisible(n, p) {
   const P = walk.persp;
   if (!P) return towardViewer(...n) > 0;
-  const cp = Math.cos(cam.pitch);
-  const eye = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)].map((v, d) => P.c[d] + v * P.D);
+  const eye = cam.v.map((v, d) => P.c[d] + v * P.D);
   return n[0] * (eye[0] - p[0]) + n[1] * (eye[1] - p[1]) + n[2] * (eye[2] - p[2]) > 0;
 }
 
@@ -4305,9 +4312,9 @@ function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an 
 // (painter's algorithm: a torus is not convex, so tiles facing us can hide each other), each
 // filled with its colour darkened by how much it turns away from the viewer, then outlined
 function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
-  const R = walk.R, P = walk.persp, cp = Math.cos(cam.pitch), n = walk.geo.n;
+  const R = walk.R, P = walk.persp, n = walk.geo.n;
   const { scale: s, ox, oy } = view, proj = projector();
-  const dir = [-Math.sin(cam.yaw) * cp, -Math.cos(cam.yaw) * cp, Math.sin(cam.pitch)];  // towards the viewer
+  const dir = cam.v;  // towards the viewer
   const eye = P ? dir.map((v, d) => P.c[d] + v * P.D) : null;
   const twoSided = walk.geo.torus && sh.m < 1;  // an unrolled torus is an open surface: both sides show
   const visible = [];
@@ -4734,13 +4741,16 @@ function stripColumns(el) {
 }
 
 /* ---- 11.6 The frame loop --------------------------------------------------------------------- */
-let lastTick = 0, spinPhase = 0;
+let lastTick = 0, spinTime = 0;
 function tick(now = performance.now()) {
   const dt = Math.min(0.1, (now - (lastTick || now)) / 1000);  // seconds since the last frame (capped)
   lastTick = now;
-  if (walk.is3d && $('autoRotate').checked) {  // turn, and sway up and down so the top and bottom show too
-    spinPhase += dt * 0.15;  // a sway every 40 s or so
-    rotateView(dt * 0.25, (0.6 * Math.sin(spinPhase) - cam.pitch) * Math.min(1, dt * 2));
+  if (walk.is3d && $('autoRotate').checked) {
+    // tumble at a constant 0.25 rad/s around an axis that drifts on the screen: mostly upright,
+    // tilting forwards and back and rolling slowly, so every side shows in turn
+    spinTime += dt;
+    const a = [0.8 * Math.sin(spinTime * 0.11), 1, 0.6 * Math.sin(spinTime * 0.07)], l = Math.hypot(...a);
+    rotateView(screenTurn(...a.map((x) => (x / l) * 0.25 * dt)));
   }
   if (playing) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
@@ -4891,7 +4901,7 @@ stage.addEventListener('pointermove', (e) => {
   } else {
     userMovedView();  // a hand rotation ends auto-fit, as a pan or a zoom does, and auto-rotate
     $('autoRotate').checked = false;
-    rotateView(dx * 0.008, dy * 0.008);
+    rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
   }
 });
 const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
@@ -4941,7 +4951,7 @@ $('perspective').addEventListener('change', () => {
   setPerspective();
   project();
   if (walk.sphere) needsFull = true;
-  else rotateView(0, 0);  // recompute the 2D bounds of the projected walk
+  else rotateView([0, 0, 0]);  // recompute the 2D bounds of the projected walk
 });
 $('huntBtn').addEventListener('click', huntClick);
 // Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
