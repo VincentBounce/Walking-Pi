@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.215';
+const VERSION = '0.1.216';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2771,13 +2771,12 @@ function solidFaceCentres(g, C) {
 }
 
 // The different starts in order, as pairs [corner, the corner it arrives from], one per walk, all
-// in the kite of start 1: the solid's corner A nearest it, the centre O of the face it lies on and
-// the middles of that face's two edges at A (a quarter of a square face, a third of a triangle).
-// Each walk takes its start whose edge's middle is nearest a point p between A and O: the points
-// nearer p than any turned copy of p make exactly that kite (turning p around A, around O or end
-// for end across an edge's middle puts the copy across one of its sides). An edge gives two starts,
-// one per direction (the same as start 1's, towards A or away from it, first), only one when a
-// rotation turns it end for end. They follow by distance from A.
+// in the kite of start 1: the points of the face F it lies on that are nearer F's corner A (the one
+// nearest start 1) than F's other corners; a quarter of a square face, a third of a triangle, as
+// the solid's rotations turn it onto every other such kite. Each walk takes its start whose edge's
+// middle lies deepest inside it (on the sphere, a point lies on the face whose centre is nearest).
+// An edge gives two starts, one per direction (the same as start 1's, towards A or away from it,
+// first), only one when a rotation turns it end for end. They follow by distance from A.
 function startList(g) {
   if (g.starts) return g.starts;
   const G = gridGraph(g), V = g.verts, nv = G.nv, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
@@ -2798,13 +2797,16 @@ function startList(g) {
   };
   const [v0, f0] = firstStart(g, G), q0 = mid(v0, f0);
   const nearest = (ps, q) => ps.reduce((b, p) => (dot(p, q) > dot(b, q) ? p : b));
-  const A = nearest(C, q0), O = nearest(solidFaceCentres(g, C), q0), p = unit(A.map((x, d) => x + O[d]));
+  const centres = solidFaceCentres(g, C), O = nearest(centres, q0), top = Math.max(...C.map((c) => dot(c, O)));
+  const F = C.filter((c) => dot(c, O) > top - 1e-6), A = nearest(F, q0);  // the face's corners, the kite's
+  const otherCentres = centres.filter((c) => c !== O), otherCorners = F.filter((c) => c !== A);
+  const depth = (q) => Math.min(dot(q, O) - Math.max(...otherCentres.map((c) => dot(q, c))), dot(q, A) - Math.max(...otherCorners.map((c) => dot(q, c))));
   const edgeKey = (a, b) => Math.min(a, b) * nv + Math.max(a, b), done = new Set(), picks = [];
   for (let v = 0; v < nv; v++) for (const w of G.nbrs[v]) {
     if (done.has(edgeKey(v, w))) continue;
     let best = null, flipped = false;
     for (const m of rots) {
-      const a = turned(m, v), b = turned(m, w), near = edgeKey(a, b) === edgeKey(v0, f0) ? Infinity : dot(mid(a, b), p);
+      const a = turned(m, v), b = turned(m, w), near = edgeKey(a, b) === edgeKey(v0, f0) ? Infinity : depth(mid(a, b));
       done.add(edgeKey(a, b));
       flipped ||= a === w && b === v;
       if (!best || near > best.near) best = { a, b, near };
