@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.218';
+const VERSION = '0.1.219';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -763,18 +763,18 @@ const MODES = {
               rule: 'on hexagons, relative to the edge you came in through: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   hexFixed: { base: 6, lattice: 'hex',
               rule: 'on hexagons: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
-  tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', turns: [2, 1],
+  tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', initial: 48, turns: [2, 1],
               rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
-  torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', turns: [3, 2, 1], perspective: true, round: true,
+  torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
               rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right · colour = number of visits' },
   // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
-  hexTorusWalk: { base: 5, lattice: 'sphere', sphere: 'hextorus', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
+  hexTorusWalk: { base: 5, lattice: 'sphere', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                   rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right · colour = number of visits' },
-  cubeFlat: { base: 3, lattice: 'sphere', sphere: 'cube', turns: [3, 2, 1], perspective: true,
+  cubeFlat: { base: 3, lattice: 'sphere', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
               rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right · colour = number of visits' },
-  octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', turns: [2, 1],
+  octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
-  icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', turns: [2, 1], round: true,
+  icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', initial: 48, turns: [2, 1], round: true,
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
   // to them as the edges at a corner allow
@@ -788,7 +788,7 @@ const MODES = {
                rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
   tetraGrid: { base: 5, lattice: 'sphere', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
-  octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', grid: true, initial: 24, turns: [120, 60, 0, -60, -120],
+  octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, grid: true, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of an octahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   // Set aside: on triangles, turns of ±60° only walk a hidden grid of hexagons (3 times fewer
   // corners), so they need many triangles for few patterns; the hexagon sphere does it directly.
@@ -808,7 +808,7 @@ const MODES = {
                 where: 'the surface of a cube' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
                 where: 'a tetrahedron of triangles' },
-  lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', life: true,
+  lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
                 where: 'an octahedron of triangles' },
   lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true, round: true,
                 where: 'an icosahedron of triangles' },
@@ -1845,7 +1845,7 @@ function buildWalk() {
     return;
   }
   if (MODES[current.mode].life) {
-    buildLife(seq, MODES[current.mode].sphere);
+    buildLife(seq, MODES[current.mode]);
     return;
   }
   if (MODES[current.mode].lattice === 'sphere') {
@@ -2934,8 +2934,8 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
   if (walk.shape) applyShape();
 }
 
-function buildSphereWalk(seq, { sphere: kind, turns, base }) {
-  fillSphereSizes(kind);
+function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
+  fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = Number($('sphereF').value);
   const g = mesh(size);
@@ -3089,8 +3089,8 @@ function countSeed(L) {
 // Number of states of the current Life rule = the base the number is written in
 const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
 
-function buildLife(seq, kind) {
-  fillSphereSizes(kind);
+function buildLife(seq, { sphere: kind, initial }) {
+  fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = Number($('sphereF').value);
   const g = mesh(size);
@@ -5219,9 +5219,8 @@ function displayDefaults() {
   renderSkyButtons();
   displayTab = modeTabOf();
 }
-// Digits of a walk by default, per tab (20,000 elsewhere): a walk along a surface's grid takes long
-// steps, so fewer digits already cover it
-const TAB_DIGITS = { 'Walks on surface grids': 10000 };
+// Digits of a walk by default, per tab (20,000 elsewhere): on a surface, fewer digits already cover it
+const TAB_DIGITS = { 'Walks on surface cells': 10000, 'Walks on surface grids': 10000 };
 $('mode').addEventListener('change', () => {
   if (modeTabOf() !== displayTab) {
     $('digits').value = TAB_DIGITS[modeTabOf()] ?? 20000;
