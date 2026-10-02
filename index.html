@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261007d">
+  <link rel="stylesheet" href="style.css?v=20261007e">
 </head>
 <body>
   <header>
@@ -100,7 +100,8 @@
             <option value="B24/S35">⬡ B24/S35 — Life-like, lasting, a few survivors</option>
             <option value="B234/S234">⬡ B234/S234 — methuselahs: 3 cells can last 2,000+ generations</option>
             <option value="B234/S1234">⬡ B234/S1234 — methuselahs, and every small start settles</option>
-            <option value="B2/S34">⬡ B2/S34 — hexagonal Life, with gliders</option>
+            <option value="B2o/S2m34">⬡ B2o/S2m34 — Callahan's hexagonal Life, with gliders (o side by side, m one cell apart)</option>
+            <option value="B2/S24/C3">⬡ B2/S24/C3 — Life-like from a small start: most die, a few spread for a while (3 states)</option>
             <option value="B1/S0123456">⬡ B1/S0123456 — snowflakes, grown from a few cells</option>
             <option value="B36/S23">■ B36/S23 — HighLife, with a replicator</option>
             <option value="B3/S12345">■ B3/S12345 — Maze, grows corridors</option>
@@ -110,7 +111,7 @@
             <option value="custom">Custom…</option>
           </select>
         </label>
-        <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C… or B…/S…/Immigration)
+        <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C…, B…/S…/Immigration, or B2o/S2m34 on hexagons)
           <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
         </label>
         <div id="huntRow">
@@ -237,6 +238,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261007d"></script>
+  <script src="main.js?v=20261007e"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.204';
+const VERSION = '0.1.205';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2484,7 +2484,7 @@ function triTorusMesh(nv) {
 }
 
 /* ---- 7.5 Flat ↔ round: the same tiles and neighbours, shown flat or inflated ----------------- */
-/* walk.shape = { m, target, corners, cen, nrm, extent } for surfaces that can change shape:
+/* walk.shape = { m, target, corners, cen, nrm, extent, bent } for surfaces that can change shape:
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
@@ -2508,17 +2508,27 @@ function shapeAt(g, m) {
     }
   }
   let extent = 0;
-  const sign = shapeSign(g);
+  const sign = shapeSign(g), bent = new Map();
   for (let t = 0; t < n; t++) {
     const P = (q) => corners.subarray(3 * (k * t + q), 3 * (k * t + q) + 3);
     const c = [0, 1, 2].map((d) => { let sum = 0; for (let q = 0; q < k; q++) sum += P(q)[d]; return sum / k; });
     const d1 = [0, 1, 2].map((d) => P(2)[d] - P(0)[d]), d2 = [0, 1, 2].map((d) => P(k - 1)[d] - P(1)[d]);
-    const nr = cross(d1, d2), l = (Math.hypot(...nr) || 1) * sign;
+    const nr = cross(d1, d2), l = (Math.hypot(...nr) || 1) * sign, u = nr.map((v) => v / l);
     cen.set(c, 3 * t);
-    nrm.set(nr.map((v) => v / l), 3 * t);
+    nrm.set(u, 3 * t);
     for (let q = 0; q < k; q++) extent = Math.max(extent, Math.hypot(...P(q)));
+    if (g.torus || g.faces) continue;
+    // a tile folded over an edge of the solid (the flat hexagon sphere): the normals of its parts,
+    // so that it still shows when one part faces the viewer and the whole does not
+    const parts = [];
+    for (let q = 0; q < k; q++) {
+      const a = P(q), b = P((q + 1) % k), w = cross([0, 1, 2].map((d) => a[d] - c[d]), [0, 1, 2].map((d) => b[d] - c[d]));
+      const lw = Math.hypot(...w);
+      if (lw) parts.push(w.map((v) => v / lw));
+    }
+    if (parts.some((w) => w[0] * u[0] + w[1] * u[1] + w[2] * u[2] < 0.99)) bent.set(t, parts);
   }
-  return { m, corners, cen, nrm, extent };
+  return { m, corners, cen, nrm, extent, bent };
 }
 
 // Torus corners are listed in sheet order, which may run against the mesh's outward order: the sign
@@ -2807,6 +2817,7 @@ const LIFE_TRAIL = Array.from({ length: 8 }, (_, i) => {
 function cornerNeighbours(g) {
   if (g.life) return g.life;
   const nv = g.verts.length / 3, k = g.sides;
+  const ring = k === 6 ? hexRing(g) : null;
   const byVertex = Array.from({ length: nv }, () => []);
   for (let t = 0; t < g.n; t++) for (let j = 0; j < k; j++) byVertex[g.poly[k * t + j]].push(t);
   const start = new Int32Array(g.n + 1), list = [], wall = new Set(g.walls);
@@ -2817,20 +2828,60 @@ function cornerNeighbours(g) {
     list.push(...set);
     start[t + 1] = list.length;
   }
-  return (g.life = { start, list: new Int32Array(list) });
+  return (g.life = { start, list: new Int32Array(list), ring });
+}
+
+// On hexagons: the 6 neighbours of each tile in order around it (−1 for a wall or none), for the
+// rules that look at where the live neighbours are (Callahan's o, m, p)
+function hexRing(g) {
+  const nv = g.verts.length / 3, wall = new Set(g.walls), ring = new Int32Array(6 * g.n).fill(-1), byEdge = new Map();
+  for (let t = 0; t < g.n; t++) {
+    if (wall.has(t)) continue;
+    for (let q = 0; q < 6; q++) {
+      const a = g.poly[6 * t + q], b = g.poly[6 * t + ((q + 1) % 6)];
+      if (a === b) continue;  // a pentagon's repeated corner
+      const key = Math.min(a, b) * nv + Math.max(a, b), other = byEdge.get(key);
+      if (other === undefined) { byEdge.set(key, 6 * t + q); continue; }
+      ring[6 * t + q] = Math.floor(other / 6);
+      ring[other] = t;
+    }
+  }
+  return ring;
+}
+
+// Callahan's letters for where 2, 3 or 4 live neighbours sit around a hexagon (bit q = neighbour q):
+// o (ortho) side by side, m (meta) one cell apart, p (para) opposite; for 3: o in a row, p every other
+function hexClass(mask) {
+  const bits = [0, 1, 2, 3, 4, 5].filter((q) => (mask >> q) & 1);
+  const pair = bits.length === 4 ? [0, 1, 2, 3, 4, 5].filter((q) => !((mask >> q) & 1)) : bits;
+  if (pair.length === 2) return ['', 'O', 'M', 'P'][Math.min(pair[1] - pair[0], 6 - pair[1] + pair[0])];
+  if (bits.length !== 3) return '';
+  if (mask === 0b010101 || mask === 0b101010) return 'P';
+  return [0, 1, 2, 3, 4, 5].some((q) => ((0b111 << q | 0b111 >> (6 - q)) & 63) === mask) ? 'O' : 'M';
 }
 
 // "B3/S23", "B2/S/C3" or "B3/S23/Immigration" → birth and survival tables indexed by the number of
 // live neighbours, and C, the number of states: 2 for Life, more for "Generations" rules (dying
-// stages), 3 for two civilisations (two: true)
+// stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
+// where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 function parseRule(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B(\d*)\/S(\d*)(?:\/C(\d+)|\/(IMMIGRATION))?$/);
-  if (!m) return null;
-  const two = !!m[4], C = two ? 3 : m[3] ? Number(m[3]) : 2;
-  if (C < 2 || C > 10) return null;  // one digit per cell in base C: bases 2 to 10
-  const table = (digits) => { const a = new Uint8Array(13); for (const d of digits) a[+d] = 1; return a; };
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+)|\/(IMMIGRATION))?H?$/);
+  if (!m || /^[OMP]/.test(m[1]) || /^[OMP]/.test(m[2])) return null;
+  const two = !!m[4], C = two ? 3 : m[3] ? Number(m[3]) : 2, iso = /[OMP]/.test(m[1] + m[2]);
+  if (C < 2 || C > 10 || (iso && two)) return null;  // one digit per cell in base C: bases 2 to 10
+  const table = (spec) => {
+    const a = new Uint8Array(80);
+    for (const [, d, letters] of spec.matchAll(/(\d)([OMP]*)/g)) {
+      if (!letters) a[+d] = 1;
+      for (let mask = 0; mask < 64; mask++) {
+        const bits = mask.toString(2).replace(/0/g, '').length;
+        if (bits === +d && (!letters || letters.includes(hexClass(mask)))) a[16 + mask] = 1;
+      }
+    }
+    return a;
+  };
   const tail = two ? '/Immigration' : C > 2 ? `/C${C}` : '';
-  return { B: table(m[1]), S: table(m[2]), C, two, text: `B${m[1]}/S${m[2]}${tail}` };
+  return { B: table(m[1]), S: table(m[2]), C, two, iso, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
 }
 
 // The starting counts of a Life run: live cells (and the blue ones with two civilisations), dying ones
@@ -2851,13 +2902,19 @@ function buildLife(seq, kind) {
   const { mesh, radius } = SPHERES[kind];
   const size = Number($('sphereF').value);
   const g = mesh(size);
-  const rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
+  const nbr = cornerNeighbours(g);
+  let rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
+  if (rule.iso && !nbr.ring) {  // Callahan's letters need hexagons
+    rule = parseRule('B3/S23');
+    $('lifePreset').value = rule.text;
+    $('lifeCustomRow').hidden = true;
+  }
   $('lifeRule').value = rule.text;
   const seed = new Uint8Array(g.n);
   seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr: cornerNeighbours(g), B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text, seed,
+  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text, seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -2922,7 +2979,7 @@ function lifeTrack(gen) {
 // cell that fails to survive goes through the dying states 2 … C−1 and cannot be born again
 // until it is dead (state 0). A cell dying at generation g records died = g (fading trail).
 function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, a = L.alive, b = L.next, gen = cur + 1, C = L.C, two = L.two;
+  const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, two = L.two;
   let alive = 0, dying = 0, blues = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -2937,7 +2994,10 @@ function lifeStep() {
       now = was ? (L.S[c] ? was : 0) : !L.B[c] ? 0 : 2 * blue > c ? 2 : 2 * blue < c ? 1 : 1 + (t & 1);
     } else {
       let c = 0;
-      for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
+      if (ring) {  // where the live neighbours sit around the hexagon
+        for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] === 1) c |= 1 << q; }
+        c += 16;
+      } else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
       now = was ? (L.S[c] ? 1 : C > 2 ? 2 : 0) : L.B[c];
     }
     b[t] = now;
@@ -2996,7 +3056,7 @@ function lifeStep() {
  * random cells of the best start and keep the change when it lasts at least as long. */
 function huntWorker() {
   self.onmessage = (e) => {
-    const { n, start, list, B, S, C, two, randomRuns, tweaks, cap, patch, colours, against, exhaustive, from, fromBest } = e.data;
+    const { n, start, list, ring, B, S, C, two, randomRuns, tweaks, cap, patch, colours, against, exhaustive, from, fromBest } = e.data;
     const step = (a, b) => {
       for (let t = 0; t < n; t++) {  // the same generation as lifeStep
         const was = a[t];
@@ -3009,7 +3069,10 @@ function huntWorker() {
         }
         if (was >= 2) { b[t] = was + 1 < C ? was + 1 : 0; continue; }
         let c = 0;
-        for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
+        if (ring) {
+          for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] === 1) c |= 1 << q; }
+          c += 16;
+        } else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
         b[t] = was ? (S[c] ? 1 : C > 2 ? 2 : 0) : B[c];
       }
     };
@@ -3307,7 +3370,7 @@ function runHuntWorker(job) {
       : `tweak ${fmt(d.i)} / ${fmt(d.total)} (${fmt(d.kept)} kept)`;
     $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)}`;
   };
-  hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, B: L.B, S: L.S, C: L.C, two: L.two,
+  hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, two: L.two,
                             cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), colours: hunt.colours, ...job });
 }
 
@@ -3958,8 +4021,9 @@ function planeVisible(n, p) {
 }
 
 function tileVisible(t) {
-  const { cen, nrm } = walk.shape, R = walk.R;  // the current form, flat or round
-  return planeVisible([nrm[3 * t], nrm[3 * t + 1], nrm[3 * t + 2]], [cen[3 * t] * R, cen[3 * t + 1] * R, cen[3 * t + 2] * R]);
+  const { cen, nrm, bent } = walk.shape, R = walk.R;  // the current form, flat or round
+  const c = [cen[3 * t] * R, cen[3 * t + 1] * R, cen[3 * t + 2] * R];
+  return planeVisible([nrm[3 * t], nrm[3 * t + 1], nrm[3 * t + 2]], c) || !!bent.get(t)?.some((w) => planeVisible(w, c));
 }
 // is the tile of point i on the visible side? (an unrolled torus shows both sides)
 const facing = (i) => (walk.geo.torus && walk.shape.m < 1) || tileVisible(walk.tile[i]);
@@ -4889,7 +4953,7 @@ $('lifePreset').addEventListener('change', () => {
   if (MODES[$('mode').value].life) compute();
 });
 $('lifeRule').addEventListener('change', () => {
-  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or B3/S23/Immigration'; return; }
+  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states), B3/S23/Immigration or, on hexagons, B2o/S2m34'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
 $('copyNumber').addEventListener('click', async () => {
