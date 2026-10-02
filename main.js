@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.208';
+const VERSION = '0.1.209';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2519,26 +2519,42 @@ function shapeAt(g, m) {
       for (let q = 0; q < k; q++) corners.set(moved.subarray(3 * g.poly[k * t + q], 3 * g.poly[k * t + q] + 3), 3 * (k * t + q));
     }
   }
+  // per tile: centre, normal (from two diagonals), the farthest corner; plain numbers, no arrays,
+  // as this runs at every frame of a morph
   let extent = 0;
-  const sign = shapeSign(g), bent = new Map();
+  const sign = shapeSign(g), bent = new Map(), C = corners;
+  const folds = !g.torus && !g.faces && m < 1;  // only the hexagon sphere, when not round, has folded tiles
   for (let t = 0; t < n; t++) {
-    const P = (q) => corners.subarray(3 * (k * t + q), 3 * (k * t + q) + 3);
-    const c = [0, 1, 2].map((d) => { let sum = 0; for (let q = 0; q < k; q++) sum += P(q)[d]; return sum / k; });
-    const d1 = [0, 1, 2].map((d) => P(2)[d] - P(0)[d]), d2 = [0, 1, 2].map((d) => P(k - 1)[d] - P(1)[d]);
-    const nr = cross(d1, d2), l = (Math.hypot(...nr) || 1) * sign, u = nr.map((v) => v / l);
-    cen.set(c, 3 * t);
-    nrm.set(u, 3 * t);
-    for (let q = 0; q < k; q++) extent = Math.max(extent, Math.hypot(...P(q)));
-    if (g.torus || g.faces) continue;
+    const o = 3 * k * t;
+    let cx = 0, cy = 0, cz = 0;
+    for (let q = 0; q < k; q++) {
+      const x = C[o + 3 * q], y = C[o + 3 * q + 1], z = C[o + 3 * q + 2];
+      cx += x; cy += y; cz += z;
+      extent = Math.max(extent, Math.hypot(x, y, z));
+    }
+    cx /= k; cy /= k; cz /= k;
+    const i0 = o, i1 = o + 3, i2 = o + 6, il = o + 3 * (k - 1);
+    const ax = C[i2] - C[i0], ay = C[i2 + 1] - C[i0 + 1], az = C[i2 + 2] - C[i0 + 2];
+    const bx = C[il] - C[i1], by = C[il + 1] - C[i1 + 1], bz = C[il + 2] - C[i1 + 2];
+    let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const l = (Math.hypot(nx, ny, nz) || 1) * sign;
+    nx /= l; ny /= l; nz /= l;
+    cen[3 * t] = cx; cen[3 * t + 1] = cy; cen[3 * t + 2] = cz;
+    nrm[3 * t] = nx; nrm[3 * t + 1] = ny; nrm[3 * t + 2] = nz;
+    if (!folds) continue;
     // a tile folded over an edge of the solid (the flat hexagon sphere): the normals of its parts,
     // so that it still shows when one part faces the viewer and the whole does not
     const parts = [];
+    let folded = false;
     for (let q = 0; q < k; q++) {
-      const a = P(q), b = P((q + 1) % k), w = cross([0, 1, 2].map((d) => a[d] - c[d]), [0, 1, 2].map((d) => b[d] - c[d]));
-      const lw = Math.hypot(...w);
-      if (lw) parts.push(w.map((v) => v / lw));
+      const a = o + 3 * q, b = o + 3 * ((q + 1) % k);
+      const px = C[a] - cx, py = C[a + 1] - cy, pz = C[a + 2] - cz, qx = C[b] - cx, qy = C[b + 1] - cy, qz = C[b + 2] - cz;
+      const wx = py * qz - pz * qy, wy = pz * qx - px * qz, wz = px * qy - py * qx, lw = Math.hypot(wx, wy, wz);
+      if (!lw) continue;
+      parts.push([wx / lw, wy / lw, wz / lw]);
+      if ((wx * nx + wy * ny + wz * nz) / lw < 0.99) folded = true;
     }
-    if (parts.some((w) => w[0] * u[0] + w[1] * u[1] + w[2] * u[2] < 0.99)) bent.set(t, parts);
+    if (folded) bent.set(t, parts);
   }
   return { m, corners, cen, nrm, extent, bent };
 }
@@ -2739,10 +2755,15 @@ function startOrbits(g) {
   // a pentagon's direction from its 5 corners (its centre counts the repeated one twice)
   const dirs = g.walls.map((t) => unit([0, 1, 2].map((d) => [0, 1, 2, 3, 4].reduce((sum, q) => sum + V[3 * g.poly[6 * t + q] + d], 0))));
   const rots = icosaRotations(dirs);
-  const key = (x, y, z) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
-  const index = new Map();
-  for (let v = 0; v < nv; v++) index.set(key(V[3 * v], V[3 * v + 1], V[3 * v + 2]), v);
-  const turned = (m, v) => index.get(key(...m.map((row) => row[0] * V[3 * v] + row[1] * V[3 * v + 1] + row[2] * V[3 * v + 2])));
+  // corners found by their rounded coordinates, on two grids offset by half a cell: a turned corner
+  // (off by rounding errors) that falls on a cell's edge in one grid is well inside a cell of the other
+  // (corners are ~0.02 apart: a cell of 1e-4 never holds two)
+  const key = (p, h) => `${Math.round(p[0] * 1e4 + h)},${Math.round(p[1] * 1e4 + h)},${Math.round(p[2] * 1e4 + h)}`;
+  const [even, odd] = [0, 0.5].map((h) => new Map(Array.from({ length: nv }, (_, v) => [key([V[3 * v], V[3 * v + 1], V[3 * v + 2]], h), v])));
+  const turned = (m, v) => {
+    const p = m.map((row) => row[0] * V[3 * v] + row[1] * V[3 * v + 1] + row[2] * V[3 * v + 2]);
+    return even.get(key(p, 0)) ?? odd.get(key(p, 0.5));
+  };
   const seen = new Uint8Array(3 * nv), states = [];
   for (let st = 0; st < 3 * nv; st++) {
     if (seen[st]) continue;
@@ -2850,8 +2871,8 @@ function buildGridWalk(seq, { sphere: kind, turns, base }) {
   const vert = new Int32Array(len + 1), tile = new Int32Array(len + 1), cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1), counts = new Int32Array(base * (len + 1)), stepTiles = new Int32Array(2 * len);
   const seen = new Uint8Array(G.nv), angles = turns.map((a) => (a * Math.PI) / 180);
-  const st = kind === 'hexsphere' ? startList(g)[startNo() - 1] : -1;
-  let [v, from] = st >= 0 ? [Math.floor(st / 3), G.nbrs[Math.floor(st / 3)][st % 3]] : [g.poly[0], G.nbrs[g.poly[0]][0]];
+  const st = kind === 'hexsphere' && startNo() > 1 ? startList(g)[startNo() - 1] : -1;  // start 1 is gridStart
+  let [v, from] = st >= 0 ? [Math.floor(st / 3), G.nbrs[Math.floor(st / 3)][st % 3]] : g.gridStart ?? [g.poly[0], G.nbrs[g.poly[0]][0]];
   let distinct = 1, m = 0, coverStep = -1;
   seen[v] = 1;
   const start = at(v);
