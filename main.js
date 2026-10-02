@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.209';
+const VERSION = '0.1.210';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4270,8 +4270,9 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
-  if (startsShown) {  // an empty globe under the distinct starts
-    drawShapeTiles(ctx, walk.shape, g.sides, palette, () => 0);
+  if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
+    const wall = new Set(g.walls);
+    drawShapeTiles(ctx, walk.shape, g.sides, [null, LIFE_WALL], (t) => (wall.has(t) ? 1 : 0));
     drawStarts(ctx);
     return;
   }
