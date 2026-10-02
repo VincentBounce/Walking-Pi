@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.211';
+const VERSION = '0.1.212';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5126,8 +5126,8 @@ $('copyNumber').addEventListener('click', async () => {
 // Hovering the button shows what it copies over the view (the start of it: as much as fits)
 $('copyNumber').addEventListener('mouseenter', () => { $('numberPreview').textContent = numberText(20000); $('numberPreview').hidden = false; });
 $('copyNumber').addEventListener('mouseleave', () => { $('numberPreview').hidden = true; });
-// The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering it shows every
-// start on an empty globe, turned towards the chosen one.
+// The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
+// (not − / +) shows every start on an empty globe, turned towards the chosen one.
 function setStart(n) {
   $('startNo').value = Math.max(1, Math.min(n, Number($('sphereF').value) ** 2));
   syncSizeStepper();
@@ -5140,8 +5140,9 @@ $('startUp').addEventListener('click', () => setStart(startNo() + 1));
 $('startLabel').addEventListener('input', () => { $('startLabel').value = $('startLabel').value.replace(/\D/g, ''); });
 $('startLabel').addEventListener('blur', syncSizeStepper);  // "start 1 of 2,304" again
 $('startLabel').addEventListener('change', () => { if ($('startLabel').value) setStart(Number($('startLabel').value)); });
-$('startRow').addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
-$('startRow').addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
+const startField = $('startLabel').parentElement;
+startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
+startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
 $('sphereF').addEventListener('change', () => {
