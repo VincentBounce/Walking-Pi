@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.203';
+const VERSION = '0.1.204';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -810,6 +810,8 @@ const MODES = {
                 where: 'an octahedron of triangles' },
   lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true, round: true,
                 where: 'an icosahedron of triangles' },
+  lifeHexSphere: { base: 2, lattice: 'sphere', sphere: 'hexsphere', life: true, round: true,
+                   where: 'a sphere of hexagons (its 12 pentagons are walls)' },
   cubeRel:  { base: 5, lattice: 'cube', perspective: true,
               rule: 'in 3D cubes, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
   cubeFixed: { base: 6, lattice: 'cube', perspective: true,
@@ -1639,7 +1641,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', hexSphereGrid: 'hexagon',
-  lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron',
+  lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
 
@@ -2449,6 +2451,8 @@ function hexSphereMesh(f) {
   // a walk along its grid starts as the icosahedron's tile walk does: on triangle 0, come in
   // through its edge 0, so that the same digits draw the same path in both tabs
   mesh.gridStart = [0, ico.nbr[0]];
+  // in a Game of Life the pentagons are walls: always dead, and no one's neighbour
+  mesh.walls = cells.flatMap((c, v) => (c[4] === c[5] ? [v] : []));
   return (meshCache[key] = mesh);
 }
 
@@ -2792,6 +2796,7 @@ function buildSphereWalk(seq, { sphere: kind, turns, base }) {
 const LIFE_JUMP = 2000;
 const LIFE_RED = '#ff7b72', LIFE_BLUE = '#4ea1ff';  // the two civilisations  // the Game of Life has no end: ⏭ jumps this many generations ahead
 // fading trail after a cell dies: from a light slate grey down to the background
+const LIFE_WALL = '#c4934e';  // the walls of a Life run (the hexagon sphere's pentagons)
 const LIFE_TRAIL = Array.from({ length: 8 }, (_, i) => {
   const f = 1 - i / 8, mix = (a, b) => Math.round(b + (a - b) * f);
   return `rgb(${mix(0x6b, 0x1f)}, ${mix(0x7f, 0x26)}, ${mix(0x99, 0x30)})`;
@@ -2804,10 +2809,11 @@ function cornerNeighbours(g) {
   const nv = g.verts.length / 3, k = g.sides;
   const byVertex = Array.from({ length: nv }, () => []);
   for (let t = 0; t < g.n; t++) for (let j = 0; j < k; j++) byVertex[g.poly[k * t + j]].push(t);
-  const start = new Int32Array(g.n + 1), list = [];
+  const start = new Int32Array(g.n + 1), list = [], wall = new Set(g.walls);
   for (let t = 0; t < g.n; t++) {
     const set = new Set();
-    for (let j = 0; j < k; j++) for (const u of byVertex[g.poly[k * t + j]]) if (u !== t) set.add(u);
+    // a wall has no neighbours, and is no one's neighbour
+    if (!wall.has(t)) for (let j = 0; j < k; j++) for (const u of byVertex[g.poly[k * t + j]]) if (u !== t && !wall.has(u)) set.add(u);
     list.push(...set);
     start[t + 1] = list.length;
   }
@@ -2849,6 +2855,7 @@ function buildLife(seq, kind) {
   $('lifeRule').value = rule.text;
   const seed = new Uint8Array(g.n);
   seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
+  for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
   walk.life = { nbr: cornerNeighbours(g), B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text, seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
@@ -2920,7 +2927,9 @@ function lifeStep() {
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
     let now;
-    if (was >= 2 && !two) {
+    if (start[t] === start[t + 1]) {
+      now = 0;  // a wall (a pentagon of the hexagon sphere)
+    } else if (was >= 2 && !two) {
       now = was + 1 < C ? was + 1 : 0;  // one more dying stage, or dead
     } else if (two) {  // live neighbours, and how many of them are blue
       let c = 0, blue = 0;
@@ -2991,6 +3000,7 @@ function huntWorker() {
     const step = (a, b) => {
       for (let t = 0; t < n; t++) {  // the same generation as lifeStep
         const was = a[t];
+        if (start[t] === start[t + 1]) { b[t] = 0; continue; }  // a wall
         if (two) {
           let c = 0, blue = 0;
           for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; blue += v === 2; } }
@@ -3033,7 +3043,7 @@ function huntWorker() {
     // alive at the end (by its lead in cells), then red wiped out (later is better)
     const score = (r) => (!against ? r.T : r.winner === 'red' ? 2e9 - r.T : r.winner ? r.T : 1e9 + r.red - r.blue);
     // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
-    const free = patch || Array.from({ length: n }, (_, t) => t);
+    const free = patch || Array.from({ length: n }, (_, t) => t).filter((t) => start[t] < start[t + 1]);
     const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * C); return s; };
     // start number k of an exhaustive search: k written in base C over the patch; with colours (one
     // side of a duel) in base 2, each cell dead or of its colour
@@ -3312,7 +3322,7 @@ function patchCentre() {
   let best = 0, bestDot = -Infinity;
   for (let t = 0; t < g.n; t++) {
     const c = g.cen.subarray(3 * t, 3 * t + 3), dot = (c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2]) / Math.hypot(...c);
-    if (dot > bestDot) { bestDot = dot; best = t; }
+    if (dot > bestDot && !g.walls?.includes(t)) { bestDot = dot; best = t; }
   }
   return best;
 }
@@ -3352,6 +3362,7 @@ function loadChampion() {
 function setLifeSeed(seed, how) {
   const L = walk.life;
   L.seed.set(seed);
+  for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   countSeed(L);
   championCode = encodeCells(L.seed, L.C);  // in its shortest form
   lifeStart = how;
@@ -4011,6 +4022,11 @@ function drawSphere() {
         return L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
       };
     }
+  }
+  if (L && g.walls) {  // the pentagons of the hexagon sphere: walls, in stone grey
+    const inner = levelOf, wall = new Set(g.walls);
+    palette = [...palette, LIFE_WALL];
+    levelOf = (t) => (wall.has(t) ? palette.length - 1 : inner(t));
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
