@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.214';
+const VERSION = '0.1.215';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2783,14 +2783,18 @@ function startList(g) {
   const G = gridGraph(g), V = g.verts, nv = G.nv, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], mid = (a, b) => unit([0, 1, 2].map((d) => V[3 * a + d] + V[3 * b + d]));
   const C = solidCorners(g), rots = solidRotations(C);
-  // corners found by their rounded coordinates, on two grids offset by half a cell: a turned corner
-  // (off by rounding errors) that falls on a cell's edge in one grid is well inside a cell of the
-  // other (corners are at least ~0.02 apart: a cell of 1e-4 never holds two)
-  const key = (p, h) => `${Math.round(p[0] * 1e4 + h)},${Math.round(p[1] * 1e4 + h)},${Math.round(p[2] * 1e4 + h)}`;
-  const [even, odd] = [0, 0.5].map((h) => new Map(Array.from({ length: nv }, (_, v) => [key(at(v), h), v])));
+  // a turned corner is found again as the corner within 1e-6 of it (it is off by rounding errors
+  // only), among those of its cell of a coarse grid and of the 26 cells around (one is enough
+  // unless it lies on a cell's side)
+  const cellOf = (p) => p.map((x) => Math.floor(x * 50) + 128), cellKey = ([i, j, k]) => (i * 256 + j) * 256 + k;
+  const cells = new Map();
+  for (let v = 0; v < nv; v++) { const k = cellKey(cellOf(at(v))); cells.set(k, [...(cells.get(k) ?? []), v]); }
+  const near = (p, k) => cells.get(k)?.find((w) => Math.hypot(V[3 * w] - p[0], V[3 * w + 1] - p[1], V[3 * w + 2] - p[2]) < 1e-6);
   const turned = (m, v) => {
-    const p = m.map((row) => row[0] * V[3 * v] + row[1] * V[3 * v + 1] + row[2] * V[3 * v + 2]);
-    return even.get(key(p, 0)) ?? odd.get(key(p, 0.5));
+    const p = m.map((row) => row[0] * V[3 * v] + row[1] * V[3 * v + 1] + row[2] * V[3 * v + 2]), c = cellOf(p);
+    let w = near(p, cellKey(c));
+    for (let d = 0; w === undefined && d < 27; d++) w = near(p, cellKey([c[0] + (d % 3) - 1, c[1] + (Math.floor(d / 3) % 3) - 1, c[2] + Math.floor(d / 9) - 1]));
+    return w;
   };
   const [v0, f0] = firstStart(g, G), q0 = mid(v0, f0);
   const nearest = (ps, q) => ps.reduce((b, p) => (dot(p, q) > dot(b, q) ? p : b));
