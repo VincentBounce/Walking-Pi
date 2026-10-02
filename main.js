@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.213';
+const VERSION = '0.1.214';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2759,16 +2759,30 @@ function solidCorners(g) {
 // The usual start: gridStart (the sphere of hexagons) or the first corner, arriving by its first edge
 const firstStart = (g, G) => g.gridStart ?? [g.poly[0], G.nbrs[g.poly[0]][0]];
 
-// The different starts in order, as pairs [corner, the corner it arrives from]. The edges grow from
-// start 1's through shared corners, breadth first, taking each edge whose turned copies are not
-// taken yet: one connected patch. (If no edge next to the patch were left, the patch's turned copies
-// would leave no edge next to them either, so they would cover the whole grid.) An edge gives two
-// starts, first away from the corner it was reached by, then back; only one when a rotation turns
-// it end for end (its middle on a 2-fold axis), as both directions then draw the same walk.
+// The solid's face centres: of its faces, or of the icosahedron's 20 (3 corners side by side)
+function solidFaceCentres(g, C) {
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], sum = (ps) => unit([0, 1, 2].map((d) => ps.reduce((s, p) => s + p[d], 0)));
+  if (g.faces) return g.faces.map((f) => sum(f.corners));
+  const O = [];
+  for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
+    if (dot(C[i], C[j]) > 0.3 && dot(C[i], C[k]) > 0.3 && dot(C[j], C[k]) > 0.3) O.push(sum([C[i], C[j], C[k]]));
+  }
+  return O;
+}
+
+// The different starts in order, as pairs [corner, the corner it arrives from], one per walk, all
+// in the kite of start 1: the solid's corner A nearest it, the centre O of the face it lies on and
+// the middles of that face's two edges at A (a quarter of a square face, a third of a triangle).
+// Each walk takes its start whose edge's middle is nearest a point p between A and O: the points
+// nearer p than any turned copy of p make exactly that kite (turning p around A, around O or end
+// for end across an edge's middle puts the copy across one of its sides). An edge gives two starts,
+// one per direction (the same as start 1's, towards A or away from it, first), only one when a
+// rotation turns it end for end. They follow by distance from A.
 function startList(g) {
   if (g.starts) return g.starts;
   const G = gridGraph(g), V = g.verts, nv = G.nv, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
-  const rots = solidRotations(solidCorners(g));
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], mid = (a, b) => unit([0, 1, 2].map((d) => V[3 * a + d] + V[3 * b + d]));
+  const C = solidCorners(g), rots = solidRotations(C);
   // corners found by their rounded coordinates, on two grids offset by half a cell: a turned corner
   // (off by rounding errors) that falls on a cell's edge in one grid is well inside a cell of the
   // other (corners are at least ~0.02 apart: a cell of 1e-4 never holds two)
@@ -2778,24 +2792,28 @@ function startList(g) {
     const p = m.map((row) => row[0] * V[3 * v] + row[1] * V[3 * v + 1] + row[2] * V[3 * v + 2]);
     return even.get(key(p, 0)) ?? odd.get(key(p, 0.5));
   };
-  const edgeKey = (a, b) => Math.min(a, b) * nv + Math.max(a, b);
-  const copies = new Map(), flipped = [];  // edge → the number of its set of turned copies; set → turned end for end
+  const [v0, f0] = firstStart(g, G), q0 = mid(v0, f0);
+  const nearest = (ps, q) => ps.reduce((b, p) => (dot(p, q) > dot(b, q) ? p : b));
+  const A = nearest(C, q0), O = nearest(solidFaceCentres(g, C), q0), p = unit(A.map((x, d) => x + O[d]));
+  const edgeKey = (a, b) => Math.min(a, b) * nv + Math.max(a, b), done = new Set(), picks = [];
   for (let v = 0; v < nv; v++) for (const w of G.nbrs[v]) {
-    if (copies.has(edgeKey(v, w))) continue;
-    flipped.push(rots.some((m) => turned(m, v) === w && turned(m, w) === v));
-    for (const m of rots) copies.set(edgeKey(turned(m, v), turned(m, w)), flipped.length - 1);
-  }
-  const taken = new Uint8Array(flipped.length), starts = [];
-  const [v0, f0] = firstStart(g, G), queue = [[f0, v0]];  // edges as [the corner reached by, the other one]
-  taken[copies.get(edgeKey(v0, f0))] = 1;
-  for (let i = 0; i < queue.length; i++) {
-    const [a, b] = queue[i];
-    starts.push([b, a]);
-    if (!flipped[copies.get(edgeKey(a, b))]) starts.push([a, b]);
-    for (const c of [a, b]) for (const d of G.nbrs[c]) {
-      const set = copies.get(edgeKey(c, d));
-      if (!taken[set]) { taken[set] = 1; queue.push([c, d]); }
+    if (done.has(edgeKey(v, w))) continue;
+    let best = null, flipped = false;
+    for (const m of rots) {
+      const a = turned(m, v), b = turned(m, w), near = edgeKey(a, b) === edgeKey(v0, f0) ? Infinity : dot(mid(a, b), p);
+      done.add(edgeKey(a, b));
+      flipped ||= a === w && b === v;
+      if (!best || near > best.near) best = { a, b, near };
     }
+    picks.push({ ...best, flipped });
+  }
+  const fromA = (e) => (e.near === Infinity ? Infinity : dot(mid(e.a, e.b), A));
+  picks.sort((e1, e2) => fromA(e2) - fromA(e1));
+  const towards = dot(at(v0), A) > dot(at(f0), A), starts = [];  // start 1 arrives at its edge's end nearer A
+  for (const { a, b, flipped } of picks) {
+    const [n, f] = dot(at(a), A) > dot(at(b), A) ? [a, b] : [b, a];  // the end nearer A, the other one
+    const pair = towards ? [[n, f], [f, n]] : [[f, n], [n, f]];
+    starts.push(...(flipped ? pair.slice(0, 1) : pair));
   }
   return (g.starts = starts);
 }
