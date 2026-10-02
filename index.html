@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261007g">
+  <link rel="stylesheet" href="style.css?v=20261007h">
 </head>
 <body>
   <header>
@@ -82,7 +82,12 @@
             <button id="sizeUp" title="Bigger surface">+</button>
           </div>
           <select id="sphereF" hidden></select>
-          <button id="startsBtn" class="wide" title="Turned copies of a start draw the same walk, turned: hover to see one start per different walk (a dot on its corner, the edge it arrives by)" hidden></button>
+          <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover to see them all" hidden>
+            <button id="startDown" title="Previous start">−</button>
+            <span class="field"><input id="startLabel" type="text" inputmode="numeric" maxlength="7" spellcheck="false" autocomplete="off" title="Type a start number, then Enter"><button class="enter" type="button" tabindex="-1" title="Start here (Enter)">↵</button></span>
+            <button id="startUp" title="Next start">+</button>
+          </div>
+          <input id="startNo" type="hidden" value="1">
         </div>
       </section>
 
@@ -239,6 +244,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261007g"></script>
+  <script src="main.js?v=20261007h"></script>
 </body>
 </html>
