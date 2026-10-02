@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.217';
+const VERSION = '0.1.218';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -778,17 +778,17 @@ const MODES = {
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
   // to them as the edges at a corner allow
-  torusGrid: { base: 3, lattice: 'sphere', sphere: 'torus', grid: true, turns: [90, 0, -90], perspective: true, round: true,
+  torusGrid: { base: 3, lattice: 'sphere', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
                rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  triTorusGrid: { base: 5, lattice: 'sphere', sphere: 'tritorus', grid: true, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
+  triTorusGrid: { base: 5, lattice: 'sphere', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                   rule: 'along the edges of a torus of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  hexTorusGrid: { base: 2, lattice: 'sphere', sphere: 'hextorus', grid: true, turns: [60, -60], perspective: true, round: true,
+  hexTorusGrid: { base: 2, lattice: 'sphere', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
-  cubeGrid:  { base: 3, lattice: 'sphere', sphere: 'cube', grid: true, turns: [90, 0, -90], perspective: true,
+  cubeGrid:  { base: 3, lattice: 'sphere', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
                rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
-  tetraGrid: { base: 5, lattice: 'sphere', sphere: 'tetra', grid: true, turns: [120, 60, 0, -60, -120],
+  tetraGrid: { base: 5, lattice: 'sphere', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
-  octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', grid: true, turns: [120, 60, 0, -60, -120],
+  octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', grid: true, initial: 24, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of an octahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   // Set aside: on triangles, turns of ±60° only walk a hidden grid of hexagons (3 times fewer
   // corners), so they need many triangles for few patterns; the hexagon sphere does it directly.
@@ -798,7 +798,7 @@ const MODES = {
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
   hexSphereGrid: { base: 2, lattice: 'sphere', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
                    rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
-  icosaGrid: { base: 5, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
+  icosaGrid: { base: 5, lattice: 'sphere', sphere: 'icosa', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
@@ -1718,7 +1718,7 @@ function compute() {
   const mode = MODES[$('mode').value];
   modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
   renderModePicker();
-  if (mode.sphere) fillSphereSizes(mode.sphere);
+  if (mode.sphere) fillSphereSizes(mode.sphere, mode.initial);
   const n = digitsNeeded();
   if (!mode.life && !randomPrimeSize()) $('digits').value = n;  // a random prime keeps the count for later
   syncDigitsStepper();
@@ -2664,16 +2664,16 @@ const SPHERES = {
 // The surface size as a stepper: [ − ] 6,144 squares [ + ] goes through the sizes of the (hidden)
 // menu one by one; the menu stays the source of truth, as for the walk modes
 function syncSizeStepper() {
-  const sel = $('sphereF'), mode = MODES[$('mode').value];
+  const sel = $('sphereF');
   $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
+  $('sizeDown').disabled = sel.selectedIndex <= 0;
+  $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   const starts = modeStarts();
   $('startRow').hidden = !starts;
   if (!starts) return;
   if (document.activeElement !== $('startLabel')) $('startLabel').value = `start ${fmt(startNo())} of ${fmt(starts.length)}`;
   $('startDown').disabled = startNo() <= 1;
   $('startUp').disabled = startNo() >= starts.length;
-  $('sizeDown').disabled = sel.selectedIndex <= 0;
-  $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
 }
 function stepSize(delta) {
   const sel = $('sphereF'), i = sel.selectedIndex + delta;
@@ -2683,13 +2683,14 @@ function stepSize(delta) {
 }
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
-function fillSphereSizes(kind) {
-  const sel = $('sphereF');
-  if (sel.dataset.kind === kind) return;
-  const { sizes, initial, tiles, unit } = SPHERES[kind];
+// The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
+function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
+  const sel = $('sphereF'), key = `${kind} ${initial}`;
+  if (sel.dataset.kind === key) return;
+  const { sizes, tiles, unit } = SPHERES[kind];
   sel.replaceChildren(...sizes.map((f) => new Option(`${fmt(tiles(f))} ${unit}`, f)));
   sel.value = initial;
-  sel.dataset.kind = kind;
+  sel.dataset.kind = key;
 }
 
 // Walk from tile to tile. Entering a tile through edge k (vertices counterclockwise), the digit d
@@ -2877,8 +2878,8 @@ function drawStarts(ctx) {
   ctx.restore();
 }
 
-function buildGridWalk(seq, { sphere: kind, turns, base }) {
-  fillSphereSizes(kind);
+function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
+  fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = Number($('sphereF').value), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
   const len = seq.length, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
@@ -3701,7 +3702,7 @@ function applySetup(s) {
   set('digits', s.d);
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
-  if (MODES[s.w].sphere) { fillSphereSizes(MODES[s.w].sphere); set('sphereF', s.s); }
+  if (MODES[s.w].sphere) { fillSphereSizes(MODES[s.w].sphere, MODES[s.w].initial); set('sphereF', s.s); }
   if (s.r) {
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
@@ -5218,8 +5219,14 @@ function displayDefaults() {
   renderSkyButtons();
   displayTab = modeTabOf();
 }
+// Digits of a walk by default, per tab (20,000 elsewhere): a walk along a surface's grid takes long
+// steps, so fewer digits already cover it
+const TAB_DIGITS = { 'Walks on surface grids': 10000 };
 $('mode').addEventListener('change', () => {
-  if (modeTabOf() !== displayTab) displayDefaults();
+  if (modeTabOf() !== displayTab) {
+    $('digits').value = TAB_DIGITS[modeTabOf()] ?? 20000;
+    displayDefaults();
+  }
   // the form of the view belongs to the walk mode: its perspective, the camera's starting angle
   // (auto-fit may have turned it to follow a walker) and its flat or round form (see initShape)
   // come back with every new mode
