@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.248';
+const VERSION = '0.1.249';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -782,32 +782,32 @@ const MODES = {
               rule: 'along a spiral of triangles: <b>1</b> draw the step, <b>0</b> move without drawing' },
   hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
               rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
-  tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', initial: 48, turns: [2, 1],
-              rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
-  torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
-              rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right · colour = number of visits' },
+  tetraLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'tetraGrid', sphere: 'tetra', initial: 48, turns: [2, 1],
+              rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
+  torusWalk: { base: 3, lattice: 'sphere', cells: true, twin: 'torusGrid', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
+              rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
   // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
-  hexTorusWalk: { base: 5, lattice: 'sphere', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
-                  rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right · colour = number of visits' },
-  cubeFlat: { base: 3, lattice: 'sphere', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
-              rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right · colour = number of visits' },
-  octaLR:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
-              rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
-  icosaLR:  { base: 2, lattice: 'sphere', sphere: 'icosa', initial: 48, turns: [2, 1], round: true,
-              rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
+  hexTorusWalk: { base: 5, lattice: 'sphere', cells: true, twin: 'hexTorusGrid', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
+                  rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
+  cubeFlat: { base: 3, lattice: 'sphere', cells: true, twin: 'cubeGrid', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
+              rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
+  octaLR:   { base: 2, lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
+              rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
+  icosaLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', initial: 48, turns: [2, 1], round: true,
+              rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
   // to them as the edges at a corner allow
-  torusGrid: { base: 3, lattice: 'sphere', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
+  torusGrid: { base: 3, lattice: 'sphere', twin: 'torusWalk', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
                rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
   triTorusGrid: { base: 5, lattice: 'sphere', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                   rule: 'along the edges of a torus of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  hexTorusGrid: { base: 2, lattice: 'sphere', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
+  hexTorusGrid: { base: 2, lattice: 'sphere', twin: 'hexTorusWalk', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
-  cubeGrid:  { base: 3, lattice: 'sphere', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
+  cubeGrid:  { base: 3, lattice: 'sphere', twin: 'cubeFlat', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
                rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
-  tetraGrid: { base: 5, lattice: 'sphere', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
+  tetraGrid: { base: 5, lattice: 'sphere', twin: 'tetraLR', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
-  octaGrid:  { base: 5, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, grid: true, turns: [120, 60, 0, -60, -120],
+  octaGrid:  { base: 5, lattice: 'sphere', twin: 'octaLR', sphere: 'octa', initial: 48, perspective: true, grid: true, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of an octahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   // Set aside: on triangles, turns of ±60° only walk a hidden grid of hexagons (3 times fewer
   // corners), so they need many triangles for few patterns; the hexagon sphere does it directly.
@@ -817,7 +817,7 @@ const MODES = {
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
   hexSphereGrid: { base: 2, lattice: 'sphere', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
                    rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
-  icosaGrid: { base: 5, lattice: 'sphere', sphere: 'icosa', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], round: true,
+  icosaGrid: { base: 5, lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
@@ -957,17 +957,17 @@ function describe(base, available) {
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
-// Colours: Rainbow along the walk always; cells, visits, one per digit, one colour where listed.
-// Walks on surface cells: the walk as a rainbow line over the tiles, the tiles it passes through filled
-// (Fill cells) in the colour of their first visit, those it encloses (Fill areas) in the colour of
-// the step that closed them; or the tiles coloured by their visits.
+// Colours: a list (colors: Rainbow along the walk always; cells, visits, one per digit, one colour
+// where listed), or the toggles Walk on cells, Heatmap of visits and Digits (onCells).
+// Walks on surfaces, on cells: the walk as a rainbow line over the tiles, the tiles it passes through
+// filled in the colour of their first visit, those it encloses (Fill areas) in the colour of the
+// step that closed them; or the tiles coloured by their visits (Heatmap, on cells only).
 const DISPLAY_BY_TAB = {
-  '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
+  '2D walks': ['onCells', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surface cells': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surface grids': ['shape', 'heatmap', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],  // areas follow the path
+  'Walks on surfaces': ['shape', 'onCells', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
+  '2D spirals': ['onCells', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
@@ -979,26 +979,22 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  // heatmap: a toggle instead of a list of colours. In 2D, with Walk on cells and Digits at the
-  // end, Heatmap and Digits on cells only (a spiral marks its cells, each once: all greyed out);
-  // along a surface's grid, under the fill
-  const mode = MODES[$('mode').value], flat = shows('cells');
-  $('onCellsRow').hidden = $('cellDigitsRow').hidden = !flat;
-  $('heatmapRow').hidden = !shows('heatmap');
-  if (flat) $('onCellsRow').after($('heatmapRow'));
-  else $('fillTranslucentRow').after($('heatmapRow'));
+  // Walk on cells, Heatmap of visits and Digits instead of a list of colours, Heatmap and Digits on
+  // cells only (and Digits in 2D). Walk on cells is greyed out without a twin: a spiral marks its
+  // cells, each once (all greyed out, Walk on cells on); the triangle torus and the hexagon sphere
+  // have no walk on cells yet
+  const mode = MODES[$('mode').value], toggles = shows('onCells');
+  $('onCellsRow').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !toggles;
   $('onCells').disabled = !mode.twin;
-  if (!mode.twin) $('onCells').checked = true;
-  $('heatmap').disabled = flat ? !mode.cells : !useful('visits');
-  $('cellDigits').disabled = !mode.cells;
+  if (!mode.twin) $('onCells').checked = !mode.grid;
+  $('heatmap').disabled = !mode.cells;
+  $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
   // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
   $('viewSlot').append(spin ? $('autoFitRow') : $('autoRotateRow'));
   $('fillAreasRow').hidden = !shows('fill');
-  $('fillCellsRow').hidden = !shows('fillCells');
-  $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillLoopNote').hidden = !(walk.vert && current?.fraction);  // a fraction along a grid (see areaSteps)
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
@@ -1023,8 +1019,8 @@ function relabelColours(mode) {
     sel.value = mode.twin && !mode.cells ? 'gradient' : mode.cells && sel.value === 'visits' ? 'visits' : 'cells';
     return;
   }
-  if (shows('heatmap')) {  // along a surface's grid: the rainbow line, or the heatmap
-    sel.value = sel.value === 'visits' ? 'visits' : 'gradient';
+  if (shows('onCells')) {  // on a surface: the rainbow line (over the tiles walked, on cells), or the heatmap on cells
+    sel.value = mode.cells && sel.value === 'visits' ? 'visits' : 'gradient';
     return;
   }
   const order = life ? ['mono', 'gradient', 'digit', 'cells', 'visits'] : ['gradient', 'cells', 'visits', 'digit', 'mono'];
@@ -1701,7 +1697,7 @@ function numberText(limit = Infinity) {
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
-const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surface cells': 'torus', 'Walks on surface grids': 'icosahedron',
+const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
                     'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
@@ -1724,7 +1720,7 @@ function splitModeLabel(text) {
 }
 
 // The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
-const WALK_HEADINGS = { 'Walks on surface cells': 'Walk on', 'Walks on surface grids': 'Walk along', 'Automata on surfaces': 'Populate' };
+const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
 
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
@@ -2813,7 +2809,7 @@ function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
 // Walk from tile to tile. Entering a tile through edge k (vertices counterclockwise), the digit d
 // leaves through edge k + turns[d]: k + 1 is on the right, k − 1 on the left, k + 2 straight on
 // (for squares).
-/* Walks on surface grids: from corner to corner along the tile edges. Arriving at a corner, the digit
+/* Walks on surfaces, along the grid: from corner to corner along the tile edges. Arriving at a corner, the digit
  * gives a turn (degrees, left positive, measured in the plane tangent to the surface there) and the
  * walker leaves by the edge closest to it: on squares, left, straight on or right; on triangles, five
  * turns of 60°. Where fewer edges meet (a cube's corners, a polyhedron's), the nearest edge is
@@ -4530,7 +4526,7 @@ function drawSphere() {
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
   const L = walk.life, line = !L && $('colorMode').value === 'gradient';
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
-    const cells = shows('fillCells') && $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && areaSteps();
+    const cells = MODES[$('mode').value].cells && firstVisits(), areas = $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
     palette = [null, ...grad, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
@@ -5370,7 +5366,6 @@ $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
-$('fillCells').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
 $('autoRotate').addEventListener('change', () => { if ($('autoRotate').checked) fitNow(); });  // turning starts framed
@@ -5547,7 +5542,6 @@ function displayDefaults() {
   $('colorMode').value = mode.life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
   $('fillAreas').checked = true;
-  $('fillCells').checked = surface;  // a surface walk shows its tiles filled
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
   $('showGrid').checked = true;
   $('autoRotate').checked = false;
@@ -5556,7 +5550,7 @@ function displayDefaults() {
   displayTab = modeTabOf();
 }
 // Digits of a walk by default, per tab (20,000 elsewhere): on a surface, fewer digits already cover it
-const TAB_DIGITS = { 'Walks on surface cells': 10000, 'Walks on surface grids': 10000 };
+const TAB_DIGITS = { 'Walks on surfaces': 10000 };
 $('mode').addEventListener('change', () => {
   if (modeTabOf() !== displayTab) {
     $('digits').value = TAB_DIGITS[modeTabOf()] ?? 20000;
