@@ -82,7 +82,7 @@ input[type=number], input[type=text], select {
 }
 /* the Custom formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
-#formula { text-align: center; }  /* the page's font at rest, like the number of digits; monospace while edited */
+#formula { text-align: center; color: var(--text); font-weight: 400; }  /* the page's font at rest, white for a card's number; monospace while edited */
 #formula.custom { color: var(--accent); font-weight: 600; }  /* the number chosen: no card matches it */
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
@@ -147,7 +147,9 @@ button.primary {
 #formula, .stepper input, .stepper button { height: 34px; }
 /* ↵ at the end of a field being edited: clicking it leaves the field, which computes */
 .field { position: relative; display: block; }
-.formula-field { margin-bottom: 10px; }
+/* "=" before the Custom formula: a box like the − of the steppers below it */
+.stepper .equals { flex: none; width: 36px; height: 34px; display: flex; align-items: center; justify-content: center;
+                   border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-weight: 400; }
 .field input { margin: 0; }
 .stepper .field { flex: 1; min-width: 0; }
 .field .enter { display: none; position: absolute; right: 4px; top: 4px; width: auto; height: 26px; padding: 0 8px; border: 0; background: none; color: var(--muted); font-weight: 400; }  /* not the 36 px of the − / + buttons, nor the bold of the digits row */

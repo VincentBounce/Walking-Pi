@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.219';
+const VERSION = '0.1.221';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -707,6 +707,7 @@ const PRESETS = {
   zeta3:   { group: '𝑓', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
   frac4_3: { group: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
   frac16_9: { group: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
+  basel:   { group: '𝑓', sym: '6/π²', name: 'Probability that two whole numbers are coprime', detail: '6/pi^2 = 1/ζ(2)', f: '6/pi^2' },
   mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
   primorial: { group: 'Primes', sym: 'p#±1', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
@@ -4761,7 +4762,10 @@ function computeFill() {
 }
 
 // Paint the regions closed by the walk up to step to (from where the fill layer got to), opaque,
-// in the path's colour at the step that closed them
+// in the path's colour at the step that closed them. Polygons of one colour go 64 to a path: the
+// time to fill a path grows faster than its size (all of a colour at once took 21 s for 170,000
+// polygons, by 64 under 0.1 s)
+const FILL_BATCH = 64;
 function drawFill(to) {
   fill ??= computeFill();
   const ctx = layers.fill, { scale: s, ox, oy } = view, { order, polys } = fill;
@@ -4769,7 +4773,7 @@ function drawFill(to) {
   while (fillDone < order.length && order[fillDone] <= to) {
     const colour = colourAt(fillDone);
     ctx.beginPath();
-    for (; fillDone < order.length && order[fillDone] <= to && colourAt(fillDone) === colour; fillDone++) {
+    for (let b = 0; b < FILL_BATCH && fillDone < order.length && order[fillDone] <= to && colourAt(fillDone) === colour; b++, fillDone++) {
       const pts = polys[fillDone];
       ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
       for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
