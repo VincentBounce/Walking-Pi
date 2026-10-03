@@ -294,7 +294,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box .open-only { display: none; }
 .stage-box:hover .open-only { display: flex; }
 @media (hover: none) { .stage-box:focus-within .open-only { display: flex; } }
-.display-menu .stage-more { margin-top: 8px; }
+.display-menu .stage-more { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* below Grid and Auto-fit */
 .form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
