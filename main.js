@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.252';
+const VERSION = '0.1.253';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -793,6 +793,9 @@ const MODES = {
               rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
   octaLR:   { base: 2, lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
+  // hexagons and pentagons alike: the edges two away from the one you came in through, on either side
+  hexSphereWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'hexSphereGrid', sphere: 'hexsphere', turns: [-2, 2], round: true,
+                   rule: 'on a sphere of hexagons (and 12 pentagons): exit through the <b>0</b> front left or <b>1</b> front right edge' },
   icosaLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', initial: 48, turns: [2, 1], round: true,
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
@@ -815,7 +818,7 @@ const MODES = {
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> front right (at a corner of the solid, the nearest edge)' },
   // icosaGrid3: { base: 3, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [60, 0, -60], round: true,
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
-  hexSphereGrid: { base: 2, lattice: 'sphere', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
+  hexSphereGrid: { base: 2, lattice: 'sphere', twin: 'hexSphereWalk', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
                    rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
   icosaGrid: { base: 5, lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
@@ -1703,7 +1706,7 @@ const MODE_ICONS = {
   cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
-  icosaGrid: 'icosahedron', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
+  icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
@@ -2813,7 +2816,8 @@ function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
 
 // Walk from tile to tile. Entering a tile through edge k (vertices counterclockwise), the digit d
 // leaves through edge k + turns[d]: k + 1 is on the right, k − 1 on the left, k + 2 straight on
-// (for squares).
+// (for squares). Edges are counted among those with a neighbour: a pentagon of the hexagon sphere
+// (a hexagon with an edge of length 0) has 5.
 /* Walks on surfaces, along the grid: from corner to corner along the tile edges. Arriving at a corner, the digit
  * gives a turn (degrees, left positive, measured in the plane tangent to the surface there) and the
  * walker leaves by the edge closest to it: on squares, left, straight on or right; on triangles, five
@@ -3220,7 +3224,14 @@ function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
   const counts = new Int32Array(base * (len + 1));
   const seen = new Uint8Array(g.n);
   let t = 0, entry = 0, distinct = 1, m = 0, coverStep = -1;
+  while (g.nbr[entry] < 0) entry++;  // come in through a real edge
   seen[0] = 1;
+  // the edges of each tile that have a neighbour, counterclockwise, where some do not
+  const live = Array.from({ length: g.n }, (_, u) => {
+    const ks = [];
+    for (let k = 0; k < sides; k++) if (g.nbr[sides * u + k] >= 0) ks.push(k);
+    return ks.length < sides ? ks : null;
+  });
   const c0 = [g.cen[0], g.cen[1], g.cen[2]];
   const put = (i) => {
     wx[i] = g.cen[3 * t] * R; wy[i] = g.cen[3 * t + 1] * R; wz[i] = g.cen[3 * t + 2] * R;
@@ -3232,7 +3243,8 @@ function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
   };
   put(0);
   for (let i = 0; i < len; i++) {
-    const edge = (entry + turns[seq[i]]) % sides;
+    const ks = live[t], n = ks ? ks.length : sides, at = ks ? ks.indexOf(entry) : entry;
+    const j = (((at + turns[seq[i]]) % n) + n) % n, edge = ks ? ks[j] : j;
     const next = g.nbr[sides * t + edge];
     entry = g.nbrEdge[sides * t + edge];
     t = next;
