@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.234';
+const VERSION = '0.1.235';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1605,15 +1605,15 @@ function sieve(limit) {
   return composite;
 }
 
-// kind: the formula's ('int', 'rat' for a fraction, 'real' or 'seq')
-function setCurrent(entry, base, kind) {
+// kind: the formula's ('int', 'rat' for a fraction, 'real' or 'seq'); ratio: a fraction's [p, q] (BigInt)
+function setCurrent(entry, base, kind, ratio = null) {
   const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
   // total: how many digits the whole number has (a whole number's are only sent up to the count used)
   current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value,
               whole: entry.total !== undefined, formula: formulaInUse,  // whole: a whole number, its digits all known
-              fraction: kind === 'rat' };  // its digits end up repeating (see LOOP_FILL)
+              fraction: kind === 'rat', ratio };  // its digits end up repeating (see LOOP_FILL, torusSizes)
 }
 
 // The digits in use: n in total, the integer part (always included) then the digits after the point
@@ -1775,7 +1775,7 @@ function compute(keepDigits = false) {
   const note = FORMULA_NOTES[F.root] ? FORMULA_NOTES[F.root](base) : '';
 
   if (kind === 'seq') {
-    setCurrent(seqDigits(F.ast, want, base), base, kind);
+    setCurrent(seqDigits(F.ast, want, base), base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     $('status').textContent = note;
     buildWalk();
     describe(base, n);
@@ -1786,7 +1786,7 @@ function compute(keepDigits = false) {
   }
 
   const done = (entry, how) => {
-    setCurrent(entry, base, kind);
+    setCurrent(entry, base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     const total = entry.total ?? current.head.length + current.digits.length;
     $('status').textContent = [
       how,
@@ -1875,7 +1875,17 @@ function buildWalk() {
   }
   if (MODES[current.mode].lattice === 'sphere') {
     if (!MODES[current.mode].grid) { buildSphereWalk(seq, MODES[current.mode]); return; }
-    buildGridWalk(seq, MODES[current.mode], digitsAhead());
+    const mode = MODES[current.mode];
+    buildGridWalk(seq, mode, digitsAhead());
+    // a fraction on a torus: the sizes where its pattern loops soonest, and the nearest of them
+    if (TORI.includes(mode.sphere) && torusFamily?.key !== familyKey()) {
+      const T = torusShift();
+      torusFamily = { key: familyKey(), kind: mode.sphere, sizes: T && torusSizes(mode.sphere, T) };
+      const size = $('sphereF').value;
+      fillSphereSizes(mode.sphere, mode.initial);
+      syncSizeStepper();
+      if ($('sphereF').value !== size) buildGridWalk(seq, mode, digitsAhead());
+    }
     // a walk that loops takes only the digits of its first round: the count says so (and the link),
     // and the count asked comes back for the next number, surface or start (see compute)
     if (walk.loop && walk.n < requestedDigits()) {
@@ -2676,15 +2686,16 @@ const SPHERES = {
           sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   torus: { mesh: torusMesh, radius: (nv) => nv / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+          columns: (nv) => Math.round(nv / TORUS_TUBE),
           sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => Math.round(nv / TORUS_TUBE) * nv, unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
-  hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
+  hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE), columns: hexTorusColumns,
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => hexTorusColumns(nv) * nv, unit: 'hexagons' },
   // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
   hexsphere: { mesh: hexSphereMesh, radius: (f) => (f * Math.sqrt(3)) / 2,
                sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 10 * f * f + 2, unit: 'hexagons' },
   // triangle edge = 1 unit: the tube is nv rows of √3/2 around
-  tritorus: { mesh: triTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
+  tritorus: { mesh: triTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE), columns: triTorusColumns,
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => 2 * triTorusColumns(nv) * nv, unit: 'triangles' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
@@ -2718,13 +2729,18 @@ function stepSize(delta) {
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
-  const sel = $('sphereF'), key = `${kind} ${initial}`;
+  // a fraction's sizes on a torus (the last ones known, until the walk just built gives the new ones)
+  const sel = $('sphereF'), family = MODES[$('mode').value].grid && torusFamily?.kind === kind && torusFamily.sizes;
+  const sizes = family || SPHERES[kind].sizes, key = `${kind} ${initial} ${sizes.join(',')}`;
   if (sel.dataset.kind === key) return;
-  const { sizes, tiles, unit } = SPHERES[kind];
+  // the same surface with other sizes (a fraction's, or back to the usual ones): the nearest size stays
+  const old = sel.dataset.kind?.startsWith(`${kind} ${initial} `) ? Number(sel.value) : null;
+  const near = (v) => sizes.reduce((b, f) => (Math.abs(Math.log(f / v)) < Math.abs(Math.log(b / v)) ? f : b));
+  const { tiles, unit } = SPHERES[kind];
   // a torus as its count of tiles towards the north (around the tube) × towards the east (around the ring)
-  const label = (f) => (['torus', 'tritorus', 'hextorus'].includes(kind) ? `${fmt(f)} × ${fmt(tiles(f) / f)}` : fmt(tiles(f)));
+  const label = (f) => (TORI.includes(kind) ? `${fmt(f)} × ${fmt(tiles(f) / f)}` : fmt(tiles(f)));
   sel.replaceChildren(...sizes.map((f) => new Option(`${label(f)} ${unit}`, f)));
-  sel.value = initial;
+  sel.value = near(old ?? initial);
   sel.dataset.kind = key;
 }
 
@@ -2766,7 +2782,8 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
-const STARTS_ON = [...SOLIDS, 'torus', 'tritorus', 'hextorus'];  // the surfaces with a start selector
+const TORI = ['torus', 'tritorus', 'hextorus'];
+const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
 // turning the torus over (u, v → −u, −v) swaps the two ways along an edge: the different walks are
@@ -2942,6 +2959,60 @@ function drawStarts(ctx) {
     ctx.beginPath(); ctx.arc(x1, y1, Math.max(3, Math.min(s * 0.15, 6)), 0, 2 * Math.PI); ctx.fill();
   }
   ctx.restore();
+}
+
+/* ---- Torus sizes for a fraction ---------------------------------------------------------------
+ * A fraction's digits repeat with a period L. When the turns of one period add up to 0°, each period
+ * shifts the walk by the same T on the flat sheet (columns east, rows north), wherever it is (the
+ * turns are the sheet's, see buildGridWalk). On a torus of nu × nv it comes back onto itself after
+ * the fewest periods m that make m·T a whole number of turns both ways: m·|T|/nu turns around the
+ * ring, m·|T|/nv around the tube. For such a fraction the sizes offered are the ones, in the
+ * torus's own proportions, where its pattern loops in the fewest turns. */
+const TORUS_ROWS = Array.from({ length: 31 }, (_, i) => 12 + 2 * i);  // 12 … 72 tiles towards the north
+let torusFamily = null;  // { key, kind, sizes } for the number, walk mode and start in use (sizes: null for none)
+const familyKey = () => `${$('formula').value} ${$('mode').value} ${$('startNo').value}`;
+
+// T for the walk just built, or null: not a fraction, or one whose period turns (a figure in place)
+function torusShift() {
+  const g = walk.geo, G = gridGraph(g), { nu, nv, uv } = g, k = g.sides;
+  if (!current.ratio) return null;
+  // the period: the order of the base modulo the denominator's part prime to it, which comes after
+  // pre digits that do not repeat yet
+  const b = BigInt(current.base), gcd = (x, y) => (y ? gcd(y, x % y) : x);
+  let d = current.ratio[1], pre = 0;
+  for (let c = gcd(d, b); c > 1n; c = gcd(d, b)) { d /= c; pre++; }
+  if (d > 1000000n) return null;
+  const q = Number(d), base = current.base % q;
+  let L = 1;
+  for (let r = base; q > 1 && r !== 1; r = (r * current.base) % q) L++;
+  const s0 = current.head.length + pre + 1;
+  if (walk.n < s0 + 2 * L) return null;
+  // the unwrapped sheet position at steps s0, s0 + L and s0 + 2L
+  const at = (v) => { const i = 2 * (k * G.tileOf[v] + G.cornerOf[v]); return [uv[i], uv[i + 1]]; };
+  const pos = [];
+  let x = 0, y = 0, [pu, pv] = at(walk.vert[0]);
+  for (let i = 1; i <= s0 + 2 * L; i++) {
+    const [u, v] = at(walk.vert[i]);
+    let du = u - pu, dv = v - pv;
+    du -= nu * Math.round(du / nu); dv -= nv * Math.round(dv / nv);
+    x += du; y += dv; pu = u; pv = v;
+    if (i === s0 || i === s0 + L || i === s0 + 2 * L) pos.push([x, y]);
+  }
+  const T = [pos[1][0] - pos[0][0], pos[1][1] - pos[0][1]], T2 = [pos[2][0] - pos[1][0], pos[2][1] - pos[1][1]];
+  const same = Math.abs(T[0] - T2[0]) < 1e-6 && Math.abs(T[1] - T2[1]) < 1e-6;
+  return same && Math.hypot(...T) > 1e-6 ? T : null;
+}
+
+// The sizes (rows) where a shift T per period loops in the fewest turns around ring and tube
+function torusSizes(kind, T) {
+  const gcd = (x, y) => (y ? gcd(y, x % y) : x), U = Math.round(2 * T[0]), V = Math.round(2 * T[1]);  // in half tiles
+  const turns = (nv) => {
+    const nu = SPHERES[kind].columns(nv), mu = U ? (2 * nu) / gcd(2 * nu, Math.abs(U)) : 1, mv = V ? (2 * nv) / gcd(2 * nv, Math.abs(V)) : 1;
+    const m = (mu / gcd(mu, mv)) * mv;
+    return Math.round((m * Math.abs(T[0])) / nu + (m * Math.abs(T[1])) / nv);
+  };
+  const best = Math.min(...TORUS_ROWS.map(turns));
+  return TORUS_ROWS.filter((nv) => turns(nv) === best);
 }
 
 function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new Uint8Array(0)) {
@@ -3797,7 +3868,15 @@ function applySetup(s) {
   set('digits', s.d);
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
-  if (MODES[s.w].sphere) { fillSphereSizes(MODES[s.w].sphere, MODES[s.w].initial); set('sphereF', s.s); }
+  if (MODES[s.w].sphere) {
+    const kind = MODES[s.w].sphere, size = Number(s.s);
+    // a torus size of a fraction's own (see torusSizes): offered until the walk built gives the real ones
+    if (TORI.includes(kind) && size && !SPHERES[kind].sizes.includes(size)) {
+      torusFamily = { key: null, kind, sizes: [...SPHERES[kind].sizes, size].sort((a, b) => a - b) };
+    }
+    fillSphereSizes(kind, MODES[s.w].initial);
+    set('sphereF', s.s);
+  }
   if (s.r) {
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
