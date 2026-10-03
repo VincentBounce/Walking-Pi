@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.235';
+const VERSION = '0.1.236';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2700,7 +2700,15 @@ const SPHERES = {
 // menu one by one; the menu stays the source of truth, as for the walk modes
 function syncSizeStepper() {
   const sel = $('sphereF');
-  $('torusShapeRow').hidden = !TORI.includes(MODES[$('mode').value].sphere);
+  const torus = TORI.includes(MODES[$('mode').value].sphere);
+  $('torusShapeRow').hidden = !torus;
+  if (torus) {  // their steps on this torus; greyed at the bounds
+    const { steps } = SPHERES[MODES[$('mode').value].sphere];
+    for (const [id, [dh, dw]] of Object.entries(TORUS_STEPS)) {
+      $(id).textContent = `${dh + dw < 0 ? '−' : '+'}${steps[dh ? 0 : 1]} ${dh ? 'h' : 'w'}`;
+      $(id).disabled = !torusReshaped(dh, dw);
+    }
+  }
   $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
@@ -2748,12 +2756,21 @@ function selectTorusSize(kind, size) {
   sel.value = size;
 }
 const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
-// Taller: towards the north, fewer tiles towards the east (Wider the other way), by the torus's steps
-function reshapeTorus(dir) {
-  const kind = MODES[$('mode').value].sphere, { steps, perRow } = SPHERES[kind], [rows, cols] = torusDims(kind, sphereSize());
-  const r = rows + dir * steps[0], e = cols * perRow - dir * steps[1];
-  if (r < 8 || e < 8) return;
-  selectTorusSize(kind, `${r}x${e}`);
+// − h / + h: a step of rows towards the north; + w / − w: a step of tiles towards the east (the
+// torus's steps). Each keeps the torus's proportion h / w within TORUS_RATIO of its usual one, so
+// the tiles stay near their regular shape, and at least 8 tiles each way.
+const TORUS_RATIO = [0.8, 1.25];
+function torusReshaped(dh, dw) {  // the size after the step, or null when out of bounds
+  const kind = MODES[$('mode').value].sphere, { steps, perRow, columns } = SPHERES[kind], [rows, cols] = torusDims(kind, sphereSize());
+  const h = rows + dh * steps[0], w = cols * perRow + dw * steps[1], usual = 48 / (columns(48) * perRow);
+  const q = h / w / usual;
+  return h >= 8 && w >= 8 && q >= TORUS_RATIO[0] && q <= TORUS_RATIO[1] ? `${h}x${w}` : null;
+}
+const TORUS_STEPS = { hDown: [-1, 0], hUp: [1, 0], wUp: [0, 1], wDown: [0, -1] };
+function reshapeTorus(dh, dw) {
+  const size = torusReshaped(dh, dw);
+  if (!size) return;
+  selectTorusSize(MODES[$('mode').value].sphere, size);
   $('sphereF').dispatchEvent(new Event('change'));
 }
 
@@ -5335,8 +5352,7 @@ const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
-$('taller').addEventListener('click', () => reshapeTorus(1));
-$('wider').addEventListener('click', () => reshapeTorus(-1));
+for (const [id, [dh, dw]] of Object.entries(TORUS_STEPS)) $(id).addEventListener('click', () => reshapeTorus(dh, dw));
 $('sizeUp').addEventListener('click', () => stepSize(1));
 $('sphereF').addEventListener('change', () => {
   syncSizeStepper();
