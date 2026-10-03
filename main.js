@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.229';
+const VERSION = '0.1.230';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2764,6 +2764,26 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
+const STARTS_ON = [...SOLIDS, 'torus', 'tritorus', 'hextorus'];  // the surfaces with a start selector
+
+// On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
+// turning the torus over (u, v → −u, −v) swaps the two ways along an edge: the different walks are
+// one per direction of edge, 2 on squares (around the ring, around the tube), 3 on triangles and
+// hexagons. Each starts on start 1's corner, arriving along that direction.
+function torusStarts(g) {
+  const G = gridGraph(g), { nu, nv, uv } = g, k = g.sides, [v0, f0] = firstStart(g, G);
+  const at = (v) => { const i = 2 * (k * G.tileOf[v] + G.cornerOf[v]); return [uv[i], uv[i + 1]]; };
+  const [u0, w0] = at(v0), seen = new Set(), starts = [];
+  for (const f of [f0, ...G.nbrs[v0].filter((w) => w !== f0)]) {
+    const [u, w] = at(f);
+    let du = u0 - u, dv = w0 - w;
+    du -= nu * Math.round(du / nu); dv -= nv * Math.round(dv / nv);  // across the seams
+    if (du < -1e-9 || (Math.abs(du) < 1e-9 && dv < 0)) { du = -du; dv = -dv; }  // either way along it
+    const key = `${du.toFixed(3)},${dv.toFixed(3)}`;
+    if (!seen.has(key)) { seen.add(key); starts.push([v0, f]); }
+  }
+  return starts;
+}
 
 // The rotations (3×3 matrices, by rows) that map a solid onto itself, from its corners' directions:
 // those taking a corner and its nearest one onto any two corners at the same angle that map every
@@ -2815,6 +2835,7 @@ function solidFaceCentres(g, C) {
 // first), only one when a rotation turns it end for end. They follow by distance from A.
 function startList(g) {
   if (g.starts) return g.starts;
+  if (g.torus) return (g.starts = torusStarts(g));
   const G = gridGraph(g), V = g.verts, nv = G.nv, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], mid = (a, b) => unit([0, 1, 2].map((d) => V[3 * a + d] + V[3 * b + d]));
   const C = solidCorners(g), rots = solidRotations(C);
@@ -2863,7 +2884,7 @@ function startList(g) {
 // The starts of the current mode (a walk along a solid's grid), else null; the chosen one, 1 … their number
 function modeStarts() {
   const mode = MODES[$('mode').value];
-  return mode.grid && SOLIDS.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(Number($('sphereF').value))) : null;
+  return mode.grid && STARTS_ON.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(Number($('sphereF').value))) : null;
 }
 const startNo = () => Math.max(1, Math.min(Number($('startNo').value) || 1, modeStarts()?.length ?? 1));
 let startsShown = false;  // while the start selector is hovered: the globe shows the starts instead of the walk
@@ -2920,7 +2941,7 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
   const vert = new Int32Array(len + 1), tile = new Int32Array(len + 1), cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1), counts = new Int32Array(base * (len + 1)), stepTiles = new Int32Array(2 * len);
   const seen = new Uint8Array(G.nv), angles = turns.map((a) => (a * Math.PI) / 180);
-  let [v, from] = SOLIDS.includes(kind) ? startList(g)[startNo() - 1] : firstStart(g, G);
+  let [v, from] = STARTS_ON.includes(kind) ? startList(g)[startNo() - 1] : firstStart(g, G);
   let distinct = 1, m = 0, coverStep = -1;
   seen[v] = 1;
   const start = at(v);
