@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261008m">
+  <link rel="stylesheet" href="style.css?v=20261008n">
 </head>
 <body>
   <header>
@@ -83,11 +83,10 @@
             <span id="sizeLabel"></span>
             <button id="sizeUp" title="Bigger surface">+</button>
           </div>
-          <div id="torusShapeRow" class="row" hidden>  <!-- a torus's proportions, for a pattern that almost loops -->
-            <button id="hDown" title="Fewer tiles towards the north (around the tube)">−1 h</button>
-            <button id="hUp" title="More tiles towards the north (around the tube)">+1 h</button>
-            <button id="wUp" title="More tiles towards the east (around the ring)">+1 w</button>
-            <button id="wDown" title="Fewer tiles towards the east (around the ring)">−1 w</button>
+          <div id="loopRow" class="stepper" title="The sizes and starts where this fraction's chain closes in the fewest laps around the ring and the tube" hidden>
+            <button id="loopDown" title="Previous loop">−</button>
+            <span id="loopLabel"></span>
+            <button id="loopUp" title="Next loop">+</button>
           </div>
           <select id="sphereF" hidden></select>
           <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover the number to see them all" hidden>
@@ -253,6 +252,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261008m"></script>
+  <script src="main.js?v=20261008n"></script>
 </body>
 </html>

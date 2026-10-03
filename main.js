@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.237';
+const VERSION = '0.1.238';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1605,15 +1605,15 @@ function sieve(limit) {
   return composite;
 }
 
-// kind: the formula's ('int', 'rat' for a fraction, 'real' or 'seq')
-function setCurrent(entry, base, kind) {
+// kind: the formula's ('int', 'rat' for a fraction, 'real' or 'seq'); ratio: a fraction's [p, q] (BigInt)
+function setCurrent(entry, base, kind, ratio = null) {
   const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
   // total: how many digits the whole number has (a whole number's are only sent up to the count used)
   current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value,
               whole: entry.total !== undefined, formula: formulaInUse,  // whole: a whole number, its digits all known
-              fraction: kind === 'rat' };  // its digits end up repeating (see LOOP_FILL)
+              fraction: kind === 'rat', ratio };  // its digits end up repeating (see LOOP_FILL, torusLoops)
 }
 
 // The digits in use: n in total, the integer part (always included) then the digits after the point
@@ -1775,7 +1775,7 @@ function compute(keepDigits = false) {
   const note = FORMULA_NOTES[F.root] ? FORMULA_NOTES[F.root](base) : '';
 
   if (kind === 'seq') {
-    setCurrent(seqDigits(F.ast, want, base), base, kind);
+    setCurrent(seqDigits(F.ast, want, base), base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     $('status').textContent = note;
     buildWalk();
     describe(base, n);
@@ -1786,7 +1786,7 @@ function compute(keepDigits = false) {
   }
 
   const done = (entry, how) => {
-    setCurrent(entry, base, kind);
+    setCurrent(entry, base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     const total = entry.total ?? current.head.length + current.digits.length;
     $('status').textContent = [
       how,
@@ -1883,6 +1883,7 @@ function buildWalk() {
       $('digits').value = walk.n;
     } else if (!walk.loop) digitsBeforeLoop = null;  // a count that does not loop is the one asked
     syncDigitsStepper();
+    syncLoopRow();
     return;
   }
   const len = seq.length;
@@ -2672,8 +2673,8 @@ const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
-  // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: rows and
-  // tiles per row that Taller and Wider move by, keeping the sheet's columns even or rows even
+  // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
+  // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
   torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => Math.round(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
           sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
@@ -2700,15 +2701,7 @@ const SPHERES = {
 // menu one by one; the menu stays the source of truth, as for the walk modes
 function syncSizeStepper() {
   const sel = $('sphereF');
-  const torus = TORI.includes(MODES[$('mode').value].sphere);
-  $('torusShapeRow').hidden = !torus;
-  if (torus) {  // their steps on this torus; greyed at the bounds
-    const { steps } = SPHERES[MODES[$('mode').value].sphere];
-    for (const [id, [dh, dw]] of Object.entries(TORUS_STEPS)) {
-      $(id).textContent = `${dh + dw < 0 ? '−' : '+'}${steps[dh ? 0 : 1]} ${dh ? 'h' : 'w'}`;
-      $(id).disabled = !torusReshaped(dh, dw);
-    }
-  }
+  syncLoopRow();
   $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
@@ -2756,23 +2749,6 @@ function selectTorusSize(kind, size) {
   sel.value = size;
 }
 const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
-// − h / + h: a step of rows towards the north; + w / − w: a step of tiles towards the east (the
-// torus's steps). Each keeps the torus's proportion h / w within TORUS_RATIO of its usual one, so
-// the tiles stay near their regular shape, and at least 8 tiles each way.
-const TORUS_RATIO = [0.8, 1.25];
-function torusReshaped(dh, dw) {  // the size after the step, or null when out of bounds
-  const kind = MODES[$('mode').value].sphere, { steps, perRow, columns } = SPHERES[kind], [rows, cols] = torusDims(kind, sphereSize());
-  const h = rows + dh * steps[0], w = cols * perRow + dw * steps[1], usual = 48 / (columns(48) * perRow);
-  const q = h / w / usual;
-  return h >= 8 && w >= 8 && q >= TORUS_RATIO[0] && q <= TORUS_RATIO[1] ? `${h}x${w}` : null;
-}
-const TORUS_STEPS = { hDown: [-1, 0], hUp: [1, 0], wUp: [0, 1], wDown: [0, -1] };
-function reshapeTorus(dh, dw) {
-  const size = torusReshaped(dh, dw);
-  if (!size) return;
-  selectTorusSize(MODES[$('mode').value].sphere, size);
-  $('sphereF').dispatchEvent(new Event('change'));
-}
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
@@ -3001,6 +2977,121 @@ function drawStarts(ctx) {
   ctx.restore();
 }
 
+// A step on the flat sheet of a torus, from corner a to corner b across the seams: columns east, rows north
+function sheetDelta(g, G, a, b) {
+  const k = g.sides, ia = 2 * (k * G.tileOf[a] + G.cornerOf[a]), ib = 2 * (k * G.tileOf[b] + G.cornerOf[b]);
+  const du = g.uv[ib] - g.uv[ia], dv = g.uv[ib + 1] - g.uv[ia + 1];
+  return [du - g.nu * Math.round(du / g.nu), dv - g.nv * Math.round(dv / g.nv)];
+}
+
+// The corner a walk along the grid goes to from v, having come from `from`, for a turn of angle
+// (radians): the edge nearest the turn, between two as near the left one (a rule that turns with the
+// solid). The turn is measured on the plane tangent at v; on a torus, on its flat sheet (east, north;
+// see torusPoint): rolled up, its tiles are bent unevenly, squeezed on the inside of the ring and
+// stretched outside, which would change the edge a turn picks from place to place, so a repeating
+// pattern would not repeat.
+function nextCorner(g, G, v, from, angle) {
+  const V = g.verts, n = g.torus ? [0, 0, 1] : [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n);
+  const flat = (w) => {  // the edge from v to w, flattened onto the plane tangent at v (or on the sheet)
+    if (g.torus) { const [du, dv] = sheetDelta(g, G, v, w); return [(du / g.nu) * 2 * Math.PI, (dv / g.nv) * 2 * Math.PI * TORUS_TUBE, 0]; }
+    const e = [0, 1, 2].map((d) => V[3 * w + d] - V[3 * v + d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl);
+    return e.map((x, d) => x - s * n[d]);
+  };
+  const h = flat(from).map((x) => -x);  // the heading
+  let next = -1, err = Infinity;
+  for (const w of G.nbrs[v]) {
+    if (w === from) continue;
+    const e = flat(w), c = cross(h, e);
+    const turn = Math.atan2((c[0] * n[0] + c[1] * n[1] + c[2] * n[2]) / nl, h[0] * e[0] + h[1] * e[1] + h[2] * e[2]);
+    const off = Math.abs(turn - angle) - (turn > 0 ? 1e-9 : 0);
+    if (off < err - 1e-12) { err = off; next = w; }
+  }
+  return next;
+}
+
+/* ---- Loops of a fraction on a torus -----------------------------------------------------------
+ * A fraction's digits repeat with a period L. When the turns of a period add up to 0°, each period
+ * shifts the walk by the same T on the flat sheet (columns east, rows north). A diagonal one, T both
+ * ways, closes after the fewest periods m that make m·T a whole number of turns both ways, and how
+ * many depends on the torus's size. For each start, the sizes (32 to 64 rows, proportions within
+ * TORUS_RATIO of the usual ones) where it closes in at most LOOP_LAPS laps and LOOP_STEPS steps, one
+ * per number of laps, the nearest the usual proportions: Browse loops goes through them. */
+const TORUS_RATIO = [0.8, 1.25], LOOP_LAPS = 6, LOOP_STEPS = 20000;
+let torusLoopList = null;  // { key, loops: [{ start, size, laps: [ring, tube], steps }] } for the number in use
+function torusLoops() {
+  const mode = MODES[$('mode').value], key = `${formulaInUse} ${$('mode').value}`;
+  if (!mode.grid || !TORI.includes(mode.sphere)) return [];
+  if (!current || current.formula !== formulaInUse || current.mode !== $('mode').value) return [];  // its digits are on their way
+  if (torusLoopList?.key === key) return torusLoopList.loops;
+  const loops = [];
+  torusLoopList = { key, loops };
+  if (!current.ratio) return loops;
+  // the period: the order of the base modulo the denominator's part prime to it, after pre digits
+  const b = BigInt(current.base), gcd = (x, y) => (y ? gcd(y, x % y) : x);
+  let d = current.ratio[1], pre = 0;
+  for (let c = gcd(d, b); c > 1n; c = gcd(d, b)) { d /= c; pre++; }
+  if (d > 20000n) return loops;
+  const q = Number(d);
+  let L = 1;
+  for (let r = current.base % q; q > 1 && r !== 1; r = (r * current.base) % q) L++;
+  const H = current.head, D = current.digits, s0 = H.length + pre + 1;
+  if (H.length + D.length < s0 + 2 * L) return loops;
+  const digit = (i) => (i < H.length ? H[i] : D[i - H.length]);
+  const kind = mode.sphere, S = SPHERES[kind], g = S.mesh(sphereSize()), G = gridGraph(g), angles = mode.turns.map((a) => (a * Math.PI) / 180);
+  const usual = 48 / (S.columns(48) * S.perRow), gcdN = (x, y) => (y ? gcdN(y, x % y) : x);
+  startList(g).forEach(([v0, f0], i) => {
+    let v = v0, from = f0, x = 0, y = 0;
+    const at = [];
+    for (let j = 1; j <= s0 + 2 * L; j++) {  // the shifts of two periods in a row
+      const w = nextCorner(g, G, v, from, angles[digit(j - 1)]), [du, dv] = sheetDelta(g, G, v, w);
+      x += du; y += dv; from = v; v = w;
+      if (j === s0 || j === s0 + L || j === s0 + 2 * L) at.push([x, y]);
+    }
+    const T = [at[1][0] - at[0][0], at[1][1] - at[0][1]];
+    if (Math.abs(at[2][0] - at[1][0] - T[0]) > 1e-6 || Math.abs(at[2][1] - at[1][1] - T[1]) > 1e-6) return;  // its period turns
+    if (Math.abs(T[0]) < 1e-6 || Math.abs(T[1]) < 1e-6) return;  // not diagonal: any size closes it alike
+    const U = Math.round(2 * T[0]), V = Math.round(2 * T[1]), best = new Map();  // in half tiles
+    for (let rows = 32; rows <= 64; rows += S.steps[0]) {
+      for (let e = Math.ceil(rows / usual / TORUS_RATIO[1]); e <= rows / usual / TORUS_RATIO[0]; e++) {
+        if (e % S.steps[1]) continue;
+        const cols = e / S.perRow, mu = (2 * cols) / gcdN(2 * cols, Math.abs(U)), mv = (2 * rows) / gcdN(2 * rows, Math.abs(V));
+        const m = (mu / gcdN(mu, mv)) * mv, laps = [Math.round((m * Math.abs(T[0])) / cols), Math.round((m * Math.abs(T[1])) / rows)];
+        const steps = m * L + s0 + L, off = Math.abs(Math.log(rows / e / usual));
+        if (laps[0] + laps[1] > LOOP_LAPS || steps > LOOP_STEPS) continue;
+        const kept = best.get(`${laps}`);
+        if (!kept || off < kept.off) best.set(`${laps}`, { start: i + 1, size: `${rows}x${e}`, laps, steps, off });
+      }
+    }
+    loops.push(...best.values());
+  });
+  loops.sort((a, b) => a.laps[0] + a.laps[1] - b.laps[0] - b.laps[1] || a.start - b.start || a.steps - b.steps);
+  return loops;
+}
+// The loop shown, if the start and size in use are one of them
+function loopShown(loops) {
+  const kind = MODES[$('mode').value].sphere, [rows, cols] = torusDims(kind, sphereSize());
+  return loops.findIndex((l) => l.start === startNo() && `${torusDims(kind, l.size)}` === `${rows},${cols}`);
+}
+function syncLoopRow() {
+  const loops = torusLoops();
+  $('loopRow').hidden = !loops.length;
+  if (!loops.length) return;
+  const i = loopShown(loops), l = loops[i];
+  $('loopLabel').textContent = l ? `loop ${i + 1} of ${loops.length} · ${l.laps[0]}+${l.laps[1]}` : `${loops.length} loops`;
+  $('loopDown').disabled = i === 0;
+  $('loopUp').disabled = i === loops.length - 1;
+}
+// − / +: the start, size and digits (one round) of the loop before or after
+function browseLoop(delta) {
+  const loops = torusLoops(), i = loopShown(loops), next = loops[i < 0 ? (delta > 0 ? 0 : loops.length - 1) : i + delta];
+  if (!next) return;
+  $('startNo').value = next.start;
+  selectTorusSize(MODES[$('mode').value].sphere, next.size);
+  digitsBeforeLoop ??= requestedDigits();  // the count asked comes back for the next number
+  $('digits').value = next.steps;
+  compute(true);
+}
+
 function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new Uint8Array(0)) {
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
@@ -3013,15 +3104,6 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
   let [v, from] = STARTS_ON.includes(kind) ? startList(g)[startNo() - 1] : firstStart(g, G);
   let distinct = 1, m = 0, coverStep = -1;
   seen[v] = 1;
-  // On a torus the turns are measured on the flat sheet (east, north; see torusPoint): rolled up, its
-  // tiles are bent unevenly, squeezed on the inside of the ring and stretched outside, which would
-  // change the edge a turn picks from place to place, so a repeating pattern would not repeat
-  const sheet = g.torus && ((a, b) => {
-    const k = g.sides, ia = 2 * (k * G.tileOf[a] + G.cornerOf[a]), ib = 2 * (k * G.tileOf[b] + G.cornerOf[b]);
-    let du = g.uv[ib] - g.uv[ia], dv = g.uv[ib + 1] - g.uv[ia + 1];
-    du -= g.nu * Math.round(du / g.nu); dv -= g.nv * Math.round(dv / g.nv);  // across the seams
-    return [(du / g.nu) * 2 * Math.PI, (dv / g.nv) * 2 * Math.PI * TORUS_TUBE, 0];
-  });
   const start = at(v);
   const put = (i) => {
     const p = at(v);
@@ -3042,23 +3124,7 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
   const repeats = (a, b) => { for (let x = b; x < all.length; x++) if (all[x] !== all[x - b + a]) return false; return true; };
   let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
-    // the heading and each way out, flattened onto the plane tangent at v; the signed angle between them
-    const n = sheet ? [0, 0, 1] : [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n), p = at(v);
-    const flat = (w) => {  // the edge from v to w, flattened onto the plane tangent at v (or on the sheet)
-      if (sheet) return sheet(v, w);
-      const e = [0, 1, 2].map((d) => V[3 * w + d] - p[d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl);
-      return e.map((x, d) => x - s * n[d]);
-    };
-    const h = flat(from).map((x) => -x);
-    let next = -1, err = Infinity;
-    for (const w of G.nbrs[v]) {
-      if (w === from) continue;
-      const e = flat(w), c = cross(h, e);
-      const turn = Math.atan2((c[0] * n[0] + c[1] * n[1] + c[2] * n[2]) / nl, h[0] * e[0] + h[1] * e[1] + h[2] * e[2]);
-      // the edge nearest the turn; between two as near, the left one (a rule that turns with the solid)
-      const off = Math.abs(turn - angles[seq[i]]) - (turn > 0 ? 1e-9 : 0);
-      if (off < err - 1e-12) { err = off; next = w; }
-    }
+    const next = nextCorner(g, G, v, from, angles[seq[i]]);
     const sides = G.edgeTiles.get(G.key(v, next));
     stepTiles[2 * i] = sides[0]; stepTiles[2 * i + 1] = sides[1] ?? sides[0];
     from = v; v = next;
@@ -5363,7 +5429,8 @@ const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
-for (const [id, [dh, dw]] of Object.entries(TORUS_STEPS)) $(id).addEventListener('click', () => reshapeTorus(dh, dw));
+$('loopDown').addEventListener('click', () => browseLoop(-1));
+$('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
 $('sphereF').addEventListener('change', () => {
   syncSizeStepper();
