@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.222';
+const VERSION = '0.1.223';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1039,9 +1039,10 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 const wholeTotal = () => (current?.whole && current.formula === $('formula').value ? current.total : null);
 function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  const total = size ? null : wholeTotal();
-  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : total === null ? `${fmt(n)} digits`
-    : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
+  // a walk that loops uses only the digits of its first round (see buildGridWalk): more would change nothing
+  const total = size ? null : walk.loop ? walk.n : wholeTotal();
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : walk.loop ? `${fmt(walk.n)} digits, then a loop`
+    : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
   // − goes below what is walked: the whole number's own length when it is shorter than the count
@@ -5187,6 +5188,7 @@ function setStart(n) {
   if (!current) return;
   buildWalk();
   describe(walk.base);
+  syncDigitsStepper();
   showAll();
 }
 $('startDown').addEventListener('click', () => setStart(startNo() - 1));
@@ -5205,6 +5207,7 @@ $('sphereF').addEventListener('change', () => {
   if (!current) return;
   buildWalk();
   describe(walk.base);
+  syncDigitsStepper();
   showAll();
 });
 // A formula left wrong (by clicking elsewhere) is undone: the one in use comes back
