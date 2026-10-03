@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.230';
+const VERSION = '0.1.231';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2411,14 +2411,14 @@ const TORUS_TUBE = 0.4;
  * Bending a length L into an arc of a circle whose circumference is L / k keeps lengths along it. */
 function torusPoint(i, j, nu, nv, m) {
   const b = Math.min(1, 2 * m), c = Math.max(0, 2 * m - 1);  // tube bend, then ring bend
+  // flat, the sheet lies in the north–east plane: i towards the east, j towards the north
   const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
-  let w = 0, h = Y;  // w: offset away from the ring's centre, h: height
-  if (b > 1e-6) {
+  let w = -Y, h = 0;  // w: offset away from the ring's centre (the north goes into the hole), h: height
+  if (b > 1e-6) {  // it curls down round the tube, so its middle becomes the top of the torus, in front
     const rt = TORUS_TUBE / b, th = Y / rt;
-    w = rt * (Math.cos(th) - 1) + TORUS_TUBE * b;
-    h = rt * Math.sin(th);
+    w = -rt * Math.sin(th);
+    h = rt * (Math.cos(th) - 1) + TORUS_TUBE * b;
   }
-  // it rolls up away from the default camera (towards +y), so the middle of the sheet stays in front
   if (c < 1e-6) return [X, -w, h];
   const rr = 1 / c, ph = X / rr;
   return [(rr + w) * Math.sin(ph), rr - c - (rr + w) * Math.cos(ph), h];  // − c: no jump from the flat sheet
@@ -2768,71 +2768,33 @@ const STARTS_ON = [...SOLIDS, 'torus', 'tritorus', 'hextorus'];  // the surfaces
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
 // turning the torus over (u, v → −u, −v) swaps the two ways along an edge: the different walks are
-// one per direction of edge, 2 on squares (around the ring, around the tube), 3 on triangles and
-// hexagons. Each starts on start 1's corner, arriving along that direction.
+// one per direction of edge, 2 on squares, 3 on triangles and hexagons. They start at the corner
+// nearest the middle of the sheet (or the next one, to head the other way), heading between north
+// and south through the east, in that order: north (or the nearest after it) first, then east.
 function torusStarts(g) {
-  const G = gridGraph(g), { nu, nv, uv } = g, k = g.sides, [v0, f0] = firstStart(g, G);
+  const G = gridGraph(g), { nu, nv, uv } = g, k = g.sides;
   const at = (v) => { const i = 2 * (k * G.tileOf[v] + G.cornerOf[v]); return [uv[i], uv[i + 1]]; };
-  const [u0, w0] = at(v0), seen = new Set(), starts = [];
-  for (const f of [f0, ...G.nbrs[v0].filter((w) => w !== f0)]) {
-    const [u, w] = at(f);
-    let du = u0 - u, dv = w0 - w;
-    du -= nu * Math.round(du / nu); dv -= nv * Math.round(dv / nv);  // across the seams
-    if (du < -1e-9 || (Math.abs(du) < 1e-9 && dv < 0)) { du = -du; dv = -dv; }  // either way along it
-    const key = `${du.toFixed(3)},${dv.toFixed(3)}`;
-    if (!seen.has(key)) { seen.add(key); starts.push([v0, f]); }
+  // a step in the flat sheet, across the seams: east, north (in the sheet's units, see torusPoint)
+  const step = (a, b) => {
+    const [ua, va] = at(a), [ub, vb] = at(b);
+    let du = ub - ua, dv = vb - va;
+    du -= nu * Math.round(du / nu); dv -= nv * Math.round(dv / nv);
+    return [(du / nu) * 2 * Math.PI, (dv / nv) * 2 * Math.PI * TORUS_TUBE];
+  };
+  let v0 = 0, best = Infinity;
+  for (let v = 0; v < G.nv; v++) {
+    const [u, w] = at(v), d = Math.hypot(((u - nu / 2) / nu) * 2 * Math.PI, ((w - nv / 2) / nv) * 2 * Math.PI * TORUS_TUBE);
+    if (d < best) { best = d; v0 = v; }
   }
-  return starts;
-}
-
-// The rotations (3×3 matrices, by rows) that map a solid onto itself, from its corners' directions:
-// those taking a corner and its nearest one onto any two corners at the same angle that map every
-// corner onto a corner (12 for the tetrahedron, 24 for the cube and the octahedron, 60 for the
-// icosahedron)
-function solidRotations(C) {
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  const frame = (a, b) => { const u = unit(b.map((x, d) => x - dot(a, b) * a[d])); return [a, u, cross(a, u)]; };
-  const c1 = C.slice(1).reduce((best, c) => (dot(C[0], c) > dot(C[0], best) ? c : best)), cos = dot(C[0], c1), F0 = frame(C[0], c1);
-  const rots = [];
-  for (const a of C) for (const b of C) {
-    if (a === b || Math.abs(dot(a, b) - cos) > 1e-6) continue;
-    const F = frame(a, b), M = [0, 1, 2].map((i) => [0, 1, 2].map((j) => F[0][i] * F0[0][j] + F[1][i] * F0[1][j] + F[2][i] * F0[2][j]));
-    if (C.every((c) => C.some((e) => dot(M.map((row) => dot(row, c)), e) > 1 - 1e-6))) rots.push(M);
+  const heading = ([e, n]) => (Math.atan2(e, n) * 180) / Math.PI;  // clockwise from north, −180 … 180
+  const starts = new Map();  // heading (0 … 180) → [corner, the corner it arrives from]
+  for (const f of G.nbrs[v0]) {
+    const h = heading(step(f, v0)), key = Math.round(((h % 180) + 180) % 180) % 180;  // its direction, either way
+    if (!starts.has(key)) starts.set(key, Math.abs(h - key) < 90 ? [v0, f] : [f, v0]);  // else from v0 to f, the other way
   }
-  return rots;
+  return [...starts.keys()].sort((a, b) => a - b).map((key) => starts.get(key));
 }
 
-// The solid's corners: of its faces, or the 12 pentagons of the sphere of hexagons (a pentagon's
-// direction from its 5 corners: its centre counts the repeated one twice)
-function solidCorners(g) {
-  const V = g.verts, C = [];
-  const put = (p) => { const u = unit(p); if (!C.some((c) => c[0] * u[0] + c[1] * u[1] + c[2] * u[2] > 1 - 1e-9)) C.push(u); };
-  if (g.faces) for (const f of g.faces) f.corners.forEach(put);
-  else for (const t of g.walls) put([0, 1, 2].map((d) => [0, 1, 2, 3, 4].reduce((sum, q) => sum + V[3 * g.poly[6 * t + q] + d], 0)));
-  return C;
-}
-
-// The usual start: gridStart (the sphere of hexagons) or the first corner, arriving by its first edge
-const firstStart = (g, G) => g.gridStart ?? [g.poly[0], G.nbrs[g.poly[0]][0]];
-
-// The solid's face centres: of its faces, or of the icosahedron's 20 (3 corners side by side)
-function solidFaceCentres(g, C) {
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], sum = (ps) => unit([0, 1, 2].map((d) => ps.reduce((s, p) => s + p[d], 0)));
-  if (g.faces) return g.faces.map((f) => sum(f.corners));
-  const O = [];
-  for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
-    if (dot(C[i], C[j]) > 0.3 && dot(C[i], C[k]) > 0.3 && dot(C[j], C[k]) > 0.3) O.push(sum([C[i], C[j], C[k]]));
-  }
-  return O;
-}
-
-// The different starts in order, as pairs [corner, the corner it arrives from], one per walk, all
-// in the kite of start 1: the points of the face F it lies on that are nearer F's corner A (the one
-// nearest start 1) than F's other corners; a quarter of a square face, a third of a triangle, as
-// the solid's rotations turn it onto every other such kite. Each walk takes its start whose edge's
-// middle lies deepest inside it (on the sphere, a point lies on the face whose centre is nearest).
-// An edge gives two starts, one per direction (the same as start 1's, towards A or away from it,
-// first), only one when a rotation turns it end for end. They follow by distance from A.
 function startList(g) {
   if (g.starts) return g.starts;
   if (g.torus) return (g.starts = torusStarts(g));
