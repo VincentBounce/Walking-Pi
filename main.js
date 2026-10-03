@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.235';
+const VERSION = '0.1.236';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2748,12 +2748,18 @@ function selectTorusSize(kind, size) {
   sel.value = size;
 }
 const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
-// Taller: towards the north, fewer tiles towards the east (Wider the other way), by the torus's steps
+// Taller (dir 1): a step more towards the north, then on the next click a step less towards the east,
+// and so on; Wider (dir −1): a step more towards the east, then a step less towards the north. A
+// click after another change of size starts again with the first. Steps: the torus's.
+let lastReshape = null;  // { dir, clicks, size } after the last click
 function reshapeTorus(dir) {
   const kind = MODES[$('mode').value].sphere, { steps, perRow } = SPHERES[kind], [rows, cols] = torusDims(kind, sphereSize());
-  const r = rows + dir * steps[0], e = cols * perRow - dir * steps[1];
+  const on = lastReshape?.dir === dir && lastReshape.size === $('sphereF').value, clicks = on ? lastReshape.clicks + 1 : 0;
+  const northward = (dir > 0) === (clicks % 2 === 0);  // Taller starts towards the north, Wider towards the east
+  const r = rows + (northward ? dir * steps[0] : 0), e = cols * perRow + (northward ? 0 : -dir * steps[1]);
   if (r < 8 || e < 8) return;
   selectTorusSize(kind, `${r}x${e}`);
+  lastReshape = { dir, clicks, size: $('sphereF').value };
   $('sphereF').dispatchEvent(new Event('change'));
 }
 
