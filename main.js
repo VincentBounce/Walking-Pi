@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.242';
+const VERSION = '0.1.243';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -741,11 +741,12 @@ const FORMULA_NOTES = {
 // way round. Along lines, the walk goes from corner to corner, and the corners of a grid are the
 // cell centres of another: of squares for squares, of hexagons for triangles, of triangles for
 // hexagons. So a walk along triangles takes the steps of hexagon cells, and one along hexagons
-// those of triangle cells; only the grid drawn changes (lines: true).
+// those of triangle cells; only the grid drawn changes (lines: true). toggles: the colours as the
+// Display toggles Walk on cells, Heatmap of visits and Digits instead of a list (see relabelColours).
 const MODES = {
-  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells',
+  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells', toggles: true,
               rule: 'along the lines of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells',
+  cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells', toggles: true,
               rule: 'along the lines of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
   triTurtle: { base: 5, lattice: 'hex', lines: true, twin: 'triTurtleCells',
               rule: 'along the lines of a triangle grid, relative to where you come from: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
@@ -755,9 +756,9 @@ const MODES = {
               rule: 'along the lines of a hexagon grid: <b>0</b> turn left, <b>1</b> turn right' },
   hexFixed: { base: 3, lattice: 'tri', lines: true, twin: 'hexFixedCells',
               rule: 'along the lines of a hexagon grid: take the <b>0</b> “|”, <b>1</b> “\\” or <b>2</b> “/” edge' },
-  turtleCells: { base: 3, lattice: 'square', cells: true, twin: 'turtle',
+  turtleCells: { base: 3, lattice: 'square', cells: true, twin: 'turtle', toggles: true,
               rule: 'from cell to cell of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinalCells: { base: 4, lattice: 'square', cells: true, twin: 'cardinal',
+  cardinalCells: { base: 4, lattice: 'square', cells: true, twin: 'cardinal', toggles: true,
               rule: 'from cell to cell of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
   triTurtleCells: { base: 2, lattice: 'tri', cells: true, twin: 'triTurtle',
               rule: 'from cell to cell of a triangle grid: exit through the <b>0</b> left or <b>1</b> right edge' },
@@ -978,6 +979,14 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
+  // the square walks: toggles instead of the list of colours, Heatmap and Digits on cells only
+  const mode = MODES[$('mode').value], colour = $('colorMode').value;
+  $('onCellsRow').hidden = !mode.twin;
+  $('colorsRow').hidden ||= !!mode.toggles;
+  $('heatmapRow').hidden = $('cellDigitsRow').hidden = !mode.toggles;
+  $('heatmap').disabled = $('cellDigits').disabled = !mode.cells;
+  $('heatmap').checked = colour === 'visits';
+  $('cellDigits').checked = colour === 'digits';
   // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
@@ -1005,10 +1014,16 @@ function relabelColours(mode) {
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
+  if (mode.toggles) {  // along lines the rainbow line; on cells the rainbow cells, or the heatmap, or the digits
+    if (!mode.cells) sel.value = 'gradient';
+    else if (!['visits', 'digits'].includes(sel.value)) sel.value = 'cells';
+    return;
+  }
   const order = life ? ['mono', 'gradient', 'digit', 'cells', 'visits'] : ['gradient', 'cells', 'visits', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   for (const v of ['cells', 'visits', 'digit', 'mono']) byValue[v].hidden = !shows(v);
+  byValue.digits.hidden = true;  // the square walks' Digits toggle only
   byValue.gradient.disabled = greyed('line');  // Rainbow along the walk: no use on a spiral
   byValue.visits.disabled = !useful('visits');
   byValue.gradient.hidden = two;  // two civilisations: a cell's colour is its civilisation
@@ -1730,7 +1745,6 @@ function renderModePicker() {
   }));
   const group = groups.find((g) => g.label === modeTab);
   $('walkHeading').textContent = WALK_HEADINGS[modeTab] ?? 'Walk';
-  $('onCellsRow').hidden = !Array.from(group.children).some((o) => MODES[o.value].twin);
   $('modeList').replaceChildren(...Array.from(group.children).filter(shown).map((o) => {
     const b = document.createElement('button');
     const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
@@ -4866,6 +4880,7 @@ function visitCells() {
   return (visitData = { cell, max, seen: new Int32Array(total.length) });
 }
 
+const DIGITS_ZOOM = 14;  // Digits: the cell size (pixels) from which each one shows its digit
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -4873,6 +4888,21 @@ function drawSegments(from, to) {
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
+  if (mode === 'digits') {  // each cell in yellow with the digit that led there, once big enough to read
+    ctx.font = `${Math.round(s * 0.6)}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
+      ctx.fillStyle = MONO;
+      ctx.beginPath();
+      tilePath(ctx, xs[p], ys[p]);
+      ctx.fill();
+      if (p === 0 || s < DIGITS_ZOOM) continue;
+      ctx.fillStyle = '#1a1300';
+      ctx.fillText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
+    }
+    return;
+  }
   // cells: always on a spiral (its line is greyed out), else for Fill cells and Visits
   if (greyed('line') || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
     // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
@@ -4928,7 +4958,7 @@ const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
-const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
+const fillAreasApply = () => useful('fill') && !['visits', 'digit', 'digits'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
 function computeFill() {
@@ -5468,6 +5498,13 @@ $('onCells').addEventListener('change', () => {  // the same walk from cell to c
   $('mode').value = twin;
   $('mode').dispatchEvent(new Event('change'));
 });
+// Heatmap of visits and Digits: one or the other over the cells, else the rainbow cells
+for (const [id, colour] of [['heatmap', 'visits'], ['cellDigits', 'digits']]) {
+  $(id).addEventListener('change', () => {
+    $('colorMode').value = $(id).checked ? colour : 'cells';
+    $('colorMode').dispatchEvent(new Event('change'));
+  });
+}
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
