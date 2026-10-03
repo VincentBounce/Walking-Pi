@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.253';
+const VERSION = '0.1.254';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -986,7 +986,8 @@ function updateDisplayMenu() {
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
-  $('cellsLabel').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
+  $('cellsLabel').hidden = $('showPathRow').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
+  $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
   $('heatmap').disabled = !mode.cells;
   $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
@@ -4542,6 +4543,7 @@ function drawSphere() {
   let palette = [null, ...grad];
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
   const L = walk.life, line = !L && $('colorMode').value === 'gradient';
+  const path = !L && (MODES[$('mode').value].cells ? $('showPath').checked : line);  // on cells, with Show path only
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
     const cells = MODES[$('mode').value].cells && firstVisits(), areas = $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
@@ -4585,7 +4587,7 @@ function drawSphere() {
     return;
   }
   if (g.torus || !g.faces || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
-    drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, line && pathHalves());
+    drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, path && pathHalves());
     return;
   }
   const buckets = Array.from({ length: palette.length }, () => []);
@@ -4632,7 +4634,7 @@ function drawSphere() {
     ctx.fillStyle = `rgba(0, 0, 0, ${(0.55 * (1 - towardViewer(...f.normal))).toFixed(3)})`;
     ctx.fill();
   });
-  if (line) drawSurfacePath(ctx);
+  if (path) drawSurfacePath(ctx);
 }
 
 // The step of the first visit of each tile (−1: never visited), once per walk
@@ -4911,6 +4913,7 @@ function drawSegments(from, to) {
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
+  let overCells = false;  // Show path: a thin dark line over the coloured cells
   // cells: always on a spiral (its line is greyed out), else for Fill cells and Visits
   if (greyed('line') || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
     // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
@@ -4947,15 +4950,16 @@ function drawSegments(from, to) {
       ctx.fillText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
     }
     flush();
-    return;
+    if (!$('showPath').checked || $('showPath').disabled) return;
+    overCells = true;
   }
-  ctx.lineWidth = Math.max(0.6, Math.min(s * 0.3, 6));
+  ctx.lineWidth = overCells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6));
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   let i = from;
   while (i < to) {
     const k = styleKey(i);
-    ctx.strokeStyle = styleColor(k);
+    ctx.strokeStyle = overCells ? 'rgba(14, 17, 22, 0.75)' : styleColor(k);
     ctx.beginPath();
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
     while (i < to && styleKey(i) === k) {
@@ -5532,6 +5536,7 @@ $('heatmap').addEventListener('change', () => {
   $('colorMode').dispatchEvent(new Event('change'));
 });
 $('cellDigits').addEventListener('change', () => { needsFull = true; });
+$('showPath').addEventListener('change', () => { needsFull = true; });
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
@@ -5564,6 +5569,7 @@ function displayDefaults() {
   $('colorMode').value = mode.life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
   $('fillAreas').checked = true;
+  $('showPath').checked = false;  // on cells, the cells alone
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
   $('showGrid').checked = true;
   $('autoRotate').checked = false;

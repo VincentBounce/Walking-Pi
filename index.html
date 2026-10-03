@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261009e">
+  <link rel="stylesheet" href="style.css?v=20261009f">
 </head>
 <body>
   <header>
@@ -47,13 +47,13 @@
               <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
             </optgroup>
             <optgroup label="Walks on surfaces">  <!-- along the grid, or on cells (Walk on cells): each followed by its twin -->
+              <option value="cubeGrid">Cube — base 3 (left / forward / right)</option>
+              <option value="cubeFlat">Cube — base 3 (left / forward / right)</option>
               <option value="torusGrid">Square torus — base 3 (left / forward / right)</option>
               <option value="torusWalk">Square torus — base 3 (left / forward / right)</option>
               <option value="triTorusGrid">Triangle torus — base 5 (5 relative turns)</option>
               <option value="hexTorusGrid">Hex torus — base 2 (left / right)</option>
               <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
-              <option value="cubeGrid">Cube — base 3 (left / forward / right)</option>
-              <option value="cubeFlat">Cube — base 3 (left / forward / right)</option>
               <option value="tetraGrid">Tetrahedron — base 5 (5 relative turns)</option>
               <option value="tetraLR">Tetrahedron — base 2 (left / right)</option>
               <option value="octaGrid">Octahedron — base 5 (5 relative turns)</option>
@@ -255,6 +255,7 @@
           </div>
           <div id="cellsSection" class="form-section">  <!-- what the cells show -->
             <div id="cellsLabel" class="field-label" hidden>Walk on cells</div>
+            <label class="check" id="showPathRow" hidden title="The walk's line over the cells it colours"><input id="showPath" type="checkbox"> Show path</label>
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
             <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
           </div>
@@ -264,6 +265,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261009e"></script>
+  <script src="main.js?v=20261009f"></script>
 </body>
 </html>
