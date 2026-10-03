@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.241';
+const VERSION = '0.1.242';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -737,11 +737,36 @@ const FORMULA_NOTES = {
 // base: the base the digits are written in; lattice: how a step is taken ('square', 'tri', 'hex',
 // 'cube' or 'sphere' for a tiled surface); life: a Game of Life instead of a walk. The (hidden)
 // mode menu in index.html lists them, grouped as the tabs of the Walk section.
+// The 2D walks go along the lines of a grid, or from cell to cell (cells: true), twin: the other
+// way round. Along lines, the walk goes from corner to corner, and the corners of a grid are the
+// cell centres of another: of squares for squares, of hexagons for triangles, of triangles for
+// hexagons. So a walk along triangles takes the steps of hexagon cells, and one along hexagons
+// those of triangle cells; only the grid drawn changes (lines: true).
 const MODES = {
-  turtle:   { base: 3, lattice: 'square',
-              rule: 'on a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinal: { base: 4, lattice: 'square',
-              rule: 'on a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
+  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells',
+              rule: 'along the lines of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
+  cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells',
+              rule: 'along the lines of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
+  triTurtle: { base: 5, lattice: 'hex', lines: true, twin: 'triTurtleCells',
+              rule: 'along the lines of a triangle grid, relative to where you come from: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
+  triFixed: { base: 6, lattice: 'hex', lines: true, twin: 'triFixedCells',
+              rule: 'along the lines of a triangle grid: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
+  hexTurtle: { base: 2, lattice: 'tri', lines: true, twin: 'hexTurtleCells',
+              rule: 'along the lines of a hexagon grid: <b>0</b> turn left, <b>1</b> turn right' },
+  hexFixed: { base: 3, lattice: 'tri', lines: true, twin: 'hexFixedCells',
+              rule: 'along the lines of a hexagon grid: take the <b>0</b> “|”, <b>1</b> “\\” or <b>2</b> “/” edge' },
+  turtleCells: { base: 3, lattice: 'square', cells: true, twin: 'turtle',
+              rule: 'from cell to cell of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
+  cardinalCells: { base: 4, lattice: 'square', cells: true, twin: 'cardinal',
+              rule: 'from cell to cell of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
+  triTurtleCells: { base: 2, lattice: 'tri', cells: true, twin: 'triTurtle',
+              rule: 'from cell to cell of a triangle grid: exit through the <b>0</b> left or <b>1</b> right edge' },
+  triFixedCells: { base: 3, lattice: 'tri', cells: true, twin: 'triFixed',
+              rule: 'from cell to cell of a triangle grid: cross the <b>0</b> horizontal, <b>1</b> “/” or <b>2</b> “\\” edge' },
+  hexTurtleCells: { base: 5, lattice: 'hex', cells: true, twin: 'hexTurtle',
+              rule: 'from cell to cell of a hexagon grid, relative to the edge you came in through: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
+  hexFixedCells: { base: 6, lattice: 'hex', cells: true, twin: 'hexFixed',
+              rule: 'from cell to cell of a hexagon grid: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -756,14 +781,6 @@ const MODES = {
               rule: 'along a spiral of triangles: <b>1</b> draw the step, <b>0</b> move without drawing' },
   hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
               rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
-  triLR:    { base: 2, lattice: 'tri',
-              rule: 'on triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  triFixed: { base: 3, lattice: 'tri',
-              rule: 'on triangles: cross the <b>0</b> horizontal, <b>1</b> “/” or <b>2</b> “\\” edge' },
-  hexRel:   { base: 5, lattice: 'hex',
-              rule: 'on hexagons, relative to the edge you came in through: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  hexFixed: { base: 6, lattice: 'hex',
-              rule: 'on hexagons: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
   tetraLR:  { base: 2, lattice: 'sphere', sphere: 'tetra', initial: 48, turns: [2, 1],
               rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge · colour = number of visits' },
   torusWalk: { base: 3, lattice: 'sphere', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
@@ -1665,7 +1682,8 @@ let modeTab = null;  // label of the category shown (may differ from the current
 const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surface cells': 'torus', 'Walks on surface grids': 'icosahedron',
                     'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
 const MODE_ICONS = {
-  turtle: 'grid', cardinal: 'compass', triLR: 'triangleFilled', triFixed: 'triangle', hexRel: 'hexagonFilled', hexFixed: 'hexagon',
+  turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
+  turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -1690,6 +1708,9 @@ function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
   if (!modeTab) modeTab = currentGroup;
+  // the 2D walks: along lines or from cell to cell, as the mode in use (or as last chosen)
+  if (MODES[$('mode').value].twin) $('onCells').checked = !!MODES[$('mode').value].cells;
+  const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === $('onCells').checked;
   $('modeTabs').replaceChildren(...groups.map((g) => {
     const b = document.createElement('button');
     b.innerHTML = `${icon(TAB_ICONS[g.label])} ${g.label}`;
@@ -1698,7 +1719,7 @@ function renderModePicker() {
     b.addEventListener('click', () => {  // another tab starts on its first choice
       if (g.label === modeTab) return;
       modeTab = g.label;
-      $('mode').value = g.querySelector('option').value;
+      $('mode').value = Array.from(g.querySelectorAll('option')).find(shown).value;
       if (MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
         $('formula').value = presetFormula('random');
         huntZone = 'all';
@@ -1709,7 +1730,8 @@ function renderModePicker() {
   }));
   const group = groups.find((g) => g.label === modeTab);
   $('walkHeading').textContent = WALK_HEADINGS[modeTab] ?? 'Walk';
-  $('modeList').replaceChildren(...Array.from(group.children).map((o) => {
+  $('onCellsRow').hidden = !Array.from(group.children).some((o) => MODES[o.value].twin);
+  $('modeList').replaceChildren(...Array.from(group.children).filter(shown).map((o) => {
     const b = document.createElement('button');
     const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
     // an automaton's pill tells the shape of its cells, where a walk's tells its base
@@ -1912,7 +1934,7 @@ function buildWalk() {
     counts[base * (i + 1) + g]++;
   }
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
-                        lattice: MODES[current.mode].lattice,
+                        lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
                         skipZeros: !!MODES[current.mode].skipZeros,
                         points: false, keys: seq, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
@@ -2084,12 +2106,18 @@ const STEPPERS = {
       return [key(x, y), x, y, 0];
     };
   },
-  triLR: () => triStepper('lr'),
-  triFixed: () => triStepper('fixed'),
+  turtleCells: () => STEPPERS.turtle(),     // squares: the same steps, the grid half a cell away
+  cardinalCells: () => STEPPERS.cardinal(),
+  triTurtle: () => hexStepper('relative'),  // along triangles: the steps of hexagon cells (see MODES)
+  triFixed: () => hexStepper('fixed'),
+  hexTurtle: () => triStepper('lr'),        // along hexagons: the steps of triangle cells
+  hexFixed: () => triStepper('fixed'),
+  triTurtleCells: () => triStepper('lr'),
+  triFixedCells: () => triStepper('fixed'),
+  hexTurtleCells: () => hexStepper('relative'),
+  hexFixedCells: () => hexStepper('fixed'),
   triSpiral: () => triStepper('spiral'),
   hexSpiral: () => hexStepper('spiral'),
-  hexRel: () => hexStepper('relative'),
-  hexFixed: () => hexStepper('fixed'),
   cubeRel: () => cubeStepper(true),
   cubeFixed: () => cubeStepper(false),
 };
@@ -2239,7 +2267,7 @@ function buildPointWalk(seq, { base, points: kind }) {
   }
   walk.persp = null;
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
-                        counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
+                        counts: null, lattice: 'square', lines: false, skipZeros: false, points: true, keys, labels: cellsOf,
                         sphere: false, life: null,
                         xs, ys });
   updateHint();
@@ -4251,29 +4279,45 @@ function drawGrid() {
   const s = view.scale;
   let stepCells = 1;
   while (s * stepCells < 10) stepCells *= 5;
-  const px = s * stepCells;
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  if (walk.lattice === 'tri') {
-    drawTriGrid(ctx, stepCells);
-    return;
-  }
-  if (walk.lattice === 'hex') {
-    drawHexGrid(ctx);
-    return;
-  }
   if (walk.is3d) {
     draw3DFrame(ctx);
     return;
   }
-  // the lines bound the cells (the walk joins cell centres, at whole coordinates), as for the
-  // triangles and the hexagons: they sit half a cell away from the centres
-  const x0 = (((view.ox + s / 2) % px) + px) % px;
-  const y0 = (((view.oy + s / 2) % px) + px) % px;
-  for (let x = x0; x < cw; x += px) { ctx.moveTo(Math.round(x) + 0.5, 0); ctx.lineTo(Math.round(x) + 0.5, ch); }
-  for (let y = y0; y < ch; y += px) { ctx.moveTo(0, Math.round(y) + 0.5); ctx.lineTo(cw, Math.round(y) + 0.5); }
+  // The lines bound the cells whose centres the walk joins; along lines, they go through the
+  // walk's points, which are the corners of the grid drawn (see MODES)
+  const r3 = Math.sqrt(3), lat = walk.lattice;
+  if (lat === 'square') {  // the cell centres at whole coordinates, their sides half a cell away
+    const at = walk.lines ? 0 : 0.5;
+    drawLines(ctx, 1, 0, at, stepCells);
+    drawLines(ctx, 0, 1, at, stepCells);
+  } else if (lat === 'tri' && !walk.lines) {  // y = y0 + k·H and x ± (y − y0)/√3 = k
+    drawLines(ctx, 0, 1, TRI_Y0, H * stepCells);
+    drawLines(ctx, 1, 1 / r3, TRI_Y0 / r3, stepCells);
+    drawLines(ctx, 1, -1 / r3, -TRI_Y0 / r3, stepCells);
+  } else if (lat === 'hex' && walk.lines) {  // through the hexagon centres (b·H, −a − b/2): x = k·H and y ± x/√3 = k
+    drawLines(ctx, 1, 0, 0, H * stepCells);
+    drawLines(ctx, 1 / r3, 1, 0, stepCells);
+    drawLines(ctx, -1 / r3, 1, 0, stepCells);
+  } else drawHexGrid(ctx, walk.lines);
   ctx.stroke();
+}
+
+// The lines a·x + b·y = c0 + k·step across the view (world coordinates), level ones on whole pixels
+function drawLines(ctx, a, b, c0, step) {
+  const { scale: s, ox, oy } = view, xL = -ox / s, xR = (cw - ox) / s, yT = -oy / s, yB = (ch - oy) / s;
+  const ends = [a * xL + b * yT, a * xL + b * yB, a * xR + b * yT, a * xR + b * yB];
+  const crisp = (v) => (a && b ? v : Math.round(v) + 0.5);
+  for (let k = Math.ceil((Math.min(...ends) - c0) / step); c0 + k * step <= Math.max(...ends); k++) {
+    const c = c0 + k * step;
+    const [p, q] = Math.abs(b) > Math.abs(a)
+      ? [[0, oy + ((c - a * xL) / b) * s], [cw, oy + ((c - a * xR) / b) * s]]
+      : [[ox + ((c - b * yT) / a) * s, 0], [ox + ((c - b * yB) / a) * s, ch]];
+    ctx.moveTo(crisp(p[0]), crisp(p[1]));
+    ctx.lineTo(crisp(q[0]), crisp(q[1]));
+  }
 }
 
 // 3D background: a vertical sky gradient behind the scene (twilight, deep blue, or none)
@@ -4319,47 +4363,29 @@ function draw3DFrame(ctx) {
   });
 }
 
-// Flat-topped hexagons of radius 1/√3; each one draws its 3 top edges
-// (the 3 bottom ones belong to the S, SE and SW neighbours). Hidden when too small.
-function drawHexGrid(ctx) {
+// Hexagons of radius 1/√3, each drawing its 3 top edges (the others belong to the neighbours below):
+// flat-topped around the hexagon cells' centres (b·H, −a − b/2, see hexStepper), or pointy-topped
+// around the corners of the triangle cells (c/2, y0 + r·H with c + r even, see triStepper), the
+// hexagons whose corners are the triangles' centres. Hidden when too small.
+function drawHexGrid(ctx, pointy) {
   const { scale: s, ox, oy } = view;
   const R = s / Math.sqrt(3);
   if (R < 5) return;
   const xL = -ox / s, xR = (cw - ox) / s, yTop = -oy / s, yBot = (ch - oy) / s;
-  const v = [0, 1, 2, 3].map((k) => [R * Math.cos((k * Math.PI) / 3), -R * Math.sin((k * Math.PI) / 3)]);
-  for (let b = Math.floor(xL / H) - 1; b <= Math.ceil(xR / H) + 1; b++) {
-    for (let a = Math.floor(-yBot - b / 2) - 1; a <= Math.ceil(-yTop - b / 2) + 1; a++) {
-      const cx = ox + b * H * s, cy = oy + (-a - b / 2) * s;
-      ctx.moveTo(cx + v[0][0], cy + v[0][1]);
-      for (let k = 1; k < 4; k++) ctx.lineTo(cx + v[k][0], cy + v[k][1]);
+  const v = [0, 1, 2, 3].map((k) => { const t = ((k + (pointy ? 0.5 : 0)) * Math.PI) / 3; return [R * Math.cos(t), -R * Math.sin(t)]; });
+  const hexagon = (x, y) => {
+    ctx.moveTo(ox + x * s + v[0][0], oy + y * s + v[0][1]);
+    for (let k = 1; k < 4; k++) ctx.lineTo(ox + x * s + v[k][0], oy + y * s + v[k][1]);
+  };
+  if (pointy) {
+    for (let r = Math.floor((yTop - TRI_Y0) / H) - 1; r <= Math.ceil((yBot - TRI_Y0) / H) + 1; r++) {
+      for (let c = Math.floor(2 * xL) - 2; c <= Math.ceil(2 * xR) + 2; c++) if (((c + r) & 1) === 0) hexagon(c / 2, TRI_Y0 + r * H);
+    }
+  } else {
+    for (let b = Math.floor(xL / H) - 1; b <= Math.ceil(xR / H) + 1; b++) {
+      for (let a = Math.floor(-yBot - b / 2) - 1; a <= Math.ceil(-yTop - b / 2) + 1; a++) hexagon(b * H, -a - b / 2);
     }
   }
-  ctx.stroke();
-}
-
-// Triangular lattice: lines y = y0 + k·H and x ± (y − y0)/√3 = k (k a multiple of step)
-function drawTriGrid(ctx, step) {
-  const { scale: s, ox, oy } = view;
-  const toX = (x) => ox + x * s, toY = (y) => oy + y * s;
-  const yTop = -oy / s, yBot = (ch - oy) / s;
-  const xL = -ox / s, xR = (cw - ox) / s;
-  const r3 = Math.sqrt(3);
-  const hs = H * step;
-  for (let k = Math.ceil((yTop - TRI_Y0) / hs); TRI_Y0 + k * hs <= yBot; k++) {
-    const y = Math.round(toY(TRI_Y0 + k * hs)) + 0.5;
-    ctx.moveTo(0, y); ctx.lineTo(cw, y);
-  }
-  for (const sign of [1, -1]) {
-    // x + sign·(y − y0)/√3 = k
-    const vals = [xL + sign * (yTop - TRI_Y0) / r3, xL + sign * (yBot - TRI_Y0) / r3,
-                  xR + sign * (yTop - TRI_Y0) / r3, xR + sign * (yBot - TRI_Y0) / r3];
-    const k0 = Math.floor(Math.min(...vals) / step), k1 = Math.ceil(Math.max(...vals) / step);
-    for (let k = k0; k <= k1; k++) {
-      const xAt = (y) => k * step - sign * (y - TRI_Y0) / r3;
-      ctx.moveTo(toX(xAt(yTop)), 0); ctx.lineTo(toX(xAt(yBot)), ch);
-    }
-  }
-  ctx.stroke();
 }
 
 function styleKey(i) {
@@ -5436,6 +5462,12 @@ const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
+$('onCells').addEventListener('change', () => {  // the same walk from cell to cell, or along lines
+  const twin = MODES[$('mode').value].twin;
+  if (!twin) { renderModePicker(); return; }
+  $('mode').value = twin;
+  $('mode').dispatchEvent(new Event('change'));
+});
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));

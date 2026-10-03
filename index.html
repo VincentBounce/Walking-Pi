@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261008q">
+  <link rel="stylesheet" href="style.css?v=20261008r">
 </head>
 <body>
   <header>
@@ -21,15 +21,22 @@
       <section>
         <h2 id="walkHeading">Walk</h2>
         <div id="modeList" class="mode-list" role="listbox"></div>
+        <label class="check" id="onCellsRow" hidden title="Walk from cell to cell instead of along the lines of the grid: on triangles and hexagons the choices at each step change, and so does the base"><input id="onCells" type="checkbox"> From cell to cell</label>
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
             <optgroup label="2D walks">
               <option value="turtle">Squares turtle — base 3 (left / forward / right)</option>
               <option value="cardinal">Squares cardinal — base 4 (N / E / S / W)</option>
-              <option value="triLR">Triangles turtle — base 2 (left / right)</option>
-              <option value="triFixed">Triangles fixed — base 3 (3 fixed edges)</option>
-              <option value="hexRel">Hexagons turtle — base 5 (5 relative turns)</option>
-              <option value="hexFixed">Hexagons fixed — base 6 (6 fixed directions)</option>
+              <option value="triTurtle">Triangles turtle — base 5 (5 relative turns)</option>
+              <option value="triFixed">Triangles fixed — base 6 (6 fixed directions)</option>
+              <option value="hexTurtle">Hexagons turtle — base 2 (left / right)</option>
+              <option value="hexFixed">Hexagons fixed — base 3 (3 fixed edges)</option>
+              <option value="turtleCells">Squares turtle — base 3 (left / forward / right)</option>
+              <option value="cardinalCells">Squares cardinal — base 4 (N / E / S / W)</option>
+              <option value="triTurtleCells">Triangles turtle — base 2 (left / right)</option>
+              <option value="triFixedCells">Triangles fixed — base 3 (3 fixed edges)</option>
+              <option value="hexTurtleCells">Hexagons turtle — base 5 (5 relative turns)</option>
+              <option value="hexFixedCells">Hexagons fixed — base 6 (6 fixed directions)</option>
             </optgroup>
             <optgroup label="3D walks">
               <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
@@ -252,6 +259,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261008q"></script>
+  <script src="main.js?v=20261008r"></script>
 </body>
 </html>
