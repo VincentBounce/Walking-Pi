@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.247';
+const VERSION = '0.1.248';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -962,12 +962,12 @@ function describe(base, available) {
 // (Fill cells) in the colour of their first visit, those it encloses (Fill areas) in the colour of
 // the step that closed them; or the tiles coloured by their visits.
 const DISPLAY_BY_TAB = {
-  '2D walks': ['colors', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
+  '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Walks on surface cells': ['shape', 'colors', 'visits', 'fillCells', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surface grids': ['shape', 'colors', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],  // areas follow the path
+  'Walks on surface grids': ['shape', 'heatmap', 'visits', 'fill', 'grid', 'sky', 'autoRotate', 'perspective'],  // areas follow the path
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['colors', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
+  '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
@@ -979,15 +979,19 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  // 2D: toggles instead of the list of colours, Heatmap and Digits on cells only. A spiral always
-  // marks its cells, each once: its toggles are greyed out
-  const mode = MODES[$('mode').value], colour = $('colorMode').value, flat = shows('cells');
-  $('onCellsRow').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !flat;
-  $('colorsRow').hidden ||= flat;
+  // heatmap: a toggle instead of a list of colours. In 2D, with Walk on cells and Digits at the
+  // end, Heatmap and Digits on cells only (a spiral marks its cells, each once: all greyed out);
+  // along a surface's grid, under the fill
+  const mode = MODES[$('mode').value], flat = shows('cells');
+  $('onCellsRow').hidden = $('cellDigitsRow').hidden = !flat;
+  $('heatmapRow').hidden = !shows('heatmap');
+  if (flat) $('onCellsRow').after($('heatmapRow'));
+  else $('fillTranslucentRow').after($('heatmapRow'));
   $('onCells').disabled = !mode.twin;
   if (!mode.twin) $('onCells').checked = true;
-  $('heatmap').disabled = $('cellDigits').disabled = !mode.cells;
-  $('heatmap').checked = colour === 'visits';
+  $('heatmap').disabled = flat ? !mode.cells : !useful('visits');
+  $('cellDigits').disabled = !mode.cells;
+  $('heatmap').checked = $('colorMode').value === 'visits';
   // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
@@ -1017,6 +1021,10 @@ function relabelColours(mode) {
   const sel = $('colorMode');
   if (shows('cells')) {  // 2D: along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either)
     sel.value = mode.twin && !mode.cells ? 'gradient' : mode.cells && sel.value === 'visits' ? 'visits' : 'cells';
+    return;
+  }
+  if (shows('heatmap')) {  // along a surface's grid: the rainbow line, or the heatmap
+    sel.value = sel.value === 'visits' ? 'visits' : 'gradient';
     return;
   }
   const order = life ? ['mono', 'gradient', 'digit', 'cells', 'visits'] : ['gradient', 'cells', 'visits', 'digit', 'mono'];
@@ -5503,7 +5511,7 @@ $('onCells').addEventListener('change', () => {  // the same walk from cell to c
 });
 // Heatmap of visits: the cells by their visits, else the rainbow cells; Digits: over either
 $('heatmap').addEventListener('change', () => {
-  $('colorMode').value = $('heatmap').checked ? 'visits' : 'cells';
+  $('colorMode').value = $('heatmap').checked ? 'visits' : shows('cells') ? 'cells' : 'gradient';
   $('colorMode').dispatchEvent(new Event('change'));
 });
 $('cellDigits').addEventListener('change', () => { needsFull = true; });
