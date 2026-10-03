@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.232';
+const VERSION = '0.1.233';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2721,7 +2721,9 @@ function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial}`;
   if (sel.dataset.kind === key) return;
   const { sizes, tiles, unit } = SPHERES[kind];
-  sel.replaceChildren(...sizes.map((f) => new Option(`${fmt(tiles(f))} ${unit}`, f)));
+  // a torus as its count of tiles towards the north (around the tube) × towards the east (around the ring)
+  const label = (f) => (['torus', 'tritorus', 'hextorus'].includes(kind) ? `${fmt(f)} × ${fmt(tiles(f) / f)}` : fmt(tiles(f)));
+  sel.replaceChildren(...sizes.map((f) => new Option(`${label(f)} ${unit}`, f)));
   sel.value = initial;
   sel.dataset.kind = key;
 }
