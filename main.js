@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.257';
+const VERSION = '0.1.258';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -989,6 +989,9 @@ function updateDisplayMenu() {
   const mode = MODES[$('mode').value];
   $('cellsLabel').hidden = $('showPathRow').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
+  // in 2D, Show path dims the cells under it, as the shading does on a surface, so that the rainbow
+  // line (on a layer of its own) shows all along, over cells of its own colour too
+  $('pathLayer').style.filter = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 'brightness(0.55)' : '';
   $('heatmap').disabled = !mode.cells;
   $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
@@ -5540,7 +5543,7 @@ $('heatmap').addEventListener('change', () => {
   $('colorMode').dispatchEvent(new Event('change'));
 });
 $('cellDigits').addEventListener('change', () => { needsFull = true; });
-$('showPath').addEventListener('change', () => { needsFull = true; });
+$('showPath').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
