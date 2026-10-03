@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.234';
+const VERSION = '0.1.235';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -908,7 +908,7 @@ function updateRuleText() {
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
-  if (mode.life) return SPHERES[mode.sphere].tiles(Number($('sphereF').value));
+  if (mode.life) return SPHERES[mode.sphere].tiles(sphereSize());
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
 }
@@ -2424,10 +2424,9 @@ function torusPoint(i, j, nu, nv, m) {
   return [(rr + w) * Math.sin(ph), rr - c - (rr + w) * Math.cos(ph), h];  // − c: no jump from the flat sheet
 }
 
-function torusMesh(nv) {
-  const key = `torus${nv}`;
+function torusMesh(nv, nu = Math.round(nv / TORUS_TUBE)) {  // squares about as long around the ring as around the tube
+  const key = `torus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
-  const nu = Math.round(nv / TORUS_TUBE);  // squares about as long around the ring as around the tube
   const { verts, add } = vertexStore();
   const at = (i, j) => add(...torusPoint(i, j, nu, nv, 1));  // i = nu and i = 0 meet (same for j)
   const quads = [], uv = [];
@@ -2456,10 +2455,9 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
  * units a column is 1.5·R wide and a row √3·R high; the sheet is 2π by 2π·TUBE, so the hexagons
  * are regular when nu / nv = √3 / (1.5·TUBE). Every hexagon has 6 neighbours, all across an edge. */
 const hexTorusColumns = (nv) => 2 * Math.round((nv * Math.sqrt(3)) / (3 * TORUS_TUBE));
-function hexTorusMesh(nv) {
-  const key = `hextorus${nv}`;
+function hexTorusMesh(nv, nu = hexTorusColumns(nv)) {
+  const key = `hextorus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
-  const nu = hexTorusColumns(nv);
   const { verts, add } = vertexStore();
   const hexes = [], uv = [];
   for (let c = 0; c < nu; c++) {
@@ -2508,10 +2506,9 @@ function hexSphereMesh(f) {
  * the sheet is 2π by 2π·TUBE, so the triangles are equilateral when nu / nv = √3 / (2·TUBE).
  * Every corner has 6 edges: the triangular grid that wraps around both ways. */
 const triTorusColumns = (nv) => Math.round((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
-function triTorusMesh(nv) {
-  const key = `tritorus${nv}`;
+function triTorusMesh(nv, nu = triTorusColumns(nv)) {
+  const key = `tritorus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
-  const nu = triTorusColumns(nv);
   const { verts, add } = vertexStore();
   const tris = [], uv = [];
   const P = (i, j) => [i + (j % 2) / 2, j];  // sheet coordinates of corner i of row j
@@ -2675,17 +2672,22 @@ const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
-  torus: { mesh: torusMesh, radius: (nv) => nv / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
-          sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => Math.round(nv / TORUS_TUBE) * nv, unit: 'squares' },
+  // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: rows and
+  // tiles per row that Taller and Wider move by, keeping the sheet's columns even or rows even
+  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+          columns: (nv) => Math.round(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
+          sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
-  hextorus: { mesh: hexTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
-              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => hexTorusColumns(nv) * nv, unit: 'hexagons' },
+  hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
+              columns: hexTorusColumns, perRow: 1, steps: [1, 2],  // an even count of columns
+              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
   // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
   hexsphere: { mesh: hexSphereMesh, radius: (f) => (f * Math.sqrt(3)) / 2,
                sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 10 * f * f + 2, unit: 'hexagons' },
   // triangle edge = 1 unit: the tube is nv rows of √3/2 around
-  tritorus: { mesh: triTorusMesh, radius: (nv) => (nv * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
-              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (nv) => 2 * triTorusColumns(nv) * nv, unit: 'triangles' },
+  tritorus: { mesh: (s) => triTorusMesh(...torusDims('tritorus', s)), radius: (s) => (torusDims('tritorus', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
+              columns: triTorusColumns, perRow: 2, steps: [2, 2],  // an even count of rows, two triangles per column
+              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorus', s).reduce((a, b) => a * b), unit: 'triangles' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
@@ -2698,6 +2700,7 @@ const SPHERES = {
 // menu one by one; the menu stays the source of truth, as for the walk modes
 function syncSizeStepper() {
   const sel = $('sphereF');
+  $('torusShapeRow').hidden = !TORI.includes(MODES[$('mode').value].sphere);
   $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
@@ -2708,11 +2711,50 @@ function syncSizeStepper() {
   $('startDown').disabled = startNo() <= 1;
   $('startUp').disabled = startNo() >= starts.length;
 }
+// − / +: the usual sizes (from a torus size of its own, the usual ones just below or above it)
 function stepSize(delta) {
   const sel = $('sphereF'), i = sel.selectedIndex + delta;
   if (i < 0 || i >= sel.options.length) return;
   sel.selectedIndex = i;
+  for (const o of [...sel.options]) if (o.dataset.own && o !== sel.selectedOptions[0]) o.remove();
   sel.dispatchEvent(new Event('change'));
+}
+
+// The size in use: tiles across (a solid), rows (a torus), or rows "x" tiles per row (a torus made
+// taller or wider)
+const sphereSize = () => { const v = $('sphereF').value; return v.includes('x') ? v : Number(v); };
+// A torus's rows and columns: its tiles per row from its rows (squares or regular tiles), unless given
+function torusDims(kind, size) {
+  if (typeof size === 'number') return [size, SPHERES[kind].columns(size)];
+  const [rows, perRow] = size.split('x').map(Number);
+  return [rows, perRow / SPHERES[kind].perRow];
+}
+const sizeLabel = (kind, f) => {
+  const { tiles, unit } = SPHERES[kind];
+  if (!TORI.includes(kind)) return `${fmt(tiles(f))} ${unit}`;
+  const rows = torusDims(kind, f)[0];  // a torus as its tiles towards the north (around the tube) × east (around the ring)
+  return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
+};
+// A torus size of its own (Taller, Wider, a link): an extra entry among the usual ones, by rows;
+// one with the usual tiles per row is the usual size
+function selectTorusSize(kind, size) {
+  const sel = $('sphereF'), [rows, cols] = torusDims(kind, size);
+  for (const o of [...sel.options]) if (o.dataset.own) o.remove();
+  const usual = cols === SPHERES[kind].columns(rows) && [...sel.options].find((o) => Number(o.value) === rows);
+  if (usual) { sel.value = usual.value; return; }
+  const own = new Option(sizeLabel(kind, size), size);
+  own.dataset.own = '1';
+  sel.insertBefore(own, [...sel.options].find((o) => torusDims(kind, sphereSizeOf(o))[0] > rows) ?? null);
+  sel.value = size;
+}
+const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
+// Taller: towards the north, fewer tiles towards the east (Wider the other way), by the torus's steps
+function reshapeTorus(dir) {
+  const kind = MODES[$('mode').value].sphere, { steps, perRow } = SPHERES[kind], [rows, cols] = torusDims(kind, sphereSize());
+  const r = rows + dir * steps[0], e = cols * perRow - dir * steps[1];
+  if (r < 8 || e < 8) return;
+  selectTorusSize(kind, `${r}x${e}`);
+  $('sphereF').dispatchEvent(new Event('change'));
 }
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
@@ -2720,10 +2762,7 @@ function stepSize(delta) {
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial}`;
   if (sel.dataset.kind === key) return;
-  const { sizes, tiles, unit } = SPHERES[kind];
-  // a torus as its count of tiles towards the north (around the tube) × towards the east (around the ring)
-  const label = (f) => (['torus', 'tritorus', 'hextorus'].includes(kind) ? `${fmt(f)} × ${fmt(tiles(f) / f)}` : fmt(tiles(f)));
-  sel.replaceChildren(...sizes.map((f) => new Option(`${label(f)} ${unit}`, f)));
+  sel.replaceChildren(...SPHERES[kind].sizes.map((f) => new Option(sizeLabel(kind, f), f)));
   sel.value = initial;
   sel.dataset.kind = key;
 }
@@ -2766,7 +2805,8 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
-const STARTS_ON = [...SOLIDS, 'torus', 'tritorus', 'hextorus'];  // the surfaces with a start selector
+const TORI = ['torus', 'tritorus', 'hextorus'];
+const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
 // turning the torus over (u, v → −u, −v) swaps the two ways along an edge: the different walks are
@@ -2896,7 +2936,7 @@ function startList(g) {
 // The starts of the current mode (a walk along a solid's grid), else null; the chosen one, 1 … their number
 function modeStarts() {
   const mode = MODES[$('mode').value];
-  return mode.grid && STARTS_ON.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(Number($('sphereF').value))) : null;
+  return mode.grid && STARTS_ON.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(sphereSize())) : null;
 }
 const startNo = () => Math.max(1, Math.min(Number($('startNo').value) || 1, modeStarts()?.length ?? 1));
 let startsShown = false;  // while the start selector is hovered: the globe shows the starts instead of the walk
@@ -2947,7 +2987,7 @@ function drawStarts(ctx) {
 function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new Uint8Array(0)) {
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
-  const size = Number($('sphereF').value), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
+  const size = sphereSize(), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
   const len = seq.length, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
   const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
   const vert = new Int32Array(len + 1), tile = new Int32Array(len + 1), cells = new Int32Array(len + 1);
@@ -3029,7 +3069,7 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
 function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
-  const size = Number($('sphereF').value);
+  const size = sphereSize();
   const g = mesh(size);
   const R = radius(size);
   const sides = g.sides;
@@ -3184,7 +3224,7 @@ const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
 function buildLife(seq, { sphere: kind, initial }) {
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
-  const size = Number($('sphereF').value);
+  const size = sphereSize();
   const g = mesh(size);
   const nbr = cornerNeighbours(g);
   let rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
@@ -3724,7 +3764,8 @@ function setLifeSeed(seed, how) {
  * A setup is a flat object of short keys, the same for the page link (#…), the saved setups in
  * this browser (localStorage) and the JSON export:
  *   x   the formula          w   the walk mode        d    the number of digits (walks)
- *   s   the surface size     r   the Life rule        ch   a Life start (champion or patch)
+ *   s   the surface size (a torus: rows, or rows x tiles per row)
+ *   r   the Life rule        ch   a Life start (champion or patch)
  *   st  the start of a walk along a solid's grid (when not 1)
  *   fa  0 when Fill areas is off
  * It only holds what determines the result. Display choices (colours, grid, sky, camera, zoom…),
@@ -3797,7 +3838,11 @@ function applySetup(s) {
   set('digits', s.d);
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
-  if (MODES[s.w].sphere) { fillSphereSizes(MODES[s.w].sphere, MODES[s.w].initial); set('sphereF', s.s); }
+  if (MODES[s.w].sphere) {
+    fillSphereSizes(MODES[s.w].sphere, MODES[s.w].initial);
+    if (TORI.includes(MODES[s.w].sphere) && String(s.s ?? '').includes('x')) selectTorusSize(MODES[s.w].sphere, String(s.s));
+    else set('sphereF', s.s);
+  }
   if (s.r) {
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
@@ -5290,6 +5335,8 @@ const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
+$('taller').addEventListener('click', () => reshapeTorus(1));
+$('wider').addEventListener('click', () => reshapeTorus(-1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
 $('sphereF').addEventListener('change', () => {
   syncSizeStepper();

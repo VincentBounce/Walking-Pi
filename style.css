@@ -167,6 +167,7 @@ button.primary {
 }
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
+#torusShapeRow button { flex: 1; }  /* Taller and Wider, side by side, alike */
 
 /* Walk mode: one tab per category, then every choice of that category */
 /* Tabs: text only, the active one in yellow and underlined on the header's hairline; always bold,
