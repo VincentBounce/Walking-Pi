@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.249';
+const VERSION = '0.1.250';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -958,16 +958,17 @@ function describe(base, available) {
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
 // Colours: a list (colors: Rainbow along the walk always; cells, visits, one per digit, one colour
-// where listed), or the toggles Walk on cells, Heatmap of visits and Digits (onCells).
+// where listed), or the toggles Heatmap of visits and Digits (heatmap); the walks on cells or along
+// the grid are chosen beside the list of walks (Grid / Cells).
 // Walks on surfaces, on cells: the walk as a rainbow line over the tiles, the tiles it passes through
 // filled in the colour of their first visit, those it encloses (Fill areas) in the colour of the
 // step that closed them; or the tiles coloured by their visits (Heatmap, on cells only).
 const DISPLAY_BY_TAB = {
-  '2D walks': ['onCells', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
+  '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'onCells', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['onCells', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
+  '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
@@ -979,14 +980,10 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  // Walk on cells, Heatmap of visits and Digits instead of a list of colours, Heatmap and Digits on
-  // cells only (and Digits in 2D). Walk on cells is greyed out without a twin: a spiral marks its
-  // cells, each once (all greyed out, Walk on cells on); the triangle torus and the hexagon sphere
-  // have no walk on cells yet
-  const mode = MODES[$('mode').value], toggles = shows('onCells');
-  $('onCellsRow').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !toggles;
-  $('onCells').disabled = !mode.twin;
-  if (!mode.twin) $('onCells').checked = !mode.grid;
+  // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
+  // a spiral marks its cells, each once: both greyed out)
+  const mode = MODES[$('mode').value];
+  $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
   $('heatmap').disabled = !mode.cells;
   $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
@@ -1019,7 +1016,7 @@ function relabelColours(mode) {
     sel.value = mode.twin && !mode.cells ? 'gradient' : mode.cells && sel.value === 'visits' ? 'visits' : 'cells';
     return;
   }
-  if (shows('onCells')) {  // on a surface: the rainbow line (over the tiles walked, on cells), or the heatmap on cells
+  if (shows('heatmap')) {  // on a surface: the rainbow line (over the tiles walked, on cells), or the heatmap on cells
     sel.value = mode.cells && sel.value === 'visits' ? 'visits' : 'gradient';
     return;
   }
@@ -1695,6 +1692,7 @@ function numberText(limit = Infinity) {
 // list. Picking a choice sets the menu and fires its change event, so the rest of the page only
 // ever deals with the menu.
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
+let onCells = false;  // Grid or Cells: which of the twins the list shows (see MODES)
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
 const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
@@ -1726,9 +1724,10 @@ function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
   if (!modeTab) modeTab = currentGroup;
-  // the 2D walks: along lines or from cell to cell, as the mode in use (or as last chosen)
-  if (MODES[$('mode').value].twin) $('onCells').checked = !!MODES[$('mode').value].cells;
-  const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === $('onCells').checked;
+  // Grid or Cells: as the walk in use (one with no twin goes along the grid), or as last chosen
+  const inUse = MODES[$('mode').value];
+  if (modeTab === currentGroup && (inUse.twin || inUse.grid)) onCells = !!inUse.cells;
+  const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === onCells;
   const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
   $('modeTabs').replaceChildren(...groups.map((g) => {
     const b = document.createElement('button');
@@ -1749,6 +1748,11 @@ function renderModePicker() {
   }));
   const group = groups.find((g) => g.label === modeTab);
   $('walkHeading').textContent = WALK_HEADINGS[modeTab] ?? 'Walk';
+  const twins = Array.from(group.children).some((o) => MODES[o.value].twin);
+  $('walkOn').hidden = !twins;
+  $('walkOnGrid').classList.toggle('active', !onCells);
+  $('walkOnCells').classList.toggle('active', onCells);
+  $('walkOnCells').disabled = modeTab === currentGroup && !inUse.twin;  // no walk on cells there yet
   $('modeList').replaceChildren(...Array.from(group.children).filter(shown).map((o) => {
     const b = document.createElement('button');
     const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
@@ -1763,6 +1767,7 @@ function renderModePicker() {
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
+    b.classList.toggle('off', twins && onCells && !mode.twin);  // no walk on cells yet: picking it goes along the grid
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
       $('mode').value = o.value;
@@ -5498,12 +5503,17 @@ const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
-$('onCells').addEventListener('change', () => {  // the same walk from cell to cell, or along lines
+// Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
+function walkOn(cells) {
+  if (cells === onCells) return;
+  onCells = cells;
   const twin = MODES[$('mode').value].twin;
-  if (!twin) { renderModePicker(); return; }
+  if (!twin || modeTab !== modeTabOf()) { renderModePicker(); return; }
   $('mode').value = twin;
   $('mode').dispatchEvent(new Event('change'));
-});
+}
+$('walkOnGrid').addEventListener('click', () => walkOn(false));
+$('walkOnCells').addEventListener('click', () => walkOn(true));
 // Heatmap of visits: the cells by their visits, else the rainbow cells; Digits: over either
 $('heatmap').addEventListener('change', () => {
   $('colorMode').value = $('heatmap').checked ? 'visits' : shows('cells') ? 'cells' : 'gradient';

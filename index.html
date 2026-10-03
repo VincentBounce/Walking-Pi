@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261008z">
+  <link rel="stylesheet" href="style.css?v=20261009b">
 </head>
 <body>
   <header>
@@ -19,7 +19,12 @@
   <main>
     <aside class="panel">
       <section>
-        <h2 id="walkHeading">Walk</h2>
+        <div class="walk-head">
+          <h2 id="walkHeading">Walk</h2>
+          <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
+            <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
+          </div>
+        </div>
         <div id="modeList" class="mode-list" role="listbox"></div>
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
@@ -246,8 +251,7 @@
             </div>
             <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
           </div>
-          <div id="cellsSection" class="form-section">  <!-- walking on cells, and what they show -->
-            <label class="check" id="onCellsRow" hidden title="Walk from cell to cell, colouring the cells, instead of along the lines of the grid: on triangles and hexagons the choices at each step change, and so does the base"><input id="onCells" type="checkbox"> Walk on cells</label>
+          <div id="cellsSection" class="form-section">  <!-- what the cells show -->
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
             <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
           </div>
@@ -260,6 +264,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261008z"></script>
+  <script src="main.js?v=20261009b"></script>
 </body>
 </html>

@@ -64,6 +64,11 @@ h2 {
   color: var(--muted);
 }
 
+/* Walk: Grid or Cells, beside the heading */
+.walk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.walk-head h2 { margin: 0; }
+.walk-head .choice-row { margin: 0 0 0 auto; width: 120px; }
+
 label { display: block; margin-bottom: 10px; }
 label.check { display: flex; align-items: center; gap: 8px; }
 label.check { cursor: pointer; }
@@ -216,6 +221,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .number-grid button:hover { background: var(--bg); }
 .number-grid button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .mode-list button.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
+.mode-list button.off { opacity: 0.45; }  /* no walk on cells: shown along the grid */
 .mode-list button.active .mode-name,
 .mode-list button.active .mode-icon { color: var(--accent); }
 .mode-list button.active .mode-base { border-color: var(--accent); color: var(--accent); }
