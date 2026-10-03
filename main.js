@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.244';
+const VERSION = '0.1.245';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -741,12 +741,12 @@ const FORMULA_NOTES = {
 // way round. Along lines, the walk goes from corner to corner, and the corners of a grid are the
 // cell centres of another: of squares for squares, of hexagons for triangles, of triangles for
 // hexagons. So a walk along triangles takes the steps of hexagon cells, and one along hexagons
-// those of triangle cells; only the grid drawn changes (lines: true). toggles: the colours as the
-// Display toggles Walk on cells, Heatmap of visits and Digits instead of a list (see relabelColours).
+// those of triangle cells; only the grid drawn changes (lines: true). Their colours are the Display
+// toggles Walk on cells, Heatmap of visits and Digits instead of a list (see relabelColours).
 const MODES = {
-  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells', toggles: true,
+  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells',
               rule: 'along the lines of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells', toggles: true,
+  cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells',
               rule: 'along the lines of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
   triTurtle: { base: 5, lattice: 'hex', lines: true, twin: 'triTurtleCells',
               rule: 'along the lines of a triangle grid, relative to where you come from: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
@@ -756,9 +756,9 @@ const MODES = {
               rule: 'along the lines of a hexagon grid: <b>0</b> turn left, <b>1</b> turn right' },
   hexFixed: { base: 3, lattice: 'tri', lines: true, twin: 'hexFixedCells',
               rule: 'along the lines of a hexagon grid: take the <b>0</b> “|”, <b>1</b> “\\” or <b>2</b> “/” edge' },
-  turtleCells: { base: 3, lattice: 'square', cells: true, twin: 'turtle', toggles: true,
+  turtleCells: { base: 3, lattice: 'square', cells: true, twin: 'turtle',
               rule: 'from cell to cell of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinalCells: { base: 4, lattice: 'square', cells: true, twin: 'cardinal', toggles: true,
+  cardinalCells: { base: 4, lattice: 'square', cells: true, twin: 'cardinal',
               rule: 'from cell to cell of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
   triTurtleCells: { base: 2, lattice: 'tri', cells: true, twin: 'triTurtle',
               rule: 'from cell to cell of a triangle grid: exit through the <b>0</b> left or <b>1</b> right edge' },
@@ -979,11 +979,13 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  // the square walks: toggles instead of the list of colours, Heatmap and Digits on cells only
+  // the 2D walks: toggles instead of the list of colours, Heatmap and Digits on cells only; Walk
+  // on cells greyed out where there is no such twin (the spirals)
   const mode = MODES[$('mode').value], colour = $('colorMode').value;
-  $('onCellsRow').hidden = !mode.twin;
-  $('colorsRow').hidden ||= !!mode.toggles;
-  $('heatmapRow').hidden = $('cellDigitsRow').hidden = !mode.toggles;
+  $('onCellsRow').hidden = !shows('cells');
+  $('onCells').disabled = !mode.twin;
+  $('colorsRow').hidden ||= !!mode.twin;
+  $('heatmapRow').hidden = $('cellDigitsRow').hidden = !mode.twin;
   $('heatmap').disabled = $('cellDigits').disabled = !mode.cells;
   $('heatmap').checked = colour === 'visits';
   // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
@@ -1013,7 +1015,7 @@ function relabelColours(mode) {
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
-  if (mode.toggles) {  // along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either)
+  if (mode.twin) {  // along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either)
     if (!mode.cells) sel.value = 'gradient';
     else if (sel.value !== 'visits') sel.value = 'cells';
     return;
@@ -4879,7 +4881,9 @@ function visitCells() {
   return (visitData = { cell, max, seen: new Int32Array(total.length) });
 }
 
-const DIGITS_ZOOM = 14;  // Digits: the cell size (pixels) from which each cell shows its digit
+// Digits: the size of a cell's digit, for a cell of side 1 (a triangle's centre has less room);
+// shown from 8 pixels
+const DIGIT_SIZE = { square: 0.6, hex: 0.5, tri: 0.35 };
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -4901,9 +4905,9 @@ function drawSegments(from, to) {
     const flush = () => { if (batch) { ctx.fillStyle = batch; ctx.fill(); } };
     // Digits: each cell then writes the digit that led there, once big enough to read (a cell
     // walked again is painted over, so it shows its last digit)
-    const digits = $('cellDigits').checked && !$('cellDigits').disabled && s >= DIGITS_ZOOM;
+    const size = s * DIGIT_SIZE[walk.lattice], digits = $('cellDigits').checked && !$('cellDigits').disabled && size >= 8;
     if (digits) {
-      ctx.font = `${Math.round(s * 0.6)}px ui-monospace, Menlo, monospace`;
+      ctx.font = `${Math.round(size)}px ui-monospace, Menlo, monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.lineWidth = 3;
