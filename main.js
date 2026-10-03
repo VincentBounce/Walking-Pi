@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.221';
+const VERSION = '0.1.222';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -921,7 +921,8 @@ let lifeStart = null;  // where a Life start comes from when it is not the numbe
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
   if (!mode.life) {
-    $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${fmt(walk.n)} base-${base} digits ${mode.rule}`;
+    const loop = !walk.loop ? '' : walk.loop.from ? ` (then it would go round again from step ${fmt(walk.loop.from)})` : ' (then it would start over)';
+    $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${fmt(walk.n)} base-${base} digits${loop} ${mode.rule}`;
     return;
   }
   const cells = walk.life.seed.length, C = base;
@@ -1878,7 +1879,7 @@ function buildWalk() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
   }
-  Object.assign(walk, { vert: null, stepTiles: null, n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice,
                         skipZeros: !!MODES[current.mode].skipZeros,
                         points: false, keys: seq, labels: null, sphere: false, life: null,
@@ -2205,7 +2206,7 @@ function buildPointWalk(seq, { base, points: kind }) {
     maxDist[i + 1] = m;
   }
   walk.persp = null;
-  Object.assign(walk, { vert: null, stepTiles: null, n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
                         counts: null, lattice: 'square', skipZeros: false, points: true, keys, labels: cellsOf,
                         sphere: false, life: null,
                         xs, ys });
@@ -2900,6 +2901,12 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
     maxDist[i] = m;
   };
   put(0);
+  // A walk back on an earlier state (corner, and the corner it came from) with the same digits ahead
+  // draws the same steps again, forever: it stops there, after its first round. Only with at least
+  // 64 digits left to compare, so that no other number gets cut by chance.
+  const firstAt = new Map([[v * G.nv + from, 0]]);
+  const repeats = (a, b) => { for (let x = b; x < len; x++) if (seq[x] !== seq[x - b + a]) return false; return true; };
+  let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
     // the heading and each way out, flattened onto the plane tangent at v; the signed angle between them
     const n = [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n), p = at(v);
@@ -2921,8 +2928,11 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
     put(i + 1);
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + seq[i]]++;
+    const state = v * G.nv + from, earlier = firstAt.get(state);
+    if (earlier === undefined) firstAt.set(state, i + 1);
+    else if (len - i - 1 >= 64 && repeats(earlier, i + 1)) { steps = i + 1; loop = { from: earlier }; break; }
   }
-  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
+  Object.assign(walk, { n: steps, loop, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
                         sphere: true, geo: g, R, tile, vert, stepTiles, nodes: G.nv, coverStep,
                         visits: new Int32Array(g.n), maxVisits: 0, life: null,
@@ -2971,7 +2981,7 @@ function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
   }
   Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
-                        sphere: true, geo: g, R, tile, vert: null, stepTiles: null, nodes: g.n, coverStep,
+                        sphere: true, geo: g, R, tile, vert: null, stepTiles: null, loop: null, nodes: g.n, coverStep,
                         visits: new Int32Array(g.n), maxVisits: 0,
                         life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
   initShape(kind);
@@ -3113,7 +3123,7 @@ function buildLife(seq, { sphere: kind, initial }) {
   countSeed(walk.life);
   lifeStart = null;  // the number's digits
   const one = new Float64Array(1);
-  Object.assign(walk, { vert: null, stepTiles: null, n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
                         maxDist: null, base: rule.C, counts: null, lattice: 'sphere', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
@@ -5176,6 +5186,7 @@ function setStart(n) {
   syncSizeStepper();
   if (!current) return;
   buildWalk();
+  describe(walk.base);
   showAll();
 }
 $('startDown').addEventListener('click', () => setStart(startNo() - 1));
@@ -5193,6 +5204,7 @@ $('sphereF').addEventListener('change', () => {
   if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits
   if (!current) return;
   buildWalk();
+  describe(walk.base);
   showAll();
 });
 // A formula left wrong (by clicking elsewhere) is undone: the one in use comes back
