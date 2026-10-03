@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.243';
+const VERSION = '0.1.244';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -986,7 +986,6 @@ function updateDisplayMenu() {
   $('heatmapRow').hidden = $('cellDigitsRow').hidden = !mode.toggles;
   $('heatmap').disabled = $('cellDigits').disabled = !mode.cells;
   $('heatmap').checked = colour === 'visits';
-  $('cellDigits').checked = colour === 'digits';
   // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
@@ -1014,16 +1013,15 @@ function relabelColours(mode) {
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
-  if (mode.toggles) {  // along lines the rainbow line; on cells the rainbow cells, or the heatmap, or the digits
+  if (mode.toggles) {  // along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either)
     if (!mode.cells) sel.value = 'gradient';
-    else if (!['visits', 'digits'].includes(sel.value)) sel.value = 'cells';
+    else if (sel.value !== 'visits') sel.value = 'cells';
     return;
   }
   const order = life ? ['mono', 'gradient', 'digit', 'cells', 'visits'] : ['gradient', 'cells', 'visits', 'digit', 'mono'];
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   for (const v of ['cells', 'visits', 'digit', 'mono']) byValue[v].hidden = !shows(v);
-  byValue.digits.hidden = true;  // the square walks' Digits toggle only
   byValue.gradient.disabled = greyed('line');  // Rainbow along the walk: no use on a spiral
   byValue.visits.disabled = !useful('visits');
   byValue.gradient.hidden = two;  // two civilisations: a cell's colour is its civilisation
@@ -1726,6 +1724,7 @@ function renderModePicker() {
   // the 2D walks: along lines or from cell to cell, as the mode in use (or as last chosen)
   if (MODES[$('mode').value].twin) $('onCells').checked = !!MODES[$('mode').value].cells;
   const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === $('onCells').checked;
+  const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
   $('modeTabs').replaceChildren(...groups.map((g) => {
     const b = document.createElement('button');
     b.innerHTML = `${icon(TAB_ICONS[g.label])} ${g.label}`;
@@ -1734,7 +1733,7 @@ function renderModePicker() {
     b.addEventListener('click', () => {  // another tab starts on its first choice
       if (g.label === modeTab) return;
       modeTab = g.label;
-      $('mode').value = Array.from(g.querySelectorAll('option')).find(shown).value;
+      $('mode').value = Array.from(g.querySelectorAll('option')).find(start).value;
       if (MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
         $('formula').value = presetFormula('random');
         huntZone = 'all';
@@ -4880,7 +4879,7 @@ function visitCells() {
   return (visitData = { cell, max, seen: new Int32Array(total.length) });
 }
 
-const DIGITS_ZOOM = 14;  // Digits: the cell size (pixels) from which each one shows its digit
+const DIGITS_ZOOM = 14;  // Digits: the cell size (pixels) from which each cell shows its digit
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -4888,21 +4887,6 @@ function drawSegments(from, to) {
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
-  if (mode === 'digits') {  // each cell in yellow with the digit that led there, once big enough to read
-    ctx.font = `${Math.round(s * 0.6)}px ui-monospace, Menlo, monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
-      ctx.fillStyle = MONO;
-      ctx.beginPath();
-      tilePath(ctx, xs[p], ys[p]);
-      ctx.fill();
-      if (p === 0 || s < DIGITS_ZOOM) continue;
-      ctx.fillStyle = '#1a1300';
-      ctx.fillText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
-    }
-    return;
-  }
   // cells: always on a spiral (its line is greyed out), else for Fill cells and Visits
   if (greyed('line') || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
     // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
@@ -4915,12 +4899,28 @@ function drawSegments(from, to) {
     }
     let batch = null;  // one path per run of tiles of the same colour, filled when the colour changes
     const flush = () => { if (batch) { ctx.fillStyle = batch; ctx.fill(); } };
+    // Digits: each cell then writes the digit that led there, once big enough to read (a cell
+    // walked again is painted over, so it shows its last digit)
+    const digits = $('cellDigits').checked && !$('cellDigits').disabled && s >= DIGITS_ZOOM;
+    if (digits) {
+      ctx.font = `${Math.round(s * 0.6)}px ui-monospace, Menlo, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    }
     // a point mode's point 0 is the spiral's centre, not a mark; a spiral's 0 draws nothing
     for (let p = from === 0 && !walk.points ? 0 : from + 1; p <= to; p++) {
       if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
       const c = colourOf(p);
       if (c !== batch) { flush(); ctx.beginPath(); batch = c; }
       tilePath(ctx, xs[p], ys[p]);
+      if (!digits || p === 0) continue;
+      flush();
+      batch = null;
+      ctx.fillStyle = '#fff';
+      ctx.strokeText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
+      ctx.fillText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
     }
     flush();
     return;
@@ -4958,7 +4958,7 @@ const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
-const fillAreasApply = () => useful('fill') && !['visits', 'digit', 'digits'].includes($('colorMode').value);
+const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
 function computeFill() {
@@ -5498,13 +5498,12 @@ $('onCells').addEventListener('change', () => {  // the same walk from cell to c
   $('mode').value = twin;
   $('mode').dispatchEvent(new Event('change'));
 });
-// Heatmap of visits and Digits: one or the other over the cells, else the rainbow cells
-for (const [id, colour] of [['heatmap', 'visits'], ['cellDigits', 'digits']]) {
-  $(id).addEventListener('change', () => {
-    $('colorMode').value = $(id).checked ? colour : 'cells';
-    $('colorMode').dispatchEvent(new Event('change'));
-  });
-}
+// Heatmap of visits: the cells by their visits, else the rainbow cells; Digits: over either
+$('heatmap').addEventListener('change', () => {
+  $('colorMode').value = $('heatmap').checked ? 'visits' : 'cells';
+  $('colorMode').dispatchEvent(new Event('change'));
+});
+$('cellDigits').addEventListener('change', () => { needsFull = true; });
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));

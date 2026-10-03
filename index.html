@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261008s">
+  <link rel="stylesheet" href="style.css?v=20261008t">
 </head>
 <body>
   <header>
@@ -229,11 +229,10 @@
             <option value="visits">Rainbow by number of visits</option>
             <option value="digit">One colour per digit</option>
             <option value="mono">One colour</option>
-            <option value="digits">Digits in the cells</option>
           </select>
           <label class="check" id="onCellsRow" hidden title="Walk from cell to cell, colouring the cells, instead of along the lines of the grid: on triangles and hexagons the choices at each step change, and so does the base"><input id="onCells" type="checkbox"> Walk on cells</label>
           <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
-          <label class="check" id="cellDigitsRow" hidden title="Each cell in yellow with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
+          <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
           <label class="check" id="fillCellsRow" hidden><input id="fillCells" type="checkbox"> Fill cells</label>  <!-- surfaces -->
           <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas</label>
           <p id="fillLoopNote" class="muted" hidden>Fraction ↻: filling 2 cells max</p>  <!-- under Fill areas, like the status line -->
@@ -262,6 +261,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261008s"></script>
+  <script src="main.js?v=20261008t"></script>
 </body>
 </html>
