@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.239';
+const VERSION = '0.1.240';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3080,10 +3080,11 @@ function loopShown(loops) {
 }
 function syncLoopRow() {
   const loops = torusLoops();
+  const i = loops.length ? loopShown(loops) : -1, l = loops[i];
   $('loopRow').hidden = !loops.length;
+  $('sphereRow').classList.toggle('onLoop', !!l);  // the loop in yellow, the size and start it sets in white
   if (!loops.length) return;
-  const i = loopShown(loops), l = loops[i];
-  $('loopLabel').textContent = l ? `loop ${i + 1} of ${loops.length} · ${l.laps[0]}+${l.laps[1]}` : `${loops.length} loops`;
+  $('loopLabel').textContent = l ? `loop ${i + 1} of ${loops.length} · ${l.laps[0]}+${l.laps[1]}` : `${loops.length} diagonal loop${loops.length > 1 ? 's' : ''}`;
   $('loopDown').disabled = i === 0;
   $('loopUp').disabled = i === loops.length - 1;
 }
