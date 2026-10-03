@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.228';
+const VERSION = '0.1.229';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -969,7 +969,7 @@ function updateDisplayMenu() {
   $('fillCellsRow').hidden = !shows('fillCells');
   $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
-  $('fillLoopNote').hidden = !walk.loop;
+  $('fillLoopNote').hidden = !(walk.vert && current?.fraction);  // a fraction along a grid (see areaSteps)
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('translucent');
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
@@ -1605,13 +1605,15 @@ function sieve(limit) {
   return composite;
 }
 
-function setCurrent(entry, base) {
+// kind: the formula's ('int', 'rat' for a fraction, 'real' or 'seq')
+function setCurrent(entry, base, kind) {
   const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
   for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
   // total: how many digits the whole number has (a whole number's are only sent up to the count used)
   current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value,
-              whole: entry.total !== undefined, formula: formulaInUse };  // whole: a whole number, its digits all known
+              whole: entry.total !== undefined, formula: formulaInUse,  // whole: a whole number, its digits all known
+              fraction: kind === 'rat' };  // its digits end up repeating (see LOOP_FILL)
 }
 
 // The digits in use: n in total, the integer part (always included) then the digits after the point
@@ -1773,7 +1775,7 @@ function compute(keepDigits = false) {
   const note = FORMULA_NOTES[F.root] ? FORMULA_NOTES[F.root](base) : '';
 
   if (kind === 'seq') {
-    setCurrent(seqDigits(F.ast, want, base), base);
+    setCurrent(seqDigits(F.ast, want, base), base, kind);
     $('status').textContent = note;
     buildWalk();
     describe(base, n);
@@ -1784,7 +1786,7 @@ function compute(keepDigits = false) {
   }
 
   const done = (entry, how) => {
-    setCurrent(entry, base);
+    setCurrent(entry, base, kind);
     const total = entry.total ?? current.head.length + current.digits.length;
     $('status').textContent = [
       how,
@@ -4418,9 +4420,10 @@ function areaSteps() {
       const j = index.get(G.key(walk.vert[i], walk.vert[i + 1]));
       if (j !== undefined && crossed[j] < 0) crossed[j] = i;
     }
-    // a walk that loops closes off big areas around the globe, whatever it draws: only its small
-    // areas are filled, the rings of its figures (LOOP_FILL tiles at most)
-    return (areaData = enclosedFrom(g.n, eu, ev, crossed, walk.loop ? LOOP_FILL : Infinity));
+    // a fraction's digits end up repeating: its walk draws the same figure again and again and comes
+    // back on itself, closing off big areas around the surface whatever it draws. Only its small
+    // areas are filled, the rings of its figures (LOOP_FILL tiles at most), whatever the digits.
+    return (areaData = enclosedFrom(g.n, eu, ev, crossed, current.fraction ? LOOP_FILL : Infinity));
   }
   const index = new Map(), tile = walk.tile;  // nodes: corners; links: the tile edges
   for (const e of G.edgeTiles.keys()) { index.set(e, eu.length); eu.push(Math.floor(e / G.nv)); ev.push(e % G.nv); crossed.push(-1); }
