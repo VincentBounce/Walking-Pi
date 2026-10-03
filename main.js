@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.236';
+const VERSION = '0.1.237';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4626,13 +4626,13 @@ function pathHalves() {
     return walk.R * Math.hypot(c[a] - c[a + 3], c[a + 1] - c[a + 4], c[a + 2] - c[a + 5]);
   };
   for (let i = 0; i < cur; i++) {
-    const half = Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) / 2;
     const [a, b] = walk.stepTiles ? [walk.stepTiles[2 * i], walk.stepTiles[2 * i + 1]] : [tile[i], tile[i + 1]];
-    if (half > size(a) || half > size(b)) continue;
-    if (walk.stepTiles) {  // the whole edge, with each of its tiles
+    if (walk.stepTiles) {  // the whole edge, with each of its tiles, drawn from their own corners (see drawHalves)
       halves[a].push(i, i + 1, i + 1, i);
       if (b !== a) halves[b].push(i, i + 1, i + 1, i);
     } else {
+      const half = Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) / 2;
+      if (half > size(a) || half > size(b)) continue;  // across the seam of an unrolled torus
       halves[a].push(i, i + 1);  // from point i towards the middle of step i, on its tile
       halves[b].push(i + 1, i);
     }
@@ -4691,19 +4691,30 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
     // jumps of about 7 % in brightness), coarse enough to keep the cache of shaded colours small
     ctx.fillStyle = shaded(level ? palette[level] : '#1f2630', Math.round((1 - Math.max(0, toward)) * 64) / 64);
     ctx.beginPath();
+    const corners = [];  // on the screen
     for (let q = 0; q < k; q++) {
       const i = 3 * (k * t + q), [x, y] = proj(sh.corners[i] * R, sh.corners[i + 1] * R, sh.corners[i + 2] * R);
+      corners.push(ox + x * s, oy + y * s);
       ctx[q ? 'lineTo' : 'moveTo'](ox + x * s, oy + y * s);
     }
     ctx.closePath();
     ctx.fill();
     if (grid) ctx.stroke();
-    if (halves && halves[t].length) drawHalves(ctx, halves[t]);
+    if (halves && halves[t].length) drawHalves(ctx, halves[t], t, corners);
   }
 }
-// The halves of steps on one tile (pairs of point indices: from the first towards the middle)
-function drawHalves(ctx, list) {
-  const { xs, ys, n } = walk, { scale: s, ox, oy } = view;
+// The halves of steps on one tile (pairs of point indices: from the first towards the middle). A walk
+// along the grid draws them from the tile's own corners (on the screen: corners): a corner on the seam
+// of an unrolled torus has one position, on one side of the sheet only.
+function drawHalves(ctx, list, t, corners) {
+  const { n } = walk, { scale: s, ox, oy } = view, k = walk.geo.sides;
+  const xs = [], ys = [];  // the points of the steps on this tile
+  for (const p of list) {
+    if (walk.vert && corners) {
+      const q = walk.geo.poly.subarray(k * t, k * t + k).indexOf(walk.vert[p]);
+      xs[p] = (corners[2 * q] - ox) / s; ys[p] = (corners[2 * q + 1] - oy) / s;
+    } else { xs[p] = walk.xs[p]; ys[p] = walk.ys[p]; }
+  }
   ctx.save();
   ctx.lineWidth = surfaceLineWidth();
   ctx.lineCap = 'round';
