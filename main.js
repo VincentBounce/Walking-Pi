@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.224';
+const VERSION = '0.1.225';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1027,7 +1027,7 @@ function requestedDigits() {
 // (typed, or from a link) then steps to the next one in DIGIT_STEPS.
 // For a random prime, walked whole, the stepper sets the prime's size instead, in decimal digits:
 // [ − ] 300 digits (p) [ + ], through PRIME_STEPS (100 to 2,000).
-const DIGIT_STEPS = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7];
+const DIGIT_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7];
 const PRIME_STEPS = [100, 200, 300, 500, 1000, 2000];
 const randomPrimeSize = () => {  // the size of the random prime in the Formula field, if it is one
   const m = $('formula').value.match(/^\s*randprime\(\s*(\d+)\s*,\s*\d+\s*\)\s*$/);
