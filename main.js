@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.225';
+const VERSION = '0.1.226';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -968,7 +968,8 @@ function updateDisplayMenu() {
   $('fillAreasRow').hidden = !shows('fill');
   $('fillCellsRow').hidden = !shows('fillCells');
   $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
-  $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
+  $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with, or a loop
+  $('fillLoopNote').hidden = !walk.loop;
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('translucent');
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
@@ -4298,7 +4299,7 @@ function drawSphere() {
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
   const L = walk.life, line = !L && $('colorMode').value === 'gradient';
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
-    const cells = shows('fillCells') && $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && areaSteps();
+    const cells = shows('fillCells') && $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && fillAreasApply() && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
     palette = [null, ...grad, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
@@ -4700,8 +4701,9 @@ function drawSegments(from, to) {
 const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
-// Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
-const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
+// Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit),
+// and not with a walk that loops: its round is drawn again and again, its areas would mean nothing
+const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value) && !walk.loop;
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
 function computeFill() {
