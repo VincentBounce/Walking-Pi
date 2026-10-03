@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.231';
+const VERSION = '0.1.232';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2795,6 +2795,54 @@ function torusStarts(g) {
   return [...starts.keys()].sort((a, b) => a - b).map((key) => starts.get(key));
 }
 
+// The rotations (3×3 matrices, by rows) that map a solid onto itself, from its corners' directions:
+// those taking a corner and its nearest one onto any two corners at the same angle that map every
+// corner onto a corner (12 for the tetrahedron, 24 for the cube and the octahedron, 60 for the
+// icosahedron)
+function solidRotations(C) {
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const frame = (a, b) => { const u = unit(b.map((x, d) => x - dot(a, b) * a[d])); return [a, u, cross(a, u)]; };
+  const c1 = C.slice(1).reduce((best, c) => (dot(C[0], c) > dot(C[0], best) ? c : best)), cos = dot(C[0], c1), F0 = frame(C[0], c1);
+  const rots = [];
+  for (const a of C) for (const b of C) {
+    if (a === b || Math.abs(dot(a, b) - cos) > 1e-6) continue;
+    const F = frame(a, b), M = [0, 1, 2].map((i) => [0, 1, 2].map((j) => F[0][i] * F0[0][j] + F[1][i] * F0[1][j] + F[2][i] * F0[2][j]));
+    if (C.every((c) => C.some((e) => dot(M.map((row) => dot(row, c)), e) > 1 - 1e-6))) rots.push(M);
+  }
+  return rots;
+}
+
+// The solid's corners: of its faces, or the 12 pentagons of the sphere of hexagons (a pentagon's
+// direction from its 5 corners: its centre counts the repeated one twice)
+function solidCorners(g) {
+  const V = g.verts, C = [];
+  const put = (p) => { const u = unit(p); if (!C.some((c) => c[0] * u[0] + c[1] * u[1] + c[2] * u[2] > 1 - 1e-9)) C.push(u); };
+  if (g.faces) for (const f of g.faces) f.corners.forEach(put);
+  else for (const t of g.walls) put([0, 1, 2].map((d) => [0, 1, 2, 3, 4].reduce((sum, q) => sum + V[3 * g.poly[6 * t + q] + d], 0)));
+  return C;
+}
+
+// The usual start: gridStart (the sphere of hexagons) or the first corner, arriving by its first edge
+const firstStart = (g, G) => g.gridStart ?? [g.poly[0], G.nbrs[g.poly[0]][0]];
+
+// The solid's face centres: of its faces, or of the icosahedron's 20 (3 corners side by side)
+function solidFaceCentres(g, C) {
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], sum = (ps) => unit([0, 1, 2].map((d) => ps.reduce((s, p) => s + p[d], 0)));
+  if (g.faces) return g.faces.map((f) => sum(f.corners));
+  const O = [];
+  for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
+    if (dot(C[i], C[j]) > 0.3 && dot(C[i], C[k]) > 0.3 && dot(C[j], C[k]) > 0.3) O.push(sum([C[i], C[j], C[k]]));
+  }
+  return O;
+}
+
+// The different starts in order, as pairs [corner, the corner it arrives from], one per walk, all
+// in the kite of start 1: the points of the face F it lies on that are nearer F's corner A (the one
+// nearest start 1) than F's other corners; a quarter of a square face, a third of a triangle, as
+// the solid's rotations turn it onto every other such kite. Each walk takes its start whose edge's
+// middle lies deepest inside it (on the sphere, a point lies on the face whose centre is nearest).
+// An edge gives two starts, one per direction (the same as start 1's, towards A or away from it,
+// first), only one when a rotation turns it end for end. They follow by distance from A.
 function startList(g) {
   if (g.starts) return g.starts;
   if (g.torus) return (g.starts = torusStarts(g));
