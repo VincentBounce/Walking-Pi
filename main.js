@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.227';
+const VERSION = '0.1.228';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -968,7 +968,7 @@ function updateDisplayMenu() {
   $('fillAreasRow').hidden = !shows('fill');
   $('fillCellsRow').hidden = !shows('fillCells');
   $('fillCells').disabled = $('colorMode').value !== 'gradient';  // with the line only
-  $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with, or a loop
+  $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillLoopNote').hidden = !walk.loop;
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('translucent');
@@ -4299,7 +4299,7 @@ function drawSphere() {
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
   const L = walk.life, line = !L && $('colorMode').value === 'gradient';
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
-    const cells = shows('fillCells') && $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && fillAreasApply() && areaSteps();
+    const cells = shows('fillCells') && $('fillCells').checked && firstVisits(), areas = $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
     palette = [null, ...grad, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
@@ -4418,7 +4418,9 @@ function areaSteps() {
       const j = index.get(G.key(walk.vert[i], walk.vert[i + 1]));
       if (j !== undefined && crossed[j] < 0) crossed[j] = i;
     }
-    return (areaData = enclosedFrom(g.n, eu, ev, crossed));
+    // a walk that loops closes off big areas around the globe, whatever it draws: only its small
+    // areas are filled, the rings of its figures (LOOP_FILL tiles at most)
+    return (areaData = enclosedFrom(g.n, eu, ev, crossed, walk.loop ? LOOP_FILL : Infinity));
   }
   const index = new Map(), tile = walk.tile;  // nodes: corners; links: the tile edges
   for (const e of G.edgeTiles.keys()) { index.set(e, eu.length); eu.push(Math.floor(e / G.nv)); ev.push(e % G.nv); crossed.push(-1); }
@@ -4442,7 +4444,9 @@ function areaSteps() {
 // (−1: never): going back in time with a union–find, from the regions at the end, the links are
 // restored from the last cut to the first; restoring one that joins a region to the outside means
 // that region was enclosed from the step after it. Each region keeps its nodes as a linked list.
-function enclosedFrom(n, eu, ev, crossed) {
+const LOOP_FILL = 2;
+// maxSize: regions of more nodes at the end count as outside too, never filled
+function enclosedFrom(n, eu, ev, crossed, maxSize = Infinity) {
   const parent = Int32Array.from({ length: n }, (_, i) => i), size = new Int32Array(n).fill(1), out = new Uint8Array(n);
   const head = Int32Array.from({ length: n }, (_, i) => i), tail = Int32Array.from(head), next = new Int32Array(n).fill(-1);
   const at = new Int32Array(n).fill(-1);
@@ -4462,6 +4466,7 @@ function enclosedFrom(n, eu, ev, crossed) {
   let largest = find(0);
   for (let v = 0; v < n; v++) if (find(v) === v && size[v] > size[largest]) largest = v;
   out[largest] = 1;
+  for (let v = 0; v < n; v++) if (find(v) === v && size[v] > maxSize) out[v] = 1;
   const byStep = Array.from(eu, (_, e) => e).filter((e) => crossed[e] >= 0).sort((x, y) => crossed[y] - crossed[x]);
   for (const e of byStep) join(e, crossed[e]);
   return at;
@@ -4701,9 +4706,8 @@ function drawSegments(from, to) {
 const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of fill.order are painted on the fill layer
-// Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit),
-// and not with a walk that loops: its round is drawn again and again, its areas would mean nothing
-const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value) && !walk.loop;
+// Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
+const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
 function computeFill() {
