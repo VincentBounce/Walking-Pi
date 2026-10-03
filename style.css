@@ -142,8 +142,8 @@ button.primary {
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }  /* the setup at a glance */
 /* the number of digits can be typed: a field that looks like the label until it is hovered or used */
-#loopLabel, #sphereRow.onLoop #sizeLabel, #sphereRow.onLoop #startLabel { color: var(--text); }
-#sphereRow.onLoop #loopLabel { color: var(--accent); }
+#loopLabel { color: var(--text); }
+#loopLabel.on { color: var(--accent); }
 .stepper input { min-width: 0; margin: 0; padding: 6px 8px; cursor: text; }
 /* the two fields and the − / + buttons: one height, whatever the font (monospace while editing) */
 #formula, .stepper input, .stepper button { height: 34px; }
