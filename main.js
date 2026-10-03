@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.233';
+const VERSION = '0.1.234';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2956,6 +2956,15 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
   let [v, from] = STARTS_ON.includes(kind) ? startList(g)[startNo() - 1] : firstStart(g, G);
   let distinct = 1, m = 0, coverStep = -1;
   seen[v] = 1;
+  // On a torus the turns are measured on the flat sheet (east, north; see torusPoint): rolled up, its
+  // tiles are bent unevenly, squeezed on the inside of the ring and stretched outside, which would
+  // change the edge a turn picks from place to place, so a repeating pattern would not repeat
+  const sheet = g.torus && ((a, b) => {
+    const k = g.sides, ia = 2 * (k * G.tileOf[a] + G.cornerOf[a]), ib = 2 * (k * G.tileOf[b] + G.cornerOf[b]);
+    let du = g.uv[ib] - g.uv[ia], dv = g.uv[ib + 1] - g.uv[ia + 1];
+    du -= g.nu * Math.round(du / g.nu); dv -= g.nv * Math.round(dv / g.nv);  // across the seams
+    return [(du / g.nu) * 2 * Math.PI, (dv / g.nv) * 2 * Math.PI * TORUS_TUBE, 0];
+  });
   const start = at(v);
   const put = (i) => {
     const p = at(v);
@@ -2977,13 +2986,17 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
   let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
     // the heading and each way out, flattened onto the plane tangent at v; the signed angle between them
-    const n = [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n), p = at(v);
-    const flat = (q) => { const e = [0, 1, 2].map((d) => q[d] - p[d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl); return e.map((x, d) => x - s * n[d]); };
-    const h = flat(at(from)).map((x) => -x);
+    const n = sheet ? [0, 0, 1] : [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n), p = at(v);
+    const flat = (w) => {  // the edge from v to w, flattened onto the plane tangent at v (or on the sheet)
+      if (sheet) return sheet(v, w);
+      const e = [0, 1, 2].map((d) => V[3 * w + d] - p[d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl);
+      return e.map((x, d) => x - s * n[d]);
+    };
+    const h = flat(from).map((x) => -x);
     let next = -1, err = Infinity;
     for (const w of G.nbrs[v]) {
       if (w === from) continue;
-      const e = flat(at(w)), c = cross(h, e);
+      const e = flat(w), c = cross(h, e);
       const turn = Math.atan2((c[0] * n[0] + c[1] * n[1] + c[2] * n[2]) / nl, h[0] * e[0] + h[1] * e[1] + h[2] * e[2]);
       // the edge nearest the turn; between two as near, the left one (a rule that turns with the solid)
       const off = Math.abs(turn - angles[seq[i]]) - (turn > 0 ? 1e-9 : 0);
