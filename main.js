@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.256';
+const VERSION = '0.1.257';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -910,6 +910,7 @@ const layers = {
   grid: $('gridLayer').getContext('2d'),
   fill: $('fillLayer').getContext('2d'),  // Fill areas, under the path
   path: $('pathLayer').getContext('2d'),
+  line: $('lineLayer').getContext('2d'),  // Show path over cells: above them all, the cells painted later included
   overlay: $('overlayLayer').getContext('2d'),
 };
 let cw = 0, ch = 0;
@@ -4517,6 +4518,7 @@ const facing = (i) => (walk.geo.torus && walk.shape.m < 1) || tileVisible(walk.t
 function drawSphere() {
   const ctx = layers.path;
   ctx.clearRect(0, 0, cw, ch);
+  layers.line.clearRect(0, 0, cw, ch);  // the 2D path over cells, if any was left
   const { geo: g, R, visits, maxVisits } = walk;
   const { scale: s, ox, oy } = view;
   const nv = g.verts.length / 3;
@@ -4909,7 +4911,7 @@ const DIGIT_SIZE = { square: 0.6, hex: 0.5, tri: 0.35 };
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
-  const ctx = layers.path;
+  let ctx = layers.path;
   const { xs, ys } = walk;
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
@@ -4952,6 +4954,7 @@ function drawSegments(from, to) {
     flush();
     if (!$('showPath').checked || $('showPath').disabled) return;
     overCells = true;
+    ctx = layers.line;
   }
   ctx.lineWidth = overCells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6));
   ctx.lineCap = 'round';
@@ -5313,6 +5316,7 @@ function tick(now = performance.now()) {
   if (needsFull || (walk.is3d && statsDirty)) drawGrid(); // the 3D box grows with the walk
   if (needsFull) {
     layers.path.clearRect(0, 0, cw, ch);
+    layers.line.clearRect(0, 0, cw, ch);
     layers.fill.clearRect(0, 0, cw, ch);
     drawn = 0;
     fillDone = 0;
