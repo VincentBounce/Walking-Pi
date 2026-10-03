@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.250';
+const VERSION = '0.1.251';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -983,14 +983,14 @@ function updateDisplayMenu() {
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
-  $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
+  $('cellsLabel').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
   $('heatmap').disabled = !mode.cells;
   $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
   // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
-  $('viewSlot').append(spin ? $('autoFitRow') : $('autoRotateRow'));
+  $('perspectiveRow').after(spin ? $('autoFitRow') : $('autoRotateRow'));  // with the form of the view
   $('fillAreasRow').hidden = !shows('fill');
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillLoopNote').hidden = !(walk.vert && current?.fraction);  // a fraction along a grid (see areaSteps)

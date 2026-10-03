@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261009b">
+  <link rel="stylesheet" href="style.css?v=20261009c">
 </head>
 <body>
   <header>
@@ -250,13 +250,12 @@
               <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
             </div>
             <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
+            <label class="check" id="autoRotateRow" hidden title="Turn the view slowly, swaying up and down so that the top and the bottom show too; it starts Auto-fit, and a hand rotation stops it"><input id="autoRotate" type="checkbox"> Auto-rotate</label>  <!-- the other of Auto-fit and Auto-rotate -->
           </div>
           <div id="cellsSection" class="form-section">  <!-- what the cells show -->
+            <div id="cellsLabel" class="field-label" hidden>Walk on cells</div>
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
             <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
-          </div>
-          <div id="viewSlot">  <!-- the other of Auto-fit and Auto-rotate, at the very bottom -->
-            <label class="check" id="autoRotateRow" hidden title="Turn the view slowly, swaying up and down so that the top and the bottom show too; it starts Auto-fit, and a hand rotation stops it"><input id="autoRotate" type="checkbox"> Auto-rotate</label>
           </div>
         </div>
       </div>
@@ -264,6 +263,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261009b"></script>
+  <script src="main.js?v=20261009c"></script>
 </body>
 </html>

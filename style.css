@@ -305,9 +305,12 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
-.choice-row { display: flex; gap: 4px; margin-bottom: 10px; }  /* a few short choices side by side */
-.choice-row button { flex: 1; padding: 5px 4px; font-size: 12px; background: var(--panel); white-space: nowrap; }
-.choice-row button.active,
+/* a few short choices side by side, as one segmented control */
+.choice-row { display: flex; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.choice-row button { flex: 1; padding: 5px 4px; font-size: 12px; background: var(--panel); color: var(--muted); white-space: nowrap; border: 0; border-radius: 0; }
+.choice-row button + button { border-left: 1px solid var(--border); }
+.choice-row button:hover:not(:disabled):not(.active) { color: var(--text); }
+.choice-row button.active { background: rgba(240, 180, 41, 0.22); color: var(--accent); font-weight: 600; }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .stage-bar { left: 12px; bottom: 12px; width: 250px; }  /* grows upwards: the Play row stays at the bottom */
 .stage-bar .stage-more { margin-bottom: 8px; }
