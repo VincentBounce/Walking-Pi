@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.238';
+const VERSION = '0.1.239';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3014,9 +3014,11 @@ function nextCorner(g, G, v, from, angle) {
  * shifts the walk by the same T on the flat sheet (columns east, rows north). A diagonal one, T both
  * ways, closes after the fewest periods m that make m·T a whole number of turns both ways, and how
  * many depends on the torus's size. For each start, the sizes (32 to 64 rows, proportions within
- * TORUS_RATIO of the usual ones) where it closes in at most LOOP_LAPS laps and LOOP_STEPS steps, one
- * per number of laps, the nearest the usual proportions: Browse loops goes through them. */
-const TORUS_RATIO = [0.8, 1.25], LOOP_LAPS = 6, LOOP_STEPS = 20000;
+ * TORUS_RATIO of the usual ones) where it closes within LOOP_STEPS steps without its strands touching
+ * (the sheet's area over the chain's length, the room between strands, at least the motif's width
+ * across T plus LOOP_GAP), one per number of laps, the nearest the usual proportions: Browse loops
+ * goes through the LOOP_MAX with the fewest laps. */
+const TORUS_RATIO = [0.8, 1.25], LOOP_STEPS = 20000, LOOP_GAP = 1, LOOP_MAX = 12;
 let torusLoopList = null;  // { key, loops: [{ start, size, laps: [ring, tube], steps }] } for the number in use
 function torusLoops() {
   const mode = MODES[$('mode').value], key = `${formulaInUse} ${$('mode').value}`;
@@ -3041,23 +3043,26 @@ function torusLoops() {
   const usual = 48 / (S.columns(48) * S.perRow), gcdN = (x, y) => (y ? gcdN(y, x % y) : x);
   startList(g).forEach(([v0, f0], i) => {
     let v = v0, from = f0, x = 0, y = 0;
-    const at = [];
+    const at = [], band = [];
     for (let j = 1; j <= s0 + 2 * L; j++) {  // the shifts of two periods in a row
       const w = nextCorner(g, G, v, from, angles[digit(j - 1)]), [du, dv] = sheetDelta(g, G, v, w);
       x += du; y += dv; from = v; v = w;
       if (j === s0 || j === s0 + L || j === s0 + 2 * L) at.push([x, y]);
+      if (j >= s0 && j <= s0 + L) band.push([x, y]);
     }
     const T = [at[1][0] - at[0][0], at[1][1] - at[0][1]];
     if (Math.abs(at[2][0] - at[1][0] - T[0]) > 1e-6 || Math.abs(at[2][1] - at[1][1] - T[1]) > 1e-6) return;  // its period turns
     if (Math.abs(T[0]) < 1e-6 || Math.abs(T[1]) < 1e-6) return;  // not diagonal: any size closes it alike
     const U = Math.round(2 * T[0]), V = Math.round(2 * T[1]), best = new Map();  // in half tiles
+    const len = Math.hypot(...T), across = band.map(([px, py]) => (px * T[1] - py * T[0]) / len);
+    const width = Math.max(...across) - Math.min(...across);
     for (let rows = 32; rows <= 64; rows += S.steps[0]) {
       for (let e = Math.ceil(rows / usual / TORUS_RATIO[1]); e <= rows / usual / TORUS_RATIO[0]; e++) {
         if (e % S.steps[1]) continue;
         const cols = e / S.perRow, mu = (2 * cols) / gcdN(2 * cols, Math.abs(U)), mv = (2 * rows) / gcdN(2 * rows, Math.abs(V));
         const m = (mu / gcdN(mu, mv)) * mv, laps = [Math.round((m * Math.abs(T[0])) / cols), Math.round((m * Math.abs(T[1])) / rows)];
         const steps = m * L + s0 + L, off = Math.abs(Math.log(rows / e / usual));
-        if (laps[0] + laps[1] > LOOP_LAPS || steps > LOOP_STEPS) continue;
+        if (steps > LOOP_STEPS || (cols * rows) / (m * len) < width + LOOP_GAP) continue;
         const kept = best.get(`${laps}`);
         if (!kept || off < kept.off) best.set(`${laps}`, { start: i + 1, size: `${rows}x${e}`, laps, steps, off });
       }
@@ -3065,6 +3070,7 @@ function torusLoops() {
     loops.push(...best.values());
   });
   loops.sort((a, b) => a.laps[0] + a.laps[1] - b.laps[0] - b.laps[1] || a.start - b.start || a.steps - b.steps);
+  loops.length = Math.min(loops.length, LOOP_MAX);
   return loops;
 }
 // The loop shown, if the start and size in use are one of them
