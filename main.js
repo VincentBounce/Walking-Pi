@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.223';
+const VERSION = '0.1.224';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -917,6 +917,7 @@ function digitsNeeded() {
 // a square grid: 0 turn left + step, …" (the digits actually walked). An automaton: "4/3 in base 2
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
+let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
@@ -1041,7 +1042,7 @@ function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
   // a walk that loops uses only the digits of its first round (see buildGridWalk): more would change nothing
   const total = size ? null : walk.loop ? walk.n : wholeTotal();
-  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : walk.loop ? `${fmt(walk.n)} digits, then a loop`
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : walk.loop ? `${fmt(walk.n)} digits max ↻`
     : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
@@ -1055,7 +1056,7 @@ function stepDigits(delta) {
   const next = delta > 0 ? steps.find((v) => v > n) : steps.findLast((v) => v < n);
   if (next === undefined) return;
   if (size) setPrimeSize(next);
-  else { $('digits').value = next; compute(); }
+  else { $('digits').value = next; compute(true); }
 }
 // Another size for the random prime: a new prime of that size, from the same seed
 function setPrimeSize(size) {
@@ -1618,6 +1619,18 @@ function digitsInUse() {
   const head = current.head.subarray(0, n);
   return { head, frac: current.digits.subarray(0, n - head.length) };
 }
+// The digits just after those walked (as many as are known, up to LOOP_AHEAD): a walk compares
+// them to tell a loop (see buildGridWalk)
+const LOOP_AHEAD = 64;
+function digitsAhead() {
+  const n = digitsNeeded(), H = current.head, D = current.digits, out = [];
+  for (let i = n; i < n + LOOP_AHEAD; i++) {
+    const d = i < H.length ? H[i] : D[i - H.length];
+    if (d === undefined) break;
+    out.push(d);
+  }
+  return Uint8Array.from(out);
+}
 
 // The number as copied: "pi^2 base 5 ≈ 14.41332…", with every digit in use ("=" only for a whole
 // number with all its digits, the one case where nothing is cut off). Up to base 36 one
@@ -1717,12 +1730,18 @@ function renderModePicker() {
 }
 
 /* ---- 5.2 compute(): from the formula to a built walk ----------------------------------------- */
-function compute() {
+// keepDigits: the number of digits was just set by hand (else a count cut to a loop's length comes
+// back to what it was, for the new number, surface or start; see buildWalk)
+function compute(keepDigits = false) {
+  if (!keepDigits && digitsBeforeLoop !== null) {
+    $('digits').value = digitsBeforeLoop;
+    digitsBeforeLoop = null;
+  }
   const mode = MODES[$('mode').value];
   modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
   renderModePicker();
   if (mode.sphere) fillSphereSizes(mode.sphere, mode.initial);
-  const n = digitsNeeded();
+  const n = digitsNeeded(), want = mode.life ? n : n + LOOP_AHEAD;  // a walk also reads the digits ahead
   if (!mode.life && !randomPrimeSize()) $('digits').value = n;  // a random prime keeps the count for later
   syncDigitsStepper();
   relabelColours(mode);
@@ -1753,7 +1772,7 @@ function compute() {
   const note = FORMULA_NOTES[F.root] ? FORMULA_NOTES[F.root](base) : '';
 
   if (kind === 'seq') {
-    setCurrent(seqDigits(F.ast, n, base), base);
+    setCurrent(seqDigits(F.ast, want, base), base);
     $('status').textContent = note;
     buildWalk();
     describe(base, n);
@@ -1781,7 +1800,7 @@ function compute() {
   };
   const hit = cache[key], integer = kind === 'int';
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
-                         : hit && hit.digits.length >= n;
+                         : hit && hit.digits.length >= want;
   if (enough) {
     done(hit, 'Cached');
     return;
@@ -1817,7 +1836,7 @@ function compute() {
     cache[key] = entry;
     done(entry, `Computed in ${(d.ms / 1000).toFixed(2)} s`);
   };
-  worker.postMessage({ ast: F.ast, n, base, mag: F.mag, nodes: F.nodes });
+  worker.postMessage({ ast: F.ast, n: want, base, mag: F.mag, nodes: F.nodes });
 }
 
 // While the worker computes: the progress bar shows, and the link waits for the result
@@ -1852,7 +1871,15 @@ function buildWalk() {
     return;
   }
   if (MODES[current.mode].lattice === 'sphere') {
-    (MODES[current.mode].grid ? buildGridWalk : buildSphereWalk)(seq, MODES[current.mode]);
+    if (!MODES[current.mode].grid) { buildSphereWalk(seq, MODES[current.mode]); return; }
+    buildGridWalk(seq, MODES[current.mode], digitsAhead());
+    // a walk that loops takes only the digits of its first round: the count says so (and the link),
+    // and the count asked comes back for the next number, surface or start (see compute)
+    if (walk.loop && walk.n < requestedDigits()) {
+      digitsBeforeLoop ??= requestedDigits();
+      $('digits').value = walk.n;
+    } else if (!walk.loop) digitsBeforeLoop = null;  // a count that does not loop is the one asked
+    syncDigitsStepper();
     return;
   }
   const len = seq.length;
@@ -2881,7 +2908,7 @@ function drawStarts(ctx) {
   ctx.restore();
 }
 
-function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
+function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new Uint8Array(0)) {
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = Number($('sphereF').value), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
@@ -2903,10 +2930,14 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
   };
   put(0);
   // A walk back on an earlier state (corner, and the corner it came from) with the same digits ahead
-  // draws the same steps again, forever: it stops there, after its first round. Only with at least
-  // 64 digits left to compare, so that no other number gets cut by chance.
+  // draws the same steps again, forever: it stops there, after its first round. The digits are
+  // compared up to the ones ahead (LOOP_AHEAD after those walked), and only with at least LOOP_AHEAD
+  // of them left, so that no other number gets cut by chance.
+  const all = new Uint8Array(len + ahead.length);
+  all.set(seq);
+  all.set(ahead, len);
   const firstAt = new Map([[v * G.nv + from, 0]]);
-  const repeats = (a, b) => { for (let x = b; x < len; x++) if (seq[x] !== seq[x - b + a]) return false; return true; };
+  const repeats = (a, b) => { for (let x = b; x < all.length; x++) if (all[x] !== all[x - b + a]) return false; return true; };
   let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
     // the heading and each way out, flattened onto the plane tangent at v; the signed angle between them
@@ -2931,7 +2962,7 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }) {
     counts[base * (i + 1) + seq[i]]++;
     const state = v * G.nv + from, earlier = firstAt.get(state);
     if (earlier === undefined) firstAt.set(state, i + 1);
-    else if (len - i - 1 >= 64 && repeats(earlier, i + 1)) { steps = i + 1; loop = { from: earlier }; break; }
+    else if (all.length - i - 1 >= LOOP_AHEAD && repeats(earlier, i + 1)) { steps = i + 1; loop = { from: earlier }; break; }
   }
   Object.assign(walk, { n: steps, loop, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
@@ -3646,8 +3677,10 @@ function setLifeSeed(seed, how) {
  *   x   the formula          w   the walk mode        d    the number of digits (walks)
  *   s   the surface size     r   the Life rule        ch   a Life start (champion or patch)
  *   st  the start of a walk along a solid's grid (when not 1)
+ *   fa  0 when Fill areas is off
  * It only holds what determines the result. Display choices (colours, grid, sky, camera, zoom…),
- * the speed and the current step are never saved: a link opens with the mode's default view. A
+ * the speed and the current step are never saved: a link opens with the mode's default view, but
+ * for Fill areas, which changes what is drawn. A
  * Life start does not depend on the number: it replaces the digits.
  */
 
@@ -3701,6 +3734,7 @@ function getSetup() {
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (modeStarts() && startNo() > 1) s.st = startNo();
+  if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = $('lifeRule').value;
   if (championCode) s.ch = championCode;
   return s;
@@ -3722,6 +3756,7 @@ function applySetup(s) {
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab
   displayDefaults();
+  $('fillAreas').checked = String(s.fa ?? 1) !== '0';  // the one display choice kept: it changes what is drawn
   $('perspective').checked = !!MODES[s.w].perspective;
   Object.assign(cam, CAM0);
   pendingChampion = s.ch || null;
@@ -5049,7 +5084,7 @@ $('digitsLabel').addEventListener('change', () => {
   if (!$('digitsLabel').value) return;  // emptied: the blur shows the current count again
   if (randomPrimeSize()) { setPrimeSize(Number($('digitsLabel').value)); return; }
   $('digits').value = $('digitsLabel').value;
-  compute();
+  compute(true);
 });
 $('play').addEventListener('click', () => {
   if (cur >= walk.n) restart();
@@ -5065,7 +5100,7 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('speed').addEventListener('input', updateSpeedLabel);
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
-$('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
+$('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('fillCells').addEventListener('change', () => { needsFull = true; });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
@@ -5186,9 +5221,9 @@ function setStart(n) {
   $('startNo').value = Math.max(1, Math.min(n, modeStarts().length));
   syncSizeStepper();
   if (!current) return;
+  if (digitsBeforeLoop !== null) { compute(); return; }  // the count asked before a loop cut it
   buildWalk();
   describe(walk.base);
-  syncDigitsStepper();
   showAll();
 }
 $('startDown').addEventListener('click', () => setStart(startNo() - 1));
@@ -5205,9 +5240,9 @@ $('sphereF').addEventListener('change', () => {
   syncSizeStepper();
   if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits
   if (!current) return;
+  if (digitsBeforeLoop !== null) { compute(); return; }  // the count asked before a loop cut it
   buildWalk();
   describe(walk.base);
-  syncDigitsStepper();
   showAll();
 });
 // A formula left wrong (by clicking elsewhere) is undone: the one in use comes back
