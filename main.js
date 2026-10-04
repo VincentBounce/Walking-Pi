@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.288';
+const VERSION = '0.1.289';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1239,6 +1239,7 @@ const ICONS = (() => {
     search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + pathEl('M15.5 15.5L21 21'),
     // tabs
     walk2d: pathEl('M3 20V15H8V10H12V16H17V6H21V3'),  // a walk on the square grid
+    gallery: [[3.5, 3.5], [13.5, 3.5], [3.5, 13.5], [13.5, 13.5]].map(([x, y]) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1.6"/>`).join(''),
     glider: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20')
       + [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]].map(([x, y]) => `<rect class="f" x="${r2(4 + x * 5.33)}" y="${r2(4 + y * 5.33)}" width="5.33" height="5.33"/>`).join(''),
     // hunt zones: the whole surface, then a patch of radius 1, 2 or 3
@@ -1776,7 +1777,7 @@ function renderModePicker() {
   if (modeTab === currentGroup && (inUse.twin || inUse.grid)) onCells = !!inUse.cells;
   const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === onCells;
   const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
-  $('modeTabs').replaceChildren(...groups.map((g) => {
+  $('modeTabs').replaceChildren(galleryTab(), ...groups.map((g) => {
     const b = document.createElement('button');
     b.innerHTML = `${icon(TAB_ICONS[g.label])} ${g.label}`;
     b.setAttribute('role', 'tab');
@@ -1784,6 +1785,7 @@ function renderModePicker() {
     const tabOf = (w) => $('mode').querySelector(`option[value="${w}"]`)?.parentElement.label;
     b.classList.toggle('active', g.label === (galleryBefore ? tabOf(galleryBefore.w) : modeTab));
     b.addEventListener('click', () => {  // another tab starts on its first choice
+      showPane(false);
       if (g.label === modeTab) return;
       modeTab = g.label;
       $('mode').value = Array.from(g.querySelectorAll('option')).find(start).value;
@@ -5940,18 +5942,37 @@ for (const list of ['builtInList', 'yourList']) {
     applySetup(before);
   });
 }
-// Parameters | Gallery: the left pane's two tabs; the one chosen is remembered in this browser
-const PANE_KEY = 'walkingPi.pane';
+// The left pane shows the parameters, or the gallery: opened by hovering the Gallery tab (until the
+// mouse leaves the tab and the pane) or kept open by a click on it; a setup clicked, or another tab,
+// brings back the parameters
+let galleryKept = false, galleryClose = 0;
 function showPane(gallery) {
+  if (!gallery) galleryKept = false;
   $('paramsPane').hidden = gallery;
   $('galleryPane').hidden = !gallery;
-  $('tabParams').classList.toggle('active', !gallery);
-  $('tabGallery').classList.toggle('active', gallery);
+  galleryTab().classList.toggle('open', gallery);
   if (gallery) renderGallery();
-  try { localStorage.setItem(PANE_KEY, gallery ? 'gallery' : 'params'); } catch { /* not kept */ }
 }
-$('tabParams').addEventListener('click', () => showPane(false));
-$('tabGallery').addEventListener('click', () => showPane(true));
+const galleryButton = document.createElement('button');
+function galleryTab() {
+  if (galleryButton.dataset.ready) return galleryButton;
+  const b = galleryButton;
+  b.dataset.ready = '1';
+  b.className = 'gallery-tab';
+  b.innerHTML = `${icon('gallery')} Gallery`;
+  b.title = 'My finds and the built-in setups: hover one to see it, click it to keep it';
+  b.addEventListener('mouseenter', () => { clearTimeout(galleryClose); showPane(true); });
+  b.addEventListener('click', () => { galleryKept = true; showPane(true); });
+  return b;
+}
+// leaving the tab or the pane closes it, unless the mouse goes from one to the other in time
+const leaveGallery = () => {
+  clearTimeout(galleryClose);
+  galleryClose = setTimeout(() => { if (!galleryKept && !$('galleryPane').hidden) showPane(false); }, 250);
+};
+galleryButton.addEventListener('mouseleave', leaveGallery);
+document.querySelector('aside.panel').addEventListener('mouseleave', leaveGallery);
+document.querySelector('aside.panel').addEventListener('mouseenter', () => clearTimeout(galleryClose));
 
 $('setupSave').addEventListener('click', saveSetup);
 $('setupExport').addEventListener('click', exportSetups);
@@ -5977,5 +5998,5 @@ play(false);  // the Play button with its icon
 fillSetupList();
 const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
 if (!linked || !applySetup(linked)) compute();
-try { showPane(!linked && localStorage.getItem(PANE_KEY) === 'gallery'); } catch { showPane(false); }
+showPane(false);
 setInterval(syncLink, 700);  // keep the link up to date with the setup

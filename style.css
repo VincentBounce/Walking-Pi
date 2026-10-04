@@ -50,8 +50,6 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel section { padding: 10px 0; border-bottom: 2px solid var(--accent); }
 .panel section:last-child { border-bottom: 0; }
 .panel > section:first-child { padding-top: 6px; }  /* no gap under the header */
-.pane-tabs { margin: 8px 0 4px; }  /* Parameters | Gallery, above both panes */
-.pane-tabs button { padding: 7px 4px; font-size: 13px; }
 #paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; }
 #paramsPane > section:last-child, #galleryPane > section:last-child { border-bottom: 0; }
 .row-delete { padding: 0 6px; font-size: 16px; color: var(--muted); border-radius: 4px; }  /* × on a saved setup */
@@ -392,3 +390,6 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; background: transparent; border-color: transparent; color: var(--muted); }
 .icon-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--border); background: var(--bg); }
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* Gallery, the first tab at the top: it opens the gallery in the left pane (on hover, or kept by a
+   click), in white, while the tab of the walk in use stays the selected one */
+.tabs button.gallery-tab.open { color: var(--text); }
