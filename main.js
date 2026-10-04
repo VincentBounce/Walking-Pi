@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.268';
+const VERSION = '0.1.269';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -691,7 +691,7 @@ const MONO = '#f0b429';
 // menu (Mersenne, primorial, random prime) or a random seed build it when picked. A card is a
 // small tile showing the symbol; its name and formula (detail, when the formula is built) are
 // in its tooltip, and the Formula field shows what it wrote.
-const NUMBER_GROUPS = ['Constants', '𝑓', 'Primes', 'Sequences'];
+const NUMBER_GROUPS = ['Constants', '𝑓', 'Fractions', 'Primes', 'Sequences'];
 const PRESETS = {
   pi:      { group: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
   e:       { group: 'Constants', sym: 'e',    name: "Euler's number", detail: 'e = exp(1)', f: 'e' },
@@ -708,6 +708,22 @@ const PRESETS = {
   frac4_3: { group: '𝑓', sym: '4/3', name: 'Four thirds', f: '4/3' },
   frac16_9: { group: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
   basel:   { group: '𝑓', sym: '6/π²', name: 'Probability that two whole numbers are coprime', detail: '6/pi^2 = 1/ζ(2)', f: '6/pi^2' },
+  // Fractions: their digits repeat, and on a walk that turns relative to its heading, a round of
+  // them that turns by a whole fraction of a turn closes into a rosette (k rounds for a k-fold one).
+  // Picked among the fractions up to /999 for big rosettes drawn with few overlaps, four per walk;
+  // a tile also takes its walk, and enough digits to close it
+  rose1_923: { group: 'Fractions', sym: '1/923', name: 'A 4-fold rosette on Squares turtle', detail: '1/923 in base 3', f: '1/923', walk: 'turtle', steps: 420 },
+  rose2_541: { group: 'Fractions', sym: '2/541', name: 'A 4-fold rosette on Squares turtle', detail: '2/541 in base 3', f: '2/541', walk: 'turtle', steps: 540 },
+  rose1_709: { group: 'Fractions', sym: '1/709', name: 'A 4-fold rosette on Squares turtle', detail: '1/709 in base 3', f: '1/709', walk: 'turtle', steps: 708 },
+  rose1_983: { group: 'Fractions', sym: '1/983', name: 'A 4-fold rosette on Squares turtle', detail: '1/983 in base 3', f: '1/983', walk: 'turtle', steps: 1964 },
+  rose1_383: { group: 'Fractions', sym: '1/383', name: 'A 6-fold rosette on Hexagons turtle', detail: '1/383 in base 2', f: '1/383', walk: 'hexTurtle', steps: 1146 },
+  rose3_497: { group: 'Fractions', sym: '3/497', name: 'A 6-fold rosette on Hexagons turtle', detail: '3/497 in base 2', f: '3/497', walk: 'hexTurtle', steps: 630 },
+  rose1_463: { group: 'Fractions', sym: '1/463', name: 'A 6-fold rosette on Hexagons turtle', detail: '1/463 in base 2', f: '1/463', walk: 'hexTurtle', steps: 1386 },
+  rose1_967: { group: 'Fractions', sym: '1/967', name: 'A 6-fold rosette on Hexagons turtle', detail: '1/967 in base 2', f: '1/967', walk: 'hexTurtle', steps: 2898 },
+  rose11_604: { group: 'Fractions', sym: '11/604', name: 'A 6-fold rosette on Triangles turtle', detail: '11/604 in base 5', f: '11/604', walk: 'triTurtle', steps: 450 },
+  rose1_599: { group: 'Fractions', sym: '1/599', name: 'A 3-fold rosette on Triangles turtle', detail: '1/599 in base 5', f: '1/599', walk: 'triTurtle', steps: 897 },
+  rose1_856: { group: 'Fractions', sym: '1/856', name: 'A 6-fold rosette on Triangles turtle', detail: '1/856 in base 5', f: '1/856', walk: 'triTurtle', steps: 636 },
+  rose21_976: { group: 'Fractions', sym: '21/976', name: 'A 6-fold rosette on Triangles turtle', detail: '21/976 in base 5', f: '21/976', walk: 'triTurtle', steps: 360 },
   mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
   primorial: { group: 'Primes', sym: 'p#±1', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
@@ -5606,7 +5622,15 @@ for (const [low, top, label] of [[0, 1e3, 'up to 1,000 digits'], [1e3, 1e4, '1,0
 }
 $('primorialP').value = '392113,1';
 // A menu choice, or a new value in its helper menu, writes its formula
-const pickPreset = (id) => { $('formula').value = presetFormula(id); computeFramed(); };
+const pickPreset = (id) => {
+  const p = PRESETS[id];
+  $('formula').value = presetFormula(id);
+  if (p.walk) {  // a rosette: on its walk, with the digits to close it
+    $('mode').value = p.walk;
+    if (requestedDigits() < p.steps) $('digits').value = p.steps;
+  }
+  computeFramed();
+};
 $('mersenneP').addEventListener('change', () => pickPreset('mersenne'));
 $('primorialP').addEventListener('change', () => pickPreset('primorial'));
 $('sky').addEventListener('change', () => { needsFull = true; renderSkyButtons(); });
