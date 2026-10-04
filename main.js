@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.276';
+const VERSION = '0.1.277';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4242,21 +4242,26 @@ function readSetups() {
 function writeSetups(list) {
   try { localStorage.setItem(SETUPS_KEY, JSON.stringify(list)); return true; } catch { return false; }
 }
+// What tells a saved setup apart: its walk, then its surface's size, start, turn and rule
+const setupDetail = (s) => [walkName(s.w), s.s && `size ${String(s.s).replace('x', ' × ')}`, s.st > 1 && `start ${s.st}`,
+  Number(s.o) === 1 && 'turned 30°', s.r && `rule ${s.r}`].filter(Boolean).join(' · ');
 // Your setups, as rows like the built-in ones (see setupRow), each with × to delete it
 function fillSetupList() {
   const list = readSetups();
-  $('yourList').replaceChildren(...list.map((x) => setupRow(x.name, walkName(x.setup.w), x.setup, () => deleteSetup(x.name))));
+  $('yourList').replaceChildren(...list.map((x) => setupRow(x.name, setupDetail(x.setup), x.setup, () => deleteSetup(x.name))));
   $('yourEmpty').hidden = list.length > 0;
 }
 const setupNote = (text) => { $('setupStatus').textContent = text; };
 
+// Saved under its number's name, with no question (the same setup twice is saved once; another one of
+// the same number gets "(2)", "(3)", …); its row tells the walk, size, start and rule (see setupDetail)
 function saveSetup() {
-  const mode = $('mode').options[$('mode').selectedIndex].text.split(' — ')[0];
-  const rule = walk.life ? ` · ${walk.life.ruleText}` : '';
-  const name = prompt('Name this setup', `${shownSym} · ${mode}${rule}`);
-  if (!name) return;
-  const list = readSetups().filter((x) => x.name !== name);
-  list.push({ name, setup: getSetup(), saved: new Date().toISOString() });
+  const setup = getSetup(), list = readSetups();
+  const same = list.find((x) => JSON.stringify(x.setup) === JSON.stringify(setup));
+  if (same) { setupNote(`Already saved as “${same.name}”.`); return; }
+  let name = shownSym;
+  for (let k = 2; list.some((x) => x.name === name); k++) name = `${shownSym} (${k})`;
+  list.push({ name, setup, saved: new Date().toISOString() });
   list.sort((a, b) => a.name.localeCompare(b.name));
   setupNote(writeSetups(list) ? `Saved “${name}” in this browser.` : 'This browser does not allow saving (private window?).');
   fillSetupList();
