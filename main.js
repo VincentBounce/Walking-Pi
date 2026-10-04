@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.274';
+const VERSION = '0.1.275';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -969,7 +969,8 @@ function describe(base, available) {
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
     const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
     const chips = at >= 0 && items.length === base && base <= DIGIT_COLORS.length;
-    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} digits · `}${chips ? lead : mode.rule}`;
+    const after = mode.rule.match(/\(([^)]*)\)\s*$/)?.[1];  // a closing note: "(at a corner of the cube, the nearest edge)"
+    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} digits · `}${chips ? lead + (after ? ` · ${after}` : '') : mode.rule}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, what]) => {
         const c = document.createElement('span');
