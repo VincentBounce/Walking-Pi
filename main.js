@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.272';
+const VERSION = '0.1.273';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4171,8 +4171,9 @@ function applySetup(s) {
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
     $('lifePreset').value = preset ? s.r : 'custom';
   }
-  // the display is not part of a setup: it takes the defaults of the walk mode's tab
-  displayDefaults();
+  // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
+  // changes (as picking a walk does); within a tab, what was chosen stays
+  if (modeTabOf() !== displayTab) displayDefaults();
   $('fillAreas').checked = String(s.fa ?? 1) !== '0';  // the one display choice kept: it changes what is drawn
   $('perspective').checked = !!MODES[s.w].perspective;
   Object.assign(cam, CAM0);
@@ -4223,11 +4224,11 @@ function readSetups() {
 function writeSetups(list) {
   try { localStorage.setItem(SETUPS_KEY, JSON.stringify(list)); return true; } catch { return false; }
 }
-function fillSetupList(selected = '') {
-  const sel = $('setupList');
-  sel.replaceChildren(new Option(readSetups().length ? '— choose a saved setup —' : '— no saved setup yet —', ''),
-    ...readSetups().map((x) => new Option(x.name, x.name)));
-  sel.value = selected;
+// Your setups, as rows like the built-in ones (see setupRow), each with × to delete it
+function fillSetupList() {
+  const list = readSetups();
+  $('yourList').replaceChildren(...list.map((x) => setupRow(x.name, walkName(x.setup.w), x.setup, () => deleteSetup(x.name))));
+  $('yourEmpty').hidden = list.length > 0;
 }
 const setupNote = (text) => { $('setupStatus').textContent = text; };
 
@@ -4240,12 +4241,10 @@ function saveSetup() {
   list.push({ name, setup: getSetup(), saved: new Date().toISOString() });
   list.sort((a, b) => a.name.localeCompare(b.name));
   setupNote(writeSetups(list) ? `Saved “${name}” in this browser.` : 'This browser does not allow saving (private window?).');
-  fillSetupList(name);
+  fillSetupList();
 }
 
-function deleteSetup() {
-  const name = $('setupList').value;
-  if (!name) { setupNote('Choose a saved setup to delete.'); return; }
+function deleteSetup(name) {
   writeSetups(readSetups().filter((x) => x.name !== name));
   fillSetupList();
   setupNote(`Deleted “${name}”.`);
@@ -5756,8 +5755,7 @@ function displayDefaults() {
   $('fillAreas').checked = true;
   $('showPath').checked = false;  // on cells, the cells alone
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
-  $('showGrid').checked = true;
-  $('autoRotate').checked = false;
+  $('autoRotate').checked = false;  // the grid stays as chosen, on every tab
   $('sky').value = 'twilight';
   renderSkyButtons();
   displayTab = modeTabOf();
@@ -5804,40 +5802,52 @@ const BUILT_IN = [
   ['π', '20,000 digits', { x: 'pi', w: 'turtle', d: 20000 }],
 ];
 // the walk's name, as in the walk list ("Squares turtle"; a surface's own name)
-const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${w}"]`).text).name;
-// the built-in setup in use: same number, walk, size and start (the digits may have been cut by a loop)
+const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${w}"]`)?.text ?? w).name;
+// the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
-function renderBuiltIn() {
-  $('builtInList').replaceChildren(...BUILT_IN.map(([name, note, setup]) => {
-    const b = document.createElement('button');
-    const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
-    const words = document.createElement('span'), pic = part('mode-icon', '');
-    words.append(part('mode-name', name), part('mode-detail', `${note} · ${walkName(setup.w)}`));
-    pic.innerHTML = icon(MODE_ICONS[setup.w]);
-    b.append(pic, words);
-    b.setAttribute('role', 'option');
-    b.classList.toggle('active', !galleryBefore && isInUse(setup));
-    b.addEventListener('mouseenter', () => {
-      clearTimeout(galleryHover);
-      galleryHover = setTimeout(() => { galleryBefore ??= getSetup(); applySetup(setup); }, 120);
-    });
-    b.addEventListener('click', () => {
-      clearTimeout(galleryHover);
-      if (!galleryBefore || !isInUse(setup)) applySetup(setup);
-      galleryBefore = null;  // kept: leaving the list no longer brings back the one before
-      renderBuiltIn();
-    });
-    return b;
-  }));
+// A setup's row, built-in or saved: the walk's icon, a name and a detail; hovering shows it, a click
+// keeps it (see the lists' mouseleave); with onDelete, a × at its end
+function setupRow(name, detail, setup, onDelete) {
+  const b = document.createElement('button');
+  const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
+  const words = document.createElement('span'), pic = part('mode-icon', '');
+  words.append(part('mode-name', name), part('mode-detail', detail));
+  pic.innerHTML = icon(MODE_ICONS[setup.w]);
+  b.append(pic, words);
+  if (onDelete) {
+    const x = part('row-delete', '×');
+    x.title = `Delete “${name}”`;
+    x.addEventListener('click', (e) => { e.stopPropagation(); onDelete(); });
+    b.append(x);
+  }
+  b.setAttribute('role', 'option');
+  b.classList.toggle('active', !galleryBefore && isInUse(setup));
+  b.addEventListener('mouseenter', () => {
+    clearTimeout(galleryHover);
+    galleryHover = setTimeout(() => { galleryBefore ??= getSetup(); applySetup(setup); }, 120);
+  });
+  b.addEventListener('click', () => {
+    clearTimeout(galleryHover);
+    if (!galleryBefore || !isInUse(setup)) applySetup(setup);
+    galleryBefore = null;  // kept: leaving the list no longer brings back the one before
+    renderGallery();
+  });
+  return b;
 }
-$('builtInList').addEventListener('mouseleave', () => {
-  clearTimeout(galleryHover);
-  if (!galleryBefore) return;
-  const before = galleryBefore;
-  galleryBefore = null;
-  applySetup(before);
-});
+function renderGallery() {
+  $('builtInList').replaceChildren(...BUILT_IN.map(([name, note, setup]) => setupRow(name, `${note} · ${walkName(setup.w)}`, setup)));
+  fillSetupList();
+}
+for (const list of ['builtInList', 'yourList']) {
+  $(list).addEventListener('mouseleave', () => {
+    clearTimeout(galleryHover);
+    if (!galleryBefore) return;
+    const before = galleryBefore;
+    galleryBefore = null;
+    applySetup(before);
+  });
+}
 // Parameters | Gallery: the left pane's two tabs; the one chosen is remembered in this browser
 const PANE_KEY = 'walkingPi.pane';
 function showPane(gallery) {
@@ -5845,24 +5855,19 @@ function showPane(gallery) {
   $('galleryPane').hidden = !gallery;
   $('tabParams').classList.toggle('active', !gallery);
   $('tabGallery').classList.toggle('active', gallery);
-  if (gallery) renderBuiltIn();
+  if (gallery) renderGallery();
   try { localStorage.setItem(PANE_KEY, gallery ? 'gallery' : 'params'); } catch { /* not kept */ }
 }
 $('tabParams').addEventListener('click', () => showPane(false));
 $('tabGallery').addEventListener('click', () => showPane(true));
 
 $('setupSave').addEventListener('click', saveSetup);
-$('setupDelete').addEventListener('click', deleteSetup);
 $('setupLink').addEventListener('click', copyLink);
 $('setupExport').addEventListener('click', exportSetups);
 $('setupImport').addEventListener('click', () => $('setupFile').click());
 $('setupFile').addEventListener('change', () => {
   if ($('setupFile').files[0]) importSetups($('setupFile').files[0]);
   $('setupFile').value = '';
-});
-$('setupList').addEventListener('change', () => {
-  const x = readSetups().find((y) => y.name === $('setupList').value);
-  if (x && applySetup(x.setup)) setupNote(`Loaded “${x.name}”.`);
 });
 // a setup link pasted into this tab
 window.addEventListener('hashchange', () => { const s = parseHash(); if (s) applySetup(s); });

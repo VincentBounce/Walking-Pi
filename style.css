@@ -59,6 +59,9 @@ main { flex: 1; display: flex; min-height: 0; }
 .pane-tabs button { padding: 7px 4px; font-size: 13px; }
 #paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; }
 #paramsPane > section:last-child, #galleryPane > section:last-child { border-bottom: 0; }
+.row-delete { padding: 0 6px; font-size: 16px; color: var(--muted); border-radius: 4px; }  /* × on a saved setup */
+.row-delete:hover { color: var(--text); background: var(--border); }
+#yourEmpty { margin: 0 0 8px; }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
 h2 {
   margin: 4px 0 10px;

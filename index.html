@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261009x">
+  <link rel="stylesheet" href="style.css?v=20261009y">
 </head>
 <body>
   <header>
@@ -19,7 +19,7 @@
   <main>
     <aside class="panel">
       <div id="paneTabs" class="choice-row pane-tabs" role="tablist">
-        <button id="tabParams" type="button" class="active">Parameters</button><button id="tabGallery" type="button">Gallery</button>
+        <button id="tabGallery" type="button">Gallery</button><button id="tabParams" type="button" class="active">Parameters</button>
       </div>
       <div id="paramsPane">
       <section>
@@ -188,12 +188,10 @@
       </section>
       <section>
         <h2>Your setups</h2>
-        <label>Saved setups
-          <select id="setupList"></select>
-        </label>
+        <div id="yourList" class="mode-list" role="listbox" title="Hover to see one, click to keep it"></div>
+        <p id="yourEmpty" class="muted">None yet: Save keeps the setup in view, in this browser.</p>
         <div class="row">
           <button id="setupSave" data-icon="star" title="Save the whole current setup in this browser">Save</button>
-          <button id="setupDelete" title="Delete the selected saved setup">Delete</button>
           <button id="setupLink" data-icon="link" title="Copy a link that opens this exact setup">Link</button>
         </div>
         <div class="row">
@@ -281,6 +279,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261009x"></script>
+  <script src="main.js?v=20261009y"></script>
 </body>
 </html>
