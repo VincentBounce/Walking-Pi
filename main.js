@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.282';
+const VERSION = '0.1.283';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5612,6 +5612,10 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('speed').addEventListener('input', updateSpeedLabel);
+// the turtle and the rabbit: a tenth of the slider slower or faster
+for (const [id, k] of [['slower', -10], ['faster', 10]]) {
+  $(id).addEventListener('click', () => { $('speed').value = Math.min(100, Math.max(0, Number($('speed').value) + k)); updateSpeedLabel(); });
+}
 // the progress slider: back from the start, forward from where it is
 $('seek').addEventListener('input', () => {
   const v = Number($('seek').value);
