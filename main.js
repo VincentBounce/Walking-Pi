@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.264';
+const VERSION = '0.1.265';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -786,6 +786,8 @@ const MODES = {
               rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   torusWalk: { base: 3, lattice: 'sphere', cells: true, twin: 'torusGrid', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
               rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
+  triTorusWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'triTorusGrid', sphere: 'tritorus', initial: 48, turns: [2, 1], perspective: true, round: true,
+                  rule: 'on a torus of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
   hexTorusWalk: { base: 5, lattice: 'sphere', cells: true, twin: 'hexTorusGrid', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                   rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
@@ -802,7 +804,7 @@ const MODES = {
   // to them as the edges at a corner allow
   torusGrid: { base: 3, lattice: 'sphere', twin: 'torusWalk', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
                rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  triTorusGrid: { base: 5, lattice: 'sphere', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
+  triTorusGrid: { base: 5, lattice: 'sphere', twin: 'triTorusWalk', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                   rule: 'along the edges of a torus of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   hexTorusGrid: { base: 2, lattice: 'sphere', twin: 'hexTorusWalk', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
@@ -1708,7 +1710,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
+  cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
