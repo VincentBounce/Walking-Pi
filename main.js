@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.283';
+const VERSION = '0.1.284';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5398,15 +5398,19 @@ function lifetimeText(L) {
 function updateStats() {
   // the progress: a slider to go to any step (none for the Game of Life, which has no end)
   const finite = Number.isFinite(walk.n) && !walk.life;
-  $('seek').hidden = $('seekCount').hidden = !finite;
+  $('seek').parentElement.hidden = !finite;  // its whole line
   if (finite) {
     $('seek').max = walk.n;
     if (document.activeElement !== $('seek')) $('seek').value = cur;
     $('seekCount').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
-    $('seekCount').style.minWidth = `${2 * fmt(walk.n).length + 3}ch`;  // its widest value: the slider keeps its width
+    // as wide as its widest value, so the slider keeps its width: digits 1ch each (tabular), commas and
+    // the " / " much narrower
+    const digits = String(walk.n).length, commas = fmt(walk.n).length - digits;
+    $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
   }
   document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
   STAT_LABELS[walk.life ? 'life' : walk.vert ? 'grid' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
+  $('lStat0').hidden = $('sStep').hidden = !walk.life;  // a walk's step is the count by the slider
   $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
@@ -5431,11 +5435,10 @@ function updateStats() {
   $('sPos').textContent = walk.is3d ? `(${p(x)}, ${p(y)}, ${p(z)})` : `(${p(x)}, ${p(y)})`;
   $('sDist').textContent = Math.hypot(x, y, z).toFixed(1);
   $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
-  $('sCells').textContent = !walk.n ? '1' : walk.sphere
-    ? `${fmt(walk.cells[cur])} / ${fmt(walk.nodes)}` +
-      (walk.coverStep >= 0 && cur >= walk.coverStep ? ` (all by step ${fmt(walk.coverStep)})`
-                                                     : ` (${(100 * walk.cells[cur] / walk.nodes).toFixed(1)} %)`)
-    : fmt(walk.cells[cur]);
+  // on a surface, out of all its cells; once all are visited, the step that reached the last one
+  $('sCells').textContent = !walk.n ? '1' : !walk.sphere ? fmt(walk.cells[cur])
+    : walk.coverStep >= 0 && cur >= walk.coverStep ? `all ${fmt(walk.nodes)} · by step ${fmt(walk.coverStep)}`
+    : `${fmt(walk.cells[cur])} / ${fmt(walk.nodes)} (${(100 * walk.cells[cur] / walk.nodes).toFixed(1)} %)`;
   if (walk.n && walk.counts) {  // each digit's count, on its chip
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
     c.forEach((v, d) => { const e = document.getElementById(`count${d}`); if (e) e.textContent = fmt(v); });

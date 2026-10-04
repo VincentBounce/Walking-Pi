@@ -336,8 +336,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 /* the stats in one line of columns: the label over its value */
 .stage-bar .stats { font-size: 12px; gap: 1px 14px; grid-template-rows: auto auto; grid-auto-flow: column; }
 /* columns of fixed widths, whatever their values: nothing moves sideways while the walk plays */
-.stage-bar .stats { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.35fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 1.5fr); }
-.stage-bar .stats.life { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.stage-bar .stats { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.7fr) minmax(0, 0.85fr) minmax(0, 1.9fr); }  /* Position, Distance, Max distance, Cells */
+.stage-bar .stats.life { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.6fr) minmax(0, 0.6fr) minmax(0, 1.35fr); }
 .stage-bar .stats dt, .stage-bar .stats dd { white-space: nowrap; }
 .stage-bar .stats dd { text-align: left; }
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 12px; }
