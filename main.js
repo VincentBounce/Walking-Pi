@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.271';
+const VERSION = '0.1.272';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4155,6 +4155,7 @@ function applySetup(s) {
   if (typeof s.x !== 'string' || !MODES[s.w]) return false;
   $('formula').value = s.x;
   if (readFormula().error) return false;
+  digitsBeforeLoop = null;  // a setup says its own count of digits
   set('digits', s.d);
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
@@ -5777,6 +5778,79 @@ $('mode').addEventListener('change', () => {
   compute();
 });
 
+/* ---- 12.2 Gallery: built-in setups ----------------------------------------------------------
+ * The striking setups found so far, part of the page (nothing stored): hovering one shows it in the
+ * view, leaving the list brings back the setup in use, a click keeps it. */
+const BUILT_IN = [
+  ['1/923', '4-fold rosette', { x: '1/923', w: 'turtle', d: 421 }],
+  ['2/541', '4-fold rosette', { x: '2/541', w: 'turtle', d: 541 }],
+  ['1/709', '4-fold rosette', { x: '1/709', w: 'turtle', d: 709 }],
+  ['1/983', '4-fold rosette', { x: '1/983', w: 'turtle', d: 1965 }],
+  ['1/383', '6-fold rosette', { x: '1/383', w: 'hexTurtle', d: 1147 }],
+  ['3/497', '6-fold rosette', { x: '3/497', w: 'hexTurtle', d: 631 }],
+  ['1/463', '6-fold rosette', { x: '1/463', w: 'hexTurtle', d: 1387 }],
+  ['1/967', '6-fold rosette', { x: '1/967', w: 'hexTurtle', d: 2899 }],
+  ['11/604', '6-fold rosette', { x: '11/604', w: 'triTurtle', d: 451 }],
+  ['1/599', '3-fold rosette', { x: '1/599', w: 'triTurtle', d: 898 }],
+  ['1/856', '6-fold rosette', { x: '1/856', w: 'triTurtle', d: 637 }],
+  ['21/976', '6-fold rosette', { x: '21/976', w: 'triTurtle', d: 361 }],
+  ['96/95', '12 diagonal loops', { x: '96/95', w: 'torusGrid', d: 5760, s: 64 }],
+  ['96/95', 'On cells', { x: '96/95', w: 'torusWalk', d: 4320, s: 48 }],
+  ['226/221', 'Round a corner', { x: '226/221', w: 'cubeGrid', d: 289, s: 24 }],
+  ['1/383', 'Round the tube', { x: '1/383', w: 'triTorusGrid', d: 12224, s: 64, st: 2 }],
+  ['120/109', 'A belt', { x: '120/109', w: 'hexSphereGrid', d: 5760, s: 32 }],
+  ['Dragon', 'Paperfolding', { x: 'dragon', w: 'turtle', d: 20000 }],
+  ['Primes', 'Their barcode', { x: 'primes', w: 'spiral', d: 20000 }],
+  ['π', '20,000 digits', { x: 'pi', w: 'turtle', d: 20000 }],
+];
+// the walk's name, as in the walk list ("Squares turtle"; a surface's own name)
+const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${w}"]`).text).name;
+// the built-in setup in use: same number, walk, size and start (the digits may have been cut by a loop)
+const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
+let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
+function renderBuiltIn() {
+  $('builtInList').replaceChildren(...BUILT_IN.map(([name, note, setup]) => {
+    const b = document.createElement('button');
+    const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
+    const words = document.createElement('span'), pic = part('mode-icon', '');
+    words.append(part('mode-name', name), part('mode-detail', `${note} · ${walkName(setup.w)}`));
+    pic.innerHTML = icon(MODE_ICONS[setup.w]);
+    b.append(pic, words);
+    b.setAttribute('role', 'option');
+    b.classList.toggle('active', !galleryBefore && isInUse(setup));
+    b.addEventListener('mouseenter', () => {
+      clearTimeout(galleryHover);
+      galleryHover = setTimeout(() => { galleryBefore ??= getSetup(); applySetup(setup); }, 120);
+    });
+    b.addEventListener('click', () => {
+      clearTimeout(galleryHover);
+      if (!galleryBefore || !isInUse(setup)) applySetup(setup);
+      galleryBefore = null;  // kept: leaving the list no longer brings back the one before
+      renderBuiltIn();
+    });
+    return b;
+  }));
+}
+$('builtInList').addEventListener('mouseleave', () => {
+  clearTimeout(galleryHover);
+  if (!galleryBefore) return;
+  const before = galleryBefore;
+  galleryBefore = null;
+  applySetup(before);
+});
+// Parameters | Gallery: the left pane's two tabs; the one chosen is remembered in this browser
+const PANE_KEY = 'walkingPi.pane';
+function showPane(gallery) {
+  $('paramsPane').hidden = gallery;
+  $('galleryPane').hidden = !gallery;
+  $('tabParams').classList.toggle('active', !gallery);
+  $('tabGallery').classList.toggle('active', gallery);
+  if (gallery) renderBuiltIn();
+  try { localStorage.setItem(PANE_KEY, gallery ? 'gallery' : 'params'); } catch { /* not kept */ }
+}
+$('tabParams').addEventListener('click', () => showPane(false));
+$('tabGallery').addEventListener('click', () => showPane(true));
+
 $('setupSave').addEventListener('click', saveSetup);
 $('setupDelete').addEventListener('click', deleteSetup);
 $('setupLink').addEventListener('click', copyLink);
@@ -5794,7 +5868,7 @@ $('setupList').addEventListener('change', () => {
 window.addEventListener('hashchange', () => { const s = parseHash(); if (s) applySetup(s); });
 
 
-/* ---- 12.2 Start-up --------------------------------------------------------------------------- */
+/* ---- 12.3 Start-up --------------------------------------------------------------------------- */
 // A link with a setup opens that setup; otherwise π on the turtle walk. The link then follows the
 // setup: at once after each build, and every 700 ms for the other changes.
 new ResizeObserver(resize).observe(stage);
@@ -5807,4 +5881,5 @@ play(false);  // the Play button with its icon
 fillSetupList();
 const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
 if (!linked || !applySetup(linked)) compute();
+try { showPane(!linked && localStorage.getItem(PANE_KEY) === 'gallery'); } catch { showPane(false); }
 setInterval(syncLink, 700);  // keep the link up to date with the setup

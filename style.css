@@ -55,6 +55,10 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel section { padding: 10px 0; border-bottom: 2px solid var(--accent); }
 .panel section:last-child { border-bottom: 0; }
 .panel > section:first-child { padding-top: 6px; }  /* no gap under the header */
+.pane-tabs { margin: 8px 0 4px; }  /* Parameters | Gallery, above both panes */
+.pane-tabs button { padding: 7px 4px; font-size: 13px; }
+#paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; }
+#paramsPane > section:last-child, #galleryPane > section:last-child { border-bottom: 0; }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
 h2 {
   margin: 4px 0 10px;
