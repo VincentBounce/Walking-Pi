@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.259';
+const VERSION = '0.1.260';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2986,10 +2986,20 @@ function startList(g) {
   return (g.starts = starts);
 }
 
-// The starts of the current mode (a walk along a solid's grid), else null; the chosen one, 1 … their number
+// The starts of the current mode (a walk along a surface's grid or on its cells), else null; the
+// chosen one, 1 … their number
 function modeStarts() {
   const mode = MODES[$('mode').value];
-  return mode.grid && STARTS_ON.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(sphereSize())) : null;
+  return (mode.grid || mode.cells) && STARTS_ON.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(sphereSize())) : null;
+}
+// A start on cells: a start along the grid, from corner f to corner v, crosses into the tile on its
+// right, through that edge. The two tiles of an edge stand for its two directions as its two corners
+// do, so the starts on cells are as many as along the grid, numbered alike. [tile, edge come in by]
+function cellStart(g, [v, f]) {
+  const k = g.sides;
+  for (const t of gridGraph(g).edgeTiles.get(gridGraph(g).key(v, f))) {
+    for (let e = 0; e < k; e++) if (g.poly[k * t + e] === v && g.poly[k * t + (e + 1) % k] === f) return [t, e];
+  }
 }
 const startNo = () => Math.max(1, Math.min(Number($('startNo').value) || 1, modeStarts()?.length ?? 1));
 let startsShown = false;  // while the start selector is hovered: the globe shows the starts instead of the walk
@@ -3001,10 +3011,16 @@ function drawStarts(ctx) {
   const normal = (v) => unit([G.normal[3 * v], G.normal[3 * v + 1], G.normal[3 * v + 2]]);
   const { scale: s, ox, oy } = view;
   const at = (v) => { const c = 3 * (k * G.tileOf[v] + G.cornerOf[v]); return [sh.corners[c] * R, sh.corners[c + 1] * R, sh.corners[c + 2] * R]; };
-  const edge = ([v, f]) => {  // screen ends: the corner it comes from, the corner; null when facing away
-    const p = at(v);
-    if (!planeVisible(normal(v), p)) return null;
-    const [x0, y0] = proj(...at(f)), [x1, y1] = proj(...p);
+  const centre = (t) => [sh.cen[3 * t] * R, sh.cen[3 * t + 1] * R, sh.cen[3 * t + 2] * R];
+  // a start's ends and the normal where it arrives: from corner to corner, or on cells from the
+  // centre of the tile it leaves to the centre of the one it enters (see cellStart)
+  const ends = MODES[$('mode').value].cells
+    ? (st) => { const [t, e] = cellStart(g, st); return [centre(g.nbr[k * t + e]), centre(t), [sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]]]; }
+    : ([v, f]) => [at(f), at(v), normal(v)];
+  const edge = (st) => {  // screen ends: where it comes from, where it arrives; null when facing away
+    const [q, p, n] = ends(st);
+    if (!planeVisible(n, p)) return null;
+    const [x0, y0] = proj(...q), [x1, y1] = proj(...p);
     return [ox + x0 * s, oy + y0 * s, ox + x1 * s, oy + y1 * s];
   };
   const width = Math.max(1, Math.min(s * 0.06, 2.5));
@@ -3228,16 +3244,15 @@ function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
   const tile = new Int32Array(len + 1), cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
   const counts = new Int32Array(base * (len + 1));
   const seen = new Uint8Array(g.n);
-  let t = 0, entry = 0, distinct = 1, m = 0, coverStep = -1;
-  while (g.nbr[entry] < 0) entry++;  // come in through a real edge
-  seen[0] = 1;
+  let [t, entry] = cellStart(g, startList(g)[startNo() - 1]), distinct = 1, m = 0, coverStep = -1;
+  seen[t] = 1;
   // the edges of each tile that have a neighbour, counterclockwise, where some do not
   const live = Array.from({ length: g.n }, (_, u) => {
     const ks = [];
     for (let k = 0; k < sides; k++) if (g.nbr[sides * u + k] >= 0) ks.push(k);
     return ks.length < sides ? ks : null;
   });
-  const c0 = [g.cen[0], g.cen[1], g.cen[2]];
+  const c0 = [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
   const put = (i) => {
     wx[i] = g.cen[3 * t] * R; wy[i] = g.cen[3 * t + 1] * R; wz[i] = g.cen[3 * t + 2] * R;
     tile[i] = t;
