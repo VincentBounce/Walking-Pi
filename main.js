@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.281';
+const VERSION = '0.1.282';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -970,9 +970,14 @@ function describe(base, available) {
     const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
     const chips = at >= 0 && items.length === base && base <= DIGIT_COLORS.length;
     const after = mode.rule.match(/\(([^)]*)\)\s*$/)?.[1];  // a closing note: "(at a corner of the cube, the nearest edge)"
-    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} digits · `}${chips ? lead + (after ? ` · ${after}` : '') : mode.rule}`;
+    // the words around the digits, kept in the description: "exit through the … edge"
+    const tail = mode.rule.slice(at + 2), pre = tail.slice(0, tail.indexOf('<b>')).trim(), edge = / edge\b/.test(tail) ? ' edge' : '';
+    const around = pre ? ` · ${pre} …${edge}` : '';
+    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} digits · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}`;
     if (chips) {
-      $('ruleChips').replaceChildren(...items.map(([, d, what]) => {
+      $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
+        // without the closing note and the words around the digits (they are in the description)
+        const what = text.replace(/\s*\(.*$/, '').trim().replace(/\s+(or|edge)$/, '');
         const c = document.createElement('span');
         c.className = 'rule-chip';
         c.innerHTML = `<b style="background:${DIGIT_COLORS[d]}">${d}</b><span>${what.trim()}<small id="count${d}">0</small></span>`;
