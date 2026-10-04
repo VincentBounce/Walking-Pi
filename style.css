@@ -385,9 +385,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .save-btn:hover:not(:disabled) { color: var(--text); }
 .save-btn.saved, .save-btn.saved:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); background: rgba(240, 180, 41, 0.12); }
 .save-btn.saved .icon path { fill: currentColor; }
-/* the JSON library: My finds as a file, in a small box of its own */
-.library { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
-.library-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-#libraryCount { font-weight: 400; letter-spacing: 0; text-transform: none; }
-.library .row { margin: 0; }
-.library .row button { flex: 1; }
+/* My finds: Export and Import as two small icons at the right of its heading */
+.finds-head { display: flex; align-items: center; justify-content: space-between; }
+.finds-head h2 { margin-bottom: 0; }
+.finds-tools { display: flex; gap: 4px; }
+.icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; background: transparent; border-color: transparent; color: var(--muted); }
+.icon-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--border); background: var(--bg); }
+.icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

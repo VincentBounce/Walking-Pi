@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261010m">
+  <link rel="stylesheet" href="style.css?v=20261010n">
 </head>
 <body>
   <header>
@@ -185,22 +185,21 @@
       </div>
       <div id="galleryPane" hidden>
       <section>
-        <h2>Built-in</h2>
-        <div id="builtInList" class="mode-list" role="listbox" title="Hover to see one, click to keep it"></div>
-      </section>
-      <section>
-        <h2>My finds</h2>
+        <div class="finds-head">
+          <h2>My finds</h2>
+          <span class="finds-tools">  <!-- My finds as a JSON file: to keep, or to bring to another browser -->
+            <button id="setupExport" type="button" class="icon-btn" title="Export My finds as a JSON file" aria-label="Export My finds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg></button>
+            <button id="setupImport" type="button" class="icon-btn" title="Import setups from a JSON file into My finds" aria-label="Import into My finds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg></button>
+          </span>
+        </div>
         <div id="yourList" class="mode-list" role="listbox" title="Hover to see one, click to keep it"></div>
         <p id="yourEmpty" class="muted">None yet: ☆ Save, at the top, keeps the setup in view, in this browser.</p>
-        <div class="library">  <!-- My finds as a file: to keep, or to bring to another browser -->
-          <div class="library-head"><span>JSON library</span><span id="libraryCount"></span></div>
-          <div class="row">
-            <button id="setupExport" title="Download My finds as a JSON file">Export</button>
-            <button id="setupImport" title="Add the setups of a JSON file to My finds">Import</button>
-          </div>
-        </div>
         <input id="setupFile" type="file" accept="application/json,.json" hidden>
         <p id="setupStatus" class="muted"></p>
+      </section>
+      <section>
+        <h2>Built-in</h2>
+        <div id="builtInList" class="mode-list" role="listbox" title="Hover to see one, click to keep it"></div>
       </section>
       </div>
     </aside>
@@ -289,6 +288,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261010m"></script>
+  <script src="main.js?v=20261010n"></script>
 </body>
 </html>

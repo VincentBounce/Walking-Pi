@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.287';
+const VERSION = '0.1.288';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1780,7 +1780,9 @@ function renderModePicker() {
     const b = document.createElement('button');
     b.innerHTML = `${icon(TAB_ICONS[g.label])} ${g.label}`;
     b.setAttribute('role', 'tab');
-    b.classList.toggle('active', g.label === modeTab);
+    // while a gallery setup is only shown on hover, the tab stays the one of the setup in use
+    const tabOf = (w) => $('mode').querySelector(`option[value="${w}"]`)?.parentElement.label;
+    b.classList.toggle('active', g.label === (galleryBefore ? tabOf(galleryBefore.w) : modeTab));
     b.addEventListener('click', () => {  // another tab starts on its first choice
       if (g.label === modeTab) return;
       modeTab = g.label;
@@ -4256,7 +4258,6 @@ function fillSetupList() {
   const list = readSetups();
   $('yourList').replaceChildren(...list.map((x) => setupRow(x.name, setupDetail(x.setup), x.setup, () => deleteSetup(x.name))));
   $('yourEmpty').hidden = list.length > 0;
-  $('libraryCount').textContent = `${fmt(list.length)} setup${list.length === 1 ? '' : 's'}`;
   syncSaveButton();
 }
 const setupNote = (text) => { $('setupStatus').textContent = text; };
@@ -5921,7 +5922,8 @@ function setupRow(name, detail, setup, onDelete) {
     clearTimeout(galleryHover);
     if (!galleryBefore || !isInUse(setup)) applySetup(setup);
     galleryBefore = null;  // kept: leaving the list no longer brings back the one before
-    renderGallery();
+    renderModePicker();  // its tab, at the top
+    showPane(false);  // and its parameters
   });
   return b;
 }
