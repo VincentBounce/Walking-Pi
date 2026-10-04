@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.267';
+const VERSION = '0.1.268';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3014,7 +3014,9 @@ function startList(g) {
   const nearest = (ps, q) => ps.reduce((b, p) => (dot(p, q) > dot(b, q) ? p : b));
   const centres = solidFaceCentres(g, C), O = nearest(centres, q0), top = Math.max(...C.map((c) => dot(c, O)));
   const F = C.filter((c) => dot(c, O) > top - 1e-6), A = nearest(F, q0);  // the face's corners, the kite's
-  const otherCentres = centres.filter((c) => c !== O), otherCorners = F.filter((c) => c !== A);
+  // the face's other corners, the next one counterclockwise from A (seen from outside) first: B
+  const otherCentres = centres.filter((c) => c !== O), turn = (c) => dot(cross(A, c), O);
+  const otherCorners = F.filter((c) => c !== A).sort((c1, c2) => turn(c2) - turn(c1));
   const depth = (q) => Math.min(dot(q, O) - Math.max(...otherCentres.map((c) => dot(q, c))), dot(q, A) - Math.max(...otherCorners.map((c) => dot(q, c))));
   const edgeKey = (a, b) => Math.min(a, b) * nv + Math.max(a, b), done = new Set(), picks = [];
   for (let v = 0; v < nv; v++) for (const w of G.nbrs[v]) {
@@ -3031,20 +3033,29 @@ function startList(g) {
     }
     picks.push({ ...best, flipped });
   }
-  // measured flat, on the face's plane (seen from the centre), so in steps of the grid at any size:
-  // seen on the sphere, the farther from A, the more squeezed, unlike from size to size. Two edges
-  // mirrored across the kite's middle lie as far from A: the one towards the face's next corner B
-  // first, as on the kite's border (else rounding errors would pick)
-  const onFace = (p) => p.map((x) => x / dot(p, O)), Af = onFace(A), AB = onFace(otherCorners[0]).map((x, d) => x - Af[d]);
-  const fromA = (p) => onFace(p).map((x, d) => x - Af[d]);
+  // measured flat, in steps of the grid at any size (seen on the sphere, the farther from A, the more
+  // squeezed, unlike from size to size): from the solid's corner A* to a grid corner, straight, as
+  // every grid corner of the kite lies on a face around A; to an edge's middle from its two ends and
+  // the grid's edge L (the longest: on the sphere of hexagons, an edge across a fold is shorter in
+  // space than on the unfolded faces). Two edges mirrored across the kite's middle lie as far from
+  // A: the one towards B first, as on the kite's border (else rounding errors would pick)
+  let h = 0, L = 0;
+  for (let v = 0; v < nv; v++) {
+    h = Math.max(h, dot(at(v), O));
+    for (const w of G.nbrs[v]) L = Math.max(L, Math.hypot(...[0, 1, 2].map((d) => V[3 * w + d] - V[3 * v + d])));
+  }
+  const corner = (c) => c.map((x) => (x * h) / dot(c, O)), As = corner(A), AB = corner(otherCorners[0]).map((x, d) => x - As[d]);
+  const fromA = (v) => Math.hypot(...[0, 1, 2].map((d) => V[3 * v + d] - As[d]));
   for (const e of picks) {
-    const q = fromA([0, 1, 2].map((d) => V[3 * e.a + d] + V[3 * e.b + d]));
-    e.far = Math.hypot(...q); e.along = dot(q, AB);
+    e.far = Math.sqrt((fromA(e.a) ** 2 + fromA(e.b) ** 2) / 2 - (L * L) / 4);
+    e.along = dot([0, 1, 2].map((d) => V[3 * e.a + d] + V[3 * e.b + d] - 2 * As[d]), AB);
   }
   picks.sort((e1, e2) => (Math.abs(e1.far - e2.far) > 1e-9 ? e1.far - e2.far : e2.along - e1.along));
   const starts = [];
   for (const { a, b, flipped } of picks) {  // first the way to the end nearer A, then back
-    const [n, f] = Math.hypot(...fromA(at(a))) < Math.hypot(...fromA(at(b))) ? [a, b] : [b, a];
+    // ends as far from A (a pentagon's edge): the way round A counterclockwise first
+    const ccw = dot(cross([0, 1, 2].map((d) => V[3 * a + d] - As[d]), [0, 1, 2].map((d) => V[3 * b + d] - As[d])), O) > 0;
+    const [n, f] = Math.abs(fromA(a) - fromA(b)) > 1e-9 ? (fromA(a) < fromA(b) ? [a, b] : [b, a]) : ccw ? [b, a] : [a, b];
     starts.push(...(flipped ? [[n, f]] : [[n, f], [f, n]]));
   }
   return (g.starts = starts);
