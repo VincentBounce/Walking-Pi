@@ -337,7 +337,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-chip small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .stage-bar .stage-more { margin-bottom: 9px; }
 /* the stats in one line of columns: the label over its value */
-.stage-bar .stats { font-size: 12px; gap: 1px 16px; grid-template-columns: none; grid-template-rows: auto auto; grid-auto-flow: column; justify-content: start; }
+.stage-bar .stats { font-size: 12px; gap: 1px 14px; grid-template-rows: auto auto; grid-auto-flow: column; }
+/* columns of fixed widths, whatever their values: nothing moves sideways while the walk plays */
+.stage-bar .stats { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.35fr) minmax(0, 0.75fr) minmax(0, 0.9fr) minmax(0, 1.5fr); }
+.stage-bar .stats.life { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.stage-bar .stats dt, .stage-bar .stats dd { white-space: nowrap; }
 .stage-bar .stats dd { text-align: left; }
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 12px; }
 .stage-bar .strip:empty { display: none; }
@@ -346,7 +350,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
 .stage-bar #play { width: 72px; color: var(--accent); border-color: var(--accent); }
 #seek { flex: 1; min-width: 60px; margin: 0 4px 0 6px; accent-color: var(--accent); }
-.seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
 .stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .stage-bar label { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .hint {

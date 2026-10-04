@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.275';
+const VERSION = '0.1.276';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5374,7 +5374,9 @@ function updateStats() {
     $('seek').max = walk.n;
     if (document.activeElement !== $('seek')) $('seek').value = cur;
     $('seekCount').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('seekCount').style.minWidth = `${2 * fmt(walk.n).length + 3}ch`;  // its widest value: the slider keeps its width
   }
+  document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
   STAT_LABELS[walk.life ? 'life' : walk.vert ? 'grid' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
   $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
   if (walk.life) {
