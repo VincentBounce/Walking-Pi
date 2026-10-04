@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.289';
+const VERSION = '0.1.290';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5965,12 +5965,21 @@ function galleryTab() {
   b.addEventListener('click', () => { galleryKept = true; showPane(true); });
   return b;
 }
-// leaving the tab or the pane closes it, unless the mouse goes from one to the other in time
-const leaveGallery = () => {
+// leaving the tab or the pane closes it at once, unless the mouse goes from one to the other: straight
+// in, or across the header's bare strip between them (a short grace for that)
+const leaveGallery = (e) => {
   clearTimeout(galleryClose);
-  galleryClose = setTimeout(() => { if (!galleryKept && !$('galleryPane').hidden) showPane(false); }, 250);
+  if (galleryKept || $('galleryPane').hidden) return;
+  const to = e.relatedTarget, pane = document.querySelector('aside.panel');
+  if (to && (pane.contains(to) || galleryButton.contains(to))) return;
+  if (to && (to.tagName === 'HEADER' || to.classList?.contains('header-row') || to.id === 'modeTabs')) {
+    galleryClose = setTimeout(() => showPane(false), 120);
+    return;
+  }
+  showPane(false);
 };
 galleryButton.addEventListener('mouseleave', leaveGallery);
+galleryButton.addEventListener('mouseenter', () => clearTimeout(galleryClose));
 document.querySelector('aside.panel').addEventListener('mouseleave', leaveGallery);
 document.querySelector('aside.panel').addEventListener('mouseenter', () => clearTimeout(galleryClose));
 
