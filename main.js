@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.285';
+const VERSION = '0.1.286';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5497,16 +5497,32 @@ function stripColumns(el) {
 }
 
 /* ---- 11.6 The frame loop --------------------------------------------------------------------- */
-let lastTick = 0, spinTime = 0;
+/* Auto-rotate tumbles the object on the screen's three axes at once, as a three.js cube does with
+ * rotation.x += 0.003, rotation.y −= 0.003, rotation.z += 0.001 at each frame: Euler angles (X, then Y,
+ * then Z, on the axes right, up, towards the viewer) that grow steadily, so it rolls over every way.
+ * Per frame of the screen, as there: the rates are 0.003 rad times the screen's refresh rate (the
+ * shortest time seen between two frames), counted in time, so a slow frame here does not slow it. */
+const SPIN_PER_FRAME = [0.003, -0.003, 0.001];
+let lastTick = 0, spinTime = 0, frameMin = 1 / 60;
+const rotX = (a) => [[1, 0, 0], [0, Math.cos(a), -Math.sin(a)], [0, Math.sin(a), Math.cos(a)]];
+const rotY = (a) => [[Math.cos(a), 0, Math.sin(a)], [0, 1, 0], [-Math.sin(a), 0, Math.cos(a)]];
+const rotZ = (a) => [[Math.cos(a), -Math.sin(a), 0], [Math.sin(a), Math.cos(a), 0], [0, 0, 1]];
+const matMul = (A, B) => A.map((row) => [0, 1, 2].map((j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+const spinAt = (t) => { const hz = 1 / frameMin; return matMul(matMul(rotX(SPIN_PER_FRAME[0] * hz * t), rotY(SPIN_PER_FRAME[1] * hz * t)), rotZ(SPIN_PER_FRAME[2] * hz * t)); };
 function tick(now = performance.now()) {
-  const dt = Math.min(0.1, (now - (lastTick || now)) / 1000);  // seconds since the last frame (capped)
+  const raw = (now - (lastTick || now)) / 1000;
+  if (raw > 1 / 250) frameMin = Math.min(frameMin, raw);  // the screen's refresh: its shortest frame
+  const dt = Math.min(0.1, raw);  // seconds since the last frame (capped)
   lastTick = now;
   if (walk.is3d && $('autoRotate').checked) {
-    // tumble at a constant 0.6 rad/s (a turn in about 10 s) around an axis that drifts on the screen: mostly upright,
-    // tilting forwards and back and rolling slowly, so every side shows in turn
-    spinTime += dt;
-    const a = [0.8 * Math.sin(spinTime * 0.11), 1, 0.6 * Math.sin(spinTime * 0.07)], l = Math.hypot(...a);
-    rotateView(screenTurn(...a.map((x) => (x / l) * 0.6 * dt)));
+    // the turn from one frame to the next, Q = M(t + dt)·M(t)ᵀ, as a rotation vector on the screen's axes
+    const A = spinAt(spinTime), B = spinAt(spinTime += dt);
+    const Q = B.map((row) => [0, 1, 2].map((j) => row[0] * A[j][0] + row[1] * A[j][1] + row[2] * A[j][2]));
+    const angle = Math.acos(Math.min(1, Math.max(-1, (Q[0][0] + Q[1][1] + Q[2][2] - 1) / 2))), sin = Math.sin(angle);
+    if (angle > 1e-9) {
+      const axis = [Q[2][1] - Q[1][2], Q[0][2] - Q[2][0], Q[1][0] - Q[0][1]].map((x) => (x / (2 * sin)) * angle);
+      rotateView(screenTurn(...axis));
+    }
   }
   if (playing) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
