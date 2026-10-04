@@ -22,12 +22,9 @@ html, body {
 
 body { display: flex; flex-direction: column; }
 
-header {
-  padding: 0 20px 10px;
-  border-bottom: 1px solid var(--border);
-}
+header { padding: 0 20px; border-bottom: 1px solid var(--border); }  /* one hairline, edge to edge, under the tabs */
 /* the walk tabs at the very top on the left, on a hairline; the app's name and version on the right */
-.header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
 h1 .pi, .bar-sub .pi { color: var(--accent); }
 .bar-sub .walking { color: var(--text); font-weight: 600; }  /* an automaton: what seeds it */
