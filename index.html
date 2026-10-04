@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261010v">
+  <link rel="stylesheet" href="style.css?v=20261011a">
 </head>
 <body>
   <header>
@@ -200,6 +200,7 @@
     <div id="stage" class="stage">
       <canvas id="gridLayer"></canvas>
       <canvas id="fillLayer"></canvas>
+      <canvas id="glLayer"></canvas>  <!-- the surfaces, drawn by WebGL (see 11.4b) -->
       <canvas id="pathLayer"></canvas>
       <canvas id="lineLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
@@ -281,6 +282,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261010v"></script>
+  <script src="main.js?v=20261011a"></script>
 </body>
 </html>

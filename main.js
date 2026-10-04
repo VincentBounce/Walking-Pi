@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.296';
+const VERSION = '0.1.297';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1953,6 +1953,7 @@ let previousShape = null;  // the form of the surface just replaced: { target, m
 function buildWalk() {
   previousShape = walk.shape && { target: walk.shape.target, mode: walk.shape.mode };
   visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
+  glClear();  // a surface drawn by WebGL before (see 11.4b)
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -4489,6 +4490,8 @@ function resize() {
     ctx.canvas.height = Math.round(ch * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  glCanvas.width = Math.round(cw * dpr);
+  glCanvas.height = Math.round(ch * dpr);
   if (first || $('autoFit').checked) fitToBounds(padBounds(bounds));
   needsFull = true;
 }
@@ -4734,15 +4737,8 @@ function drawSphere() {
   layers.line.clearRect(0, 0, cw, ch);  // the 2D path over cells, if any was left
   const { geo: g, R, visits, maxVisits } = walk;
   const { scale: s, ox, oy } = view;
-  const nv = g.verts.length / 3;
-  const px = new Float32Array(nv), py = new Float32Array(nv);
-  const proj = projector();
-  for (let v = 0; v < nv; v++) {
-    const [x, y] = proj(g.verts[3 * v] * R, g.verts[3 * v + 1] * R, g.verts[3 * v + 2] * R);
-    px[v] = ox + x * s; py[v] = oy + y * s;
-  }
+  const nv = g.verts.length / 3, proj = projector();
   // flat solids: visibility is decided once per face, and faces are drawn as single polygons
-  const faceVisible = g.faces && g.faces.map((f) => planeVisible(f.normal, f.corners[0].map((v) => v * R)));
   const facePath = (f, close = true) => {
     ctx.beginPath();
     f.corners.forEach((c, i) => {
@@ -4795,6 +4791,8 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
+  if (!startsShown && glSurface(palette, levelOf, path)) return;  // WebGL, when the browser has it (see 11.4b)
+  glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
     const wall = new Set(g.walls);
     drawShapeTiles(ctx, walk.shape, g.sides, [null, LIFE_WALL], (t) => (wall.has(t) ? 1 : 0));
@@ -4805,6 +4803,12 @@ function drawSphere() {
     drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, path && pathHalves());
     return;
   }
+  const px = new Float32Array(nv), py = new Float32Array(nv);  // the corners on the screen
+  for (let v = 0; v < nv; v++) {
+    const [x, y] = proj(g.verts[3 * v] * R, g.verts[3 * v + 1] * R, g.verts[3 * v + 2] * R);
+    px[v] = ox + x * s; py[v] = oy + y * s;
+  }
+  const faceVisible = g.faces.map((f) => planeVisible(f.normal, f.corners[0].map((v) => v * R)));
   const buckets = Array.from({ length: palette.length }, () => []);
   for (let t = 0; t < g.n; t++) {
     if (faceVisible[Math.floor(t / g.perFace)]) buckets[levelOf(t)].push(t);
@@ -5078,6 +5082,208 @@ function drawHalves(ctx, list, t, corners) {
     ctx.stroke();
   }
   ctx.restore();
+}
+
+/* ---- 11.4b Surfaces in WebGL ----------------------------------------------------------------
+ * The tiles, their grid and the rainbow path on a surface, drawn by the graphics card (WebGL 2) in
+ * one go, its depth buffer hiding what lies behind (no sorting of the tiles, no path cut in halves):
+ * fast enough to turn a big surface smoothly. The same projection as projectPoint (orthographic, or
+ * perspective around walk.persp), the same colours and shading as drawShapeTiles; the walker's arrow,
+ * the starts and the sky stay on their 2D layers. Without WebGL 2, drawSphere draws in 2D as before.
+ *  - tiles: each tile a fan of triangles, its colour per corner (rebuilt at each drawing: the walk
+ *    paints tiles as it goes), its normal for the shading (rebuilt when the shape changes);
+ *  - grid: the tile edges as lines, pulled a little towards the viewer;
+ *  - path: one instance per step, a quad from point i to point i + 1, as wide on screen as
+ *    surfaceLineWidth, coloured by its band of the rainbow; the points are stored once. */
+const glCanvas = $('glLayer');
+let GLS = null;  // { gl, programs, buffers, keys } once set up; false when WebGL 2 is missing
+const GL_PROJECT = `
+uniform vec3 uR, uU, uV; uniform vec4 uPersp; uniform vec2 uCC; uniform vec3 uView; uniform vec2 uScreen; uniform float uDepth;
+vec3 toScreen(vec3 p) {  // pixels on the stage, and the depth towards the viewer
+  float X = dot(p, uR), Y = -dot(p, uU), t = dot(p - uPersp.xyz, uV);
+  if (uPersp.w > 0.0) { float k = uPersp.w / (uPersp.w - t); X = uCC.x + (X - uCC.x) * k; Y = uCC.y + (Y - uCC.y) * k; }
+  return vec3(uView.y + X * uView.x, uView.z + Y * uView.x, t);
+}
+vec4 clipOf(vec3 s, float bias) {
+  return vec4(s.x / uScreen.x * 2.0 - 1.0, 1.0 - s.y / uScreen.y * 2.0, clamp(-s.z / uDepth - bias, -1.0, 1.0), 1.0);
+}`;
+const GL_SHADERS = {
+  tile: [`#version 300 es
+in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; out vec3 vCol;${GL_PROJECT}
+void main() {
+  float toward = dot(aNrm, uV); if (uTwoSided) toward = abs(toward);
+  vCol = aCol * (1.0 - 0.6 * (1.0 - max(0.0, toward)));
+  gl_Position = clipOf(toScreen(aPos), 0.0);
+}`, `#version 300 es
+precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+  edge: [`#version 300 es
+in vec3 aPos;${GL_PROJECT}
+void main() { gl_Position = clipOf(toScreen(aPos), 0.002); }`, `#version 300 es
+precision mediump float; out vec4 o; void main() { o = vec4(0.0, 0.0, 0.0, 0.35); }`],
+  path: [`#version 300 es
+in vec2 aQuad; in vec3 aA; in vec3 aB; uniform float uN, uWidth, uMaxLen; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
+void main() {
+  vCol = texture(uGrad, vec2((float(gl_InstanceID) + 0.5) / uN, 0.5)).rgb;
+  if (distance(aA, aB) > uMaxLen) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }  // across the seam of an unrolled torus
+  vec3 a = toScreen(aA), b = toScreen(aB), p = mix(a, b, aQuad.x);
+  vec2 d = b.xy - a.xy; d = length(d) > 1e-4 ? normalize(d) : vec2(1.0, 0.0);
+  p.xy += (vec2(-d.y, d.x) * aQuad.y + d * (aQuad.x * 2.0 - 1.0)) * uWidth * 0.5;
+  gl_Position = clipOf(p, 0.004);
+}`, `#version 300 es
+precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+};
+function glSetup() {
+  if (GLS !== null) return GLS;
+  const gl = glCanvas.getContext('webgl2', { antialias: true, premultipliedAlpha: true });
+  if (!gl) return (GLS = false);
+  const program = ([vs, fs]) => {
+    const p = gl.createProgram();
+    for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, src);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+      gl.attachShader(p, sh);
+    }
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  };
+  try {
+    const prog = Object.fromEntries(Object.entries(GL_SHADERS).map(([k, v]) => [k, program(v)]));
+    const buf = () => gl.createBuffer();
+    const grad = gl.createTexture();  // the rainbow, one texel per band
+    gl.bindTexture(gl.TEXTURE_2D, grad);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, BANDS, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from(GRADIENT.flatMap((c) => [...rgbOf(c), 255])));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    const quad = buf();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), keys: {}, drawn: false };
+  } catch (e) {
+    console.warn('WebGL surfaces off:', e.message);
+    GLS = false;
+  }
+  return GLS;
+}
+function glClear() {
+  if (!GLS || !GLS.drawn) return;
+  GLS.gl.clearColor(0, 0, 0, 0);
+  GLS.gl.clear(GLS.gl.COLOR_BUFFER_BIT | GLS.gl.DEPTH_BUFFER_BIT);
+  GLS.drawn = false;
+}
+const glColour = new Map();  // CSS colour → [r, g, b]
+const rgbCached = (c) => { if (!glColour.has(c)) glColour.set(c, rgbOf(c)); return glColour.get(c); };
+// Draw the surface with its palette and levelOf (as drawSphere picks them); false if WebGL is missing
+function glSurface(palette, levelOf, path) {
+  const S = glSetup();
+  if (!S) return false;
+  const { gl, prog } = S, g = walk.geo, sh = walk.shape, R = walk.R, k = g.sides, n = g.n;
+  // the corners of each tile in their current form (k per tile), with the tile's normal
+  const geoKey = `${n}|${k}|${R}|${sh.m}|${g.verts.length}|${walk.geo.torus ? g.nu + 'x' + g.nv : ''}`;
+  if (S.keys.geo !== geoKey || S.keys.geoObj !== g) {
+    const pos = new Float32Array(3 * k * n), nrm = new Float32Array(3 * k * n);
+    for (let t = 0; t < n; t++) for (let q = 0; q < k; q++) {
+      const i = 3 * (k * t + q);
+      pos[i] = sh.corners[i] * R; pos[i + 1] = sh.corners[i + 1] * R; pos[i + 2] = sh.corners[i + 2] * R;
+      nrm[i] = sh.nrm[3 * t]; nrm[i + 1] = sh.nrm[3 * t + 1]; nrm[i + 2] = sh.nrm[3 * t + 2];
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.nrm); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.DYNAMIC_DRAW);
+    if (S.keys.topo !== `${n}|${k}`) {  // the fans and the edges only change with the tiling
+      const fan = new Uint32Array(3 * (k - 2) * n), edges = new Uint32Array(2 * k * n);
+      for (let t = 0, f = 0, e = 0; t < n; t++) {
+        for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
+        for (let q = 0; q < k; q++) { edges[e++] = k * t + q; edges[e++] = k * t + ((q + 1) % k); }
+      }
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, fan, gl.STATIC_DRAW);
+      S.fanCount = fan.length;
+      S.edgeIdx = edges;
+      S.keys.topo = `${n}|${k}`;
+    }
+    S.keys.geo = geoKey; S.keys.geoObj = g;
+  }
+  // each tile's colour, from its level in the palette (0: the dark background of unlit tiles)
+  const col = new Uint8Array(3 * k * n), rgb = palette.map((c) => rgbCached(c ?? '#1f2630'));
+  for (let t = 0; t < n; t++) {
+    const c = rgb[levelOf(t)] ?? rgb[0];
+    for (let q = 0; q < k; q++) col.set(c, 3 * (k * t + q));
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, S.col); gl.bufferData(gl.ARRAY_BUFFER, col, gl.DYNAMIC_DRAW);
+  // the walk's points, in their current form
+  if (path && (S.keys.pts !== walk.wx || S.keys.ptsM !== sh.m)) {
+    const pts = new Float32Array(3 * (walk.n + 1));
+    for (let i = 0; i <= walk.n; i++) { pts[3 * i] = walk.wx[i]; pts[3 * i + 1] = walk.wy[i]; pts[3 * i + 2] = walk.wz[i]; }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.pts); gl.bufferData(gl.ARRAY_BUFFER, pts, gl.DYNAMIC_DRAW);
+    S.keys.pts = walk.wx; S.keys.ptsM = sh.m;
+  }
+  // the frame, the projection and the view
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
+  const P = walk.persp, cc = P ? orthoPoint(...P.c) : [0, 0];
+  const uniforms = (p) => {
+    gl.useProgram(p);
+    const u = (name) => gl.getUniformLocation(p, name);
+    gl.uniform3fv(u('uR'), cam.r); gl.uniform3fv(u('uU'), cam.u); gl.uniform3fv(u('uV'), cam.v);
+    gl.uniform4f(u('uPersp'), ...(P ? P.c : [0, 0, 0]), P ? P.D : 0);
+    gl.uniform2f(u('uCC'), cc[0], cc[1]);
+    gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
+    gl.uniform2f(u('uScreen'), cw, ch);
+    gl.uniform1f(u('uDepth'), 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent));
+    return u;
+  };
+  const attrib = (p, name, buffer, size, type = gl.FLOAT, normalized = false, stride = 0, offset = 0, divisor = 0) => {
+    const loc = gl.getAttribLocation(p, name);
+    if (loc < 0) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, type, normalized, stride, offset);
+    gl.vertexAttribDivisor(loc, divisor);
+  };
+  const off = (p, names) => names.forEach((name) => { const loc = gl.getAttribLocation(p, name); if (loc >= 0) { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); } });
+  // tiles
+  let u = uniforms(prog.tile);
+  gl.uniform1i(u('uTwoSided'), walk.geo.torus && sh.m < 1 ? 1 : 0);
+  attrib(prog.tile, 'aPos', S.pos, 3);
+  attrib(prog.tile, 'aNrm', S.nrm, 3);
+  attrib(prog.tile, 'aCol', S.col, 3, gl.UNSIGNED_BYTE, true);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan);
+  gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
+  off(prog.tile, ['aPos', 'aNrm', 'aCol']);
+  // grid: the tile edges, when the tiles are big enough on screen
+  if ($('showGrid').checked && view.scale > 6) {
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    u = uniforms(prog.edge);
+    attrib(prog.edge, 'aPos', S.pos, 3);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
+    if (S.keys.edgesTopo !== S.keys.topo) { gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, S.edgeIdx, gl.STATIC_DRAW); S.keys.edgesTopo = S.keys.topo; }
+    gl.drawElements(gl.LINES, S.edgeIdx.length, gl.UNSIGNED_INT, 0);
+    off(prog.edge, ['aPos']);
+    gl.disable(gl.BLEND);
+  }
+  // path: the steps walked so far, over the tiles
+  if (path && cur > 0) {
+    u = uniforms(prog.path);
+    const c = sh.corners, edge = R * Math.hypot(c[0] - c[3], c[1] - c[4], c[2] - c[5]);
+    gl.uniform1f(u('uN'), Math.max(1, walk.n));
+    gl.uniform1f(u('uWidth'), surfaceLineWidth());
+    gl.uniform1f(u('uMaxLen'), walk.geo.torus && sh.m < 1 ? 2.5 * edge : 1e9);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
+    attrib(prog.path, 'aQuad', S.quad, 2);
+    attrib(prog.path, 'aA', S.pts, 3, gl.FLOAT, false, 12, 0, 1);
+    attrib(prog.path, 'aB', S.pts, 3, gl.FLOAT, false, 12, 12, 1);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, cur);
+    off(prog.path, ['aQuad', 'aA', 'aB']);
+  }
+  S.drawn = true;
+  layers.path.clearRect(0, 0, cw, ch);  // the 2D tiles of a drawing before, if any
+  return true;
 }
 
 
