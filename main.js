@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.292';
+const VERSION = '0.1.293';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4259,10 +4259,8 @@ const setupDetail = (s) => [walkName(s.w), s.s && `size ${String(s.s).replace('x
 function fillSetupList() {
   const list = readSetups();
   $('yourList').replaceChildren(...list.map((x) => setupRow(x.name, setupDetail(x.setup), x.setup, () => deleteSetup(x.name))));
-  $('yourEmpty').hidden = list.length > 0;
   syncSaveButton();
 }
-const setupNote = (text) => { $('setupStatus').textContent = text; };
 
 // Saved under its number's name, with no question (the same setup twice is saved once; another one of
 // the same number gets "(2)", "(3)", …); its row tells the walk, size, start and rule (see setupDetail)
@@ -4277,31 +4275,29 @@ function syncSaveButton() {
 function saveSetup() {
   const setup = getSetup(), list = readSetups();
   const same = savedInView();
-  if (same) { setupNote(`Already in Treasures as “${same.name}”.`); return; }
+  if (same) return;  // already one of them (its ☆ is yellow)
   let name = shownSym;
   for (let k = 2; list.some((x) => x.name === name); k++) name = `${shownSym} (${k})`;
   list.push({ name, setup, saved: new Date().toISOString() });
   list.sort((a, b) => a.name.localeCompare(b.name));
-  setupNote(writeSetups(list) ? `Saved “${name}” in this browser.` : 'This browser does not allow saving (private window?).');
+  if (!writeSetups(list)) alert('This browser does not allow saving (private window?).');
   fillSetupList();
 }
 
 function deleteSetup(name) {
   writeSetups(readSetups().filter((x) => x.name !== name));
   fillSetupList();
-  setupNote(`Deleted “${name}”.`);
 }
 
 function exportSetups() {
   const list = readSetups();
-  if (!list.length) { setupNote('Nothing to export yet: save a setup first.'); return; }
+  if (!list.length) return;  // nothing to export yet
   const blob = new Blob([JSON.stringify({ app: 'Walking Pi', version: 1, setups: list }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'walking-pi-setups.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  setupNote(`Exported ${list.length} setup${list.length > 1 ? 's' : ''}.`);
 }
 
 async function importSetups(file) {
@@ -4317,9 +4313,8 @@ async function importSetups(file) {
     list.sort((a, b) => a.name.localeCompare(b.name));
     writeSetups(list);
     fillSetupList();
-    setupNote(`Imported ${incoming.length} setup${incoming.length === 1 ? '' : 's'}.`);
   } catch {
-    setupNote('This file is not a Walking Pi setups file.');
+    alert('This file is not a Walking Pi setups file.');
   }
 }
 

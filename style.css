@@ -54,7 +54,6 @@ main { flex: 1; display: flex; min-height: 0; }
 #paramsPane > section:last-child, #galleryPane > section:last-child { border-bottom: 0; }
 .row-delete { padding: 0 6px; font-size: 16px; color: var(--muted); border-radius: 4px; }  /* × on a saved setup */
 .row-delete:hover { color: var(--text); background: var(--border); }
-#yourEmpty { margin: 0 0 8px; }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
 h2 {
   margin: 4px 0 10px;
@@ -391,3 +390,4 @@ button.wide { width: 100%; margin-bottom: 10px; }
 /* Gallery, the first tab at the top: it opens the gallery in the left pane (on hover, or kept by a
    click), in white, while the tab of the walk in use stays the selected one */
 .tabs button.gallery-tab.open { color: var(--text); }
+.caption { margin: 3px 0 0; font-size: 11px; color: var(--muted); }  /* a line under a heading: where Treasures are kept */
