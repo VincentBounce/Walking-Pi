@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261010s">
+  <link rel="stylesheet" href="style.css?v=20261010t">
 </head>
 <body>
   <header>
@@ -64,6 +64,10 @@
               <option value="hexSphereGrid">Hexagon sphere (icosahedron) — base 2 (left / right)</option>
               <option value="hexSphereWalk">Hexagon sphere (icosahedron) — base 2 (front left / front right)</option>
             </optgroup>
+            <optgroup label="3D walks">
+              <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
+              <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
+            </optgroup>
             <optgroup label="Automata on surfaces">
               <option value="lifeCube">Life — cube</option>
               <option value="lifeTorus">Life — torus</option>
@@ -72,10 +76,6 @@
               <option value="lifeOcta">Life — octahedron</option>
               <option value="lifeIcosa">Life — icosahedron</option>
               <option value="lifeHexSphere">Life — hexagon sphere</option>
-            </optgroup>
-            <optgroup label="3D walks">
-              <option value="cubeRel">Cubes — base 5 (5 relative turns)</option>
-              <option value="cubeFixed">Cubes — base 6 (6 fixed directions)</option>
             </optgroup>
             <optgroup label="2D spirals">
               <option value="spiral">Ulam square spiral — base 2 (1 = draw, 0 = skip)</option>
@@ -281,6 +281,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261010s"></script>
+  <script src="main.js?v=20261010t"></script>
 </body>
 </html>
