@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.263';
+const VERSION = '0.1.264';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1927,8 +1927,7 @@ function buildWalk() {
     return;
   }
   if (MODES[current.mode].lattice === 'sphere') {
-    if (!MODES[current.mode].grid) { buildSphereWalk(seq, MODES[current.mode]); return; }
-    buildGridWalk(seq, MODES[current.mode], digitsAhead());
+    (MODES[current.mode].grid ? buildGridWalk : buildSphereWalk)(seq, MODES[current.mode], digitsAhead());
     // a walk that loops takes only the digits of its first round: the count says so (and the link),
     // and the count asked comes back for the next number, surface or start (see compute)
     if (walk.loop && walk.n < requestedDigits()) {
@@ -2819,10 +2818,7 @@ function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   sel.dataset.kind = key;
 }
 
-// Walk from tile to tile. Entering a tile through edge k (vertices counterclockwise), the digit d
-// leaves through edge k + turns[d]: k + 1 is on the right, k − 1 on the left, k + 2 straight on
-// (for squares). Edges are counted among those with a neighbour: a pentagon of the hexagon sphere
-// (a hexagon with an edge of length 0) has 5.
+// Walk from tile to tile (see surfaceSteps)
 /* Walks on surfaces, along the grid: from corner to corner along the tile edges. Arriving at a corner, the digit
  * gives a turn (degrees, left positive, measured in the plane tangent to the surface there) and the
  * walker leaves by the edge closest to it: on squares, left, straight on or right; on triangles, five
@@ -3100,7 +3096,7 @@ const TORUS_RATIO = [0.8, 1.25], LOOP_STEPS = 20000, LOOP_GAP = 1, LOOP_MAX = 12
 let torusLoopList = null;  // { key, loops: [{ start, size, laps: [ring, tube], steps }] } for the number in use
 function torusLoops() {
   const mode = MODES[$('mode').value], key = `${formulaInUse} ${$('mode').value}`;
-  if (!mode.grid || !TORI.includes(mode.sphere)) return [];
+  if (!(mode.grid || mode.cells) || !TORI.includes(mode.sphere)) return [];  // along the grid or on cells
   if (!current || current.formula !== formulaInUse || current.mode !== $('mode').value) return [];  // its digits are on their way
   if (torusLoopList?.key === key) return torusLoopList.loops;
   const loops = [];
@@ -3117,14 +3113,14 @@ function torusLoops() {
   const H = current.head, D = current.digits, s0 = H.length + pre + 1;
   if (H.length + D.length < s0 + 2 * L) return loops;
   const digit = (i) => (i < H.length ? H[i] : D[i - H.length]);
-  const kind = mode.sphere, S = SPHERES[kind], g = S.mesh(sphereSize()), G = gridGraph(g), angles = mode.turns.map((a) => (a * Math.PI) / 180);
+  const kind = mode.sphere, S = SPHERES[kind], g = S.mesh(sphereSize()), walker = surfaceSteps(g, mode);
   const usual = 48 / (S.columns(48) * S.perRow), gcdN = (x, y) => (y ? gcdN(y, x % y) : x);
-  startList(g).forEach(([v0, f0], i) => {
-    let v = v0, from = f0, x = 0, y = 0;
+  startList(g).forEach((_, i) => {
+    let state = walker.start(i), x = 0, y = 0;
     const at = [], band = [];
     for (let j = 1; j <= s0 + 2 * L; j++) {  // the shifts of two periods in a row
-      const w = nextCorner(g, G, v, from, angles[digit(j - 1)]), [du, dv] = sheetDelta(g, G, v, w);
-      x += du; y += dv; from = v; v = w;
+      const next = walker.step(state, digit(j - 1)), [du, dv] = walker.sheet(state, next);
+      x += du; y += dv; state = next;
       if (j === s0 || j === s0 + L || j === s0 + 2 * L) at.push([x, y]);
       if (j >= s0 && j <= s0 + L) band.push([x, y]);
     }
@@ -3177,6 +3173,62 @@ function browseLoop(delta) {
   compute(true);
 }
 
+// A walk back on an earlier state with the same digits ahead draws the same steps again, forever: it
+// stops there, after its first round. The digits are compared up to the ones ahead (LOOP_AHEAD
+// after those walked), and only with at least LOOP_AHEAD of them left, so that no other number gets
+// cut by chance. looped(p, state): the state at point p; the point it was at before if the walk
+// goes round from there, else null.
+function loopWatch(seq, ahead) {
+  const all = new Uint8Array(seq.length + ahead.length), firstAt = new Map();
+  all.set(seq);
+  all.set(ahead, seq.length);
+  const repeats = (a, b) => { for (let x = b; x < all.length; x++) if (all[x] !== all[x - b + a]) return false; return true; };
+  return (p, state) => {
+    const earlier = firstAt.get(state);
+    if (earlier === undefined) { firstAt.set(state, p); return null; }
+    return all.length - p >= LOOP_AHEAD && repeats(earlier, p) ? earlier : null;
+  };
+}
+// The steps of a walk on a surface, along the grid (from corner to corner, the state [corner, the
+// corner it came from]) or on cells (from tile to tile, [tile, the edge it came in by]): the state
+// of start i, the state after a digit, as a whole number, and on a torus the step on the flat sheet
+// (columns east, rows north; on cells, from tile centre to tile centre)
+function surfaceSteps(g, mode) {
+  const starts = startList(g);
+  if (mode.grid) {
+    const G = gridGraph(g), angles = mode.turns.map((a) => (a * Math.PI) / 180);
+    return { start: (i) => starts[i], step: ([v, from], d) => [nextCorner(g, G, v, from, angles[d]), v],
+             key: ([v, from]) => v * G.nv + from, sheet: ([a], [b]) => sheetDelta(g, G, a, b) };
+  }
+  // Entering a tile through edge k (corners counterclockwise), the digit d leaves through edge
+  // k + turns[d]: k + 1 is on the right, k − 1 on the left, k + 2 straight on (for squares). Edges
+  // are counted among those with a neighbour: a pentagon of the hexagon sphere (a hexagon with an
+  // edge of length 0) has 5.
+  const k = g.sides, live = Array.from({ length: g.n }, (_, u) => {
+    const ks = [];
+    for (let e = 0; e < k; e++) if (g.nbr[k * u + e] >= 0) ks.push(e);
+    return ks.length < k ? ks : null;
+  });
+  const centre = (t) => {
+    let u = 0, v = 0;
+    for (let q = 0; q < k; q++) { u += g.uv[2 * (k * t + q)]; v += g.uv[2 * (k * t + q) + 1]; }
+    return [u / k, v / k];
+  };
+  return {
+    start: (i) => cellStart(g, starts[i]),
+    step: ([t, entry], d) => {
+      const ks = live[t], n = ks ? ks.length : k, at = ks ? ks.indexOf(entry) : entry;
+      const j = (((at + mode.turns[d]) % n) + n) % n, edge = ks ? ks[j] : j;
+      return [g.nbr[k * t + edge], g.nbrEdge[k * t + edge]];
+    },
+    key: ([t, entry]) => t * k + entry,
+    sheet: ([a], [b]) => {
+      const p = centre(a), q = centre(b), du = q[0] - p[0], dv = q[1] - p[1];
+      return [du - g.nu * Math.round(du / g.nu), dv - g.nv * Math.round(dv / g.nv)];
+    },
+  };
+}
+
 function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new Uint8Array(0)) {
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
@@ -3198,15 +3250,8 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
     maxDist[i] = m;
   };
   put(0);
-  // A walk back on an earlier state (corner, and the corner it came from) with the same digits ahead
-  // draws the same steps again, forever: it stops there, after its first round. The digits are
-  // compared up to the ones ahead (LOOP_AHEAD after those walked), and only with at least LOOP_AHEAD
-  // of them left, so that no other number gets cut by chance.
-  const all = new Uint8Array(len + ahead.length);
-  all.set(seq);
-  all.set(ahead, len);
-  const firstAt = new Map([[v * G.nv + from, 0]]);
-  const repeats = (a, b) => { for (let x = b; x < all.length; x++) if (all[x] !== all[x - b + a]) return false; return true; };
+  const looped = loopWatch(seq, ahead);  // (corner, the corner it came from)
+  looped(0, v * G.nv + from);
   let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
     const next = nextCorner(g, G, v, from, angles[seq[i]]);
@@ -3217,9 +3262,8 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
     put(i + 1);
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + seq[i]]++;
-    const state = v * G.nv + from, earlier = firstAt.get(state);
-    if (earlier === undefined) firstAt.set(state, i + 1);
-    else if (all.length - i - 1 >= LOOP_AHEAD && repeats(earlier, i + 1)) { steps = i + 1; loop = { from: earlier }; break; }
+    const earlier = looped(i + 1, v * G.nv + from);
+    if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
   Object.assign(walk, { n: steps, loop, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
@@ -3234,26 +3278,18 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
   if (walk.shape) applyShape();
 }
 
-function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
+function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
+  const { sphere: kind, base, initial } = mode;
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
-  const size = sphereSize();
-  const g = mesh(size);
-  const R = radius(size);
-  const sides = g.sides;
+  const size = sphereSize(), g = mesh(size), R = radius(size), S = surfaceSteps(g, mode);
   const len = seq.length;
   const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
   const tile = new Int32Array(len + 1), cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
   const counts = new Int32Array(base * (len + 1));
   const seen = new Uint8Array(g.n);
-  let [t, entry] = cellStart(g, startList(g)[startNo() - 1]), distinct = 1, m = 0, coverStep = -1;
+  let state = S.start(startNo() - 1), t = state[0], distinct = 1, m = 0, coverStep = -1;
   seen[t] = 1;
-  // the edges of each tile that have a neighbour, counterclockwise, where some do not
-  const live = Array.from({ length: g.n }, (_, u) => {
-    const ks = [];
-    for (let k = 0; k < sides; k++) if (g.nbr[sides * u + k] >= 0) ks.push(k);
-    return ks.length < sides ? ks : null;
-  });
   const c0 = [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
   const put = (i) => {
     wx[i] = g.cen[3 * t] * R; wy[i] = g.cen[3 * t + 1] * R; wz[i] = g.cen[3 * t + 2] * R;
@@ -3264,20 +3300,22 @@ function buildSphereWalk(seq, { sphere: kind, turns, base, initial }) {
     maxDist[i] = m;
   };
   put(0);
+  const looped = loopWatch(seq, ahead);  // (tile, the edge it came in by)
+  looped(0, S.key(state));
+  let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
-    const ks = live[t], n = ks ? ks.length : sides, at = ks ? ks.indexOf(entry) : entry;
-    const j = (((at + turns[seq[i]]) % n) + n) % n, edge = ks ? ks[j] : j;
-    const next = g.nbr[sides * t + edge];
-    entry = g.nbrEdge[sides * t + edge];
-    t = next;
+    state = S.step(state, seq[i]);
+    t = state[0];
     if (!seen[t]) { seen[t] = 1; distinct++; if (distinct === g.n) coverStep = i + 1; }
     put(i + 1);
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + seq[i]]++;
+    const earlier = looped(i + 1, S.key(state));
+    if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
-  Object.assign(walk, { n: len, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
+  Object.assign(walk, { n: steps, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
-                        sphere: true, geo: g, R, tile, vert: null, stepTiles: null, loop: null, nodes: g.n, coverStep,
+                        sphere: true, geo: g, R, tile, vert: null, stepTiles: null, loop, nodes: g.n, coverStep,
                         visits: new Int32Array(g.n), maxVisits: 0,
                         life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
   initShape(kind);
