@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.266';
+const VERSION = '0.1.267';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2989,7 +2989,8 @@ function solidFaceCentres(g, C) {
 // a third of a triangle, as the solid's rotations turn it onto every other such kite. Each walk
 // takes its start whose edge's middle lies deepest inside it (on the sphere, a point lies on the
 // face whose centre is nearest). An edge gives two starts, towards A first, then away from it, only
-// one when a rotation turns it end for end. They follow by distance from A.
+// one when a rotation turns it end for end. They follow by distance from A, then by side (the face's
+// next corner's first).
 function startList(g) {
   if (g.starts) return g.starts;
   if (g.torus) return (g.starts = torusStarts(g));
@@ -3030,11 +3031,20 @@ function startList(g) {
     }
     picks.push({ ...best, flipped });
   }
-  const fromA = (e) => dot(mid(e.a, e.b), A);
-  picks.sort((e1, e2) => fromA(e2) - fromA(e1));
+  // measured flat, on the face's plane (seen from the centre), so in steps of the grid at any size:
+  // seen on the sphere, the farther from A, the more squeezed, unlike from size to size. Two edges
+  // mirrored across the kite's middle lie as far from A: the one towards the face's next corner B
+  // first, as on the kite's border (else rounding errors would pick)
+  const onFace = (p) => p.map((x) => x / dot(p, O)), Af = onFace(A), AB = onFace(otherCorners[0]).map((x, d) => x - Af[d]);
+  const fromA = (p) => onFace(p).map((x, d) => x - Af[d]);
+  for (const e of picks) {
+    const q = fromA([0, 1, 2].map((d) => V[3 * e.a + d] + V[3 * e.b + d]));
+    e.far = Math.hypot(...q); e.along = dot(q, AB);
+  }
+  picks.sort((e1, e2) => (Math.abs(e1.far - e2.far) > 1e-9 ? e1.far - e2.far : e2.along - e1.along));
   const starts = [];
   for (const { a, b, flipped } of picks) {  // first the way to the end nearer A, then back
-    const [n, f] = dot(at(a), A) > dot(at(b), A) ? [a, b] : [b, a];
+    const [n, f] = Math.hypot(...fromA(at(a))) < Math.hypot(...fromA(at(b))) ? [a, b] : [b, a];
     starts.push(...(flipped ? [[n, f]] : [[n, f], [f, n]]));
   }
   return (g.starts = starts);
