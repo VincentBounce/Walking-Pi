@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.291';
+const VERSION = '0.1.292';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4268,16 +4268,16 @@ const setupNote = (text) => { $('setupStatus').textContent = text; };
 // the same number gets "(2)", "(3)", …); its row tells the walk, size, start and rule (see setupDetail)
 // the saved setup that is the one in view (same number, walk, size, start, turn and rule), if any
 const savedInView = () => readSetups().find((x) => isInUse(x.setup) && String(x.setup.r ?? '') === String(getSetup().r ?? ''));
-// ☆ Save, or ★ (in yellow) while the setup in view is one of My finds
+// ☆ Save, or ★ (in yellow) while the setup in view is one of Treasures
 function syncSaveButton() {
   const saved = savedInView(), b = $('setupSave');
   b.classList.toggle('saved', !!saved);
-  b.title = saved ? `Saved in My finds as “${saved.name}”` : 'Save the setup in view in My finds, in this browser';
+  b.title = saved ? `Saved in Treasures as “${saved.name}”` : 'Save the setup in view in Treasures, in this browser';
 }
 function saveSetup() {
   const setup = getSetup(), list = readSetups();
   const same = savedInView();
-  if (same) { setupNote(`Already in My finds as “${same.name}”.`); return; }
+  if (same) { setupNote(`Already in Treasures as “${same.name}”.`); return; }
   let name = shownSym;
   for (let k = 2; list.some((x) => x.name === name); k++) name = `${shownSym} (${k})`;
   list.push({ name, setup, saved: new Date().toISOString() });
@@ -5959,7 +5959,7 @@ function galleryTab() {
   b.dataset.ready = '1';
   b.className = 'gallery-tab';
   b.innerHTML = `${icon('gallery')} Gallery`;
-  b.title = 'My finds and the built-in setups: hover one to see it, click it to keep it';
+  b.title = 'Treasures and the curated setups: hover one to see it, click it to keep it';
   b.addEventListener('mouseenter', () => { clearTimeout(galleryClose); showPane(true); });
   b.addEventListener('click', () => { galleryKept = true; showPane(true); });
   return b;

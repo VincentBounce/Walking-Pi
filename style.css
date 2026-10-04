@@ -377,11 +377,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
   .hint { display: none; }
 }
 
-/* Save, the first of My finds' icons: yellow, its star filled, while the setup in view is one of them */
+/* Save, the first of Treasures' icons: yellow, its star filled, while the setup in view is one of them */
 .icon-btn.save-btn.saved, .icon-btn.save-btn.saved:hover:not(:disabled) { color: var(--accent); }
 .save-btn.saved .icon path { fill: currentColor; }
 .icon-btn .icon { width: 17px; height: 17px; }
-/* My finds: Export and Import as two small icons at the right of its heading */
+/* Treasures: Export and Import as two small icons at the right of its heading */
 .finds-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 10px; }  /* as an h2 */
 .finds-head h2 { margin: 0; }
 .finds-tools { display: flex; gap: 4px; }
