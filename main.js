@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.269';
+const VERSION = '0.1.270';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -711,7 +711,7 @@ const PRESETS = {
   // Fractions: their digits repeat, and on a walk that turns relative to its heading, a round of
   // them that turns by a whole fraction of a turn closes into a rosette (k rounds for a k-fold one).
   // Picked among the fractions up to /999 for big rosettes drawn with few overlaps, four per walk;
-  // a tile also takes its walk, and enough digits to close it
+  // picked from the 2D walks, a tile also takes its walk, and enough digits to close it
   rose1_923: { group: 'Fractions', sym: '1/923', name: 'A 4-fold rosette on Squares turtle', detail: '1/923 in base 3', f: '1/923', walk: 'turtle', steps: 420 },
   rose2_541: { group: 'Fractions', sym: '2/541', name: 'A 4-fold rosette on Squares turtle', detail: '2/541 in base 3', f: '2/541', walk: 'turtle', steps: 540 },
   rose1_709: { group: 'Fractions', sym: '1/709', name: 'A 4-fold rosette on Squares turtle', detail: '1/709 in base 3', f: '1/709', walk: 'turtle', steps: 708 },
@@ -1944,15 +1944,18 @@ function buildWalk() {
     buildLife(seq, MODES[current.mode]);
     return;
   }
-  if (MODES[current.mode].lattice === 'sphere') {
-    (MODES[current.mode].grid ? buildGridWalk : buildSphereWalk)(seq, MODES[current.mode], digitsAhead());
-    // a walk that loops takes only the digits of its first round: the count says so (and the link),
-    // and the count asked comes back for the next number, surface or start (see compute)
+  // a walk that loops takes only the digits of its first round: the count says so (and the link),
+  // and the count asked comes back for the next number, surface or start (see compute)
+  const loopCount = () => {
     if (walk.loop && walk.n < requestedDigits()) {
       digitsBeforeLoop ??= requestedDigits();
       $('digits').value = walk.n;
     } else if (!walk.loop) digitsBeforeLoop = null;  // a count that does not loop is the one asked
     syncDigitsStepper();
+  };
+  if (MODES[current.mode].lattice === 'sphere') {
+    (MODES[current.mode].grid ? buildGridWalk : buildSphereWalk)(seq, MODES[current.mode], digitsAhead());
+    loopCount();
     syncLoopRow();
     return;
   }
@@ -1967,7 +1970,12 @@ function buildWalk() {
   const step = STEPPERS[current.mode]();
   const counts = new Int32Array(base * (len + 1));
   const seen = new Set([is3d ? key3(0, 0, 0) : key(0, 0)]);
-  let m = 0;
+  // on the plane, a fraction's walk can loop too (a rosette): its state, the point and the one it
+  // came from (its heading), back with the same digits ahead (see loopWatch). Only for fractions,
+  // the others never repeat; not in 3D, where the heading does not tell the roll
+  const looped = current.ratio && !is3d ? loopWatch(seq, digitsAhead()) : null;
+  let last = key(0, 0), steps = len, loop = null, m = 0;
+  looped?.(0, `start ${last}`);
   cells[0] = 1;
   for (let i = 0; i < len; i++) {
     const g = seq[i];
@@ -1980,14 +1988,19 @@ function buildWalk() {
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
+    if (!looped) continue;
+    const state = `${last} ${k}`, earlier = looped(i + 1, state);
+    last = k;
+    if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
-  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: len, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
+  Object.assign(walk, { vert: null, stepTiles: null, loop, n: steps, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
                         skipZeros: !!MODES[current.mode].skipZeros,
                         points: false, keys: seq, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) { setPerspective(); project(); } else walk.persp = null;
+  loopCount();
   updateHint();
   restart();
 }
@@ -5625,9 +5638,9 @@ $('primorialP').value = '392113,1';
 const pickPreset = (id) => {
   const p = PRESETS[id];
   $('formula').value = presetFormula(id);
-  if (p.walk) {  // a rosette: on its walk, with the digits to close it
+  if (p.walk && modeTabOf() === '2D walks') {  // a rosette, from the 2D walks: on its walk, with the digits to close it
     $('mode').value = p.walk;
-    if (requestedDigits() < p.steps) $('digits').value = p.steps;
+    if (requestedDigits() <= p.steps) $('digits').value = p.steps + 1;  // one more: the step back on the start
   }
   computeFramed();
 };
