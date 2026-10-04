@@ -377,15 +377,13 @@ button.wide { width: 100%; margin-bottom: 10px; }
   .hint { display: none; }
 }
 
-/* Save, at the top left of the app's name: yellow while the setup in view is one of My finds */
-.header-end { display: flex; align-items: center; gap: 14px; }
-.save-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 13px; font-weight: 600; border-radius: 999px; background: transparent; color: var(--muted); }
-.save-btn:hover:not(:disabled) { color: var(--text); }
-.save-btn.saved, .save-btn.saved:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); background: rgba(240, 180, 41, 0.12); }
+/* Save, the first of My finds' icons: yellow, its star filled, while the setup in view is one of them */
+.icon-btn.save-btn.saved, .icon-btn.save-btn.saved:hover:not(:disabled) { color: var(--accent); }
 .save-btn.saved .icon path { fill: currentColor; }
+.icon-btn .icon { width: 17px; height: 17px; }
 /* My finds: Export and Import as two small icons at the right of its heading */
-.finds-head { display: flex; align-items: center; justify-content: space-between; }
-.finds-head h2 { margin-bottom: 0; }
+.finds-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 10px; }  /* as an h2 */
+.finds-head h2 { margin: 0; }
 .finds-tools { display: flex; gap: 4px; }
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; background: transparent; border-color: transparent; color: var(--muted); }
 .icon-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--border); background: var(--bg); }
