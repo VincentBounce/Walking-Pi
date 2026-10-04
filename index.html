@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261009y">
+  <link rel="stylesheet" href="style.css?v=20261009z">
 </head>
 <body>
   <header>
@@ -13,7 +13,6 @@
       <div id="modeTabs" class="tabs" role="tablist"></div>
       <h1>Walking <span class="pi">π</span> <span id="version" class="version" title="0.1.0 = first commit, +1 per commit"></span></h1>
     </div>
-    <p id="description" class="subtitle"></p>
   </header>
 
   <main>
@@ -211,8 +210,11 @@
       <canvas id="lineLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
       <div id="hint" class="hint">Wheel: zoom · Drag: pan · Double-click: auto-fit</div>
-      <div id="animBar" class="stage-box stage-bar" aria-label="Animation and stats">
-        <div class="stage-more">  <!-- shown on hover, above the Play row -->
+      <div id="animBar" class="stage-box stage-bar" aria-label="What is walked, animation and stats">
+        <div class="bar-title"><span id="barNum" class="bar-num"></span><span id="barLoop" class="bar-chip loop" hidden></span><span id="barBase" class="bar-chip"></span></div>
+        <div class="stage-more">  <!-- shown on hover, between the title and the Play row -->
+          <p id="description" class="bar-sub"></p>
+          <div id="ruleChips" class="rule-chips"></div>
           <dl class="stats">
             <dt id="lifetimeLabel" hidden>Lifetime</dt><dd id="sLifetime" hidden>—</dd>
             <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
@@ -220,7 +222,6 @@
             <dt id="lStat2">Distance</dt><dd id="sDist">0</dd>
             <dt id="lStat3">Max distance</dt><dd id="sMax">0</dd>
             <dt id="lStat4">Cells visited</dt><dd id="sCells">1</dd>
-            <dt id="sCountsLabel">0 / 1 / 2</dt><dd id="sCounts">0 / 0 / 0</dd>
           </dl>
           <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
           <label>Speed: <span id="speedLabel"></span>
@@ -230,8 +231,10 @@
         <div class="row">
           <button id="restart" data-icon="start" title="Jump to start (R)" aria-label="Jump to start"></button>
           <button id="play" title="Play / pause (Space)">Play</button>
-          <button id="step" title="One step (→)">Step</button>
-          <button id="end" data-icon="end" title="Jump to end (E)" aria-label="Jump to end"></button>
+          <button id="step" class="open-only" title="One step (→)">Step</button>
+          <button id="end" class="open-only" data-icon="end" title="Jump to end (E)" aria-label="Jump to end"></button>
+          <input id="seek" type="range" min="0" max="0" step="1" value="0" title="Go to a step" aria-label="Go to a step">
+          <span id="seekCount" class="seek-count"></span>
         </div>
       </div>
       <div id="viewTools" class="stage-box display-menu">
@@ -279,6 +282,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261009y"></script>
+  <script src="main.js?v=20261009z"></script>
 </body>
 </html>

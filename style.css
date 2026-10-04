@@ -29,11 +29,9 @@ header {
 /* the walk tabs at the very top on the left, on a hairline; the app's name and version on the right */
 .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
-h1 .pi, .subtitle .pi { color: var(--accent); }
-.subtitle .walking { color: var(--text); font-weight: 600; }  /* what is walked: Walking ln 2 · … */
+h1 .pi, .bar-sub .pi { color: var(--accent); }
+.bar-sub .walking { color: var(--text); font-weight: 600; }  /* an automaton: what seeds it */
 h1 .version { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
-.subtitle { margin: 8px 0 0; color: var(--muted); }
-.subtitle b { color: var(--text); }
 
 main { flex: 1; display: flex; min-height: 0; }
 
@@ -321,15 +319,34 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .choice-row button:hover:not(:disabled):not(.active) { color: var(--text); }
 .choice-row button.active { background: rgba(240, 180, 41, 0.22); color: var(--accent); font-weight: 600; }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
-.stage-bar { left: 12px; bottom: 12px; width: 250px; }  /* grows upwards: the Play row stays at the bottom */
-.stage-bar .stage-more { margin-bottom: 8px; }
-.stage-bar .stats { font-size: 12px; gap: 2px 12px; }  /* the stats sit above the controls */
-.stage-bar .strip { margin: 6px 0 0; min-height: 0; font-size: 12px; }
+.stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; }  /* grows upwards: the Play row stays at the bottom */
+.stage-bar:hover { width: 580px; }
+@media (hover: none) { .stage-bar:focus-within { width: 580px; } }
+/* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
+.bar-title { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; }
+.bar-num { font-size: 20px; font-weight: 700; color: var(--accent); overflow: hidden; text-overflow: ellipsis; }
+.bar-chip { font-size: 11px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
+.bar-chip.loop { border-color: rgba(240, 180, 41, 0.5); color: var(--accent); }
+.bar-sub { margin: -4px 0 8px; font-size: 12px; color: var(--muted); }
+.bar-sub b { color: var(--text); }
+.rule-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-bottom: 9px; }
+.rule-chips:empty { display: none; }
+.rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
+.rule-chip b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; color: #0d1117; }
+.rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }
+.rule-chip small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.stage-bar .stage-more { margin-bottom: 9px; }
+/* the stats in one line of columns: the label over its value */
+.stage-bar .stats { font-size: 12px; gap: 1px 16px; grid-template-columns: none; grid-template-rows: auto auto; grid-auto-flow: column; justify-content: start; }
+.stage-bar .stats dd { text-align: left; }
+.stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 12px; }
 .stage-bar .strip:empty { display: none; }
-.stage-bar .row { margin: 0; }
+.stage-bar .row { margin: 0; align-items: center; }
 .stage-bar .row button { flex: none; width: 48px; padding: 6px 0; font-weight: 600; }  /* ⏮ Step ⏭: all alike */
-/* Play stretches, so Play and Pause have the same width: outlined in yellow, filled while playing */
-.stage-bar #play { flex: 1; width: auto; color: var(--accent); border-color: var(--accent); }
+/* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
+.stage-bar #play { width: 72px; color: var(--accent); border-color: var(--accent); }
+#seek { flex: 1; min-width: 60px; margin: 0 4px 0 6px; accent-color: var(--accent); }
+.seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .stage-bar label { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .hint {

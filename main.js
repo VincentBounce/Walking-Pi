@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.273';
+const VERSION = '0.1.274';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -937,11 +937,7 @@ let cw = 0, ch = 0;
  */
 
 /* ---- 3.1 Subtitle, colour menu and number of digits ------------------------------------------ */
-function updateRuleText() {
-  const { base } = MODES[$('mode').value];
-  $('sCountsLabel').textContent = Array.from({ length: base }, (_, i) => i).join(' / ');
-  $('sCountsLabel').hidden = $('sCounts').hidden = base > 6 || !!MODES[$('mode').value].life;  // nothing useful to list
-}
+function updateRuleText() {}  // the rule is shown by describe (the Play card)
 
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
@@ -951,17 +947,38 @@ function digitsNeeded() {
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
 }
 
-// The line under the tabs says what is shown, by tab. A walk: "Walking π · 20,000 base-3 digits on
-// a square grid: 0 turn left + step, …" (the digits actually walked). An automaton: "4/3 in base 2
+// The Play card says what is shown: its title the number, the loop and the base; open, the walk and
+// its rule, a chip per digit (its count in the stats) when the rule names each digit: "Squares
+// turtle · along the lines of a square grid", 0 turn left + step, … An automaton: "4/3 in base 2
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
 let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
+  $('barNum').innerHTML = withIcons(shownSym);
+  $('barNum').title = formulaInUse;
+  $('barBase').textContent = `base ${base}`;
+  $('barLoop').hidden = mode.life || !walk.loop;
+  $('ruleChips').replaceChildren();
   if (!mode.life) {
-    const loop = !walk.loop ? '' : walk.loop.from ? ` (then it would go round again from step ${fmt(walk.loop.from)})` : ' (then it would start over)';
-    $('description').innerHTML = `<span class="walking">Walking ${sym}</span> · ${fmt(walk.n)} base-${base} digits${loop} ${mode.rule}`;
+    const from = walk.loop?.from;
+    $('barLoop').textContent = `${fmt(walk.n)} digits ↻${from ? ` from step ${fmt(from)}` : ''}`;
+    $('barLoop').title = from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
+    // the rule: what comes before its colon, then its digits as chips, when it names each one
+    const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
+    const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
+    const chips = at >= 0 && items.length === base && base <= DIGIT_COLORS.length;
+    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} digits · `}${chips ? lead : mode.rule}`;
+    if (chips) {
+      $('ruleChips').replaceChildren(...items.map(([, d, what]) => {
+        const c = document.createElement('span');
+        c.className = 'rule-chip';
+        c.innerHTML = `<b style="background:${DIGIT_COLORS[d]}">${d}</b><span>${what.trim()}<small id="count${d}">0</small></span>`;
+        c.title = `${d}: ${what.trim()}`;
+        return c;
+      }));
+    }
     return;
   }
   const cells = walk.life.seed.length, C = base;
@@ -5349,6 +5366,14 @@ function lifetimeText(L) {
 }
 
 function updateStats() {
+  // the progress: a slider to go to any step (none for the Game of Life, which has no end)
+  const finite = Number.isFinite(walk.n) && !walk.life;
+  $('seek').hidden = $('seekCount').hidden = !finite;
+  if (finite) {
+    $('seek').max = walk.n;
+    if (document.activeElement !== $('seek')) $('seek').value = cur;
+    $('seekCount').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+  }
   STAT_LABELS[walk.life ? 'life' : walk.vert ? 'grid' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
   $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
   if (walk.life) {
@@ -5360,7 +5385,6 @@ function updateStats() {
     $('sMax').textContent = fmt(L.dead);
     $('sCells').textContent = pc(L.everAlive);
     $('sLifetime').textContent = lifetimeText(L);
-    $('sCountsLabel').hidden = $('sCounts').hidden = true;
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base ${L.C} · ${fmt(n)} cells, ` +
       (L.two ? `${fmt(L.seedAlive - L.seedBlue)} red and ${fmt(L.seedBlue)} blue`
@@ -5380,9 +5404,9 @@ function updateStats() {
       (walk.coverStep >= 0 && cur >= walk.coverStep ? ` (all by step ${fmt(walk.coverStep)})`
                                                      : ` (${(100 * walk.cells[cur] / walk.nodes).toFixed(1)} %)`)
     : fmt(walk.cells[cur]);
-  if (walk.n && walk.counts) {
+  if (walk.n && walk.counts) {  // each digit's count, on its chip
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
-    $('sCounts').textContent = Array.from(c, fmt).join(' / ');
+    c.forEach((v, d) => { const e = document.getElementById(`count${d}`); if (e) e.textContent = fmt(v); });
   }
   // digit strip around the current step
   const strip = $('digitStrip');
@@ -5414,7 +5438,8 @@ function updateStats() {
   for (let i = a; i < b; i++) {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
     // describe the digits to its left. At the end it sits on a blank after the last digit.
-    html += i === cur ? `<span class="cur">${d[i]}</span>` : d[i];
+    html += i === cur ? `<span class="cur">${d[i]}</span>`
+      : walk.base <= DIGIT_COLORS.length ? `<span style="color:${DIGIT_COLORS[d[i]]}">${d[i]}</span>` : d[i];  // coloured as their chips
     if (i === intLen - 1 && intLen < walk.n) html += '.';
   }
   strip.innerHTML = html + (b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '');
@@ -5555,6 +5580,14 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
 $('speed').addEventListener('input', updateSpeedLabel);
+// the progress slider: back from the start, forward from where it is
+$('seek').addEventListener('input', () => {
+  const v = Number($('seek').value);
+  play(false);
+  if (v < cur) restart();
+  advanceTo(v);
+  statsDirty = true;
+});
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
