@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.260';
+const VERSION = '0.1.261';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2971,7 +2971,10 @@ function startList(g) {
       const a = turned(m, v), b = turned(m, w), near = edgeKey(a, b) === edgeKey(v0, f0) ? Infinity : depth(mid(a, b));
       done.add(edgeKey(a, b));
       flipped ||= a === w && b === v;
-      if (!best || near > best.near) best = { a, b, near };
+      // an edge across the kite's border has a copy on each of its sides, as deep: the one on the
+      // side of the face's next corner, always, so that the border's half edges stick out on one side
+      const side = dot(mid(a, b), otherCorners[0]);
+      if (!best || near > best.near + 1e-9 || (near > best.near - 1e-9 && side > best.side)) best = { a, b, near, side };
     }
     picks.push({ ...best, flipped });
   }
