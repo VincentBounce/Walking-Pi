@@ -237,6 +237,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 #progressBar { height: 100%; width: 0; background: var(--accent); transition: width 0.1s; }
 .muted { color: var(--muted); margin: 6px 0 0; font-size: 12px; }
+#status { margin-bottom: 14px; }  /* above the numbers, since they sit under the digits' count */
 #fillLoopNote { margin: -2px 0 10px; }  /* under the greyed Fill areas, apart from what follows */
 
 .stats {
