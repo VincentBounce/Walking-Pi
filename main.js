@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.262';
+const VERSION = '0.1.263';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2932,12 +2932,12 @@ function solidFaceCentres(g, C) {
 }
 
 // The different starts in order, as pairs [corner, the corner it arrives from], one per walk, all
-// in the kite of start 1: the points of the face F it lies on that are nearer F's corner A (the one
-// nearest start 1) than F's other corners; a quarter of a square face, a third of a triangle, as
-// the solid's rotations turn it onto every other such kite. Each walk takes its start whose edge's
-// middle lies deepest inside it (on the sphere, a point lies on the face whose centre is nearest).
-// An edge gives two starts, one per direction (the same as start 1's, towards A or away from it,
-// first), only one when a rotation turns it end for end. They follow by distance from A.
+// in one kite, near the usual start: the points of the face F it lies on that are nearer F's
+// corner A (the one nearest the usual start) than F's other corners; a quarter of a square face,
+// a third of a triangle, as the solid's rotations turn it onto every other such kite. Each walk
+// takes its start whose edge's middle lies deepest inside it (on the sphere, a point lies on the
+// face whose centre is nearest). An edge gives two starts, towards A first, then away from it, only
+// one when a rotation turns it end for end. They follow by distance from A.
 function startList(g) {
   if (g.starts) return g.starts;
   if (g.torus) return (g.starts = torusStarts(g));
@@ -2968,7 +2968,7 @@ function startList(g) {
     if (done.has(edgeKey(v, w))) continue;
     let best = null, flipped = false;
     for (const m of rots) {
-      const a = turned(m, v), b = turned(m, w), near = edgeKey(a, b) === edgeKey(v0, f0) ? Infinity : depth(mid(a, b));
+      const a = turned(m, v), b = turned(m, w), near = depth(mid(a, b));
       done.add(edgeKey(a, b));
       flipped ||= a === w && b === v;
       // an edge across the kite's border has a copy on each of its sides, as deep: the one on the
@@ -2978,13 +2978,12 @@ function startList(g) {
     }
     picks.push({ ...best, flipped });
   }
-  const fromA = (e) => (e.near === Infinity ? Infinity : dot(mid(e.a, e.b), A));
+  const fromA = (e) => dot(mid(e.a, e.b), A);
   picks.sort((e1, e2) => fromA(e2) - fromA(e1));
-  const towards = dot(at(v0), A) > dot(at(f0), A), starts = [];  // start 1 arrives at its edge's end nearer A
-  for (const { a, b, flipped } of picks) {
-    const [n, f] = dot(at(a), A) > dot(at(b), A) ? [a, b] : [b, a];  // the end nearer A, the other one
-    const pair = towards ? [[n, f], [f, n]] : [[f, n], [n, f]];
-    starts.push(...(flipped ? pair.slice(0, 1) : pair));
+  const starts = [];
+  for (const { a, b, flipped } of picks) {  // first the way to the end nearer A, then back
+    const [n, f] = dot(at(a), A) > dot(at(b), A) ? [a, b] : [b, a];
+    starts.push(...(flipped ? [[n, f]] : [[n, f], [f, n]]));
   }
   return (g.starts = starts);
 }
