@@ -378,3 +378,16 @@ button.wide { width: 100%; margin-bottom: 10px; }
   .stage { min-height: 55vh; }
   .hint { display: none; }
 }
+
+/* Save, at the top left of the app's name: yellow while the setup in view is one of My finds */
+.header-end { display: flex; align-items: center; gap: 14px; }
+.save-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 13px; font-weight: 600; border-radius: 999px; background: transparent; color: var(--muted); }
+.save-btn:hover:not(:disabled) { color: var(--text); }
+.save-btn.saved, .save-btn.saved:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); background: rgba(240, 180, 41, 0.12); }
+.save-btn.saved .icon path { fill: currentColor; }
+/* the JSON library: My finds as a file, in a small box of its own */
+.library { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.library-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+#libraryCount { font-weight: 400; letter-spacing: 0; text-transform: none; }
+.library .row { margin: 0; }
+.library .row button { flex: 1; }
