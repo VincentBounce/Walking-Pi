@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.265';
+const VERSION = '0.1.266';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -932,7 +932,7 @@ function updateRuleText() {
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
-  if (mode.life) return SPHERES[mode.sphere].tiles(sphereSize());
+  if (mode.life) return SPHERES[surfaceOf(mode)].tiles(sphereSize());
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
 }
@@ -1798,7 +1798,7 @@ function compute(keepDigits = false) {
   const mode = MODES[$('mode').value];
   modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
   renderModePicker();
-  if (mode.sphere) fillSphereSizes(mode.sphere, mode.initial);
+  if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
   const n = digitsNeeded(), want = mode.life ? n : n + LOOP_AHEAD;  // a walk also reads the digits ahead
   if (!mode.life && !randomPrimeSize()) $('digits').value = n;  // a random prime keeps the count for later
   syncDigitsStepper();
@@ -2588,12 +2588,51 @@ function triTorusMesh(nv, nu = triTorusColumns(nv)) {
   return (meshCache[key] = finishTorus(verts, tris, 3, nu, nv, uv));
 }
 
+/* The same tori turned by 30° (or 90°: the same grid) on the sheet: the triangles' rows, or the
+ * hexagons' columns, run around the tube instead of around the ring. Built as the usual ones on a
+ * sheet whose two ways are swapped back: (i, j) → (j, i), the corners listed the other way round
+ * (a swap is a mirror), so that they keep the usual one's order.
+ * Triangles: nv corners around the tube (edge 1), nu rows around the ring (√3/2 apart, nu even);
+ * equilateral when nu / nv = 2 / (√3·TUBE). Hexagons: nv columns around the tube (1.5 apart, nv
+ * even), nu rows around the ring (√3 apart); regular when nu / nv = √3 / (2·TUBE). */
+function turnedTorus(kind, build, sides, nv, nu) {
+  const key = `${kind}${nv}x${nu}`;
+  if (meshCache[key]) return meshCache[key];
+  const { verts, add } = vertexStore();
+  const tiles = [], uv = [];
+  build(nv, nu, (c) => {
+    const turned = [c[0], ...c.slice(1).reverse()].map(([i, j]) => [j, i]);
+    tiles.push(turned.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+    uv.push(...turned.flat());
+  });
+  return (meshCache[key] = finishTorus(verts, tiles, sides, nu, nv, uv));
+}
+const turnedTriColumns = (nv) => 2 * Math.round(nv / (Math.sqrt(3) * TORUS_TUBE));
+const turnedTriTorusMesh = (nv, nu = turnedTriColumns(nv)) => turnedTorus('tritorusTurned', (rows, cols, put) => {
+  const P = (i, j) => [i + (j % 2) / 2, j];  // corner i of row j, as on the usual torus (rows: around the ring)
+  for (let j = 0; j < cols; j++) {
+    for (let i = 0; i < rows; i++) {
+      if (j % 2 === 0) { put([P(i, j), P(i + 1, j), P(i, j + 1)]); put([P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]); }
+      else { put([P(i, j), P(i + 1, j), P(i + 1, j + 1)]); put([P(i, j), P(i + 1, j + 1), P(i, j + 1)]); }
+    }
+  }
+}, 3, nv, nu);
+const turnedHexColumns = (nv) => Math.round((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
+const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hextorusTurned', (cols, rows, put) => {
+  for (let c = 0; c < cols; c++) {  // as on the usual torus: columns 1.5 apart, odd ones half a row higher
+    for (let r = 0; r < rows; r++) {
+      const cj = r + (c % 2) / 2;
+      put([0, 1, 2, 3, 4, 5].map((k) => [c + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]));
+    }
+  }
+}, 6, nv, nu);
+
 /* ---- 7.5 Flat ↔ round: the same tiles and neighbours, shown flat or inflated ----------------- */
 /* walk.shape = { m, target, corners, cen, nrm, extent, bent } for surfaces that can change shape:
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus', 'hexsphere'];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere'];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -2749,6 +2788,14 @@ const SPHERES = {
   tritorus: { mesh: (s) => triTorusMesh(...torusDims('tritorus', s)), radius: (s) => (torusDims('tritorus', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
               columns: triTorusColumns, perRow: 2, steps: [2, 2],  // an even count of rows, two triangles per column
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorus', s).reduce((a, b) => a * b), unit: 'triangles' },
+  // turned by 30° (see turnedTorus): rows around the ring. perColumn: tiles across a corner (a
+  // column) around the tube, for the size's label
+  tritorusTurned: { mesh: (s) => turnedTriTorusMesh(...torusDims('tritorusTurned', s)), radius: (s) => torusDims('tritorusTurned', s)[0] / (2 * Math.PI * TORUS_TUBE),
+                    columns: turnedTriColumns, perRow: 1, perColumn: 2, steps: [1, 2],  // an even count of rows
+                    sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusTurned', s).reduce((a, b) => a * b), unit: 'triangles' },
+  hextorusTurned: { mesh: (s) => turnedHexTorusMesh(...torusDims('hextorusTurned', s)), radius: (s) => (torusDims('hextorusTurned', s)[0] * 1.5) / (2 * Math.PI * TORUS_TUBE),
+                    columns: turnedHexColumns, perRow: 1, steps: [2, 1],  // an even count of columns, around the tube
+                    sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('hextorusTurned', s).reduce((a, b) => a * b), unit: 'hexagons' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
@@ -2765,6 +2812,9 @@ function syncSizeStepper() {
   $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
+  $('turnRow').hidden = !TURNED[MODES[$('mode').value].sphere];
+  $('turnUsual').classList.toggle('active', !torusTurned);
+  $('turnTurned').classList.toggle('active', torusTurned);
   const starts = modeStarts();
   $('startRow').hidden = !starts;
   if (!starts) return;
@@ -2793,7 +2843,7 @@ function torusDims(kind, size) {
 const sizeLabel = (kind, f) => {
   const { tiles, unit } = SPHERES[kind];
   if (!TORI.includes(kind)) return `${fmt(tiles(f))} ${unit}`;
-  const rows = torusDims(kind, f)[0];  // a torus as its tiles towards the north (around the tube) × east (around the ring)
+  const rows = torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);  // a torus as its tiles towards the north (around the tube) × east (around the ring)
   return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
 };
 // A torus size of its own (Taller, Wider, a link): an extra entry among the usual ones, by rows;
@@ -2856,7 +2906,11 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
-const TORI = ['torus', 'tritorus', 'hextorus'];
+const TORI = ['torus', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned'];
+// The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
+const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned' };
+let torusTurned = false;
+const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
@@ -2990,7 +3044,7 @@ function startList(g) {
 // chosen one, 1 … their number
 function modeStarts() {
   const mode = MODES[$('mode').value];
-  return (mode.grid || mode.cells) && STARTS_ON.includes(mode.sphere) ? startList(SPHERES[mode.sphere].mesh(sphereSize())) : null;
+  return (mode.grid || mode.cells) && STARTS_ON.includes(surfaceOf(mode)) ? startList(SPHERES[surfaceOf(mode)].mesh(sphereSize())) : null;
 }
 // A start on cells: a start along the grid, from corner f to corner v, crosses into the tile on its
 // right, through that edge. The two tiles of an edge stand for its two directions as its two corners
@@ -3097,8 +3151,8 @@ function nextCorner(g, G, v, from, angle) {
 const TORUS_RATIO = [0.8, 1.25], LOOP_STEPS = 20000, LOOP_GAP = 1, LOOP_MAX = 12;
 let torusLoopList = null;  // { key, loops: [{ start, size, laps: [ring, tube], steps }] } for the number in use
 function torusLoops() {
-  const mode = MODES[$('mode').value], key = `${formulaInUse} ${$('mode').value}`;
-  if (!(mode.grid || mode.cells) || !TORI.includes(mode.sphere)) return [];  // along the grid or on cells
+  const mode = MODES[$('mode').value], key = `${formulaInUse} ${$('mode').value} ${surfaceOf(mode)}`;
+  if (!(mode.grid || mode.cells) || !TORI.includes(surfaceOf(mode))) return [];  // along the grid or on cells
   if (!current || current.formula !== formulaInUse || current.mode !== $('mode').value) return [];  // its digits are on their way
   if (torusLoopList?.key === key) return torusLoopList.loops;
   const loops = [];
@@ -3115,7 +3169,7 @@ function torusLoops() {
   const H = current.head, D = current.digits, s0 = H.length + pre + 1;
   if (H.length + D.length < s0 + 2 * L) return loops;
   const digit = (i) => (i < H.length ? H[i] : D[i - H.length]);
-  const kind = mode.sphere, S = SPHERES[kind], g = S.mesh(sphereSize()), walker = surfaceSteps(g, mode);
+  const kind = surfaceOf(mode), S = SPHERES[kind], g = S.mesh(sphereSize()), walker = surfaceSteps(g, mode);
   const usual = 48 / (S.columns(48) * S.perRow), gcdN = (x, y) => (y ? gcdN(y, x % y) : x);
   startList(g).forEach((_, i) => {
     let state = walker.start(i), x = 0, y = 0;
@@ -3151,7 +3205,7 @@ function torusLoops() {
 }
 // The loop shown, if the start and size in use are one of them
 function loopShown(loops) {
-  const kind = MODES[$('mode').value].sphere, [rows, cols] = torusDims(kind, sphereSize());
+  const kind = surfaceOf(MODES[$('mode').value]), [rows, cols] = torusDims(kind, sphereSize());
   return loops.findIndex((l) => l.start === startNo() && `${torusDims(kind, l.size)}` === `${rows},${cols}`);
 }
 function syncLoopRow() {
@@ -3169,7 +3223,7 @@ function browseLoop(delta) {
   const loops = torusLoops(), i = loopShown(loops), next = loops[i < 0 ? (delta > 0 ? 0 : loops.length - 1) : i + delta];
   if (!next) return;
   $('startNo').value = next.start;
-  selectTorusSize(MODES[$('mode').value].sphere, next.size);
+  selectTorusSize(surfaceOf(MODES[$('mode').value]), next.size);
   digitsBeforeLoop ??= requestedDigits();  // the count asked comes back for the next number
   $('digits').value = next.steps;
   compute(true);
@@ -3231,7 +3285,8 @@ function surfaceSteps(g, mode) {
   };
 }
 
-function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new Uint8Array(0)) {
+function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
+  const { turns, base, initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = sphereSize(), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
@@ -3281,7 +3336,7 @@ function buildGridWalk(seq, { sphere: kind, turns, base, initial }, ahead = new 
 }
 
 function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
-  const { sphere: kind, base, initial } = mode;
+  const { base, initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = sphereSize(), g = mesh(size), R = radius(size), S = surfaceSteps(g, mode);
@@ -3436,7 +3491,8 @@ function countSeed(L) {
 // Number of states of the current Life rule = the base the number is written in
 const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
 
-function buildLife(seq, { sphere: kind, initial }) {
+function buildLife(seq, mode) {
+  const { initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = sphereSize();
@@ -4039,6 +4095,7 @@ function getSetup() {
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (modeStarts() && startNo() > 1) s.st = startNo();
+  if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = $('lifeRule').value;
   if (championCode) s.ch = championCode;
@@ -4053,9 +4110,11 @@ function applySetup(s) {
   set('digits', s.d);
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
+  torusTurned = Number(s.o) === 1;
   if (MODES[s.w].sphere) {
-    fillSphereSizes(MODES[s.w].sphere, MODES[s.w].initial);
-    if (TORI.includes(MODES[s.w].sphere) && String(s.s ?? '').includes('x')) selectTorusSize(MODES[s.w].sphere, String(s.s));
+    const kind = surfaceOf(MODES[s.w]);
+    fillSphereSizes(kind, MODES[s.w].initial);
+    if (TORI.includes(kind) && String(s.s ?? '').includes('x')) selectTorusSize(kind, String(s.s));
     else set('sphereF', s.s);
   }
   if (s.r) {
@@ -5604,6 +5663,19 @@ $('showPath').addEventListener('change', () => { needsFull = true; updateDisplay
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
+// Usual | Turned 30°: the triangle and hexagon tori turned or back, at the same size if it has one
+function turnTorus(turned) {
+  if (turned === torusTurned) return;
+  const mode = MODES[$('mode').value], size = sphereSize();
+  torusTurned = turned;
+  fillSphereSizes(surfaceOf(mode), mode.initial);
+  const sel = $('sphereF');
+  if (typeof size === 'number' && [...sel.options].some((o) => o.value === String(size))) sel.value = size;
+  $('startNo').value = 1;  // the starts are not the same
+  sel.dispatchEvent(new Event('change'));
+}
+$('turnUsual').addEventListener('click', () => turnTorus(false));
+$('turnTurned').addEventListener('click', () => turnTorus(true));
 $('sphereF').addEventListener('change', () => {
   syncSizeStepper();
   if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits
