@@ -319,7 +319,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .choice-row button:hover:not(:disabled):not(.active) { color: var(--text); }
 .choice-row button.active { background: rgba(240, 180, 41, 0.22); color: var(--accent); font-weight: 600; }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
-.stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; }  /* grows upwards: the Play row stays at the bottom */
+.stage-bar { left: 12px; bottom: 12px; width: 400px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; }  /* grows upwards: the Play row stays at the bottom */
 .stage-bar:hover { width: 580px; }
 @media (hover: none) { .stage-bar:focus-within { width: 580px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
@@ -346,10 +346,15 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 12px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 0; align-items: center; }
-.stage-bar .row button { flex: none; width: 48px; padding: 6px 0; font-weight: 600; }  /* ⏮ Step ⏭: all alike */
+.stage-bar .row button {  /* ⏮ Step ⏭: all alike, of one height with Play, their text or icon centred */
+  flex: none; width: 48px; height: 32px; padding: 0; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.stage-bar:not(:hover) .row button.open-only { display: none; }  /* Step and ⏭ only while open */
+@media (hover: none) { .stage-bar:focus-within .row button.open-only { display: inline-flex; } }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
 .stage-bar #play { width: 72px; color: var(--accent); border-color: var(--accent); }
-#seek { flex: 1; min-width: 60px; margin: 0 4px 0 6px; accent-color: var(--accent); }
+#seek { flex: 1; min-width: 100px; margin: 0 4px 0 6px; accent-color: var(--accent); }
 .seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
 .stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .stage-bar label { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
