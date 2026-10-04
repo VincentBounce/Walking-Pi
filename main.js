@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.284';
+const VERSION = '0.1.285';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5502,11 +5502,11 @@ function tick(now = performance.now()) {
   const dt = Math.min(0.1, (now - (lastTick || now)) / 1000);  // seconds since the last frame (capped)
   lastTick = now;
   if (walk.is3d && $('autoRotate').checked) {
-    // tumble at a constant 0.25 rad/s around an axis that drifts on the screen: mostly upright,
+    // tumble at a constant 0.6 rad/s (a turn in about 10 s) around an axis that drifts on the screen: mostly upright,
     // tilting forwards and back and rolling slowly, so every side shows in turn
     spinTime += dt;
     const a = [0.8 * Math.sin(spinTime * 0.11), 1, 0.6 * Math.sin(spinTime * 0.07)], l = Math.hypot(...a);
-    rotateView(screenTurn(...a.map((x) => (x / l) * 0.25 * dt)));
+    rotateView(screenTurn(...a.map((x) => (x / l) * 0.6 * dt)));
   }
   if (playing) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
