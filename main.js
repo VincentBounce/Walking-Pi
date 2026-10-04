@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.279';
+const VERSION = '0.1.280';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4381,6 +4381,7 @@ function play(on) {
 function showAll() {
   if (walk.life) return;  // the Game of Life starts at generation 0 instead
   advanceTo(walk.n);
+  faceWalk();
   if ($('autoFit').checked) fitWhole();  // framed like F or a double-click, without the margin kept for growing
 }
 
@@ -4673,6 +4674,19 @@ function drawSphereCursor(ctx) {
 // Auto-fit on the sphere: ease the camera towards the walker so that it faces the viewer
 // (then it projects onto the centre), by the shortest turn: around the axis walker × viewer.
 // While the starts show, towards the chosen one.
+// A walk shown whole on a solid: the camera at once in front of the walk's middle (the mean of its
+// points' directions; its end where they cancel out), with no turn to watch (see followWalker)
+function faceWalk() {
+  if (!walk.sphere || walk.geo.torus || !$('autoFit').checked || $('autoRotate').checked || !walk.n) return;
+  const m = [0, 0, 0];
+  for (let i = 0; i <= walk.n; i++) {
+    const l = Math.hypot(walk.wx[i], walk.wy[i], walk.wz[i]) || 1;
+    m[0] += walk.wx[i] / l; m[1] += walk.wy[i] / l; m[2] += walk.wz[i] / l;
+  }
+  const d = Math.hypot(...m) > 1e-6 * walk.n ? unit(m) : unit([walk.wx[walk.n], walk.wy[walk.n], walk.wz[walk.n]]);
+  const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
+  if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle));
+}
 function followWalker() {
   // on a torus the position does not say which way the surface faces: use the tile's normal
   const t = walk.tile[cur], nr = walk.shape.nrm;
@@ -5496,9 +5510,9 @@ function tick(now = performance.now()) {
   easeView(dt);
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
     morphStep(dt);  // flat ↔ round, while it is changing
-    // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays
-    // put and the walk is seen covering it
-    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || ($('autoFit').checked && !$('autoRotate').checked))) followWalker();
+    // while it plays, auto-fit turns the camera to keep the walker in front, except on a torus: the
+    // view stays put and the walk is seen covering it (a walk shown whole is faced at once: faceWalk)
+    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || (playing && $('autoFit').checked && !$('autoRotate').checked))) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
