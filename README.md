@@ -174,7 +174,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 - **Navigation:** mouse wheel to zoom, drag to pan, double-click to fit.
   - In 3D: drag to rotate, Shift+drag to pan.
   - On the surfaces, a walk shown whole is faced at once; while it moves, the camera turns to keep the walker in view, with a small arrow lying on the surface for its heading.
-- **Drawing:** the surfaces, and the 2D walks drawn as one line in the rainbow or one colour, are drawn by the graphics card (WebGL 2), so a walk of millions of steps still pans and zooms smoothly; without WebGL 2, everything is drawn in 2D as before.
+- **Drawing:** the walks, their cells, areas and surfaces are drawn by the graphics card (WebGL 2), so a walk of millions of steps still pans, zooms and turns smoothly; without WebGL 2, everything is drawn in 2D as before. The greyed-out WebGL 2 toggle at the bottom of the Display box shows which.
 - **Links:** the page link always holds the current setup (number, walk, surface, size, start, rule, Life start), never the display settings.
 
 Keyboard: `Space` play/pause · `→` one step · `R` restart · `E` jump to end · `F` auto-fit

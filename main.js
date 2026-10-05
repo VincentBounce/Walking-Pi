@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.298';
+const VERSION = '0.1.299';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2067,10 +2067,12 @@ function projector() {
   };
 }
 
-// Projection of the whole 3D walk (xs, ys), same formula as projectPoint
+// Projection of the whole 3D walk (xs, ys), same formula as projectPoint; projected counts them (see glFlat)
+let projected = 0;
 function project() {
   const { wx, wy, wz, xs, ys } = walk, proj = projector();
   for (let i = 0; i < xs.length; i++) [xs[i], ys[i]] = proj(wx[i], wy[i], wz[i]);
+  projected++;
 }
 
 // Perspective can apply to every 3D view (checkbox; on by default for the cube walks and the cube surface)
@@ -4633,9 +4635,10 @@ function styleKey(i) {
   }
 }
 
+const digitColour = (k) => walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
-    case 'digit': return walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
+    case 'digit': return digitColour(k);
     case 'mono': return MONO;
     default: return GRADIENT[k];
   }
@@ -5131,23 +5134,27 @@ void main() {
   gl_Position = clipOf(p, 0.004);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
-  // flat 2D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
+  // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
   flatPath: [`#version 300 es
-in vec2 aQuad; in vec2 aA; in vec2 aB; uniform float uN, uWidth; uniform vec3 uView; uniform vec2 uScreen; uniform vec4 uMono; uniform sampler2D uGrad; out vec3 vCol;
+in vec2 aQuad; in vec2 aA; in vec2 aB; in float aKey; uniform float uN, uWidth; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec3 vCol;
 void main() {
-  vCol = uMono.a > 0.0 ? uMono.rgb : texture(uGrad, vec2((float(gl_InstanceID) + 0.5) / uN, 0.5)).rgb;
+  if (aKey > 254.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }  // a step that draws nothing (a spiral's 0)
+  vCol = uColour == 2 ? texture(uPal, vec2((aKey + 0.5) / 256.0, 0.5)).rgb
+       : texture(uGrad, vec2(uColour == 1 ? 0.0 : (float(gl_InstanceID) + 0.5) / uN, 0.5)).rgb;
   vec2 a = uView.yz + aA * uView.x, b = uView.yz + aB * uView.x, p = mix(a, b, aQuad.x);
   vec2 d = b - a; d = length(d) > 1e-4 ? normalize(d) : vec2(1.0, 0.0);
   p += (vec2(-d.y, d.x) * aQuad.y + d * (aQuad.x * 2.0 - 1.0)) * uWidth * 0.5;
   gl_Position = vec4(p.x / uScreen.x * 2.0 - 1.0, 1.0 - p.y / uScreen.y * 2.0, 0.0, 1.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
-  flatFill: [`#version 300 es
-in vec3 aC; in float aT; uniform vec2 uTpl[24]; uniform float uN, uAlpha; uniform vec3 uView; uniform vec2 uScreen; uniform vec4 uMono; uniform sampler2D uGrad; out vec4 vCol;
+  // tiles: one instance per tile, (x, y, colour band, template), its polygon from the templates (6
+  // corners each, the last repeated)
+  flatTiles: [`#version 300 es
+in vec4 aC; uniform vec2 uTpl[24]; uniform float uAlpha, uBright; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad; out vec4 vCol;
 void main() {
-  vec3 c = uMono.a > 0.0 ? uMono.rgb : texture(uGrad, vec2((aC.z - 0.5) / uN, 0.5)).rgb;
+  vec3 c = texture(uGrad, vec2(uColour == 1 ? 0.0 : (aC.z + 0.5) / 256.0, 0.5)).rgb * uBright;
   vCol = vec4(c * uAlpha, uAlpha);  // premultiplied
-  vec2 p = uView.yz + (aC.xy + uTpl[int(aT) * 6 + gl_VertexID]) * uView.x;
+  vec2 p = uView.yz + (aC.xy + uTpl[int(aC.w) * 6 + gl_VertexID]) * uView.x;
   gl_Position = vec4(p.x / uScreen.x * 2.0 - 1.0, 1.0 - p.y / uScreen.y * 2.0, 0.0, 1.0);
 }`, `#version 300 es
 precision mediump float; in vec4 vCol; out vec4 o; void main() { o = vCol; }`],
@@ -5181,7 +5188,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), flatPts: buf(), flatFill: buf(), flatTpl: buf(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -5306,85 +5313,186 @@ function glSurface(palette, levelOf, path) {
   return true;
 }
 
-/* Flat 2D walks drawn by WebGL as well, when their path is one line in the rainbow or in one colour
- * (the cells, the visits, the digits' colours and the spirals stay in 2D): the whole walk so far is
- * redrawn at each frame, fast enough to pan and zoom a walk of millions of steps smoothly.
- *  - fill: one instance per enclosed vertex of the fill (see computeFill), its polygon from the
- *    templates (6 corners each, the last repeated), in the colour of the step that closed it;
- *  - path: one instance per step, a quad from point i to point i + 1 (as in glSurface). */
-const glFlatApply = () => !walk.is3d && !walk.sphere && !walk.points && !walk.skipZeros && !greyed('line')
-  && ['gradient', 'mono'].includes($('colorMode').value);
+/* Flat drawings by WebGL as well: the 2D walks, and the 3D walks once projected (their projection
+ * is redone on the CPU when the view turns). The whole walk so far is redrawn at each frame, fast
+ * enough to pan, zoom and turn walks of millions of steps smoothly. As drawSegments and drawFill:
+ *  - fill: one instance per enclosed vertex of the fill (see computeFill), in the colour of the step
+ *    that closed it;
+ *  - cells: one instance per point (Fill cells, the heatmap of visits, the spirals' marks), painted in
+ *    the walk's order, so that a cell shows its last colour; Digits are written in 2D over them;
+ *  - path: one instance per step, a quad from point i to point i + 1 (as in glSurface), in the rainbow,
+ *    one colour or a colour per digit. */
+const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'));
+const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n) && !(flatCellsOn() && $('colorMode').value === 'digit')
+  && !($('colorMode').value === 'digit' && (walk.points ? walk.keyCount : walk.base) > 255);
+// the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
+const CELL_TEMPLATES = {
+  square: [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]],
+  tri: [[[0, (-2 * H) / 3], [0.5, H / 3], [-0.5, H / 3]], [[-0.5, -H / 3], [0.5, -H / 3], [0, (2 * H) / 3]]],  // ▲, ▼
+  hex: [[0, 1, 2, 3, 4, 5].map((k) => [Math.cos((k * Math.PI) / 3) / Math.sqrt(3), -Math.sin((k * Math.PI) / 3) / Math.sqrt(3)])],
+};
+const cellTemplate = (lat, y) => lat === 'tri' && y - (TRI_Y0 + Math.floor((y - TRI_Y0) / H) * H) <= H / 2 ? 1 : 0;
+const templateArray = (templates) => {
+  const a = new Float32Array(48);
+  templates.forEach((pts, t) => { for (let q = 0; q < 6; q++) a.set(pts[Math.min(q, pts.length - 1)], 2 * (6 * t + q)); });
+  return a;
+};
+// how many of the sorted values are ≤ v
+const countUpTo = (sorted, n, v) => { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] <= v) lo = m + 1; else hi = m; } return lo; };
 function glFlat(to) {
   const S = glSetup();
   if (!S) return false;
-  const { gl, prog } = S, mono = $('colorMode').value === 'mono';
-  if (S.keys.flatPts !== walk.xs) {  // the walk's points, once per walk
+  const { gl, prog } = S, mode = $('colorMode').value, { scale: s, ox, oy } = view;
+  const upload = (buffer, data) => { gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); };
+  // the walk's points (again after each projection of a 3D walk), and a key per step: its digit's
+  // colour, 255 for a step that draws nothing
+  const ptsKey = `${walk.is3d ? projected : 0}`;
+  if (S.keys.flatPts !== walk.xs || S.keys.flatProj !== ptsKey) {
     const pts = new Float32Array(2 * (walk.n + 1));
     for (let i = 0; i <= walk.n; i++) { pts[2 * i] = walk.xs[i]; pts[2 * i + 1] = walk.ys[i]; }
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.flatPts); gl.bufferData(gl.ARRAY_BUFFER, pts, gl.STATIC_DRAW);
-    S.keys.flatPts = walk.xs;
+    upload(S.flatPts, pts);
+    S.keys.flatPts = walk.xs; S.keys.flatProj = ptsKey;
   }
+  const keysKey = `${mode === 'digit'}`;
+  if (S.keys.flatKeys !== walk.digits || S.keys.flatKeysMode !== keysKey) {
+    const keys = new Uint8Array(Math.max(1, walk.n));
+    for (let i = 0; i < walk.n; i++) keys[i] = walk.skipZeros && walk.digits[i] === 0 ? 255 : mode === 'digit' ? walk.keys[i] : 0;
+    upload(S.flatKeys, keys);
+    S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
+  }
+  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}`) {  // the digits' colours
+    const pal = new Uint8Array(4 * 256);
+    for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(Math.min(k, (walk.points ? walk.keyCount : walk.base) - 1))), 255], 4 * k);
+    gl.bindTexture(gl.TEXTURE_2D, S.pal);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}`;
+  }
+  // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
   if (fillOn()) {
     fill ??= computeFill();
     if (fill.count && fill.templates.length <= 4) {
-      if (S.keys.flatFill !== fill) {  // the fill's vertices (x, y, step) and templates, once per fill
-        const inst = new Float32Array(3 * fill.count);
-        for (let k = 0; k < fill.count; k++) { inst[3 * k] = fill.cx[k]; inst[3 * k + 1] = fill.cy[k]; inst[3 * k + 2] = fill.at[k]; }
-        gl.bindBuffer(gl.ARRAY_BUFFER, S.flatFill); gl.bufferData(gl.ARRAY_BUFFER, inst, gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, S.flatTpl); gl.bufferData(gl.ARRAY_BUFFER, Float32Array.from(fill.tpl), gl.STATIC_DRAW);
-        S.tpl = new Float32Array(48);
-        fill.templates.forEach((pts, t) => { for (let q = 0; q < 6; q++) S.tpl.set(pts[Math.min(q, pts.length - 1)], 2 * (6 * t + q)); });
+      if (S.keys.flatFill !== fill) {
+        const inst = new Float32Array(4 * fill.count);
+        for (let k = 0; k < fill.count; k++) inst.set([fill.cx[k], fill.cy[k], Math.floor(((fill.at[k] - 1) * BANDS) / walk.n), fill.tpl[k]], 4 * k);
+        upload(S.flatFill, inst);
+        S.fillTpl = templateArray(fill.templates);
         S.keys.flatFill = fill;
       }
-      let lo = 0, hi = fill.count;  // the regions closed by step to: at is sorted
-      while (lo < hi) { const m = (lo + hi) >> 1; if (fill.at[m] <= to) lo = m + 1; else hi = m; }
-      fillCount = lo;
+      fillCount = countUpTo(fill.at, fill.count, to);
     }
   }
+  // the cells: each point's tile, with its colour band (the heatmap: its visits so far), once per walk
+  const cells = !walk.is3d && flatCellsOn();
+  let cellCount = 0;
+  if (cells) {
+    const cellsKey = `${mode === 'visits'}`;
+    if (S.keys.flatCells !== walk.xs || S.keys.flatCellsMode !== cellsKey) {
+      const lat = walk.lattice, first = walk.points ? 1 : 0, inst = new Float32Array(4 * (walk.n + 1)), at = new Int32Array(walk.n + 1);
+      let m = 0, V = null, scale = 0;
+      if (mode === 'visits') { V = visitCells(); V.seen.fill(0); scale = (BANDS - 1) / Math.log(Math.max(2, V.max)); }
+      for (let p = first; p <= walk.n; p++) {
+        if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
+        const band = V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((Math.max(0, p - 1) * BANDS) / walk.n);
+        inst.set([walk.xs[p], walk.ys[p], band, cellTemplate(lat, walk.ys[p])], 4 * m);
+        at[m++] = p;
+      }
+      upload(S.flatCells, inst.subarray(0, 4 * m));
+      S.cellAt = at; S.cellN = m;
+      S.cellTpl = templateArray(CELL_TEMPLATES[lat]);
+      S.keys.flatCells = walk.xs; S.keys.flatCellsMode = cellsKey;
+    }
+    cellCount = countUpTo(S.cellAt, S.cellN, to);
+  }
+  const line = !cells || ($('showPath').checked && !$('showPath').disabled);
+  // the frame
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-  const monoRgb = mono ? rgbCached(MONO).map((v) => v / 255) : [0, 0, 0];
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.pal);
+  if (!S.mono) {  // one colour: a texture of one texel
+    S.mono = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, S.mono);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from([...rgbOf(MONO), 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  }
+  const mono = mode === 'mono';
   const common = (p) => {
     gl.useProgram(p);
     const u = (name) => gl.getUniformLocation(p, name);
-    gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
+    gl.uniform3f(u('uView'), s, ox, oy);
     gl.uniform2f(u('uScreen'), cw, ch);
-    gl.uniform1f(u('uN'), Math.max(1, walk.n));
-    gl.uniform4f(u('uMono'), ...monoRgb, mono ? 1 : 0);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
+    gl.uniform1i(u('uGrad'), mono ? 2 : 0);
+    gl.uniform1i(u('uColour'), mono ? 1 : mode === 'digit' ? 2 : 0);
     return u;
   };
-  const attrib = (p, name, buffer, size, stride, offset, divisor) => {
+  const attrib = (p, name, buffer, size, type, stride, offset, divisor) => {
     const loc = gl.getAttribLocation(p, name);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, stride, offset);
+    gl.vertexAttribPointer(loc, size, type, false, stride, offset);
     gl.vertexAttribDivisor(loc, divisor);
     return loc;
   };
   const off = (locs) => locs.forEach((loc) => { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); });
-  if (fillCount) {
-    const u = common(prog.flatFill);
-    gl.uniform2fv(u('uTpl'), S.tpl);
-    gl.uniform1f(u('uAlpha'), $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1);
-    const locs = [attrib(prog.flatFill, 'aC', S.flatFill, 3, 12, 0, 1), attrib(prog.flatFill, 'aT', S.flatTpl, 1, 4, 0, 1)];
-    gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 6, fillCount);
+  const tiles = (buffer, tpl, count, alpha, bright) => {
+    const u = common(prog.flatTiles);
+    gl.uniform2fv(u('uTpl'), tpl);
+    gl.uniform1f(u('uAlpha'), alpha);
+    gl.uniform1f(u('uBright'), bright);
+    const locs = [attrib(prog.flatTiles, 'aC', buffer, 4, gl.FLOAT, 16, 0, 1)];
+    gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 6, count);
     off(locs);
-  }
-  if (to > 0) {
+  };
+  if (fillCount) tiles(S.flatFill, S.fillTpl, fillCount, $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1, 1);
+  // the cells, dimmed under Show path (as the 2D layer's filter, see updateDisplayMenu)
+  if (cellCount) tiles(S.flatCells, S.cellTpl, cellCount, 1, shows('cells') && line ? 0.85 : 1);
+  if (line && to > 0) {
     const u = common(prog.flatPath);
-    gl.uniform1f(u('uWidth'), Math.max(0.6, Math.min(view.scale * 0.3, 6)));
-    const locs = [attrib(prog.flatPath, 'aQuad', S.quad, 2, 0, 0, 0), attrib(prog.flatPath, 'aA', S.flatPts, 2, 8, 0, 1), attrib(prog.flatPath, 'aB', S.flatPts, 2, 8, 8, 1)];
+    gl.uniform1f(u('uN'), Math.max(1, walk.n));
+    gl.uniform1f(u('uWidth'), cells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6)));
+    gl.uniform1i(u('uPal'), 1);
+    const locs = [attrib(prog.flatPath, 'aQuad', S.quad, 2, gl.FLOAT, 0, 0, 0), attrib(prog.flatPath, 'aA', S.flatPts, 2, gl.FLOAT, 8, 0, 1),
+                  attrib(prog.flatPath, 'aB', S.flatPts, 2, gl.FLOAT, 8, 8, 1)];
+    const k = gl.getAttribLocation(prog.flatPath, 'aKey');
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.flatKeys);
+    gl.enableVertexAttribArray(k);
+    gl.vertexAttribPointer(k, 1, gl.UNSIGNED_BYTE, false, 1, 0);
+    gl.vertexAttribDivisor(k, 1);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, to);
-    off(locs);
+    off([...locs, k]);
   }
   gl.disable(gl.BLEND);
+  gl.activeTexture(gl.TEXTURE0);
   S.drawn = true;
+  // Digits: each cell in view with the digit that led there last, in 2D over the cells
+  layers.path.clearRect(0, 0, cw, ch);
+  const size = s * DIGIT_SIZE[walk.lattice];
+  if (cells && $('cellDigits').checked && !$('cellDigits').disabled && size >= 8) {
+    const ctx = layers.path, V = visitCells(), last = new Map(), m = size;
+    for (let p = 1; p <= to; p++) {
+      const X = ox + walk.xs[p] * s, Y = oy + walk.ys[p] * s;
+      if (X < -m || Y < -m || X > cw + m || Y > ch + m || (walk.skipZeros && walk.digits[p - 1] === 0)) continue;
+      last.set(V.cell[p], p);
+    }
+    ctx.font = `${Math.round(size)}px ui-monospace, Menlo, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillStyle = '#fff';
+    for (const p of last.values()) {
+      ctx.strokeText(walk.digits[p - 1], ox + walk.xs[p] * s, oy + walk.ys[p] * s);
+      ctx.fillText(walk.digits[p - 1], ox + walk.xs[p] * s, oy + walk.ys[p] * s);
+    }
+  }
   return true;
 }
 
@@ -6408,6 +6516,7 @@ window.addEventListener('hashchange', () => { const s = parseHash(); if (s) appl
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
+$('webgl').checked = !!glSetup();  // whether this browser draws with WebGL 2
 requestAnimationFrame(tick);
 $('version').textContent = `v${VERSION}`;
 for (const b of document.querySelectorAll('[data-icon]')) b.insertAdjacentHTML('afterbegin', icon(b.dataset.icon));

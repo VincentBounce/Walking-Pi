@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261011b">
+  <link rel="stylesheet" href="style.css?v=20261011c">
 </head>
 <body>
   <header>
@@ -276,12 +276,15 @@
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
             <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
           </div>
+          <div class="form-section">  <!-- shows whether the graphics card draws (WebGL 2): not a setting -->
+            <label class="check" id="webglRow" title="Drawn by the graphics card (WebGL 2) when this browser has it, else in 2D (slower on big walks)"><input id="webgl" type="checkbox" disabled> WebGL 2</label>
+          </div>
         </div>
       </div>
       <div id="numberPreview" class="number-preview" hidden></div>  <!-- over the whole view -->
     </div>
   </main>
 
-  <script src="main.js?v=20261011b"></script>
+  <script src="main.js?v=20261011c"></script>
 </body>
 </html>
