@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.309';
+const VERSION = '0.1.310';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6415,6 +6415,13 @@ const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st'
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // A setup's row, built-in or saved: the walk's icon, a name and a detail; hovering shows it, a click
 // keeps it (see the lists' mouseleave); with onDelete, a × at its end
+// A setup of the Gallery is shown framed and facing its walk: Auto-fit on again (a hand rotation or
+// zoom turned it off, and the walk could be on the far side)
+function showSetup(setup) {
+  $('autoFit').checked = true;
+  applySetup(setup);
+  if (!walk.life && cur >= walk.n) { faceWalk(); fitWhole(); }
+}
 function setupRow(name, detail, setup, onDelete) {
   const b = document.createElement('button');
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
@@ -6432,11 +6439,11 @@ function setupRow(name, detail, setup, onDelete) {
   b.classList.toggle('active', !galleryBefore && isInUse(setup));
   b.addEventListener('mouseenter', () => {
     clearTimeout(galleryHover);
-    galleryHover = setTimeout(() => { galleryBefore ??= getSetup(); applySetup(setup); }, 120);
+    galleryHover = setTimeout(() => { galleryBefore ??= getSetup(); showSetup(setup); }, 120);
   });
   b.addEventListener('click', () => {
     clearTimeout(galleryHover);
-    if (!galleryBefore || !isInUse(setup)) applySetup(setup);
+    if (!galleryBefore || !isInUse(setup)) showSetup(setup);
     galleryBefore = null;  // kept: leaving the list no longer brings back the one before
     renderModePicker();  // its tab, at the top
     showPane(false);  // and its parameters
