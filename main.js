@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.337';
+const VERSION = '0.1.338';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5637,6 +5637,10 @@ function torusArrows(R) {
   const fold = (centre, u, E, rad, gap) => {
     const P = [], at = (x, z) => [0, 1, 2].map((d) => centre[d] + u[d] * x + (d === 2 ? z : 0));
     for (let i = 0; i <= 16; i++) { const th = Math.PI / 2 + (Math.PI * i) / 16; P.push(at(-(E + gap) + rad * Math.cos(th), -rad + rad * Math.sin(th))); }
+    // under the sheet in short pieces, as the tiles: the depth is interpolated linearly on the screen
+    // (the perspective is done in the shader), which a long piece would get wrong in its middle
+    const pieces = Math.ceil((2 * (E + gap)) / (2 * rad));
+    for (let i = 1; i < pieces; i++) P.push(at(-(E + gap) + (2 * (E + gap) * i) / pieces, -2 * rad));
     for (let i = 0; i <= 16; i++) { const th = -Math.PI / 2 + (Math.PI * i) / 16; P.push(at(E + gap + rad * Math.cos(th), -rad + rad * Math.sin(th))); }
     return P;
   };
