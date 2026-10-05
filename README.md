@@ -170,6 +170,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
   - **Auto-fit:** the view follows the walk and ends framed on it.
   - **Colours:** rainbow along the walk, rainbow cells, heatmap of visits, one colour per digit, or one colour.
   - **Fill areas:** each area the walk closes off is filled when it closes (squares, triangles or hexagons, up to a box of 12 million tile corners: 2 million digits of π fill in 1 to 2 seconds).
+  - **Rainbow:** Neon (vivid) or Pastel (soft), for the path, cells, areas and surfaces, kept in this browser.
   - **Theme:** Light, Dark or System (the default, following the system), kept in this browser; the surfaces keep their sky.
   - Grid, sky, auto-rotate (the solid tumbles on three axes), flat / round and perspective.
 - **Navigation:** mouse wheel to zoom, drag to pan, double-click to fit.
