@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.341';
+const VERSION = '0.1.342';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1278,6 +1278,7 @@ const ICONS = (() => {
     loop: pathEl('M19.5 12A7.5 7.5 0 1 1 16.6 6.1') + pathEl('M17.4 2.6L16.9 6.4L13.1 5.9'),  // a circle closing on itself, its arrow at the end
     // the tilings of a surface (see FAMILIES): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
+    tilesSqStretched: pathEl('M2 8H22V16H2Z') + pathEl('M7 8V16M12 8V16M17 8V16M2 12H22'),  // squares stretched along the ring
     tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
     tilesHex: hexCluster(0), tilesHexTurned: hexCluster(30),
     mobius: pathEl('M3 12C3 7.5 8.5 7.5 12 12S21 16.5 21 12S15.5 7.5 12 12S3 16.5 3 12Z') + pathEl('M6.5 10.4Q9 9.6 10.6 11.2M13.4 12.8Q15 14.4 17.5 13.6'),
@@ -1825,7 +1826,8 @@ const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 
 // tabs, [tiling, turned by 30° (see TURNED), icon, name]; tab, the one in use or last chosen
 const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
+    tabs: [[0, false, 'tilesSq', 'Squares'], [0, true, 'tilesSqStretched', 'Squares, a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
+           [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk'], ['mobiusHexGrid', 'mobiusHexWalk'], ['mobiusTriGrid', 'mobiusTriWalk']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
@@ -2631,10 +2633,11 @@ const TORUS_TUBE = 0.4;
  * (2π by 2π·TUBE, in the x–z plane), at m = 1 the torus. The rectangle first curls into a tube
  * (m from 0 to ½: its short side bends into a circle), then the tube bends into a ring (½ to 1).
  * Bending a length L into an arc of a circle whose circumference is L / k keeps lengths along it. */
-function torusPoint(i, j, nu, nv, m) {
+function torusPoint(i, j, nu, nv, m, flatWidth = 1) {  // flatWidth: the flat sheet's length, as a share of 2π
   const b = Math.min(1, 2 * m), c = Math.max(0, 2 * m - 1);  // tube bend, then ring bend
-  // flat, the sheet lies in the north–east plane: i towards the east, j towards the north
-  const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
+  // flat, the sheet lies in the north–east plane: i towards the east, j towards the north; a sheet
+  // shorter than the ring (flatWidth < 1) stretches to it as it bends round (its tiles too)
+  const X = (i / nu - 0.5) * 2 * Math.PI * (flatWidth + (1 - flatWidth) * c), Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
   let w = -Y, h = 0;  // w: offset away from the ring's centre (the north goes into the hole), h: height
   if (b > 1e-6) {  // it curls down round the tube, so its middle becomes the top of the torus, in front
     const rt = TORUS_TUBE / b, th = Y / rt;
@@ -2799,7 +2802,7 @@ function mobiusMesh(kind, nv) {
   return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
 }
 // The sheet point of a surface: a torus, or a Möbius strip
-const sheetPoint = (g, i, j, m) => (g.mobius ? mobiusPoint(i, j, g.L, g.W, m) : torusPoint(i, j, g.nu, g.nv, m));
+const sheetPoint = (g, i, j, m) => (g.mobius ? mobiusPoint(i, j, g.L, g.W, m) : torusPoint(i, j, g.nu, g.nv, m, g.flatWidth ?? 1));
 
 /* Torus of regular hexagons (flat-topped): nu columns around the ring, nv rows around the tube;
  * odd columns sit half a row higher, so nu must be even for the columns to close up. In sheet
@@ -2922,7 +2925,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -3075,9 +3078,15 @@ const SPHERES = {
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
-  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+  // (torus: a size of its own may share torusSquare's mesh, hence its flatWidth)
+  torus: { mesh: (s) => Object.assign(torusMesh(...torusDims('torus', s)), { flatWidth: 1 }), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => Math.round(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
           sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
+  // the square torus (Squares, stretched): as many squares round the ring as round the tube, a square
+  // sheet unrolled, its squares stretched along the ring rolled up (see torusPoint's flatWidth)
+  torusSquare: { mesh: (s) => Object.assign(torusMesh(...torusDims('torusSquare', s)), { flatWidth: TORUS_TUBE }),
+                 radius: (s) => torusDims('torusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [1, 1],
+                 sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               columns: hexTorusColumns, perRow: 1, steps: [1, 2],  // an even count of columns
@@ -3217,9 +3226,9 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
-const TORI = ['torus', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
+const TORI = ['torus', 'torusSquare', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
-const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
+const TURNED = { torus: 'torusSquare', tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
 let torusTurned = false;
 const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
