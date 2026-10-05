@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.323';
+const VERSION = '0.1.324';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1797,6 +1797,10 @@ function splitModeLabel(text) {
 // The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
 const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
 
+// The tori of the walks on surfaces: one entry, Torus, and its tiling below the list
+const TORUS_TILINGS = [['Squares', 'torusGrid', 'torusWalk'], ['Triangles', 'triTorusGrid', 'triTorusWalk'], ['Hexagons', 'hexTorusGrid', 'hexTorusWalk']];
+const torusTilingOf = (w) => TORUS_TILINGS.findIndex((t) => t.includes(w));
+let torusTiling = 0;  // the tiling in use, or last chosen
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
@@ -1833,9 +1837,14 @@ function renderModePicker() {
   $('walkOnGrid').classList.toggle('active', !onCells);
   $('walkOnCells').classList.toggle('active', onCells);
   $('walkOnCells').disabled = modeTab === currentGroup && !inUse.twin;  // no walk on cells there yet
-  $('modeList').replaceChildren(...Array.from(group.children).filter(shown).map((o) => {
+  // the three tori are one entry, Torus (as its tiling in use, or as last chosen), its tiling picked below
+  const tiling = torusTilingOf($('mode').value);
+  if (tiling >= 0) torusTiling = tiling;
+  const torusOf = (o) => $('mode').querySelector(`option[value="${TORUS_TILINGS[torusTiling][onCells ? 2 : 1]}"]`) ?? o;
+  $('modeList').replaceChildren(...Array.from(group.children).filter((o) => shown(o) && torusTilingOf(o.value) <= 0).map((entry) => {
+    const torus = torusTilingOf(entry.value) === 0, o = torus ? torusOf(entry) : entry;
     const b = document.createElement('button');
-    const { name, base, detail } = splitModeLabel(o.text);  // the Life tab already says "Life"
+    const { base, detail } = splitModeLabel(o.text), name = torus ? 'Torus' : splitModeLabel(o.text).name;  // the Life tab already says "Life"
     // an automaton's pill tells the shape of its cells, where a walk's tells its base
     const mode = MODES[o.value], pill = mode.life ? SPHERES[mode.sphere].unit : base, info = mode.life ? '' : detail;
     const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
@@ -1851,6 +1860,21 @@ function renderModePicker() {
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
       $('mode').value = o.value;
+      $('mode').dispatchEvent(new Event('change'));
+    });
+    return b;
+  }));
+  // Torus picked: Squares | Triangles | Hexagons, the same walk on another tiling
+  $('torusTiles').hidden = !(modeTab === currentGroup && tiling >= 0);
+  if ($('torusTiles').hidden) return;
+  $('torusTiles').replaceChildren(...TORUS_TILINGS.map(([name, grid, cells], i) => {
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.classList.toggle('active', i === tiling);
+    b.addEventListener('click', () => {
+      if (i === tiling) return;
+      torusTiling = i;
+      $('mode').value = onCells ? cells : grid;
       $('mode').dispatchEvent(new Event('change'));
     });
     return b;
