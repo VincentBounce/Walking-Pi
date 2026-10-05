@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261012d">
+  <link rel="stylesheet" href="style.css?v=20261012e">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -100,11 +100,6 @@
             <span id="sizeLabel"></span>
             <button id="sizeUp" title="Bigger surface">+</button>
           </div>
-          <div id="loopRow" class="stepper" title="The sizes and starts where this fraction's chain closes in the fewest laps around the ring and the tube" hidden>
-            <button id="loopDown" title="Previous loop">−</button>
-            <span id="loopLabel"></span>
-            <button id="loopUp" title="Next loop">+</button>
-          </div>
           <select id="sphereF" hidden></select>
           <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover the number to see them all" hidden>
             <button id="startDown" title="Previous start">−</button>
@@ -112,6 +107,11 @@
             <button id="startUp" title="Next start">+</button>
           </div>
           <input id="startNo" type="hidden" value="1">
+          <div id="loopRow" class="stepper" title="The sizes and starts where this fraction's chain closes in the fewest laps around the ring and the tube" hidden>
+            <button id="loopDown" title="Previous loop">−</button>
+            <span id="loopLabel"></span>
+            <button id="loopUp" title="Next loop">+</button>
+          </div>
         </div>
       </section>
 
@@ -295,6 +295,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261012d"></script>
+  <script src="main.js?v=20261012e"></script>
 </body>
 </html>

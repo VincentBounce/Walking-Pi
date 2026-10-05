@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.327';
+const VERSION = '0.1.328';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1267,6 +1267,7 @@ const ICONS = (() => {
     cube: cube(false),
     cubeFilled: cube(true),
     torus,
+    loop: pathEl('M19.5 12A7.5 7.5 0 1 1 16.6 6.1') + pathEl('M17.4 2.6L16.9 6.4L13.1 5.9'),  // a circle closing on itself, its arrow at the end
     // the tilings of a surface (see FAMILIES): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
     tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
@@ -3457,7 +3458,7 @@ function syncLoopRow() {
   $('loopRow').hidden = !loops.length;
   $('loopLabel').classList.toggle('on', !!l);  // yellow on a loop
   if (!loops.length) return;
-  $('loopLabel').textContent = l ? `loop ${i + 1} of ${loops.length} · ${l.laps[0]}+${l.laps[1]}` : `${loops.length} diagonal loop${loops.length > 1 ? 's' : ''}`;
+  $('loopLabel').innerHTML = `${icon('loop')} ${l ? `${i + 1} of ${loops.length} · ${l.laps[0]}+${l.laps[1]}` : `${loops.length} diagonal`}`;  // ↻: a loop
   $('loopDown').disabled = i === 0;
   $('loopUp').disabled = i === loops.length - 1;
 }
