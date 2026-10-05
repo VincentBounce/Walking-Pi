@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.313';
+const VERSION = '0.1.314';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4148,6 +4148,7 @@ function setLifeSeed(seed, how) {
 let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
 let pendingChampion = null;  // a champion to restore once a loaded setup is built
 let pendingRestore = null;   // the view to restore once the setup in use is built again (see galleryView)
+let pendingSpin = false;     // a Gallery setup shown: Auto-rotate once built and faced (see showSetup)
 
 // Cells as a short code, whichever is shorter:
 // - dense "C.base64url", packing 1, 2 or 4 bits per cell depending on the number of states C;
@@ -4239,10 +4240,13 @@ function applySetup(s) {
 function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
+  if (pendingSpin && walk.is3d && !pendingRestore) $('autoRotate').checked = true;  // faced first (showAll), then turning
+  pendingSpin = false;
   if (pendingRestore) {  // back from the Gallery without a click: the view as it was (see galleryView)
     const g = pendingRestore;
     pendingRestore = null;
     $('autoFit').checked = g.autoFit;
+    $('autoRotate').checked = g.autoRotate;
     Object.assign(cam, g.cam);
     if (walk.is3d) project();
     const done = cur;
@@ -6430,16 +6434,18 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
-// and its view (Auto-fit, camera, framing): a setup shown on hover is framed (Auto-fit on), but only a
-// click keeps that; leaving the list brings back the setup in use as it was seen
+// and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
+// and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
+// the setup in use as it was seen
 let galleryView = null;
-const viewNow = () => ({ autoFit: $('autoFit').checked, cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] }, view: { ...view } });
+const viewNow = () => ({ autoFit: $('autoFit').checked, autoRotate: $('autoRotate').checked, cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] }, view: { ...view } });
 // A setup's row, built-in or saved: the walk's icon, a name and a detail; hovering shows it, a click
 // keeps it (see the lists' mouseleave); with onDelete, a × at its end
 // A setup of the Gallery is shown framed and facing its walk: Auto-fit on (a hand rotation or zoom
 // may have turned it off, and the walk could be on the far side), kept only by a click
 function showSetup(setup) {  // framed and faced once built (see showAll), not before: the walk is built apart
   $('autoFit').checked = true;
+  pendingSpin = true;  // then turning, in 3D (see applyPendingView)
   applySetup(setup);
 }
 function setupRow(name, detail, setup, onDelete) {
@@ -6482,6 +6488,7 @@ for (const list of ['builtInList', 'yourList']) {
     galleryBefore = null;
     pendingRestore = galleryView;
     galleryView = null;
+    pendingSpin = false;
     applySetup(before);
   });
 }
