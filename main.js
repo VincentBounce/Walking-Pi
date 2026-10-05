@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.332';
+const VERSION = '0.1.333';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1828,7 +1828,8 @@ const FAMILIES = [
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk'], ['mobiusHexGrid', 'mobiusHexWalk'], ['mobiusTriGrid', 'mobiusTriWalk']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [2, false, 'tilesTri', 'Triangles']] },
+    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
+           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)']] },
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk'], ['icosaGrid', 'icosaLR']], tab: 0,
     tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
 ];
@@ -2679,7 +2680,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri'];
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned'];
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
  * unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends round the circle (keeping
  * lengths, as torusPoint does) and twists along it, up to half a turn at m = 1, so the ends meet
@@ -2696,9 +2697,41 @@ function mobiusPoint(x, y, L, W, m) {
  * - squares: nv rows of squares, L of them along;
  * - hexagons (flat-topped, edge 1): an odd number of columns 1.5 apart, nv hexagons each, odd columns
  *   half a hexagon higher; the strip's edges run zigzag along the outer hexagons (none is cut);
- * - triangles (edge 1): nv rows; L whole, or half a triangle more when nv is odd. */
+ * - triangles (edge 1): nv rows; L whole, or half a triangle more when nv is odd;
+ * turned by 30° (as the tori, see TURNED):
+ * - hexagons pointy-topped, in nv rows along the strip, √3 apart in a row, odd rows half a hexagon
+ *   further on; L whole hexagons, or half one more when nv is even; the edges zigzag along them;
+ * - triangles pointing along the strip, in columns √3/2 wide (vertical edges), the strip nv edges
+ *   wide, an even number of columns; the edges zigzag along them. */
 function mobiusSheet(kind, nv) {
   const len = (W) => (2 * Math.PI * W) / MOBIUS_WIDTH, tiles = [], H = Math.sqrt(3) / 2;
+  if (kind === 'mobiusHexTurned') {
+    const W = 1.5 * (nv - 1) + 2, S3 = Math.sqrt(3), a = Math.round(len(W) / S3), L = S3 * (nv % 2 ? a : a + 0.5);
+    for (let r = 0; r < nv; r++) {
+      const cy = 1.5 * r + 1;
+      for (let i = -2; S3 * (i - 1) < L; i++) {
+        const x0 = S3 * (i + (r % 2) / 2 + 0.5);  // its centre, from a whole count (no rounding drift)
+        if (x0 < -1e-9 || x0 >= L - 1e-9) continue;
+        tiles.push([0, 1, 2, 3, 4, 5].map((k) => [x0 + Math.cos(((60 * k + 30) * Math.PI) / 180), cy + Math.sin(((60 * k + 30) * Math.PI) / 180)]));
+      }
+    }
+    return { L, W, tiles };
+  }
+  if (kind === 'mobiusTriTurned') {
+    const W = nv, cols = 2 * Math.round(len(W) / H / 2), L = cols * H;
+    for (let i = -1; i <= cols; i++) {
+      const x0 = i * H, x1 = x0 + H, o0 = (((i % 2) + 2) % 2) / 2, o1 = 0.5 - o0;  // the lattice's rows on either side
+      for (let y = o0 - 2; y < W + 2; y += 1) {
+        const right = [[x0, y], [x1, y + 0.5], [x0, y + 1]], cr = [(2 * x0 + x1) / 3, y + 0.5];  // ▶
+        if (cr[0] >= 0 && cr[0] < L && cr[1] > 0.25 && cr[1] < W - 0.25) tiles.push(right);
+      }
+      for (let y = o1 - 2; y < W + 2; y += 1) {
+        const left = [[x1, y], [x1, y + 1], [x0, y + 0.5]], cl = [(x0 + 2 * x1) / 3, y + 0.5];  // ◀
+        if (cl[0] >= 0 && cl[0] < L && cl[1] > 0.25 && cl[1] < W - 0.25) tiles.push(left);
+      }
+    }
+    return { L, W, tiles };
+  }
   if (kind === 'mobiusHex') {
     const W = Math.sqrt(3) * (nv + 0.5), a = 2 * Math.round((len(W) / 1.5 - 1) / 2) + 1, L = 1.5 * a;
     for (let c = 0; c < a; c++) for (let r = 0; r < nv; r++) {
@@ -3069,6 +3102,10 @@ const SPHERES = {
             sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobius', s).tiles.length, unit: 'squares' },
   mobiusHex: { mesh: (s) => mobiusMesh('mobiusHex', s), radius: (s) => mobiusSheet('mobiusHex', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length / s,
                sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length, unit: 'hexagons' },
+  mobiusHexTurned: { mesh: (s) => mobiusMesh('mobiusHexTurned', s), radius: (s) => mobiusSheet('mobiusHexTurned', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length / s,
+                     sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length, unit: 'hexagons' },
+  mobiusTriTurned: { mesh: (s) => mobiusMesh('mobiusTriTurned', s), radius: (s) => mobiusSheet('mobiusTriTurned', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length / s,
+                     sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length, unit: 'triangles' },
   mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusSheet('mobiusTri', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / s,
                sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
@@ -3114,7 +3151,7 @@ function torusDims(kind, size) {
 }
 const sizeLabel = (kind, f) => {
   const { tiles, unit } = SPHERES[kind];
-  if (!TORI.includes(kind)) return `${fmt(tiles(f))} ${unit}`;
+  if (!TORI.includes(kind) || MOBIUS_KINDS.includes(kind)) return `${fmt(tiles(f))} ${unit}`;  // a Möbius strip: both faces
   const rows = torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);  // a torus as its tiles towards the north (around the tube) × east (around the ring)
   return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
 };
@@ -3180,7 +3217,7 @@ function gridGraph(g) {
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
 const TORI = ['torus', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
-const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned' };
+const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
 let torusTurned = false;
 const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
@@ -5435,26 +5472,17 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
 in vec3 aPos; uniform float uBias;${GL_PROJECT}
 void main() { gl_Position = clipOf(toScreen(aPos), uBias); }`, `#version 300 es
 precision mediump float; uniform float uEdge; out vec4 o; void main() { o = vec4(0.0, 0.0, 0.0, uEdge); }`],
-  path: [`#version 300 es
-in vec2 aQuad; in vec3 aA; in vec3 aB; uniform float uN, uWidth, uMaxLen, uBias; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
-void main() {
-  vCol = texture(uGrad, vec2((float(gl_InstanceID) + 0.5) / uN, 0.5)).rgb;
-  if (distance(aA, aB) > uMaxLen) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }  // across the seam of an unrolled torus
-  vec3 a = toScreen(aA), b = toScreen(aB), p = mix(a, b, aQuad.x);
-  vec2 d = b.xy - a.xy; d = length(d) > 1e-4 ? normalize(d) : vec2(1.0, 0.0);
-  p.xy += (vec2(-d.y, d.x) * aQuad.y + d * (aQuad.x * 2.0 - 1.0)) * uWidth * 0.5;
-  gl_Position = clipOf(p, uBias);
-}`, `#version 300 es
-precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
-  // the path printed on the faces of a Möbius strip: one flat ribbon per half step, in its square's
-  // plane (aN its normal), as wide as the path on screen; seen from its own face only (see glSurface)
+  // the path printed on a surface's tiles (see pathSegments): one flat ribbon per segment, in its
+  // tile's plane (aN its normal), as wide as the path on screen, its ends going on half that width
+  // where aE says; seen from its tile's face only (see glSurface)
   ribbon: [`#version 300 es
-in vec2 aQuad; in vec3 aA; in vec3 aB; in vec3 aN; uniform float uN, uHalf, uBias; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
+in vec2 aQuad; in vec3 aA; in vec3 aB; in vec3 aN; in float aE; in float aI; uniform float uN, uHalf, uBias; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
 void main() {
-  vCol = texture(uGrad, vec2((floor(float(gl_InstanceID) / 2.0) + 0.5) / uN, 0.5)).rgb;
+  vCol = texture(uGrad, vec2((aI + 0.5) / uN, 0.5)).rgb;
   vec3 d = aB - aA; d = length(d) > 1e-9 ? normalize(d) : vec3(1.0, 0.0, 0.0);
-  vec3 side = normalize(cross(d, aN)) * uHalf;  // counterclockwise seen from the face, as its square
-  vec3 p = mix(aA, aB, aQuad.x) + side * aQuad.y + d * (aQuad.x * 2.0 - 1.0) * uHalf;
+  vec3 side = normalize(cross(d, aN)) * uHalf;  // counterclockwise seen from the face, as its tile
+  float on = aQuad.x < 0.5 ? mod(aE, 2.0) : floor(aE / 2.0);  // this end goes on past its point
+  vec3 p = mix(aA, aB, aQuad.x) + side * aQuad.y + d * (aQuad.x * 2.0 - 1.0) * uHalf * on;
   gl_Position = clipOf(toScreen(p), uBias);  // over the grid lines, as the other paths
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
@@ -5512,7 +5540,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -5536,32 +5564,41 @@ function glClear() {
 }
 const glColour = new Map();  // CSS colour → [r, g, b]
 const rgbCached = (c) => { if (!glColour.has(c)) glColour.set(c, rgbOf(c)); return glColour.get(c); };
-// The path on a Möbius strip's faces, in its current form: each step as two halves, from a square's
-// centre to the middle of the edge it crosses, then on to the next square's centre (over the strip's
-// edge, round to the face behind), each with its square's normal; along the grid, an edge's halves
-// with the normal of a square beside it. [Ax, Ay, Az, Bx, By, Bz, Nx, Ny, Nz] per half
-function ribbonSegments() {
-  const g = walk.geo, sh = walk.shape, R = walk.R, k = g.sides, C = sh.corners, n = walk.n, out = new Float32Array(18 * Math.max(1, n));
+// The path on a surface, in its current form, printed flat on its tiles: from tile to tile, each
+// step as two halves, from a tile's centre to the middle of the edge it crosses, then on to the next
+// tile's centre, each in its own tile's plane (over a solid's edge, it folds round it); along the
+// grid, each step on each tile beside its edge. Seen from the tile's face only (glSurface), a step on
+// a face turned away is not drawn at all, and nothing jumps across an unrolled sheet's seams.
+// Per segment [Ax, Ay, Az, Bx, By, Bz, Nx, Ny, Nz, ends, step]: ends, which ends go on half the
+// width past their point (1 the start, 2 the end: where two segments of the same plane meet, not at
+// a fold); and the first segment of each step (at)
+function pathSegments() {
+  const g = walk.geo, sh = walk.shape, R = walk.R, k = g.sides, C = sh.corners, n = walk.n;
   const corner = (t, q) => [C[3 * (k * t + q)] * R, C[3 * (k * t + q) + 1] * R, C[3 * (k * t + q) + 2] * R];
   const centre = (t) => [sh.cen[3 * t] * R, sh.cen[3 * t + 1] * R, sh.cen[3 * t + 2] * R];
   const normal = (t) => [sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]];
   const mid = (p, q) => p.map((x, d) => (x + q[d]) / 2);
-  const put = (j, a, b, nr) => out.set([...a, ...b, ...nr], 9 * j);
-  if (walk.vert) {  // along the grid: corner to corner, on a square beside the edge
-    const G = g.grid, at = (v, t) => { for (let q = 0; q < k; q++) if (g.poly[k * t + q] === v) return corner(t, q); return corner(G.tileOf[v], G.cornerOf[v]); };
-    for (let i = 0; i < n; i++) {
-      const t = walk.stepTiles[2 * i], a = at(walk.vert[i], t), b = at(walk.vert[i + 1], t), m = mid(a, b);
-      put(2 * i, a, m, normal(t)); put(2 * i + 1, m, b, normal(t));
+  const out = new Float32Array(11 * 2 * Math.max(1, n)), at = new Int32Array(n + 1);
+  let j = 0;
+  const put = (a, b, nr, ends, i) => { out.set([...a, ...b, ...nr, ends, i], 11 * j++); };
+  for (let i = 0; i < n; i++) {
+    at[i] = j;
+    if (walk.vert) {  // along the grid: the edge, on each tile beside it
+      const [t0, t1] = [walk.stepTiles[2 * i], walk.stepTiles[2 * i + 1]];
+      for (const t of t0 === t1 ? [t0] : [t0, t1]) {
+        const ends = [walk.vert[i], walk.vert[i + 1]].map((v) => { for (let q = 0; q < k; q++) if (g.poly[k * t + q] === v) return corner(t, q); return null; });
+        if (ends[0] && ends[1]) put(ends[0], ends[1], normal(t), 3, i);
+      }
+      continue;
     }
-    return out;
-  }
-  for (let i = 0; i < n; i++) {  // on cells: centre, the middle of the shared edge (in each square), centre
-    const a = walk.tile[i], b = walk.tile[i + 1], qa = [], qb = [];
+    const a = walk.tile[i], b = walk.tile[i + 1], qa = [], qb = [];  // on cells
     for (let p = 0; p < k; p++) for (let q = 0; q < k; q++) if (g.poly[k * a + p] === g.poly[k * b + q]) { qa.push(p); qb.push(q); }
-    const ma = qa.length === 2 ? mid(corner(a, qa[0]), corner(a, qa[1])) : centre(a), mb = qb.length === 2 ? mid(corner(b, qb[0]), corner(b, qb[1])) : centre(b);
-    put(2 * i, centre(a), ma, normal(a)); put(2 * i + 1, mb, centre(b), normal(b));
+    const ma = qa.length === 2 ? mid(corner(a, qa[0]), corner(a, qa[1])) : mid(centre(a), centre(b));
+    const mb = qb.length === 2 ? mid(corner(b, qb[0]), corner(b, qb[1])) : mid(centre(a), centre(b));
+    put(centre(a), ma, normal(a), 1, i); put(mb, centre(b), normal(b), 2, i);
   }
-  return out;
+  at[n] = j;
+  return { data: out.subarray(0, 11 * j), at };
 }
 
 // Draw the surface with its palette and levelOf (as drawSphere picks them); false if WebGL is missing
@@ -5600,13 +5637,6 @@ function glSurface(palette, levelOf, path) {
     for (let q = 0; q < k; q++) col.set(c, 3 * (k * t + q));
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, S.col); gl.bufferData(gl.ARRAY_BUFFER, col, gl.DYNAMIC_DRAW);
-  // the walk's points, in their current form
-  if (path && (S.keys.pts !== walk.wx || S.keys.ptsM !== sh.m)) {
-    const pts = new Float32Array(3 * (walk.n + 1));
-    for (let i = 0; i <= walk.n; i++) { pts[3 * i] = walk.wx[i]; pts[3 * i + 1] = walk.wy[i]; pts[3 * i + 2] = walk.wz[i]; }
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.pts); gl.bufferData(gl.ARRAY_BUFFER, pts, gl.DYNAMIC_DRAW);
-    S.keys.pts = walk.wx; S.keys.ptsM = sh.m;
-  }
   // the frame, the projection and the view
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clearColor(0, 0, 0, 0);
@@ -5664,35 +5694,28 @@ function glSurface(palette, levelOf, path) {
     off(prog.edge, ['aPos']);
     gl.disable(gl.BLEND);
   }
-  // path: the steps walked so far, over the tiles; on a Möbius strip, printed on their faces
-  if (path && cur > 0 && g.mobius) {
-    if (S.keys.ribbon !== walk.wx || S.keys.ribbonM !== sh.m) { gl.bindBuffer(gl.ARRAY_BUFFER, S.ribbon); gl.bufferData(gl.ARRAY_BUFFER, ribbonSegments(), gl.DYNAMIC_DRAW); S.keys.ribbon = walk.wx; S.keys.ribbonM = sh.m; }
+  // path: the steps walked so far, printed on their tiles (see pathSegments)
+  if (path && cur > 0) {
+    if (S.keys.segs !== walk.wx || S.keys.segsM !== sh.m) {
+      const segs = pathSegments();
+      gl.bindBuffer(gl.ARRAY_BUFFER, S.ribbon); gl.bufferData(gl.ARRAY_BUFFER, segs.data, gl.DYNAMIC_DRAW);
+      S.segsAt = segs.at; S.keys.segs = walk.wx; S.keys.segsM = sh.m;
+    }
     u = uniforms(prog.ribbon);
     gl.uniform1f(u('uN'), Math.max(1, walk.n));
     gl.uniform1f(u('uHalf'), surfaceLineWidth() / 2 / view.scale);  // the screen width, in world units
     gl.uniform1f(u('uBias'), pathBias);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
     attrib(prog.ribbon, 'aQuad', S.quad, 2);
-    attrib(prog.ribbon, 'aA', S.ribbon, 3, gl.FLOAT, false, 36, 0, 1);
-    attrib(prog.ribbon, 'aB', S.ribbon, 3, gl.FLOAT, false, 36, 12, 1);
-    attrib(prog.ribbon, 'aN', S.ribbon, 3, gl.FLOAT, false, 36, 24, 1);
-    gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, 2 * cur);
+    attrib(prog.ribbon, 'aA', S.ribbon, 3, gl.FLOAT, false, 44, 0, 1);
+    attrib(prog.ribbon, 'aB', S.ribbon, 3, gl.FLOAT, false, 44, 12, 1);
+    attrib(prog.ribbon, 'aN', S.ribbon, 3, gl.FLOAT, false, 44, 24, 1);
+    attrib(prog.ribbon, 'aE', S.ribbon, 1, gl.FLOAT, false, 44, 36, 1);
+    attrib(prog.ribbon, 'aI', S.ribbon, 1, gl.FLOAT, false, 44, 40, 1);
+    if (!twoSidedNow()) { gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); }  // from its tile's face only (an unrolled torus: both)
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, S.segsAt[cur]);
     gl.disable(gl.CULL_FACE);
-    off(prog.ribbon, ['aQuad', 'aA', 'aB', 'aN']);
-  } else if (path && cur > 0) {
-    u = uniforms(prog.path);
-    const c = sh.corners, edge = R * Math.hypot(c[0] - c[3], c[1] - c[4], c[2] - c[5]);
-    gl.uniform1f(u('uN'), Math.max(1, walk.n));
-    gl.uniform1f(u('uWidth'), surfaceLineWidth());
-    gl.uniform1f(u('uMaxLen'), walk.geo.torus && sh.m < 1 ? 2.5 * edge : 1e9);
-    gl.uniform1f(u('uBias'), pathBias);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
-    attrib(prog.path, 'aQuad', S.quad, 2);
-    attrib(prog.path, 'aA', S.pts, 3, gl.FLOAT, false, 12, 0, 1);
-    attrib(prog.path, 'aB', S.pts, 3, gl.FLOAT, false, 12, 12, 1);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, cur);
-    off(prog.path, ['aQuad', 'aA', 'aB']);
+    off(prog.ribbon, ['aQuad', 'aA', 'aB', 'aN', 'aE', 'aI']);
   }
   S.drawn = true;
   layers.path.clearRect(0, 0, cw, ch);  // the 2D tiles of a drawing before, if any
