@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.338';
+const VERSION = '0.1.339';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5612,8 +5612,8 @@ function pathSegments() {
  * is a flat band in a vertical plane, folding round both edges it joins and running under the sheet. They stay within the
  * sphere round the sheet (the view's frame), so the view never cuts them, and they change nothing to
  * the framing. Triangles: positions, normals, colours (see glSurface). */
-function torusArrows(R) {
-  const X = Math.PI * R, Y = 2 * Math.PI * TORUS_TUBE * R / 2, pos = [], nrm = [], col = [];
+function torusArrows(R, X, Y, F) {  // X, Y: half the sheet's length and width (its tiles' farthest corners), F: the frame's radius
+  const pos = [], nrm = [], col = [];
   const unitV = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
   const add = (p, n, c) => { pos.push(...p); nrm.push(...n); col.push(...c); };
   const tri = (a, b, c, n, colour) => { add(a, n, colour); add(b, n, colour); add(c, n, colour); };
@@ -5645,8 +5645,11 @@ function torusArrows(R) {
     return P;
   };
   // the axes' colours (see draw3DFrame): along the length, east; across the width, north
-  const east = rgbOf('#ff7b72'), north = rgbOf('#3fb950'), rad = 0.13 * R, gap = 0.08 * R, hw = 0.045 * R;
-  headLen = gap;
+  // as big as the room left in the frame past the ends allows (the frame never cuts them), well off
+  // the edges: the heads stop short of them, the folds go round them at a distance
+  const size = Math.min(0.3 * R, 0.97 * F - X), rad = 0.42 * size, gap = 0.58 * size, hw = 0.045 * R;
+  headLen = 0.55 * gap;
+  const east = rgbOf('#ff7b72'), north = rgbOf('#3fb950');
   for (const x of [-X / 2, X / 2]) band(fold([x, 0, 0], [0, 1, 0], Y, rad, gap), [1, 0, 0], hw, north);
   band(fold([0, 0, 0], [1, 0, 0], X, rad, gap), [0, 1, 0], hw, east);
   return { pos: new Float32Array(pos), nrm: new Float32Array(nrm), col: new Uint8Array(col), count: pos.length / 3 };
@@ -5743,12 +5746,14 @@ function glSurface(palette, levelOf, path) {
   off(prog.tile, ['aPos', 'aNrm', 'aCol']);
   // the glued edges of an unrolled torus, under the sheet, with the grid on (see torusArrows)
   if (g.torus && !g.mobius && sh.m < 0.02 && $('showGrid').checked) {
-    if (S.keys.arrows !== R) {
-      const A = torusArrows(R);
+    if (S.keys.arrows !== sh) {  // the sheet's half length and width, from its tiles' corners
+      let X = 0, Y = 0;
+      for (let q = 0; q < sh.corners.length; q += 3) { X = Math.max(X, Math.abs(sh.corners[q])); Y = Math.max(Y, Math.abs(sh.corners[q + 1])); }
+      const A = torusArrows(R, X * R, Y * R, R * sh.extent);
       gl.bindBuffer(gl.ARRAY_BUFFER, S.arrPos); gl.bufferData(gl.ARRAY_BUFFER, A.pos, gl.STATIC_DRAW);
       gl.bindBuffer(gl.ARRAY_BUFFER, S.arrNrm); gl.bufferData(gl.ARRAY_BUFFER, A.nrm, gl.STATIC_DRAW);
       gl.bindBuffer(gl.ARRAY_BUFFER, S.arrCol); gl.bufferData(gl.ARRAY_BUFFER, A.col, gl.STATIC_DRAW);
-      S.arrCount = A.count; S.keys.arrows = R;
+      S.arrCount = A.count; S.keys.arrows = sh;
     }
     u = uniforms(prog.tile);
     gl.uniform1i(u('uTwoSided'), 1);
