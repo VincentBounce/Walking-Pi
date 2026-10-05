@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.328';
+const VERSION = '0.1.329';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1819,8 +1819,8 @@ const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
-  { name: 'Sphere', modes: [['icosaGrid', 'icosaLR'], ['hexSphereGrid', 'hexSphereWalk']], tab: 1,
-    tabs: [[0, false, 'tilesTri', 'Triangles (an icosahedron, inflated)'], [1, false, 'tilesHex', 'Hexagons (and 12 pentagons)']] },
+  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk'], ['icosaGrid', 'icosaLR']], tab: 0,
+    tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
 ];
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
 function familyOf(w) {
