@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.311';
+const VERSION = '0.1.312';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4147,6 +4147,7 @@ function setLifeSeed(seed, how) {
 /* ---- 10.1 Life starts as short codes --------------------------------------------------------- */
 let championCode = null;  // the loaded champion's cells, encoded (see encodeCells)
 let pendingChampion = null;  // a champion to restore once a loaded setup is built
+let pendingRestore = null;   // the view to restore once the setup in use is built again (see galleryView)
 
 // Cells as a short code, whichever is shorter:
 // - dense "C.base64url", packing 1, 2 or 4 bits per cell depending on the number of states C;
@@ -4238,6 +4239,21 @@ function applySetup(s) {
 function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
+  if (pendingRestore) {  // back from the Gallery without a click: the view as it was (see galleryView)
+    const g = pendingRestore;
+    pendingRestore = null;
+    $('autoFit').checked = g.autoFit;
+    Object.assign(cam, g.cam);
+    if (walk.is3d) project();
+    const done = cur;
+    cur = 0;
+    bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+    advanceTo(done);
+    Object.assign(view, g.view);
+    viewGoal = null;
+    faced = true;
+    needsFull = true;
+  }
   if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
   else if (walk.life) placeZone();
   renderHuntList();
@@ -6414,10 +6430,14 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
+// and its view (Auto-fit, camera, framing): a setup shown on hover is framed (Auto-fit on), but only a
+// click keeps that; leaving the list brings back the setup in use as it was seen
+let galleryView = null;
+const viewNow = () => ({ autoFit: $('autoFit').checked, cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] }, view: { ...view } });
 // A setup's row, built-in or saved: the walk's icon, a name and a detail; hovering shows it, a click
 // keeps it (see the lists' mouseleave); with onDelete, a × at its end
-// A setup of the Gallery is shown framed and facing its walk: Auto-fit on again (a hand rotation or
-// zoom turned it off, and the walk could be on the far side)
+// A setup of the Gallery is shown framed and facing its walk: Auto-fit on (a hand rotation or zoom
+// may have turned it off, and the walk could be on the far side), kept only by a click
 function showSetup(setup) {
   $('autoFit').checked = true;
   applySetup(setup);
@@ -6440,12 +6460,12 @@ function setupRow(name, detail, setup, onDelete) {
   b.classList.toggle('active', !galleryBefore && isInUse(setup));
   b.addEventListener('mouseenter', () => {
     clearTimeout(galleryHover);
-    galleryHover = setTimeout(() => { galleryBefore ??= getSetup(); showSetup(setup); }, 120);
+    galleryHover = setTimeout(() => { if (!galleryBefore) { galleryBefore = getSetup(); galleryView = viewNow(); } showSetup(setup); }, 120);
   });
   b.addEventListener('click', () => {
     clearTimeout(galleryHover);
     if (!galleryBefore || !isInUse(setup)) showSetup(setup);
-    galleryBefore = null;  // kept: leaving the list no longer brings back the one before
+    galleryBefore = galleryView = null;  // kept, Auto-fit on: leaving the list no longer brings back the one before
     renderModePicker();  // its tab, at the top
     showPane(false);  // and its parameters
   });
@@ -6461,6 +6481,8 @@ for (const list of ['builtInList', 'yourList']) {
     if (!galleryBefore) return;
     const before = galleryBefore;
     galleryBefore = null;
+    pendingRestore = galleryView;
+    galleryView = null;
     applySetup(before);
   });
 }
