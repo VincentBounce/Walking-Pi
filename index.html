@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261011d">
+  <link rel="stylesheet" href="style.css?v=20261011e">
 </head>
 <body>
   <header>
@@ -251,7 +251,7 @@
             <option value="digit">One colour per digit</option>
             <option value="mono">One colour</option>
           </select>
-          <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas</label>
+          <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas <span id="fillTooBig" class="fill-note" hidden title="Beyond 12 million tile corners in the walk's box, the areas are not filled">walk too big</span></label>
           <p id="fillLoopNote" class="muted" hidden>Fraction ↻: filling 2 cells max</p>  <!-- under Fill areas, like the status line -->
           <label class="check" id="fillTranslucentRow" hidden><input id="fillTranslucent" type="checkbox"> Translucent fill</label>
           <div id="skyRow" class="form-section" hidden>
@@ -285,6 +285,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261011d"></script>
+  <script src="main.js?v=20261011e"></script>
 </body>
 </html>

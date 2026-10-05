@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.300';
+const VERSION = '0.1.301';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1040,6 +1040,7 @@ function updateDisplayMenu() {
   $('perspectiveRow').after(spin ? $('autoFitRow') : $('autoRotateRow'));  // with the form of the view
   $('fillAreasRow').hidden = !shows('fill');
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
+  $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
   $('fillLoopNote').hidden = !(walk.vert && current?.fraction);  // a fraction along a grid (see areaSteps)
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('translucent');
@@ -1955,6 +1956,7 @@ function buildWalk() {
   visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
   glClear();  // a surface drawn by WebGL before (see 11.4b)
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
+  $('fillTooBig').hidden = true;
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
   walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
@@ -5372,7 +5374,7 @@ function glFlat(to) {
   // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
   if (fillOn()) {
-    fill ??= computeFill();
+    fillNow();
     if (fill.count && fill.templates.length <= 4) {
       if (S.keys.flatFill !== fill) {
         const inst = new Float32Array(4 * fill.count);
@@ -5618,6 +5620,11 @@ let fillDone = 0;                  // how many of the fill's polygons are painte
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
 const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
+// the fill, computed once per walk; beside the toggle, a word when the walk is too big to fill
+function fillNow() {
+  if (!fill) { fill = computeFill(); updateDisplayMenu(); }
+  return fill;
+}
 
 /* The fill, in typed arrays only, for walks of millions of steps. The vertices of the tiling sit on
  * a grid of whole numbers (u, v), packed into an index id = i·NJ + j (see FILL_GRIDS: i, j, uOf, vOf):
@@ -5756,7 +5763,7 @@ function computeFill() {
 // polygons, by 64 under 0.1 s)
 const FILL_BATCH = 64;
 function drawFill(to) {
-  fill ??= computeFill();
+  fillNow();
   const ctx = layers.fill, { scale: s, ox, oy } = view, { at, cx, cy, tpl, templates } = fill;
   const colourAt = (k) => styleColor(styleKey(at[k] - 1));
   while (fillDone < fill.count && at[fillDone] <= to) {
