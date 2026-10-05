@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.340';
+const VERSION = '0.1.341';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2994,10 +2994,12 @@ function shapeSign(g) {
 }
 
 // A new walk mode starts in its default form (round for the icosahedron and the torus, flat
-// otherwise); the same mode rebuilt (another size, number or rule) keeps the form it had
+// otherwise); the same surface rebuilt (another tiling, Grid / Cells, size, number or rule) keeps it
 function initShape(kind) {
   if (!MORPHABLE.includes(kind)) { walk.shape = null; updateMorphButton(); return; }
-  const mode = current.mode, keep = previousShape && previousShape.mode === mode;
+  // the same surface (its other tilings, along the grid or on cells) keeps the form it had
+  const surface = (w) => familyOf(w)?.F.name ?? MODES[w].sphere;
+  const mode = current.mode, keep = previousShape && surface(previousShape.mode) === surface(mode);
   const g = walk.geo, m = keep ? previousShape.target : MODES[mode].round ? 1 : 0;
   const maxExtent = Math.max(shapeAt(g, 0).extent, shapeAt(g, 1).extent);
   walk.shape = { ...shapeAt(g, m), target: m, maxExtent, mode };
