@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.333';
+const VERSION = '0.1.334';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2247,7 +2247,7 @@ function rotateView(w) {
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   $('hint').textContent = walk.is3d
-    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: auto-fit'
+    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom · Double-click: centre, again: starting view'
     : 'Wheel: zoom · Drag: pan · Double-click: auto-fit';
   updateDisplayMenu();
 }
@@ -4745,6 +4745,7 @@ function fitWhole() {
 
 function restart() {
   faced = false;
+  handTurned = false;
   cur = 0;
   drawn = 0;
   acc = 0;
@@ -5028,6 +5029,7 @@ function drawSphereCursor(ctx) {
 // points' directions; its end where they cancel out), with no turn to watch; it follows the walker
 // again (followWalker) as soon as the walker moves: playing, a step, the progress slider
 let faced = false;
+let handTurned = false;  // the view was turned by hand: the camera no longer follows the walker (see recentre)
 function faceWalk() {
   faced = true;
   if (!walk.sphere || walk.geo.torus || !$('autoFit').checked || $('autoRotate').checked || !walk.n) return;
@@ -6402,7 +6404,7 @@ function tick(now = performance.now()) {
     morphStep(dt);  // flat ↔ round, while it is changing
     // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays put
     // and the walk is seen covering it (a walk shown whole is faced at once: faceWalk)
-    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || (!faced && $('autoFit').checked && !$('autoRotate').checked))) followWalker();
+    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || (!faced && !handTurned && $('autoFit').checked && !$('autoRotate').checked))) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
@@ -6551,16 +6553,37 @@ stage.addEventListener('pointermove', (e) => {
     view.oy += dy;
     userMovedView();
   } else {
-    userMovedView();  // a hand rotation ends auto-fit, as a pan or a zoom does, and auto-rotate
+    // a hand rotation keeps auto-fit (the view stays centred, as while auto-rotating), but stops
+    // auto-rotate and the camera following the walker; a pan or a zoom ends auto-fit
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
+    handTurned = true;
     rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
   }
 });
 const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
-stage.addEventListener('dblclick', fitNow);
+// Double-click (or F): centre the view; already centred, back to the starting view as well: no
+// auto-rotate, the camera as when the walk was shown (turned towards it on a surface)
+function recentre() {
+  includeBox();
+  const v = viewFor(padBounds(bounds));
+  // turning by itself, a view is kept framed: as good as centred
+  const centred = ($('autoFit').checked && $('autoRotate').checked) || $('autoFit').checked && !viewGoal && Math.abs(view.scale / v.scale - 1) < 0.01
+    && Math.abs(view.ox - (cw / 2 - v.cx * v.scale)) < 2 && Math.abs(view.oy - (ch / 2 - v.cy * v.scale)) < 2;
+  if (centred && walk.is3d) {
+    $('autoRotate').checked = false;
+    spinFrom = spinRamp = 0;
+    handTurned = false;
+    Object.assign(cam, CAM0);
+    rotateView([0, 0, 0]);  // the projection and the frame again
+    faced = false;
+    if (!walk.life && cur >= walk.n) faceWalk();
+  }
+  fitNow();
+}
+stage.addEventListener('dblclick', recentre);
 
 document.addEventListener('keydown', (e) => {
   if (e.target.matches('input[type=number], input[type=text], select')) return;
@@ -6569,7 +6592,7 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowRight': $('step').click(); break;
     case 'r': case 'R': $('restart').click(); break;
     case 'e': case 'E': $('end').click(); break;
-    case 'f': case 'F': fitNow(); break;
+    case 'f': case 'F': recentre(); break;
   }
 });
 

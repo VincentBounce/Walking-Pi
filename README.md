@@ -175,13 +175,13 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
   - **Fill areas:** each area the walk closes off is filled when it closes (squares, triangles or hexagons, up to a box of 12 million tile corners: 2 million digits of π fill in 1 to 2 seconds).
   - **Theme:** Light, Dark or System (the default, following the system), kept in this browser; the surfaces keep their sky.
   - Grid, sky, auto-rotate (the solid tumbles on three axes), flat / round and perspective.
-- **Navigation:** mouse wheel to zoom, drag to pan, double-click to fit.
-  - In 3D: drag to rotate, Shift+drag to pan.
+- **Navigation:** mouse wheel to zoom, drag to pan, double-click (or `F`) to fit.
+  - In 3D: drag to rotate (it keeps Auto-fit, stops Auto-rotate), Shift+drag to pan; double-click centres the view, and on a view already centred brings back the starting view (Auto-rotate off).
   - On the surfaces, a walk shown whole is faced at once; while it moves, the camera turns to keep the walker in view, with a small arrow lying on the surface for its heading.
 - **Drawing:** the walks, their cells, areas and surfaces are drawn by the graphics card (WebGL 2), so a walk of millions of steps still pans, zooms and turns smoothly; without WebGL 2, everything is drawn in 2D as before. The greyed-out WebGL 2 toggle at the bottom of the Display box shows which.
 - **Links:** the page link always holds the current setup (number, walk, surface, size, start, rule, Life start), never the display settings.
 
-Keyboard: `Space` play/pause · `→` one step · `R` restart · `E` jump to end · `F` auto-fit
+Keyboard: `Space` play/pause · `→` one step · `R` restart · `E` jump to end · `F` centre (again: starting view)
 
 ## Run locally
 
