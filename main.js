@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.317';
+const VERSION = '0.1.318';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6485,6 +6485,8 @@ function setupRow(name, detail, setup, onDelete) {
   b.addEventListener('click', () => {
     clearTimeout(galleryHover);
     if (!galleryBefore || !isInUse(setup)) showSetup(setup);
+    pendingSpin = false;  // clicked while still: it stays still (already turning: it goes on)
+    spinFrom = 0;
     galleryBefore = galleryView = null;  // kept, Auto-fit on: leaving the list no longer brings back the one before
     renderModePicker();  // its tab, at the top
     showPane(false);  // and its parameters
