@@ -42,6 +42,7 @@ header { padding: 0 20px; border-bottom: 1px solid var(--border); }  /* one hair
 .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
 h1 .pi, .bar-sub .pi { color: var(--accent); }
+h1 .home { color: inherit; text-decoration: none; }  /* the title: back to the site's start */
 .bar-sub .walking { color: var(--text); font-weight: 600; }  /* an automaton: what seeds it */
 h1 .version { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261012t">
+  <link rel="stylesheet" href="style.css?v=20261012u">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -14,7 +14,7 @@
   <header>
     <div class="header-row">
       <div id="modeTabs" class="tabs" role="tablist"></div>
-      <h1>Walking <span class="pi">π</span> <span id="version" class="version" title="0.1.0 = first commit, +1 per commit"></span></h1>
+      <h1><a class="home" href="https://vincentbounce.github.io/Walking-Pi/" title="Back to the start">Walking <span class="pi">π</span></a> <span id="version" class="version" title="0.1.0 = first commit, +1 per commit"></span></h1>
     </div>
   </header>
 
@@ -299,6 +299,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261012t"></script>
+  <script src="main.js?v=20261012u"></script>
 </body>
 </html>

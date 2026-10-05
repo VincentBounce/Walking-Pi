@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.343';
+const VERSION = '0.1.344';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1278,7 +1278,7 @@ const ICONS = (() => {
     loop: pathEl('M19.5 12A7.5 7.5 0 1 1 16.6 6.1') + pathEl('M17.4 2.6L16.9 6.4L13.1 5.9'),  // a circle closing on itself, its arrow at the end
     // the tilings of a surface (see FAMILIES): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
-    tilesSqStretched: pathEl('M2 8H22V16H2Z') + pathEl('M7 8V16M12 8V16M17 8V16M2 12H22'),  // squares stretched along the ring
+    tilesSqStretched: pathEl('M2 8H22V16H2Z') + pathEl('M6 8V16M10 8V16M14 8V16M18 8V16M2 12H22'),  // a long sheet of squares: 5 by 2
     tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
     tilesHex: hexCluster(0), tilesHexTurned: hexCluster(30),
     mobius: pathEl('M3 12C3 7.5 8.5 7.5 12 12S21 16.5 21 12S15.5 7.5 12 12S3 16.5 3 12Z') + pathEl('M6.5 10.4Q9 9.6 10.6 11.2M13.4 12.8Q15 14.4 17.5 13.6'),
@@ -1826,7 +1826,8 @@ const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 
 // tabs, [tiling, turned by 30° (see TURNED), icon, name]; tab, the one in use or last chosen
 const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [0, true, 'tilesSqStretched', 'Squares, a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
+    tabs: [[0, true, 'tilesSq', 'Squares on a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
+           [0, false, 'tilesSqStretched', 'Squares on a long sheet (more round the ring than round the tube), square once rolled'],
            [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk'], ['mobiusHexGrid', 'mobiusHexWalk'], ['mobiusTriGrid', 'mobiusTriWalk']], tab: 0,
@@ -5625,8 +5626,8 @@ function pathSegments() {
   return { data: out.subarray(0, 11 * j), at };
 }
 
-/* The unrolled torus's glued edges, shown by three double arrows passing under the sheet (with the
- * grid on): two across its width (its long edges are glued, going round the tube), one along its
+/* The unrolled torus's glued edges, shown by two double arrows passing under the sheet (with the
+ * grid on): one across its width (its long edges are glued, going round the tube), one along its
  * length (its ends are glued, going round the ring), in the colours of the axes north and east. Each
  * is a flat band in a vertical plane, folding round both edges it joins and running under the sheet.
  * They reach past the sphere round the sheet (the view's frame) by less than 1 %, inside the margin
@@ -5669,7 +5670,7 @@ function torusArrows(R, X, Y) {  // X, Y: half the sheet's length and width (its
   const hw = 0.045 * R, margin = 0.05 * R, east = rgbOf('#ff7b72'), north = rgbOf('#3fb950');
   headLen = 0.08 * R;
   const gap = margin + headLen;
-  for (const x of [-X / 2, X / 2]) band(fold([x, 0, 0], [0, 1, 0], Y, 0.1 * R, gap), [1, 0, 0], hw, north);
+  band(fold([0, 0, 0], [0, 1, 0], Y, 0.1 * R, gap), [1, 0, 0], hw, north);  // one across, in the middle
   band(fold([0, 0, 0], [1, 0, 0], X, 0.13 * R, gap), [0, 1, 0], hw, east);
   return { pos: new Float32Array(pos), nrm: new Float32Array(nrm), col: new Uint8Array(col), count: pos.length / 3 };
 }
