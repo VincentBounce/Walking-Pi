@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.316';
+const VERSION = '0.1.317';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4149,6 +4149,10 @@ let championCode = null;  // the loaded champion's cells, encoded (see encodeCel
 let pendingChampion = null;  // a champion to restore once a loaded setup is built
 let pendingRestore = null;   // the view to restore once the setup in use is built again (see galleryView)
 let pendingSpin = false;     // a Gallery setup shown: Auto-rotate once built and faced (see showSetup)
+// A Gallery setup is shown still and faced for SPIN_DELAY ms, then starts turning, its speed easing
+// in over SPIN_EASE ms (see tick)
+const SPIN_DELAY = 900, SPIN_EASE = 1200;
+let spinFrom = 0, spinRamp = 0;
 
 // Cells as a short code, whichever is shorter:
 // - dense "C.base64url", packing 1, 2 or 4 bits per cell depending on the number of states C;
@@ -4240,7 +4244,7 @@ function applySetup(s) {
 function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
-  if (pendingSpin && walk.is3d && !pendingRestore) $('autoRotate').checked = true;  // faced first (showAll), then turning
+  if (pendingSpin && walk.is3d && !pendingRestore) spinFrom = performance.now() + SPIN_DELAY;  // faced first (showAll), then turning
   pendingSpin = false;
   if (pendingRestore) {  // back from the Gallery without a click: the view as it was (see galleryView)
     const g = pendingRestore;
@@ -6028,9 +6032,15 @@ function tick(now = performance.now()) {
   if (raw > 1 / 250) frameMin = Math.min(frameMin, raw);  // the screen's refresh: its shortest frame
   const dt = Math.min(0.1, raw);  // seconds since the last frame (capped)
   lastTick = now;
+  if (spinFrom && now >= spinFrom) {  // a Gallery setup starts turning (see showSetup)
+    spinFrom = 0;
+    if (walk.is3d) { $('autoRotate').checked = true; spinRamp = now; }
+  }
   if (walk.is3d && $('autoRotate').checked) {
     // the turn from one frame to the next, Q = M(t + dt)·M(t)ᵀ, as a rotation vector on the screen's axes
-    const A = spinAt(spinTime), B = spinAt(spinTime += dt);
+    let k = 1;  // easing in after a Gallery setup's start
+    if (spinRamp) { const t = Math.min(1, (now - spinRamp) / SPIN_EASE); k = t * t * (3 - 2 * t); if (t >= 1) spinRamp = 0; }
+    const A = spinAt(spinTime), B = spinAt(spinTime += dt * k);
     const Q = B.map((row) => [0, 1, 2].map((j) => row[0] * A[j][0] + row[1] * A[j][1] + row[2] * A[j][2]));
     const angle = Math.acos(Math.min(1, Math.max(-1, (Q[0][0] + Q[1][1] + Q[2][2] - 1) / 2))), sin = Math.sin(angle);
     if (angle > 1e-9) {
@@ -6206,6 +6216,7 @@ stage.addEventListener('pointermove', (e) => {
   } else {
     userMovedView();  // a hand rotation ends auto-fit, as a pan or a zoom does, and auto-rotate
     $('autoRotate').checked = false;
+    spinFrom = spinRamp = 0;
     rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
   }
 });
@@ -6447,7 +6458,9 @@ const viewNow = () => ({ autoFit: $('autoFit').checked, autoRotate: $('autoRotat
 // may have turned it off, and the walk could be on the far side), kept only by a click
 function showSetup(setup) {  // framed and faced once built (see showAll), not before: the walk is built apart
   $('autoFit').checked = true;
-  pendingSpin = true;  // then turning, in 3D (see applyPendingView)
+  $('autoRotate').checked = false;  // still while it is faced (faceWalk does not turn a turning view)
+  spinFrom = 0;
+  pendingSpin = true;  // then turning, in 3D, a moment later (see applyPendingView)
   applySetup(setup);
 }
 function setupRow(name, detail, setup, onDelete) {
@@ -6491,6 +6504,7 @@ for (const list of ['builtInList', 'yourList']) {
     pendingRestore = galleryView;
     galleryView = null;
     pendingSpin = false;
+    spinFrom = 0;
     applySetup(before);
   });
 }
