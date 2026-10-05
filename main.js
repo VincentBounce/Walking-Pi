@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.330';
+const VERSION = '0.1.331';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -827,6 +827,10 @@ const MODES = {
                   rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   mobiusWalk: { base: 3, lattice: 'sphere', cells: true, twin: 'mobiusGrid', sphere: 'mobius', turns: [3, 2, 1], perspective: true, round: true,
                 rule: 'on a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
+  mobiusHexWalk: { base: 5, lattice: 'sphere', cells: true, twin: 'mobiusHexGrid', sphere: 'mobiusHex', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
+                   rule: 'on a Möbius strip of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
+  mobiusTriWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], perspective: true, round: true,
+                   rule: 'on a Möbius strip of triangles: exit through the <b>0</b> left or <b>1</b> right edge (over its edge, onto the face behind)' },
   cubeFlat: { base: 3, lattice: 'sphere', cells: true, twin: 'cubeGrid', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
               rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
   octaLR:   { base: 2, lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
@@ -846,6 +850,10 @@ const MODES = {
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
   mobiusGrid: { base: 3, lattice: 'sphere', twin: 'mobiusWalk', sphere: 'mobius', grid: true, turns: [90, 0, -90], perspective: true, round: true,
                 rule: 'along the edges of a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
+  mobiusHexGrid: { base: 2, lattice: 'sphere', twin: 'mobiusHexWalk', sphere: 'mobiusHex', grid: true, turns: [60, -60], perspective: true, round: true,
+                   rule: 'along the edges of a Möbius strip of hexagons: <b>0</b> turn left, <b>1</b> turn right (over its edge, onto the face behind)' },
+  mobiusTriGrid: { base: 5, lattice: 'sphere', twin: 'mobiusTriWalk', sphere: 'mobiusTri', grid: true, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
+                   rule: 'along the edges of a Möbius strip of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
   cubeGrid:  { base: 3, lattice: 'sphere', twin: 'cubeFlat', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
                rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
   tetraGrid: { base: 5, lattice: 'sphere', twin: 'tetraLR', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
@@ -1792,7 +1800,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius',
+  cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
@@ -1819,6 +1827,8 @@ const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
+  { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk'], ['mobiusHexGrid', 'mobiusHexWalk'], ['mobiusTriGrid', 'mobiusTriWalk']], tab: 0,
+    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [2, false, 'tilesTri', 'Triangles']] },
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk'], ['icosaGrid', 'icosaLR']], tab: 0,
     tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
 ];
@@ -2662,62 +2672,101 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
 }
 
 /* ---- 7.4b Möbius strip ---------------------------------------------------------------------- */
-/* A Möbius strip of nu × nv squares: nu along the strip, nv across, the sheet's ends glued with a
- * half twist, (nu, j) ≡ (0, nv − j). Its middle line is a circle of radius 1, and the strip is
- * MOBIUS_WIDTH across, so the squares are square when nu / nv is 2π / MOBIUS_WIDTH.
- * As a strip of paper, each square has two faces, and a walker keeps to the face it is on: at the
- * strip's edge it goes round to the face just behind. The faces make one surface, 2·nu × nv cells
- * (u, v), u < nu the front (the square (u, v)), nu ≤ u < 2·nu the back (behind the square
- * (u − nu, nv − 1 − v)): going round along u, and over the edge (u, nv) ≡ (u + nu, 0). Every corner
- * and cell is like any other there, with 4 neighbours: no edge, nothing mirrored. */
+/* A Möbius strip tiled with squares, hexagons or triangles: on the flat sheet, a strip L long (its
+ * middle line, a circle of radius 1 once rolled up, is L tile edges long) and W wide, its ends glued
+ * with a half twist, (x + L, y) ≡ (x, W − y). Its width is MOBIUS_WIDTH times the circle's radius.
+ * As a strip of paper, each tile has two faces, and a walker keeps to the face it is on: at the
+ * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
+ * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const mobiusColumns = (nv) => Math.round((2 * Math.PI * nv) / MOBIUS_WIDTH);
-/* Sheet point (i, j) of the strip rolled up by m ∈ [0, 1]: at m = 0 the flat strip (2π by the width,
- * in the x–y plane, as the unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends
- * round the circle (keeping lengths, as torusPoint does) and twists along it, up to half a turn at
- * m = 1, so the ends meet upside down. */
-function mobiusPoint(i, j, nu, nv, m) {
-  const X = (i / nu - 0.5) * 2 * Math.PI, S = (j / nv - 0.5) * (2 * Math.PI * nv) / nu;  // along, across (same unit)
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri'];
+/* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
+ * unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends round the circle (keeping
+ * lengths, as torusPoint does) and twists along it, up to half a turn at m = 1, so the ends meet
+ * upside down: the point (x + L, y) is then the point (x, W − y). */
+function mobiusPoint(x, y, L, W, m) {
+  const X = (x / L - 0.5) * 2 * Math.PI, S = ((y - W / 2) * 2 * Math.PI) / L;  // along, across (same unit)
   const tw = (m * X) / 2, w = S * Math.cos(tw), h = S * Math.sin(tw);  // across: outwards and up
   if (m < 1e-6) return [X, -w, h];
   const rr = 1 / m, ph = X / rr;
   return [(rr + w) * Math.sin(ph), rr - m - (rr + w) * Math.cos(ph), h];
 }
-// The point of a face's corner (u, v): the front's on the sheet, the back's on the sheet turned over
-// (back: the corner of a back square, as u = nu ends the front and starts the back)
-const mobiusFacePoint = (u, v, nu, nv, m, back = u > nu) => (back ? mobiusPoint(u - nu, nv - v, nu, nv, m) : mobiusPoint(u, v, nu, nv, m));
-function mobiusMesh(nv, nu = mobiusColumns(nv)) {
-  const key = `mobius${nv}x${nu}`;
-  if (meshCache[key]) return meshCache[key];
-  const U = 2 * nu;  // the faces' corners, numbered by (u, v): v = nv is v = 0 further on, across the edge
-  const vid = (u, v) => { if (v === nv) { u += nu; v = 0; } return (((u % U) + U) % U) * nv + v; };
-  const verts = new Array(3 * U * nv), vuv = new Float64Array(2 * U * nv);
-  for (let u = 0; u < U; u++) for (let v = 0; v < nv; v++) {
-    const id = vid(u, v);
-    verts.splice(3 * id, 3, ...mobiusFacePoint(u, v, nu, nv, 1));
-    vuv.set([u, v], 2 * id);
-  }
-  const quads = [], uv = [];
-  for (let u = 0; u < U; u++) {
-    for (let v = 0; v < nv; v++) {
-      const c = [[u, v], [u + 1, v], [u + 1, v + 1], [u, v + 1]];  // counterclockwise seen from its own face
-      quads.push(c.map(([a, b]) => vid(a, b)));
-      uv.push(...c.flat());
+/* The tiles of a strip nv rows wide, each as its corners (x, y) counterclockwise on the sheet, the
+ * glued ends matching the tiling: L, W and the tiles.
+ * - squares: nv rows of squares, L of them along;
+ * - hexagons (flat-topped, edge 1): an odd number of columns 1.5 apart, nv hexagons each, odd columns
+ *   half a hexagon higher; the strip's edges run zigzag along the outer hexagons (none is cut);
+ * - triangles (edge 1): nv rows; L whole, or half a triangle more when nv is odd. */
+function mobiusSheet(kind, nv) {
+  const len = (W) => (2 * Math.PI * W) / MOBIUS_WIDTH, tiles = [], H = Math.sqrt(3) / 2;
+  if (kind === 'mobiusHex') {
+    const W = Math.sqrt(3) * (nv + 0.5), a = 2 * Math.round((len(W) / 1.5 - 1) / 2) + 1, L = 1.5 * a;
+    for (let c = 0; c < a; c++) for (let r = 0; r < nv; r++) {
+      const cx = 1.5 * c + 1, cy = Math.sqrt(3) * (r + (c % 2) / 2) + H;
+      tiles.push([0, 1, 2, 3, 4, 5].map((k) => [cx + Math.cos((k * Math.PI) / 3), cy + Math.sin((k * Math.PI) / 3)]));
     }
+    return { L, W, tiles };
   }
-  const mesh = finishMesh(verts, quads, 4, nv, null);  // as listed: the back's squares face the other way
-  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, nu, nv, uv: new Float64Array(uv), vuv }));
+  if (kind === 'mobiusTri') {
+    const W = nv * H, L = nv % 2 ? Math.floor(len(W)) + 0.5 : Math.round(len(W));
+    for (let j = 0; j < nv; j++) {
+      const y0 = j * H, y1 = y0 + H;
+      for (let a = (j % 2) / 2 - 2; a < L + 2; a += 1) {
+        if (a + 0.5 >= 0 && a + 0.5 < L) tiles.push([[a, y0], [a + 1, y0], [a + 0.5, y1]]);           // ▲, its centre at a + ½
+        if (a + 1 >= 0 && a + 1 < L) tiles.push([[a + 0.5, y1], [a + 1, y0], [a + 1.5, y1]]);       // ▼, at a + 1
+      }
+    }
+    return { L, W, tiles };
+  }
+  const L = Math.round(len(nv));
+  for (let i = 0; i < L; i++) for (let j = 0; j < nv; j++) tiles.push([[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]);
+  return { L, W: nv, tiles };
 }
-// A step between neighbouring corners a and b of the faces, [du, dv] in squares (round the strip,
-// over its edge)
-function mobiusDelta(g, a, b) {
-  const { nu, nv, vuv } = g, U = 2 * nu;
-  let du = vuv[2 * b] - vuv[2 * a], dv = vuv[2 * b + 1] - vuv[2 * a + 1];
-  if (dv < -nv / 2) { dv += nv; du -= nu; } else if (dv > nv / 2) { dv -= nv; du += nu; }  // over the edge
-  return [du - U * Math.round(du / U), dv];
+// The mesh of the strip's two faces: the front of each tile as on the sheet, its back the same
+// corners turned over. A corner of the sheet is a corner of each face (but one where the faces
+// meet, on the strip's edge); past the glued ends, the front goes on as the back
+function mobiusMesh(kind, nv) {
+  const key = `${kind}${nv}`;
+  if (meshCache[key]) return meshCache[key];
+  const { L, W, tiles: sheet } = mobiusSheet(kind, nv), k = sheet[0].length;
+  const { verts, add } = vertexStore();
+  const ids = sheet.map((t) => t.map(([x, y]) => add(...mobiusPoint(x, y, L, W, 1))));  // the glued ends share corners
+  const n0 = verts.length / 3, uses = new Map(), onEdge = new Uint8Array(n0), home = new Float64Array(n0).fill(NaN);
+  for (const t of ids) for (let q = 0; q < k; q++) {  // edges with one tile: the strip's edge
+    const a = t[q], b = t[(q + 1) % k], e = Math.min(a, b) * n0 + Math.max(a, b);
+    uses.set(e, (uses.get(e) ?? 0) + 1);
+  }
+  for (const [e, c] of uses) if (c === 1) { onEdge[Math.floor(e / n0)] = 1; onEdge[e % n0] = 1; }
+  // each sheet corner seen from the side of the glued ends where it was first met: from the other
+  // side (x off by about L), its faces swap
+  sheet.forEach((t, i) => t.forEach(([x], q) => { if (Number.isNaN(home[ids[i][q]])) home[ids[i][q]] = x; }));
+  const index = new Map(), cv = [];
+  const corner = (v, side) => {
+    const key = onEdge[v] ? 2 * v : 2 * v + side;
+    if (!index.has(key)) { index.set(key, cv.length / 3); cv.push(verts[3 * v], verts[3 * v + 1], verts[3 * v + 2]); }
+    return index.get(key);
+  };
+  const tiles = [], uv = [];
+  for (const side of [0, 1]) sheet.forEach((t, i) => {
+    const c = t.map(([x], q) => corner(ids[i][q], side ^ (Math.abs(x - home[ids[i][q]]) > L / 2 ? 1 : 0)));
+    tiles.push(side ? c.reverse() : c);
+    uv.push(...(side ? [...t].reverse() : t).flat());
+  });
+  const mesh = finishMesh(cv, tiles, k, nv, null);  // as listed: a back faces the other way
+  // the step from a corner to a neighbour, on the sheet as seen from its face (a back: mirrored)
+  const N = cv.length / 3, delta = new Map();
+  tiles.forEach((c, t) => {
+    const back = t >= sheet.length ? -1 : 1;
+    for (let q = 0; q < k; q++) {
+      const a = c[q], b = c[(q + 1) % k], i = 2 * (k * t + q), j = 2 * (k * t + (q + 1) % k);
+      const dx = uv[j] - uv[i], dy = (uv[j + 1] - uv[i + 1]) * back;
+      delta.set(a * N + b, [dx, dy]); delta.set(b * N + a, [-dx, -dy]);
+    }
+  });
+  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
 }
-// The sheet point of a surface: a torus, or a face of a Möbius strip
-const sheetPoint = (g, i, j, m) => (g.mobius ? mobiusFacePoint : torusPoint)(i, j, g.nu, g.nv, m);  // (a front square's corner)
+// The sheet point of a surface: a torus, or a Möbius strip
+const sheetPoint = (g, i, j, m) => (g.mobius ? mobiusPoint(i, j, g.L, g.W, m) : torusPoint(i, j, g.nu, g.nv, m));
 
 /* Torus of regular hexagons (flat-topped): nu columns around the ring, nv rows around the tube;
  * odd columns sit half a row higher, so nu must be even for the columns to close up. In sheet
@@ -2840,7 +2889,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', 'mobius'];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'icosa', 'torus', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -2848,9 +2897,7 @@ function shapeAt(g, m) {
   if (g.torus) {
     // per tile, from the sheet coordinates of its corners: at m < 1 the seams open, so corners are not shared
     const { uv } = g;
-    if (g.mobius) {  // a square's corners on its own face
-      for (let q = 0; q < k * n; q++) corners.set(mobiusFacePoint(uv[2 * q], uv[2 * q + 1], g.nu, g.nv, m, uv[2 * k * Math.floor(q / k)] >= g.nu), 3 * q);
-    } else for (let q = 0; q < k * n; q++) corners.set(sheetPoint(g, uv[2 * q], uv[2 * q + 1], m), 3 * q);
+    for (let q = 0; q < k * n; q++) corners.set(sheetPoint(g, uv[2 * q], uv[2 * q + 1], m), 3 * q);
   } else {
     const nv = g.verts.length / 3, R0 = g.extent, moved = new Float64Array(3 * nv);
     for (let v = 0; v < nv; v++) {  // slide towards the sphere through the corners
@@ -3025,9 +3072,14 @@ const SPHERES = {
                     columns: turnedHexColumns, perRow: 1, steps: [2, 1],  // an even count of columns, around the tube
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('hextorusTurned', s).reduce((a, b) => a * b), unit: 'hexagons' },
   // Möbius strip: its size is its rows across; square edge = 1 unit (the middle circle is nu long)
-  mobius: { mesh: (s) => mobiusMesh(...torusDims('mobius', s)), radius: (s) => torusDims('mobius', s)[1] / (2 * Math.PI),
-            columns: mobiusColumns, perRow: 1, steps: [1, 1],
-            sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => torusDims('mobius', s).reduce((a, b) => a * b), unit: 'squares' },
+  // Möbius strips: their size is their rows across; tile edge = 1 unit (the middle circle is L long);
+  // tiles: on both faces
+  mobius: { mesh: (s) => mobiusMesh('mobius', s), radius: (s) => mobiusSheet('mobius', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobius', s).L,
+            sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobius', s).tiles.length, unit: 'squares' },
+  mobiusHex: { mesh: (s) => mobiusMesh('mobiusHex', s), radius: (s) => mobiusSheet('mobiusHex', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length / s,
+               sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length, unit: 'hexagons' },
+  mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusSheet('mobiusTri', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / s,
+               sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
@@ -3135,7 +3187,7 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'icosa', 'hexsphere'];
-const TORI = ['torus', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned', 'mobius'];  // sized by rows × tiles per row
+const TORI = ['torus', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned' };
 let torusTurned = false;
@@ -3171,14 +3223,23 @@ function torusStarts(g) {
   return [...starts.keys()].sort((a, b) => a - b).map((key) => starts.get(key));
 }
 
-// On a Möbius strip's faces every corner is like any other (see mobiusMesh), and turning the strip
-// over swaps the two ways along an edge: the different walks are 2, along the strip and across it.
-// They start in the middle of the front, heading east (along), then north (across, to the edge).
+// On a Möbius strip's faces, as on a torus, the different walks are one per direction of edge (2 on
+// squares, 3 on hexagons and triangles): from the corner of the front nearest the middle of the sheet
+// (or the next one, to head the other way), north (or the nearest after it) first, then east.
 function mobiusStarts(g) {
-  const G = gridGraph(g), { nu, nv, vuv } = g, u0 = Math.round(nu / 2), v0 = Math.floor(nv / 2);
-  const find = (u, v) => G.nbrs.findIndex((_, w) => vuv[2 * w] === u && vuv[2 * w + 1] === v);
-  const v = find(u0, v0);
-  return [[v, find(u0 - 1, v0)], [v, find(u0, v0 - 1)]];
+  const G = gridGraph(g), k = g.sides, N = G.nv;
+  let v0 = g.poly[0], best = Infinity;
+  for (let q = 0; q < k * g.front; q++) {  // the front's corners
+    const d = Math.hypot(g.uv[2 * q] - g.L / 2, g.uv[2 * q + 1] - g.W / 2);
+    if (d < best) { best = d; v0 = g.poly[q]; }
+  }
+  const starts = new Map();
+  for (const f of G.nbrs[v0]) {
+    const [e, n] = g.delta.get(f * N + v0), h = (Math.atan2(e, n) * 180) / Math.PI;  // clockwise from north
+    const key = Math.round(((h % 180) + 180) % 180) % 180;  // its direction, either way
+    if (!starts.has(key)) starts.set(key, Math.abs(h - key) < 90 ? [v0, f] : [f, v0]);
+  }
+  return [...starts.keys()].sort((a, b) => a - b).map((key) => starts.get(key));
 }
 
 // The rotations (3×3 matrices, by rows) that map a solid onto itself, from its corners' directions:
@@ -3382,9 +3443,9 @@ function sheetDelta(g, G, a, b) {
 // stretched outside, which would change the edge a turn picks from place to place, so a repeating
 // pattern would not repeat.
 function nextCorner(g, G, v, from, angle) {
+  if (g.mobius) return nextCornerAround(g, v, from, angle);
   const V = g.verts, n = g.torus ? [0, 0, 1] : [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n);
   const flat = (w) => {  // the edge from v to w, flattened onto the plane tangent at v (or on the sheet)
-    if (g.mobius) { const [du, dv] = mobiusDelta(g, v, w); return [du, dv, 0]; }  // in squares, on the faces
     if (g.torus) { const [du, dv] = sheetDelta(g, G, v, w); return [(du / g.nu) * 2 * Math.PI, (dv / g.nv) * 2 * Math.PI * TORUS_TUBE, 0]; }
     const e = [0, 1, 2].map((d) => V[3 * w + d] - V[3 * v + d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl);
     return e.map((x, d) => x - s * n[d]);
@@ -3396,6 +3457,43 @@ function nextCorner(g, G, v, from, angle) {
     const e = flat(w), c = cross(h, e);
     const turn = Math.atan2((c[0] * n[0] + c[1] * n[1] + c[2] * n[2]) / nl, h[0] * e[0] + h[1] * e[1] + h[2] * e[2]);
     const off = Math.abs(turn - angle) - (turn > 0 ? 1e-9 : 0);
+    if (off < err - 1e-12) { err = off; next = w; }
+  }
+  return next;
+}
+
+/* On a Möbius strip's faces, the turn is measured going round the corner, tile by tile (their
+ * corners' angles, counterclockwise), and in proportion to the whole way round: where the faces meet
+ * on a zigzag edge (hexagons), a corner is not flat, 240° round at an outer corner, 480° at an inner
+ * one; straight on is halfway round, a turn of 60° a sixth of the way. On a flat corner, the turns of
+ * nextCorner. The wedges of each corner: [the corner it starts towards, the one it ends towards,
+ * its angle], once per mesh. */
+function cornerWedges(g) {
+  if (g.wedges) return g.wedges;
+  const k = g.sides, W = Array.from({ length: g.verts.length / 3 }, () => []);
+  for (let t = 0; t < g.n; t++) for (let q = 0; q < k; q++) {
+    const i = 2 * (k * t + q), a = 2 * (k * t + (q + 1) % k), b = 2 * (k * t + (q + k - 1) % k), uv = g.uv;
+    const ax = uv[a] - uv[i], ay = uv[a + 1] - uv[i + 1], bx = uv[b] - uv[i], by = uv[b + 1] - uv[i + 1];
+    const angle = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / Math.hypot(ax, ay) / Math.hypot(bx, by))));
+    W[g.poly[k * t + q]].push([g.poly[k * t + (q + 1) % k], g.poly[k * t + (q + k - 1) % k], angle]);
+  }
+  return (g.wedges = W);
+}
+function nextCornerAround(g, v, from, angle) {
+  const W = cornerWedges(g)[v], at = [];
+  let e = from, phi = 0;
+  for (let guard = 0; guard < 16; guard++) {  // counterclockwise from the edge it came by, back to it
+    const wedge = W.find(([w]) => w === e);
+    if (!wedge) break;
+    phi += wedge[2];
+    e = wedge[1];
+    if (e === from) break;
+    at.push([e, phi]);
+  }
+  const target = ((Math.PI + angle) * phi) / (2 * Math.PI);  // straight on: halfway round
+  let next = at[0]?.[0] ?? from, err = Infinity;
+  for (const [w, p] of at) {
+    const off = Math.abs(p - target) - (p > target ? 1e-9 : 0);  // on a tie, the left one
     if (off < err - 1e-12) { err = off; next = w; }
   }
   return next;
@@ -3414,7 +3512,7 @@ const TORUS_RATIO = [0.8, 1.25], LOOP_STEPS = 20000, LOOP_GAP = 1, LOOP_MAX = 12
 let torusLoopList = null;  // { key, loops: [{ start, size, laps: [ring, tube], steps }] } for the number in use
 function torusLoops() {
   const mode = MODES[$('mode').value], key = `${formulaInUse} ${$('mode').value} ${surfaceOf(mode)}`;
-  if (!(mode.grid || mode.cells) || !TORI.includes(surfaceOf(mode)) || surfaceOf(mode) === 'mobius') return [];  // along the grid or on cells, on a torus
+  if (!(mode.grid || mode.cells) || !TORI.includes(surfaceOf(mode)) || MOBIUS_KINDS.includes(surfaceOf(mode))) return [];  // along the grid or on cells, on a torus
   if (!current || current.formula !== formulaInUse || current.mode !== $('mode').value) return [];  // its digits are on their way
   if (torusLoopList?.key === key) return torusLoopList.loops;
   const loops = [];
