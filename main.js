@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.305';
+const VERSION = '0.1.306';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -683,15 +683,15 @@ const BANDS = 256;
 const PALETTES = {
   // unlit: the surfaces' tiles not walked; trail: a Life cell just dead, fading to unlit; alive: Life in one colour
   dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429',
-          unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(0, 0, 0, 0.35)', edgeAlpha: 0.35 },
+          unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(0, 0, 0, 0.35)', edgeAlpha: 0.35, shade: 0.6 },
   light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700',
-           unlit: '#d5dbe2', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.13)', edgeAlpha: 0.13 },
+           unlit: '#e6eaef', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.13)', edgeAlpha: 0.13, shade: 0.3, fadeEdges: true },
 };
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [];
-let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_ALPHA;  // EDGE: the surfaces' tile edges
+let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_ALPHA, SHADE, FADE_EDGES;  // EDGE: the surfaces' tile edges; SHADE: how dark a tile turned away gets
 function setPalette(theme) {
   const P = PALETTES[theme];
-  UNLIT = P.unlit; LIFE_ALIVE = P.alive; EDGE = P.edge; EDGE_ALPHA = P.edgeAlpha;
+  UNLIT = P.unlit; LIFE_ALIVE = P.alive; EDGE = P.edge; EDGE_ALPHA = P.edgeAlpha; SHADE = P.shade; FADE_EDGES = !!P.fadeEdges;
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), [a, b] = [hex(P.trail), hex(P.unlit)];
   for (let i = 0; i < 8; i++) {  // the 8 shades of a dead Life cell, from the trail colour to unlit
     const f = 1 - i / 8, mix = (k) => Math.round(b[k] + (a[k] - b[k]) * f);
@@ -5038,10 +5038,17 @@ function faded(colour, a) {
   const [r, g, b] = rgbOf(colour), [R, G, B] = rgbOf(UNLIT);
   return `rgb(${Math.round(R + (r - R) * a)}, ${Math.round(G + (g - G) * a)}, ${Math.round(B + (b - B) * a)})`;
 }
+// The tile edges' opacity on a shape: on a light page, fainter as the tiles get small on screen
+// (thousands of dark lines would grey the whole solid)
+function edgeAlpha(sh) {
+  if (!FADE_EDGES) return EDGE_ALPHA;
+  const c = sh.corners, px = walk.R * Math.hypot(c[0] - c[3], c[1] - c[4], c[2] - c[5]) * view.scale;
+  return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 20));
+}
 function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
-  const key = `${colour}|${shade}`;
+  const key = `${colour}|${shade}|${SHADE}`;
   if (!shadeCache.has(key)) {
-    const k = 1 - 0.6 * shade, [r, g, b] = rgbOf(colour).map((v) => Math.round(v * k));
+    const k = 1 - SHADE * shade, [r, g, b] = rgbOf(colour).map((v) => Math.round(v * k));
     shadeCache.set(key, `rgb(${r}, ${g}, ${b})`);
   }
   return shadeCache.get(key);
@@ -5066,7 +5073,7 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
   visible.sort((a, b) => a[0] - b[0]);
   const grid = $('showGrid').checked && s > 6;
   ctx.lineWidth = 0.6;
-  ctx.strokeStyle = EDGE;
+  ctx.strokeStyle = `rgba(0, 0, 0, ${edgeAlpha(sh)})`;
   for (const [, t] of visible) {
     const level = levelOf(t);
     let toward = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]);
@@ -5138,10 +5145,10 @@ vec4 clipOf(vec3 s, float bias) {
 }`;
 const GL_SHADERS = {
   tile: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; out vec3 vCol;${GL_PROJECT}
+in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float uShade; out vec3 vCol;${GL_PROJECT}
 void main() {
   float toward = dot(aNrm, uV); if (uTwoSided) toward = abs(toward);
-  vCol = aCol * (1.0 - 0.6 * (1.0 - max(0.0, toward)));
+  vCol = aCol * (1.0 - uShade * (1.0 - max(0.0, toward)));
   gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
@@ -5311,6 +5318,7 @@ function glSurface(palette, levelOf, path) {
   // tiles
   let u = uniforms(prog.tile);
   gl.uniform1i(u('uTwoSided'), walk.geo.torus && sh.m < 1 ? 1 : 0);
+  gl.uniform1f(u('uShade'), SHADE);
   attrib(prog.tile, 'aPos', S.pos, 3);
   attrib(prog.tile, 'aNrm', S.nrm, 3);
   attrib(prog.tile, 'aCol', S.col, 3, gl.UNSIGNED_BYTE, true);
@@ -5322,7 +5330,7 @@ function glSurface(palette, levelOf, path) {
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);  // the canvas stays opaque under the lines
     u = uniforms(prog.edge);
-    gl.uniform1f(u('uEdge'), EDGE_ALPHA);
+    gl.uniform1f(u('uEdge'), edgeAlpha(sh));
     attrib(prog.edge, 'aPos', S.pos, 3);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
     if (S.keys.edgesTopo !== S.keys.topo) { gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, S.edgeIdx, gl.STATIC_DRAW); S.keys.edgesTopo = S.keys.topo; }
