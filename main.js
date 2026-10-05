@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.334';
+const VERSION = '0.1.335';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5073,7 +5073,7 @@ function tileVisible(t) {
 // is the tile of point i on the visible side? (an unrolled torus shows both sides)
 const facing = (i) => twoSidedNow() || tileVisible(walk.tile[i]);
 // an unrolled torus is an open surface: both sides show
-const twoSidedNow = () => !walk.geo?.mobius && !!walk.geo?.torus && walk.shape.m < 1;  // (a Möbius strip: each face its own squares)
+const twoSidedNow = () => false;  // every surface is seen from its face only (an unrolled torus: its top; a Möbius strip: each face its own tiles)
 
 // Sphere: visible tiles coloured by visit count (log scale) and shading
 function drawSphere() {
@@ -5463,16 +5463,19 @@ vec4 clipOf(vec3 s, float bias) {
 }`;
 const GL_SHADERS = {
   tile: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float uShade; out vec3 vCol;${GL_PROJECT}
+in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float uShade; uniform vec4 uPlain; out vec3 vCol;${GL_PROJECT}
 void main() {
   float toward = dot(aNrm, uV); if (uTwoSided) toward = abs(toward);
-  vCol = aCol * (1.0 - uShade * (1.0 - max(0.0, toward)));
+  vCol = (uPlain.a > 0.0 ? uPlain.rgb : aCol) * (1.0 - uShade * (1.0 - max(0.0, toward)));  // uPlain: the back of an open sheet
   gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   edge: [`#version 300 es
-in vec3 aPos; uniform float uBias;${GL_PROJECT}
-void main() { gl_Position = clipOf(toScreen(aPos), uBias); }`, `#version 300 es
+in vec3 aPos; in vec3 aNrm; uniform float uBias;${GL_PROJECT}
+void main() {  // the edges of a tile turned away are not drawn (the back of an open sheet, or of a strip's face)
+  vec3 eye = uPersp.w > 0.0 ? uPersp.xyz + uV * uPersp.w - aPos : uV;
+  gl_Position = dot(aNrm, eye) < 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : clipOf(toScreen(aPos), uBias);
+}`, `#version 300 es
 precision mediump float; uniform float uEdge; out vec4 o; void main() { o = vec4(0.0, 0.0, 0.0, uEdge); }`],
   // the path printed on a surface's tiles (see pathSegments): one flat ribbon per segment, in its
   // tile's plane (aN its normal), as wide as the path on screen, its ends going on half that width
@@ -5672,14 +5675,24 @@ function glSurface(palette, levelOf, path) {
   const off = (p, names) => names.forEach((name) => { const loc = gl.getAttribLocation(p, name); if (loc >= 0) { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); } });
   // tiles
   let u = uniforms(prog.tile);
-  gl.uniform1i(u('uTwoSided'), twoSidedNow() ? 1 : 0);
+  // drawn on their face only (a strip's faces each show their own; an unrolled torus, its top), the
+  // back of an open sheet plain; the corners of a torus are listed against its normals (shapeSign)
+  const open = g.torus && !g.mobius && sh.m < 1, front = shapeSign(g) < 0 ? gl.FRONT : gl.BACK, back = front === gl.BACK ? gl.FRONT : gl.BACK;
+  gl.uniform1i(u('uTwoSided'), open ? 1 : 0);
   gl.uniform1f(u('uShade'), SHADE);
+  gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
   attrib(prog.tile, 'aPos', S.pos, 3);
   attrib(prog.tile, 'aNrm', S.nrm, 3);
   attrib(prog.tile, 'aCol', S.col, 3, gl.UNSIGNED_BYTE, true);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan);
-  if (g.mobius) { gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); }  // each face of the strip shows its own squares only
+  gl.enable(gl.CULL_FACE);
+  gl.cullFace(front);
   gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
+  if (open) {
+    gl.cullFace(back);
+    gl.uniform4f(u('uPlain'), ...rgbCached(UNLIT).map((c) => c / 255), 1);
+    gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
+  }
   gl.disable(gl.CULL_FACE);
   off(prog.tile, ['aPos', 'aNrm', 'aCol']);
   // grid: the tile edges, when the tiles are big enough on screen
@@ -5690,10 +5703,11 @@ function glSurface(palette, levelOf, path) {
     gl.uniform1f(u('uEdge'), edgeAlpha(sh));
     gl.uniform1f(u('uBias'), edgeBias);
     attrib(prog.edge, 'aPos', S.pos, 3);
+    attrib(prog.edge, 'aNrm', S.nrm, 3);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
     if (S.keys.edgesTopo !== S.keys.topo) { gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, S.edgeIdx, gl.STATIC_DRAW); S.keys.edgesTopo = S.keys.topo; }
     gl.drawElements(gl.LINES, S.edgeIdx.length, gl.UNSIGNED_INT, 0);
-    off(prog.edge, ['aPos']);
+    off(prog.edge, ['aPos', 'aNrm']);
     gl.disable(gl.BLEND);
   }
   // path: the steps walked so far, printed on their tiles (see pathSegments)
