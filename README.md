@@ -115,6 +115,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 - **Starts:** the different walks a surface allows (its rotations turn a start into another one that draws the same walk, turned), numbered alike at every size; hovering the number shows them all.
 - A walk that comes back onto itself stops after its first round (`↻`, see [Regular patterns](#regular-patterns)); on a torus, a fraction's **loops** button finds the sizes where it closes in fewest laps.
 - A surface can be shown **flat or round**: the torus and the Möbius strip unroll into their sheet and the polyhedra flatten, and the walk goes on during the morph.
+- The unrolled torus, with the grid on, shows how its sheet closes up: two blue double arrows under it across its width (its long edges are glued, round the tube) and a pink one along its length (its ends are glued, round the ring).
 - The **Möbius strip** is walked as a strip of paper: each square has two faces, each with its own cells, and a walker keeps to its face; at the strip's edge it goes round onto the face just behind. Both faces make one surface with no edge (2 starts on squares, 3 on hexagons and triangles); at a hexagon strip's zigzag edge a corner is not flat, and turns there are measured as a share of the way round it.
 
 ### 3D walks

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.335';
+const VERSION = '0.1.336';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5545,7 +5545,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), ribbon: buf(), arrPos: buf(), arrNrm: buf(), arrCol: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -5604,6 +5604,41 @@ function pathSegments() {
   }
   at[n] = j;
   return { data: out.subarray(0, 11 * j), at };
+}
+
+/* The unrolled torus's glued edges, shown by three double arrows passing under the sheet (with the
+ * grid on): two across its width (its long edges are glued, going round the tube), one along its
+ * length (its ends are glued, going round the ring). Each is a flat band in a vertical plane, half
+ * an ellipse below the sheet, its heads coming up just past the edges it joins. They stay within the
+ * sphere round the sheet (the view's frame), so the view never cuts them, and they change nothing to
+ * the framing. Triangles: positions, normals, colours (see glSurface). */
+function torusArrows(R) {
+  const X = Math.PI * R, Y = 2 * Math.PI * TORUS_TUBE * R / 2, pos = [], nrm = [], col = [];
+  const unitV = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+  const add = (p, n, c) => { pos.push(...p); nrm.push(...n); col.push(...c); };
+  const tri = (a, b, c, n, colour) => { add(a, n, colour); add(b, n, colour); add(c, n, colour); };
+  // a band along the points P (in a vertical plane), W its sideways direction, both ends a head
+  const band = (P, W, hw, colour) => {
+    const T = (i) => unitV(P[Math.min(i + 1, P.length - 1)].map((x, d) => x - P[Math.max(i - 1, 0)][d]));
+    const at = (p, w, k) => p.map((x, d) => x + w[d] * k);
+    for (let i = 0; i + 1 < P.length; i++) {
+      const n = unitV(cross(T(i), W)), a = at(P[i], W, -hw), b = at(P[i], W, hw), c = at(P[i + 1], W, hw), e = at(P[i + 1], W, -hw);
+      tri(a, b, c, n, colour); tri(a, c, e, n, colour);
+    }
+    for (const [i, sign] of [[0, -1], [P.length - 1, 1]]) {  // heads: along the band, out of each end
+      const t = T(i).map((x) => x * sign), n = unitV(cross(t, W)), tip = at(P[i], t, 3.2 * hw);
+      tri(at(P[i], W, -2.4 * hw), at(P[i], W, 2.4 * hw), tip, n, colour);
+    }
+  };
+  // half an ellipse below the sheet, from just past one edge to just past the other (u: its axis)
+  const arc = (centre, u, a, h) => Array.from({ length: 41 }, (_, i) => {
+    const th = 0.28 + ((Math.PI - 0.56) * i) / 40;
+    return [0, 1, 2].map((d) => centre[d] + u[d] * a * Math.cos(th) + (d === 2 ? -h * Math.sin(th) : 0));
+  });
+  const across = rgbOf('#58a6ff'), along = rgbOf('#f778ba');
+  for (const x of [-X / 2, X / 2]) band(arc([x, 0, 0], [0, 1, 0], 1.12 * Y, 0.85 * Y), [1, 0, 0], 0.09 * Y, across);
+  band(arc([0, 0, 0], [1, 0, 0], 1.04 * X, 0.5 * X), [0, 1, 0], 0.09 * Y, along);
+  return { pos: new Float32Array(pos), nrm: new Float32Array(nrm), col: new Uint8Array(col), count: pos.length / 3 };
 }
 
 // Draw the surface with its palette and levelOf (as drawSphere picks them); false if WebGL is missing
@@ -5695,6 +5730,25 @@ function glSurface(palette, levelOf, path) {
   }
   gl.disable(gl.CULL_FACE);
   off(prog.tile, ['aPos', 'aNrm', 'aCol']);
+  // the glued edges of an unrolled torus, under the sheet, with the grid on (see torusArrows)
+  if (g.torus && !g.mobius && sh.m < 0.02 && $('showGrid').checked) {
+    if (S.keys.arrows !== R) {
+      const A = torusArrows(R);
+      gl.bindBuffer(gl.ARRAY_BUFFER, S.arrPos); gl.bufferData(gl.ARRAY_BUFFER, A.pos, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, S.arrNrm); gl.bufferData(gl.ARRAY_BUFFER, A.nrm, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, S.arrCol); gl.bufferData(gl.ARRAY_BUFFER, A.col, gl.STATIC_DRAW);
+      S.arrCount = A.count; S.keys.arrows = R;
+    }
+    u = uniforms(prog.tile);
+    gl.uniform1i(u('uTwoSided'), 1);
+    gl.uniform1f(u('uShade'), SHADE);
+    gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
+    attrib(prog.tile, 'aPos', S.arrPos, 3);
+    attrib(prog.tile, 'aNrm', S.arrNrm, 3);
+    attrib(prog.tile, 'aCol', S.arrCol, 3, gl.UNSIGNED_BYTE, true);
+    gl.drawArrays(gl.TRIANGLES, 0, S.arrCount);
+    off(prog.tile, ['aPos', 'aNrm', 'aCol']);
+  }
   // grid: the tile edges, when the tiles are big enough on screen
   if ($('showGrid').checked && view.scale > 6) {
     gl.enable(gl.BLEND);
