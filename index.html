@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261011e">
+  <link rel="stylesheet" href="style.css?v=20261011f">
+  <script>  // the theme before the first paint (see applyTheme)
+    try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
+  </script>
 </head>
 <body>
   <header>
@@ -243,6 +246,14 @@
           <label class="check" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click); hover for the display settings"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
         </div>
         <div class="stage-more">  <!-- shown on hover, below -->
+          <div id="themeRow">
+            <div id="themeButtons" class="choice-row" title="The colours of the page: light, dark, or as the system is set"></div>
+            <select id="theme" hidden>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System</option>
+            </select>
+          </div>
           <div id="colorsRow"><div id="colorButtons" class="choice-list"></div></div>
           <select id="colorMode" hidden>
             <option value="gradient">Rainbow along the walk</option>
@@ -260,7 +271,7 @@
             <select id="sky" hidden>
               <option value="twilight">Twilight</option>
               <option value="blue">Deep blue</option>
-              <option value="dark">Dark</option>
+              <option value="dark">Plain</option>
             </select>
           </div>
           <div id="formSection" class="form-section">  <!-- the form of the view, set by each walk mode -->
@@ -285,6 +296,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261011e"></script>
+  <script src="main.js?v=20261011f"></script>
 </body>
 </html>

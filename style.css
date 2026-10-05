@@ -7,6 +7,21 @@
   --accent: #f0b429;
   --accent-text: #1a1300;
   --grid: rgba(255, 255, 255, 0.06);
+  --box: rgba(14, 17, 22, 0.75);  /* the boxes over the view */
+  color-scheme: dark;
+}
+/* Light theme (Display box: Light, or System on a light system; see applyTheme) */
+:root[data-theme="light"] {
+  --bg: #f6f8fa;
+  --panel: #ffffff;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --muted: #656d76;
+  --accent: #bf8700;
+  --accent-text: #ffffff;
+  --grid: rgba(0, 0, 0, 0.08);
+  --box: rgba(255, 255, 255, 0.82);
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -270,7 +285,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box {
   position: absolute;
   padding: 8px;
-  background: rgba(14, 17, 22, 0.75);
+  background: var(--box);
   backdrop-filter: blur(4px);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -369,6 +384,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
   font-size: 12px;
   pointer-events: none;
 }
+.stage.on-sky .hint { color: rgba(230, 237, 243, 0.6); }  /* over a sky (see drawGrid) */
 
 @media (max-width: 720px) {
   main { flex-direction: column; }

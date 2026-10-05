@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.301';
+const VERSION = '0.1.302';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -678,10 +678,21 @@ const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, W (screen y points 
 const H = Math.sqrt(3) / 2;                        // height of a triangle with side 1
 const TRI_Y0 = -2 * H / 3;                         // offset that puts the centre of the starting triangle at (0, 0)
 const BANDS = 256;
-const GRADIENT = Array.from({ length: BANDS }, (_, i) =>
-  `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, 60%)`);
-const DIGIT_COLORS = ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'];
-const MONO = '#f0b429';
+// The walk's colours, per theme (see applyTheme): the rainbow darker on a light page, the digits'
+// grey instead of white, the one colour a deeper amber
+const PALETTES = {
+  dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429' },
+  light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700' },
+};
+const GRADIENT = [], DIGIT_COLORS = [];
+let MONO;
+function setPalette(theme) {
+  const P = PALETTES[theme];
+  for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
+  DIGIT_COLORS.splice(0, DIGIT_COLORS.length, ...P.digits);
+  MONO = P.mono;
+}
+setPalette(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
 
 
 /* ---- 2.2 Number cards ------------------------------------------------------------------------ */
@@ -4516,11 +4527,13 @@ function drawGrid() {
   const ctx = layers.grid;
   ctx.clearRect(0, 0, cw, ch);
   if (walk.is3d) drawSky(ctx);
+  stage.classList.toggle('on-sky', !!(walk.is3d && SKIES[$('sky').value]));  // light text over a sky, whatever the theme
   if (!$('showGrid').checked) return;
   const s = view.scale;
   let stepCells = 1;
   while (s * stepCells < 10) stepCells *= 5;
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  // faint lines: white over a sky, else the page's grid colour
+  ctx.strokeStyle = walk.is3d && SKIES[$('sky').value] ? 'rgba(255,255,255,0.06)' : getComputedStyle(document.documentElement).getPropertyValue('--grid');
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (walk.is3d) {
@@ -5181,7 +5194,7 @@ function glSetup() {
   try {
     const prog = Object.fromEntries(Object.entries(GL_SHADERS).map(([k, v]) => [k, program(v)]));
     const buf = () => gl.createBuffer();
-    const grad = gl.createTexture();  // the rainbow, one texel per band
+    const grad = gl.createTexture();  // the rainbow, one texel per band (again when the theme changes, see glPalette)
     gl.bindTexture(gl.TEXTURE_2D, grad);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, BANDS, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from(GRADIENT.flatMap((c) => [...rgbOf(c), 255])));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -5196,6 +5209,15 @@ function glSetup() {
     GLS = false;
   }
   return GLS;
+}
+// The theme changed the walk's colours: the rainbow texture again, the one colour and the digits' made again
+function glPalette() {
+  if (!GLS) return;
+  const { gl } = GLS;
+  gl.bindTexture(gl.TEXTURE_2D, GLS.grad);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, BANDS, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from(GRADIENT.flatMap((c) => [...rgbOf(c), 255])));
+  if (GLS.mono) { gl.deleteTexture(GLS.mono); GLS.mono = null; }
+  GLS.keys.pal = null;
 }
 function glClear() {
   if (!GLS || !GLS.drawn) return;
@@ -5362,14 +5384,14 @@ function glFlat(to) {
     upload(S.flatKeys, keys);
     S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
   }
-  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}`) {  // the digits' colours
+  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${MONO}`) {  // the digits' colours
     const pal = new Uint8Array(4 * 256);
     for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(Math.min(k, (walk.points ? walk.keyCount : walk.base) - 1))), 255], 4 * k);
     gl.bindTexture(gl.TEXTURE_2D, S.pal);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}`;
+    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${MONO}`;
   }
   // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
@@ -6181,6 +6203,25 @@ $('mersenneP').addEventListener('change', () => pickPreset('mersenne'));
 $('primorialP').addEventListener('change', () => pickPreset('primorial'));
 $('sky').addEventListener('change', () => { needsFull = true; renderSkyButtons(); });
 renderSkyButtons();
+// Theme: Light, Dark or System (the default, following the system as it changes), kept in this browser
+const systemLight = matchMedia('(prefers-color-scheme: light)');
+function applyTheme() {
+  const t = $('theme').value, theme = t === 'system' ? (systemLight.matches ? 'light' : 'dark') : t;
+  try { localStorage.setItem('walkingTheme', t); } catch { /* not kept */ }
+  renderChoiceButtons($('theme'), $('themeButtons'));
+  if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
+  document.documentElement.dataset.theme = theme;
+  setPalette(theme);
+  glColour.clear();
+  glPalette();
+  renderColorButtons();
+  needsFull = true;
+}
+try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
+if (!$('theme').value) $('theme').value = 'system';
+$('theme').addEventListener('change', applyTheme);
+systemLight.addEventListener('change', () => { if ($('theme').value === 'system') applyTheme(); });
+applyTheme();
 // the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
 for (const type of ['pointerdown', 'dblclick', 'wheel']) {
   $('animBar').addEventListener(type, (e) => e.stopPropagation());
