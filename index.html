@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261011w">
+  <link rel="stylesheet" href="style.css?v=20261011x">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -54,6 +54,8 @@
               <option value="triTorusWalk">Triangle torus — base 2 (left / right)</option>
               <option value="hexTorusGrid">Hex torus — base 2 (left / right)</option>
               <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
+              <option value="mobiusGrid">Möbius strip — base 3 (left / forward / right)</option>
+              <option value="mobiusWalk">Möbius strip — base 3 (left / forward / right)</option>
               <option value="tetraGrid">Tetrahedron — base 5 (5 relative turns)</option>
               <option value="tetraLR">Tetrahedron — base 2 (left / right)</option>
               <option value="octaGrid">Octahedron — base 5 (5 relative turns)</option>
@@ -295,6 +297,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261011w"></script>
+  <script src="main.js?v=20261011x"></script>
 </body>
 </html>
