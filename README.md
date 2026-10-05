@@ -169,11 +169,12 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 - **Display box** (top right, hover to open), with what fits the current tab:
   - **Auto-fit:** the view follows the walk and ends framed on it.
   - **Colours:** rainbow along the walk, rainbow cells, heatmap of visits, one colour per digit, or one colour.
-  - **Fill areas:** each area the walk closes off is filled when it closes.
+  - **Fill areas:** each area the walk closes off is filled when it closes (on squares, up to a box of 12 million squares: 2 million digits of π fill in about half a second).
   - Grid, sky, auto-rotate (the solid tumbles on three axes), flat / round and perspective.
 - **Navigation:** mouse wheel to zoom, drag to pan, double-click to fit.
   - In 3D: drag to rotate, Shift+drag to pan.
   - On the surfaces, a walk shown whole is faced at once; while it moves, the camera turns to keep the walker in view, with a small arrow lying on the surface for its heading.
+- **Drawing:** the surfaces, and the 2D walks drawn as one line in the rainbow or one colour, are drawn by the graphics card (WebGL 2), so a walk of millions of steps still pans and zooms smoothly; without WebGL 2, everything is drawn in 2D as before.
 - **Links:** the page link always holds the current setup (number, walk, surface, size, start, rule, Life start), never the display settings.
 
 Keyboard: `Space` play/pause · `→` one step · `R` restart · `E` jump to end · `F` auto-fit

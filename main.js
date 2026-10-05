@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.297';
+const VERSION = '0.1.298';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5131,6 +5131,26 @@ void main() {
   gl_Position = clipOf(p, 0.004);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+  // flat 2D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
+  flatPath: [`#version 300 es
+in vec2 aQuad; in vec2 aA; in vec2 aB; uniform float uN, uWidth; uniform vec3 uView; uniform vec2 uScreen; uniform vec4 uMono; uniform sampler2D uGrad; out vec3 vCol;
+void main() {
+  vCol = uMono.a > 0.0 ? uMono.rgb : texture(uGrad, vec2((float(gl_InstanceID) + 0.5) / uN, 0.5)).rgb;
+  vec2 a = uView.yz + aA * uView.x, b = uView.yz + aB * uView.x, p = mix(a, b, aQuad.x);
+  vec2 d = b - a; d = length(d) > 1e-4 ? normalize(d) : vec2(1.0, 0.0);
+  p += (vec2(-d.y, d.x) * aQuad.y + d * (aQuad.x * 2.0 - 1.0)) * uWidth * 0.5;
+  gl_Position = vec4(p.x / uScreen.x * 2.0 - 1.0, 1.0 - p.y / uScreen.y * 2.0, 0.0, 1.0);
+}`, `#version 300 es
+precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+  flatFill: [`#version 300 es
+in vec3 aC; in float aT; uniform vec2 uTpl[24]; uniform float uN, uAlpha; uniform vec3 uView; uniform vec2 uScreen; uniform vec4 uMono; uniform sampler2D uGrad; out vec4 vCol;
+void main() {
+  vec3 c = uMono.a > 0.0 ? uMono.rgb : texture(uGrad, vec2((aC.z - 0.5) / uN, 0.5)).rgb;
+  vCol = vec4(c * uAlpha, uAlpha);  // premultiplied
+  vec2 p = uView.yz + (aC.xy + uTpl[int(aT) * 6 + gl_VertexID]) * uView.x;
+  gl_Position = vec4(p.x / uScreen.x * 2.0 - 1.0, 1.0 - p.y / uScreen.y * 2.0, 0.0, 1.0);
+}`, `#version 300 es
+precision mediump float; in vec4 vCol; out vec4 o; void main() { o = vCol; }`],
 };
 function glSetup() {
   if (GLS !== null) return GLS;
@@ -5161,7 +5181,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), flatPts: buf(), flatFill: buf(), flatTpl: buf(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -5286,6 +5306,87 @@ function glSurface(palette, levelOf, path) {
   return true;
 }
 
+/* Flat 2D walks drawn by WebGL as well, when their path is one line in the rainbow or in one colour
+ * (the cells, the visits, the digits' colours and the spirals stay in 2D): the whole walk so far is
+ * redrawn at each frame, fast enough to pan and zoom a walk of millions of steps smoothly.
+ *  - fill: one instance per enclosed vertex of the fill (see computeFill), its polygon from the
+ *    templates (6 corners each, the last repeated), in the colour of the step that closed it;
+ *  - path: one instance per step, a quad from point i to point i + 1 (as in glSurface). */
+const glFlatApply = () => !walk.is3d && !walk.sphere && !walk.points && !walk.skipZeros && !greyed('line')
+  && ['gradient', 'mono'].includes($('colorMode').value);
+function glFlat(to) {
+  const S = glSetup();
+  if (!S) return false;
+  const { gl, prog } = S, mono = $('colorMode').value === 'mono';
+  if (S.keys.flatPts !== walk.xs) {  // the walk's points, once per walk
+    const pts = new Float32Array(2 * (walk.n + 1));
+    for (let i = 0; i <= walk.n; i++) { pts[2 * i] = walk.xs[i]; pts[2 * i + 1] = walk.ys[i]; }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.flatPts); gl.bufferData(gl.ARRAY_BUFFER, pts, gl.STATIC_DRAW);
+    S.keys.flatPts = walk.xs;
+  }
+  let fillCount = 0;
+  if (fillOn()) {
+    fill ??= computeFill();
+    if (fill.count && fill.templates.length <= 4) {
+      if (S.keys.flatFill !== fill) {  // the fill's vertices (x, y, step) and templates, once per fill
+        const inst = new Float32Array(3 * fill.count);
+        for (let k = 0; k < fill.count; k++) { inst[3 * k] = fill.cx[k]; inst[3 * k + 1] = fill.cy[k]; inst[3 * k + 2] = fill.at[k]; }
+        gl.bindBuffer(gl.ARRAY_BUFFER, S.flatFill); gl.bufferData(gl.ARRAY_BUFFER, inst, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, S.flatTpl); gl.bufferData(gl.ARRAY_BUFFER, Float32Array.from(fill.tpl), gl.STATIC_DRAW);
+        S.tpl = new Float32Array(48);
+        fill.templates.forEach((pts, t) => { for (let q = 0; q < 6; q++) S.tpl.set(pts[Math.min(q, pts.length - 1)], 2 * (6 * t + q)); });
+        S.keys.flatFill = fill;
+      }
+      let lo = 0, hi = fill.count;  // the regions closed by step to: at is sorted
+      while (lo < hi) { const m = (lo + hi) >> 1; if (fill.at[m] <= to) lo = m + 1; else hi = m; }
+      fillCount = lo;
+    }
+  }
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  const monoRgb = mono ? rgbCached(MONO).map((v) => v / 255) : [0, 0, 0];
+  const common = (p) => {
+    gl.useProgram(p);
+    const u = (name) => gl.getUniformLocation(p, name);
+    gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
+    gl.uniform2f(u('uScreen'), cw, ch);
+    gl.uniform1f(u('uN'), Math.max(1, walk.n));
+    gl.uniform4f(u('uMono'), ...monoRgb, mono ? 1 : 0);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
+    return u;
+  };
+  const attrib = (p, name, buffer, size, stride, offset, divisor) => {
+    const loc = gl.getAttribLocation(p, name);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, stride, offset);
+    gl.vertexAttribDivisor(loc, divisor);
+    return loc;
+  };
+  const off = (locs) => locs.forEach((loc) => { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); });
+  if (fillCount) {
+    const u = common(prog.flatFill);
+    gl.uniform2fv(u('uTpl'), S.tpl);
+    gl.uniform1f(u('uAlpha'), $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1);
+    const locs = [attrib(prog.flatFill, 'aC', S.flatFill, 3, 12, 0, 1), attrib(prog.flatFill, 'aT', S.flatTpl, 1, 4, 0, 1)];
+    gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 6, fillCount);
+    off(locs);
+  }
+  if (to > 0) {
+    const u = common(prog.flatPath);
+    gl.uniform1f(u('uWidth'), Math.max(0.6, Math.min(view.scale * 0.3, 6)));
+    const locs = [attrib(prog.flatPath, 'aQuad', S.quad, 2, 0, 0, 0), attrib(prog.flatPath, 'aA', S.flatPts, 2, 8, 0, 1), attrib(prog.flatPath, 'aB', S.flatPts, 2, 8, 8, 1)];
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, to);
+    off(locs);
+  }
+  gl.disable(gl.BLEND);
+  S.drawn = true;
+  return true;
+}
 
 /* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
 // Fill cells: the tile around a point of a 2D walk, as a path on the canvas (world → screen)
@@ -5405,13 +5506,16 @@ function drawSegments(from, to) {
 // under the path. A vertex is painted as the polygon of the tile centres around it: those polygons
 // tile the plane, so the fill follows the path exactly.
 const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
-let fill = null;                   // { order, at, polys, tooBig } for the current walk (see computeFill)
-let fillDone = 0;                  // how many of fill.order are painted on the fill layer
+let fill = null;                   // { at, cx, cy, tpl, templates, count, tooBig } for the current walk (see computeFill)
+let fillDone = 0;                  // how many of the fill's polygons are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
 const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
+// The fill, whatever the tiling: { at: steps (sorted), cx, cy: each region vertex's centre, tpl: its
+// polygon's template, templates: [[dx, dy], …] per kind of polygon, tooBig } (see fillOf)
 function computeFill() {
+  if (walk.lattice === 'square') return computeFillSquare();
   const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3), last = walk.n;
   // integer keys: every vertex, centre and midpoint of a lattice falls on a finer integer grid
   const q = lat === 'square' ? (x, y) => [Math.round(2 * x), Math.round(2 * y)]
@@ -5424,7 +5528,7 @@ function computeFill() {
     minY = Math.min(minY, ys[i]); maxY = Math.max(maxY, ys[i]);
   }
   const tileArea = lat === 'square' ? 1 : lat === 'tri' ? H / 2 : H;
-  if (((maxX - minX + 4) * (maxY - minY + 4)) / tileArea > FILL_MAX_TILES) return { order: [], tooBig: true };
+  if (((maxX - minX + 4) * (maxY - minY + 4)) / tileArea > FILL_MAX_TILES) return { at: new Int32Array(0), tooBig: true, count: 0 };
   const crossed = new Map();  // midpoint of each drawn step → the first step through it
   for (let i = 0; i < last; i++) {
     if (walk.skipZeros && walk.digits[i] === 0) continue;  // a spiral's 0 draws nothing
@@ -5507,11 +5611,108 @@ function computeFill() {
   order.sort((x, y) => at[x] - at[y]);
   const polys = order.map((i) => {
     const c = around[i], pts = [];
-    for (let k = 0; k < c.length; k += 2) pts.push([c[k], c[k + 1]]);
-    pts.sort((u, w) => Math.atan2(u[1] - vy[i], u[0] - vx[i]) - Math.atan2(w[1] - vy[i], w[0] - vx[i]));
+    for (let k = 0; k < c.length; k += 2) pts.push([c[k] - vx[i], c[k + 1] - vy[i]]);
+    pts.sort((u, w) => Math.atan2(u[1], u[0]) - Math.atan2(w[1], w[0]));
     return pts;
   });
-  return { order: order.map((i) => at[i]), polys, tooBig: false };  // order[k]: the step closing polygon k
+  // polygons of the same shape share a template (all alike on a tiling, two kinds on hexagons)
+  const templates = [], keyOf = new Map(), tpl = new Uint8Array(order.length);
+  polys.forEach((pts, k) => {
+    const key = pts.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
+    if (!keyOf.has(key)) { keyOf.set(key, templates.length); templates.push(pts); }
+    tpl[k] = keyOf.get(key);
+  });
+  return fillOf(Int32Array.from(order, (i) => at[i]), Float32Array.from(order, (i) => vx[i]), Float32Array.from(order, (i) => vy[i]), tpl, templates);
+}
+const fillOf = (at, cx, cy, tpl, templates) => ({ at, cx, cy, tpl, templates, tooBig: false, count: at.length });
+
+/* The fill on squares, for walks of millions of steps: the same regions, read at the corners of the
+ * squares (a grid of W × H over the walk's box and a margin, indexed i·H + j), in typed arrays only.
+ * 1. Each step crosses one square side, that is the link between two neighbouring corners: its first
+ *    crossing is noted (2 bits per corner: its link to the right, its link down), and listed in order.
+ * 2. The regions at the end: one flood fill labels each corner with its region, never crossing a
+ *    crossed link; the margin's is the outside.
+ * 3. Back in time, over the regions only: the crossed links reopened from the last first-crossing to
+ *    the first (a union–find of the regions); when a reopened link joins a region to the outside, that
+ *    region was enclosed from the step after its crossing, and it is stamped with it.
+ * 4. A corner's step: the stamp of its region, or of the first stamped region it was merged into. */
+const FILL_MAX_SQUARES = 12_000_000;
+function computeFillSquare() {
+  const { xs, ys } = walk, last = walk.n;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i <= last; i++) {
+    if (xs[i] < minX) minX = xs[i]; if (xs[i] > maxX) maxX = xs[i];
+    if (ys[i] < minY) minY = ys[i]; if (ys[i] > maxY) maxY = ys[i];
+  }
+  minX = Math.round(minX); maxX = Math.round(maxX); minY = Math.round(minY); maxY = Math.round(maxY);
+  const W = maxX - minX + 4, H = maxY - minY + 4, N = W * H;  // corners at x = minX − 1.5 + i, y = minY − 1.5 + j
+  if (N > FILL_MAX_SQUARES) return { at: new Int32Array(0), tooBig: true, count: 0 };
+  // 1. the links crossed, at their first crossing: bit 1 the link to the right of corner id, bit 2 down
+  const cross = new Uint8Array(N), list = new Int32Array(2 * last), steps = new Int32Array(last);
+  let m = 0;
+  for (let s = 0; s < last; s++) {
+    if (walk.skipZeros && walk.digits[s] === 0) continue;  // a spiral's 0 draws nothing
+    const x = Math.round(xs[s]), y = Math.round(ys[s]), dx = Math.round(xs[s + 1]) - x, dy = Math.round(ys[s + 1]) - y;
+    if (Math.abs(dx) + Math.abs(dy) !== 1) continue;  // only unit steps cross a side
+    let id, bit;
+    if (dy === 0) { id = (Math.min(x, x + dx) - minX + 2) * H + (y - minY + 1); bit = 2; }  // across a vertical side
+    else { id = (x - minX + 1) * H + (Math.min(y, y + dy) - minY + 2); bit = 1; }        // across a horizontal side
+    if (cross[id] & bit) continue;
+    cross[id] |= bit;
+    list[2 * m] = id; list[2 * m + 1] = bit; steps[m++] = s;
+  }
+  // 2. the regions at the end (flood fill)
+  const comp = new Int32Array(N).fill(-1), queue = new Int32Array(N);
+  let regions = 0;
+  for (let v0 = 0; v0 < N; v0++) {
+    if (comp[v0] >= 0) continue;
+    let qh = 0, qt = 0;
+    queue[qt++] = v0; comp[v0] = regions;
+    while (qh < qt) {
+      const v = queue[qh++], i = (v / H) | 0, j = v - i * H;
+      if (i + 1 < W && !(cross[v] & 1) && comp[v + H] < 0) { comp[v + H] = regions; queue[qt++] = v + H; }
+      if (i > 0 && !(cross[v - H] & 1) && comp[v - H] < 0) { comp[v - H] = regions; queue[qt++] = v - H; }
+      if (j + 1 < H && !(cross[v] & 2) && comp[v + 1] < 0) { comp[v + 1] = regions; queue[qt++] = v + 1; }
+      if (j > 0 && !(cross[v - 1] & 2) && comp[v - 1] < 0) { comp[v - 1] = regions; queue[qt++] = v - 1; }
+    }
+    regions++;
+  }
+  // 3. back in time, over the regions
+  const parent = Int32Array.from({ length: regions }, (_, r) => r), size = new Int32Array(regions).fill(1);
+  const out = new Uint8Array(regions), stamp = new Int32Array(regions).fill(-1);
+  out[comp[0]] = 1;  // the margin
+  const find = (r) => { while (parent[r] !== r) r = parent[r]; return r; };  // no compression: stamps sit on the way up
+  for (let k = m - 1; k >= 0; k--) {
+    const id = list[2 * k], other = list[2 * k + 1] === 1 ? id + H : id + 1;
+    let a = find(comp[id]), b = find(comp[other]);
+    if (a === b) continue;
+    if (out[a] !== out[b]) stamp[out[a] ? b : a] = steps[k] + 1;  // the inner one enclosed from the next step
+    if (out[b] && !out[a]) [a, b] = [b, a];
+    else if (!out[a] && !out[b] && size[a] < size[b]) [a, b] = [b, a];
+    parent[b] = a; size[a] += size[b]; out[a] |= out[b];
+  }
+  // 4. each region's step (−1: outside)
+  const atRegion = new Int32Array(regions).fill(-2);
+  const regionAt = (r) => {
+    let x = r;
+    while (atRegion[x] === -2 && stamp[x] < 0 && parent[x] !== x) x = parent[x];
+    const v = atRegion[x] !== -2 ? atRegion[x] : stamp[x];
+    for (let y = r; y !== x; y = parent[y]) atRegion[y] = v;
+    return (atRegion[x] = v);
+  };
+  // the enclosed corners, sorted by their step (counting sort)
+  const count = new Int32Array(last + 2);
+  for (let v = 0; v < N; v++) { const a = regionAt(comp[v]); if (a >= 0) count[a]++; }
+  let total = 0;
+  for (let s = 0; s < count.length; s++) { const c = count[s]; count[s] = total; total += c; }
+  const at = new Int32Array(total), cx = new Float32Array(total), cy = new Float32Array(total);
+  for (let v = 0; v < N; v++) {
+    const a = atRegion[comp[v]];
+    if (a < 0) continue;
+    const k = count[a]++, i = (v / H) | 0;
+    at[k] = a; cx[k] = minX - 1.5 + i; cy[k] = minY - 1.5 + (v - i * H);
+  }
+  return fillOf(at, cx, cy, new Uint8Array(total), [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]]);
 }
 
 // Paint the regions closed by the walk up to step to (from where the fill layer got to), opaque,
@@ -5521,15 +5722,15 @@ function computeFill() {
 const FILL_BATCH = 64;
 function drawFill(to) {
   fill ??= computeFill();
-  const ctx = layers.fill, { scale: s, ox, oy } = view, { order, polys } = fill;
-  const colourAt = (k) => styleColor(styleKey(order[k] - 1));
-  while (fillDone < order.length && order[fillDone] <= to) {
+  const ctx = layers.fill, { scale: s, ox, oy } = view, { at, cx, cy, tpl, templates } = fill;
+  const colourAt = (k) => styleColor(styleKey(at[k] - 1));
+  while (fillDone < fill.count && at[fillDone] <= to) {
     const colour = colourAt(fillDone);
     ctx.beginPath();
-    for (let b = 0; b < FILL_BATCH && fillDone < order.length && order[fillDone] <= to && colourAt(fillDone) === colour; b++, fillDone++) {
-      const pts = polys[fillDone];
-      ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
-      for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
+    for (let b = 0; b < FILL_BATCH && fillDone < fill.count && at[fillDone] <= to && colourAt(fillDone) === colour; b++, fillDone++) {
+      const pts = templates[tpl[fillDone]], X = cx[fillDone], Y = cy[fillDone];
+      ctx.moveTo(ox + (X + pts[0][0]) * s, oy + (Y + pts[0][1]) * s);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + (X + pts[k][0]) * s, oy + (Y + pts[k][1]) * s);
       ctx.closePath();
     }
     ctx.fillStyle = colour;
@@ -5769,8 +5970,15 @@ function tick(now = performance.now()) {
     drawn = 0;
     fillDone = 0;
   }
-  if (fillOn()) drawFill(cur);  // each region when it closes, under the path
-  if (walk.n && drawn < cur) {
+  // a line walk in WebGL, redrawn whole when anything changes (see glFlat); else in 2D, step by step
+  let flat = walk.n && glFlatApply() && GLS !== false;
+  if (needsFull && !flat) glClear();
+  if (flat && (needsFull || drawn !== cur)) {
+    flat = glFlat(cur);
+    if (flat && drawn !== cur) { drawn = cur; statsDirty = true; }
+  }
+  if (!flat && fillOn()) drawFill(cur);  // each region when it closes, under the path
+  if (!flat && walk.n && drawn < cur) {
     drawSegments(drawn, cur);
     drawn = cur;
     statsDirty = true;
