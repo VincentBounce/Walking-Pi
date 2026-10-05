@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.302';
+const VERSION = '0.1.303';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -681,13 +681,22 @@ const BANDS = 256;
 // The walk's colours, per theme (see applyTheme): the rainbow darker on a light page, the digits'
 // grey instead of white, the one colour a deeper amber
 const PALETTES = {
-  dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429' },
-  light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700' },
+  // unlit: the surfaces' tiles not walked; trail: a Life cell just dead, fading to unlit; alive: Life in one colour
+  dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429',
+          unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3' },
+  light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700',
+           unlit: '#d5dbe2', trail: '#7d8896', alive: '#1f2328' },
 };
-const GRADIENT = [], DIGIT_COLORS = [];
-let MONO;
+const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [];
+let MONO, UNLIT, LIFE_ALIVE;
 function setPalette(theme) {
   const P = PALETTES[theme];
+  UNLIT = P.unlit; LIFE_ALIVE = P.alive;
+  const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), [a, b] = [hex(P.trail), hex(P.unlit)];
+  for (let i = 0; i < 8; i++) {  // the 8 shades of a dead Life cell, from the trail colour to unlit
+    const f = 1 - i / 8, mix = (k) => Math.round(b[k] + (a[k] - b[k]) * f);
+    LIFE_TRAIL[i] = `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
+  }
   for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
   DIGIT_COLORS.splice(0, DIGIT_COLORS.length, ...P.digits);
   MONO = P.mono;
@@ -3492,10 +3501,6 @@ const LIFE_JUMP = 2000;
 const LIFE_RED = '#ff7b72', LIFE_BLUE = '#4ea1ff';  // the two civilisations  // the Game of Life has no end: ⏭ jumps this many generations ahead
 // fading trail after a cell dies: from a light slate grey down to the background
 const LIFE_WALL = '#c4934e';  // the walls of a Life run (the hexagon sphere's pentagons)
-const LIFE_TRAIL = Array.from({ length: 8 }, (_, i) => {
-  const f = 1 - i / 8, mix = (a, b) => Math.round(b + (a - b) * f);
-  return `rgb(${mix(0x6b, 0x1f)}, ${mix(0x7f, 0x26)}, ${mix(0x99, 0x30)})`;
-});
 
 // Neighbours of each tile: every other tile sharing an edge or a corner with it
 // (12 for triangles, 8 for squares, fewer next to the solid's corners). Compact lists.
@@ -4788,7 +4793,7 @@ function drawSphere() {
       palette = [null, LIFE_RED, LIFE_BLUE];
       levelOf = (t) => L.alive[t];
     } else if (colour === 'mono') {
-      palette = [null, '#e6edf3', ...LIFE_TRAIL];
+      palette = [null, LIFE_ALIVE, ...LIFE_TRAIL];
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t]) : 0);
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
@@ -4842,7 +4847,7 @@ function drawSphere() {
     }
   };
   // background: anti-aliasing seams between tiles show this colour instead of black
-  ctx.fillStyle = '#1f2630';
+  ctx.fillStyle = UNLIT;
   g.faces.forEach((f, i) => { if (faceVisible[i]) { facePath(f); ctx.fill(); } });
   buckets.forEach((list, level) => {
     if (!list.length || level === 0) return;
@@ -5024,7 +5029,7 @@ const rgbOf = (colour) => {  // [r, g, b] of any CSS colour (the canvas normalis
 };
 // colour laid at opacity a over the dark tile background, as an rgb() string (translucent fill)
 function faded(colour, a) {
-  const [r, g, b] = rgbOf(colour), [R, G, B] = rgbOf('#1f2630');
+  const [r, g, b] = rgbOf(colour), [R, G, B] = rgbOf(UNLIT);
   return `rgb(${Math.round(R + (r - R) * a)}, ${Math.round(G + (g - G) * a)}, ${Math.round(B + (b - B) * a)})`;
 }
 function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
@@ -5062,7 +5067,7 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
     if (twoSided) toward = Math.abs(toward);  // the back of a tile is lit like its front
     // 64 shades: fine enough that a tile's colour turns smoothly with the view (8 made visible
     // jumps of about 7 % in brightness), coarse enough to keep the cache of shaded colours small
-    ctx.fillStyle = shaded(level ? palette[level] : '#1f2630', Math.round((1 - Math.max(0, toward)) * 64) / 64);
+    ctx.fillStyle = shaded(level ? palette[level] : UNLIT, Math.round((1 - Math.max(0, toward)) * 64) / 64);
     ctx.beginPath();
     const corners = [];  // on the screen
     for (let q = 0; q < k; q++) {
@@ -5257,7 +5262,7 @@ function glSurface(palette, levelOf, path) {
     S.keys.geo = geoKey; S.keys.geoObj = g;
   }
   // each tile's colour, from its level in the palette (0: the dark background of unlit tiles)
-  const col = new Uint8Array(3 * k * n), rgb = palette.map((c) => rgbCached(c ?? '#1f2630'));
+  const col = new Uint8Array(3 * k * n), rgb = palette.map((c) => rgbCached(c ?? UNLIT));
   for (let t = 0; t < n; t++) {
     const c = rgb[levelOf(t)] ?? rgb[0];
     for (let q = 0; q < k; q++) col.set(c, 3 * (k * t + q));
@@ -5309,7 +5314,7 @@ function glSurface(palette, levelOf, path) {
   // grid: the tile edges, when the tiles are big enough on screen
   if ($('showGrid').checked && view.scale > 6) {
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);  // the canvas stays opaque under the lines
     u = uniforms(prog.edge);
     attrib(prog.edge, 'aPos', S.pos, 3);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
