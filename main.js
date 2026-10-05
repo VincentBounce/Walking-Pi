@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.303';
+const VERSION = '0.1.304';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -683,15 +683,15 @@ const BANDS = 256;
 const PALETTES = {
   // unlit: the surfaces' tiles not walked; trail: a Life cell just dead, fading to unlit; alive: Life in one colour
   dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429',
-          unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3' },
+          unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(0, 0, 0, 0.35)', edgeAlpha: 0.35 },
   light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700',
-           unlit: '#d5dbe2', trail: '#7d8896', alive: '#1f2328' },
+           unlit: '#d5dbe2', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.13)', edgeAlpha: 0.13 },
 };
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [];
-let MONO, UNLIT, LIFE_ALIVE;
+let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_ALPHA;  // EDGE: the surfaces' tile edges
 function setPalette(theme) {
   const P = PALETTES[theme];
-  UNLIT = P.unlit; LIFE_ALIVE = P.alive;
+  UNLIT = P.unlit; LIFE_ALIVE = P.alive; EDGE = P.edge; EDGE_ALPHA = P.edgeAlpha;
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), [a, b] = [hex(P.trail), hex(P.unlit)];
   for (let i = 0; i < 8; i++) {  // the 8 shades of a dead Life cell, from the trail colour to unlit
     const f = 1 - i / 8, mix = (k) => Math.round(b[k] + (a[k] - b[k]) * f);
@@ -4532,13 +4532,13 @@ function drawGrid() {
   const ctx = layers.grid;
   ctx.clearRect(0, 0, cw, ch);
   if (walk.is3d) drawSky(ctx);
-  stage.classList.toggle('on-sky', !!(walk.is3d && SKIES[$('sky').value]));  // light text over a sky, whatever the theme
+  stage.classList.toggle('on-sky', darkSky());  // light text over a dark sky, whatever the theme
   if (!$('showGrid').checked) return;
   const s = view.scale;
   let stepCells = 1;
   while (s * stepCells < 10) stepCells *= 5;
-  // faint lines: white over a sky, else the page's grid colour
-  ctx.strokeStyle = walk.is3d && SKIES[$('sky').value] ? 'rgba(255,255,255,0.06)' : getComputedStyle(document.documentElement).getPropertyValue('--grid');
+  // faint lines: white over a dark sky, dark over a light one, else the page's grid colour
+  ctx.strokeStyle = darkSky() ? 'rgba(255,255,255,0.06)' : walk.is3d && SKIES[$('sky').value] ? 'rgba(0, 0, 0, 0.08)' : getComputedStyle(document.documentElement).getPropertyValue('--grid');
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (walk.is3d) {
@@ -4583,7 +4583,10 @@ function drawLines(ctx, a, b, c0, step) {
 const SKIES = {
   twilight: [[0, '#0a1530'], [0.45, '#1c2852'], [0.75, '#433262'], [0.92, '#7a4a5e'], [1, '#9c5f52']],
   blue:     [[0, '#07122b'], [1, '#17315f']],
+  dawn:     [[0, '#b9d0ea'], [0.5, '#dfe3f1'], [0.8, '#f2dde2'], [1, '#f8d2bd']],  // a light one
 };
+const LIGHT_SKIES = ['dawn'];
+const darkSky = () => walk.is3d && !!SKIES[$('sky').value] && !LIGHT_SKIES.includes($('sky').value);
 function drawSky(ctx) {
   const stops = SKIES[$('sky').value];
   if (!stops) return;  // dark: the page background shows through
@@ -4865,7 +4868,7 @@ function drawSphere() {
         ctx.lineTo(ox + x2 * s, oy + y2 * s);
       }
     });
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.strokeStyle = EDGE;
     ctx.lineWidth = 0.6;
     ctx.stroke();
   }
@@ -5060,7 +5063,7 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
   visible.sort((a, b) => a[0] - b[0]);
   const grid = $('showGrid').checked && s > 6;
   ctx.lineWidth = 0.6;
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.strokeStyle = EDGE;
   for (const [, t] of visible) {
     const level = levelOf(t);
     let toward = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]);
@@ -5142,7 +5145,7 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
   edge: [`#version 300 es
 in vec3 aPos;${GL_PROJECT}
 void main() { gl_Position = clipOf(toScreen(aPos), 0.002); }`, `#version 300 es
-precision mediump float; out vec4 o; void main() { o = vec4(0.0, 0.0, 0.0, 0.35); }`],
+precision mediump float; uniform float uEdge; out vec4 o; void main() { o = vec4(0.0, 0.0, 0.0, uEdge); }`],
   path: [`#version 300 es
 in vec2 aQuad; in vec3 aA; in vec3 aB; uniform float uN, uWidth, uMaxLen; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
 void main() {
@@ -5316,6 +5319,7 @@ function glSurface(palette, levelOf, path) {
     gl.enable(gl.BLEND);
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);  // the canvas stays opaque under the lines
     u = uniforms(prog.edge);
+    gl.uniform1f(u('uEdge'), EDGE_ALPHA);
     attrib(prog.edge, 'aPos', S.pos, 3);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
     if (S.keys.edgesTopo !== S.keys.topo) { gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, S.edgeIdx, gl.STATIC_DRAW); S.keys.edgesTopo = S.keys.topo; }
@@ -6345,7 +6349,7 @@ function displayDefaults() {
   $('showPath').checked = false;  // on cells, the cells alone
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
   $('autoRotate').checked = false;  // the grid stays as chosen, on every tab
-  $('sky').value = 'twilight';
+  $('sky').value = document.documentElement.dataset.theme === 'light' ? 'dawn' : 'twilight';  // a sky in the page's tone
   renderSkyButtons();
   displayTab = modeTabOf();
 }
