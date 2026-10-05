@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.314';
+const VERSION = '0.1.316';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4249,10 +4249,12 @@ function applyPendingView() {
     $('autoRotate').checked = g.autoRotate;
     Object.assign(cam, g.cam);
     if (walk.is3d) project();
-    const done = cur;
-    cur = 0;
-    bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-    advanceTo(done);
+    if (!walk.sphere) {  // the 2D bounds of the walk again (a surface's are the fixed solid, as in rotateView)
+      const done = cur;
+      cur = 0;
+      bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+      advanceTo(done);
+    }
     Object.assign(view, g.view);
     viewGoal = null;
     faced = true;
