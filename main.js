@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.318';
+const VERSION = '0.1.319';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6436,7 +6436,7 @@ const BUILT_IN = [
   ['96/95', '12 diagonal loops', { x: '96/95', w: 'torusGrid', d: 5760, s: 64 }],
   ['96/95', 'On cells', { x: '96/95', w: 'torusWalk', d: 4320, s: 48 }],
   ['226/221', 'Round a corner', { x: '226/221', w: 'cubeGrid', d: 289, s: 24 }],
-  ['1/383', 'Round the tube', { x: '1/383', w: 'triTorusGrid', d: 12224, s: 64, st: 2 }],
+  ['1/383', 'Round the tube', { x: '1/383', w: 'triTorusGrid', d: 9168, s: '63x168', st: 2, o: 1 }],
   ['120/109', 'A belt', { x: '120/109', w: 'hexSphereGrid', d: 5760, s: 32 }],
   ['Dragon', 'Paperfolding', { x: 'dragon', w: 'turtle', d: 20000 }],
   ['Primes', 'Their barcode', { x: 'primes', w: 'spiral', d: 20000 }],
