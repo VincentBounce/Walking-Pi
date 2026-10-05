@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.299';
+const VERSION = '0.1.300';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5613,186 +5613,113 @@ function drawSegments(from, to) {
 // which it is enclosed; the animation then paints each region when it forms, on a layer of its own
 // under the path. A vertex is painted as the polygon of the tile centres around it: those polygons
 // tile the plane, so the fill follows the path exactly.
-const FILL_MAX_TILES = 1_500_000;  // beyond, the walk is too big to fill
 let fill = null;                   // { at, cx, cy, tpl, templates, count, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of the fill's polygons are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
 const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
 const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
 
-// The fill, whatever the tiling: { at: steps (sorted), cx, cy: each region vertex's centre, tpl: its
-// polygon's template, templates: [[dx, dy], …] per kind of polygon, tooBig } (see fillOf)
-function computeFill() {
-  if (walk.lattice === 'square') return computeFillSquare();
-  const lat = walk.lattice, { xs, ys } = walk, R = 1 / Math.sqrt(3), last = walk.n;
-  // integer keys: every vertex, centre and midpoint of a lattice falls on a finer integer grid
-  const q = lat === 'square' ? (x, y) => [Math.round(2 * x), Math.round(2 * y)]
-    : lat === 'tri' ? (x, y) => [Math.round(4 * x), Math.round((6 * (y - TRI_Y0)) / H)]
-    : (x, y) => [Math.round((6 * x) / H), Math.round(4 * y)];
-  const K = (x, y) => { const [a, b] = q(x, y); return (a + 8388608) * 16777216 + (b + 8388608); };
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (let i = 0; i <= last; i++) {
-    minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]);
-    minY = Math.min(minY, ys[i]); maxY = Math.max(maxY, ys[i]);
-  }
-  const tileArea = lat === 'square' ? 1 : lat === 'tri' ? H / 2 : H;
-  if (((maxX - minX + 4) * (maxY - minY + 4)) / tileArea > FILL_MAX_TILES) return { at: new Int32Array(0), tooBig: true, count: 0 };
-  const crossed = new Map();  // midpoint of each drawn step → the first step through it
-  for (let i = 0; i < last; i++) {
-    if (walk.skipZeros && walk.digits[i] === 0) continue;  // a spiral's 0 draws nothing
-    const k = K((xs[i] + xs[i + 1]) / 2, (ys[i] + ys[i + 1]) / 2);
-    if (!crossed.has(k)) crossed.set(k, i);
-  }
-  // the tiles over the bounding box (and a margin), with their corners
-  const forTiles = (f) => {
-    if (lat === 'square') {
-      for (let x = Math.floor(minX) - 1; x <= Math.ceil(maxX) + 1; x++) {
-        for (let y = Math.floor(minY) - 1; y <= Math.ceil(maxY) + 1; y++) {
-          f(x, y, [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]]);
-        }
-      }
-    } else if (lat === 'tri') {  // cell (c, r): ▲ when c + r is even (see triStepper)
-      for (let c = Math.floor(2 * minX) - 2; c <= Math.ceil(2 * maxX) + 2; c++) {
-        for (let r = Math.floor((minY - TRI_Y0) / H) - 1; r <= Math.ceil((maxY - TRI_Y0) / H) + 1; r++) {
-          const up = ((c + r) & 1) === 0, x = c / 2, top = TRI_Y0 + r * H, bot = top + H;
-          f(x, top + (up ? (2 * H) / 3 : H / 3), up ? [[x, top], [x + 0.5, bot], [x - 0.5, bot]] : [[x - 0.5, top], [x + 0.5, top], [x, bot]]);
-        }
-      }
-    } else {  // flat-topped hexagons at (b·H, −a − b/2), radius 1/√3 (see hexStepper)
-      for (let b = Math.floor(minX / H) - 1; b <= Math.ceil(maxX / H) + 1; b++) {
-        for (let a = Math.floor(-maxY - b / 2) - 1; a <= Math.ceil(-minY - b / 2) + 1; a++) {
-          const cx = b * H, cy = -a - b / 2;
-          f(cx, cy, [0, 1, 2, 3, 4, 5].map((k) => [cx + R * Math.cos((k * Math.PI) / 3), cy - R * Math.sin((k * Math.PI) / 3)]));
-        }
-      }
-    }
-  };
-  // the graph of vertices: an edge per tile edge, carrying the step that crossed it (−1: never)
-  const index = new Map(), vx = [], vy = [], around = [], eu = [], ev = [], es = [], seen = new Set();
-  const vid = (x, y) => {
-    const k = K(x, y);
-    let i = index.get(k);
-    if (i === undefined) { i = vx.length; index.set(k, i); vx.push(x); vy.push(y); around.push([]); }
-    return i;
-  };
-  forTiles((cx, cy, V) => {
-    const ids = V.map(([x, y]) => vid(x, y));
-    for (const i of ids) around[i].push(cx, cy);
-    for (let k = 0; k < ids.length; k++) {
-      const a = ids[k], b = ids[(k + 1) % ids.length], e = a < b ? a * 4194304 + b : b * 4194304 + a;
-      if (seen.has(e)) continue;
-      seen.add(e);
-      const [p, r] = [V[k], V[(k + 1) % V.length]];
-      eu.push(a); ev.push(b); es.push(crossed.get(K((p[0] + r[0]) / 2, (p[1] + r[1]) / 2)) ?? -1);
-    }
-  });
-  // Back in time with a union–find: start from the whole walk (crossed edges closed), then reopen
-  // the edges from the last crossing to the first. When reopening the edge crossed at step s joins
-  // a region to the outside, that region was enclosed from step s + 1 on. Each root keeps its
-  // members as a linked list (head, tail, next) until it joins the outside.
-  const n = vx.length, parent = new Int32Array(n), out = new Uint8Array(n);
-  const head = new Int32Array(n), tail = new Int32Array(n), next = new Int32Array(n).fill(-1), at = new Int32Array(n).fill(-1);
-  for (let i = 0; i < n; i++) {
-    parent[i] = head[i] = tail[i] = i;
-    out[i] = vx[i] < minX || vx[i] > maxX || vy[i] < minY || vy[i] > maxY ? 1 : 0;
-  }
-  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  const join = (e, step) => {
-    let a = find(eu[e]), b = find(ev[e]);
-    if (a === b) return;
-    if (out[a] !== out[b] && step >= 0) {  // an enclosed region meets the outside
-      const inside = out[a] ? b : a;
-      for (let m = head[inside]; m >= 0; m = next[m]) at[m] = step + 1;
-    }
-    if (out[b] && !out[a]) [a, b] = [b, a];
-    parent[b] = a;
-    out[a] |= out[b];
-    next[tail[a]] = head[b];
-    tail[a] = tail[b];
-  };
-  for (let e = 0; e < eu.length; e++) if (es[e] < 0) join(e, -1);
-  const byStep = Array.from(eu, (_, e) => e).filter((e) => es[e] >= 0).sort((x, y) => es[y] - es[x]);
-  for (const e of byStep) join(e, es[e]);
-  // the enclosed vertices in the order they close, each with its polygon
-  const order = [];
-  for (let i = 0; i < n; i++) if (at[i] >= 0) order.push(i);
-  order.sort((x, y) => at[x] - at[y]);
-  const polys = order.map((i) => {
-    const c = around[i], pts = [];
-    for (let k = 0; k < c.length; k += 2) pts.push([c[k] - vx[i], c[k + 1] - vy[i]]);
-    pts.sort((u, w) => Math.atan2(u[1], u[0]) - Math.atan2(w[1], w[0]));
-    return pts;
-  });
-  // polygons of the same shape share a template (all alike on a tiling, two kinds on hexagons)
-  const templates = [], keyOf = new Map(), tpl = new Uint8Array(order.length);
-  polys.forEach((pts, k) => {
-    const key = pts.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
-    if (!keyOf.has(key)) { keyOf.set(key, templates.length); templates.push(pts); }
-    tpl[k] = keyOf.get(key);
-  });
-  return fillOf(Int32Array.from(order, (i) => at[i]), Float32Array.from(order, (i) => vx[i]), Float32Array.from(order, (i) => vy[i]), tpl, templates);
-}
-const fillOf = (at, cx, cy, tpl, templates) => ({ at, cx, cy, tpl, templates, tooBig: false, count: at.length });
-
-/* The fill on squares, for walks of millions of steps: the same regions, read at the corners of the
- * squares (a grid of W × H over the walk's box and a margin, indexed i·H + j), in typed arrays only.
- * 1. Each step crosses one square side, that is the link between two neighbouring corners: its first
- *    crossing is noted (2 bits per corner: its link to the right, its link down), and listed in order.
- * 2. The regions at the end: one flood fill labels each corner with its region, never crossing a
- *    crossed link; the margin's is the outside.
+/* The fill, in typed arrays only, for walks of millions of steps. The vertices of the tiling sit on
+ * a grid of whole numbers (u, v), packed into an index id = i·NJ + j (see FILL_GRIDS: i, j, uOf, vOf):
+ * 1. Each step crosses one tile edge, the link between its two vertices: the first crossing of each
+ *    link is noted (a bit per forward link of the lower vertex), and listed in order.
+ * 2. The regions at the end: one flood fill labels each vertex with its region, never across a crossed
+ *    link; a region with a vertex outside the walk's box is outside.
  * 3. Back in time, over the regions only: the crossed links reopened from the last first-crossing to
  *    the first (a union–find of the regions); when a reopened link joins a region to the outside, that
  *    region was enclosed from the step after its crossing, and it is stamped with it.
- * 4. A corner's step: the stamp of its region, or of the first stamped region it was merged into. */
-const FILL_MAX_SQUARES = 12_000_000;
-function computeFillSquare() {
-  const { xs, ys } = walk, last = walk.n;
+ * 4. A vertex's step: the stamp of its region, or of the first stamped region it was merged into.
+ * Returns { at: steps (sorted), cx, cy: each enclosed vertex, tpl: its polygon's template, templates:
+ * [[dx, dy], …] per kind of polygon (the tile centres around a vertex), count, tooBig }. */
+const FILL_MAX_VERTICES = 12_000_000;  // beyond, the walk is too big to fill
+const R3 = 1 / Math.sqrt(3);
+const ring = (r, a0, k) => Array.from({ length: k }, (_, q) => [r * Math.cos(a0 + (q * 2 * Math.PI) / k), r * Math.sin(a0 + (q * 2 * Math.PI) / k)]);
+// Per tiling: the vertices' (u, v) from (x, y) and back, which (u, v) are vertices, the packing (i, j) and back,
+// the links (forward ones get bits 1, 2, 4), the step between two tile centres, half an edge, and
+// the polygons of the tile centres around a vertex
+const FILL_GRIDS = {
+  square: {  // corners (u − ½, v − ½)
+    u: (x) => Math.round(x + 0.5), v: (y) => Math.round(y + 0.5), x: (u) => u - 0.5, y: (v) => v - 0.5,
+    i: (u, v, u0) => u - u0, j: (u, v, v0) => v - v0, uOf: (i, j, u0) => u0 + i, vOf: (i, j, u0, v0) => v0 + j, isVertex: () => true,
+    links: [[1, 0], [0, 1]], step: 1, half: 0.5, templates: [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]], tpl: () => 0,
+  },
+  tri: {  // the triangles' corners (u / 2, TRI_Y0 + v·H), u + v even (see triStepper)
+    u: (x) => Math.round(2 * x), v: (y) => Math.round((y - TRI_Y0) / H), x: (u) => u / 2, y: (v) => TRI_Y0 + v * H,
+    i: (u, v, u0) => (u - u0) >> 1, j: (u, v, v0) => v - v0, uOf: (i, j, u0, v0) => u0 + 2 * i + ((v0 + j) & 1), vOf: (i, j, u0, v0) => v0 + j,
+    isVertex: (u, v) => ((u + v) & 1) === 0,
+    links: [[2, 0], [1, 1], [-1, 1]], step: R3, half: 0.5, templates: [ring(R3, Math.PI / 6, 6)], tpl: () => 0,
+  },
+  hex: {  // the hexagons' corners (u / (2√3), v / 2): u not a multiple of 3, v of the parity of hexParity (see hexStepper)
+    u: (x) => Math.round(2 * Math.sqrt(3) * x), v: (y) => Math.round(2 * y), x: (u) => u / (2 * Math.sqrt(3)), y: (v) => v / 2,
+    i: (u, v, u0) => { const t = u - u0, q = Math.floor(t / 3); return 2 * q + (t - 3 * q - 1); }, j: (u, v, v0) => (v - v0) >> 1,
+    uOf: (i, j, u0) => u0 + 3 * (i >> 1) + 1 + (i & 1), vOf: (i, j, u0, v0) => v0 + 2 * j + hexParity(u0 + 3 * (i >> 1) + 1 + (i & 1)),
+    isVertex: (u, v) => { const q = Math.floor(u / 3); return u - 3 * q !== 0 && (v & 1) === hexParity(u); },
+    links: [[2, 0], [1, 1], [-1, 1]], step: 1, half: R3 / 2,
+    templates: [ring(R3, Math.PI / 3, 3), ring(R3, 0, 3)], tpl: (u) => (u - 3 * Math.floor(u / 3) === 2 ? 0 : 1),  // a centre on the left, or on the right
+  },
+};
+const hexParity = (u) => { const q = Math.floor(u / 3); return u - 3 * q === 1 ? (q + 1) & 1 : q & 1; };
+function computeFill() {
+  const G = FILL_GRIDS[walk.lattice], { xs, ys } = walk, last = walk.n;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (let i = 0; i <= last; i++) {
     if (xs[i] < minX) minX = xs[i]; if (xs[i] > maxX) maxX = xs[i];
     if (ys[i] < minY) minY = ys[i]; if (ys[i] > maxY) maxY = ys[i];
   }
-  minX = Math.round(minX); maxX = Math.round(maxX); minY = Math.round(minY); maxY = Math.round(maxY);
-  const W = maxX - minX + 4, H = maxY - minY + 4, N = W * H;  // corners at x = minX − 1.5 + i, y = minY − 1.5 + j
-  if (N > FILL_MAX_SQUARES) return { at: new Int32Array(0), tooBig: true, count: 0 };
-  // 1. the links crossed, at their first crossing: bit 1 the link to the right of corner id, bit 2 down
+  // the grid over the box and a margin of 2 (u0 a multiple of 6, v0 even: the packings rely on it)
+  const u0 = 6 * Math.floor((G.u(minX - 2) - 6) / 6), v0 = 2 * Math.floor((G.v(minY - 2) - 2) / 2);
+  const uMax = G.u(maxX + 2) + 6, vMax = G.v(maxY + 2) + 2, NI = G.i(uMax, vMax, u0) + 2, NJ = G.j(uMax, vMax, v0) + 2, N = NI * NJ;
+  if (N > FILL_MAX_VERTICES) return { at: new Int32Array(0), tooBig: true, count: 0 };
+  const idOf = (u, v) => { const i = G.i(u, v, u0), j = G.j(u, v, v0); return i >= 0 && i < NI && j >= 0 && j < NJ ? i * NJ + j : -1; };
+  const uAt = (id) => G.uOf((id / NJ) | 0, id % NJ, u0, v0), vAt = (id) => G.vOf((id / NJ) | 0, id % NJ, u0, v0);
+  const L = G.links;
+  // 1. the links crossed, at their first crossing: bit 1 << k on the lower vertex for its link k
   const cross = new Uint8Array(N), list = new Int32Array(2 * last), steps = new Int32Array(last);
   let m = 0;
   for (let s = 0; s < last; s++) {
     if (walk.skipZeros && walk.digits[s] === 0) continue;  // a spiral's 0 draws nothing
-    const x = Math.round(xs[s]), y = Math.round(ys[s]), dx = Math.round(xs[s + 1]) - x, dy = Math.round(ys[s + 1]) - y;
-    if (Math.abs(dx) + Math.abs(dy) !== 1) continue;  // only unit steps cross a side
-    let id, bit;
-    if (dy === 0) { id = (Math.min(x, x + dx) - minX + 2) * H + (y - minY + 1); bit = 2; }  // across a vertical side
-    else { id = (x - minX + 1) * H + (Math.min(y, y + dy) - minY + 2); bit = 1; }        // across a horizontal side
-    if (cross[id] & bit) continue;
-    cross[id] |= bit;
-    list[2 * m] = id; list[2 * m + 1] = bit; steps[m++] = s;
+    const dx = xs[s + 1] - xs[s], dy = ys[s + 1] - ys[s], d = Math.hypot(dx, dy);
+    if (Math.abs(d - G.step) > 1e-6) continue;  // only steps to a neighbouring tile cross an edge
+    const mx = (xs[s] + xs[s + 1]) / 2, my = (ys[s] + ys[s + 1]) / 2, px = (-dy / d) * G.half, py = (dx / d) * G.half;
+    let ua = G.u(mx + px), va = G.v(my + py), ub = G.u(mx - px), vb = G.v(my - py);
+    if (vb < va || (vb === va && ub < ua)) [ua, va, ub, vb] = [ub, vb, ua, va];
+    const k = L.findIndex(([du, dv]) => du === ub - ua && dv === vb - va), id = idOf(ua, va);
+    if (k < 0 || id < 0 || !G.isVertex(ua, va) || (cross[id] >> k) & 1) continue;
+    cross[id] |= 1 << k;
+    list[2 * m] = id; list[2 * m + 1] = k; steps[m++] = s;
   }
   // 2. the regions at the end (flood fill)
-  const comp = new Int32Array(N).fill(-1), queue = new Int32Array(N);
+  const comp = new Int32Array(N).fill(-1), queue = new Int32Array(N), outside = [];
   let regions = 0;
-  for (let v0 = 0; v0 < N; v0++) {
-    if (comp[v0] >= 0) continue;
-    let qh = 0, qt = 0;
-    queue[qt++] = v0; comp[v0] = regions;
+  for (let v0id = 0; v0id < N; v0id++) {
+    if (comp[v0id] >= 0) continue;
+    let qh = 0, qt = 0, out = 0;
+    queue[qt++] = v0id; comp[v0id] = regions;
     while (qh < qt) {
-      const v = queue[qh++], i = (v / H) | 0, j = v - i * H;
-      if (i + 1 < W && !(cross[v] & 1) && comp[v + H] < 0) { comp[v + H] = regions; queue[qt++] = v + H; }
-      if (i > 0 && !(cross[v - H] & 1) && comp[v - H] < 0) { comp[v - H] = regions; queue[qt++] = v - H; }
-      if (j + 1 < H && !(cross[v] & 2) && comp[v + 1] < 0) { comp[v + 1] = regions; queue[qt++] = v + 1; }
-      if (j > 0 && !(cross[v - 1] & 2) && comp[v - 1] < 0) { comp[v - 1] = regions; queue[qt++] = v - 1; }
+      const id = queue[qh++], u = uAt(id), v = vAt(id), x = G.x(u), y = G.y(v);
+      if (x < minX || x > maxX || y < minY || y > maxY) out = 1;
+      for (let k = 0; k < L.length; k++) {
+        const du = L[k][0], dv = L[k][1];
+        if (G.isVertex(u + du, v + dv)) {  // forward link k from this vertex
+          const n = idOf(u + du, v + dv);
+          if (n >= 0 && comp[n] < 0 && !((cross[id] >> k) & 1)) { comp[n] = regions; queue[qt++] = n; }
+        }
+        if (G.isVertex(u - du, v - dv)) {  // and from the vertex behind
+          const n = idOf(u - du, v - dv);
+          if (n >= 0 && comp[n] < 0 && !((cross[n] >> k) & 1)) { comp[n] = regions; queue[qt++] = n; }
+        }
+      }
     }
+    outside.push(out);
     regions++;
   }
   // 3. back in time, over the regions
   const parent = Int32Array.from({ length: regions }, (_, r) => r), size = new Int32Array(regions).fill(1);
-  const out = new Uint8Array(regions), stamp = new Int32Array(regions).fill(-1);
-  out[comp[0]] = 1;  // the margin
+  const out = Uint8Array.from(outside), stamp = new Int32Array(regions).fill(-1);
   const find = (r) => { while (parent[r] !== r) r = parent[r]; return r; };  // no compression: stamps sit on the way up
   for (let k = m - 1; k >= 0; k--) {
-    const id = list[2 * k], other = list[2 * k + 1] === 1 ? id + H : id + 1;
-    let a = find(comp[id]), b = find(comp[other]);
+    const id = list[2 * k], [du, dv] = L[list[2 * k + 1]];
+    let a = find(comp[id]), b = find(comp[idOf(uAt(id) + du, vAt(id) + dv)]);
     if (a === b) continue;
     if (out[a] !== out[b]) stamp[out[a] ? b : a] = steps[k] + 1;  // the inner one enclosed from the next step
     if (out[b] && !out[a]) [a, b] = [b, a];
@@ -5808,19 +5735,19 @@ function computeFillSquare() {
     for (let y = r; y !== x; y = parent[y]) atRegion[y] = v;
     return (atRegion[x] = v);
   };
-  // the enclosed corners, sorted by their step (counting sort)
+  // the enclosed vertices, sorted by their step (counting sort)
   const count = new Int32Array(last + 2);
-  for (let v = 0; v < N; v++) { const a = regionAt(comp[v]); if (a >= 0) count[a]++; }
+  for (let id = 0; id < N; id++) { const a = regionAt(comp[id]); if (a >= 0) count[a]++; }
   let total = 0;
   for (let s = 0; s < count.length; s++) { const c = count[s]; count[s] = total; total += c; }
-  const at = new Int32Array(total), cx = new Float32Array(total), cy = new Float32Array(total);
-  for (let v = 0; v < N; v++) {
-    const a = atRegion[comp[v]];
+  const at = new Int32Array(total), cx = new Float32Array(total), cy = new Float32Array(total), tpl = new Uint8Array(total);
+  for (let id = 0; id < N; id++) {
+    const a = atRegion[comp[id]];
     if (a < 0) continue;
-    const k = count[a]++, i = (v / H) | 0;
-    at[k] = a; cx[k] = minX - 1.5 + i; cy[k] = minY - 1.5 + (v - i * H);
+    const k = count[a]++, u = uAt(id);
+    at[k] = a; cx[k] = G.x(u); cy[k] = G.y(vAt(id)); tpl[k] = G.tpl(u);
   }
-  return fillOf(at, cx, cy, new Uint8Array(total), [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]]);
+  return { at, cx, cy, tpl, templates: G.templates, tooBig: false, count: total };
 }
 
 // Paint the regions closed by the walk up to step to (from where the fill layer got to), opaque,

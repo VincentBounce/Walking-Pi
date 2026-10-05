@@ -169,7 +169,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 - **Display box** (top right, hover to open), with what fits the current tab:
   - **Auto-fit:** the view follows the walk and ends framed on it.
   - **Colours:** rainbow along the walk, rainbow cells, heatmap of visits, one colour per digit, or one colour.
-  - **Fill areas:** each area the walk closes off is filled when it closes (on squares, up to a box of 12 million squares: 2 million digits of π fill in about half a second).
+  - **Fill areas:** each area the walk closes off is filled when it closes (squares, triangles or hexagons, up to a box of 12 million tile corners: 2 million digits of π fill in 1 to 2 seconds).
   - Grid, sky, auto-rotate (the solid tumbles on three axes), flat / round and perspective.
 - **Navigation:** mouse wheel to zoom, drag to pan, double-click to fit.
   - In 3D: drag to rotate, Shift+drag to pan.
