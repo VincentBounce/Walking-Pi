@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.312';
+const VERSION = '0.1.313';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6438,10 +6438,9 @@ const viewNow = () => ({ autoFit: $('autoFit').checked, cam: { r: [...cam.r], u:
 // keeps it (see the lists' mouseleave); with onDelete, a × at its end
 // A setup of the Gallery is shown framed and facing its walk: Auto-fit on (a hand rotation or zoom
 // may have turned it off, and the walk could be on the far side), kept only by a click
-function showSetup(setup) {
+function showSetup(setup) {  // framed and faced once built (see showAll), not before: the walk is built apart
   $('autoFit').checked = true;
   applySetup(setup);
-  if (!walk.life && cur >= walk.n) { faceWalk(); fitWhole(); }
 }
 function setupRow(name, detail, setup, onDelete) {
   const b = document.createElement('button');
