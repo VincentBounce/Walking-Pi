@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261012a">
+  <link rel="stylesheet" href="style.css?v=20261012c">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -29,7 +29,7 @@
           </div>
         </div>
         <div id="modeList" class="mode-list" role="listbox"></div>
-        <div id="torusTiles" class="choice-row" hidden title="The torus's tiles"></div>  <!-- under the list, when Torus is picked -->
+        <div id="torusTiles" class="choice-row" hidden title="The torus's tiles" role="tablist"></div>  <!-- under the list, when Torus is picked -->
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
             <optgroup label="2D walks">
@@ -99,9 +99,6 @@
             <button id="sizeDown" title="Smaller surface">−</button>
             <span id="sizeLabel"></span>
             <button id="sizeUp" title="Bigger surface">+</button>
-          </div>
-          <div id="turnRow" class="choice-row" hidden title="The tiles as usual, or turned by 30°: rows of triangles, or columns of hexagons, around the tube instead of around the ring">
-            <button id="turnUsual" type="button">Usual</button><button id="turnTurned" type="button">Turned 30°</button>
           </div>
           <div id="loopRow" class="stepper" title="The sizes and starts where this fraction's chain closes in the fewest laps around the ring and the tube" hidden>
             <button id="loopDown" title="Previous loop">−</button>
@@ -298,6 +295,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261012a"></script>
+  <script src="main.js?v=20261012c"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.324';
+const VERSION = '0.1.326';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1237,6 +1237,16 @@ const dragonOf = (turns) => fitIn(turtlePath(Array.from({ length: turns }, (_, k
 const dots = (list, r) => list.map(([x, y]) => `<circle class="f" cx="${x}" cy="${y}" r="${r}"/>`).join('');
 const pathEl = (d, cls) => `<path${cls ? ` class="${cls}"` : ''} d="${d}"/>`;
 
+// A triangle cut into 4 (its corners' midpoints joined), pointing at angle rot
+const tiledTriangle = (rot) => {
+  const [a, b, c] = ngon(3, 10.5, rot, 12, rot === -90 ? 14 : 12), m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  return pathEl(pathOf([a, b, c])) + pathEl(pathOf([m(a, b), m(b, c), m(c, a)]));
+};
+// 3 hexagons around a point: flat-topped (rot 0) or pointy-topped (rot 30)
+const hexCluster = (rot) => [0, 120, 240].map((d) => {
+  const t = ((d + rot) * Math.PI) / 180, R = 5.2;
+  return pathEl(pathOf(ngon(6, R, rot, 12 + R * Math.cos(t), 12 + R * Math.sin(t))));
+}).join('');
 const ICONS = (() => {
   const hex = ngon(6, 9.5), tri = ngon(3, 10, -90, 12, 14), sq = [[4, 4], [20, 4], [20, 20], [4, 20]];
   const cube = (fillTop) => pathEl(pathOf(hex)) + [0, 2, 4].map((k) => pathEl(seg([12, 12], hex[k]))).join('')
@@ -1257,6 +1267,10 @@ const ICONS = (() => {
     cube: cube(false),
     cubeFilled: cube(true),
     torus,
+    // the torus's tilings (see TORUS_TABS): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
+    tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
+    tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
+    tilesHex: hexCluster(0), tilesHexTurned: hexCluster(30),
     mobius: pathEl('M3 12C3 7.5 8.5 7.5 12 12S21 16.5 21 12S15.5 7.5 12 12S3 16.5 3 12Z') + pathEl('M6.5 10.4Q9 9.6 10.6 11.2M13.4 12.8Q15 14.4 17.5 13.6'),
     tetrahedron: pathEl(pathOf([a, b, c])) + [a, b, c].map((p) => pathEl(seg(p, d))).join(''),
     octahedron: pathEl('M12 2L21 12L12 22L3 12Z') + [[12, 2], [21, 12], [12, 22], [3, 12]].map((p) => pathEl(seg(p, [10, 14]))).join(''),
@@ -1797,10 +1811,14 @@ function splitModeLabel(text) {
 // The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
 const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
 
-// The tori of the walks on surfaces: one entry, Torus, and its tiling below the list
-const TORUS_TILINGS = [['Squares', 'torusGrid', 'torusWalk'], ['Triangles', 'triTorusGrid', 'triTorusWalk'], ['Hexagons', 'hexTorusGrid', 'hexTorusWalk']];
-const torusTilingOf = (w) => TORUS_TILINGS.findIndex((t) => t.includes(w));
-let torusTiling = 0;  // the tiling in use, or last chosen
+// The tori of the walks on surfaces: one entry, Torus, and its tiling below the list, as tabs:
+// squares, triangles, triangles turned by 30°, hexagons, hexagons turned by 30° (see TURNED)
+const TORUS_MODES = [['torusGrid', 'torusWalk'], ['triTorusGrid', 'triTorusWalk'], ['hexTorusGrid', 'hexTorusWalk']];
+const TORUS_TABS = [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesTri', 'Triangles'], [1, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)'],
+                    [2, false, 'tilesHex', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)']];
+const torusTilingOf = (w) => TORUS_MODES.findIndex((t) => t.includes(w));  // the tiling of a walk mode, −1: not a torus
+const torusTabOf = (w) => TORUS_TABS.findIndex(([f, turned]) => f === torusTilingOf(w) && (f === 0 || turned === torusTurned));
+let torusTab = 0;  // the tab in use, or last chosen
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
@@ -1838,9 +1856,9 @@ function renderModePicker() {
   $('walkOnCells').classList.toggle('active', onCells);
   $('walkOnCells').disabled = modeTab === currentGroup && !inUse.twin;  // no walk on cells there yet
   // the three tori are one entry, Torus (as its tiling in use, or as last chosen), its tiling picked below
-  const tiling = torusTilingOf($('mode').value);
-  if (tiling >= 0) torusTiling = tiling;
-  const torusOf = (o) => $('mode').querySelector(`option[value="${TORUS_TILINGS[torusTiling][onCells ? 2 : 1]}"]`) ?? o;
+  const tab = torusTabOf($('mode').value);
+  if (tab >= 0) torusTab = tab;
+  const torusOf = (o) => $('mode').querySelector(`option[value="${TORUS_MODES[TORUS_TABS[torusTab][0]][onCells ? 1 : 0]}"]`) ?? o;
   $('modeList').replaceChildren(...Array.from(group.children).filter((o) => shown(o) && torusTilingOf(o.value) <= 0).map((entry) => {
     const torus = torusTilingOf(entry.value) === 0, o = torus ? torusOf(entry) : entry;
     const b = document.createElement('button');
@@ -1859,22 +1877,27 @@ function renderModePicker() {
     b.classList.toggle('off', twins && onCells && !mode.twin);  // no walk on cells yet: picking it goes along the grid
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
+      if (torus) torusTurned = TORUS_TABS[torusTab][1];  // the tiling last chosen, turned or not
       $('mode').value = o.value;
       $('mode').dispatchEvent(new Event('change'));
     });
     return b;
   }));
-  // Torus picked: Squares | Triangles | Hexagons, the same walk on another tiling
-  $('torusTiles').hidden = !(modeTab === currentGroup && tiling >= 0);
+  // Torus picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
+  $('torusTiles').hidden = !(modeTab === currentGroup && tab >= 0);
   if ($('torusTiles').hidden) return;
-  $('torusTiles').replaceChildren(...TORUS_TILINGS.map(([name, grid, cells], i) => {
+  $('torusTiles').replaceChildren(...TORUS_TABS.map(([f, turned, pic, name], i) => {
     const b = document.createElement('button');
-    b.textContent = name;
-    b.classList.toggle('active', i === tiling);
+    b.innerHTML = icon(pic);
+    b.title = name;
+    b.classList.toggle('active', i === tab);
     b.addEventListener('click', () => {
-      if (i === tiling) return;
-      torusTiling = i;
-      $('mode').value = onCells ? cells : grid;
+      if (i === tab) return;
+      torusTab = i;
+      const w = TORUS_MODES[f][onCells ? 1 : 0];
+      if (w === $('mode').value) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
+      torusTurned = turned;
+      $('mode').value = w;
       $('mode').dispatchEvent(new Event('change'));
     });
     return b;
@@ -2988,9 +3011,6 @@ function syncSizeStepper() {
   $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
-  $('turnRow').hidden = !TURNED[MODES[$('mode').value].sphere];
-  $('turnUsual').classList.toggle('active', !torusTurned);
-  $('turnTurned').classList.toggle('active', torusTurned);
   const starts = modeStarts();
   $('startRow').hidden = !starts;
   if (!starts) return;
@@ -6528,8 +6548,6 @@ function turnTorus(turned) {
   $('startNo').value = 1;  // the starts are not the same
   sel.dispatchEvent(new Event('change'));
 }
-$('turnUsual').addEventListener('click', () => turnTorus(false));
-$('turnTurned').addEventListener('click', () => turnTorus(true));
 $('sphereF').addEventListener('change', () => {
   syncSizeStepper();
   if (MODES[$('mode').value].life) { compute(); return; }  // one digit per cell: maybe more digits
