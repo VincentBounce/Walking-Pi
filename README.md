@@ -105,7 +105,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 | Square torus | base 3: `0` left · `1` straight · `2` right | base 3: `0` left · `1` straight · `2` right |
 | Triangle torus | base 5: `0` sharp left … `4` sharp right | base 2: exit through the `0` left or `1` right edge |
 | Hex torus | base 2: `0` left · `1` right | base 5: `0` sharp left … `4` sharp right |
-| Möbius strip | base 3: `0` left · `1` straight · `2` right (at its edge, the nearest way along it) | base 3: `0` left · `1` straight · `2` right (at its edge, back the way it came) |
+| Möbius strip | base 3: `0` left · `1` straight · `2` right | base 3: `0` left · `1` straight · `2` right |
 | Cube | base 3: `0` left · `1` straight · `2` right | base 3: `0` left · `1` straight · `2` right |
 | Tetrahedron, octahedron, triangle sphere | base 5: `0` sharp left … `4` sharp right (at a corner of the solid, the nearest edge) | base 2: exit through the `0` left or `1` right edge |
 | Hexagon sphere | base 2: `0` left · `1` right | base 2: the `0` front left or `1` front right edge |
@@ -114,7 +114,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 - **Starts:** the different walks a surface allows (its rotations turn a start into another one that draws the same walk, turned), numbered alike at every size; hovering the number shows them all.
 - A walk that comes back onto itself stops after its first round (`↻`, see [Regular patterns](#regular-patterns)); on a torus, a fraction's **loops** button finds the sizes where it closes in fewest laps.
 - A surface can be shown **flat or round**: the torus and the Möbius strip unroll into their sheet and the polyhedra flatten, and the walk goes on during the morph.
-- The **Möbius strip** has one side and one edge: a walker that goes once round comes back mirrored (its left is then the start's right), on the other half of the strip; its starts are one per row from the middle to the edge, and per direction.
+- The **Möbius strip** is walked as a strip of paper: each square has two faces, each with its own cells, and a walker keeps to its face; at the strip's edge it goes round onto the face just behind. Both faces make one surface with no edge, where every corner is like any other (2 starts, along and across).
 
 ### 3D walks
 
