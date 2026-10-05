@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.322';
+const VERSION = '0.1.323';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2877,13 +2877,6 @@ function applyShape() {
       wx[i] = sh.cen[3 * t] * R; wy[i] = sh.cen[3 * t + 1] * R; wz[i] = sh.cen[3 * t + 2] * R;
     }
   }
-  if (walk.geo.mobius && !walk.life) {  // on the strip, a little off the face of its square: hidden from the other side
-    const { wx, wy, wz, tile } = walk, lift = (0.15 * 2 * Math.PI * R) / walk.geo.nu;  // 0.15 square
-    for (let i = 0; i <= walk.n; i++) {
-      const t = tile[i];
-      wx[i] += sh.nrm[3 * t] * lift; wy[i] += sh.nrm[3 * t + 1] * lift; wz[i] += sh.nrm[3 * t + 2] * lift;
-    }
-  }
   project();
   const F = R * sh.extent;
   bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
@@ -5287,6 +5280,18 @@ void main() {
   gl_Position = clipOf(p, uBias);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+  // the path printed on the faces of a Möbius strip: one flat ribbon per half step, in its square's
+  // plane (aN its normal), as wide as the path on screen; seen from its own face only (see glSurface)
+  ribbon: [`#version 300 es
+in vec2 aQuad; in vec3 aA; in vec3 aB; in vec3 aN; uniform float uN, uHalf; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
+void main() {
+  vCol = texture(uGrad, vec2((floor(float(gl_InstanceID) / 2.0) + 0.5) / uN, 0.5)).rgb;
+  vec3 d = aB - aA; d = length(d) > 1e-9 ? normalize(d) : vec3(1.0, 0.0, 0.0);
+  vec3 side = normalize(cross(d, aN)) * uHalf;  // counterclockwise seen from the face, as its square
+  vec3 p = mix(aA, aB, aQuad.x) + side * aQuad.y + d * (aQuad.x * 2.0 - 1.0) * uHalf;
+  gl_Position = clipOf(toScreen(p), 0.0005);
+}`, `#version 300 es
+precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
   flatPath: [`#version 300 es
 in vec2 aQuad; in vec2 aA; in vec2 aB; in float aKey; uniform float uN, uWidth; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec3 vCol;
@@ -5341,7 +5346,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), pts: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -5365,6 +5370,34 @@ function glClear() {
 }
 const glColour = new Map();  // CSS colour → [r, g, b]
 const rgbCached = (c) => { if (!glColour.has(c)) glColour.set(c, rgbOf(c)); return glColour.get(c); };
+// The path on a Möbius strip's faces, in its current form: each step as two halves, from a square's
+// centre to the middle of the edge it crosses, then on to the next square's centre (over the strip's
+// edge, round to the face behind), each with its square's normal; along the grid, an edge's halves
+// with the normal of a square beside it. [Ax, Ay, Az, Bx, By, Bz, Nx, Ny, Nz] per half
+function ribbonSegments() {
+  const g = walk.geo, sh = walk.shape, R = walk.R, k = g.sides, C = sh.corners, n = walk.n, out = new Float32Array(18 * Math.max(1, n));
+  const corner = (t, q) => [C[3 * (k * t + q)] * R, C[3 * (k * t + q) + 1] * R, C[3 * (k * t + q) + 2] * R];
+  const centre = (t) => [sh.cen[3 * t] * R, sh.cen[3 * t + 1] * R, sh.cen[3 * t + 2] * R];
+  const normal = (t) => [sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]];
+  const mid = (p, q) => p.map((x, d) => (x + q[d]) / 2);
+  const put = (j, a, b, nr) => out.set([...a, ...b, ...nr], 9 * j);
+  if (walk.vert) {  // along the grid: corner to corner, on a square beside the edge
+    const G = g.grid, at = (v, t) => { for (let q = 0; q < k; q++) if (g.poly[k * t + q] === v) return corner(t, q); return corner(G.tileOf[v], G.cornerOf[v]); };
+    for (let i = 0; i < n; i++) {
+      const t = walk.stepTiles[2 * i], a = at(walk.vert[i], t), b = at(walk.vert[i + 1], t), m = mid(a, b);
+      put(2 * i, a, m, normal(t)); put(2 * i + 1, m, b, normal(t));
+    }
+    return out;
+  }
+  for (let i = 0; i < n; i++) {  // on cells: centre, the middle of the shared edge (in each square), centre
+    const a = walk.tile[i], b = walk.tile[i + 1], qa = [], qb = [];
+    for (let p = 0; p < k; p++) for (let q = 0; q < k; q++) if (g.poly[k * a + p] === g.poly[k * b + q]) { qa.push(p); qb.push(q); }
+    const ma = qa.length === 2 ? mid(corner(a, qa[0]), corner(a, qa[1])) : centre(a), mb = qb.length === 2 ? mid(corner(b, qb[0]), corner(b, qb[1])) : centre(b);
+    put(2 * i, centre(a), ma, normal(a)); put(2 * i + 1, mb, centre(b), normal(b));
+  }
+  return out;
+}
+
 // Draw the surface with its palette and levelOf (as drawSphere picks them); false if WebGL is missing
 function glSurface(palette, levelOf, path) {
   const S = glSetup();
@@ -5460,14 +5493,28 @@ function glSurface(palette, levelOf, path) {
     off(prog.edge, ['aPos']);
     gl.disable(gl.BLEND);
   }
-  // path: the steps walked so far, over the tiles
-  if (path && cur > 0) {
+  // path: the steps walked so far, over the tiles; on a Möbius strip, printed on their faces
+  if (path && cur > 0 && g.mobius) {
+    if (S.keys.ribbon !== walk.wx || S.keys.ribbonM !== sh.m) { gl.bindBuffer(gl.ARRAY_BUFFER, S.ribbon); gl.bufferData(gl.ARRAY_BUFFER, ribbonSegments(), gl.DYNAMIC_DRAW); S.keys.ribbon = walk.wx; S.keys.ribbonM = sh.m; }
+    u = uniforms(prog.ribbon);
+    gl.uniform1f(u('uN'), Math.max(1, walk.n));
+    gl.uniform1f(u('uHalf'), surfaceLineWidth() / 2 / view.scale);  // the screen width, in world units
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
+    attrib(prog.ribbon, 'aQuad', S.quad, 2);
+    attrib(prog.ribbon, 'aA', S.ribbon, 3, gl.FLOAT, false, 36, 0, 1);
+    attrib(prog.ribbon, 'aB', S.ribbon, 3, gl.FLOAT, false, 36, 12, 1);
+    attrib(prog.ribbon, 'aN', S.ribbon, 3, gl.FLOAT, false, 36, 24, 1);
+    gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, 2 * cur);
+    gl.disable(gl.CULL_FACE);
+    off(prog.ribbon, ['aQuad', 'aA', 'aB', 'aN']);
+  } else if (path && cur > 0) {
     u = uniforms(prog.path);
     const c = sh.corners, edge = R * Math.hypot(c[0] - c[3], c[1] - c[4], c[2] - c[5]);
     gl.uniform1f(u('uN'), Math.max(1, walk.n));
     gl.uniform1f(u('uWidth'), surfaceLineWidth());
     gl.uniform1f(u('uMaxLen'), walk.geo.torus && sh.m < 1 ? 2.5 * edge : 1e9);
-    gl.uniform1f(u('uBias'), g.mobius ? 0.0005 : 0.004);  // on the strip, the path sits on its face instead (see applyShape)
+    gl.uniform1f(u('uBias'), 0.004);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
     attrib(prog.path, 'aQuad', S.quad, 2);
     attrib(prog.path, 'aA', S.pts, 3, gl.FLOAT, false, 12, 0, 1);
