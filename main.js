@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.304';
+const VERSION = '0.1.305';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1116,7 +1116,10 @@ function renderChoiceButtons(sel, box) {
   }));
 }
 const renderColorButtons = () => renderChoiceButtons($('colorMode'), $('colorButtons'));
-const renderSkyButtons = () => renderChoiceButtons($('sky'), $('skyButtons'));
+const renderSkyButtons = () => {  // the sky named after the theme: Dawn on a light page, Twilight on a dark one
+  $('sky').options[0].text = document.documentElement.dataset.theme === 'light' ? 'Dawn' : 'Twilight';
+  renderChoiceButtons($('sky'), $('skyButtons'));
+};
 
 function requestedDigits() {
   const n = Math.round(Number($('digits').value));
@@ -4538,7 +4541,7 @@ function drawGrid() {
   let stepCells = 1;
   while (s * stepCells < 10) stepCells *= 5;
   // faint lines: white over a dark sky, dark over a light one, else the page's grid colour
-  ctx.strokeStyle = darkSky() ? 'rgba(255,255,255,0.06)' : walk.is3d && SKIES[$('sky').value] ? 'rgba(0, 0, 0, 0.08)' : getComputedStyle(document.documentElement).getPropertyValue('--grid');
+  ctx.strokeStyle = darkSky() ? 'rgba(255,255,255,0.06)' : skyStops() ? 'rgba(0, 0, 0, 0.08)' : getComputedStyle(document.documentElement).getPropertyValue('--grid');
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (walk.is3d) {
@@ -4579,17 +4582,17 @@ function drawLines(ctx, a, b, c0, step) {
   }
 }
 
-// 3D background: a vertical sky gradient behind the scene (twilight, deep blue, or none)
+// 3D background: a vertical sky gradient behind the scene, in the page's tone (Dawn on a light page,
+// Twilight on a dark one), or Plain (the page background)
 const SKIES = {
-  twilight: [[0, '#0a1530'], [0.45, '#1c2852'], [0.75, '#433262'], [0.92, '#7a4a5e'], [1, '#9c5f52']],
-  blue:     [[0, '#07122b'], [1, '#17315f']],
-  dawn:     [[0, '#b9d0ea'], [0.5, '#dfe3f1'], [0.8, '#f2dde2'], [1, '#f8d2bd']],  // a light one
+  dark:  [[0, '#0a1530'], [0.45, '#1c2852'], [0.75, '#433262'], [0.92, '#7a4a5e'], [1, '#9c5f52']],  // twilight
+  light: [[0, '#b9d0ea'], [0.5, '#dfe3f1'], [0.8, '#f2dde2'], [1, '#f8d2bd']],                          // dawn
 };
-const LIGHT_SKIES = ['dawn'];
-const darkSky = () => walk.is3d && !!SKIES[$('sky').value] && !LIGHT_SKIES.includes($('sky').value);
+const skyStops = () => (walk.is3d && $('sky').value === 'sky' ? SKIES[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'] : null);
+const darkSky = () => skyStops() === SKIES.dark;
 function drawSky(ctx) {
-  const stops = SKIES[$('sky').value];
-  if (!stops) return;  // dark: the page background shows through
+  const stops = skyStops();
+  if (!stops) return;  // plain: the page background shows through
   const sky = ctx.createLinearGradient(0, 0, 0, ch);
   for (const [at, colour] of stops) sky.addColorStop(at, colour);
   ctx.fillStyle = sky;
@@ -6224,6 +6227,7 @@ function applyTheme() {
   glColour.clear();
   glPalette();
   renderColorButtons();
+  renderSkyButtons();
   needsFull = true;
 }
 try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
@@ -6349,7 +6353,7 @@ function displayDefaults() {
   $('showPath').checked = false;  // on cells, the cells alone
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
   $('autoRotate').checked = false;  // the grid stays as chosen, on every tab
-  $('sky').value = document.documentElement.dataset.theme === 'light' ? 'dawn' : 'twilight';  // a sky in the page's tone
+  $('sky').value = 'sky';  // Dawn or Twilight, after the theme
   renderSkyButtons();
   displayTab = modeTabOf();
 }
