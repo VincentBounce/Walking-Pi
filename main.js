@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.342';
+const VERSION = '0.1.343';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2054,7 +2054,12 @@ function setBusy(on) {
 // All positions, distances and counts are computed once into typed arrays: the animation, the
 // stats and the jumps only read them.
 let previousShape = null;  // the form of the surface just replaced: { target, mode }
+// A walk built (a new number, mode, size, start, count of digits…): then the link follows it
 function buildWalk() {
+  buildWalkOf();
+  syncLink();
+}
+function buildWalkOf() {
   previousShape = walk.shape && { target: walk.shape.target, mode: walk.shape.mode };
   visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
   glClear();  // a surface drawn by WebGL before (see 11.4b)
@@ -4422,6 +4427,7 @@ function setLifeSeed(seed, how) {
   lifeStart = how;
   describe(L.C, Infinity);
   restart();
+  syncLink();
 }
 
 /* ==============================================================================================
@@ -4564,7 +4570,7 @@ function applyPendingView() {
   if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
   else if (walk.life) placeZone();
   renderHuntList();
-  syncLink();  // at once, not at the next periodic update
+  syncLink();  // with the start a setup's champion or hunt zone gave
 }
 
 /* ---- 10.3 The page link ---------------------------------------------------------------------- */
@@ -4583,8 +4589,10 @@ function parseHash() {
     return s.x && s.w ? s : null;
   } catch { return null; }
 }
+// The link is written when what it holds changes: a walk built (see buildWalk), Fill areas, a Life
+// start (setLifeSeed), a Gallery setup kept by a click; not for one only shown on hover
 function syncLink() {
-  if (busy || pendingChampion) return;  // not while a setup is still being built
+  if (busy || pendingChampion || galleryBefore) return;  // not while a setup is still being built, nor shown on hover
   const h = `#${toHash(getSetup())}`;
   if (h !== location.hash) history.replaceState(null, '', h);
   syncSaveButton();
@@ -6941,6 +6949,7 @@ function setupRow(name, detail, setup, onDelete) {
     pendingSpin = false;  // clicked while still: it stays still (already turning: it goes on)
     spinFrom = 0;
     galleryBefore = galleryView = null;  // kept, Auto-fit on: leaving the list no longer brings back the one before
+    syncLink();  // its link (if already built; else once built)
     renderModePicker();  // its tab, at the top
     showPane(false);  // and its parameters
   });
@@ -7017,7 +7026,7 @@ window.addEventListener('hashchange', () => { const s = parseHash(); if (s) appl
 
 /* ---- 12.3 Start-up --------------------------------------------------------------------------- */
 // A link with a setup opens that setup; otherwise π on the turtle walk. The link then follows the
-// setup: at once after each build, and every 700 ms for the other changes.
+// setup on its events (see syncLink).
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
@@ -7030,4 +7039,3 @@ fillSetupList();
 const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
 if (!linked || !applySetup(linked)) compute();
 showPane(false);
-setInterval(syncLink, 700);  // keep the link up to date with the setup
