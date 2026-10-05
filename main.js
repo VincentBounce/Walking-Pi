@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.331';
+const VERSION = '0.1.332';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2235,7 +2235,7 @@ function rotateView(w) {
     viewGoal.cy -= before[1] - after[1];
   }
   project();
-  if (walk.sphere) { boundsStale = true; needsFull = true; return; }  // its outline changed (see surfaceBounds, tick)
+  if (walk.sphere) { needsFull = true; return; }  // its frame is the sphere round it, whichever way it turns
   const done = cur;
   cur = 0;
   bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -2970,22 +2970,13 @@ function initShape(kind) {
   walk.shape = { ...shapeAt(g, m), target: m, maxExtent, mode };
 }
 
-// The frame of a surface in the view: the outline of its current form as seen now, so that a solid
-// is framed as tightly whichever way it is turned (a tetrahedron is seen far smaller than the sphere
-// round it); while it turns by itself, that sphere (the frame does not breathe as it turns)
-let boundsStale = false, boundsAt = 0;  // a surface turned since its outline was measured; when it was
+// The frame of a surface: the sphere round its current form (flat or round), centred on its centre,
+// as wide as it looks in perspective (its outline from the camera): whichever way the solid is
+// turned, it stays in the middle of the view and at most touches its sides (see viewFor)
 function surfaceBounds() {
-  boundsStale = false;
-  const sh = walk.shape, R = walk.R, F = R * sh.extent;
-  if ($('autoRotate').checked) return { minX: -F, maxX: F, minY: -F, maxY: F };
-  const C = sh.corners, proj = projector();
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (let q = 0; q < C.length; q += 3) {
-    const [x, y] = proj(C[q] * R, C[q + 1] * R, C[q + 2] * R);
-    if (x < minX) minX = x; if (x > maxX) maxX = x;
-    if (y < minY) minY = y; if (y > maxY) maxY = y;
-  }
-  return { minX, maxX, minY, maxY };
+  const F = walk.R * walk.shape.extent, P = walk.persp;
+  const r = P ? (F * P.D) / Math.sqrt(Math.max(1e-9, P.D * P.D - F * F)) : F;
+  return { minX: -r, maxX: r, minY: -r, maxY: r };
 }
 
 // Put the current shape in place: tile centres of the walk's points, the frame and the view
@@ -4711,7 +4702,6 @@ function includeBox() {
 
 // Frame everything drawn so far
 function fitWhole() {
-  if (walk.sphere && boundsStale) bounds = surfaceBounds();
   includeBox();
   fitToBounds(padBounds(bounds));
 }
@@ -4744,10 +4734,11 @@ function restart() {
 // centre in world units, so zooming out does not drift sideways.
 const MIN_SCALE = 1e-6;  // pixels per cell, the farthest zoom out
 function viewFor(b) {
-  const w = b.maxX - b.minX + 2;
-  const h = b.maxY - b.minY + 2;
+  const tight = walk.sphere;  // a surface: the sphere round it touches the sides, at most (see surfaceBounds)
+  const w = b.maxX - b.minX + (tight ? 0 : 2);
+  const h = b.maxY - b.minY + (tight ? 0 : 2);
   // down to 10⁻⁶ pixel per cell: a walk of 10 million steps can drift millions of cells away
-  const scale = Math.min(40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * 0.925));  // a 7.5 % margin
+  const scale = Math.min(40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * (tight ? 0.99 : 0.925)));  // else a 7.5 % margin
   return { scale, cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
 }
 function setView(v) {
@@ -5441,8 +5432,8 @@ void main() {
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   edge: [`#version 300 es
-in vec3 aPos;${GL_PROJECT}
-void main() { gl_Position = clipOf(toScreen(aPos), 0.002); }`, `#version 300 es
+in vec3 aPos; uniform float uBias;${GL_PROJECT}
+void main() { gl_Position = clipOf(toScreen(aPos), uBias); }`, `#version 300 es
 precision mediump float; uniform float uEdge; out vec4 o; void main() { o = vec4(0.0, 0.0, 0.0, uEdge); }`],
   path: [`#version 300 es
 in vec2 aQuad; in vec3 aA; in vec3 aB; uniform float uN, uWidth, uMaxLen, uBias; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
@@ -5458,13 +5449,13 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
   // the path printed on the faces of a Möbius strip: one flat ribbon per half step, in its square's
   // plane (aN its normal), as wide as the path on screen; seen from its own face only (see glSurface)
   ribbon: [`#version 300 es
-in vec2 aQuad; in vec3 aA; in vec3 aB; in vec3 aN; uniform float uN, uHalf; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
+in vec2 aQuad; in vec3 aA; in vec3 aB; in vec3 aN; uniform float uN, uHalf, uBias; uniform sampler2D uGrad; out vec3 vCol;${GL_PROJECT}
 void main() {
   vCol = texture(uGrad, vec2((floor(float(gl_InstanceID) / 2.0) + 0.5) / uN, 0.5)).rgb;
   vec3 d = aB - aA; d = length(d) > 1e-9 ? normalize(d) : vec3(1.0, 0.0, 0.0);
   vec3 side = normalize(cross(d, aN)) * uHalf;  // counterclockwise seen from the face, as its square
   vec3 p = mix(aA, aB, aQuad.x) + side * aQuad.y + d * (aQuad.x * 2.0 - 1.0) * uHalf;
-  gl_Position = clipOf(toScreen(p), 0.004);  // over the grid lines (0.002), as the other paths
+  gl_Position = clipOf(toScreen(p), uBias);  // over the grid lines, as the other paths
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
@@ -5623,6 +5614,10 @@ function glSurface(palette, levelOf, path) {
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
   const P = walk.persp, cc = P ? orthoPoint(...P.c) : [0, 0];
+  // the grid lines, then the path, pulled towards the viewer by a share of a tile (not of the solid:
+  // on a big one, a fixed share let lines on the faces just behind an edge show through)
+  const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
+  const edgeBias = (0.07 * tileSize) / depth, pathBias = (0.15 * tileSize) / depth;
   const uniforms = (p) => {
     gl.useProgram(p);
     const u = (name) => gl.getUniformLocation(p, name);
@@ -5631,7 +5626,7 @@ function glSurface(palette, levelOf, path) {
     gl.uniform2f(u('uCC'), cc[0], cc[1]);
     gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
     gl.uniform2f(u('uScreen'), cw, ch);
-    gl.uniform1f(u('uDepth'), 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent));
+    gl.uniform1f(u('uDepth'), depth);
     return u;
   };
   const attrib = (p, name, buffer, size, type = gl.FLOAT, normalized = false, stride = 0, offset = 0, divisor = 0) => {
@@ -5661,6 +5656,7 @@ function glSurface(palette, levelOf, path) {
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);  // the canvas stays opaque under the lines
     u = uniforms(prog.edge);
     gl.uniform1f(u('uEdge'), edgeAlpha(sh));
+    gl.uniform1f(u('uBias'), edgeBias);
     attrib(prog.edge, 'aPos', S.pos, 3);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
     if (S.keys.edgesTopo !== S.keys.topo) { gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, S.edgeIdx, gl.STATIC_DRAW); S.keys.edgesTopo = S.keys.topo; }
@@ -5674,6 +5670,7 @@ function glSurface(palette, levelOf, path) {
     u = uniforms(prog.ribbon);
     gl.uniform1f(u('uN'), Math.max(1, walk.n));
     gl.uniform1f(u('uHalf'), surfaceLineWidth() / 2 / view.scale);  // the screen width, in world units
+    gl.uniform1f(u('uBias'), pathBias);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
     attrib(prog.ribbon, 'aQuad', S.quad, 2);
     attrib(prog.ribbon, 'aA', S.ribbon, 3, gl.FLOAT, false, 36, 0, 1);
@@ -5689,7 +5686,7 @@ function glSurface(palette, levelOf, path) {
     gl.uniform1f(u('uN'), Math.max(1, walk.n));
     gl.uniform1f(u('uWidth'), surfaceLineWidth());
     gl.uniform1f(u('uMaxLen'), walk.geo.torus && sh.m < 1 ? 2.5 * edge : 1e9);
-    gl.uniform1f(u('uBias'), 0.004);
+    gl.uniform1f(u('uBias'), pathBias);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad); gl.uniform1i(u('uGrad'), 0);
     attrib(prog.path, 'aQuad', S.quad, 2);
     attrib(prog.path, 'aA', S.pts, 3, gl.FLOAT, false, 12, 0, 1);
@@ -6372,9 +6369,7 @@ function tick(now = performance.now()) {
     if (k > 0) advanceTo(cur + k);
   }
   includeBox();
-  // a surface's outline, measured again after it turned, 5 times a second at most (a big one takes ms)
-  if (walk.sphere && boundsStale && $('autoFit').checked && now - boundsAt > 200) { bounds = surfaceBounds(); boundsAt = now; }
-  if (walk.n && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow
+  if (walk.n && !walk.sphere && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow (a surface's frame is fixed)
     const b = padBounds(bounds);
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
     viewGoal = viewFor({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
@@ -6498,10 +6493,7 @@ $('fillAreas').addEventListener('change', () => { needsFull = true; updateDispla
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
-$('autoRotate').addEventListener('change', () => {  // turning starts framed (by the sphere round the solid); stopped, by its outline
-  if (walk.sphere) bounds = surfaceBounds();
-  if ($('autoRotate').checked || ($('autoFit').checked && walk.sphere)) fitNow();
-});
+$('autoRotate').addEventListener('change', () => { if ($('autoRotate').checked) fitNow(); });  // turning starts framed
 
 function fitNow() {
   $('autoFit').checked = true;
