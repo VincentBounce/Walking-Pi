@@ -158,9 +158,6 @@ button.primary {
 }
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
 .field-label { margin-bottom: 4px; }
-.inline-choice { display: flex; align-items: center; gap: 10px; }  /* a label, then its choice */
-.inline-choice .field-label { margin-bottom: 10px; }
-.inline-choice .choice-row { flex: 1; }
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }  /* the setup at a glance */
 /* the number of digits can be typed: a field that looks like the label until it is hovered or used */

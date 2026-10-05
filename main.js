@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.308';
+const VERSION = '0.1.309';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -678,19 +678,15 @@ const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, W (screen y points 
 const H = Math.sqrt(3) / 2;                        // height of a triangle with side 1
 const TRI_Y0 = -2 * H / 3;                         // offset that puts the centre of the starting triangle at (0, 0)
 const BANDS = 256;
-// The walk's colours, per theme (see applyTheme): the rainbow darker on a light page (see RAINBOWS), the digits'
+// The walk's colours, per theme (see applyTheme): the rainbow darker on a light page, the digits'
 // grey instead of white, the one colour a deeper amber
 const PALETTES = {
   // unlit: the surfaces' tiles not walked; trail: a Life cell just dead, fading to unlit; alive: Life in one colour
-  dark: { digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429',
+  dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429',
           unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(0, 0, 0, 0.35)', edgeAlpha: 0.35, shade: 0.6 },
-  light: { digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700',
+  light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700',
            unlit: '#eef1f5', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
 };
-// Rainbow: Neon (vivid) or Pastel (soft), per theme: [saturation, lightness] (Display box, kept in this browser)
-const RAINBOWS = { neon: { dark: [85, 60], light: [85, 48] }, pastel: { dark: [70, 77], light: [62, 64] } };
-let RAINBOW = 'neon';
-try { RAINBOW = RAINBOWS[localStorage.getItem('walkingRainbow')] ? localStorage.getItem('walkingRainbow') : 'neon'; } catch { /* neon */ }
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [];
 let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_ALPHA, SHADE, FADE_EDGES, TILE_LIFT;  // TILE_LIFT: the tiles' rainbow mixed with white  // EDGE: the surfaces' tile edges; SHADE: how dark a tile turned away gets
 function setPalette(theme) {
@@ -701,9 +697,7 @@ function setPalette(theme) {
     const f = 1 - i / 8, mix = (k) => Math.round(b[k] + (a[k] - b[k]) * f);
     LIFE_TRAIL[i] = `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
   }
-  const [sat, lum] = RAINBOWS[RAINBOW][theme];
-  for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, ${sat}%, ${lum}%)`;
-  if (RAINBOW === 'pastel') TILE_LIFT /= 2;  // already soft
+  for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
   DIGIT_COLORS.splice(0, DIGIT_COLORS.length, ...P.digits);
   MONO = P.mono;
 }
@@ -6237,10 +6231,9 @@ function applyTheme() {
   const t = $('theme').value, theme = t === 'system' ? (systemLight.matches ? 'light' : 'dark') : t;
   try { localStorage.setItem('walkingTheme', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'));
-  if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono && GRADIENT.rainbow === RAINBOW) return;
+  if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
   document.documentElement.dataset.theme = theme;
   setPalette(theme);
-  GRADIENT.rainbow = RAINBOW;
   glColour.clear();
   glPalette();
   renderColorButtons();
@@ -6250,14 +6243,6 @@ function applyTheme() {
 try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
 if (!$('theme').value) $('theme').value = 'system';
 $('theme').addEventListener('change', applyTheme);
-$('rainbow').value = RAINBOW;
-$('rainbow').addEventListener('change', () => {
-  RAINBOW = $('rainbow').value;
-  try { localStorage.setItem('walkingRainbow', RAINBOW); } catch { /* not kept */ }
-  renderChoiceButtons($('rainbow'), $('rainbowButtons'));
-  applyTheme();
-});
-renderChoiceButtons($('rainbow'), $('rainbowButtons'));
 systemLight.addEventListener('change', () => { if ($('theme').value === 'system') applyTheme(); });
 applyTheme();
 // the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
