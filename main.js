@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.326';
+const VERSION = '0.1.327';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1267,7 +1267,7 @@ const ICONS = (() => {
     cube: cube(false),
     cubeFilled: cube(true),
     torus,
-    // the torus's tilings (see TORUS_TABS): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
+    // the tilings of a surface (see FAMILIES): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
     tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
     tilesHex: hexCluster(0), tilesHexTurned: hexCluster(30),
@@ -1811,14 +1811,26 @@ function splitModeLabel(text) {
 // The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
 const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
 
-// The tori of the walks on surfaces: one entry, Torus, and its tiling below the list, as tabs:
-// squares, triangles, triangles turned by 30°, hexagons, hexagons turned by 30° (see TURNED)
-const TORUS_MODES = [['torusGrid', 'torusWalk'], ['triTorusGrid', 'triTorusWalk'], ['hexTorusGrid', 'hexTorusWalk']];
-const TORUS_TABS = [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesTri', 'Triangles'], [1, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)'],
-                    [2, false, 'tilesHex', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)']];
-const torusTilingOf = (w) => TORUS_MODES.findIndex((t) => t.includes(w));  // the tiling of a walk mode, −1: not a torus
-const torusTabOf = (w) => TORUS_TABS.findIndex(([f, turned]) => f === torusTilingOf(w) && (f === 0 || turned === torusTurned));
-let torusTab = 0;  // the tab in use, or last chosen
+// Surfaces that come in several tilings are one entry each in the list (Torus, Sphere), their
+// tiling picked by tabs under the list: modes, its walk modes per tiling [along the grid, on cells];
+// tabs, [tiling, turned by 30° (see TURNED), icon, name]; tab, the one in use or last chosen
+const FAMILIES = [
+  { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
+    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
+           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
+  { name: 'Sphere', modes: [['icosaGrid', 'icosaLR'], ['hexSphereGrid', 'hexSphereWalk']], tab: 1,
+    tabs: [[0, false, 'tilesTri', 'Triangles (an icosahedron, inflated)'], [1, false, 'tilesHex', 'Hexagons (and 12 pentagons)']] },
+];
+// the family of a walk mode, its tiling there and its tab (null: not in a family)
+function familyOf(w) {
+  for (const F of FAMILIES) {
+    const m = F.modes.findIndex((pair) => pair.includes(w));
+    if (m < 0) continue;
+    const turnable = !!TURNED[MODES[w].sphere];
+    return { F, m, tab: F.tabs.findIndex(([t, turned]) => t === m && turned === (turnable && torusTurned)) };
+  }
+  return null;
+}
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
@@ -1855,14 +1867,15 @@ function renderModePicker() {
   $('walkOnGrid').classList.toggle('active', !onCells);
   $('walkOnCells').classList.toggle('active', onCells);
   $('walkOnCells').disabled = modeTab === currentGroup && !inUse.twin;  // no walk on cells there yet
-  // the three tori are one entry, Torus (as its tiling in use, or as last chosen), its tiling picked below
-  const tab = torusTabOf($('mode').value);
-  if (tab >= 0) torusTab = tab;
-  const torusOf = (o) => $('mode').querySelector(`option[value="${TORUS_MODES[TORUS_TABS[torusTab][0]][onCells ? 1 : 0]}"]`) ?? o;
-  $('modeList').replaceChildren(...Array.from(group.children).filter((o) => shown(o) && torusTilingOf(o.value) <= 0).map((entry) => {
-    const torus = torusTilingOf(entry.value) === 0, o = torus ? torusOf(entry) : entry;
+  // a family of tilings is one entry (as its tiling in use, or as last chosen), at its first tiling's place
+  const inFamily = familyOf($('mode').value);
+  if (inFamily) inFamily.F.tab = inFamily.tab;
+  const optionOf = (w) => $('mode').querySelector(`option[value="${w}"]`);
+  const firstOf = (w) => { const f = familyOf(w); return !f || f.F.modes[0].includes(w); };
+  $('modeList').replaceChildren(...Array.from(group.children).filter((o) => shown(o) && firstOf(o.value)).map((entry) => {
+    const fam = familyOf(entry.value)?.F, o = fam ? optionOf(fam.modes[fam.tabs[fam.tab][0]][onCells ? 1 : 0]) ?? entry : entry;
     const b = document.createElement('button');
-    const { base, detail } = splitModeLabel(o.text), name = torus ? 'Torus' : splitModeLabel(o.text).name;  // the Life tab already says "Life"
+    const { base, detail } = splitModeLabel(o.text), name = fam ? fam.name : splitModeLabel(o.text).name;  // the Life tab already says "Life"
     // an automaton's pill tells the shape of its cells, where a walk's tells its base
     const mode = MODES[o.value], pill = mode.life ? SPHERES[mode.sphere].unit : base, info = mode.life ? '' : detail;
     const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
@@ -1877,24 +1890,25 @@ function renderModePicker() {
     b.classList.toggle('off', twins && onCells && !mode.twin);  // no walk on cells yet: picking it goes along the grid
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
-      if (torus) torusTurned = TORUS_TABS[torusTab][1];  // the tiling last chosen, turned or not
+      if (fam) torusTurned = fam.tabs[fam.tab][1];  // the tiling last chosen, turned or not
       $('mode').value = o.value;
       $('mode').dispatchEvent(new Event('change'));
     });
     return b;
   }));
-  // Torus picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
-  $('torusTiles').hidden = !(modeTab === currentGroup && tab >= 0);
+  // a family picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
+  $('torusTiles').hidden = !(modeTab === currentGroup && inFamily);
   if ($('torusTiles').hidden) return;
-  $('torusTiles').replaceChildren(...TORUS_TABS.map(([f, turned, pic, name], i) => {
+  const { F, tab } = inFamily;
+  $('torusTiles').replaceChildren(...F.tabs.map(([f, turned, pic, name], i) => {
     const b = document.createElement('button');
     b.innerHTML = icon(pic);
     b.title = name;
     b.classList.toggle('active', i === tab);
     b.addEventListener('click', () => {
       if (i === tab) return;
-      torusTab = i;
-      const w = TORUS_MODES[f][onCells ? 1 : 0];
+      F.tab = i;
+      const w = F.modes[f][onCells ? 1 : 0];
       if (w === $('mode').value) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
       torusTurned = turned;
       $('mode').value = w;

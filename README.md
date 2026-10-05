@@ -110,7 +110,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 | Tetrahedron, octahedron, triangle sphere | base 5: `0` sharp left … `4` sharp right (at a corner of the solid, the nearest edge) | base 2: exit through the `0` left or `1` right edge |
 | Hexagon sphere | base 2: `0` left · `1` right | base 2: the `0` front left or `1` front right edge |
 
-- **Torus:** one entry in the list, its tiles picked by the tabs under it: squares, triangles, triangles **turned by 30°**, hexagons, hexagons turned by 30° (turned, their rows go round the tube instead of round the ring).
+- **Torus** and **Sphere** are one entry each in the list, their tiles picked by the tabs under it: for the torus squares, hexagons, hexagons **turned by 30°**, triangles, triangles turned by 30° (turned, their rows go round the tube instead of round the ring); for the sphere triangles (the icosahedron, inflated) or hexagons (the default).
 - The − / + under the list set the surface's size.
 - **Starts:** the different walks a surface allows (its rotations turn a start into another one that draws the same walk, turned), numbered alike at every size; hovering the number shows them all.
 - A walk that comes back onto itself stops after its first round (`↻`, see [Regular patterns](#regular-patterns)); on a torus, a fraction's **loops** button finds the sizes where it closes in fewest laps.
