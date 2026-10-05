@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.329';
+const VERSION = '0.1.330';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2225,7 +2225,7 @@ function rotateView(w) {
     viewGoal.cy -= before[1] - after[1];
   }
   project();
-  if (walk.sphere) { needsFull = true; return; }  // bounds are the fixed sphere
+  if (walk.sphere) { boundsStale = true; needsFull = true; return; }  // its outline changed (see surfaceBounds, tick)
   const done = cur;
   cur = 0;
   bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -2923,6 +2923,24 @@ function initShape(kind) {
   walk.shape = { ...shapeAt(g, m), target: m, maxExtent, mode };
 }
 
+// The frame of a surface in the view: the outline of its current form as seen now, so that a solid
+// is framed as tightly whichever way it is turned (a tetrahedron is seen far smaller than the sphere
+// round it); while it turns by itself, that sphere (the frame does not breathe as it turns)
+let boundsStale = false, boundsAt = 0;  // a surface turned since its outline was measured; when it was
+function surfaceBounds() {
+  boundsStale = false;
+  const sh = walk.shape, R = walk.R, F = R * sh.extent;
+  if ($('autoRotate').checked) return { minX: -F, maxX: F, minY: -F, maxY: F };
+  const C = sh.corners, proj = projector();
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let q = 0; q < C.length; q += 3) {
+    const [x, y] = proj(C[q] * R, C[q + 1] * R, C[q + 2] * R);
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
 // Put the current shape in place: tile centres of the walk's points, the frame and the view
 function applyShape() {
   const sh = walk.shape, R = walk.R;
@@ -2941,7 +2959,7 @@ function applyShape() {
   }
   project();
   const F = R * sh.extent;
-  bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
+  bounds = surfaceBounds();
   bounds3 = [-F, F, -F, F, -F, F];
   if ($('autoFit').checked) fitToBounds(padBounds(bounds));
   needsFull = true;
@@ -4595,6 +4613,7 @@ function includeBox() {
 
 // Frame everything drawn so far
 function fitWhole() {
+  if (walk.sphere && boundsStale) bounds = surfaceBounds();
   includeBox();
   fitToBounds(padBounds(bounds));
 }
@@ -4608,8 +4627,7 @@ function restart() {
   bounds3 = [0, 0, 0, 0, 0, 0];
   if (walk.sphere) {  // the frame is the whole sphere, centred on the origin
     const R = walk.R;
-    const F = R * walk.shape.extent;  // the current form, flat or round
-    bounds = { minX: -F, maxX: F, minY: -F, maxY: F };
+    bounds = surfaceBounds();  // the current form, flat or round
     bounds3 = [-R, R, -R, R, -R, R];
     walk.visits.fill(0);
     walk.maxVisits = 1;
@@ -5215,7 +5233,7 @@ function faded(colour, a) {
 function edgeAlpha(sh) {
   if (!FADE_EDGES) return EDGE_ALPHA;
   const c = sh.corners, px = walk.R * Math.hypot(c[0] - c[3], c[1] - c[4], c[2] - c[5]) * view.scale;
-  return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 20));
+  return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 50));  // as faint at every surface's usual size, stronger zoomed in
 }
 function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
   const key = `${colour}|${shade}|${SHADE}`;
@@ -5348,7 +5366,7 @@ void main() {
   vec3 d = aB - aA; d = length(d) > 1e-9 ? normalize(d) : vec3(1.0, 0.0, 0.0);
   vec3 side = normalize(cross(d, aN)) * uHalf;  // counterclockwise seen from the face, as its square
   vec3 p = mix(aA, aB, aQuad.x) + side * aQuad.y + d * (aQuad.x * 2.0 - 1.0) * uHalf;
-  gl_Position = clipOf(toScreen(p), 0.0005);
+  gl_Position = clipOf(toScreen(p), 0.004);  // over the grid lines (0.002), as the other paths
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
@@ -6256,6 +6274,8 @@ function tick(now = performance.now()) {
     if (k > 0) advanceTo(cur + k);
   }
   includeBox();
+  // a surface's outline, measured again after it turned, 5 times a second at most (a big one takes ms)
+  if (walk.sphere && boundsStale && $('autoFit').checked && now - boundsAt > 200) { bounds = surfaceBounds(); boundsAt = now; }
   if (walk.n && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow
     const b = padBounds(bounds);
     const mx = (b.maxX - b.minX) * 0.15, my = (b.maxY - b.minY) * 0.15;
@@ -6380,7 +6400,10 @@ $('fillAreas').addEventListener('change', () => { needsFull = true; updateDispla
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
 $('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
-$('autoRotate').addEventListener('change', () => { if ($('autoRotate').checked) fitNow(); });  // turning starts framed
+$('autoRotate').addEventListener('change', () => {  // turning starts framed (by the sphere round the solid); stopped, by its outline
+  if (walk.sphere) bounds = surfaceBounds();
+  if ($('autoRotate').checked || ($('autoFit').checked && walk.sphere)) fitNow();
+});
 
 function fitNow() {
   $('autoFit').checked = true;
