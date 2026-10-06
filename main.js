@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.351';
+const VERSION = '0.1.352';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3186,7 +3186,11 @@ function torusDims(kind, size) {
 }
 const sizeLabel = (kind, f) => {
   const { tiles, unit } = SPHERES[kind];
-  if (!TORI.includes(kind) || MOBIUS_KINDS.includes(kind)) return `${fmt(tiles(f))} ${unit}`;  // a Möbius strip: both faces
+  if (!TORI.includes(kind)) return `${fmt(tiles(f))} ${unit}`;
+  if (MOBIUS_KINDS.includes(kind)) {  // a Möbius strip as its tiles across × along it, on one face
+    const nv = mobiusSize(f)[0];
+    return `${fmt(nv)} × ${fmt(Math.round(mobiusSheet(kind, f).tiles.length / nv))} ${unit}`;
+  }
   const rows = torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);  // a torus as its tiles towards the north (around the tube) × east (around the ring)
   return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
 };
