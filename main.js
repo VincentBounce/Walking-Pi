@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.347';
+const VERSION = '0.1.348';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5380,9 +5380,24 @@ function faded(colour, a) {
 // (thousands of dark lines would grey the whole solid)
 function edgeAlpha(sh) {
   if (!FADE_EDGES) return EDGE_ALPHA;
-  // the tile's size: its shortest side (a stretched tile, as on the square torus, is no bigger for it)
-  const c = sh.corners, k = walk.geo.sides, side = (q) => Math.hypot(c[3 * q] - c[3 * ((q + 1) % k)], c[3 * q + 1] - c[3 * ((q + 1) % k) + 1], c[3 * q + 2] - c[3 * ((q + 1) % k) + 2]);
-  const px = walk.R * Math.min(...Array.from({ length: k }, (_, q) => side(q) || Infinity)) * view.scale;
+  // the tiles' size as the grid's density of lines shows it: 2 × area / half perimeter (each edge is
+  // shared), the side of a square of that density (a hexagon of side 1: 1.73, a triangle: 0.58, a
+  // square stretched 2.5 times: 1.43), over all the tiles, once per form of the surface
+  if (sh.cellSizeAt !== sh.m || !sh.cellSize) {
+    const c = sh.corners, k = walk.geo.sides, n = walk.geo.n;
+    let area = 0, edges = 0;
+    for (let t = 0; t < n; t++) {
+      const o = 3 * k * t;
+      for (let q = 0; q < k; q++) { const a = o + 3 * q, b = o + 3 * ((q + 1) % k); edges += Math.hypot(c[a] - c[b], c[a + 1] - c[b + 1], c[a + 2] - c[b + 2]); }
+      for (let q = 1; q + 1 < k; q++) {  // a fan of triangles from corner 0
+        const a = o + 3 * q, b = a + 3;
+        const ux = c[a] - c[o], uy = c[a + 1] - c[o + 1], uz = c[a + 2] - c[o + 2], vx = c[b] - c[o], vy = c[b + 1] - c[o + 1], vz = c[b + 2] - c[o + 2];
+        area += Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+      }
+    }
+    sh.cellSize = (2 * area) / (edges / 2); sh.cellSizeAt = sh.m;
+  }
+  const px = walk.R * sh.cellSize * view.scale;
   return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 50));  // as faint at every surface's usual size, stronger zoomed in
 }
 function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
