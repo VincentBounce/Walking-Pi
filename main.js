@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.346';
+const VERSION = '0.1.347';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5380,7 +5380,9 @@ function faded(colour, a) {
 // (thousands of dark lines would grey the whole solid)
 function edgeAlpha(sh) {
   if (!FADE_EDGES) return EDGE_ALPHA;
-  const c = sh.corners, px = walk.R * Math.hypot(c[0] - c[3], c[1] - c[4], c[2] - c[5]) * view.scale;
+  // the tile's size: its shortest side (a stretched tile, as on the square torus, is no bigger for it)
+  const c = sh.corners, k = walk.geo.sides, side = (q) => Math.hypot(c[3 * q] - c[3 * ((q + 1) % k)], c[3 * q + 1] - c[3 * ((q + 1) % k) + 1], c[3 * q + 2] - c[3 * ((q + 1) % k) + 2]);
+  const px = walk.R * Math.min(...Array.from({ length: k }, (_, q) => side(q) || Infinity)) * view.scale;
   return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 50));  // as faint at every surface's usual size, stronger zoomed in
 }
 function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
