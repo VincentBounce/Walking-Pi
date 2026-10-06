@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.344';
+const VERSION = '0.1.345';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1129,7 +1129,7 @@ function renderChoiceButtons(sel, box) {
 }
 const renderColorButtons = () => renderChoiceButtons($('colorMode'), $('colorButtons'));
 const renderSkyButtons = () => {  // the sky named after the theme: Dawn on a light page, Twilight on a dark one
-  $('sky').options[0].text = document.documentElement.dataset.theme === 'light' ? 'Dawn' : 'Twilight';
+  $('sky').options[0].text = document.documentElement.dataset.theme === 'light' ? 'Dawn sky' : 'Twilight sky';
   renderChoiceButtons($('sky'), $('skyButtons'));
 };
 
@@ -1825,13 +1825,13 @@ const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 
 // tiling picked by tabs under the list: modes, its walk modes per tiling [along the grid, on cells];
 // tabs, [tiling, turned by 30° (see TURNED), icon, name]; tab, the one in use or last chosen
 const FAMILIES = [
-  { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
-    tabs: [[0, true, 'tilesSq', 'Squares on a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
-           [0, false, 'tilesSqStretched', 'Squares on a long sheet (more round the ring than round the tube), square once rolled'],
-           [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
+  { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 1,  // the square sheet by default
+    tabs: [[0, false, 'tilesSqStretched', 'Squares on a long sheet (more round the ring than round the tube), square once rolled'],
+           [0, true, 'tilesSq', 'Squares on a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
+           [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'], [1, false, 'tilesHex', 'Hexagons'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk'], ['mobiusHexGrid', 'mobiusHexWalk'], ['mobiusTriGrid', 'mobiusTriWalk']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
+    tabs: [[0, false, 'tilesSq', 'Squares'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'], [1, false, 'tilesHex', 'Hexagons'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)']] },
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk'], ['icosaGrid', 'icosaLR']], tab: 0,
     tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
