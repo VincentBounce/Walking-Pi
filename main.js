@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.361';
+const VERSION = '0.1.362';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1084,6 +1084,10 @@ function updateDisplayMenu() {
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
   $('perspectiveRow').after(spin ? $('autoFitRow') : $('autoRotateRow'));  // with the form of the view
+  // Centered, under Auto-fit in 3D: the camera turning with the walker, on a solid only
+  $('autoFitRow').after($('centeredRow'));
+  $('centeredRow').hidden = !spin;
+  $('centered').disabled = !SOLIDS.includes(surfaceOf(mode)) || !!mode.life;
   $('fillAreasRow').hidden = !shows('fill');
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
@@ -5203,7 +5207,7 @@ const walkMiddle = () => {
 };
 function faceWalk() {
   faced = true;
-  if (!walk.sphere || walk.geo.torus || !$('autoFit').checked || $('autoRotate').checked || !walk.n) return;
+  if (startsShown || !walk.sphere || walk.geo.torus || !$('centered').checked || $('autoRotate').checked || !walk.n) return;  // choosing a start: towards it
   const d = walkMiddle();
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
   if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle));
@@ -6674,7 +6678,7 @@ function tick(now = performance.now()) {
     morphStep(dt);  // flat ↔ round, while it is changing
     // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays put
     // and the walk is seen covering it (a walk shown whole is faced at once: faceWalk)
-    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || (!faced && !handTurned && $('autoFit').checked && !$('autoRotate').checked))) followWalker();
+    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || (!faced && !handTurned && $('centered').checked && !$('autoRotate').checked))) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
@@ -6971,9 +6975,22 @@ $('startLabel').addEventListener('change', () => {
   const n = Math.max(1, Math.min(Number($('startLabel').value), modeStarts().length));
   if (n !== startNo()) setStart(n);
 });
-const startField = $('startLabel').parentElement;
-startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
-startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
+// Hovering the start row (the number, − and +) shows every start on an empty globe, the camera
+// turned towards the chosen one, as − and + go through them; leaving it brings the view back: as it
+// was for the same start, else in front of the new walk
+let startsBefore = null;  // { start, cam } when the row was entered
+$('startRow').addEventListener('mouseenter', () => {
+  startsBefore = { start: startNo(), cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] } };
+  startsShown = true;
+  needsFull = true;
+});
+$('startRow').addEventListener('mouseleave', () => {
+  startsShown = false;
+  needsFull = true;
+  if (startsBefore?.start === startNo()) { Object.assign(cam, startsBefore.cam); rotateView([0, 0, 0]); } else faceWalk();
+  startsBefore = null;
+});
+$('centered').addEventListener('change', () => { faced = handTurned = false; });  // on: the camera turns to the walker again
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
 function walkOn(cells) {
@@ -7035,6 +7052,7 @@ function displayDefaults() {
   const mode = MODES[$('mode').value], surface = mode.lattice === 'sphere';
   $('colorMode').value = mode.life ? 'mono' : 'gradient';  // simplest view by default
   $('autoFit').checked = true;  // framed
+  $('centered').checked = true;  // on a solid, the walker in front
   $('fillAreas').checked = true;
   $('showPath').checked = false;  // on cells, the cells alone
   $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
