@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.352';
+const VERSION = '0.1.353';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6653,7 +6653,14 @@ const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(rand
 for (const input of document.querySelectorAll('.field input')) {
   input.addEventListener('focus', () => {
     input.value = valueInUse[input.id]();
-    setTimeout(() => input.setSelectionRange(input.value.length, input.value.length));  // after the click places it
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+  // a click into the field focuses it without placing the cursor (the focus puts it at the end);
+  // once in, clicks place it as usual
+  input.addEventListener('mousedown', (e) => {
+    if (document.activeElement === input) return;
+    e.preventDefault();
+    input.focus();
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { input.value = valueInUse[input.id](); input.blur(); }
@@ -6847,10 +6854,12 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states), B3/S23/Immigration or, on hexagons, B2o/S2m34'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
+let copyReset = 0;  // the label comes back 1.5 s after the last click
 $('copyNumber').addEventListener('click', async () => {
   const say = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
   try { await navigator.clipboard.writeText(numberText()); say('Copied'); } catch { say('Not allowed'); }
-  setTimeout(() => say('Copy number to clipboard'), 1500);
+  clearTimeout(copyReset);
+  copyReset = setTimeout(() => say('Copy number to clipboard'), 1500);
 });
 // Hovering the button shows what it copies over the view (the start of it: as much as fits)
 $('copyNumber').addEventListener('mouseenter', () => { $('numberPreview').textContent = numberText(20000); $('numberPreview').hidden = false; });
