@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.358';
+const VERSION = '0.1.359';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5189,23 +5189,32 @@ function drawSphereCursor(ctx) {
 // again (followWalker) as soon as the walker moves: playing, a step, the progress slider
 let faced = false;
 let handTurned = false;  // the view was turned by hand: the camera no longer follows the walker (see recentre)
-function faceWalk() {
-  faced = true;
-  if (!walk.sphere || walk.geo.torus || !$('autoFit').checked || $('autoRotate').checked || !walk.n) return;
+// The middle of a walk on a solid: the mean of its points' directions (its end where they cancel
+// out), once per walk
+const walkMiddle = () => {
+  if (walkMiddle.of === walk.wx) return walkMiddle.d;
   const m = [0, 0, 0];
   for (let i = 0; i <= walk.n; i++) {
     const l = Math.hypot(walk.wx[i], walk.wy[i], walk.wz[i]) || 1;
     m[0] += walk.wx[i] / l; m[1] += walk.wy[i] / l; m[2] += walk.wz[i] / l;
   }
-  const d = Math.hypot(...m) > 1e-6 * walk.n ? unit(m) : unit([walk.wx[walk.n], walk.wy[walk.n], walk.wz[walk.n]]);
+  walkMiddle.of = walk.wx;
+  return (walkMiddle.d = Math.hypot(...m) > 1e-6 * walk.n ? unit(m) : unit([walk.wx[walk.n], walk.wy[walk.n], walk.wz[walk.n]]));
+};
+function faceWalk() {
+  faced = true;
+  if (!walk.sphere || walk.geo.torus || !$('autoFit').checked || $('autoRotate').checked || !walk.n) return;
+  const d = walkMiddle();
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
   if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle));
 }
+// once the walker has reached the end, towards the walk's middle, as when the walk is shown whole
 function followWalker() {
   // on a torus the position does not say which way the surface faces: use the tile's normal
   const t = walk.tile[cur], nr = walk.shape.nrm;
   const d = unit(startsShown ? [walk.wx[0], walk.wy[0], walk.wz[0]]
-    : walk.geo.torus && !walk.geo.mobius ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]] : [walk.wx[cur], walk.wy[cur], walk.wz[cur]]);
+    : walk.geo.torus && !walk.geo.mobius ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]]
+    : cur >= walk.n && !walk.life ? walkMiddle() : [walk.wx[cur], walk.wy[cur], walk.wz[cur]]);
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
   if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle * 0.12));
 }
