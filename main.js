@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.360';
+const VERSION = '0.1.361';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6964,10 +6964,12 @@ $('startDown').addEventListener('click', () => setStart(startNo() - 1));
 $('startUp').addEventListener('click', () => setStart(startNo() + 1));
 $('startLabel').addEventListener('input', () => { $('startLabel').value = $('startLabel').value.replace(/\D/g, ''); });
 $('startLabel').addEventListener('blur', syncSizeStepper);  // "start 1 of 2,304" again
-// a start typed: only one of them, other than the one in use (else the field shows the one in use again)
+// a start typed: below the first, the first; past the last, the last; the one in use changes nothing
+// (the field shows it again)
 $('startLabel').addEventListener('change', () => {
-  const n = Number($('startLabel').value);
-  if (n >= 1 && n <= modeStarts().length && n !== startNo()) setStart(n);
+  if (!$('startLabel').value) return;
+  const n = Math.max(1, Math.min(Number($('startLabel').value), modeStarts().length));
+  if (n !== startNo()) setStart(n);
 });
 const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
