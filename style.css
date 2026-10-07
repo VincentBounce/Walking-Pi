@@ -314,9 +314,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .display-menu .stage-head { display: flex; justify-content: flex-end; gap: 16px; }
 .display-menu .stage-head .check { margin: 0; }
 #viewHead > :first-child { margin-right: auto; }  /* Auto-fit (Auto-rotate) on the left, Grid on the right */
-.view-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid var(--accent); }  /* Auto-fit and the form of the view */
+.view-section { margin-bottom: 10px; border-bottom: 2px solid var(--accent); }  /* Auto-fit and the form of the view */
 .view-section:not(:has(> :not([hidden]))) { display: none; }
-.view-section .choice-row { margin-bottom: 0; }
 /* shown only while the box is open, like its other settings */
 .stage-box .open-only { display: none; }
 .stage-box:hover .open-only { display: flex; }
