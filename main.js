@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.368';
+const VERSION = '0.1.369';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2252,7 +2252,7 @@ const screenTurn = (a, b, c) => [0, 1, 2].map((i) => a * cam.r[i] + b * cam.u[i]
 // Rotate (rotation vector w, see turnCam) around a centre that keeps its position on screen: the
 // solid's own centre (the origin) for a surface, else the centre of the walk's bounding box. (On a
 // surface that box grows unevenly with the walk: turning around it made the solid slide while
-// auto-fit followed the walker.) Then recompute the projection and the 2D bounds.
+// auto-fit followed the walker.) Then recompute the projection; the frame does not change.
 function rotateView(w) {
   const [x0, x1, y0, y1, z0, z1] = bounds3 || [0, 0, 0, 0, 0, 0];
   const c = walk.sphere ? [0, 0, 0] : [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
@@ -2267,11 +2267,7 @@ function rotateView(w) {
     viewGoal.cy -= before[1] - after[1];
   }
   project();
-  if (walk.sphere) { needsFull = true; return; }  // its frame is the sphere round it, whichever way it turns
-  const done = cur;
-  cur = 0;
-  bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-  advanceTo(done);
+  includeBox();  // the frame is a sphere round the walk or the solid, whichever way it turns
   needsFull = true;
 }
 
@@ -4890,15 +4886,14 @@ function showAll() {
   if ($('autoFit').checked && !choosingStart) fitWhole();  // framed like F or a double-click, without the margin kept for growing
 }
 
-// 3D walks: keep the bounding box in the frame too (in perspective its near corners stick out)
+// 3D walks: framed by the sphere round the walk's box (its centre, half its diagonal; in perspective,
+// as large as its nearest point shows), as a surface is by its solid: its outline is the same
+// whichever way the walk turns, so turning it never zooms
 function includeBox() {
-  if (!walk.is3d || walk.sphere || !$('showGrid').checked) return;
-  const [x0, x1, y0, y1, z0, z1] = bounds3;
-  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) {
-    const [px, py] = projectPoint(x, y, z);
-    bounds.minX = Math.min(bounds.minX, px); bounds.maxX = Math.max(bounds.maxX, px);
-    bounds.minY = Math.min(bounds.minY, py); bounds.maxY = Math.max(bounds.maxY, py);
-  }
+  if (!walk.is3d || walk.sphere) return;
+  const [x0, x1, y0, y1, z0, z1] = bounds3, [cx, cy] = projectPoint((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const r = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2, P = walk.persp, R = P ? (r * P.D) / Math.max(P.D - r, r) : r;
+  bounds = { minX: cx - R, maxX: cx + R, minY: cy - R, maxY: cy + R };
 }
 
 // Frame everything drawn so far
