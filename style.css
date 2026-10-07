@@ -386,6 +386,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
   bottom: 10px;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+  white-space: pre-line;  /* one tip per line, stacked in the bottom right corner */
   pointer-events: none;
 }
 .stage.on-sky .hint { color: rgba(230, 237, 243, 0.6); }  /* over a sky (see drawGrid) */
