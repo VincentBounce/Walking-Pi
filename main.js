@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.379';
+const VERSION = '0.1.380';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1090,7 +1090,7 @@ function updateDisplayMenu() {
   $('fillAreasRow').hidden = !shows('fill');
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
-  $('fillLoopNote').hidden = !(walk.vert && current?.fraction);  // a fraction along a grid (see areaSteps)
+  $('fillName').textContent = walk.vert && current?.fraction ? 'Fill 2 cells max on ↻' : 'Fill areas';  // a fraction along a grid (see areaSteps)
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
   $('fillTranslucentRow').hidden = !shows('translucent');
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
