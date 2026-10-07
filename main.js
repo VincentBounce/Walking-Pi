@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.370';
+const VERSION = '0.1.371';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4904,6 +4904,7 @@ function fitWhole() {
 
 function restart() {
   faced = false;
+  recentred = false;  // a new walk, or played again: the next double-click centres first
   cur = 0;
   drawn = 0;
   acc = 0;
@@ -4996,6 +4997,7 @@ function padBounds(b) {
 }
 
 function userMovedView() {
+  recentred = false;
   viewGoal = null;
   $('autoFit').checked = false;
   needsFull = true;
@@ -6836,21 +6838,18 @@ stage.addEventListener('pointermove', (e) => {
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
     $('centered').checked = false;
+    recentred = false;
     rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
   }
 });
 const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
-// Double-click (or F): centre the view; already centred, back to the starting view as well: no
-// auto-rotate, the camera as when the walk was shown (turned towards it on a surface)
+// Double-click (or F): centre the view; again, with nothing moved in between, the default camera as
+// well: no auto-rotate, the camera as when the walk was shown (turned towards it on a surface)
+let recentred = false;  // the last double-click centred the view, and nothing has moved it since
 function recentre() {
-  includeBox();
-  const v = viewFor(padBounds(bounds));
-  // turning by itself, a view is kept framed: as good as centred
-  const centred = ($('autoFit').checked && $('autoRotate').checked) || $('autoFit').checked && !viewGoal && Math.abs(view.scale / v.scale - 1) < 0.01
-    && Math.abs(view.ox - (cw / 2 - v.cx * v.scale)) < 2 && Math.abs(view.oy - (ch / 2 - v.cy * v.scale)) < 2;
-  if (centred && walk.is3d) {
+  if (recentred && walk.is3d) {  // the second in a row: the default camera too
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
     $('centered').checked = true;
@@ -6860,6 +6859,7 @@ function recentre() {
     if (!walk.life && cur >= walk.n) faceWalk();
   }
   fitNow();
+  recentred = true;
 }
 stage.addEventListener('dblclick', recentre);
 
