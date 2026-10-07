@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.374';
+const VERSION = '0.1.375';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1066,7 +1066,7 @@ const greyed = (item) => !!DISPLAY_GREYED[$('mode').selectedOptions[0].parentEle
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
 const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
-  const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Auto-fit (Auto-rotate in 3D) heads the box
+  const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Grid heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
@@ -1080,13 +1080,11 @@ function updateDisplayMenu() {
   $('heatmap').disabled = !mode.cells;
   $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
-  // a 3D view: Auto-rotate heads the box (always in sight), Auto-fit goes down among the settings
+  // Grid stays in sight; Auto-fit (Auto-rotate in 3D) beside it while the box is open, the other one
+  // at the top of the view's settings, above Centered pattern (Default view), Perspective and the shape
   const spin = shows('autoRotate');
-  $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
-  $('perspectiveRow').after(spin ? $('autoFitRow') : $('autoRotateRow'));  // with the form of the view
-  // under Auto-fit in 3D: Centered pattern (the camera turning with the walker, on a solid), else
-  // Default view (the camera as it starts)
-  $('autoFitRow').after($('centeredRow'));
+  $('viewHead').prepend(spin ? $('autoRotateRow') : $('autoFitRow'));
+  $('viewSection').prepend(spin ? $('autoFitRow') : $('autoRotateRow'));
   $('centeredRow').hidden = !spin;
   $('centeredName').textContent = centersPattern() ? 'Centered pattern' : 'Default view';
   $('fillAreasRow').hidden = !shows('fill');
