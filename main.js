@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.383';
+const VERSION = '0.1.384';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1936,7 +1936,7 @@ function renderModePicker() {
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
-    b.classList.toggle('off', twins && onCells && !mode.twin);  // no walk on cells yet: picking it goes along the grid
+    b.disabled = twins && onCells && !mode.twin;  // no walk on cells there: greyed out, not to be picked
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
       if (fam) torusTurned = fam.tabs[fam.tab][1];  // the tiling last chosen, turned or not
