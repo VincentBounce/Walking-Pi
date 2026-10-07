@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.363';
+const VERSION = '0.1.364';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3527,7 +3527,7 @@ function cellStart(g, [v, f]) {
 }
 const startNo = () => Math.max(1, Math.min(Number($('startNo').value) || 1, modeStarts()?.length ?? 1));
 let startsShown = false;  // while the start number is hovered: the globe shows the starts instead of the walk
-let choosingStart = false;  // while the start row is hovered: the camera turned towards the chosen start
+let choosingStart = false;  // while the start row is hovered: the view stays as it was
 
 // Every start's edge (two starts each, one per direction); the chosen one in yellow, an arrow in
 // its middle, and the start dot on the corner it arrives at
@@ -4887,7 +4887,7 @@ function showAll() {
   if (walk.life) return;  // the Game of Life starts at generation 0 instead
   advanceTo(walk.n);
   faceWalk();
-  if ($('autoFit').checked) fitWhole();  // framed like F or a double-click, without the margin kept for growing
+  if ($('autoFit').checked && !choosingStart) fitWhole();  // framed like F or a double-click, without the margin kept for growing
 }
 
 // 3D walks: keep the bounding box in the frame too (in perspective its near corners stick out)
@@ -5206,7 +5206,7 @@ const walkMiddle = () => {
 };
 function faceWalk() {
   faced = true;
-  if (choosingStart || !walk.sphere || walk.geo.torus || !$('centered').checked || $('autoRotate').checked || !walk.n) return;  // choosing a start: towards it
+  if (choosingStart || !walk.sphere || walk.geo.torus || !$('centered').checked || $('autoRotate').checked || !walk.n) return;
   const d = walkMiddle();
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
   if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle));
@@ -5215,8 +5215,7 @@ function faceWalk() {
 function followWalker() {
   // on a torus the position does not say which way the surface faces: use the tile's normal
   const t = walk.tile[cur], nr = walk.shape.nrm;
-  const d = unit(choosingStart ? [walk.wx[0], walk.wy[0], walk.wz[0]]
-    : walk.geo.torus && !walk.geo.mobius ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]]
+  const d = unit(walk.geo.torus && !walk.geo.mobius ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]]
     : cur >= walk.n && !walk.life ? walkMiddle() : [walk.wx[cur], walk.wy[cur], walk.wz[cur]]);
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
   if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle * 0.12));
@@ -6677,7 +6676,7 @@ function tick(now = performance.now()) {
     morphStep(dt);  // flat ↔ round, while it is changing
     // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays put
     // and the walk is seen covering it (a walk shown whole is faced at once: faceWalk)
-    if (walk.n && !walk.life && !walk.geo.torus && (choosingStart || (!faced && $('centered').checked && !$('autoRotate').checked))) followWalker();
+    if (walk.n && !walk.life && !walk.geo.torus && !choosingStart && !faced && $('centered').checked && !$('autoRotate').checked) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
@@ -6974,21 +6973,13 @@ $('startLabel').addEventListener('change', () => {
   const n = Math.max(1, Math.min(Number($('startLabel').value), modeStarts().length));
   if (n !== startNo()) setStart(n);
 });
-// Hovering the start row ([− start +]) turns the camera towards the chosen start, as − and + go
-// through them; the number shows every start on an empty globe, − and + the walk from it. Leaving
-// the row brings the view back as the choices before it give: facing the new walk (Centered),
-// else as it was
-let startsBefore = null;  // { start, cam } when the row was entered
-$('startRow').addEventListener('mouseenter', () => {
-  startsBefore = { start: startNo(), cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] } };
-  choosingStart = true;
-});
+// Hovering the start row ([− start +]) leaves the view as it was, whatever − and + do; the number
+// shows every start on an empty globe. Leaving the row, Auto-fit and Centered take over again
+$('startRow').addEventListener('mouseenter', () => { choosingStart = true; });
 $('startRow').addEventListener('mouseleave', () => {
   choosingStart = false;
-  needsFull = true;
-  if (startsBefore?.start !== startNo() && $('centered').checked && !$('centered').disabled) faceWalk();
-  else if (startsBefore) { Object.assign(cam, startsBefore.cam); rotateView([0, 0, 0]); }
-  startsBefore = null;
+  faced = false;  // Centered: the camera turns to the walk (see followWalker)
+  if ($('autoFit').checked) fitWhole();
 });
 const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
