@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.369';
+const VERSION = '0.1.370';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4887,12 +4887,12 @@ function showAll() {
 }
 
 // 3D walks: framed by the sphere round the walk's box (its centre, half its diagonal; in perspective,
-// as large as its nearest point shows), as a surface is by its solid: its outline is the same
+// its outline from the camera, D/√(D² − r²) times wider), as a surface is by its solid: the same
 // whichever way the walk turns, so turning it never zooms
 function includeBox() {
   if (!walk.is3d || walk.sphere) return;
   const [x0, x1, y0, y1, z0, z1] = bounds3, [cx, cy] = projectPoint((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const r = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2, P = walk.persp, R = P ? (r * P.D) / Math.max(P.D - r, r) : r;
+  const r = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2, P = walk.persp, R = P && P.D > r ? (r * P.D) / Math.sqrt(P.D * P.D - r * r) : r;
   bounds = { minX: cx - R, maxX: cx + R, minY: cy - R, maxY: cy + R };
 }
 
@@ -4930,7 +4930,7 @@ function restart() {
 // centre in world units, so zooming out does not drift sideways.
 const MIN_SCALE = 1e-6;  // pixels per cell, the farthest zoom out
 function viewFor(b) {
-  const tight = walk.sphere;  // a surface: the sphere round it touches the sides, at most (see surfaceBounds)
+  const tight = walk.is3d;  // a surface or a 3D walk: the sphere round it touches the sides, at most (see surfaceBounds, includeBox)
   const w = b.maxX - b.minX + (tight ? 0 : 2);
   const h = b.maxY - b.minY + (tight ? 0 : 2);
   // down to 10⁻⁶ pixel per cell: a walk of 10 million steps can drift millions of cells away
