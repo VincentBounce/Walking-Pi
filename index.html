@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261014g">
+  <link rel="stylesheet" href="style.css?v=20261014h">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -255,7 +255,7 @@
           <label class="check" id="gridRow" title="Hover for the display settings"><input id="showGrid" type="checkbox" checked> Grid</label>
         </div>
         <div class="stage-more">  <!-- shown on hover, below -->
-          <div id="viewSection" class="view-section">  <!-- the view: Auto-fit (or Auto-rotate) first, then its form -->
+          <div id="viewSection">  <!-- with Grid and Auto-rotate (Auto-fit): the view, then its form -->
             <label class="check open-only" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click)"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
             <label class="check open-only" id="autoRotateRow" hidden title="Turn the view slowly, swaying up and down so that the top and the bottom show too; it starts Auto-fit, and a hand rotation stops it"><input id="autoRotate" type="checkbox"> Auto-rotate</label>  <!-- the other of Auto-fit and Auto-rotate -->
             <label class="check" id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole; elsewhere, the camera as it starts (turning the view unchecks it)"><input id="centered" type="checkbox" checked> <span id="centeredName">Centered pattern</span></label>
@@ -264,37 +264,39 @@
               <div id="shapeButtons" class="choice-row" title="The same cells, flat or round: the walk goes on meanwhile"></div>
             </div>
           </div>
-          <div id="themeRow">
-            <div id="themeButtons" class="choice-row" title="The colours of the page: light, dark, or as the system is set"></div>
-            <select id="theme" hidden>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
+          <div class="form-section">  <!-- what the walk shows: colours, areas, cells -->
+            <div id="colorsRow"><div id="colorButtons" class="choice-list"></div></div>
+            <select id="colorMode" hidden>
+              <option value="gradient">Rainbow along the walk</option>
+              <option value="cells">Rainbow cells along the walk</option>
+              <option value="visits">Rainbow by number of visits</option>
+              <option value="digit">One colour per digit</option>
+              <option value="mono">One colour</option>
             </select>
-          </div>
-          <div id="skyRow" hidden>  <!-- under the theme: the sky behind a 3D view -->
-            <div id="skyButtons" class="choice-row" title="The background of a 3D view: a sky in the page's tone, or plain"></div>
-            <select id="sky" hidden>
-              <option value="sky">Twilight sky</option>  <!-- Dawn sky on a light page (see renderSkyButtons) -->
-              <option value="plain">Plain sky</option>
-            </select>
-          </div>
-          <div id="colorsRow"><div id="colorButtons" class="choice-list"></div></div>
-          <select id="colorMode" hidden>
-            <option value="gradient">Rainbow along the walk</option>
-            <option value="cells">Rainbow cells along the walk</option>
-            <option value="visits">Rainbow by number of visits</option>
-            <option value="digit">One colour per digit</option>
-            <option value="mono">One colour</option>
-          </select>
-          <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas <span id="fillTooBig" class="fill-note" hidden title="Beyond 12 million tile corners in the walk's box, the areas are not filled">walk too big</span></label>
-          <p id="fillLoopNote" class="muted" hidden>Fraction ↻: filling 2 cells max</p>  <!-- under Fill areas, like the status line -->
-          <label class="check" id="fillTranslucentRow" hidden><input id="fillTranslucent" type="checkbox"> Translucent fill</label>
-          <div id="cellsSection" class="form-section">  <!-- what the cells show -->
+            <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> Fill areas <span id="fillTooBig" class="fill-note" hidden title="Beyond 12 million tile corners in the walk's box, the areas are not filled">walk too big</span></label>
+            <p id="fillLoopNote" class="muted" hidden>Fraction ↻: filling 2 cells max</p>  <!-- under Fill areas, like the status line -->
+            <label class="check" id="fillTranslucentRow" hidden><input id="fillTranslucent" type="checkbox"> Translucent fill</label>
             <div id="cellsLabel" class="field-label" hidden>Walk on cells</div>
             <label class="check" id="showPathRow" hidden title="The walk's line over the cells it colours"><input id="showPath" type="checkbox"> Show path</label>
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
             <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
+          </div>
+          <div class="form-section">  <!-- the page and the sky behind a 3D view, last -->
+            <div id="themeRow">
+              <div id="themeButtons" class="choice-row" title="The colours of the page: light, dark, or as the system is set"></div>
+              <select id="theme" hidden>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+            <div id="skyRow" hidden>
+              <div id="skyButtons" class="choice-row" title="The background of a 3D view: a sky in the page's tone, or plain"></div>
+              <select id="sky" hidden>
+                <option value="sky">Twilight sky</option>  <!-- Dawn sky on a light page (see renderSkyButtons) -->
+                <option value="plain">Plain sky</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -302,6 +304,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261014g"></script>
+  <script src="main.js?v=20261014h"></script>
 </body>
 </html>
