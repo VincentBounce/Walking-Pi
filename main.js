@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.362';
+const VERSION = '0.1.363';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3526,7 +3526,8 @@ function cellStart(g, [v, f]) {
   }
 }
 const startNo = () => Math.max(1, Math.min(Number($('startNo').value) || 1, modeStarts()?.length ?? 1));
-let startsShown = false;  // while the start selector is hovered: the globe shows the starts instead of the walk
+let startsShown = false;  // while the start number is hovered: the globe shows the starts instead of the walk
+let choosingStart = false;  // while the start row is hovered: the camera turned towards the chosen start
 
 // Every start's edge (two starts each, one per direction); the chosen one in yellow, an arrow in
 // its middle, and the start dot on the corner it arrives at
@@ -4908,7 +4909,6 @@ function fitWhole() {
 
 function restart() {
   faced = false;
-  handTurned = false;
   cur = 0;
   drawn = 0;
   acc = 0;
@@ -5192,7 +5192,6 @@ function drawSphereCursor(ctx) {
 // points' directions; its end where they cancel out), with no turn to watch; it follows the walker
 // again (followWalker) as soon as the walker moves: playing, a step, the progress slider
 let faced = false;
-let handTurned = false;  // the view was turned by hand: the camera no longer follows the walker (see recentre)
 // The middle of a walk on a solid: the mean of its points' directions (its end where they cancel
 // out), once per walk
 const walkMiddle = () => {
@@ -5207,7 +5206,7 @@ const walkMiddle = () => {
 };
 function faceWalk() {
   faced = true;
-  if (startsShown || !walk.sphere || walk.geo.torus || !$('centered').checked || $('autoRotate').checked || !walk.n) return;  // choosing a start: towards it
+  if (choosingStart || !walk.sphere || walk.geo.torus || !$('centered').checked || $('autoRotate').checked || !walk.n) return;  // choosing a start: towards it
   const d = walkMiddle();
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
   if (sin > 1e-9 && angle > 1e-4) rotateView(axis.map((x) => (x / sin) * angle));
@@ -5216,7 +5215,7 @@ function faceWalk() {
 function followWalker() {
   // on a torus the position does not say which way the surface faces: use the tile's normal
   const t = walk.tile[cur], nr = walk.shape.nrm;
-  const d = unit(startsShown ? [walk.wx[0], walk.wy[0], walk.wz[0]]
+  const d = unit(choosingStart ? [walk.wx[0], walk.wy[0], walk.wz[0]]
     : walk.geo.torus && !walk.geo.mobius ? [nr[3 * t], nr[3 * t + 1], nr[3 * t + 2]]
     : cur >= walk.n && !walk.life ? walkMiddle() : [walk.wx[cur], walk.wy[cur], walk.wz[cur]]);
   const axis = cross(d, cam.v), sin = Math.hypot(...axis), angle = Math.atan2(sin, towardViewer(...d));
@@ -6678,7 +6677,7 @@ function tick(now = performance.now()) {
     morphStep(dt);  // flat ↔ round, while it is changing
     // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays put
     // and the walk is seen covering it (a walk shown whole is faced at once: faceWalk)
-    if (walk.n && !walk.life && !walk.geo.torus && (startsShown || (!faced && !handTurned && $('centered').checked && !$('autoRotate').checked))) followWalker();
+    if (walk.n && !walk.life && !walk.geo.torus && (choosingStart || (!faced && $('centered').checked && !$('autoRotate').checked))) followWalker();
     // a big sphere can take tens of ms to draw: while animating, redraw at most every 3× that time
     const now = performance.now();
     if (needsFull || (statsDirty && now - sphereDraw.at > 3 * sphereDraw.cost)) {
@@ -6835,10 +6834,10 @@ stage.addEventListener('pointermove', (e) => {
     userMovedView();
   } else {
     // a hand rotation keeps auto-fit (the view stays centred, as while auto-rotating), but stops
-    // auto-rotate and the camera following the walker; a pan or a zoom ends auto-fit
+    // auto-rotate and Centered (the camera following the walker); a pan or a zoom ends auto-fit
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
-    handTurned = true;
+    $('centered').checked = false;
     rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
   }
 });
@@ -6856,7 +6855,7 @@ function recentre() {
   if (centred && walk.is3d) {
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
-    handTurned = false;
+    $('centered').checked = true;
     Object.assign(cam, CAM0);
     rotateView([0, 0, 0]);  // the projection and the frame again
     faced = false;
@@ -6975,22 +6974,26 @@ $('startLabel').addEventListener('change', () => {
   const n = Math.max(1, Math.min(Number($('startLabel').value), modeStarts().length));
   if (n !== startNo()) setStart(n);
 });
-// Hovering the start row (the number, − and +) shows every start on an empty globe, the camera
-// turned towards the chosen one, as − and + go through them; leaving it brings the view back: as it
-// was for the same start, else in front of the new walk
+// Hovering the start row ([− start +]) turns the camera towards the chosen start, as − and + go
+// through them; the number shows every start on an empty globe, − and + the walk from it. Leaving
+// the row brings the view back as the choices before it give: facing the new walk (Centered),
+// else as it was
 let startsBefore = null;  // { start, cam } when the row was entered
 $('startRow').addEventListener('mouseenter', () => {
   startsBefore = { start: startNo(), cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] } };
-  startsShown = true;
-  needsFull = true;
+  choosingStart = true;
 });
 $('startRow').addEventListener('mouseleave', () => {
-  startsShown = false;
+  choosingStart = false;
   needsFull = true;
-  if (startsBefore?.start === startNo()) { Object.assign(cam, startsBefore.cam); rotateView([0, 0, 0]); } else faceWalk();
+  if (startsBefore?.start !== startNo() && $('centered').checked && !$('centered').disabled) faceWalk();
+  else if (startsBefore) { Object.assign(cam, startsBefore.cam); rotateView([0, 0, 0]); }
   startsBefore = null;
 });
-$('centered').addEventListener('change', () => { faced = handTurned = false; });  // on: the camera turns to the walker again
+const startField = $('startLabel').parentElement;
+startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
+startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
+$('centered').addEventListener('change', () => { faced = false; });  // on: the camera turns to the walker again
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
 function walkOn(cells) {
