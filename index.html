@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261013e">
+  <link rel="stylesheet" href="style.css?v=20261013h">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -65,6 +65,8 @@
               <option value="tetraLR">Tetrahedron — base 2 (left / right)</option>
               <option value="octaGrid">Octahedron — base 5 (5 relative turns)</option>
               <option value="octaLR">Octahedron — base 2 (left / right)</option>
+              <option value="dodecaGrid">Dodecahedron (pentagons cut into 5 triangles) — base 5 (5 relative turns)</option>
+              <option value="dodecaLR">Dodecahedron (pentagons cut into 5 triangles) — base 2 (left / right)</option>
               <option value="icosaGrid">Triangle sphere (icosahedron) — base 5 (5 relative turns)</option>
               <option value="icosaLR">Triangle sphere (icosahedron) — base 2 (left / right)</option>
               <!-- set aside (see MODES in main.js):
@@ -84,6 +86,7 @@
               <option value="lifeHexTorus">Life — torus</option>
               <option value="lifeTetra">Life — tetrahedron</option>
               <option value="lifeOcta">Life — octahedron</option>
+              <option value="lifeDodeca">Life — dodecahedron</option>
               <option value="lifeIcosa">Life — icosahedron</option>
               <option value="lifeHexSphere">Life — hexagon sphere</option>
             </optgroup>
@@ -298,6 +301,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261013e"></script>
+  <script src="main.js?v=20261013h"></script>
 </body>
 </html>
