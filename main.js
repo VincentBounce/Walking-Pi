@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.354';
+const VERSION = '0.1.355';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3134,16 +3134,16 @@ const SPHERES = {
   // (torus: a size of its own may share torusSquare's mesh, hence its flatWidth)
   torus: { mesh: (s) => Object.assign(torusMesh(...torusDims('torus', s)), { flatWidth: 1 }), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => Math.round(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
-          sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
+          sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // the square torus (Squares, stretched): as many squares round the ring as round the tube, a square
   // sheet unrolled, its squares stretched along the ring rolled up (see torusPoint's flatWidth)
   torusSquare: { mesh: (s) => Object.assign(torusMesh(...torusDims('torusSquare', s)), { flatWidth: TORUS_TUBE }),
                  radius: (s) => torusDims('torusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [1, 1],
-                 sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
+                 sizes: [16, 24, 32, 48, 64], initial: 32, least: 4, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               columns: hexTorusColumns, perRow: 1, steps: [1, 2],  // an even count of columns
-              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
+              sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
   // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
   hexsphere: { mesh: hexSphereMesh, radius: (f) => (f * Math.sqrt(3)) / 2,
                sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 10 * f * f + 2, unit: 'hexagons' },
@@ -3155,7 +3155,7 @@ const SPHERES = {
   // column) around the tube, for the size's label
   tritorusTurned: { mesh: (s) => turnedTriTorusMesh(...torusDims('tritorusTurned', s)), radius: (s) => torusDims('tritorusTurned', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: turnedTriColumns, perRow: 1, perColumn: 2, steps: [1, 2],  // an even count of rows
-                    sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusTurned', s).reduce((a, b) => a * b), unit: 'triangles' },
+                    sizes: [16, 24, 32, 48, 64], initial: 32, least: 2, tiles: (s) => 2 * torusDims('tritorusTurned', s).reduce((a, b) => a * b), unit: 'triangles' },
   hextorusTurned: { mesh: (s) => turnedHexTorusMesh(...torusDims('hextorusTurned', s)), radius: (s) => (torusDims('hextorusTurned', s)[0] * 1.5) / (2 * Math.PI * TORUS_TUBE),
                     columns: turnedHexColumns, perRow: 1, steps: [2, 1],  // an even count of columns, around the tube
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('hextorusTurned', s).reduce((a, b) => a * b), unit: 'hexagons' },
@@ -3229,17 +3229,24 @@ const sizeLabel = (kind, f) => {
   const rows = torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);  // a torus as its tiles towards the north (around the tube) × east (around the ring)
   return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
 };
-// A torus size of its own (Taller, Wider, a link): an extra entry among the usual ones, by rows;
-// one with the usual tiles per row is the usual size
-function selectTorusSize(kind, size) {
-  const sel = $('sphereF'), [rows, cols] = torusDims(kind, size);
+// A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
+// a Möbius strip) or tiles across (a solid); a torus with the usual tiles per row is the usual size
+function selectSize(kind, size) {
+  const sel = $('sphereF'), dims = (s) => (TORI.includes(kind) ? torusDims(kind, s) : [Number(s)]), [rows] = dims(size);
   for (const o of [...sel.options]) if (o.dataset.own) o.remove();
-  const usual = `${torusDims(kind, rows)}` === `${rows},${cols}` && [...sel.options].find((o) => Number(o.value) === rows);
+  const usual = `${dims(rows)}` === `${dims(size)}` && [...sel.options].find((o) => Number(o.value) === rows);
   if (usual) { sel.value = usual.value; return; }
   const own = new Option(sizeLabel(kind, size), size);
   own.dataset.own = '1';
-  sel.insertBefore(own, [...sel.options].find((o) => torusDims(kind, sphereSizeOf(o))[0] > rows) ?? null);
+  sel.insertBefore(own, [...sel.options].find((o) => dims(sphereSizeOf(o))[0] > rows) ?? null);
   sel.value = size;
+}
+// A size from a link: any number of rows or tiles across, from the surface's smallest that builds
+// (least: below it a tiny torus breaks; else 1) to its largest usual one
+function linkSize(kind, s) {
+  const { sizes, least = 1 } = SPHERES[kind], [rows, along] = String(s).split('x');
+  const n = Math.min(sizes[sizes.length - 1], Math.max(least, Math.round(Number(rows)) || sizes[0]));
+  return TORI.includes(kind) && along ? `${n}x${along}` : n;
 }
 const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
@@ -3714,7 +3721,7 @@ function browseLoop(delta) {
   const loops = torusLoops(), i = loopShown(loops), next = loops[i < 0 ? (delta > 0 ? 0 : loops.length - 1) : i + delta];
   if (!next) return;
   $('startNo').value = next.start;
-  selectTorusSize(surfaceOf(MODES[$('mode').value]), next.size);
+  selectSize(surfaceOf(MODES[$('mode').value]), next.size);
   digitsBeforeLoop ??= requestedDigits();  // the count asked comes back for the next number
   $('digits').value = next.steps;
   compute(true);
@@ -4626,8 +4633,7 @@ function applySetup(s) {
   if (MODES[s.w].sphere) {
     const kind = surfaceOf(MODES[s.w]);
     fillSphereSizes(kind, MODES[s.w].initial);
-    if (TORI.includes(kind) && String(s.s ?? '').includes('x')) selectTorusSize(kind, String(s.s));
-    else set('sphereF', s.s);
+    if (s.s !== undefined) selectSize(kind, linkSize(kind, s.s));
   }
   if (s.r) {
     $('lifeRule').value = s.r;
