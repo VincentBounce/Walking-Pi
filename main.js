@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.380';
+const VERSION = '0.1.381';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2128,17 +2128,17 @@ function buildWalkOf() {
   const { base } = MODES[current.mode];
   const step = STEPPERS[current.mode]();
   const counts = new Int32Array(base * (len + 1));
-  const seen = new Set([is3d ? key3(0, 0, 0) : key(0, 0)]);
-  // on the plane, a fraction's walk can loop too (a rosette): its state, the point and the one it
-  // came from (its heading), back with the same digits ahead (see loopWatch). Only for fractions,
-  // the others never repeat; not in 3D, where the heading does not tell the roll
-  const looped = current.ratio && !is3d ? loopWatch(seq, digitsAhead()) : null;
-  let last = key(0, 0), steps = len, loop = null, m = 0;
+  const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
+  // a fraction's walk can loop too (a rosette): its state, the point and the one it came from (its
+  // heading), and in 3D turning its head up (the roll), back with the same digits ahead (see
+  // loopWatch). Only for fractions, the others never repeat
+  const looped = current.ratio ? loopWatch(seq, digitsAhead()) : null;
+  let last = origin, steps = len, loop = null, m = 0;
   looped?.(0, `start ${last}`);
   cells[0] = 1;
   for (let i = 0; i < len; i++) {
     const g = seq[i];
-    const [k, x, y, z] = step(g);
+    const [k, x, y, z, roll = ''] = step(g);
     wx[i + 1] = x; wy[i + 1] = y;
     if (is3d) wz[i + 1] = z;
     seen.add(k);
@@ -2148,7 +2148,7 @@ function buildWalkOf() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + g]++;
     if (!looped) continue;
-    const state = `${last} ${k}`, earlier = looped(i + 1, state);
+    const state = `${last} ${k} ${roll}`, earlier = looped(i + 1, state);
     last = k;
     if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
@@ -2367,7 +2367,7 @@ function cubeStepper(relative) {
       d = CUBE_DIRS[g];
     }
     x += d[0]; y += d[1]; z += d[2];
-    return [key3(x, y, z), x, y, z];
+    return [key3(x, y, z), x, y, z, relative ? u.join() : ''];  // and the roll, for loopWatch
   };
 }
 
