@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.386';
+const VERSION = '0.1.387';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1931,7 +1931,16 @@ function renderModePicker() {
   if (inFamily) inFamily.F.tab = inFamily.tab;
   const optionOf = (w) => $('mode').querySelector(`option[value="${w}"]`);
   const firstOf = (w) => { const f = familyOf(w); return !f || f.F.modes[0].includes(w); };
-  $('modeList').replaceChildren(...Array.from(group.children).filter((o) => shown(o) && firstOf(o.value)).map((entry) => {
+  // an entry on the other side only, greyed out, keeps its place there: after the twin of the entry before it
+  const options = Array.from(group.children), place = (o) => {
+    const m = MODES[o.value];
+    if (m.twin || !twins || !!m.cells === onCells) return options.indexOf(o);
+    let p = o.previousElementSibling;  // on its own side
+    while (p && (!MODES[p.value].twin || !!MODES[p.value].cells !== !!m.cells)) p = p.previousElementSibling;
+    return p ? options.indexOf(optionOf(MODES[p.value].twin)) + 0.5 : -1;
+  };
+  const listed = options.filter((o) => shown(o) && firstOf(o.value)).sort((a, b) => place(a) - place(b));
+  $('modeList').replaceChildren(...listed.map((entry) => {
     const fam = familyOf(entry.value)?.F, o = fam ? optionOf(fam.modes[fam.tabs[fam.tab][0]][onCells ? 1 : 0]) ?? entry : entry;
     const b = document.createElement('button');
     const { base, detail } = splitModeLabel(o.text), name = fam ? fam.name : splitModeLabel(o.text).name;  // the Life tab already says "Life"
@@ -5070,9 +5079,10 @@ function fitToBounds(b) {
 }
 
 // Does the walk go past the edges of view v (the current view, or where auto-fit is heading)? Within
-// 16 px of them in 2D; a 3D walk's frame (a sphere, see includeBox) touches them on purpose: past them
+// 16 px of them in 2D, less in a small view, where a fit leaves 3.75 % (see viewFor); a 3D walk's frame
+// (a sphere, see includeBox) touches them on purpose: past them
 function boundsOffscreen(v = view) {
-  const m = walk.is3d ? -1 : 16, ox = v.ox ?? cw / 2 - v.cx * v.scale, oy = v.oy ?? ch / 2 - v.cy * v.scale;
+  const m = walk.is3d ? -1 : Math.min(16, 0.03 * Math.min(cw, ch)), ox = v.ox ?? cw / 2 - v.cx * v.scale, oy = v.oy ?? ch / 2 - v.cy * v.scale;
   return ox + bounds.minX * v.scale < m ||
          ox + bounds.maxX * v.scale > cw - m ||
          oy + bounds.minY * v.scale < m ||
@@ -7015,6 +7025,7 @@ $('seek').addEventListener('input', () => {
   play(false);
   if (v < cur) restart();
   advanceTo(v);
+  if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
   statsDirty = true;
 });
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
