@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.373';
+const VERSION = '0.1.374';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1084,10 +1084,11 @@ function updateDisplayMenu() {
   const spin = shows('autoRotate');
   $('viewHead').append(spin ? $('autoRotateRow') : $('autoFitRow'));
   $('perspectiveRow').after(spin ? $('autoFitRow') : $('autoRotateRow'));  // with the form of the view
-  // Centered, under Auto-fit in 3D: the camera turning with the walker, on a solid only
+  // under Auto-fit in 3D: Centered pattern (the camera turning with the walker, on a solid), else
+  // Default view (the camera as it starts)
   $('autoFitRow').after($('centeredRow'));
   $('centeredRow').hidden = !spin;
-  $('centered').disabled = !SOLIDS.includes(surfaceOf(mode)) || !!mode.life;
+  $('centeredName').textContent = centersPattern() ? 'Centered pattern' : 'Default view';
   $('fillAreasRow').hidden = !shows('fill');
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
@@ -2271,10 +2272,12 @@ function rotateView(w) {
   needsFull = true;
 }
 
+// On a solid, a walk's pattern to keep in front (see faceWalk); elsewhere the camera's default view
+const centersPattern = () => { const mode = MODES[$('mode').value]; return SOLIDS.includes(surfaceOf(mode)) && !mode.life; };
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   $('hint').textContent = walk.is3d  // the mouse on a line, the double-click on the next (see .hint)
-    ? 'Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom\nDouble-click: center, again: centered pattern'
+    ? `Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom\nDouble-click: center, again: ${centersPattern() ? 'centered pattern' : 'default view'}`
     : 'Drag: pan · Wheel: zoom\nDouble-click: auto-fit';
   updateDisplayMenu();
 }
@@ -6920,9 +6923,9 @@ for (const type of ['pointerdown', 'dblclick', 'wheel']) {
 }
 $('perspective').addEventListener('change', () => {
   setPerspective();
-  project();
-  if (walk.sphere) needsFull = true;
-  else rotateView([0, 0, 0]);  // recompute the 2D bounds of the projected walk
+  rotateView([0, 0, 0]);  // the projection again
+  if (walk.sphere) bounds = surfaceBounds();  // its frame, larger in perspective
+  if ($('autoFit').checked) fitWhole();
 });
 $('huntBtn').addEventListener('click', huntClick);
 // Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
@@ -6980,7 +6983,10 @@ $('startRow').addEventListener('mouseleave', () => {
 const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
-$('centered').addEventListener('change', () => { faced = false; });  // on: the camera turns to the walker again
+$('centered').addEventListener('change', () => {  // on: the camera turns to the pattern again, or back to the default view
+  faced = false;
+  if ($('centered').checked && !centersPattern()) { Object.assign(cam, CAM0); rotateView([0, 0, 0]); }
+});
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
 function walkOn(cells) {
