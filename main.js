@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.355';
+const VERSION = '0.1.356';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -840,6 +840,8 @@ const MODES = {
   // hexagons and pentagons alike: the edges two away from the one you came in through, on either side
   hexSphereWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'hexSphereGrid', sphere: 'hexsphere', turns: [-2, 2], round: true,
                    rule: 'on a sphere of hexagons (and 12 pentagons): exit through the <b>0</b> front left or <b>1</b> front right edge' },
+  stellaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'stellaGrid', sphere: 'stella', turns: [2, 1], perspective: true,
+              rule: 'on a stella octangula (two tetrahedra) of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   dodecaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'dodecaGrid', sphere: 'dodeca', turns: [2, 1], perspective: true,
               rule: 'on a dodecahedron, its pentagons cut into triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   icosaLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', turns: [2, 1], round: true,
@@ -872,6 +874,8 @@ const MODES = {
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
   hexSphereGrid: { base: 2, lattice: 'sphere', twin: 'hexSphereWalk', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
                    rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
+  stellaGrid: { base: 5, lattice: 'sphere', twin: 'stellaLR', sphere: 'stella', grid: true, turns: [120, 60, 0, -60, -120], perspective: true,
+                rule: 'along the edges of a stella octangula (two tetrahedra) of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a tip or a hollow corner, the nearest edge)' },
   dodecaGrid: { base: 5, lattice: 'sphere', twin: 'dodecaLR', sphere: 'dodeca', grid: true, turns: [120, 60, 0, -60, -120], perspective: true,
                 rule: 'along the edges of a dodecahedron, its pentagons cut into triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   icosaGrid: { base: 5, lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
@@ -886,6 +890,8 @@ const MODES = {
                 where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
                 where: 'an octahedron of triangles' },
+  lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true, perspective: true,
+                where: 'a stella octangula (two tetrahedra) of triangles' },
   lifeDodeca: { base: 2, lattice: 'sphere', sphere: 'dodeca', life: true, perspective: true,
                 where: 'a dodecahedron, its pentagons cut into triangles' },
   lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true, round: true,
@@ -1294,6 +1300,7 @@ const ICONS = (() => {
     tilesHex: hexCluster(0), tilesHexTurned: hexCluster(30),
     mobius: pathEl('M3 12C3 7.5 8.5 7.5 12 12S21 16.5 21 12S15.5 7.5 12 12S3 16.5 3 12Z') + pathEl('M6.5 10.4Q9 9.6 10.6 11.2M13.4 12.8Q15 14.4 17.5 13.6'),
     tetrahedron: pathEl(pathOf([a, b, c])) + [a, b, c].map((p) => pathEl(seg(p, d))).join(''),
+    stella: pathEl(pathOf(ngon(3, 10))) + pathEl(pathOf(ngon(3, 10, 90))),  // two tetrahedra: two triangles, a star
     octahedron: pathEl('M12 2L21 12L12 22L3 12Z') + [[12, 2], [21, 12], [12, 22], [3, 12]].map((p) => pathEl(seg(p, [10, 14]))).join(''),
     icosahedron: ico,
     dodecahedron: dodeca,
@@ -1814,7 +1821,7 @@ const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
-  tetraLR: 'tetrahedron', octaLR: 'octahedron', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
+  tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
@@ -2625,6 +2632,19 @@ POLYHEDRA.dodeca = (() => {
   }
   return { P, faces, corners: 20 };  // the solid's corners: the first 20 (then the pentagons' centres)
 })();
+/* Stella octangula (two tetrahedra, crossed): its outside, an octahedron with a small tetrahedron on
+ * each face, 24 equilateral triangles; 3 meet at a tip, 8 at a corner of the octahedron (480°:
+ * a saddle). It turns as the octahedron does: its starts are found on the octahedron's 6 corners
+ * and 8 faces (towards the tips). Not convex: drawn tile by tile, far to near (see drawSphere). */
+POLYHEDRA.stella = (() => {
+  const P = [...POLYHEDRA.octa.P], faces = [];
+  for (const [a, b, c] of POLYHEDRA.octa.faces) {
+    const tip = [0, 1, 2].map((d) => P[a][d] + P[b][d] + P[c][d]);  // (±1, ±1, ±1): the cube's corner over the face
+    P.push(tip);
+    faces.push([P.length - 1, a, b], [P.length - 1, b, c], [P.length - 1, c, a]);
+  }
+  return { P, faces, corners: 6, concave: true };
+})();
 
 function flatPolyhedron(name, f) {
   const key = `${name}${f}`;
@@ -2661,6 +2681,7 @@ function flatPolyhedron(name, f) {
   // faces cut from the solid's own (the dodecahedron's pentagons): its corners and its faces' centres
   const n = POLYHEDRA[name].corners;
   if (n) mesh.solid = { corners: P.slice(0, n).map(unit), centres: P.slice(n).map(unit) };
+  mesh.concave = !!POLYHEDRA[name].concave;
   return (meshCache[key] = mesh);
 }
 
@@ -2978,7 +2999,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
+const MORPHABLE = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -3178,6 +3199,8 @@ const SPHERES = {
           sizes: STEPS_128, initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
   icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
           sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 20 * f * f, unit: 'triangles' },  // 20,480 triangles
+  stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
+            sizes: STEPS_128.slice(0, -2), initial: 16, tiles: (f) => 24 * f * f, unit: 'triangles' },  // 6,144 triangles
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
             sizes: STEPS_128.slice(0, -3), initial: 16, tiles: (f) => 60 * f * f, unit: 'triangles' },  // 15,360 triangles
 };
@@ -3295,7 +3318,7 @@ function gridGraph(g) {
  * along the grid starts on a corner, arriving by one of its edges. The rotations that map the solid
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
-const SOLIDS = ['cube', 'tetra', 'octa', 'dodeca', 'icosa', 'hexsphere'];
+const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere'];
 const TORI = ['torus', 'torusSquare', 'tritorus', 'hextorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
 const TURNED = { torus: 'torusSquare', tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
@@ -5274,7 +5297,7 @@ function drawSphere() {
     drawStarts(ctx);
     return;
   }
-  if (g.torus || !g.faces || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
+  if (g.torus || !g.faces || g.concave || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
     drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, path && pathHalves());
     return;
   }
