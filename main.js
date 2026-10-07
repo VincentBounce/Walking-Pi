@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.382';
+const VERSION = '0.1.383';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -902,11 +902,17 @@ const MODES = {
               rule: 'in 3D cubes, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
   cubeFixed: { base: 6, lattice: 'cube', twin: 'cubeFixedCells', perspective: true,
               rule: 'in 3D cubes: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
-  // the same steps from cube to cube (their centres make the same lattice), the cubes coloured (see glCubes)
+  diag: { base: 8, lattice: 'cube', twin: 'diagCells', perspective: true,
+          rule: 'along the diagonals of the cubes, to one of their 8 corners: the 3 bits of each digit, the signs of x, y and z, <b>0</b> (−, −, −) to <b>7</b> (+, +, +)' },
+  diamond: { base: 3, lattice: 'cube', perspective: true,
+             rule: 'along the bonds of a diamond, as a polymer chain: <b>0</b> gauche left, <b>1</b> trans (the zigzag goes on), <b>2</b> gauche right' },
+  // the same steps from cell to cell (their centres make the same lattice), the cells coloured (see glCubes)
   cubeRelCells: { base: 5, lattice: 'cube', cells: true, twin: 'cubeRel', perspective: true,
               rule: 'from cube to cube, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
   cubeFixedCells: { base: 6, lattice: 'cube', cells: true, twin: 'cubeFixed', perspective: true,
               rule: 'from cube to cube: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
+  diagCells: { base: 8, lattice: 'cube', cells: true, twin: 'diag', shape: 'truncOcta', perspective: true,
+               rule: 'from truncated octahedron to truncated octahedron (they fill space), through a hexagon: the 3 bits of each digit, the signs of x, y and z, <b>0</b> (−, −, −) to <b>7</b> (+, +, +)' },
 };
 
 
@@ -1828,7 +1834,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
+  cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
@@ -2348,6 +2354,9 @@ const STEPPERS = {
   cubeFixed: () => cubeStepper(false),
   cubeRelCells: () => cubeStepper(true),
   cubeFixedCells: () => cubeStepper(false),
+  diag: () => diagStepper(),
+  diagCells: () => diagStepper(),
+  diamond: () => diamondStepper(),
 };
 
 /* ---- 6.2 Cubic lattice ----------------------------------------------------------------------- */
@@ -2376,6 +2385,32 @@ function cubeStepper(relative) {
     }
     x += d[0]; y += d[1]; z += d[2];
     return [key3(x, y, z), x, y, z, relative ? u.join() : ''];  // and the roll, for loopWatch
+  };
+}
+
+// Along the diagonals: digit (b2 b1 b0) in binary, the signs of the step (x, y, z)
+function diagStepper() {
+  let x = 0, y = 0, z = 0;
+  return (g) => {
+    x += g & 4 ? 1 : -1; y += g & 2 ? 1 : -1; z += g & 1 ? 1 : -1;
+    return [key3(x, y, z), x, y, z];
+  };
+}
+
+/* Diamond: each atom bonded to 4, along (±1, ±1, ±1) with an even number of minus signs, or along
+ * their opposites (the other half of the atoms). Coming along d, the 3 bonds ahead: 1 the bond before
+ * d again (trans: the zigzag goes on in its plane), 0 and 2 the gauche ones, on either side of it. */
+const DIAMOND_BONDS = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+function diamondStepper() {
+  const same = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+  let x = 0, y = 0, z = 0, p = [1, -1, -1], d = [-1, -1, -1];  // the last two bonds
+  return (g) => {
+    const back = neg(d), bonds = DIAMOND_BONDS.some((b) => same(b, back)) ? DIAMOND_BONDS : DIAMOND_BONDS.map(neg);
+    const side = cross(p, d), turn = (e) => side[0] * e[0] + side[1] * e[1] + side[2] * e[2];
+    const e = g === 1 ? p : bonds.find((b) => !same(b, back) && !same(b, p) && (g === 0) === turn(b) > 0);
+    [p, d] = [d, e];
+    x += e[0]; y += e[1]; z += e[2];
+    return [key3(x, y, z), x, y, z, p.join()];  // and the bond before, for loopWatch
   };
 }
 
@@ -4901,7 +4936,7 @@ function showAll() {
 function includeBox() {
   if (!walk.is3d || walk.sphere) return;
   const [x0, x1, y0, y1, z0, z1] = bounds3, [cx, cy] = projectPoint((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const c = MODES[current.mode].cells ? 1 : 0;  // the cubes of a walk on cells, half a cube past their centres
+  const c = MODES[current.mode].cells ? 2 * cellShape().half : 0;  // the cells of a walk on cells, past their centres
   const r = Math.hypot(x1 - x0 + c, y1 - y0 + c, z1 - z0 + c) / 2, P = walk.persp, R = P && P.D > r ? (r * P.D) / Math.sqrt(P.D * P.D - r * r) : r;
   bounds = { minX: cx - R, maxX: cx + R, minY: cy - R, maxY: cy + R };
 }
@@ -6196,25 +6231,42 @@ function glFlat(to) {
   return true;
 }
 
-// A unit cube's 12 triangles, each corner with its face's normal (6 floats)
-const CUBE_FACES = (() => {
-  const out = [];
-  for (let a = 0; a < 3; a++) for (const side of [-1, 1]) {
-    const at = (i, j) => { const p = [0, 0, 0], n = [0, 0, 0]; p[a] = side / 2; p[(a + 1) % 3] = i / 2; p[(a + 2) % 3] = j / 2; n[a] = side; return [...p, ...n]; };
-    out.push(...at(-1, -1), ...at(1, -1), ...at(1, 1), ...at(-1, -1), ...at(1, 1), ...at(-1, 1));
+// A convex solid's triangles from its corners and its faces' outward normals: each face the corners
+// furthest along its normal, in turn around it (6 floats per corner: position, normal)
+function solidTriangles(corners, normals) {
+  const out = [], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  for (const n of normals) {
+    const top = Math.max(...corners.map((p) => dot(p, n))), face = corners.filter((p) => dot(p, n) > top - 1e-9);
+    const c = [0, 1, 2].map((i) => face.reduce((sum, p) => sum + p[i], 0) / face.length), off = (p) => p.map((v, i) => v - c[i]);
+    const a = off(face[0]), b = cross(n, a), angle = (p) => Math.atan2(dot(off(p), b), dot(off(p), a));
+    face.sort((p, q) => angle(p) - angle(q));
+    const N = n.map((v) => v / Math.hypot(...n));
+    for (let k = 1; k < face.length - 1; k++) out.push(...face[0], ...N, ...face[k], ...N, ...face[k + 1], ...N);
   }
   return new Float32Array(out);
-})();
-// A 3D walk on cells: the cube of each point up to to, drawn in the walk's order with the depth
-// buffer, so that a cube shows the colour of its last visit (the rainbow by the step, its digit's,
-// or one colour) and hides the ones behind it
+}
+// The cells of the 3D walks on cells, around their centre: the cube, and the truncated octahedron
+// of the diagonals (square faces towards the cells 2 away along an axis, hexagons towards the corners)
+const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+const CORNERS = [0, 1, 2, 3, 4, 5, 6, 7].map((g) => [g & 4 ? 1 : -1, g & 2 ? 1 : -1, g & 1 ? 1 : -1]);
+const CELL_SHAPES = {
+  cube: { half: 0.5, triangles: solidTriangles(CORNERS.map((p) => p.map((v) => v / 2)), AXES) },
+  // its 24 corners: (0, ±1/2, ±1) in every order of the axes
+  truncOcta: { half: 1, triangles: solidTriangles([[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]].flatMap(([, j, k]) =>
+    CORNERS.slice(0, 4).map(([, a, b]) => { const p = [0, 0, 0]; p[j] = a / 2; p[k] = b; return p; })), [...AXES, ...CORNERS]) },
+};
+// A 3D walk on cells: the cell of each point up to to (a cube, see CELL_SHAPES), drawn in the walk's
+// order with the depth buffer, so that a cell shows the colour of its last visit (the rainbow by the
+// step, its digit's, or one colour) and hides the ones behind it
+const cellShape = () => CELL_SHAPES[MODES[current.mode].shape ?? 'cube'];
 function glCubes(to) {
   const S = glSetup();
   if (!S) return false;
-  const { gl, prog } = S, mode = $('colorMode').value, n = walk.n;
-  if (!S.cube) {
-    S.cube = gl.createBuffer(); S.cubeAt = gl.createBuffer(); S.cubeCol = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.cube); gl.bufferData(gl.ARRAY_BUFFER, CUBE_FACES, gl.STATIC_DRAW);
+  const { gl, prog } = S, mode = $('colorMode').value, n = walk.n, shape = cellShape();
+  if (!S.cube) { S.cube = gl.createBuffer(); S.cubeAt = gl.createBuffer(); S.cubeCol = gl.createBuffer(); }
+  if (S.keys.cubeShape !== shape) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.cube); gl.bufferData(gl.ARRAY_BUFFER, shape.triangles, gl.STATIC_DRAW);
+    S.keys.cubeShape = shape;
   }
   if (S.keys.cubes !== walk.wx || S.keys.cubesMode !== mode) {  // once per walk and colouring
     const at = new Float32Array(3 * (n + 1)), col = new Uint8Array(3 * (n + 1));
@@ -6234,7 +6286,7 @@ function glCubes(to) {
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);  // a later visit paints over
   // the depths: no point is further than twice the walk's reach from the perspective's centre
-  const u = glView(gl, prog.cube, 4 * (walk.maxDist[n] + 1));
+  const u = glView(gl, prog.cube, 4 * (walk.maxDist[n] + 2));
   gl.uniform1f(u('uShade'), SHADE);
   const attrib = (name, buffer, size, type, normalized, stride, offset, divisor) => {
     const loc = gl.getAttribLocation(prog.cube, name);
@@ -6246,7 +6298,7 @@ function glCubes(to) {
   };
   const locs = [attrib('aCorner', S.cube, 3, gl.FLOAT, false, 24, 0, 0), attrib('aNrm', S.cube, 3, gl.FLOAT, false, 24, 12, 0),
                 attrib('aAt', S.cubeAt, 3, gl.FLOAT, false, 0, 0, 1), attrib('aCol', S.cubeCol, 3, gl.UNSIGNED_BYTE, true, 0, 0, 1)];
-  gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, to + 1);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, shape.triangles.length / 6, to + 1);
   locs.forEach((loc) => { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); });
   gl.disable(gl.DEPTH_TEST);
   S.drawn = true;
