@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261014a">
+  <link rel="stylesheet" href="style.css?v=20261014b">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -254,7 +254,7 @@
         <div class="stage-head" id="viewHead">  <!-- Grid on the left while the box is open, Auto-fit (Auto-rotate in 3D) on the right -->
           <label class="check open-only" id="gridRow"><input id="showGrid" type="checkbox" checked> Grid</label>
           <label class="check" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click); hover for the display settings"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
-          <label class="check" id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole"><input id="centered" type="checkbox" checked> Centered</label>
+          <label class="check" id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole"><input id="centered" type="checkbox" checked> Centered pattern</label>
         </div>
         <div class="stage-more">  <!-- shown on hover, below -->
           <div id="themeRow">
@@ -305,6 +305,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261014a"></script>
+  <script src="main.js?v=20261014b"></script>
 </body>
 </html>

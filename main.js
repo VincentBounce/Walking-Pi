@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.372';
+const VERSION = '0.1.373';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2274,7 +2274,7 @@ function rotateView(w) {
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   $('hint').textContent = walk.is3d  // the mouse on a line, the double-click on the next (see .hint)
-    ? 'Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom\nDouble-click: centre, again: centred pattern'
+    ? 'Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom\nDouble-click: center, again: centered pattern'
     : 'Drag: pan · Wheel: zoom\nDouble-click: auto-fit';
   updateDisplayMenu();
 }
@@ -4904,7 +4904,6 @@ function fitWhole() {
 
 function restart() {
   faced = false;
-  recentred = false;  // a new walk, or played again: the next double-click centres first
   cur = 0;
   drawn = 0;
   acc = 0;
@@ -4998,7 +4997,6 @@ function padBounds(b) {
 }
 
 function userMovedView() {
-  recentred = false;
   viewGoal = null;
   $('autoFit').checked = false;
   needsFull = true;
@@ -6839,18 +6837,17 @@ stage.addEventListener('pointermove', (e) => {
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
     $('centered').checked = false;
-    recentred = false;
     rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
   }
 });
 const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
-// Double-click (or F): centre the view; again, with nothing moved in between, the default camera as
-// well: no auto-rotate, the camera as when the walk was shown (turned towards it on a surface)
-let recentred = false;  // the last double-click centred the view, and nothing has moved it since
+// Double-click (or F): centre the view (a pan or a zoom turned Auto-fit off); with Auto-fit on, the
+// view framed already, the default camera as well: no auto-rotate, the camera as when the walk was
+// shown (turned towards it on a surface)
 function recentre() {
-  if (recentred && walk.is3d) {  // the second in a row: the default camera too
+  if ($('autoFit').checked && walk.is3d) {
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
     $('centered').checked = true;
@@ -6860,7 +6857,6 @@ function recentre() {
     if (!walk.life && cur >= walk.n) faceWalk();
   }
   fitNow();
-  recentred = true;
 }
 stage.addEventListener('dblclick', recentre);
 
