@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.371';
+const VERSION = '0.1.372';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4951,9 +4951,10 @@ function fitToBounds(b) {
   setView(viewFor(b));
 }
 
-// Does the walk go past the edges of view v (the current view, or where auto-fit is heading)?
+// Does the walk go past the edges of view v (the current view, or where auto-fit is heading)? Within
+// 16 px of them in 2D; a 3D walk's frame (a sphere, see includeBox) touches them on purpose: past them
 function boundsOffscreen(v = view) {
-  const m = 16, ox = v.ox ?? cw / 2 - v.cx * v.scale, oy = v.oy ?? ch / 2 - v.cy * v.scale;
+  const m = walk.is3d ? -1 : 16, ox = v.ox ?? cw / 2 - v.cx * v.scale, oy = v.oy ?? ch / 2 - v.cy * v.scale;
   return ox + bounds.minX * v.scale < m ||
          ox + bounds.maxX * v.scale > cw - m ||
          oy + bounds.minY * v.scale < m ||
