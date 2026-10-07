@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.365';
+const VERSION = '0.1.366';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2277,9 +2277,9 @@ function rotateView(w) {
 
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
-  $('hint').textContent = walk.is3d  // one per line (see .hint)
-    ? 'Drag: rotate\nShift+drag: pan\nWheel: zoom\nDouble-click: centre, again: centred pattern'
-    : 'Drag: pan\nWheel: zoom\nDouble-click: auto-fit';
+  $('hint').textContent = walk.is3d  // the mouse on a line, the double-click on the next (see .hint)
+    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom\nDouble-click: centre, again: centred pattern'
+    : 'Drag: pan · Wheel: zoom\nDouble-click: auto-fit';
   updateDisplayMenu();
 }
 
