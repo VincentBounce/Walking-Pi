@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.381';
+const VERSION = '0.1.382';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -898,10 +898,15 @@ const MODES = {
                 where: 'an icosahedron of triangles' },
   lifeHexSphere: { base: 2, lattice: 'sphere', sphere: 'hexsphere', life: true, round: true,
                    where: 'a sphere of hexagons (its 12 pentagons are walls)' },
-  cubeRel:  { base: 5, lattice: 'cube', perspective: true,
+  cubeRel:  { base: 5, lattice: 'cube', twin: 'cubeRelCells', perspective: true,
               rule: 'in 3D cubes, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
-  cubeFixed: { base: 6, lattice: 'cube', perspective: true,
+  cubeFixed: { base: 6, lattice: 'cube', twin: 'cubeFixedCells', perspective: true,
               rule: 'in 3D cubes: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
+  // the same steps from cube to cube (their centres make the same lattice), the cubes coloured (see glCubes)
+  cubeRelCells: { base: 5, lattice: 'cube', cells: true, twin: 'cubeRel', perspective: true,
+              rule: 'from cube to cube, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
+  cubeFixedCells: { base: 6, lattice: 'cube', cells: true, twin: 'cubeFixed', perspective: true,
+              rule: 'from cube to cube: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
 };
 
 
@@ -1823,7 +1828,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  cubeRel: 'cubeFilled', cubeFixed: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
+  cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
@@ -1903,6 +1908,7 @@ function renderModePicker() {
   $('walkOn').hidden = !twins;
   $('walkOnGrid').classList.toggle('active', !onCells);
   $('walkOnCells').classList.toggle('active', onCells);
+  $('walkOnCells').textContent = modeTab === '3D walks' ? 'Cube' : 'Cells';
   $('walkOnCells').disabled = modeTab === currentGroup && !inUse.twin;  // no walk on cells there yet
   // a family of tilings is one entry (as its tiling in use, or as last chosen), at its first tiling's place
   const inFamily = familyOf($('mode').value);
@@ -2340,6 +2346,8 @@ const STEPPERS = {
   hexSpiral: () => hexStepper('spiral'),
   cubeRel: () => cubeStepper(true),
   cubeFixed: () => cubeStepper(false),
+  cubeRelCells: () => cubeStepper(true),
+  cubeFixedCells: () => cubeStepper(false),
 };
 
 /* ---- 6.2 Cubic lattice ----------------------------------------------------------------------- */
@@ -4893,7 +4901,8 @@ function showAll() {
 function includeBox() {
   if (!walk.is3d || walk.sphere) return;
   const [x0, x1, y0, y1, z0, z1] = bounds3, [cx, cy] = projectPoint((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const r = Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2, P = walk.persp, R = P && P.D > r ? (r * P.D) / Math.sqrt(P.D * P.D - r * r) : r;
+  const c = MODES[current.mode].cells ? 1 : 0;  // the cubes of a walk on cells, half a cube past their centres
+  const r = Math.hypot(x1 - x0 + c, y1 - y0 + c, z1 - z0 + c) / 2, P = walk.persp, R = P && P.D > r ? (r * P.D) / Math.sqrt(P.D * P.D - r * r) : r;
   bounds = { minX: cx - R, maxX: cx + R, minY: cy - R, maxY: cy + R };
 }
 
@@ -5675,6 +5684,14 @@ void main() {
   gl_Position = clipOf(toScreen(p), uBias);  // over the grid lines, as the other paths
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+  // the cubes of a 3D walk on cells (see glCubes): a unit cube around each point, shaded as the tiles
+  cube: [`#version 300 es
+in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol; uniform float uShade; out vec3 vCol;${GL_PROJECT}
+void main() {
+  vCol = aCol * (1.0 - uShade * (1.0 - abs(dot(aNrm, uV))));
+  gl_Position = clipOf(toScreen(aAt + aCorner), 0.0);
+}`, `#version 300 es
+precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
   flatPath: [`#version 300 es
 in vec2 aQuad; in vec2 aA; in vec2 aB; in float aKey; uniform float uN, uWidth; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec3 vCol;
@@ -5743,6 +5760,7 @@ function glPalette() {
   gl.bindTexture(gl.TEXTURE_2D, GLS.grad);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, BANDS, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from(GRADIENT.flatMap((c) => [...rgbOf(c), 255])));
   if (GLS.mono) { gl.deleteTexture(GLS.mono); GLS.mono = null; }
+  GLS.keys.cubes = null;
   GLS.keys.pal = null;
 }
 function glClear() {
@@ -5840,6 +5858,18 @@ function torusArrows(R, X, Y) {  // X, Y: half the sheet's length and width (its
 }
 
 // Draw the surface with its palette and levelOf (as drawSphere picks them); false if WebGL is missing
+// The camera of a program on GL_PROJECT, as projectPoint's; depth: the span of the depths drawn
+function glView(gl, p, depth) {
+  gl.useProgram(p);
+  const u = (name) => gl.getUniformLocation(p, name), P = walk.persp, cc = P ? orthoPoint(...P.c) : [0, 0];
+  gl.uniform3fv(u('uR'), cam.r); gl.uniform3fv(u('uU'), cam.u); gl.uniform3fv(u('uV'), cam.v);
+  gl.uniform4f(u('uPersp'), ...(P ? P.c : [0, 0, 0]), P ? P.D : 0);
+  gl.uniform2f(u('uCC'), cc[0], cc[1]);
+  gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
+  gl.uniform2f(u('uScreen'), cw, ch);
+  gl.uniform1f(u('uDepth'), depth);
+  return u;
+}
 function glSurface(palette, levelOf, path) {
   const S = glSetup();
   if (!S) return false;
@@ -5881,22 +5911,11 @@ function glSurface(palette, levelOf, path) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
-  const P = walk.persp, cc = P ? orthoPoint(...P.c) : [0, 0];
   // the grid lines, then the path, pulled towards the viewer by a share of a tile (not of the solid:
   // on a big one, a fixed share let lines on the faces just behind an edge show through)
   const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
   const edgeBias = (0.07 * tileSize) / depth, pathBias = (0.15 * tileSize) / depth;
-  const uniforms = (p) => {
-    gl.useProgram(p);
-    const u = (name) => gl.getUniformLocation(p, name);
-    gl.uniform3fv(u('uR'), cam.r); gl.uniform3fv(u('uU'), cam.u); gl.uniform3fv(u('uV'), cam.v);
-    gl.uniform4f(u('uPersp'), ...(P ? P.c : [0, 0, 0]), P ? P.D : 0);
-    gl.uniform2f(u('uCC'), cc[0], cc[1]);
-    gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
-    gl.uniform2f(u('uScreen'), cw, ch);
-    gl.uniform1f(u('uDepth'), depth);
-    return u;
-  };
+  const uniforms = (p) => glView(gl, p, depth);
   const attrib = (p, name, buffer, size, type = gl.FLOAT, normalized = false, stride = 0, offset = 0, divisor = 0) => {
     const loc = gl.getAttribLocation(p, name);
     if (loc < 0) return;
@@ -6020,6 +6039,7 @@ const templateArray = (templates) => {
 // how many of the sorted values are ≤ v
 const countUpTo = (sorted, n, v) => { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] <= v) lo = m + 1; else hi = m; } return lo; };
 function glFlat(to) {
+  if (walk.is3d && MODES[current.mode].cells) return glCubes(to);
   const S = glSetup();
   if (!S) return false;
   const { gl, prog } = S, mode = $('colorMode').value, { scale: s, ox, oy } = view;
@@ -6173,6 +6193,63 @@ function glFlat(to) {
       ctx.fillText(walk.digits[p - 1], ox + walk.xs[p] * s, oy + walk.ys[p] * s);
     }
   }
+  return true;
+}
+
+// A unit cube's 12 triangles, each corner with its face's normal (6 floats)
+const CUBE_FACES = (() => {
+  const out = [];
+  for (let a = 0; a < 3; a++) for (const side of [-1, 1]) {
+    const at = (i, j) => { const p = [0, 0, 0], n = [0, 0, 0]; p[a] = side / 2; p[(a + 1) % 3] = i / 2; p[(a + 2) % 3] = j / 2; n[a] = side; return [...p, ...n]; };
+    out.push(...at(-1, -1), ...at(1, -1), ...at(1, 1), ...at(-1, -1), ...at(1, 1), ...at(-1, 1));
+  }
+  return new Float32Array(out);
+})();
+// A 3D walk on cells: the cube of each point up to to, drawn in the walk's order with the depth
+// buffer, so that a cube shows the colour of its last visit (the rainbow by the step, its digit's,
+// or one colour) and hides the ones behind it
+function glCubes(to) {
+  const S = glSetup();
+  if (!S) return false;
+  const { gl, prog } = S, mode = $('colorMode').value, n = walk.n;
+  if (!S.cube) {
+    S.cube = gl.createBuffer(); S.cubeAt = gl.createBuffer(); S.cubeCol = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.cube); gl.bufferData(gl.ARRAY_BUFFER, CUBE_FACES, gl.STATIC_DRAW);
+  }
+  if (S.keys.cubes !== walk.wx || S.keys.cubesMode !== mode) {  // once per walk and colouring
+    const at = new Float32Array(3 * (n + 1)), col = new Uint8Array(3 * (n + 1));
+    const rgb = mode === 'digit' ? Array.from({ length: walk.base }, (_, d) => rgbOf(digitColour(d))) : mode === 'mono' ? [rgbOf(MONO)] : GRADIENT.map(rgbOf);
+    for (let p = 0; p <= n; p++) {
+      const q = Math.max(1, p);  // the start, as its first step
+      at.set([walk.wx[p], walk.wy[p], walk.wz[p]], 3 * p);
+      col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : mode === 'mono' ? rgb[0] : rgb[Math.floor(((q - 1) * BANDS) / n)], 3 * p);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeAt); gl.bufferData(gl.ARRAY_BUFFER, at, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeCol); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
+    S.keys.cubes = walk.wx; S.keys.cubesMode = mode;
+  }
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);  // a later visit paints over
+  // the depths: no point is further than twice the walk's reach from the perspective's centre
+  const u = glView(gl, prog.cube, 4 * (walk.maxDist[n] + 1));
+  gl.uniform1f(u('uShade'), SHADE);
+  const attrib = (name, buffer, size, type, normalized, stride, offset, divisor) => {
+    const loc = gl.getAttribLocation(prog.cube, name);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, type, normalized, stride, offset);
+    gl.vertexAttribDivisor(loc, divisor);
+    return loc;
+  };
+  const locs = [attrib('aCorner', S.cube, 3, gl.FLOAT, false, 24, 0, 0), attrib('aNrm', S.cube, 3, gl.FLOAT, false, 24, 12, 0),
+                attrib('aAt', S.cubeAt, 3, gl.FLOAT, false, 0, 0, 1), attrib('aCol', S.cubeCol, 3, gl.UNSIGNED_BYTE, true, 0, 0, 1)];
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, to + 1);
+  locs.forEach((loc) => { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); });
+  gl.disable(gl.DEPTH_TEST);
+  S.drawn = true;
   return true;
 }
 
