@@ -211,7 +211,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .mode-list button {
   display: grid;
-  grid-template-columns: 34px 1fr auto;  /* one icon column for every list, wide enough for ζ(3) or 16/9 */
+  grid-template-columns: 34px minmax(0, 1fr) auto;  /* one icon column for every list, wide enough for ζ(3) or 16/9; the words shrink */
   align-items: center;
   gap: 8px;
   padding: 5px 8px;
@@ -223,6 +223,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .mode-icon { font-size: 15px; color: var(--muted); text-align: center; }
 .mode-name { display: block; font-size: 13px; font-weight: 600; }
 .mode-detail { display: block; font-size: 11px; color: var(--muted); }
+.mode-name, .mode-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* one line each, … when too long (in full on hover) */
 .mode-base {
   font-size: 11px;
   padding: 1px 7px;
