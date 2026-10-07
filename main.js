@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.376';
+const VERSION = '0.1.377';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7225,7 +7225,6 @@ window.addEventListener('hashchange', () => { const s = parseHash(); if (s) appl
 new ResizeObserver(resize).observe(stage);
 updateSpeedLabel();
 resize();
-$('webgl').checked = !!glSetup();  // whether this browser draws with WebGL 2
 requestAnimationFrame(tick);
 $('version').textContent = `v${VERSION}`;
 for (const b of document.querySelectorAll('[data-icon]')) b.insertAdjacentHTML('afterbegin', icon(b.dataset.icon));
