@@ -320,7 +320,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box .open-only { display: none; }
 .stage-box:hover .open-only { display: flex; }
 @media (hover: none) { .stage-box:focus-within .open-only { display: flex; } }
-.display-menu .stage-more { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* below Grid and Auto-fit */
+.display-menu .stage-more { margin: 10px 0 -10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* below Grid and Auto-fit; each row's 10px under the last one taken back, so the bottom matches the top */
 .form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
