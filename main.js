@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.384';
+const VERSION = '0.1.385';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -804,6 +804,13 @@ const MODES = {
               rule: 'from cell to cell of a hexagon grid, relative to the edge you came in through: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   hexFixedCells: { base: 6, lattice: 'hex', cells: true, twin: 'hexFixed',
               rule: 'from cell to cell of a hexagon grid: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
+  // on cells only: steps that do not cross a single edge (no Fill areas, see fillAreasApply)
+  king: { base: 8, lattice: 'square', cells: true, fill: false,
+          rule: 'from square to square as a chess king, to one of the 8 around: <b>0</b> N, <b>1</b> NE, <b>2</b> E, <b>3</b> SE, <b>4</b> S, <b>5</b> SW, <b>6</b> W, <b>7</b> NW' },
+  knight: { base: 8, lattice: 'square', cells: true, fill: false,
+            rule: 'from square to square as a chess knight, leaping an L, clockwise: <b>0</b> 2 N 1 E, <b>1</b> 1 N 2 E, … <b>7</b> 2 N 1 W' },
+  cairo: { base: 4, lattice: 'cairo', cells: true, fill: false,
+           rule: 'from pentagon to pentagon of the Cairo tiling, out through one of its 4 other edges: <b>0</b> the leftmost to <b>3</b> the rightmost' },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -1303,6 +1310,9 @@ const ICONS = (() => {
     triangleFilled: pathEl(pathOf(tri), 'f'),
     hexagon: pathEl(pathOf(hex)),
     hexagonFilled: pathEl(pathOf(hex), 'f'),
+    king: pathEl('M12 3V21M3 12H21M5.6 5.6L18.4 18.4M18.4 5.6L5.6 18.4'),  // the 8 ways out
+    knight: pathEl('M7 20V6H14') + pathEl('M11 3L14 6L11 9') + '<circle cx="7" cy="20" r="1.6"/>',  // an L: 2 up, 1 across
+    pentagons: pathEl('M12 3L18 7L16 13H8L6 7Z') + pathEl('M8 13L6 19L12 22L18 19L16 13'),  // two of the Cairo tiling's, sharing an edge
     cube: cube(false),
     cubeFilled: cube(true),
     torus,
@@ -1834,6 +1844,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
+  king: 'king', knight: 'knight', cairo: 'pentagons',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -1883,9 +1894,9 @@ function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
   if (!modeTab) modeTab = currentGroup;
-  // Grid or Cells: as the walk in use (one with no twin goes along the grid), or as last chosen
+  // Grid or Cells: as the walk in use (one with no twin and no cells goes along the grid), or as last chosen
   const inUse = MODES[$('mode').value];
-  if (modeTab === currentGroup && (inUse.twin || inUse.grid)) onCells = !!inUse.cells;
+  if (modeTab === currentGroup && (inUse.twin || inUse.grid || inUse.cells)) onCells = !!inUse.cells;
   const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === onCells;
   const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
   $('modeTabs').replaceChildren(galleryTab(), ...groups.map((g) => {
@@ -1915,7 +1926,9 @@ function renderModePicker() {
   $('walkOnGrid').classList.toggle('active', !onCells);
   $('walkOnCells').classList.toggle('active', onCells);
   $('walkOnCells').textContent = modeTab === '3D walks' ? 'Cube' : 'Cells';
-  $('walkOnCells').disabled = modeTab === currentGroup && !inUse.twin;  // no walk on cells there yet
+  const alone = modeTab === currentGroup && !inUse.twin;  // no twin: on its own side only
+  $('walkOnGrid').disabled = alone && !!inUse.cells;
+  $('walkOnCells').disabled = alone && !inUse.cells;
   // a family of tilings is one entry (as its tiling in use, or as last chosen), at its first tiling's place
   const inFamily = familyOf($('mode').value);
   if (inFamily) inFamily.F.tab = inFamily.tab;
@@ -1936,7 +1949,7 @@ function renderModePicker() {
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
-    b.disabled = twins && onCells && !mode.twin;  // no walk on cells there: greyed out, not to be picked
+    b.disabled = twins && !mode.twin && onCells !== !!mode.cells;  // not on this side: greyed out, not to be picked
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
       if (fam) torusTurned = fam.tabs[fam.tab][1];  // the tiling last chosen, turned or not
@@ -2309,6 +2322,70 @@ function key(x, y) {
 /* Each stepper takes a digit and returns [key, x, y, z]: a unique key
  * for the cell and the position of its centre (z = 0 in 2D; in 2D, y
  * points down the screen; in 3D, z points up).                       */
+// The king's and the knight's moves, clockwise from north (screen y points down)
+const KING_STEPS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
+const KNIGHT_STEPS = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
+const leaper = (steps) => {
+  let x = 0, y = 0;
+  return (g) => {
+    x += steps[g][0]; y += steps[g][1];
+    return [key(x, y), x, y, 0];
+  };
+};
+
+/* The Cairo tiling: equal pentagons, their corners where 4 meet on a square grid (of side CAIRO, so
+ * that a pentagon has the area of a square cell), one pentagon across each side of the grid. In each
+ * square of the grid a bar joins two corners where 3 pentagons meet, level when i + j is even, upright
+ * when odd; each end of a bar joins the square's two nearest corners. A half bar of (√7 − 1)/6 makes
+ * all the edges equal. A pentagon: (i, j, o), across the side from corner (i, j) to (i + 1, j) (o = 0)
+ * or to (i, j + 1) (o = 1); its type 2·o + the parity of i + j. */
+const CAIRO = Math.SQRT2, CAIRO_B = (Math.sqrt(7) - 1) / 6;
+function cairoCorners(i, j, o) {  // in grid units, in turn around the pentagon (either way)
+  const b = CAIRO_B, odd = (i + j) & 1;
+  if (o === 0) return odd ? [[i, j], [i + 0.5, j + 0.5 - b], [i + 1, j], [i + 0.5 + b, j - 0.5], [i + 0.5 - b, j - 0.5]]
+                          : [[i, j], [i + 0.5 - b, j + 0.5], [i + 0.5 + b, j + 0.5], [i + 1, j], [i + 0.5, j - 0.5 + b]];
+  return odd ? [[i, j], [i + 0.5, j + 0.5 - b], [i + 0.5, j + 0.5 + b], [i, j + 1], [i - 0.5 + b, j + 0.5]]
+             : [[i, j], [i + 0.5 - b, j + 0.5], [i, j + 1], [i - 0.5, j + 0.5 + b], [i - 0.5, j + 0.5 - b]];
+}
+const cairoMiddle = (i, j, o) => { const c = cairoCorners(i, j, o); return [0, 1].map((a) => c.reduce((sum, p) => sum + p[a], 0) / 5); };
+const CAIRO_0 = cairoMiddle(0, 0, 0);  // the start's pentagon, at the origin
+const cairoCentre = (i, j, o) => cairoMiddle(i, j, o).map((v, a) => (v - CAIRO_0[a]) * CAIRO);
+// back from a centre (x, y) to its pentagon: across a level side, its middle halfway along it
+function cairoAt(x, y) {
+  const X = x / CAIRO + CAIRO_0[0], Y = y / CAIRO + CAIRO_0[1];
+  return Math.abs(X - Math.floor(X) - 0.5) < 0.01 ? [Math.floor(X), Math.round(Y), 0] : [Math.round(X), Math.floor(Y), 1];
+}
+const cairoType = (i, j, o) => 2 * o + ((i + j) & 1);
+// per type: the corners around the centre (CELL_TEMPLATES), the pentagon across each edge and the
+// edge it comes in by, and, for each edge come in by, the 4 others from the leftmost to the rightmost
+const CAIRO_TYPES = [[0, 0, 0], [1, 0, 0], [0, 0, 1], [1, 0, 1]].map(([i, j, o]) => {
+  const corners = cairoCorners(i, j, o), m = cairoMiddle(i, j, o), near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-9;
+  const across = corners.map((p, k) => {
+    const q = corners[(k + 1) % 5];
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) for (const o2 of [0, 1]) {
+      if (!di && !dj && o2 === o) continue;
+      const c = cairoCorners(i + di, j + dj, o2), e = c.findIndex((r, n) => near(r, q) ? near(c[(n + 1) % 5], p) : near(r, p) && near(c[(n + 1) % 5], q));
+      if (e >= 0) return [di, dj, o2, e];
+    }
+  });
+  const mid = (k) => [0, 1].map((a) => (corners[k][a] + corners[(k + 1) % 5][a]) / 2 - m[a]);
+  const turns = corners.map((p, k) => {
+    const [hx, hy] = mid(k).map((v) => -v);  // heading in, from the edge to the centre
+    const angle = (e) => { const [ex, ey] = mid(e); return Math.atan2(hx * ey - hy * ex, hx * ex + hy * ey); };
+    return [1, 2, 3, 4].map((d) => (k + d) % 5).sort((e, f) => angle(e) - angle(f));  // screen y down: left first
+  });
+  return { template: corners.map((p) => [(p[0] - m[0]) * CAIRO, (p[1] - m[1]) * CAIRO]), across, turns };
+});
+function cairoStepper() {
+  let i = 0, j = 0, o = 0, k = 0;  // the pentagon, the edge come in by
+  return (g) => {
+    const T = CAIRO_TYPES[cairoType(i, j, o)], [di, dj, o2, e] = T.across[T.turns[k][g]];
+    i += di; j += dj; o = o2; k = e;
+    const [x, y] = cairoCentre(i, j, o);
+    return [key(2 * i + o, j), x, y, 0];
+  };
+}
+
 const STEPPERS = {
   turtle() {
     let x = 0, y = 0, d = 0;
@@ -2326,6 +2403,9 @@ const STEPPERS = {
       return [key(x, y), x, y, 0];
     };
   },
+  king: () => leaper(KING_STEPS),
+  knight: () => leaper(KNIGHT_STEPS),
+  cairo: () => cairoStepper(),
   spiral() { // fixed square spiral from the centre: right, up, left, down with runs 1, 1, 2, 2, 3, 3, …
     let x = 0, y = 0, d = 0, run = 1, left = 1, turns = 0;
     return () => {
@@ -5080,7 +5160,8 @@ function drawGrid() {
     drawLines(ctx, 1, 0, 0, H * stepCells);
     drawLines(ctx, 1 / r3, 1, 0, stepCells);
     drawLines(ctx, -1 / r3, 1, 0, stepCells);
-  } else drawHexGrid(ctx, walk.lines);
+  } else if (lat === 'cairo') drawCairoGrid(ctx);
+  else drawHexGrid(ctx, walk.lines);
   ctx.stroke();
 }
 
@@ -5149,6 +5230,23 @@ function draw3DFrame(ctx) {
 // flat-topped around the hexagon cells' centres (b·H, −a − b/2, see hexStepper), or pointy-topped
 // around the corners of the triangle cells (c/2, y0 + r·H with c + r even, see triStepper), the
 // hexagons whose corners are the triangles' centres. Hidden when too small.
+// The Cairo pentagons in view, each edge twice (the pentagons on both sides)
+function drawCairoGrid(ctx) {
+  const { scale: s, ox, oy } = view;
+  if (s * CAIRO < 8) return;
+  const X = (u) => ox + (u - CAIRO_0[0]) * CAIRO * s, Y = (v) => oy + (v - CAIRO_0[1]) * CAIRO * s;
+  const [u0, v0] = [-ox / s / CAIRO + CAIRO_0[0], -oy / s / CAIRO + CAIRO_0[1]];
+  for (let i = Math.floor(u0) - 1; i <= Math.ceil(u0 + cw / s / CAIRO) + 1; i++) {
+    for (let j = Math.floor(v0) - 1; j <= Math.ceil(v0 + ch / s / CAIRO) + 1; j++) {
+      for (const o of [0, 1]) {
+        const c = cairoCorners(i, j, o);
+        ctx.moveTo(X(c[4][0]), Y(c[4][1]));
+        for (const [u, v] of c) ctx.lineTo(X(u), Y(v));
+      }
+    }
+  }
+}
+
 function drawHexGrid(ctx, pointy) {
   const { scale: s, ox, oy } = view;
   const R = s / Math.sqrt(3);
@@ -6064,8 +6162,10 @@ const CELL_TEMPLATES = {
   square: [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]],
   tri: [[[0, (-2 * H) / 3], [0.5, H / 3], [-0.5, H / 3]], [[-0.5, -H / 3], [0.5, -H / 3], [0, (2 * H) / 3]]],  // ▲, ▼
   hex: [[0, 1, 2, 3, 4, 5].map((k) => [Math.cos((k * Math.PI) / 3) / Math.sqrt(3), -Math.sin((k * Math.PI) / 3) / Math.sqrt(3)])],
+  cairo: CAIRO_TYPES.map((T) => T.template),
 };
-const cellTemplate = (lat, y) => lat === 'tri' && y - (TRI_Y0 + Math.floor((y - TRI_Y0) / H) * H) <= H / 2 ? 1 : 0;
+const cellTemplate = (lat, x, y) => lat === 'cairo' ? cairoType(...cairoAt(x, y))
+  : lat === 'tri' && y - (TRI_Y0 + Math.floor((y - TRI_Y0) / H) * H) <= H / 2 ? 1 : 0;
 const templateArray = (templates) => {
   const a = new Float32Array(48);
   templates.forEach((pts, t) => { for (let q = 0; q < 6; q++) a.set(pts[Math.min(q, pts.length - 1)], 2 * (6 * t + q)); });
@@ -6131,7 +6231,7 @@ function glFlat(to) {
       for (let p = first; p <= walk.n; p++) {
         if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
         const band = V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((Math.max(0, p - 1) * BANDS) / walk.n);
-        inst.set([walk.xs[p], walk.ys[p], band, cellTemplate(lat, walk.ys[p])], 4 * m);
+        inst.set([walk.xs[p], walk.ys[p], band, cellTemplate(lat, walk.xs[p], walk.ys[p])], 4 * m);
         at[m++] = p;
       }
       upload(S.flatCells, inst.subarray(0, 4 * m));
@@ -6311,7 +6411,8 @@ function tilePath(ctx, x, y) {
   const { scale: s, ox, oy } = view, X = (u) => ox + u * s, Y = (v) => oy + v * s;
   if (walk.lattice === 'square') { ctx.rect(X(x - 0.5), Y(y - 0.5), s, s); return; }
   let pts;
-  if (walk.lattice === 'tri') {  // ▲ has its centre 2/3 down its row, ▼ 1/3 (see triStepper)
+  if (walk.lattice === 'cairo') pts = CELL_TEMPLATES.cairo[cellTemplate('cairo', x, y)].map(([dx, dy]) => [x + dx, y + dy]);
+  else if (walk.lattice === 'tri') {  // ▲ has its centre 2/3 down its row, ▼ 1/3 (see triStepper)
     const top = TRI_Y0 + Math.floor((y - TRI_Y0) / H) * H, up = y - top > H / 2;
     pts = up ? [[x, top], [x + 0.5, top + H], [x - 0.5, top + H]] : [[x - 0.5, top], [x + 0.5, top], [x, top + H]];
   } else {  // flat-topped hexagon of radius 1/√3 (see hexStepper)
@@ -6329,8 +6430,8 @@ function visitCells() {
   if (visitData) return visitData;
   const { xs, ys, lattice: lat } = walk, n = walk.n, index = new Map(), cell = new Int32Array(n + 1), total = [];
   for (let i = 0; i <= n; i++) {  // whole-number coordinates of each cell centre, per tiling
-    const kx = lat === 'hex' ? Math.round(xs[i] / H) : Math.round(2 * xs[i]);
-    const ky = lat === 'tri' ? Math.round(((ys[i] - TRI_Y0) * 3) / H) : Math.round(2 * ys[i]);
+    const kx = lat === 'hex' ? Math.round(xs[i] / H) : Math.round((lat === 'cairo' ? 8 : 2) * xs[i]);
+    const ky = lat === 'tri' ? Math.round(((ys[i] - TRI_Y0) * 3) / H) : Math.round((lat === 'cairo' ? 8 : 2) * ys[i]);
     const k = (kx + 33554432) * 67108864 + (ky + 33554432);
     let c = index.get(k);
     if (c === undefined) { c = total.length; index.set(k, c); total.push(0); }
@@ -6344,7 +6445,7 @@ function visitCells() {
 
 // Digits: the size of a cell's digit, for a cell of side 1 (a triangle's centre has less room);
 // shown from 8 pixels
-const DIGIT_SIZE = { square: 0.6, hex: 0.5, tri: 0.35 };
+const DIGIT_SIZE = { square: 0.6, hex: 0.5, tri: 0.35, cairo: 0.45 };
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -6425,8 +6526,9 @@ function drawSegments(from, to) {
 let fill = null;                   // { at, cx, cy, tpl, templates, count, tooBig } for the current walk (see computeFill)
 let fillDone = 0;                  // how many of the fill's polygons are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
-const fillAreasApply = () => useful('fill') && !['visits', 'digit'].includes($('colorMode').value);
-const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d;
+const fillAreasApply = () => useful('fill') && MODES[$('mode').value].fill !== false && !['visits', 'digit'].includes($('colorMode').value);
+// (the walk drawn may still be the last mode's while the new one is computed: a tiling with a fill)
+const fillOn = () => $('fillAreas').checked && fillAreasApply() && walk.n && !walk.is3d && !!FILL_GRIDS[walk.lattice];
 // the fill, computed once per walk; beside the toggle, a word when the walk is too big to fill
 function fillNow() {
   if (!fill) { fill = computeFill(); updateDisplayMenu(); }
