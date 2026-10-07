@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.367';
+const VERSION = '0.1.368';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2278,7 +2278,7 @@ function rotateView(w) {
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   $('hint').textContent = walk.is3d  // the mouse on a line, the double-click on the next (see .hint)
-    ? 'Drag: rotate · Shift+drag: pan · Wheel: zoom\nDouble-click: centre, again: centred pattern'
+    ? 'Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom\nDouble-click: centre, again: centred pattern'
     : 'Drag: pan · Wheel: zoom\nDouble-click: auto-fit';
   updateDisplayMenu();
 }
@@ -6821,8 +6821,9 @@ stage.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 let drag = null;
+stage.addEventListener('contextmenu', (e) => e.preventDefault());  // the right button drags the view
 stage.addEventListener('pointerdown', (e) => {
-  drag = { x: e.clientX, y: e.clientY, pan: !walk.is3d || e.shiftKey };
+  drag = { x: e.clientX, y: e.clientY, pan: !walk.is3d || e.shiftKey || e.button === 2 };  // in 3D, Shift or the right button pans
   stage.setPointerCapture(e.pointerId);
   stage.classList.add('dragging');
 });
