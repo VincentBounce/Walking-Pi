@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.356';
+const VERSION = '0.1.357';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -840,9 +840,9 @@ const MODES = {
   // hexagons and pentagons alike: the edges two away from the one you came in through, on either side
   hexSphereWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'hexSphereGrid', sphere: 'hexsphere', turns: [-2, 2], round: true,
                    rule: 'on a sphere of hexagons (and 12 pentagons): exit through the <b>0</b> front left or <b>1</b> front right edge' },
-  stellaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'stellaGrid', sphere: 'stella', turns: [2, 1], perspective: true,
+  stellaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'stellaGrid', sphere: 'stella', turns: [2, 1],
               rule: 'on a stella octangula (two tetrahedra) of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  dodecaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'dodecaGrid', sphere: 'dodeca', turns: [2, 1], perspective: true,
+  dodecaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'dodecaGrid', sphere: 'dodeca', turns: [2, 1],
               rule: 'on a dodecahedron, its pentagons cut into triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   icosaLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', turns: [2, 1], round: true,
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
@@ -874,9 +874,9 @@ const MODES = {
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
   hexSphereGrid: { base: 2, lattice: 'sphere', twin: 'hexSphereWalk', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
                    rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
-  stellaGrid: { base: 5, lattice: 'sphere', twin: 'stellaLR', sphere: 'stella', grid: true, turns: [120, 60, 0, -60, -120], perspective: true,
+  stellaGrid: { base: 5, lattice: 'sphere', twin: 'stellaLR', sphere: 'stella', grid: true, turns: [120, 60, 0, -60, -120],
                 rule: 'along the edges of a stella octangula (two tetrahedra) of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a tip or a hollow corner, the nearest edge)' },
-  dodecaGrid: { base: 5, lattice: 'sphere', twin: 'dodecaLR', sphere: 'dodeca', grid: true, turns: [120, 60, 0, -60, -120], perspective: true,
+  dodecaGrid: { base: 5, lattice: 'sphere', twin: 'dodecaLR', sphere: 'dodeca', grid: true, turns: [120, 60, 0, -60, -120],
                 rule: 'along the edges of a dodecahedron, its pentagons cut into triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   icosaGrid: { base: 5, lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
@@ -890,9 +890,9 @@ const MODES = {
                 where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
                 where: 'an octahedron of triangles' },
-  lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true, perspective: true,
+  lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true,
                 where: 'a stella octangula (two tetrahedra) of triangles' },
-  lifeDodeca: { base: 2, lattice: 'sphere', sphere: 'dodeca', life: true, perspective: true,
+  lifeDodeca: { base: 2, lattice: 'sphere', sphere: 'dodeca', life: true,
                 where: 'a dodecahedron, its pentagons cut into triangles' },
   lifeIcosa:  { base: 2, lattice: 'sphere', sphere: 'icosa', life: true, round: true,
                 where: 'an icosahedron of triangles' },
@@ -3127,11 +3127,19 @@ function updateMorphButton() {
     const b = document.createElement('button');
     b.textContent = name;
     b.classList.toggle('active', sh.target === m);
-    b.addEventListener('click', () => { walk.shape.target = m; updateMorphButton(); });
+    b.addEventListener('click', () => {
+      walk.shape.target = m;
+      updateMorphButton();
+      $('perspective').checked = perspectiveFor(MODES[$('mode').value], m);  // the form's own
+      $('perspective').dispatchEvent(new Event('change'));
+    });
     return b;
   }));
 }
 
+// The perspective a surface starts with, in its form m: the walk mode's, but none on a solid
+// inflated (a ball is seen whole without it)
+const perspectiveFor = (mode, m) => !!mode.perspective && !(m === 1 && SOLIDS.includes(mode.sphere));
 // One animation frame of the change of shape (about 0.7 s from flat to round)
 function morphStep(dt) {
   const sh = walk.shape;
@@ -4667,7 +4675,7 @@ function applySetup(s) {
   // changes (as picking a walk does); within a tab, what was chosen stays
   if (modeTabOf() !== displayTab) displayDefaults();
   $('fillAreas').checked = String(s.fa ?? 1) !== '0';  // the one display choice kept: it changes what is drawn
-  $('perspective').checked = !!MODES[s.w].perspective;
+  $('perspective').checked = perspectiveFor(MODES[s.w], MODES[s.w].round ? 1 : 0);
   Object.assign(cam, CAM0);
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
@@ -7030,7 +7038,7 @@ $('mode').addEventListener('change', () => {
   // the form of the view belongs to the walk mode: its perspective, the camera's starting angle
   // (auto-fit may have turned it to follow a walker) and its flat or round form (see initShape)
   // come back with every new mode
-  $('perspective').checked = !!MODES[$('mode').value].perspective;
+  $('perspective').checked = perspectiveFor(MODES[$('mode').value], MODES[$('mode').value].round ? 1 : 0);
   Object.assign(cam, CAM0);
   $('autoFit').checked = true;  // a new walk is shown framed, whatever the view did before
   $('startNo').value = 1;
