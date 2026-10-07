@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.385';
+const VERSION = '0.1.386';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -807,10 +807,8 @@ const MODES = {
   // on cells only: steps that do not cross a single edge (no Fill areas, see fillAreasApply)
   king: { base: 8, lattice: 'square', cells: true, fill: false,
           rule: 'from square to square as a chess king, to one of the 8 around: <b>0</b> N, <b>1</b> NE, <b>2</b> E, <b>3</b> SE, <b>4</b> S, <b>5</b> SW, <b>6</b> W, <b>7</b> NW' },
-  knight: { base: 8, lattice: 'square', cells: true, fill: false,
-            rule: 'from square to square as a chess knight, leaping an L, clockwise: <b>0</b> 2 N 1 E, <b>1</b> 1 N 2 E, … <b>7</b> 2 N 1 W' },
   cairo: { base: 4, lattice: 'cairo', cells: true, fill: false,
-           rule: 'from pentagon to pentagon of the Cairo tiling, out through one of its 4 other edges: <b>0</b> the leftmost to <b>3</b> the rightmost' },
+           rule: 'from pentagon to pentagon of the Cairo tiling, out through one of its 4 other edges: <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right' },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -910,7 +908,7 @@ const MODES = {
   cubeFixed: { base: 6, lattice: 'cube', twin: 'cubeFixedCells', perspective: true,
               rule: 'in 3D cubes: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
   diag: { base: 8, lattice: 'cube', twin: 'diagCells', perspective: true,
-          rule: 'along the diagonals of the cubes, to one of their 8 corners: the 3 bits of each digit, the signs of x, y and z, <b>0</b> (−, −, −) to <b>7</b> (+, +, +)' },
+          rule: 'along the diagonals of the cubes, to one of their 8 corners (the 3 bits of each digit the signs of east, north and up): <b>0</b> SW down, <b>1</b> SW up, <b>2</b> NW down, <b>3</b> NW up, <b>4</b> SE down, <b>5</b> SE up, <b>6</b> NE down, <b>7</b> NE up' },
   diamond: { base: 3, lattice: 'cube', perspective: true,
              rule: 'along the bonds of a diamond, as a polymer chain: <b>0</b> gauche left, <b>1</b> trans (the zigzag goes on), <b>2</b> gauche right' },
   // the same steps from cell to cell (their centres make the same lattice), the cells coloured (see glCubes)
@@ -919,7 +917,7 @@ const MODES = {
   cubeFixedCells: { base: 6, lattice: 'cube', cells: true, twin: 'cubeFixed', perspective: true,
               rule: 'from cube to cube: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
   diagCells: { base: 8, lattice: 'cube', cells: true, twin: 'diag', shape: 'truncOcta', perspective: true,
-               rule: 'from truncated octahedron to truncated octahedron (they fill space), through a hexagon: the 3 bits of each digit, the signs of x, y and z, <b>0</b> (−, −, −) to <b>7</b> (+, +, +)' },
+               rule: 'from truncated octahedron to truncated octahedron (they fill space), through a hexagon (the 3 bits of each digit the signs of east, north and up): <b>0</b> SW down, <b>1</b> SW up, <b>2</b> NW down, <b>3</b> NW up, <b>4</b> SE down, <b>5</b> SE up, <b>6</b> NE down, <b>7</b> NE up' },
 };
 
 
@@ -1032,7 +1030,7 @@ function describe(base, available) {
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
     const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
-    const chips = at >= 0 && items.length === base && base <= DIGIT_COLORS.length;
+    const chips = at >= 0 && items.length === base && base <= 8;
     const after = mode.rule.match(/\(([^)]*)\)\s*$/)?.[1];  // a closing note: "(at a corner of the cube, the nearest edge)"
     // the words around the digits, kept in the description: "exit through the … edge"
     const tail = mode.rule.slice(at + 2), pre = tail.slice(0, tail.indexOf('<b>')).trim(), edge = / edge\b/.test(tail) ? ' edge' : '';
@@ -1044,7 +1042,7 @@ function describe(base, available) {
         const what = text.replace(/\s*\(.*$/, '').trim().replace(/\s+(or|edge)$/, '');
         const c = document.createElement('span');
         c.className = 'rule-chip';
-        c.innerHTML = `<b style="background:${DIGIT_COLORS[d]}">${d}</b><span>${what.trim()}<small id="count${d}">0</small></span>`;
+        c.innerHTML = `<b style="background:${digitColour(Number(d))}">${d}</b><span>${what.trim()}<small id="count${d}">0</small></span>`;
         c.title = `${d}: ${what.trim()}`;
         return c;
       }));
@@ -1311,7 +1309,6 @@ const ICONS = (() => {
     hexagon: pathEl(pathOf(hex)),
     hexagonFilled: pathEl(pathOf(hex), 'f'),
     king: pathEl('M12 3V21M3 12H21M5.6 5.6L18.4 18.4M18.4 5.6L5.6 18.4'),  // the 8 ways out
-    knight: pathEl('M7 20V6H14') + pathEl('M11 3L14 6L11 9') + '<circle cx="7" cy="20" r="1.6"/>',  // an L: 2 up, 1 across
     pentagons: pathEl('M12 3L18 7L16 13H8L6 7Z') + pathEl('M8 13L6 19L12 22L18 19L16 13'),  // two of the Cairo tiling's, sharing an edge
     cube: cube(false),
     cubeFilled: cube(true),
@@ -1844,7 +1841,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  king: 'king', knight: 'knight', cairo: 'pentagons',
+  king: 'king', cairo: 'pentagons',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -2322,16 +2319,8 @@ function key(x, y) {
 /* Each stepper takes a digit and returns [key, x, y, z]: a unique key
  * for the cell and the position of its centre (z = 0 in 2D; in 2D, y
  * points down the screen; in 3D, z points up).                       */
-// The king's and the knight's moves, clockwise from north (screen y points down)
+// The king's moves, clockwise from north (screen y points down)
 const KING_STEPS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
-const KNIGHT_STEPS = [[1, -2], [2, -1], [2, 1], [1, 2], [-1, 2], [-2, 1], [-2, -1], [-1, -2]];
-const leaper = (steps) => {
-  let x = 0, y = 0;
-  return (g) => {
-    x += steps[g][0]; y += steps[g][1];
-    return [key(x, y), x, y, 0];
-  };
-};
 
 /* The Cairo tiling: equal pentagons, their corners where 4 meet on a square grid (of side CAIRO, so
  * that a pentagon has the area of a square cell), one pentagon across each side of the grid. In each
@@ -2403,8 +2392,13 @@ const STEPPERS = {
       return [key(x, y), x, y, 0];
     };
   },
-  king: () => leaper(KING_STEPS),
-  knight: () => leaper(KNIGHT_STEPS),
+  king() {
+    let x = 0, y = 0;
+    return (g) => {
+      x += KING_STEPS[g][0]; y += KING_STEPS[g][1];
+      return [key(x, y), x, y, 0];
+    };
+  },
   cairo: () => cairoStepper(),
   spiral() { // fixed square spiral from the centre: right, up, left, down with runs 1, 1, 2, 2, 3, 3, …
     let x = 0, y = 0, d = 0, run = 1, left = 1, turns = 0;
@@ -6834,7 +6828,7 @@ function updateStats() {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
     // describe the digits to its left. At the end it sits on a blank after the last digit.
     html += i === cur ? `<span class="cur">${d[i]}</span>`
-      : walk.base <= DIGIT_COLORS.length ? `<span style="color:${DIGIT_COLORS[d[i]]}">${d[i]}</span>` : d[i];  // coloured as their chips
+      : walk.base <= 8 ? `<span style="color:${digitColour(d[i])}">${d[i]}</span>` : d[i];  // coloured as their chips
     if (i === intLen - 1 && intLen < walk.n) html += '.';
   }
   strip.innerHTML = html + (b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '');
