@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.398';
+const VERSION = '0.1.400';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2123,13 +2123,15 @@ function compute(keepDigits = false) {
   const done = (entry, how) => {
     setCurrent(entry, base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     const total = entry.total ?? current.head.length + current.digits.length;
+    // the digits' time, then the walk's (millions of an ant's steps take far longer than its digits)
+    const t0 = performance.now();
+    buildWalk();
     $('status').textContent = [
-      how,
+      `${how} · walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
       F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
     ].filter(Boolean).join(' · ');
-    buildWalk();
     noteLoopLater();
     describe(base, total);
     syncDigitsStepper();  // a whole number's digits are now known
@@ -2141,7 +2143,7 @@ function compute(keepDigits = false) {
   const enough = integer ? hit && (hit.intPart.length >= n || hit.intPart.length === hit.total)
                          : hit && hit.digits.length >= want;
   if (enough) {
-    done(hit, 'Cached');
+    done(hit, 'Digits cached');
     return;
   }
   // the worker also needs digitString, seededRandom, exactValue and iroot
@@ -2173,7 +2175,7 @@ function compute(keepDigits = false) {
     }
     const entry = { intPart: d.intPart, digits: d.digits, total: d.total, tests: d.tests, uncertain: d.uncertain };
     cache[key] = entry;
-    done(entry, `Computed in ${(d.ms / 1000).toFixed(2)} s`);
+    done(entry, `Digits in ${(d.ms / 1000).toFixed(2)} s`);
   };
   worker.postMessage({ ast: F.ast, n: want, base, mag: F.mag, nodes: F.nodes });
 }
@@ -6044,9 +6046,9 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
   // tiles: one instance per tile, (x, y, colour band, template), its polygon from the templates (6
   // corners each, the last repeated)
   flatTiles: [`#version 300 es
-in vec4 aC; uniform vec2 uTpl[24]; uniform float uAlpha, uBright; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad; out vec4 vCol;
-void main() {
-  vec3 c = texture(uGrad, vec2(uColour == 1 ? 0.0 : (aC.z + 0.5) / 256.0, 0.5)).rgb * uBright;
+in vec4 aC; uniform vec2 uTpl[24]; uniform float uAlpha, uBright; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec4 vCol;
+void main() {  // aC.z: the band of the rainbow, or the key of the digits' colours (uColour 2)
+  vec3 c = (uColour == 2 ? texture(uPal, vec2((aC.z + 0.5) / 256.0, 0.5)) : texture(uGrad, vec2(uColour == 1 ? 0.0 : (aC.z + 0.5) / 256.0, 0.5))).rgb * uBright;
   vCol = vec4(c * uAlpha, uAlpha);  // premultiplied
   vec2 p = uView.yz + (aC.xy + uTpl[int(aC.w) * 6 + gl_VertexID]) * uView.x;
   gl_Position = vec4(p.x / uScreen.x * 2.0 - 1.0, 1.0 - p.y / uScreen.y * 2.0, 0.0, 1.0);
@@ -6360,7 +6362,7 @@ function glSurface(palette, levelOf, path) {
 // cells: always on a spiral (its line is greyed out), else for Fill cells, Visits and an ant's colours
 const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'))
   || (!!walk.ant && $('colorMode').value === 'digit');
-const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n) && !(flatCellsOn() && $('colorMode').value === 'digit')
+const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n)
   && !($('colorMode').value === 'digit' && (walk.points ? walk.keyCount : walk.base) > 255);
 // the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
 const CELL_TEMPLATES = {
@@ -6400,14 +6402,14 @@ function glFlat(to) {
     upload(S.flatKeys, keys);
     S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
   }
-  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${MONO}`) {  // the digits' colours
+  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${MONO}`) {  // the digits' colours (an ant's)
     const pal = new Uint8Array(4 * 256);
     for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(Math.min(k, (walk.points ? walk.keyCount : walk.base) - 1))), 255], 4 * k);
     gl.bindTexture(gl.TEXTURE_2D, S.pal);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${MONO}`;
+    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${MONO}`;
   }
   // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
@@ -6428,14 +6430,15 @@ function glFlat(to) {
   const cells = !walk.is3d && flatCellsOn();
   let cellCount = 0;
   if (cells) {
-    const cellsKey = `${mode === 'visits'}`;
+    const cellsKey = mode;
     if (S.keys.flatCells !== walk.xs || S.keys.flatCellsMode !== cellsKey) {
       const lat = walk.lattice, first = walk.points ? 1 : 0, inst = new Float32Array(4 * (walk.n + 1)), at = new Int32Array(walk.n + 1);
       let m = 0, V = null, scale = 0;
       if (mode === 'visits') { V = visitCells(); V.seen.fill(0); scale = (BANDS - 1) / Math.log(Math.max(2, V.max)); }
       for (let p = first; p <= walk.n; p++) {
         if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
-        const band = V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((roundStep(Math.max(0, p - 1)) * BANDS) / rainbowLength());
+        const band = mode === 'digit' ? walk.keys[Math.max(0, p - 1)]  // an ant's colour, a spiral's digit
+          : V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((roundStep(Math.max(0, p - 1)) * BANDS) / rainbowLength());
         inst.set([walk.xs[p], walk.ys[p], band, cellTemplate(lat, walk.xs[p], walk.ys[p])], 4 * m);
         at[m++] = p;
       }
@@ -6487,6 +6490,7 @@ function glFlat(to) {
     gl.uniform2fv(u('uTpl'), tpl);
     gl.uniform1f(u('uAlpha'), alpha);
     gl.uniform1f(u('uBright'), bright);
+    gl.uniform1i(u('uPal'), 1);
     const locs = [attrib(prog.flatTiles, 'aC', buffer, 4, gl.FLOAT, 16, 0, 1)];
     gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 6, count);
     off(locs);
