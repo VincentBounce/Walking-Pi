@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.400';
+const VERSION = '0.1.401';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1021,7 +1021,7 @@ function digitsNeeded() {
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
 let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round (5 rounds in 2D and 3D)
-const LOOP_ROUNDS = 5;
+const LOOP_ROUNDS = 5, ANT_ROUNDS = 25;
 // The rainbow of a walk going round a loop: each round in the colours of the first one (the rounds are
 // drawn over each other); i, a step; rainbowLength(), the steps the rainbow spreads over
 const closedLoop = () => walk.loop?.period && !walk.loop.drift;  // a drift's rounds are side by side: one rainbow over them all
@@ -1219,7 +1219,9 @@ function syncDigitsStepper() {
 function loopText() {
   const L = !randomPrimeSize() && walk.loop;
   if (!L) return '';
-  const period = L.period ?? walk.n - L.from, rounds = L.period ? LOOP_ROUNDS : 1, total = L.cap ?? walk.n;
+  const period = L.period ?? walk.n - L.from, rounds = L.rounds ?? (L.period ? LOOP_ROUNDS : 1), total = L.cap ?? walk.n;
+  if (walk.ant) return `→ From step ${fmt(L.from)}, the ant builds a highway: the same ${fmt(period)} steps forever, each time further on.`
+    + ` It stops after ${rounds} of them, ${fmt(total)} steps.`;
   return L.drift
     ? `→ From step ${fmt(L.from)}, this walk repeats the same ${fmt(period)} steps forever, each time further on: it goes off`
       + ` for ever, and stops after ${rounds} rounds, ${fmt(total)} digits.`
@@ -2293,8 +2295,16 @@ function buildWalkOf() {
   const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
   // a fraction's walk repeats (see walkRepeat), walked 5 rounds; not an ant's, whose state is all its cells
-  const loop = current.ratio && !ant ? walkRepeat() : null;
-  let steps = loop ? Math.min(len, loop.cap) : len, m = 0;
+  let loop = current.ratio && !ant ? walkRepeat() : null;
+  let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0;
+  // an ant on a highway goes on along it for ever: stopped after ANT_ROUNDS of its stretches (looked
+  // for every 2,000 steps, and at the end)
+  const highway = (n) => {
+    const h = highwayOf(wx, wy, n);
+    if (!h) return;
+    loop = { from: h.from, period: h.period, drift: true, rounds: ANT_ROUNDS, cap: h.from + ANT_ROUNDS * h.period };
+    steps = Math.min(steps, loop.cap);
+  };
   cells[0] = 1;
   for (let i = 0; i < steps; i++) {
     const g = seq[i];
@@ -2308,13 +2318,15 @@ function buildWalkOf() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
     if (ant) left[i] = step.left;
+    walked = i + 1;
+    if (ant && !loop && walked % 2000 === 0) highway(walked);
   }
+  if (ant && !loop) highway(steps);
   // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be)
   let keys = seq;
   if (ant) {
     keys = new Uint8Array(steps);
-    for (let j = 0; j + 1 < steps; j++) keys[j] = left[j + 1];
-    if (steps) keys[steps - 1] = step.next();
+    for (let j = 0; j < steps; j++) keys[j] = j + 1 < walked ? left[j + 1] : step.next();  // the last one walked: as it would be
   }
   Object.assign(walk, { vert: null, stepTiles: null, loop, n: steps, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
@@ -2560,7 +2572,7 @@ function antStepper(w) {
   return step;
 }
 // A highway: the walk ends repeating a stretch of p steps, each one shifted by the same (dx, dy) ≠ 0,
-// at least 4 times; from the first step of it
+// over 1,000 steps at least (and 5 stretches): not a mere straight run through the mess; from its first step
 function highwayOf(xs, ys, n) {
   const same = (a, b) => Math.abs(a - b) < 1e-9;
   for (let p = 1; p <= n / 4 && p <= 2000; p++) {
@@ -2568,7 +2580,7 @@ function highwayOf(xs, ys, n) {
     if (same(dx, 0) && same(dy, 0)) continue;
     let i = n - p;
     while (i > 0 && same(xs[i - 1 + p] - xs[i - 1], dx) && same(ys[i - 1 + p] - ys[i - 1], dy)) i--;
-    if (n - i >= 4 * p + p) return { from: i, period: p };
+    if (n - i >= Math.max(5 * p, 1000)) return { from: i, period: p };
   }
   return null;
 }
