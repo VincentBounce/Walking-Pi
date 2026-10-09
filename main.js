@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.394';
+const VERSION = '0.1.395';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1020,7 +1020,12 @@ function digitsNeeded() {
 // turtle · along the lines of a square grid", 0 turn left + step, … An automaton: "4/3 in base 2
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
-let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round
+let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round (5 rounds in 2D and 3D)
+const LOOP_ROUNDS = 5;
+// The rainbow of a walk going round a loop: each round in the colours of the first one (the rounds are
+// drawn over each other); i, a step; rainbowLength(), the steps the rainbow spreads over
+const roundStep = (i) => { const L = walk.loop; return L?.period && i >= L.from + L.period ? L.from + ((i - L.from) % L.period) : i; };
+const rainbowLength = () => (walk.loop?.period ? walk.loop.from + walk.loop.period : walk.n);
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
@@ -1031,7 +1036,7 @@ function describe(base, available) {
   $('ruleChips').replaceChildren();
   if (!mode.life) {
     const from = walk.loop?.from;
-    $('barLoop').textContent = `${fmt(walk.n)} digits ↻${from ? ` from step ${fmt(from)}` : ''}`;
+    $('barLoop').textContent = `${fmt(walk.loop?.period ?? walk.n)} digits ↻${from ? ` from step ${fmt(from)}` : ''}`;  // a round
     $('barLoop').title = from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
@@ -1197,10 +1202,18 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 const wholeTotal = () => (current?.whole && current.formula === $('formula').value ? current.total : null);
 function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  // a walk that loops uses only the digits of its first round (see buildGridWalk): more would change nothing
-  const total = size ? null : walk.loop ? walk.n : wholeTotal();
-  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : walk.loop ? `${fmt(walk.n)} digits max ↻`
-    : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
+  // a walk that loops uses only the digits of its first round on a surface (see buildGridWalk), of 5 rounds
+  // in 2D and 3D: more would change nothing
+  const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal();
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ↻`
+    : L ? `${fmt(n)} digits` : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
+  // why: the loop, from its first step, and how many rounds are walked
+  $('loopNote').hidden = !L;
+  if (L) {
+    const period = L.period ?? walk.n - L.from, rounds = L.period ? LOOP_ROUNDS : 1;
+    $('loopNote').textContent = `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
+      + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
+  }
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
   // − goes below what is walked: the whole number's own length when it is shorter than the count
@@ -2223,7 +2236,7 @@ function buildWalkOf() {
   let last = origin, steps = len, loop = null, m = 0;
   looped?.(0, `start ${last}`);
   cells[0] = 1;
-  for (let i = 0; i < len; i++) {
+  for (let i = 0; i < steps; i++) {
     const g = seq[i];
     const [k, x, y, z, roll = ''] = step(g);
     wx[i + 1] = x; wy[i + 1] = y;
@@ -2235,10 +2248,15 @@ function buildWalkOf() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
     if (ant) left[i] = step.left;
-    if (!looped) continue;
+    if (!looped || loop) continue;
     const state = `${last} ${k} ${roll}`, earlier = looped(i + 1, state);
     last = k;
-    if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
+    // back on a state of step `earlier`: the same round of `period` steps forever, walked 5 times
+    if (earlier !== null) {
+      const period = i + 1 - earlier;
+      loop = { from: earlier, period, cap: earlier + LOOP_ROUNDS * period };
+      steps = Math.min(len, loop.cap);
+    }
   }
   // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be)
   let keys = seq;
@@ -5404,7 +5422,7 @@ function styleKey(i) {
   switch ($('colorMode').value) {
     case 'digit': return walk.keys[i];
     case 'mono': return 0;
-    default: return Math.floor((i * BANDS) / walk.n);
+    default: return Math.floor((roundStep(i) * BANDS) / rainbowLength());
   }
 }
 
@@ -5961,11 +5979,13 @@ void main() {
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
   flatPath: [`#version 300 es
-in vec2 aQuad; in vec2 aA; in vec2 aB; in float aKey; uniform float uN, uWidth; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec3 vCol;
+in vec2 aQuad; in vec2 aA; in vec2 aB; in float aKey; uniform float uN, uWidth, uFrom, uPeriod; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec3 vCol;
 void main() {
   if (aKey > 254.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }  // a step that draws nothing (a spiral's 0)
+  float i = float(gl_InstanceID);
+  if (uPeriod > 0.0 && i >= uFrom + uPeriod) i = uFrom + mod(i - uFrom, uPeriod);  // each round of a loop as the first (see roundStep)
   vCol = uColour == 2 ? texture(uPal, vec2((aKey + 0.5) / 256.0, 0.5)).rgb
-       : texture(uGrad, vec2(uColour == 1 ? 0.0 : (float(gl_InstanceID) + 0.5) / uN, 0.5)).rgb;
+       : texture(uGrad, vec2(uColour == 1 ? 0.0 : (i + 0.5) / uN, 0.5)).rgb;
   vec2 a = uView.yz + aA * uView.x, b = uView.yz + aB * uView.x, p = mix(a, b, aQuad.x);
   vec2 d = b - a; d = length(d) > 1e-4 ? normalize(d) : vec2(1.0, 0.0);
   p += (vec2(-d.y, d.x) * aQuad.y + d * (aQuad.x * 2.0 - 1.0)) * uWidth * 0.5;
@@ -6347,7 +6367,7 @@ function glFlat(to) {
     if (fill.count && fill.templates.length <= 4) {
       if (S.keys.flatFill !== fill) {
         const inst = new Float32Array(4 * fill.count);
-        for (let k = 0; k < fill.count; k++) inst.set([fill.cx[k], fill.cy[k], Math.floor(((fill.at[k] - 1) * BANDS) / walk.n), fill.tpl[k]], 4 * k);
+        for (let k = 0; k < fill.count; k++) inst.set([fill.cx[k], fill.cy[k], Math.floor((roundStep(fill.at[k] - 1) * BANDS) / rainbowLength()), fill.tpl[k]], 4 * k);
         upload(S.flatFill, inst);
         S.fillTpl = templateArray(fill.templates);
         S.keys.flatFill = fill;
@@ -6366,7 +6386,7 @@ function glFlat(to) {
       if (mode === 'visits') { V = visitCells(); V.seen.fill(0); scale = (BANDS - 1) / Math.log(Math.max(2, V.max)); }
       for (let p = first; p <= walk.n; p++) {
         if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
-        const band = V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((Math.max(0, p - 1) * BANDS) / walk.n);
+        const band = V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((roundStep(Math.max(0, p - 1)) * BANDS) / rainbowLength());
         inst.set([walk.xs[p], walk.ys[p], band, cellTemplate(lat, walk.xs[p], walk.ys[p])], 4 * m);
         at[m++] = p;
       }
@@ -6427,7 +6447,9 @@ function glFlat(to) {
   if (cellCount) tiles(S.flatCells, S.cellTpl, cellCount, 1, shows('cells') && line ? 0.85 : 1);
   if (line && to > 0) {
     const u = common(prog.flatPath);
-    gl.uniform1f(u('uN'), Math.max(1, walk.n));
+    gl.uniform1f(u('uN'), Math.max(1, rainbowLength()));
+    gl.uniform1f(u('uFrom'), walk.loop?.from ?? 0);
+    gl.uniform1f(u('uPeriod'), walk.loop?.period ?? 0);
     gl.uniform1f(u('uWidth'), cells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6)));
     gl.uniform1i(u('uPal'), 1);
     const locs = [attrib(prog.flatPath, 'aQuad', S.quad, 2, gl.FLOAT, 0, 0, 0), attrib(prog.flatPath, 'aA', S.flatPts, 2, gl.FLOAT, 8, 0, 1),
@@ -6510,7 +6532,7 @@ function glCubes(to) {
     for (let p = 0; p <= n; p++) {
       const q = Math.max(1, p);  // the start, as its first step
       at.set([walk.wx[p], walk.wy[p], walk.wz[p]], 3 * p);
-      col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : mode === 'mono' ? rgb[0] : rgb[Math.floor(((q - 1) * BANDS) / n)], 3 * p);
+      col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : mode === 'mono' ? rgb[0] : rgb[Math.floor((roundStep(q - 1) * BANDS) / rainbowLength())], 3 * p);
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeAt); gl.bufferData(gl.ARRAY_BUFFER, at, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeCol); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);

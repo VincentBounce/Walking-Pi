@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261014w">
+  <link rel="stylesheet" href="style.css?v=20261014x">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -192,6 +192,7 @@
             <button id="digitsUp" title="More digits">+</button>
           </div>
           <input id="digits" type="hidden" value="20000">
+          <p id="loopNote" class="muted" hidden></p>  <!-- why a walk that loops has a most of digits, + greyed -->
         </div>
         <button id="copyNumber" class="wide" data-icon="copy" title="The number in the walk's base, with every digit in use" hidden>Copy number to clipboard</button>
         <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
@@ -322,6 +323,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261014w"></script>
+  <script src="main.js?v=20261014x"></script>
 </body>
 </html>
