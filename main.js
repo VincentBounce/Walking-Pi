@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.403';
+const VERSION = '0.1.404';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1032,7 +1032,9 @@ function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
   $('barNum').innerHTML = withIcons(shownSym);
   $('barNum').title = formulaInUse;
-  $('barBase').textContent = `base ${base}`;
+  const colours = antColours($('mode').value);
+  $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
+  if (colours) base = colours;  // its chips, one per colour
   $('barLoop').hidden = mode.life || !walk.loop;
   $('ruleChips').replaceChildren();
   if (!mode.life) {
@@ -2558,9 +2560,13 @@ function antTurnsOf(w, rule) {
   const turns = words.map((t) => A.turns[t]);
   return turns.every((t) => t !== undefined) ? turns : null;
 }
+// a turn in words, for the Play card's chips (L, R on squares and triangles; L1, R1 on hexagons and pentagons)
+const TURN_WORDS = { L: 'left', R: 'right', N: 'straight', L1: 'left', R1: 'right', L2: 'sharp left', R2: 'sharp right' };
 const antRuleText = (w) => antByDigits
-  ? `turning by the digit, the other way on a dark cell, which changes colour as the ant leaves it: <b>0</b> ${ANTS[w].lr[0]}, <b>1</b> ${ANTS[w].lr[1]}`
-  : `turning by its cell's colour, which then takes the next one: ${antRules[w].toUpperCase().match(/[LR][12]?|N/g).map((t, c) => `<b>${c}</b> ${t}`).join(', ')}`;
+  ? `turning by the digit, the other way on a dark cell, which changes colour as the ant leaves it: <b>0</b> ${TURN_WORDS[ANTS[w].lr[0]]}, <b>1</b> ${TURN_WORDS[ANTS[w].lr[1]]}`
+  : `turning by the colour of its cell, which then takes the next one: ${antRules[w].toUpperCase().match(/[LR][12]?|N/g).map((t, c) => `<b>${c}</b> ${TURN_WORDS[t]}`).join(', ')}`;
+// an ant by its rule: one chip per colour, its digits unused
+const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRules[w]).length : 0);
 // the step: turned, the colour of the cell it turned on; left, the colour it gave it; next(), the
 // colour the cell it is on would take
 function antStepper(w) {
@@ -7039,6 +7045,7 @@ function updateStats() {
   const strip = $('digitStrip');
   strip.classList.remove('line');  // one line of digits; the other texts may wrap
   if (!walk.n) { strip.textContent = ''; return; }
+  if (walk.ant && !antByDigits) { strip.textContent = `Rule ${antRules[current.mode]} · the number's digits are not used`; return; }  // an ant by its rule
   if (walk.points) {  // point modes: list the most recent marked cell numbers
     const a = Math.max(0, cur - 8);
     const list = Array.from(walk.labels.subarray(a, cur), (v, i) =>
