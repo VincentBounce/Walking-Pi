@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.411';
+const VERSION = '0.1.412';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -750,6 +750,7 @@ const PRESETS = {
   ant1_917: { group: 'Fractions', sym: '1/917', name: 'A highway from step 2,126,365 for the square ant by the digits', detail: '1/917 in base 2', f: '1/917' },
   ant1_112: { group: 'Fractions', sym: '1/112', name: 'A highway from step 2,051,674 for the square ant by the digits', detail: '1/112 in base 2', f: '1/112' },
   ant1_189: { group: 'Fractions', sym: '1/189', name: 'A highway from step 1,642,864 for the Cairo ant by the digits', detail: '1/189 in base 2', f: '1/189' },
+  ant1_28: { group: 'Fractions', sym: '1/28', name: 'A highway from step 1,909,973 for the square ant by the digits', detail: '1/28 in base 2', f: '1/28' },
   ant1_90: { group: 'Fractions', sym: '1/90', name: 'A highway from step 2,350,822 for the Cairo ant by the digits', detail: '1/90 in base 2', f: '1/90' },
   ant1_94: { group: 'Fractions', sym: '1/94', name: 'A highway from step 2,275,153 for the Cairo ant by the digits', detail: '1/94 in base 2', f: '1/94' },
   ant1_47: { group: 'Fractions', sym: '1/47', name: 'A highway from step 1,123,492 for the Cairo ant by the digits', detail: '1/47 in base 2', f: '1/47' },
