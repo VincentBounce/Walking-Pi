@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261014p">
+  <link rel="stylesheet" href="style.css?v=20261014q">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -24,11 +24,11 @@
       <section>
         <div class="walk-head">
           <h2 id="walkHeading">Walk</h2>
-          <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
-            <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
-          </div>
         </div>
         <div id="modeList" class="mode-list" role="listbox"></div>
+        <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
+          <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
+        </div>  <!-- under the list: its walks along the grid, or on cells -->
         <div id="torusTiles" class="choice-row" hidden title="The tiles of the surface" role="tablist"></div>  <!-- under the list, when Torus is picked -->
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
@@ -310,6 +310,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261014p"></script>
+  <script src="main.js?v=20261014q"></script>
 </body>
 </html>
