@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.396';
+const VERSION = '0.1.397';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1024,8 +1024,9 @@ let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it 
 const LOOP_ROUNDS = 5;
 // The rainbow of a walk going round a loop: each round in the colours of the first one (the rounds are
 // drawn over each other); i, a step; rainbowLength(), the steps the rainbow spreads over
-const roundStep = (i) => { const L = walk.loop; return L?.period && i >= L.from + L.period ? L.from + ((i - L.from) % L.period) : i; };
-const rainbowLength = () => (walk.loop?.period ? walk.loop.from + walk.loop.period : walk.n);
+const closedLoop = () => walk.loop?.period && !walk.loop.drift;  // a drift's rounds are side by side: one rainbow over them all
+const roundStep = (i) => { const L = walk.loop; return closedLoop() && i >= L.from + L.period ? L.from + ((i - L.from) % L.period) : i; };
+const rainbowLength = () => (closedLoop() ? walk.loop.from + walk.loop.period : walk.n);
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
@@ -1036,7 +1037,7 @@ function describe(base, available) {
   $('ruleChips').replaceChildren();
   if (!mode.life) {
     const from = walk.loop?.from;
-    $('barLoop').textContent = `${fmt(walk.loop?.period ?? walk.n)} digits ↻${from ? ` from step ${fmt(from)}` : ''}`;  // a round
+    $('barLoop').textContent = `${fmt(walk.loop?.period ?? walk.n)} digits ${walk.loop?.drift ? '→' : '↻'}${from ? ` from step ${fmt(from)}` : ''}`;  // a round
     $('barLoop').title = from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
@@ -1205,14 +1206,17 @@ function syncDigitsStepper() {
   // a walk that loops uses only the digits of its first round on a surface (see buildGridWalk), of 5 rounds
   // in 2D and 3D: more would change nothing
   const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal();
-  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ↻`
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ${L.drift ? '→' : '↻'}`
     : L ? `${fmt(n)} digits` : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   // why: the loop, from its first step, and how many rounds are walked
   $('loopNote').hidden = !L;
   if (L) {
     const period = L.period ?? walk.n - L.from, rounds = L.period ? LOOP_ROUNDS : 1;
-    $('loopNote').textContent = `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
-      + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
+    $('loopNote').textContent = L.drift
+      ? `→ From step ${fmt(L.from)}, this walk repeats the same ${fmt(period)} steps forever, each time further on: it goes off`
+        + ` for ever, and stops after ${rounds} rounds, ${fmt(total)} digits.`
+      : `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
+        + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
   }
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
@@ -2180,6 +2184,52 @@ function buildWalk() {
   buildWalkOf();
   syncLink();
 }
+/* A fraction's digits repeat, L of them from digit s0 on: the order of the base modulo the part of the
+ * denominator prime to it, after as many digits as the base's factors take out of it (and the head);
+ * digit(i): any digit of the number, from the first s0 + L. Null when they are not all at hand. */
+function fractionPeriod() {
+  if (!current.ratio) return null;
+  const b = BigInt(current.base), gcd = (x, y) => (y ? gcd(y, x % y) : x);
+  let d = current.ratio[1], pre = 0;
+  for (let c = gcd(d, b); c > 1n; c = gcd(d, b)) { d /= c; pre++; }
+  if (d > 2_000_000n) return null;
+  const q = Number(d);
+  let L = 1;
+  for (let r = current.base % q; q > 1 && r !== 1; r = (r * current.base) % q) L++;
+  const H = current.head, D = current.digits, s0 = H.length + pre + 1;
+  if (H.length + D.length < s0 + L) return null;
+  return { s0, L, digit: (i) => { const j = i < s0 + L ? i : s0 + ((i - s0) % L); return j < H.length ? H[j] : D[j - H.length]; } };
+}
+/* A fraction's 2D or 3D walk: once its digits repeat, it goes the same way every L steps, only turned
+ * (then as it was after a few times L) or shifted. Its state at a point, all that its next steps
+ * depend on but where it is: its last step, its head's turn in 3D (the roll) and its cell's kind
+ * (▲ or ▼, a Cairo pentagon's). The first time the state comes back after a whole number of periods,
+ * the walk repeats with that period; from the earliest step it holds, and shifted by drift (0: a loop
+ * drawn over itself). Walked LOOP_ROUNDS times: cap. */
+function walkRepeat() {
+  const P = fractionPeriod(), most = 2_000_000;
+  if (!P || P.s0 + P.L > most) return null;
+  const { s0, L, digit } = P, rounds = Math.min(24, Math.floor((most - s0) / L)), n = s0 + rounds * L;
+  const step = STEPPERS[current.mode](), { lattice: lat, cells } = MODES[current.mode], round = (v) => Math.round(v * 1e6);
+  const pos = new Float64Array(3 * (n + 1)), code = new Int32Array(n + 1), codes = new Map();
+  code[0] = -1;  // the start has no last step
+  for (let i = 0; i < n; i++) {
+    const [, x, y, z = 0, roll = ''] = step(digit(i)), a = 3 * i;
+    pos.set([x, y, z], a + 3);
+    const kind = cells && lat !== 'cube' ? cellTemplate(lat, x, y) : '';  // along a grid, the last step tells the corner
+    const state = `${round(x - pos[a])} ${round(y - pos[a + 1])} ${round(z - pos[a + 2])} ${roll} ${kind}`;
+    if (!codes.has(state)) codes.set(state, codes.size);
+    code[i + 1] = codes.get(state);
+  }
+  let period = 0;
+  for (let j = 1; j <= rounds && !period; j++) if (code[s0 + j * L] === code[s0]) period = j * L;
+  if (!period) return null;
+  let from = s0;
+  while (from > 1 && code[from - 1] === code[from - 1 + period] && digit(from - 1) === digit(from - 1 + period)) from--;
+  const drift = [0, 1, 2].some((c) => Math.abs(pos[3 * (from + period) + c] - pos[3 * from + c]) > 1e-6);
+  return { from, period, drift, cap: from + LOOP_ROUNDS * period };
+}
+
 function buildWalkOf() {
   previousShape = walk.shape && { target: walk.shape.target, mode: walk.shape.mode };
   visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
@@ -2229,16 +2279,13 @@ function buildWalkOf() {
   const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
   const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
-  // a fraction's walk can loop too (a rosette): its state, the point and the one it came from (its
-  // heading), and in 3D turning its head up (the roll), back with the same digits ahead (see
-  // loopWatch). Only for fractions, the others never repeat; nor an ant's, whose state is all its cells
-  const looped = current.ratio && !ant ? loopWatch(seq, digitsAhead()) : null;
-  let last = origin, steps = len, loop = null, m = 0;
-  looped?.(0, `start ${last}`);
+  // a fraction's walk repeats (see walkRepeat), walked 5 rounds; not an ant's, whose state is all its cells
+  const loop = current.ratio && !ant ? walkRepeat() : null;
+  let steps = loop ? Math.min(len, loop.cap) : len, m = 0;
   cells[0] = 1;
   for (let i = 0; i < steps; i++) {
     const g = seq[i];
-    const [k, x, y, z, roll = ''] = step(g);
+    const [k, x, y, z] = step(g);
     wx[i + 1] = x; wy[i + 1] = y;
     if (is3d) wz[i + 1] = z;
     seen.add(k);
@@ -2248,15 +2295,6 @@ function buildWalkOf() {
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
     if (ant) left[i] = step.left;
-    if (!looped || loop) continue;
-    const state = `${last} ${k} ${roll}`, earlier = looped(i + 1, state);
-    last = k;
-    // back on a state of step `earlier`: the same round of `period` steps forever, walked 5 times
-    if (earlier !== null) {
-      const period = i + 1 - earlier;
-      loop = { from: earlier, period, cap: earlier + LOOP_ROUNDS * period };
-      steps = Math.min(len, loop.cap);
-    }
   }
   // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be)
   let keys = seq;
@@ -2609,7 +2647,7 @@ function cubeStepper(relative) {
       d = CUBE_DIRS[g];
     }
     x += d[0]; y += d[1]; z += d[2];
-    return [key3(x, y, z), x, y, z, relative ? u.join() : ''];  // and the roll, for loopWatch
+    return [key3(x, y, z), x, y, z, relative ? u.join() : ''];  // and the roll, for walkRepeat
   };
 }
 
@@ -2635,7 +2673,7 @@ function diamondStepper() {
     const e = g === 1 ? p : bonds.find((b) => !same(b, back) && !same(b, p) && (g === 0) === turn(b) > 0);
     [p, d] = [d, e];
     x += e[0]; y += e[1]; z += e[2];
-    return [key3(x, y, z), x, y, z, p.join()];  // and the bond before, for loopWatch
+    return [key3(x, y, z), x, y, z, p.join()];  // and the bond before, for walkRepeat
   };
 }
 
@@ -6449,7 +6487,7 @@ function glFlat(to) {
     const u = common(prog.flatPath);
     gl.uniform1f(u('uN'), Math.max(1, rainbowLength()));
     gl.uniform1f(u('uFrom'), walk.loop?.from ?? 0);
-    gl.uniform1f(u('uPeriod'), walk.loop?.period ?? 0);
+    gl.uniform1f(u('uPeriod'), closedLoop() ? walk.loop.period : 0);
     gl.uniform1f(u('uWidth'), cells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6)));
     gl.uniform1i(u('uPal'), 1);
     const locs = [attrib(prog.flatPath, 'aQuad', S.quad, 2, gl.FLOAT, 0, 0, 0), attrib(prog.flatPath, 'aA', S.flatPts, 2, gl.FLOAT, 8, 0, 1),
