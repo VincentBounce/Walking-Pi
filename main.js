@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.402';
+const VERSION = '0.1.403';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2298,10 +2298,13 @@ function buildWalkOf() {
   let loop = current.ratio && !ant ? walkRepeat() : null;
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0;
   // an ant on a highway goes on along it for ever: stopped after ANT_ROUNDS of its stretches (looked
-  // for every 2,000 steps, and at the end)
+  // for every 2,000 steps, and at the end). Its last stretch on fresh cells only, first walked on the
+  // highway: not a run along the edge of what it built before (a growing triangle's side), which ends
+  const firstAt = ant ? new Map([[origin, 0]]) : null, first = ant ? new Int32Array(len + 1) : null;
   const highway = (n) => {
     const h = highwayOf(wx, wy, n);
     if (!h) return;
+    for (let j = n - h.period + 1; j <= n; j++) if (first[j] < h.from) return;
     loop = { from: h.from, period: h.period, drift: true, rounds: ANT_ROUNDS, cap: h.from + ANT_ROUNDS * h.period };
     steps = Math.min(steps, loop.cap);
   };
@@ -2317,7 +2320,12 @@ function buildWalkOf() {
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
-    if (ant) left[i] = step.left;
+    if (ant) {
+      left[i] = step.left;
+      let f = firstAt.get(k);
+      if (f === undefined) firstAt.set(k, (f = i + 1));
+      first[i + 1] = f;
+    }
     walked = i + 1;
     if (ant && !loop && walked % 2000 === 0) highway(walked);
   }
