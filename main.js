@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.395';
+const VERSION = '0.1.396';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6621,8 +6621,10 @@ function drawSegments(from, to) {
       if (from === 0) V.seen.fill(0);
       colourOf = (p) => GRADIENT[Math.round(Math.log(++V.seen[V.cell[p]]) * scale)];
     }
-    let batch = null;  // one path per run of tiles of the same colour, filled when the colour changes
-    const flush = () => { if (batch) { ctx.fillStyle = batch; ctx.fill(); } };
+    // one path per run of tiles of the same colour, filled when the colour changes, and outlined in it
+    // by a pixel: no seam of the background along an edge two runs share
+    let batch = null;
+    const flush = () => { if (batch) { ctx.fillStyle = ctx.strokeStyle = batch; ctx.lineWidth = 1; ctx.fill(); ctx.stroke(); } };
     // Digits: each cell then writes the digit that led there, once big enough to read (a cell
     // walked again is painted over, so it shows its last digit)
     const size = s * DIGIT_SIZE[walk.lattice], digits = $('cellDigits').checked && !$('cellDigits').disabled && size >= 8;
@@ -6630,8 +6632,6 @@ function drawSegments(from, to) {
       ctx.font = `${Math.round(size)}px ui-monospace, Menlo, monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
     }
     // a point mode's point 0 is the spiral's centre, not a mark; a spiral's 0 draws nothing
     for (let p = from === 0 && !walk.points ? 0 : from + 1; p <= to; p++) {
@@ -6643,6 +6643,8 @@ function drawSegments(from, to) {
       flush();
       batch = null;
       ctx.fillStyle = '#fff';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
       ctx.strokeText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
       ctx.fillText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
     }
