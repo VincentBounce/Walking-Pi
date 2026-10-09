@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261015o">
+  <link rel="stylesheet" href="style.css?v=20261015p">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -188,7 +188,7 @@
         <div id="digitsRow">
           <div class="stepper">
             <button id="digitsDown" title="Fewer digits">−</button>
-            <span class="field"><input id="digitsLabel" type="text" inputmode="numeric" maxlength="8" spellcheck="false" autocomplete="off" title="Type a number of digits, from 10 to 10,000,000, then Enter"><button class="enter" type="button" tabindex="-1" title="Compute (Enter)">↵</button></span>
+            <span class="field"><input id="digitsLabel" type="text" inputmode="numeric" maxlength="8" spellcheck="false" autocomplete="off" title="Type a number of digits, from 10 to 20,000,000, then Enter"><button class="enter" type="button" tabindex="-1" title="Compute (Enter)">↵</button></span>
             <button id="digitsUp" title="More digits">+</button>
           </div>
           <input id="digits" type="hidden" value="20000">
@@ -325,6 +325,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261015o"></script>
+  <script src="main.js?v=20261015p"></script>
 </body>
 </html>

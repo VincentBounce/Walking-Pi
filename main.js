@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.412';
+const VERSION = '0.1.413';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1204,7 +1204,7 @@ const renderSkyButtons = () => {  // the sky named after the theme: Dawn on a li
 
 function requestedDigits() {
   const n = Math.round(Number($('digits').value));
-  return Math.min(10_000_000, Math.max(10, n || 10));
+  return Math.min(20_000_000, Math.max(10, n || 10));
 }
 
 // The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
@@ -1212,7 +1212,7 @@ function requestedDigits() {
 // (typed, or from a link) then steps to the next one in DIGIT_STEPS.
 // For a random prime, walked whole, the stepper sets the prime's size instead, in decimal digits:
 // [ − ] 300 digits (p) [ + ], through PRIME_STEPS (100 to 2,000).
-const DIGIT_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7];
+const DIGIT_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7, 2e7];
 const PRIME_STEPS = [100, 200, 300, 500, 1000, 2000];
 const randomPrimeSize = () => {  // the size of the random prime in the Formula field, if it is one
   const m = $('formula').value.match(/^\s*randprime\(\s*(\d+)\s*,\s*\d+\s*\)\s*$/);
@@ -1231,7 +1231,7 @@ function syncDigitsStepper() {
   $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ${L.drift ? '→' : '↻'}`
     : L ? `${fmt(n)} digits` : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
-    : 'Type a number of digits, from 10 to 10,000,000, then Enter';
+    : 'Type a number of digits, from 10 to 20,000,000, then Enter';
   // − goes below what is walked: the whole number's own length when it is shorter than the count
   $('digitsDown').disabled = Math.min(n, total ?? n) <= steps[0];
   $('digitsUp').disabled = n >= steps.at(-1) || (total !== null && total <= n);
@@ -2325,11 +2325,11 @@ function buildWalkOf() {
   // a fraction's walk repeats (see walkRepeat), walked 5 rounds; not an ant's, whose state is all its
   // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
   let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
-  let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0;
+  let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0, nextLook = 2000;
   // an ant on a highway goes on along it for ever: stopped as far as its cloud is wide (driftRounds;
-  // looked for every 2,000 steps, and at the end). Its last stretch on fresh cells only, first walked on the
+  // looked for every 2,000 steps, then every 5 % of them so far, and at the end). Its last stretch on fresh cells only, first walked on the
   // highway: not a run along the edge of what it built before (a growing triangle's side), which ends
-  const firstAt = ant ? new Map([[origin, 0]]) : null, first = ant ? new Int32Array(len + 1) : null;
+  const first = ant ? new Int32Array(len + 1) : null;
   const highway = (n) => {
     const h = highwayOf(wx, wy, n);
     if (!h) return;
@@ -2344,20 +2344,20 @@ function buildWalkOf() {
     const [k, x, y, z] = step(g);
     wx[i + 1] = x; wy[i + 1] = y;
     if (is3d) wz[i + 1] = z;
-    seen.add(k);
-    cells[i + 1] = seen.size;
+    if (ant) {  // its cells by their first visit, as the ant keeps them (one map over millions of them)
+      first[i + 1] = step.first;
+      cells[i + 1] = step.cells;
+    } else {
+      seen.add(k);
+      cells[i + 1] = seen.size;
+    }
     m = Math.max(m, Math.hypot(x, y, z));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
-    if (ant) {
-      left[i] = step.left;
-      let f = firstAt.get(k);
-      if (f === undefined) firstAt.set(k, (f = i + 1));
-      first[i + 1] = f;
-    }
+    if (ant) left[i] = step.left;
     walked = i + 1;
-    if (ant && !loop && walked % 2000 === 0) highway(walked);
+    if (ant && !loop && walked === nextLook) { highway(walked); nextLook += Math.max(2000, 2000 * Math.floor(walked / 40000)); }
   }
   if (ant && !loop) highway(steps);
   // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be)
@@ -2595,29 +2595,36 @@ const antRuleText = (w) => antByDigits
   : `turning by the colour of its cell, which then takes the next one: ${antRules[w].toUpperCase().match(/[LR][12]?|N/g).map((t, c) => `<b>${c}</b> ${TURN_WORDS[t]}`).join(', ')}`;
 // an ant by its rule: one chip per colour, its digits unused
 const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRules[w]).length : 0);
-// the step: turned, the colour of the cell it turned on; left, the colour it gave it; next(), the
-// colour the cell it is on would take
+// the step: turned, the colour of the cell it turned on; left, the colour it gave it; first, the step
+// the cell it is now on was first walked; cells, how many it walked; next(), the colour the cell it is
+// on would take. Its cells in one map, each its first step × 16 + its colour (12 colours at most)
 function antStepper(w) {
-  const A = ANTS[w], inner = A.inner(), turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length, colour = new Map();
-  let here = key(0, 0);
+  const A = ANTS[w], inner = A.inner(), turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length;
+  let here = key(0, 0), n = 0;
+  const cells = new Map([[here, 0]]);
   const step = (g) => {
-    const c = colour.get(here) ?? 0;
+    const v = cells.get(here), c = v % 16;
     step.turned = c;
     step.left = (c + 1) % k;
-    colour.set(here, step.left);
+    cells.set(here, v - c + step.left);
     const r = inner(antByDigits ? A.turns[A.lr[g ^ c]] : turns[c]);
     here = r[0];
+    n++;
+    let u = cells.get(here);
+    if (u === undefined) cells.set(here, (u = n * 16));
+    step.first = Math.floor(u / 16);
+    step.cells = cells.size;
     return r;
   };
   step.colours = k;
-  step.next = () => ((colour.get(here) ?? 0) + 1) % k;
+  step.next = () => ((cells.get(here) % 16) + 1) % k;
   return step;
 }
 // A highway: the walk ends repeating a stretch of p steps, each one shifted by the same (dx, dy) ≠ 0,
 // over 1,000 steps at least (and 5 stretches): not a mere straight run through the mess; from its first step
 function highwayOf(xs, ys, n) {
   const same = (a, b) => Math.abs(a - b) < 1e-9;
-  for (let p = 1; p <= n / 5 && p <= 20000; p++) {  // up to 20,000 steps: by the digits, a stretch can take many of their periods
+  for (let p = 1; p <= n / 5 && p <= 100000; p++) {  // up to 100,000 steps: by the digits, a stretch can take many of their periods (1/53 on squares: 57,980)
     const dx = xs[n] - xs[n - p], dy = ys[n] - ys[n - p];
     if (same(dx, 0) && same(dy, 0)) continue;
     let i = n - p;
@@ -7231,7 +7238,7 @@ function tick(now = performance.now()) {
 $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
-// 10 … 10 million
+// 10 … 20 million
 // The two edited fields (Custom formula, number of digits): entering one shows the value in use,
 // the cursor at its end (the plain number for the digits; formulaInUse is the last valid formula). Enter or ↵
 // leaves the field, and leaving it computes; but a wrong formula keeps you in the field, with its
