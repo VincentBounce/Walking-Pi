@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.401';
+const VERSION = '0.1.402';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2575,7 +2575,7 @@ function antStepper(w) {
 // over 1,000 steps at least (and 5 stretches): not a mere straight run through the mess; from its first step
 function highwayOf(xs, ys, n) {
   const same = (a, b) => Math.abs(a - b) < 1e-9;
-  for (let p = 1; p <= n / 4 && p <= 2000; p++) {
+  for (let p = 1; p <= n / 5 && p <= 20000; p++) {  // up to 20,000 steps: by the digits, a stretch can take many of their periods
     const dx = xs[n] - xs[n - p], dy = ys[n] - ys[n - p];
     if (same(dx, 0) && same(dy, 0)) continue;
     let i = n - p;
