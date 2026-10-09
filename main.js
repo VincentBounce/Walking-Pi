@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.388';
+const VERSION = '0.1.389';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1891,9 +1891,9 @@ function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
   if (!modeTab) modeTab = currentGroup;
-  // Grid or Cells: as the walk in use (one with no twin and no cells goes along the grid), or as last chosen
-  const inUse = MODES[$('mode').value];
-  if (modeTab === currentGroup && (inUse.twin || inUse.grid || inUse.cells)) onCells = !!inUse.cells;
+  // Grid or Cells: as the walk in use where its tab has both, or as last chosen
+  const inUse = MODES[$('mode').value], hasTwins = (label) => Array.from(groups.find((g) => g.label === label).children).some((o) => MODES[o.value].twin);
+  if (modeTab === currentGroup && hasTwins(currentGroup)) onCells = !!inUse.cells;
   const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === onCells;
   const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
   $('modeTabs').replaceChildren(galleryTab(), ...groups.map((g) => {
@@ -1918,7 +1918,7 @@ function renderModePicker() {
   }));
   const group = groups.find((g) => g.label === modeTab);
   $('walkHeading').textContent = WALK_HEADINGS[modeTab] ?? 'Walk';
-  const twins = Array.from(group.children).some((o) => MODES[o.value].twin);
+  const twins = hasTwins(modeTab);
   $('walkOn').hidden = !twins;
   $('walkOnGrid').classList.toggle('active', !onCells);
   $('walkOnCells').classList.toggle('active', onCells);
@@ -1955,7 +1955,7 @@ function renderModePicker() {
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
-    b.disabled = twins && !mode.twin && onCells !== !!mode.cells;  // not on this side: greyed out, not to be picked
+    b.classList.toggle('off', twins && !mode.twin && onCells !== !!mode.cells);  // of the other side only: greyed, picking it goes there
     b.addEventListener('click', () => {
       if (o.value === $('mode').value) return;
       if (fam) torusTurned = fam.tabs[fam.tab][1];  // the tiling last chosen, turned or not

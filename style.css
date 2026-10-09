@@ -218,7 +218,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
   line-height: 1.25;
   background: var(--panel);
 }
-.mode-list button:hover:not(:disabled) { background: var(--bg); }
+.mode-list button:hover { background: var(--bg); }
 .mode-icon { font-size: 15px; color: var(--muted); text-align: center; }
 .mode-name { display: block; font-size: 13px; font-weight: 600; }
 .mode-detail { display: block; font-size: 11px; color: var(--muted); }
@@ -236,7 +236,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .number-grid button:hover { background: var(--bg); }
 .number-grid button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .mode-list button.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
-.mode-list button:disabled { opacity: 0.45; cursor: default; }  /* no walk on cells there */
+.mode-list button.off { opacity: 0.45; }  /* of the other side only (Grid or Cells) */
 .mode-list button.active .mode-name,
 .mode-list button.active .mode-icon { color: var(--accent); }
 .mode-list button.active .mode-base { border-color: var(--accent); color: var(--accent); }
