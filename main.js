@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.409';
+const VERSION = '0.1.410';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -744,6 +744,11 @@ const PRESETS = {
   rose1_599: { group: 'Fractions', sym: '1/599', name: 'A 3-fold rosette on Triangles turtle', detail: '1/599 in base 5', f: '1/599' },
   rose1_856: { group: 'Fractions', sym: '1/856', name: 'A 6-fold rosette on Triangles turtle', detail: '1/856 in base 5', f: '1/856' },
   rose21_976: { group: 'Fractions', sym: '21/976', name: 'A 6-fold rosette on Triangles turtle', detail: '21/976 in base 5', f: '21/976' },
+  // and for the ant on Cairo pentagons by the digits, late highways (searched up to /255, 3 million steps)
+  ant1_90: { group: 'Fractions', sym: '1/90', name: 'A highway from step 2,350,822 for the Cairo ant by the digits', detail: '1/90 in base 2', f: '1/90' },
+  ant1_189: { group: 'Fractions', sym: '1/189', name: 'A highway from step 1,642,864 for the Cairo ant by the digits', detail: '1/189 in base 2', f: '1/189' },
+  ant1_94: { group: 'Fractions', sym: '1/94', name: 'A highway from step 2,275,153 for the Cairo ant by the digits', detail: '1/94 in base 2', f: '1/94' },
+  ant1_47: { group: 'Fractions', sym: '1/47', name: 'A highway from step 1,123,492 for the Cairo ant by the digits', detail: '1/47 in base 2', f: '1/47' },
   mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
   primorial: { group: 'Primes', sym: 'p#±1', name: 'Primorial prime', detail: 'primorial(p)±1',
                f: () => { const [p, sign] = $('primorialP').value.split(','); return `primorial(${p})${sign > 0 ? '+' : '-'}1`; } },
@@ -1021,7 +1026,10 @@ function digitsNeeded() {
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
 let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round (5 rounds in 2D and 3D)
-const LOOP_ROUNDS = 5, ANT_ROUNDS = 25;
+const LOOP_ROUNDS = 5;
+// A walk going off for ever (a drift, an ant's highway) walked as far as what it drew before is wide:
+// rounds of `shift` each, over twice the farthest it went from the start before (radius), 5 at least
+const driftRounds = (radius, shift) => Math.max(LOOP_ROUNDS, Math.ceil((2 * radius) / shift));
 // The rainbow of a walk going round a loop: each round in the colours of the first one (the rounds are
 // drawn over each other); i, a step; rainbowLength(), the steps the rainbow spreads over
 const closedLoop = () => walk.loop?.period && !walk.loop.drift;  // a drift's rounds are side by side: one rainbow over them all
@@ -1229,11 +1237,12 @@ function loopText() {
   const L = !randomPrimeSize() && walk.loop;
   if (!L) return '';
   const period = L.period ?? walk.n - L.from, rounds = L.rounds ?? (L.period ? LOOP_ROUNDS : 1), total = L.cap ?? walk.n;
+  const far = rounds > LOOP_ROUNDS ? ', as far as what it drew before is wide' : '';
   if (walk.ant) return `→ From step ${fmt(L.from)}, the ant builds a highway: the same ${fmt(period)} steps forever, each time further on.`
-    + ` It stops after ${rounds} of them, ${fmt(total)} steps.`;
+    + ` It stops after ${fmt(rounds)} of them${far}, ${fmt(total)} steps.`;
   return L.drift
     ? `→ From step ${fmt(L.from)}, this walk repeats the same ${fmt(period)} steps forever, each time further on: it goes off`
-      + ` for ever, and stops after ${rounds} rounds, ${fmt(total)} digits.`
+      + ` for ever, and stops after ${fmt(rounds)} rounds${far}, ${fmt(total)} digits.`
     : `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
       + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
 }
@@ -2229,11 +2238,12 @@ function fractionPeriod() {
  * depend on but where it is: its last step, its head's turn in 3D (the roll) and its cell's kind
  * (▲ or ▼, a Cairo pentagon's). The first time the state comes back after a whole number of periods,
  * the walk repeats with that period; from the earliest step it holds, and shifted by drift (0: a loop
- * drawn over itself). Walked LOOP_ROUNDS times: cap. */
+ * drawn over itself). A loop walked LOOP_ROUNDS times, a drift as far as what it drew before is wide
+ * (driftRounds): cap. */
 function walkRepeat() {
   const P = fractionPeriod(), most = 2_000_000;
   if (!P || P.s0 + P.L > most) return null;
-  const { s0, L, digit } = P, rounds = Math.min(24, Math.floor((most - s0) / L)), n = s0 + rounds * L;
+  const { s0, L, digit } = P, tries = Math.min(24, Math.floor((most - s0) / L)), n = s0 + tries * L;
   const step = STEPPERS[current.mode](), { lattice: lat, cells } = MODES[current.mode], round = (v) => Math.round(v * 1e6);
   const pos = new Float64Array(3 * (n + 1)), code = new Int32Array(n + 1), codes = new Map();
   code[0] = -1;  // the start has no last step
@@ -2246,12 +2256,16 @@ function walkRepeat() {
     code[i + 1] = codes.get(state);
   }
   let period = 0;
-  for (let j = 1; j <= rounds && !period; j++) if (code[s0 + j * L] === code[s0]) period = j * L;
+  for (let j = 1; j <= tries && !period; j++) if (code[s0 + j * L] === code[s0]) period = j * L;
   if (!period) return null;
   let from = s0;
   while (from > 1 && code[from - 1] === code[from - 1 + period] && digit(from - 1) === digit(from - 1 + period)) from--;
-  const drift = [0, 1, 2].some((c) => Math.abs(pos[3 * (from + period) + c] - pos[3 * from + c]) > 1e-6);
-  return { from, period, drift, cap: from + LOOP_ROUNDS * period };
+  const at = (i) => [pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]], d = at(from + period).map((v, c) => v - at(from)[c]);
+  const shift = Math.hypot(...d), drift = shift > 1e-6;
+  let radius = 0;
+  for (let i = 0; i <= from; i++) radius = Math.max(radius, Math.hypot(...at(i)));
+  const rounds = drift ? driftRounds(radius, shift) : LOOP_ROUNDS;
+  return { from, period, drift, rounds, cap: from + rounds * period };
 }
 
 function buildWalkOf() {
@@ -2307,15 +2321,16 @@ function buildWalkOf() {
   // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
   let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0;
-  // an ant on a highway goes on along it for ever: stopped after ANT_ROUNDS of its stretches (looked
-  // for every 2,000 steps, and at the end). Its last stretch on fresh cells only, first walked on the
+  // an ant on a highway goes on along it for ever: stopped as far as its cloud is wide (driftRounds;
+  // looked for every 2,000 steps, and at the end). Its last stretch on fresh cells only, first walked on the
   // highway: not a run along the edge of what it built before (a growing triangle's side), which ends
   const firstAt = ant ? new Map([[origin, 0]]) : null, first = ant ? new Int32Array(len + 1) : null;
   const highway = (n) => {
     const h = highwayOf(wx, wy, n);
     if (!h) return;
     for (let j = n - h.period + 1; j <= n; j++) if (first[j] < h.from) return;
-    loop = { from: h.from, period: h.period, drift: true, rounds: ANT_ROUNDS, cap: h.from + ANT_ROUNDS * h.period };
+    const rounds = driftRounds(maxDist[h.from], Math.hypot(wx[h.from + h.period] - wx[h.from], wy[h.from + h.period] - wy[h.from]));
+    loop = { from: h.from, period: h.period, drift: true, rounds, cap: h.from + rounds * h.period };
     steps = Math.min(steps, loop.cap);
   };
   cells[0] = 1;
