@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.408';
+const VERSION = '0.1.409';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2303,8 +2303,9 @@ function buildWalkOf() {
   const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
   const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
-  // a fraction's walk repeats (see walkRepeat), walked 5 rounds; not an ant's, whose state is all its cells
-  let loop = current.ratio && !ant ? walkRepeat() : null;
+  // a fraction's walk repeats (see walkRepeat), walked 5 rounds; not an ant's, whose state is all its
+  // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
+  let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0;
   // an ant on a highway goes on along it for ever: stopped after ANT_ROUNDS of its stretches (looked
   // for every 2,000 steps, and at the end). Its last stretch on fresh cells only, first walked on the
