@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.407';
+const VERSION = '0.1.408';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1103,7 +1103,14 @@ function updateDisplayMenu() {
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
-  $('cellsLabel').hidden = $('showPathRow').hidden = $('heatmapRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
+  $('cellsLabel').hidden = $('showPathRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
+  // 2D: the cells' colours, Classic (one per digit, an ant's own), Rainbow or Heatmap; a surface: Heatmap or not
+  $('heatmapRow').hidden = !shows('heatmap') || shows('cells');
+  $('cellColours').hidden = !shows('cells');
+  for (const b of $('cellColours').children) {
+    b.classList.toggle('active', $('colorMode').value === b.dataset.colour);
+    b.disabled = !mode.cells || (b.dataset.colour === 'visits' && !useful('visits'));
+  }
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
   // in 2D, Show path dims the cells under it, as the shading does on a surface, so that the rainbow
   // line (on a layer of its own) shows all along, over cells of its own colour too
@@ -5503,11 +5510,10 @@ function styleKey(i) {
   }
 }
 
-// an ant's colours, soft pastels set apart, easy on the eyes on either theme (the cells it never walked
-// are the background): periwinkle (most of its cells) and pink, then butter, mint, lavender, pistachio…;
-// past them, pastel hues round the wheel
-const ANT_COLOURS = ['#8fade9', '#ee96bb', '#f7d98b', '#9edfcf', '#c6b4f2', '#bde3a0', '#f8bb9b', '#eab3e6', '#a9dcf2', '#f2eb9f', '#f2a7a7', '#b4e6d5'];
-const digitColour = (k) => walk.ant ? ANT_COLOURS[k] ?? `hsl(${(k * 360) / walk.ant}, 70%, 80%)`
+// an ant's colours, bright and apart, plain to see on either theme (the cells it never walked are the
+// background): a deep blue (most of its cells) and pink, then gold, teal, violet, lime…; past them, hues round the wheel
+const ANT_COLOURS = ['#3d6bff', '#ff5fa2', '#ffc53d', '#36cfc9', '#9b6bff', '#8fd14f', '#ff8a4c', '#e86bff', '#5be0ff', '#ffe066', '#ff6b6b', '#7ee8a2'];
+const digitColour = (k) => walk.ant ? ANT_COLOURS[k] ?? `hsl(${(k * 360) / walk.ant}, 80%, 62%)`
   : walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
@@ -6388,9 +6394,10 @@ function glSurface(palette, levelOf, path) {
  *    the walk's order, so that a cell shows its last colour; Digits are written in 2D over them;
  *  - path: one instance per step, a quad from point i to point i + 1 (as in glSurface), in the rainbow,
  *    one colour or a colour per digit. */
-// cells: always on a spiral (its line is greyed out), else for Fill cells, Visits and an ant's colours
+// cells: always on a spiral (its line is greyed out), else for Rainbow, Heatmap and, on cells in 2D,
+// Classic (a colour per digit, an ant's own)
 const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'))
-  || (!!walk.ant && $('colorMode').value === 'digit');
+  || ($('colorMode').value === 'digit' && shows('cells') && !!MODES[current.mode]?.cells);
 const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n)
   && !($('colorMode').value === 'digit' && (walk.points ? walk.keyCount : walk.base) > 255);
 // the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
@@ -7477,11 +7484,15 @@ for (const [id, digits] of [['antClassic', false], ['antDigits', true]]) {
   $(id).addEventListener('click', () => { if (antByDigits === digits) return; antByDigits = digits; renderModePicker(); compute(); });
 }
 $('antRule').addEventListener('change', () => setAntRule($('mode').value, $('antRule').value));
-// Heatmap of visits: the cells by their visits, else the rainbow cells; Digits: over either
+// Heatmap of visits on a surface: the cells by their visits, else the rainbow line
 $('heatmap').addEventListener('change', () => {
-  $('colorMode').value = $('heatmap').checked ? 'visits' : shows('cells') ? 'cells' : 'gradient';
+  $('colorMode').value = $('heatmap').checked ? 'visits' : 'gradient';
   $('colorMode').dispatchEvent(new Event('change'));
 });
+// in 2D: Classic (a colour per digit, an ant's own), Rainbow or Heatmap
+for (const b of $('cellColours').children) {
+  b.addEventListener('click', () => { $('colorMode').value = b.dataset.colour; $('colorMode').dispatchEvent(new Event('change')); });
+}
 $('cellDigits').addEventListener('change', () => { needsFull = true; });
 $('showPath').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('loopDown').addEventListener('click', () => browseLoop(-1));
