@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.392';
+const VERSION = '0.1.393';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6286,7 +6286,9 @@ function glSurface(palette, levelOf, path) {
  *    the walk's order, so that a cell shows its last colour; Digits are written in 2D over them;
  *  - path: one instance per step, a quad from point i to point i + 1 (as in glSurface), in the rainbow,
  *    one colour or a colour per digit. */
-const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'));
+// cells: always on a spiral (its line is greyed out), else for Fill cells, Visits and an ant's colours
+const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'))
+  || (!!walk.ant && $('colorMode').value === 'digit');
 const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n) && !(flatCellsOn() && $('colorMode').value === 'digit')
   && !($('colorMode').value === 'digit' && (walk.points ? walk.keyCount : walk.base) > 255);
 // the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
@@ -6586,8 +6588,7 @@ function drawSegments(from, to) {
   const { scale: s, ox, oy } = view;
   const mode = $('colorMode').value;
   let overCells = false;  // Show path: a thinner rainbow line over the coloured cells, seen where it crosses older ones
-  // cells: always on a spiral (its line is greyed out), else for Fill cells and Visits
-  if (greyed('line') || (mode === 'cells' && shows('cells')) || (mode === 'visits' && useful('visits'))) {
+  if (flatCellsOn()) {
     // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
     // Visits by the visits so far (log scale)
     let colourOf = (p) => styleColor(styleKey(Math.max(0, p - 1)));
