@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.393';
+const VERSION = '0.1.394';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1909,6 +1909,8 @@ function renderAntRow() {
   $('antClassic').classList.toggle('active', !antByDigits);
   $('antDigits').classList.toggle('active', antByDigits);
   $('antPresets').hidden = $('antRuleRow').hidden = antByDigits;
+  $('antDigitsNote').hidden = !antByDigits;
+  $('antDigitsNote').textContent = `0 turns ${A.lr[0]}, 1 turns ${A.lr[1]}; the other way on a dark cell`;
   $('antPresets').replaceChildren(...A.presets.map((r) => {
     const b = document.createElement('button');
     b.type = 'button';

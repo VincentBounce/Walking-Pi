@@ -339,6 +339,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .ant-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 4px; margin-bottom: 10px; }
 .ant-presets button { padding: 5px 4px; font: 12px ui-monospace, Menlo, monospace; background: var(--panel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ant-presets button.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+#antDigitsNote { margin: 0 0 10px; }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; }  /* grows upwards: the Play row stays at the bottom */
 .stage-bar:hover { width: 580px; }
