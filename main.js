@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.391';
+const VERSION = '0.1.392';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -780,15 +780,15 @@ const FORMULA_NOTES = {
 // those of triangle cells; only the grid drawn changes (lines: true). Their colours are the Display
 // toggles Walk on cells, Heatmap of visits and Digits instead of a list (see relabelColours).
 const MODES = {
-  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells',
+  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells', ant: 'antSquare',
               rule: 'along the lines of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
   cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells',
               rule: 'along the lines of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
-  triTurtle: { base: 5, lattice: 'hex', lines: true, twin: 'triTurtleCells',
+  triTurtle: { base: 5, lattice: 'hex', lines: true, twin: 'triTurtleCells', ant: 'antTri',
               rule: 'along the lines of a triangle grid, relative to where you come from: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
   triFixed: { base: 6, lattice: 'hex', lines: true, twin: 'triFixedCells',
               rule: 'along the lines of a triangle grid: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
-  hexTurtle: { base: 2, lattice: 'tri', lines: true, twin: 'hexTurtleCells',
+  hexTurtle: { base: 2, lattice: 'tri', lines: true, twin: 'hexTurtleCells', ant: 'antHex',
               rule: 'along the lines of a hexagon grid: <b>0</b> turn left, <b>1</b> turn right' },
   hexFixed: { base: 3, lattice: 'tri', lines: true, twin: 'hexFixedCells',
               rule: 'along the lines of a hexagon grid: take the <b>0</b> “|”, <b>1</b> “\\” or <b>2</b> “/” edge' },
@@ -807,8 +807,14 @@ const MODES = {
   // on cells only: steps that do not cross a single edge (no Fill areas, see fillAreasApply)
   king: { base: 8, lattice: 'square', cells: true, fill: false,
           rule: 'from square to square as a chess king, to one of the 8 around: <b>0</b> N, <b>1</b> NE, <b>2</b> E, <b>3</b> SE, <b>4</b> S, <b>5</b> SW, <b>6</b> W, <b>7</b> NW' },
-  cairo: { base: 4, lattice: 'cairo', cells: true, fill: false,
+  cairo: { base: 4, lattice: 'cairo', cells: true, fill: false, ant: 'antCairo',
            rule: 'from pentagon to pentagon of the Cairo tiling, out through one of its 4 other edges: <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right' },
+  // Langton's ant on the cells of a turtle walk (antOf: its walk in the list; see ANTS), its rule in the
+  // ant settings (see antRuleText)
+  antSquare: { base: 2, lattice: 'square', cells: true, fill: false, antOf: 'turtle', get rule() { return antRuleText('antSquare'); } },
+  antTri: { base: 2, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
+  antHex: { base: 2, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
+  antCairo: { base: 2, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
   spiral:   { base: 2, lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -1035,7 +1041,8 @@ function describe(base, available) {
     // the words around the digits, kept in the description: "exit through the … edge"
     const tail = mode.rule.slice(at + 2), pre = tail.slice(0, tail.indexOf('<b>')).trim(), edge = / edge\b/.test(tail) ? ' edge' : '';
     const around = pre ? ` · ${pre} …${edge}` : '';
-    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} digits · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}`;
+    const highway = walk.highway ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '';
+    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
         // without the closing note and the words around the digits (they are in the description)
@@ -1125,8 +1132,9 @@ function relabelColours(mode) {
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
-  if (shows('cells')) {  // 2D: along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either)
-    sel.value = mode.twin && !mode.cells ? 'gradient' : mode.cells && sel.value === 'visits' ? 'visits' : 'cells';
+  sel.querySelector('option[value="digit"]').text = mode.antOf ? "The ant's colours" : names.digit;
+  if (shows('cells')) {  // 2D: along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either); an ant its colours
+    sel.value = mode.antOf ? 'digit' : mode.twin && !mode.cells ? 'gradient' : mode.cells && sel.value === 'visits' ? 'visits' : 'cells';
     return;
   }
   if (shows('heatmap')) {  // on a surface: the rainbow line (over the tiles walked, on cells), or the heatmap on cells
@@ -1834,6 +1842,7 @@ function numberText(limit = Infinity) {
 // ever deals with the menu.
 let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
 let onCells = false;  // Grid or Cells: which of the twins the list shows (see MODES)
+let onAnt = false;  // on Cells, as an ant (see ANTS)
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
 const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
@@ -1841,7 +1850,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  king: 'king', cairo: 'pentagons',
+  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', antHex: 'hexagonFilled', antCairo: 'pentagons',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -1887,14 +1896,44 @@ function familyOf(w) {
   }
   return null;
 }
+// The walk w along the grid, on cells and as an ant (undefined where it has none)
+function sidesOf(w) {
+  const e = MODES[w].antOf ?? w, E = MODES[e], grid = E.cells ? E.twin : e, cells = E.cells ? e : E.twin;
+  return { grid, cells, ant: MODES[w].antOf ? w : (grid && MODES[grid].ant) || (cells && MODES[cells].ant) };
+}
+// Under Grid | Cells | Ant, the ant's settings: by its rule (presets of its tiling, or typed) or by the digits
+function renderAntRow() {
+  const w = $('mode').value, A = ANTS[w];
+  $('antRow').hidden = !A || modeTab !== modeTabOf();
+  if ($('antRow').hidden) return;
+  $('antClassic').classList.toggle('active', !antByDigits);
+  $('antDigits').classList.toggle('active', antByDigits);
+  $('antPresets').hidden = $('antRuleRow').hidden = antByDigits;
+  $('antPresets').replaceChildren(...A.presets.map((r) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r;
+    b.classList.toggle('active', r === antRules[w]);
+    b.addEventListener('click', () => setAntRule(w, r));
+    return b;
+  }));
+  $('antRuleName').textContent = `Rule, a turn per colour: ${Object.keys(A.turns).join(', ')}`;
+  if (document.activeElement !== $('antRule')) $('antRule').value = antRules[w];
+}
+function setAntRule(w, rule) {
+  if (!antTurnsOf(w, rule)) { $('antRule').value = antRules[w]; return; }
+  antRules[w] = rule.toUpperCase().trim();
+  renderModePicker();
+  compute();
+}
 function renderModePicker() {
   const groups = Array.from($('mode').querySelectorAll('optgroup'));
   const currentGroup = $('mode').selectedOptions[0].parentElement.label;
   if (!modeTab) modeTab = currentGroup;
-  // Grid or Cells: as the walk in use where its tab has both, or as last chosen
+  // Grid, Cells or Ant: as the walk in use where its tab has them, or as last chosen
   const inUse = MODES[$('mode').value], hasTwins = (label) => Array.from(groups.find((g) => g.label === label).children).some((o) => MODES[o.value].twin);
-  if (modeTab === currentGroup && hasTwins(currentGroup)) onCells = !!inUse.cells;
-  const shown = (o) => !MODES[o.value].twin || !!MODES[o.value].cells === onCells;
+  if (modeTab === currentGroup && hasTwins(currentGroup)) { onCells = !!inUse.cells; onAnt = !!inUse.antOf; }
+  const shown = (o) => !MODES[o.value].antOf && (!MODES[o.value].twin || !!MODES[o.value].cells === onCells);
   const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
   $('modeTabs').replaceChildren(galleryTab(), ...groups.map((g) => {
     const b = document.createElement('button');
@@ -1921,7 +1960,9 @@ function renderModePicker() {
   const twins = hasTwins(modeTab);
   $('walkOn').hidden = !twins;
   $('walkOnGrid').classList.toggle('active', !onCells);
-  $('walkOnCells').classList.toggle('active', onCells);
+  $('walkOnCells').classList.toggle('active', onCells && !onAnt);
+  $('walkOnAnt').classList.toggle('active', onAnt);
+  $('walkOnAnt').hidden = !Array.from(group.children).some((o) => MODES[o.value].antOf);
   // a family of tilings is one entry (as its tiling in use, or as last chosen), at its first tiling's place
   const inFamily = familyOf($('mode').value);
   if (inFamily) inFamily.F.tab = inFamily.tab;
@@ -1930,15 +1971,17 @@ function renderModePicker() {
   // under the list, the walk in use along the grid and on cells, each with its base and its digits,
   // or what it is not on (that side then off)
   const here = modeTab === currentGroup, cellsWord = modeTab === '3D walks' ? 'Cube' : 'Cells';
-  const gridW = inUse.cells ? inUse.twin : $('mode').value, cellsW = inUse.cells ? $('mode').value : inUse.twin;
+  const { grid: gridW, cells: cellsW, ant: antW } = sidesOf($('mode').value);
   const side = (b, word, w, none) => {
-    const info = here && w ? splitModeLabel(optionOf(w).text) : null;
+    const info = !here || !w ? null : MODES[w].antOf ? { base: '', detail: antByDigits ? 'by the digits' : antRules[w] } : splitModeLabel(optionOf(w).text);
     b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
       + (here ? `<span class="mode-detail">${info ? info.detail : none}</span>` : '');
     b.disabled = here && !w;
   };
   side($('walkOnGrid'), 'Grid', gridW, 'not on the grid');
   side($('walkOnCells'), cellsWord, cellsW, `not on ${cellsWord.toLowerCase()}s`);
+  side($('walkOnAnt'), 'Ant', antW, 'turtles only');
+  renderAntRow();
   // an entry on the other side only keeps its place there: after the twin of the entry before it
   const options = Array.from(group.children), place = (o) => {
     const m = MODES[o.value];
@@ -1963,11 +2006,12 @@ function renderModePicker() {
     b.append(pic, words, ...(pill && !twins ? [part('mode-base', pill)] : []));
     b.title = o.text;
     b.setAttribute('role', 'option');
-    b.classList.toggle('active', o.value === $('mode').value);
+    b.classList.toggle('active', o.value === (inUse.antOf ? cellsW : $('mode').value));  // an ant: its walk's entry
     b.addEventListener('click', () => {
-      if (o.value === $('mode').value) return;
+      const w = onAnt && sidesOf(o.value).ant || o.value;  // on Ant, that walk's ant where it has one
+      if (w === $('mode').value) return;
       if (fam) torusTurned = fam.tabs[fam.tab][1];  // the tiling last chosen, turned or not
-      $('mode').value = o.value;
+      $('mode').value = w;
       $('mode').dispatchEvent(new Event('change'));
     });
     return b;
@@ -2126,6 +2170,7 @@ function buildWalkOf() {
   visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
   glClear();  // a surface drawn by WebGL before (see 11.4b)
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
+  walk.ant = 0; walk.highway = null;  // set by an ant's walk only
   $('fillTooBig').hidden = true;
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -2164,14 +2209,15 @@ function buildWalkOf() {
   const wz = is3d ? new Float64Array(len + 1) : null;
   const cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1);
-  const { base } = MODES[current.mode];
-  const step = STEPPERS[current.mode]();
-  const counts = new Int32Array(base * (len + 1));
+  const ant = !!MODES[current.mode].antOf, step = STEPPERS[current.mode]();
+  // an ant by its rule: counted by the colour it turned on (each colour its turn), not by digit
+  const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
+  const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
   // a fraction's walk can loop too (a rosette): its state, the point and the one it came from (its
   // heading), and in 3D turning its head up (the roll), back with the same digits ahead (see
-  // loopWatch). Only for fractions, the others never repeat
-  const looped = current.ratio ? loopWatch(seq, digitsAhead()) : null;
+  // loopWatch). Only for fractions, the others never repeat; nor an ant's, whose state is all its cells
+  const looped = current.ratio && !ant ? loopWatch(seq, digitsAhead()) : null;
   let last = origin, steps = len, loop = null, m = 0;
   looped?.(0, `start ${last}`);
   cells[0] = 1;
@@ -2185,16 +2231,25 @@ function buildWalkOf() {
     m = Math.max(m, Math.hypot(x, y, z));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + g]++;
+    counts[base * (i + 1) + (byColour ? step.turned : g)]++;
+    if (ant) left[i] = step.left;
     if (!looped) continue;
     const state = `${last} ${k} ${roll}`, earlier = looped(i + 1, state);
     last = k;
     if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
+  // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be)
+  let keys = seq;
+  if (ant) {
+    keys = new Uint8Array(steps);
+    for (let j = 0; j + 1 < steps; j++) keys[j] = left[j + 1];
+    if (steps) keys[steps - 1] = step.next();
+  }
   Object.assign(walk, { vert: null, stepTiles: null, loop, n: steps, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
-                        skipZeros: !!MODES[current.mode].skipZeros,
-                        points: false, keys: seq, labels: null, sphere: false, life: null,
+                        skipZeros: !!MODES[current.mode].skipZeros, ant: ant ? step.colours : 0,
+                        highway: ant ? highwayOf(wx, wy, steps) : null,
+                        points: false, keys, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) { setPerspective(); project(); } else walk.persp = null;
@@ -2392,6 +2447,61 @@ function cairoStepper() {
   };
 }
 
+/* Langton's ant: on each cell it turns by the cell's colour, one turn per colour (the rule), or by the
+ * digit, the other way on a dark cell (Digits); the cell it leaves takes the next colour. Per tiling:
+ * the turtle walk it goes through the cells with (a turn: its digit), its turns, left and right for
+ * Digits, and rules to start from. */
+const ANTS = {
+  antSquare: { inner: () => STEPPERS.turtle(), turns: { L: 0, N: 1, R: 2 }, lr: ['L', 'R'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
+  antTri: { inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, lr: ['L', 'R'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
+  antHex: { inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, lr: ['L1', 'R1'],
+            presets: ['L1 R1', 'L2 R2', 'L1 L2 R1', 'R2 L1 N L1 R2'] },
+  antCairo: { inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, lr: ['L1', 'R1'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
+};
+const antRules = Object.fromEntries(Object.entries(ANTS).map(([w, A]) => [w, A.presets[0]]));
+let antByDigits = false;
+// a rule's turns (the turtle walk's digits), or null when it is not one: 2 to 12 of the tiling's turns
+function antTurnsOf(w, rule) {
+  const A = ANTS[w], words = rule.toUpperCase().match(/[LR][12]?|N/g) ?? [];
+  if (words.join('') !== rule.toUpperCase().replace(/\s+/g, '') || words.length < 2 || words.length > 12) return null;
+  const turns = words.map((t) => A.turns[t]);
+  return turns.every((t) => t !== undefined) ? turns : null;
+}
+const antRuleText = (w) => antByDigits
+  ? `turning by the digit, the other way on a dark cell, which changes colour as the ant leaves it: <b>0</b> ${ANTS[w].lr[0]}, <b>1</b> ${ANTS[w].lr[1]}`
+  : `turning by its cell's colour, which then takes the next one: ${antRules[w].toUpperCase().match(/[LR][12]?|N/g).map((t, c) => `<b>${c}</b> ${t}`).join(', ')}`;
+// the step: turned, the colour of the cell it turned on; left, the colour it gave it; next(), the
+// colour the cell it is on would take
+function antStepper(w) {
+  const A = ANTS[w], inner = A.inner(), turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length, colour = new Map();
+  let here = key(0, 0);
+  const step = (g) => {
+    const c = colour.get(here) ?? 0;
+    step.turned = c;
+    step.left = (c + 1) % k;
+    colour.set(here, step.left);
+    const r = inner(antByDigits ? A.turns[A.lr[g ^ c]] : turns[c]);
+    here = r[0];
+    return r;
+  };
+  step.colours = k;
+  step.next = () => ((colour.get(here) ?? 0) + 1) % k;
+  return step;
+}
+// A highway: the walk ends repeating a stretch of p steps, each one shifted by the same (dx, dy) ≠ 0,
+// at least 4 times; from the first step of it
+function highwayOf(xs, ys, n) {
+  const same = (a, b) => Math.abs(a - b) < 1e-9;
+  for (let p = 1; p <= n / 4 && p <= 2000; p++) {
+    const dx = xs[n] - xs[n - p], dy = ys[n] - ys[n - p];
+    if (same(dx, 0) && same(dy, 0)) continue;
+    let i = n - p;
+    while (i > 0 && same(xs[i - 1 + p] - xs[i - 1], dx) && same(ys[i - 1 + p] - ys[i - 1], dy)) i--;
+    if (n - i >= 4 * p + p) return { from: i, period: p };
+  }
+  return null;
+}
+
 const STEPPERS = {
   turtle() {
     let x = 0, y = 0, d = 0;
@@ -2417,6 +2527,10 @@ const STEPPERS = {
     };
   },
   cairo: () => cairoStepper(),
+  antSquare: () => antStepper('antSquare'),
+  antTri: () => antStepper('antTri'),
+  antHex: () => antStepper('antHex'),
+  antCairo: () => antStepper('antCairo'),
   spiral() { // fixed square spiral from the centre: right, up, left, down with runs 1, 1, 2, 2, 3, 3, …
     let x = 0, y = 0, d = 0, run = 1, left = 1, turns = 0;
     return () => {
@@ -4783,6 +4897,7 @@ function getSetup() {
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = $('lifeRule').value;
+  if (mode.antOf) s.r = antByDigits ? 'digits' : antRules[w];
   if (championCode) s.ch = championCode;
   return s;
 }
@@ -4802,7 +4917,10 @@ function applySetup(s) {
     fillSphereSizes(kind, MODES[s.w].initial);
     if (s.s !== undefined) selectSize(kind, linkSize(kind, s.s));
   }
-  if (s.r) {
+  if (s.r && MODES[s.w].antOf) {
+    antByDigits = s.r === 'digits';
+    if (!antByDigits && antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
+  } else if (s.r) {
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
     $('lifePreset').value = preset ? s.r : 'custom';
@@ -5288,7 +5406,9 @@ function styleKey(i) {
   }
 }
 
-const digitColour = (k) => walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
+// an ant's colours: the first one the unlit tiles' (a cell back to it), the others along the rainbow
+const digitColour = (k) => walk.ant ? (k ? GRADIENT[Math.round(((k - 1) * (BANDS - 1)) / Math.max(1, walk.ant - 2))] : UNLIT)
+  : walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
     case 'digit': return digitColour(k);
@@ -7231,16 +7351,22 @@ $('centered').addEventListener('change', () => {  // on: the camera turns to the
 });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
-function walkOn(cells) {
-  if (cells === onCells) return;
-  onCells = cells;
-  const twin = MODES[$('mode').value].twin;
-  if (!twin || modeTab !== modeTabOf()) { renderModePicker(); return; }
-  $('mode').value = twin;
+function walkOn(side) {  // 'grid', 'cells' or 'ant'
+  const w = sidesOf($('mode').value)[side];
+  onCells = side !== 'grid';
+  onAnt = side === 'ant';
+  if (!w || modeTab !== modeTabOf()) { renderModePicker(); return; }
+  if (w === $('mode').value) return;
+  $('mode').value = w;
   $('mode').dispatchEvent(new Event('change'));
 }
-$('walkOnGrid').addEventListener('click', () => walkOn(false));
-$('walkOnCells').addEventListener('click', () => walkOn(true));
+$('walkOnGrid').addEventListener('click', () => walkOn('grid'));
+$('walkOnCells').addEventListener('click', () => walkOn('cells'));
+$('walkOnAnt').addEventListener('click', () => walkOn('ant'));
+for (const [id, digits] of [['antClassic', false], ['antDigits', true]]) {
+  $(id).addEventListener('click', () => { if (antByDigits === digits) return; antByDigits = digits; renderModePicker(); compute(); });
+}
+$('antRule').addEventListener('change', () => setAntRule($('mode').value, $('antRule').value));
 // Heatmap of visits: the cells by their visits, else the rainbow cells; Digits: over either
 $('heatmap').addEventListener('change', () => {
   $('colorMode').value = $('heatmap').checked ? 'visits' : shows('cells') ? 'cells' : 'gradient';
