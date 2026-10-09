@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.405';
+const VERSION = '0.1.406';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5503,9 +5503,10 @@ function styleKey(i) {
   }
 }
 
-// an ant's colours, all of them plain to see (the cells it never walked are the background): hues
-// spread round the wheel from blue (2: blue and orange)
-const digitColour = (k) => walk.ant ? `hsl(${200 + (k * 360) / walk.ant}, 75%, 58%)`
+// an ant's colours, bright and apart, plain to see on either theme (the cells it never walked are the
+// background): a deep blue (most of its cells) and pink, then gold, teal, violet, lime…; past them, hues round the wheel
+const ANT_COLOURS = ['#3d6bff', '#ff5fa2', '#ffc53d', '#36cfc9', '#9b6bff', '#8fd14f', '#ff8a4c', '#e86bff', '#5be0ff', '#ffe066', '#ff6b6b', '#7ee8a2'];
+const digitColour = (k) => walk.ant ? ANT_COLOURS[k] ?? `hsl(${(k * 360) / walk.ant}, 80%, 62%)`
   : walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
