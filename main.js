@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.390';
+const VERSION = '0.1.391';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1922,16 +1922,24 @@ function renderModePicker() {
   $('walkOn').hidden = !twins;
   $('walkOnGrid').classList.toggle('active', !onCells);
   $('walkOnCells').classList.toggle('active', onCells);
-  $('walkOnCells').textContent = modeTab === '3D walks' ? 'Cube' : 'Cells';
-  const alone = modeTab === currentGroup && !inUse.twin;  // no twin: on its own side only
-  $('walkOnGrid').disabled = alone && !!inUse.cells;
-  $('walkOnCells').disabled = alone && !inUse.cells;
   // a family of tilings is one entry (as its tiling in use, or as last chosen), at its first tiling's place
   const inFamily = familyOf($('mode').value);
   if (inFamily) inFamily.F.tab = inFamily.tab;
   const optionOf = (w) => $('mode').querySelector(`option[value="${w}"]`);
   const firstOf = (w) => { const f = familyOf(w); return !f || f.F.modes[0].includes(w); };
-  // an entry on the other side only, greyed out, keeps its place there: after the twin of the entry before it
+  // under the list, the walk in use along the grid and on cells, each with its base and its digits,
+  // or what it is not on (that side then off)
+  const here = modeTab === currentGroup, cellsWord = modeTab === '3D walks' ? 'Cube' : 'Cells';
+  const gridW = inUse.cells ? inUse.twin : $('mode').value, cellsW = inUse.cells ? $('mode').value : inUse.twin;
+  const side = (b, word, w, none) => {
+    const info = here && w ? splitModeLabel(optionOf(w).text) : null;
+    b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
+      + (here ? `<span class="mode-detail">${info ? info.detail : none}</span>` : '');
+    b.disabled = here && !w;
+  };
+  side($('walkOnGrid'), 'Grid', gridW, 'not on the grid');
+  side($('walkOnCells'), cellsWord, cellsW, `not on ${cellsWord.toLowerCase()}s`);
+  // an entry on the other side only keeps its place there: after the twin of the entry before it
   const options = Array.from(group.children), place = (o) => {
     const m = MODES[o.value];
     if (m.twin || !twins || !!m.cells === onCells) return options.indexOf(o);
@@ -1948,10 +1956,11 @@ function renderModePicker() {
     const mode = MODES[o.value], pill = mode.life ? SPHERES[mode.sphere].unit : base, info = mode.life ? '' : detail;
     const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
     const words = document.createElement('span');
-    words.append(part('mode-name', name), ...(info ? [part('mode-detail', info)] : []));
+    // where a walk goes along the grid or on cells, its name alone: its bases and digits are under the list
+    words.append(part('mode-name', name), ...(info && !twins ? [part('mode-detail', info)] : []));
     const pic = part('mode-icon', '');
     pic.innerHTML = icon(MODE_ICONS[o.value]);
-    b.append(pic, words, ...(pill ? [part('mode-base', pill)] : []));
+    b.append(pic, words, ...(pill && !twins ? [part('mode-base', pill)] : []));
     b.title = o.text;
     b.setAttribute('role', 'option');
     b.classList.toggle('active', o.value === $('mode').value);
