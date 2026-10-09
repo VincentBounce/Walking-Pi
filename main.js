@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.410';
+const VERSION = '0.1.411';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -744,9 +744,13 @@ const PRESETS = {
   rose1_599: { group: 'Fractions', sym: '1/599', name: 'A 3-fold rosette on Triangles turtle', detail: '1/599 in base 5', f: '1/599' },
   rose1_856: { group: 'Fractions', sym: '1/856', name: 'A 6-fold rosette on Triangles turtle', detail: '1/856 in base 5', f: '1/856' },
   rose21_976: { group: 'Fractions', sym: '21/976', name: 'A 6-fold rosette on Triangles turtle', detail: '21/976 in base 5', f: '21/976' },
-  // and for the ant on Cairo pentagons by the digits, late highways (searched up to /255, 3 million steps)
-  ant1_90: { group: 'Fractions', sym: '1/90', name: 'A highway from step 2,350,822 for the Cairo ant by the digits', detail: '1/90 in base 2', f: '1/90' },
+  // and for an ant by the digits, late highways (searched up to /1000 on squares, /255 on Cairo
+  // pentagons, 3 million steps), the 1/xx last
+  ant1_429: { group: 'Fractions', sym: '1/429', name: 'A highway from step 2,779,332 for the square ant by the digits', detail: '1/429 in base 2', f: '1/429' },
+  ant1_917: { group: 'Fractions', sym: '1/917', name: 'A highway from step 2,126,365 for the square ant by the digits', detail: '1/917 in base 2', f: '1/917' },
+  ant1_112: { group: 'Fractions', sym: '1/112', name: 'A highway from step 2,051,674 for the square ant by the digits', detail: '1/112 in base 2', f: '1/112' },
   ant1_189: { group: 'Fractions', sym: '1/189', name: 'A highway from step 1,642,864 for the Cairo ant by the digits', detail: '1/189 in base 2', f: '1/189' },
+  ant1_90: { group: 'Fractions', sym: '1/90', name: 'A highway from step 2,350,822 for the Cairo ant by the digits', detail: '1/90 in base 2', f: '1/90' },
   ant1_94: { group: 'Fractions', sym: '1/94', name: 'A highway from step 2,275,153 for the Cairo ant by the digits', detail: '1/94 in base 2', f: '1/94' },
   ant1_47: { group: 'Fractions', sym: '1/47', name: 'A highway from step 1,123,492 for the Cairo ant by the digits', detail: '1/47 in base 2', f: '1/47' },
   mersenne: { group: 'Primes', sym: 'Mₚ', name: 'Mersenne prime', detail: '2^p-1', f: () => `2^${$('mersenneP').value}-1` },
