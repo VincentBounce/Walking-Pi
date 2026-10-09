@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261014z">
+  <link rel="stylesheet" href="style.css?v=20261015a">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -192,11 +192,10 @@
             <button id="digitsUp" title="More digits">+</button>
           </div>
           <input id="digits" type="hidden" value="20000">
-          <p id="loopNote" class="muted" hidden></p>  <!-- why a walk that loops has a most of digits, + greyed -->
         </div>
-        <button id="copyNumber" class="wide" data-icon="copy" title="The number in the walk's base, with every digit in use" hidden>Copy number to clipboard</button>
         <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
-        <p id="status" class="muted">—</p>
+        <p id="status" class="muted">—</p>  <!-- under the digits: computing, computed, then why a walk that repeats has a most of them -->
+        <button id="copyNumber" class="wide" data-icon="copy" title="The number in the walk's base, with every digit in use" hidden>Copy number to clipboard</button>
         <div class="field-label">Custom formula, in base 10</div>  <!-- not a label: a click on ↵ would focus the field again -->
         <div class="field formula-field"><input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off" aria-label="Custom formula, in base 10"
                  title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, rho, sqrt(3), cbrt(2), root(x, k), ln(x), exp(x), log(x, b), zeta(k), 22/7, 2^pi, 8^(1/3), 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps, dragon. Press Enter to compute"><button class="enter" type="button" tabindex="-1" title="Compute (Enter)">↵</button></div>
@@ -323,6 +322,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261014z"></script>
+  <script src="main.js?v=20261015a"></script>
 </body>
 </html>

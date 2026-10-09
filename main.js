@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.397';
+const VERSION = '0.1.398';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1208,21 +1208,29 @@ function syncDigitsStepper() {
   const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal();
   $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ${L.drift ? '→' : '↻'}`
     : L ? `${fmt(n)} digits` : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
-  // why: the loop, from its first step, and how many rounds are walked
-  $('loopNote').hidden = !L;
-  if (L) {
-    const period = L.period ?? walk.n - L.from, rounds = L.period ? LOOP_ROUNDS : 1;
-    $('loopNote').textContent = L.drift
-      ? `→ From step ${fmt(L.from)}, this walk repeats the same ${fmt(period)} steps forever, each time further on: it goes off`
-        + ` for ever, and stops after ${rounds} rounds, ${fmt(total)} digits.`
-      : `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
-        + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
-  }
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
     : 'Type a number of digits, from 10 to 10,000,000, then Enter';
   // − goes below what is walked: the whole number's own length when it is shorter than the count
   $('digitsDown').disabled = Math.min(n, total ?? n) <= steps[0];
   $('digitsUp').disabled = n >= steps.at(-1) || (total !== null && total <= n);
+}
+// Why a walk that repeats has a most of digits: the loop (or drift), from its first step, and how many
+// rounds are walked; '' when it does not repeat
+function loopText() {
+  const L = !randomPrimeSize() && walk.loop;
+  if (!L) return '';
+  const period = L.period ?? walk.n - L.from, rounds = L.period ? LOOP_ROUNDS : 1, total = L.cap ?? walk.n;
+  return L.drift
+    ? `→ From step ${fmt(L.from)}, this walk repeats the same ${fmt(period)} steps forever, each time further on: it goes off`
+      + ` for ever, and stops after ${rounds} rounds, ${fmt(total)} digits.`
+    : `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
+      + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
+}
+// The status says how the digits came, then, a moment later, why the count stops where it does
+let loopNoteTimer = 0;
+function noteLoopLater() {
+  clearTimeout(loopNoteTimer);
+  loopNoteTimer = setTimeout(() => { const t = loopText(); if (t) $('status').textContent = t; }, 2500);
 }
 function stepDigits(delta) {
   const size = randomPrimeSize(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
@@ -2066,6 +2074,7 @@ function compute(keepDigits = false) {
     digitsBeforeLoop = null;
   }
   const mode = MODES[$('mode').value];
+  clearTimeout(loopNoteTimer);  // a new walk: its own status
   modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
   renderModePicker();
   if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
@@ -2103,6 +2112,7 @@ function compute(keepDigits = false) {
     setCurrent(seqDigits(F.ast, want, base), base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     $('status').textContent = note;
     buildWalk();
+    noteLoopLater();
     describe(base, n);
     $('copyNumber').hidden = false;
     showAll();
@@ -2120,6 +2130,7 @@ function compute(keepDigits = false) {
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
     ].filter(Boolean).join(' · ');
     buildWalk();
+    noteLoopLater();
     describe(base, total);
     syncDigitsStepper();  // a whole number's digits are now known
     $('copyNumber').hidden = false;
@@ -5666,7 +5677,7 @@ function drawSphere() {
       const first = g.poly[k * t];
       ctx.moveTo(px[first], py[first]);
       for (let j = 1; j < k; j++) ctx.lineTo(px[g.poly[k * t + j]], py[g.poly[k * t + j]]);
-      ctx.closePath();
+      ctx.lineTo(px[first], py[first]);  // back to the first corner: closePath slows a long path down more and more
     }
   };
   // background: anti-aliasing seams between tiles show this colour instead of black
@@ -6616,7 +6627,7 @@ function tilePath(ctx, x, y) {
   }
   ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
   for (let k = 1; k < pts.length; k++) ctx.lineTo(X(pts[k][0]), Y(pts[k][1]));
-  ctx.closePath();
+  ctx.lineTo(X(pts[0][0]), Y(pts[0][1]));  // back to the first corner: closePath slows a path of many tiles down more and more
 }
 
 // Visits: the cell of every point and the most visits of any cell over the whole walk, which fixes
@@ -6879,7 +6890,7 @@ function drawFill(to) {
       const pts = templates[tpl[fillDone]], X = cx[fillDone], Y = cy[fillDone];
       ctx.moveTo(ox + (X + pts[0][0]) * s, oy + (Y + pts[0][1]) * s);
       for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + (X + pts[k][0]) * s, oy + (Y + pts[k][1]) * s);
-      ctx.closePath();
+      ctx.lineTo(ox + (X + pts[0][0]) * s, oy + (Y + pts[0][1]) * s);  // not closePath (see tilePath)
     }
     ctx.fillStyle = colour;
     ctx.fill();
