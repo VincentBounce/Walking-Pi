@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.444';
+const VERSION = '0.1.445';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1150,6 +1150,7 @@ function updateDisplayMenu() {
   $('antRamps').hidden = !mode.antOf;
   for (const b of $('antRamps').children) b.classList.toggle('active', byState && antRamp === b.dataset.ramp);
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
+  $('crtRow').hidden = !mode.antOf || mode.lattice === 'sphere';  // an ant on the plane
   // in 2D, Show path dims the cells under it, as the shading does on a surface, so that the rainbow
   // line (on a layer of its own) shows all along, over cells of its own colour too
   $('pathLayer').style.filter = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 'brightness(0.85)' : '';
@@ -7407,11 +7408,45 @@ function tick(now = performance.now()) {
   }
   if (needsFull || statsDirty) {
     drawOverlay();
+    drawCrt();
     updateStats();
   }
   needsFull = false;
   statsDirty = false;
   requestAnimationFrame(tick);
+}
+
+/* An ant's walk as a CRT sweep: each step a pixel in the grey of its heading (8 sectors, the 4 of the
+ * squares 4 greys apart), line by line up to the step played, as an old screen. The line is a whole
+ * number of the highway's stretches, so that the chaos shows as snow and the highway as a barcode
+ * (about as wide as high, without a highway). Drawn on, step by step; again from the start going back.
+ * At the end, a highway goes on for a while (its stretch again and again, as it would for ever): the
+ * app stops it as far as the cloud is wide, often a few lines only. */
+const crt = { key: null, W: 0, H: 0, img: null, upTo: 0, total: 0, cur: 0 };
+const crtOn = () => $('crt').checked && !!walk.ant && !walk.sphere && !!walk.n;
+function drawCrt() {
+  const el = $('crtLayer');
+  el.hidden = !crtOn();
+  if (el.hidden) return;
+  if (crt.key !== walk.wx || cur < crt.cur) {
+    const p = walk.highway?.period;
+    crt.total = walk.n + (p ? Math.round(walk.n * 0.12) : 0);
+    const side = Math.sqrt(crt.total);
+    crt.W = p ? p * Math.max(1, Math.round(side / p)) : Math.max(1, Math.round(side));
+    crt.H = Math.ceil(crt.total / crt.W);
+    el.width = crt.W; el.height = crt.H;
+    crt.img = el.getContext('2d').createImageData(crt.W, crt.H);
+    crt.key = walk.wx; crt.upTo = 0;
+  }
+  const { wx, wy } = walk, data = crt.img.data, H = walk.highway;
+  const end = cur >= walk.n ? crt.total : cur;
+  for (let i = crt.upTo; i < end; i++) {
+    const j = i < walk.n ? i : H.from + ((i - H.from) % H.period);  // past the end: the highway's stretch again
+    const sector = (Math.round(Math.atan2(wy[j + 1] - wy[j], wx[j + 1] - wx[j]) / (Math.PI / 4)) + 8) % 8, v = 30 + 32 * sector;
+    data[4 * i] = data[4 * i + 1] = data[4 * i + 2] = v; data[4 * i + 3] = 255;
+  }
+  crt.upTo = end; crt.cur = cur;
+  el.getContext('2d').putImageData(crt.img, 0, 0);
 }
 
 /* ==============================================================================================
@@ -7716,6 +7751,7 @@ for (const b of $('antRamps').children) {
 }
 $('cellDigits').addEventListener('change', () => { needsFull = true; });
 $('showPath').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
+$('crt').addEventListener('change', () => { needsFull = true; });
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));

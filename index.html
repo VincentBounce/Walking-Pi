@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261016u">
+  <link rel="stylesheet" href="style.css?v=20261016v">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -241,6 +241,7 @@
       <canvas id="pathLayer"></canvas>
       <canvas id="lineLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
+      <canvas id="crtLayer" hidden></canvas>  <!-- an ant's steps as a CRT sweep (see drawCrt) -->
       <div id="hint" class="hint"></div>
       <div id="animBar" class="stage-box stage-bar" aria-label="What is walked, animation and stats">
         <div class="bar-title"><span id="barNum" class="bar-num"></span><span id="barLoop" class="bar-chip loop" hidden></span><span id="barBase" class="bar-chip"></span></div>
@@ -307,6 +308,7 @@
             <div id="antRamps" class="choice-row" hidden title="An ant's cells by their state, from pale to deep in the order of its colours">
               <button type="button" data-ramp="ink">Ink</button><button type="button" data-ramp="amber">Amber</button><button type="button" data-ramp="teal">Teal</button>
             </div>
+            <label class="check" id="crtRow" hidden title="Each step a pixel in the grey of its heading, line by line as an old screen: the chaos as snow, a highway as a barcode (the line as long as a whole number of its stretches)"><input id="crt" type="checkbox"> CRT sweep</label>
             <label class="check" id="showPathRow" hidden title="The walk's line over the cells it colours"><input id="showPath" type="checkbox"> Show path</label>
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
             <label class="check" id="cellDigitsRow" hidden title="Each cell with the digit that led there, written once the cells are big enough"><input id="cellDigits" type="checkbox"> Digits</label>
@@ -334,6 +336,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261016u"></script>
+  <script src="main.js?v=20261016v"></script>
 </body>
 </html>
