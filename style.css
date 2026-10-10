@@ -165,7 +165,7 @@ button.primary {
 #loopLabel.on { color: var(--accent); }
 .stepper input { min-width: 0; margin: 0; padding: 6px 8px; cursor: text; }
 /* the two fields and the − / + buttons: one height, whatever the font (monospace while editing) */
-#formula, .stepper input, .stepper button { height: 34px; }
+#formula, .field input, .stepper button { height: 34px; }
 /* ↵ at the end of a field being edited: clicking it leaves the field, which computes */
 .field { position: relative; display: block; }
 .formula-field { margin-bottom: 10px; }
@@ -175,12 +175,14 @@ button.primary {
 .field .enter:hover { color: var(--accent); }
 .field:focus-within .enter { display: block; }
 .field input:focus { padding-right: 32px; }
-/* The Custom formula and the number of digits: outlined like the choice buttons, and edited alike,
-   in plain monospace on a yellow-framed field */
-#formula, .stepper input { background: transparent; border-color: var(--border); }
-#formula:hover, .stepper input:hover { border-color: var(--muted); }
-#formula:focus, .stepper input:focus {
+/* Every edited field (the Custom formula, the number of digits, the start, the rules): outlined like
+   the choice buttons, centred at rest, and edited alike, in plain monospace from the left on a
+   yellow-framed field, ↵ at its end */
+.field input { background: transparent; border-color: var(--border); text-align: center; }
+.field input:hover { border-color: var(--muted); }
+.field input:focus {
   outline: none;
+  text-align: left;
   border-color: var(--accent);
   background: var(--bg);
   color: var(--text);

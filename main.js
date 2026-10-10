@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.439';
+const VERSION = '0.1.440';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7398,14 +7398,18 @@ $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
 // 10 … 50 million
-// The two edited fields (Custom formula, number of digits): entering one shows the value in use,
-// the cursor at its end (the plain number for the digits; formulaInUse is the last valid formula). Enter or ↵
-// leaves the field, and leaving it computes; but a wrong formula keeps you in the field, with its
-// error. Esc undoes the edit: back to the value in use. For ↵, mousedown keeps the focus from
-// going to the button first.
-const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? requestedDigits()), startLabel: () => String(startNo()) };
+// The edited fields (Custom formula, number of digits, start, the ant's and Life's rules): entering
+// one shows the value in use, the cursor at its end (the plain number for the digits; formulaInUse is
+// the last valid formula; a rule as it was). Enter or ↵ leaves the field, and leaving it applies it;
+// but a wrong formula keeps you in the field, with its error. Esc undoes the edit: back to the value
+// in use. For ↵, mousedown keeps the focus from going to the button first.
+const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? requestedDigits()), startLabel: () => String(startNo()),
+                     antRule: () => antRuleOf($('mode').value) };
 for (const input of document.querySelectorAll('.field input')) {
+  let before = '';
+  valueInUse[input.id] ??= () => before;  // Life's rule: as it was when entered
   input.addEventListener('focus', () => {
+    before = input.value;
     input.value = valueInUse[input.id]();
     input.setSelectionRange(input.value.length, input.value.length);
   });

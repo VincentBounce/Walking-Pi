@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261016p">
+  <link rel="stylesheet" href="style.css?v=20261016q">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -32,9 +32,9 @@
         <div id="antRow" hidden>  <!-- Langton's ant: by colour or by the digits, each with its rule -->
           <div class="choice-row"><button id="antColours" type="button">Colours</button><button id="antDigits" type="button">Digits</button></div>
           <div id="antPresets" class="ant-presets"></div>
-          <label id="antRuleRow"><span id="antRuleName">Rule</span>
-            <input id="antRule" type="text" autocomplete="off" spellcheck="false">
-          </label>
+          <div id="antRuleRow"><div id="antRuleName" class="field-label">Rule</div>  <!-- not a label: a click on ↵ would focus the field again -->
+            <span class="field"><input id="antRule" type="text" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
+          </div>
         </div>
         <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
           <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
@@ -172,9 +172,9 @@
             <option value="custom">Custom…</option>
           </select>
         </label>
-        <label id="lifeCustomRow" hidden>Custom rule (B…/S…/C…, B…/S…/Immigration, or B2o/S2m34 on hexagons)
-          <input id="lifeRule" type="text" value="B3/S23" autocomplete="off">
-        </label>
+        <div id="lifeCustomRow" hidden><div class="field-label">Custom rule (B…/S…/C…, B…/S…/Immigration, or B2o/S2m34 on hexagons)</div>
+          <span class="field"><input id="lifeRule" type="text" value="B3/S23" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
+        </div>
         <div id="huntRow">
           <div class="field-label">Methuselah hunt</div>
           <div id="huntList" class="mode-list" role="listbox" title="Where the random starts go. Radius r: the cells at most r steps from a centre cell, one step going to a neighbour (through an edge or a corner) — 3×3, 5×5 and 7×7 on squares, a small disc on triangles. The rest of the surface starts dead"></div>
@@ -331,6 +331,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261016p"></script>
+  <script src="main.js?v=20261016q"></script>
 </body>
 </html>
