@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.431';
+const VERSION = '0.1.432';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -682,12 +682,18 @@ const BANDS = 256;
 // grey instead of white, the one colour a deeper amber
 const PALETTES = {
   // unlit: the surfaces' tiles not walked; trail: a Life cell just dead, fading to unlit; alive: Life in one colour
-  dark: { light: 60, digits: ['#4ea1ff', '#e6edf3', '#ff7b72', '#3fb950', '#d2a8ff', '#ffa657'], mono: '#f0b429',
+  // directions: each step's colour by where it goes (its arrow), the same in every walk: left blue, straight
+  // on (north) gold, right pink, back (south) turquoise, then the diagonals between them and up, down;
+  // digits: for the walks whose digits are no direction, in the same colours; grey: a spiral's 0
+  dark: { light: 60, digits: ['#4f7bff', '#f0609f', '#f2b630', '#2fbdb7', '#9270f5', '#7fc244', '#f28042', '#d466f0'], grey: '#e6edf3', mono: '#f0b429',
+          directions: { '←': '#4f7bff', '↑': '#f2b630', '→': '#f0609f', '↓': '#2fbdb7', '↖': '#7fc244', '↗': '#f28042', '↘': '#d466f0', '↙': '#9270f5', '⊙': '#f06b6b', '⊗': '#45c8f0' },
           unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(255, 255, 255, 0.25)', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
-  light: { light: 48, digits: ['#2f81f7', '#6e7781', '#e5534b', '#2da44e', '#a371f7', '#e16f24'], mono: '#bf8700',
+  light: { light: 48, digits: ['#2f5bea', '#e8438a', '#e0a100', '#13a8a2', '#7c4dff', '#5fa82a', '#f0702a', '#c03fe0'], grey: '#6e7781', mono: '#bf8700',
+           directions: { '←': '#2f5bea', '↑': '#e0a100', '→': '#e8438a', '↓': '#13a8a2', '↖': '#5fa82a', '↗': '#f0702a', '↘': '#c03fe0', '↙': '#7c4dff', '⊙': '#e5484d', '⊗': '#1aa3d6' },
            unlit: '#eef1f5', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
 };
-const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [];
+const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], DIRECTION_COLOURS = {};
+let GREY;
 let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_RGB, EDGE_ALPHA, SHADE, FADE_EDGES, TILE_LIFT;  // TILE_LIFT: the tiles' rainbow mixed with white  // EDGE: the surfaces' tile edges; SHADE: how dark a tile turned away gets
 function setPalette(theme) {
   const P = PALETTES[theme];
@@ -701,6 +707,8 @@ function setPalette(theme) {
   }
   for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
   DIGIT_COLORS.splice(0, DIGIT_COLORS.length, ...P.digits);
+  Object.assign(DIRECTION_COLOURS, P.directions);
+  GREY = P.grey;
   MONO = P.mono;
 }
 setPalette(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
@@ -2653,6 +2661,9 @@ const ANTS = {
 };
 const antRules = Object.fromEntries(Object.entries(ANTS).map(([w, A]) => [w, A.presets[0]]));
 let antByDigits = false;
+// a walk's arrows, one per digit (an ant's: per turn of the walk it goes through the cells with), none: []
+const ARROW_LISTS = {};
+const arrowsOf = (w) => (ARROW_LISTS[w] ??= [...((MODES[w].antOf ? ANTS[w] : MODES[w]).arrows ?? '')]);
 // a rule's turns (the turtle walk's digits), or null when it is not one: 2 to 12 of the tiling's turns
 function antTurnsOf(w, rule) {
   const A = ANTS[w], words = rule.toUpperCase().match(/[LR][12]?|N/g) ?? [];
@@ -5631,10 +5642,13 @@ function rampColour(k, n) {
   return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(', ')})`;
 }
 // an ant's chips: by the digits, its turns (left, right) in the walk's colours; by its rule, its states
-const antChipColour = (k) => antByDigits ? DIGIT_COLORS[ANTS[current.mode].turns[ANTS[current.mode].lr[k]]] : rampColour(k, antColours(current.mode));
-const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : DIGIT_COLORS[Math.min(k, DIGIT_COLORS.length - 1)])
-  : walk.skipZeros ? DIGIT_COLORS[1 - k]  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
-  : walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
+const antChipColour = (k) => antByDigits ? DIRECTION_COLOURS[arrowsOf(current.mode)[ANTS[current.mode].turns[ANTS[current.mode].lr[k]]]]
+  : rampColour(k, antColours(current.mode));
+// a digit's colour: its direction's (an ant's: the turn it took, or its state), else in the digits' order
+const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : DIRECTION_COLOURS[arrowsOf(current.mode)[k]] ?? GREY)
+  : walk.skipZeros ? (k ? DIGIT_COLORS[0] : GREY)  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
+  : arrowsOf(current.mode)[k] ? DIRECTION_COLOURS[arrowsOf(current.mode)[k]]
+  : walk.base <= DIGIT_COLORS.length ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
     case 'digit': return digitColour(k);
@@ -6558,14 +6572,14 @@ function glFlat(to) {
     upload(S.flatKeys, keys);
     S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
   }
-  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${antRamp}|${walk.skipZeros}|${MONO}`) {  // the digits' colours (an ant's)
+  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`) {  // the digits' colours (an ant's)
     const pal = new Uint8Array(4 * 256);
     for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(walk.ant ? k : Math.min(k, (walk.points ? walk.keyCount : walk.base) - 1))), 255], 4 * k);
     gl.bindTexture(gl.TEXTURE_2D, S.pal);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${antRamp}|${walk.skipZeros}|${MONO}`;
+    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`;
   }
   // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
@@ -7189,7 +7203,7 @@ function updateStats() {
   // end it finishes with the last one. The window then shrinks until "…", "0." and "." fit too.
   // above each digit, its step as an arrow (an ant's: the turn it took); before both lines, the walker:
   // a turtle turning relative to its heading, a compass going by fixed directions, a spiral winding round
-  const mode = MODES[current.mode], arrows = [...((mode.antOf ? ANTS[current.mode] : mode).arrows ?? '')];
+  const mode = MODES[current.mode], arrows = arrowsOf(current.mode);
   strip.classList.add('line');
   strip.classList.toggle('turns', arrows.length > 0);
   const cols = stripColumns(strip), n = walk.n, d = walk.digits;
