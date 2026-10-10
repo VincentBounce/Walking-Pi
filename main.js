@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.443';
+const VERSION = '0.1.444';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -838,6 +838,10 @@ const MODES = {
   // on a surface: the ant on the cells of its walk there, which keep their colours (turns: as the walk's)
   antCube: { get base() { return antBase('antCube'); }, lattice: 'sphere', cells: true, sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
              fill: false, antOf: 'cubeFlat', get rule() { return antRuleText('antCube'); } },
+  antHexSphere: { get base() { return antBase('antHexSphere'); }, lattice: 'sphere', cells: true, sphere: 'hexsphere', turns: [-2, 2], round: true,
+                  fill: false, antOf: 'hexSphereWalk', get rule() { return antRuleText('antHexSphere'); } },
+  antIcosa: { get base() { return antBase('antIcosa'); }, lattice: 'sphere', cells: true, sphere: 'icosa', turns: [2, 1], round: true,
+              fill: false, antOf: 'icosaLR', get rule() { return antRuleText('antIcosa'); } },
   spiral:   { base: 2, arrows: '□■', lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -874,13 +878,13 @@ const MODES = {
   octaLR:   { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // hexagons and pentagons alike: the edges two away from the one you came in through, on either side
-  hexSphereWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'hexSphereGrid', sphere: 'hexsphere', turns: [-2, 2], round: true,
+  hexSphereWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'hexSphereGrid', ant: 'antHexSphere', sphere: 'hexsphere', turns: [-2, 2], round: true,
                    rule: 'on a sphere of hexagons (and 12 pentagons): exit through the <b>0</b> front left or <b>1</b> front right edge' },
   stellaLR: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'stellaGrid', sphere: 'stella', turns: [2, 1],
               rule: 'on a stella octangula (two tetrahedra) of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   dodecaLR: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'dodecaGrid', sphere: 'dodeca', turns: [2, 1],
               rule: 'on a dodecahedron, its pentagons cut into triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  icosaLR:  { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', turns: [2, 1], round: true,
+  icosaLR:  { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'icosaGrid', ant: 'antIcosa', sphere: 'icosa', turns: [2, 1], round: true,
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
   // to them as the edges at a corner allow
@@ -1930,7 +1934,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube',
+  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube', antHexSphere: 'hexagon', antIcosa: 'icosahedron',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -1983,20 +1987,20 @@ const NAV = {
   icosaGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], icosaLR: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
   antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'],
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
-  antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'],
+  antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
+  antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
-  lifeHexTorus: ['Life', 'Surfaces', 'Hex torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
-  lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Triangle sphere', 'Life', ''],
-  lifeHexSphere: ['Life', 'Surfaces', 'Hexagon sphere', 'Life', ''],
+  lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
+  lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
 };
 const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
-  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', 'Hex torus': 'torus', 'Triangle sphere': 'icosahedron', 'Hexagon sphere': 'hexagon' };
-const SHAPE_SHORT = { 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca',
-  'Triangle sphere': 'Tri sphere', 'Hexagon sphere': 'Hex sphere' };
+  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron' };
+const SHAPE_SHORT = { 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 // the section's title
 const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Populate' };
 // the values at a level under the choices above it (pre), in the menu's order
@@ -2031,10 +2035,11 @@ function navGo(level, value) {
 }
 
 // Surfaces that come in several tilings are one entry each in the list (Torus, Sphere), their
-// tiling picked by tabs under the list: modes, its walk modes per tiling [along the grid, on cells];
+// tiling picked by tabs under the list: modes, its modes per tiling (walks along the grid and on
+// cells, ants, Life);
 // tabs, [tiling, turned by 30° (see TURNED), icon, name]; tab, the one in use or last chosen
 const FAMILIES = [
-  { name: 'Torus', modes: [['torusGrid', 'torusWalk'], ['hexTorusGrid', 'hexTorusWalk'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
+  { name: 'Torus', modes: [['torusGrid', 'torusWalk', 'lifeTorus'], ['hexTorusGrid', 'hexTorusWalk', 'lifeHexTorus'], ['triTorusGrid', 'triTorusWalk']], tab: 0,
     tabs: [[0, false, 'tilesSqStretched', 'Squares on a long sheet (more round the ring than round the tube), square once rolled'],
            [0, true, 'tilesSq', 'Squares on a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
            [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'], [1, false, 'tilesHex', 'Hexagons'],
@@ -2042,7 +2047,7 @@ const FAMILIES = [
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk'], ['mobiusHexGrid', 'mobiusHexWalk'], ['mobiusTriGrid', 'mobiusTriWalk']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'], [1, false, 'tilesHex', 'Hexagons'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)']] },
-  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk'], ['icosaGrid', 'icosaLR']], tab: 0,
+  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa']], tab: 0,
     tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
 ];
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
@@ -2117,15 +2122,18 @@ function renderModePicker() {
   $('torusTiles').hidden = !inFamily;
   if (inFamily) {
     const { F, tab } = inFamily;
-    $('torusTiles').replaceChildren(...F.tabs.map(([f, turned, pic, name], i) => button(icon(pic), i === tab, () => {
+    // the same kind (walk, ant, Life) on another tiling, along the grid or on cells as now; only the
+    // tilings it has
+    const same = (f) => F.modes[f].find((v) => NAV[v][0] === NAV[w][0] && NAV[v][4] === NAV[w][4]);
+    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name], i) => (!same(f) ? [] : [button(icon(pic), i === tab, () => {
       if (i === tab) return;
       F.tab = i;
-      const v = F.modes[f][MODES[w].cells ? 1 : 0];
+      const v = same(f);
       if (v === w) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
       torusTurned = turned;
       $('mode').value = v;
       $('mode').dispatchEvent(new Event('change'));
-    }, name)));
+    }, name)])));
   }
   // the rules, where there are several, each with its picture
   const rules = navValues(3, [kind, space, shape]), optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
@@ -2664,6 +2672,8 @@ const ANTS = {
   antHex: { arrows: '↙↖↑↗↘', inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, digitPresets: ['L1 R1', 'L1 N R1', 'L2 L1 R1 R2', 'L2 L1 N R1 R2'],
             presets: ['L1 R1', 'L2 R2', 'L1 L2 R1', 'R2 L1 N L1 R2'] },
   // on a surface, the walk it goes through the cells with is the surface's (see buildSphereWalk)
+  antHexSphere: { arrows: '↖↗', inner: null, turns: { L: 0, R: 1 }, digitPresets: ['LR'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
+  antIcosa: { arrows: '↖↗', inner: null, turns: { L: 0, R: 1 }, digitPresets: ['LR'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
   antCube: { arrows: '←↑→', inner: null, turns: { L: 0, N: 1, R: 2 }, digitPresets: ['LR', 'LNR'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
   antCairo: { arrows: '↙↖↗↘', inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, digitPresets: ['L1 R1', 'L2 R2', 'L2 L1 R1 R2'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
 };
