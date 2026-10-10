@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.436';
+const VERSION = '0.1.437';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1068,7 +1068,7 @@ function describe(base, available) {
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
     const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
-    const chips = at >= 0 && items.length === base && base <= 8;
+    const chips = at >= 0 && items.length === base && base <= (mode.antOf ? 12 : 8);  // an ant: up to its 12 colours
     const after = mode.rule.match(/\(([^)]*)\)\s*$/)?.[1];  // a closing note: "(at a corner of the cube, the nearest edge)"
     // the words around the digits, kept in the description: "exit through the … edge"
     const tail = mode.rule.slice(at + 2), pre = tail.slice(0, tail.indexOf('<b>')).trim(), edge = / edge\b/.test(tail) ? ' edge' : '';
@@ -7188,11 +7188,12 @@ function updateStats() {
   }
   // step by step (paused, or at the slowest speed): the chip of the next step lit in its colour, the one
   // it counts in (an ant's: the turn it takes, or by its rule the colour of its cell); an ant by the digits
-  // turned the other way by a dark cell, the chip of the digit it reads dashed too
+  // turned the other way by a dark cell, the chip of the digit it reads dashed too; by its rule, on a cell
+  // walked before, the chip of a fresh one (colour 0) dashed, as the turn it would take there
   const slow = walk.n && cur < walk.n && walk.counts && (!playing || stepsPerSecond() < 6.5);
   let next = -1;
   if (slow) for (let c = 0; c < walk.base; c++) if (walk.counts[walk.base * (cur + 1) + c] !== walk.counts[walk.base * cur + c]) next = c;
-  const read = slow && walk.ant && antByDigits ? walk.digits[cur] : -1;
+  const read = !slow || !walk.ant ? -1 : antByDigits ? walk.digits[cur] : 0;
   for (const chip of $('ruleChips').children) {
     const d = Number(chip.querySelector('small')?.id.slice(5));
     chip.classList.toggle('next', d === next);
