@@ -101,7 +101,6 @@ input[type=number], input[type=text], select {
 }
 /* the Custom formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
-#formula { text-align: center; }  /* the page's font at rest, like the number of digits; monospace while edited */
 #formula.custom { color: var(--accent); font-weight: 600; }  /* the number chosen: no card matches it */
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
@@ -176,9 +175,11 @@ button.primary {
 .field:focus-within .enter { display: block; }
 .field input:focus { padding-right: 32px; }
 /* Every edited field (the Custom formula, the number of digits, the start, the rules): outlined like
-   the choice buttons, centred at rest, and edited alike, in plain monospace from the left on a
-   yellow-framed field, ↵ at its end */
-.field input { background: transparent; border-color: var(--border); text-align: center; }
+   the choice buttons, from the left, and edited alike, in plain monospace on a yellow-framed field, ↵
+   at its end; the steppers' (digits, start) centred at rest, written out ("20,000 digits") */
+.field input { background: transparent; border-color: var(--border); text-align: left; }
+#antRuleRow .field { margin-bottom: 10px; }  /* apart from Grid | Cells under it */
+.stepper .field input:not(:focus) { text-align: center; }
 .field input:hover { border-color: var(--muted); }
 .field input:focus {
   outline: none;
