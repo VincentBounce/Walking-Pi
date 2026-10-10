@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.423';
+const VERSION = '0.1.424';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -780,7 +780,8 @@ const FORMULA_NOTES = {
 };
 
 /* ---- 2.3 Walk modes -------------------------------------------------------------------------- */
-// base: the base the digits are written in; lattice: how a step is taken ('square', 'tri', 'hex',
+// base: the base the digits are written in; arrows: each digit's step as the walker sees it, heading
+// up (⊙ up toward you, ⊗ down), shown above the digits (none where a digit is not a turn); lattice: how a step is taken ('square', 'tri', 'hex',
 // 'cube' or 'sphere' for a tiled surface); life: a Game of Life instead of a walk. The (hidden)
 // mode menu in index.html lists them, grouped as the tabs of the Walk section.
 // The 2D walks go along the lines of a grid, or from cell to cell (cells: true), twin: the other
@@ -790,34 +791,34 @@ const FORMULA_NOTES = {
 // those of triangle cells; only the grid drawn changes (lines: true). Their colours are the Display
 // toggles Walk on cells, Heatmap of visits and Digits instead of a list (see relabelColours).
 const MODES = {
-  turtle:   { base: 3, lattice: 'square', lines: true, twin: 'turtleCells', ant: 'antSquare',
+  turtle:   { base: 3, arrows: '←↑→', lattice: 'square', lines: true, twin: 'turtleCells', ant: 'antSquare',
               rule: 'along the lines of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinal: { base: 4, lattice: 'square', lines: true, twin: 'cardinalCells',
+  cardinal: { base: 4, arrows: '↑→↓←', lattice: 'square', lines: true, twin: 'cardinalCells',
               rule: 'along the lines of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
-  triTurtle: { base: 5, lattice: 'hex', lines: true, twin: 'triTurtleCells', ant: 'antTri',
+  triTurtle: { base: 5, arrows: '↙↖↑↗↘', lattice: 'hex', lines: true, twin: 'triTurtleCells', ant: 'antTri',
               rule: 'along the lines of a triangle grid, relative to where you come from: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  triFixed: { base: 6, lattice: 'hex', lines: true, twin: 'triFixedCells',
+  triFixed: { base: 6, arrows: '↑↗↘↓↙↖', lattice: 'hex', lines: true, twin: 'triFixedCells',
               rule: 'along the lines of a triangle grid: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
-  hexTurtle: { base: 2, lattice: 'tri', lines: true, twin: 'hexTurtleCells', ant: 'antHex',
+  hexTurtle: { base: 2, arrows: '↖↗', lattice: 'tri', lines: true, twin: 'hexTurtleCells', ant: 'antHex',
               rule: 'along the lines of a hexagon grid: <b>0</b> turn left, <b>1</b> turn right' },
   hexFixed: { base: 3, lattice: 'tri', lines: true, twin: 'hexFixedCells',
               rule: 'along the lines of a hexagon grid: take the <b>0</b> “|”, <b>1</b> “\\” or <b>2</b> “/” edge' },
-  turtleCells: { base: 3, lattice: 'square', cells: true, twin: 'turtle',
+  turtleCells: { base: 3, arrows: '←↑→', lattice: 'square', cells: true, twin: 'turtle',
               rule: 'from cell to cell of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
-  cardinalCells: { base: 4, lattice: 'square', cells: true, twin: 'cardinal',
+  cardinalCells: { base: 4, arrows: '↑→↓←', lattice: 'square', cells: true, twin: 'cardinal',
               rule: 'from cell to cell of a square grid: <b>0</b> north, <b>1</b> east, <b>2</b> south, <b>3</b> west' },
-  triTurtleCells: { base: 2, lattice: 'tri', cells: true, twin: 'triTurtle',
+  triTurtleCells: { base: 2, arrows: '↖↗', lattice: 'tri', cells: true, twin: 'triTurtle',
               rule: 'from cell to cell of a triangle grid: exit through the <b>0</b> left or <b>1</b> right edge' },
   triFixedCells: { base: 3, lattice: 'tri', cells: true, twin: 'triFixed',
               rule: 'from cell to cell of a triangle grid: cross the <b>0</b> horizontal, <b>1</b> “/” or <b>2</b> “\\” edge' },
-  hexTurtleCells: { base: 5, lattice: 'hex', cells: true, twin: 'hexTurtle',
+  hexTurtleCells: { base: 5, arrows: '↙↖↑↗↘', lattice: 'hex', cells: true, twin: 'hexTurtle',
               rule: 'from cell to cell of a hexagon grid, relative to the edge you came in through: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  hexFixedCells: { base: 6, lattice: 'hex', cells: true, twin: 'hexFixed',
+  hexFixedCells: { base: 6, arrows: '↑↗↘↓↙↖', lattice: 'hex', cells: true, twin: 'hexFixed',
               rule: 'from cell to cell of a hexagon grid: <b>0</b> N, <b>1</b> NE, <b>2</b> SE, <b>3</b> S, <b>4</b> SW, <b>5</b> NW' },
   // on cells only: steps that do not cross a single edge (no Fill areas, see fillAreasApply)
-  king: { base: 8, lattice: 'square', cells: true, fill: false,
+  king: { base: 8, arrows: '↑↗→↘↓↙←↖', lattice: 'square', cells: true, fill: false,
           rule: 'from square to square as a chess king, to one of the 8 around: <b>0</b> N, <b>1</b> NE, <b>2</b> E, <b>3</b> SE, <b>4</b> S, <b>5</b> SW, <b>6</b> W, <b>7</b> NW' },
-  cairo: { base: 4, lattice: 'cairo', cells: true, fill: false, ant: 'antCairo',
+  cairo: { base: 4, arrows: '↙↖↗↘', lattice: 'cairo', cells: true, fill: false, ant: 'antCairo',
            rule: 'from pentagon to pentagon of the Cairo tiling, out through one of its 4 other edges: <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right' },
   // Langton's ant on the cells of a turtle walk (antOf: its walk in the list; see ANTS), its rule in the
   // ant settings (see antRuleText)
@@ -841,53 +842,53 @@ const MODES = {
                  rule: 'along a spiral of Cairo pentagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
   hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
               rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
-  tetraLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'tetraGrid', sphere: 'tetra', initial: 48, turns: [2, 1],
+  tetraLR:  { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'tetraGrid', sphere: 'tetra', initial: 48, turns: [2, 1],
               rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  torusWalk: { base: 3, lattice: 'sphere', cells: true, twin: 'torusGrid', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
+  torusWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'torusGrid', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
               rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  triTorusWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'triTorusGrid', sphere: 'tritorus', initial: 48, turns: [2, 1], perspective: true, round: true,
+  triTorusWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'triTorusGrid', sphere: 'tritorus', initial: 48, turns: [2, 1], perspective: true, round: true,
                   rule: 'on a torus of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
-  hexTorusWalk: { base: 5, lattice: 'sphere', cells: true, twin: 'hexTorusGrid', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
+  hexTorusWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'hexTorusGrid', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                   rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  mobiusWalk: { base: 3, lattice: 'sphere', cells: true, twin: 'mobiusGrid', sphere: 'mobius', turns: [3, 2, 1], perspective: true, round: true,
+  mobiusWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'mobiusGrid', sphere: 'mobius', turns: [3, 2, 1], perspective: true, round: true,
                 rule: 'on a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
-  mobiusHexWalk: { base: 5, lattice: 'sphere', cells: true, twin: 'mobiusHexGrid', sphere: 'mobiusHex', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
+  mobiusHexWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'mobiusHexGrid', sphere: 'mobiusHex', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
-  mobiusTriWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], perspective: true, round: true,
+  mobiusTriWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of triangles: exit through the <b>0</b> left or <b>1</b> right edge (over its edge, onto the face behind)' },
-  cubeFlat: { base: 3, lattice: 'sphere', cells: true, twin: 'cubeGrid', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
+  cubeFlat: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'cubeGrid', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
               rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  octaLR:   { base: 2, lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
+  octaLR:   { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // hexagons and pentagons alike: the edges two away from the one you came in through, on either side
-  hexSphereWalk: { base: 2, lattice: 'sphere', cells: true, twin: 'hexSphereGrid', sphere: 'hexsphere', turns: [-2, 2], round: true,
+  hexSphereWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'hexSphereGrid', sphere: 'hexsphere', turns: [-2, 2], round: true,
                    rule: 'on a sphere of hexagons (and 12 pentagons): exit through the <b>0</b> front left or <b>1</b> front right edge' },
-  stellaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'stellaGrid', sphere: 'stella', turns: [2, 1],
+  stellaLR: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'stellaGrid', sphere: 'stella', turns: [2, 1],
               rule: 'on a stella octangula (two tetrahedra) of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  dodecaLR: { base: 2, lattice: 'sphere', cells: true, twin: 'dodecaGrid', sphere: 'dodeca', turns: [2, 1],
+  dodecaLR: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'dodecaGrid', sphere: 'dodeca', turns: [2, 1],
               rule: 'on a dodecahedron, its pentagons cut into triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  icosaLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', turns: [2, 1], round: true,
+  icosaLR:  { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'icosaGrid', sphere: 'icosa', turns: [2, 1], round: true,
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
   // to them as the edges at a corner allow
-  torusGrid: { base: 3, lattice: 'sphere', twin: 'torusWalk', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
+  torusGrid: { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'torusWalk', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
                rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  triTorusGrid: { base: 5, lattice: 'sphere', twin: 'triTorusWalk', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
+  triTorusGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'triTorusWalk', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                   rule: 'along the edges of a torus of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  hexTorusGrid: { base: 2, lattice: 'sphere', twin: 'hexTorusWalk', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
+  hexTorusGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'hexTorusWalk', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
-  mobiusGrid: { base: 3, lattice: 'sphere', twin: 'mobiusWalk', sphere: 'mobius', grid: true, turns: [90, 0, -90], perspective: true, round: true,
+  mobiusGrid: { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'mobiusWalk', sphere: 'mobius', grid: true, turns: [90, 0, -90], perspective: true, round: true,
                 rule: 'along the edges of a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
-  mobiusHexGrid: { base: 2, lattice: 'sphere', twin: 'mobiusHexWalk', sphere: 'mobiusHex', grid: true, turns: [60, -60], perspective: true, round: true,
+  mobiusHexGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'mobiusHexWalk', sphere: 'mobiusHex', grid: true, turns: [60, -60], perspective: true, round: true,
                    rule: 'along the edges of a Möbius strip of hexagons: <b>0</b> turn left, <b>1</b> turn right (over its edge, onto the face behind)' },
-  mobiusTriGrid: { base: 5, lattice: 'sphere', twin: 'mobiusTriWalk', sphere: 'mobiusTri', grid: true, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
+  mobiusTriGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'mobiusTriWalk', sphere: 'mobiusTri', grid: true, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                    rule: 'along the edges of a Möbius strip of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
-  cubeGrid:  { base: 3, lattice: 'sphere', twin: 'cubeFlat', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
+  cubeGrid:  { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'cubeFlat', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
                rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
-  tetraGrid: { base: 5, lattice: 'sphere', twin: 'tetraLR', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
+  tetraGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'tetraLR', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
-  octaGrid:  { base: 5, lattice: 'sphere', twin: 'octaLR', sphere: 'octa', initial: 48, perspective: true, grid: true, turns: [120, 60, 0, -60, -120],
+  octaGrid:  { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'octaLR', sphere: 'octa', initial: 48, perspective: true, grid: true, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of an octahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   // Set aside: on triangles, turns of ±60° only walk a hidden grid of hexagons (3 times fewer
   // corners), so they need many triangles for few patterns; the hexagon sphere does it directly.
@@ -895,13 +896,13 @@ const MODES = {
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> front right (at a corner of the solid, the nearest edge)' },
   // icosaGrid3: { base: 3, lattice: 'sphere', sphere: 'icosa', grid: true, turns: [60, 0, -60], round: true,
   //               rule: 'along the edges of an icosahedron of triangles: <b>0</b> front left, <b>1</b> forward, <b>2</b> front right (at a corner of the solid, the nearest edge)' },
-  hexSphereGrid: { base: 2, lattice: 'sphere', twin: 'hexSphereWalk', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
+  hexSphereGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'hexSphereWalk', sphere: 'hexsphere', grid: true, turns: [60, -60], round: true,
                    rule: 'along the edges of a sphere of hexagons (and 12 pentagons): <b>0</b> turn left, <b>1</b> turn right' },
-  stellaGrid: { base: 5, lattice: 'sphere', twin: 'stellaLR', sphere: 'stella', grid: true, turns: [120, 60, 0, -60, -120],
+  stellaGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'stellaLR', sphere: 'stella', grid: true, turns: [120, 60, 0, -60, -120],
                 rule: 'along the edges of a stella octangula (two tetrahedra) of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a tip or a hollow corner, the nearest edge)' },
-  dodecaGrid: { base: 5, lattice: 'sphere', twin: 'dodecaLR', sphere: 'dodeca', grid: true, turns: [120, 60, 0, -60, -120],
+  dodecaGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'dodecaLR', sphere: 'dodeca', grid: true, turns: [120, 60, 0, -60, -120],
                 rule: 'along the edges of a dodecahedron, its pentagons cut into triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
-  icosaGrid: { base: 5, lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
+  icosaGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
@@ -921,18 +922,18 @@ const MODES = {
                 where: 'an icosahedron of triangles' },
   lifeHexSphere: { base: 2, lattice: 'sphere', sphere: 'hexsphere', life: true, round: true,
                    where: 'a sphere of hexagons (its 12 pentagons are walls)' },
-  cubeRel:  { base: 5, lattice: 'cube', twin: 'cubeRelCells', perspective: true,
+  cubeRel:  { base: 5, arrows: '←⊙↑⊗→', lattice: 'cube', twin: 'cubeRelCells', perspective: true,
               rule: 'in 3D cubes, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
-  cubeFixed: { base: 6, lattice: 'cube', twin: 'cubeFixedCells', perspective: true,
+  cubeFixed: { base: 6, arrows: '↑→⊙↓←⊗', lattice: 'cube', twin: 'cubeFixedCells', perspective: true,
               rule: 'in 3D cubes: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
   diag: { base: 8, lattice: 'cube', twin: 'diagCells', perspective: true,
           rule: 'along the diagonals of the cubes, to one of their 8 corners (the 3 bits of each digit the signs of east, north and up): <b>0</b> SW down, <b>1</b> SW up, <b>2</b> NW down, <b>3</b> NW up, <b>4</b> SE down, <b>5</b> SE up, <b>6</b> NE down, <b>7</b> NE up' },
-  diamond: { base: 3, lattice: 'cube', perspective: true,
+  diamond: { base: 3, arrows: '↖↑↗', lattice: 'cube', perspective: true,
              rule: 'along the bonds of a diamond, as a polymer chain: <b>0</b> gauche left, <b>1</b> trans (the zigzag goes on), <b>2</b> gauche right' },
   // the same steps from cell to cell (their centres make the same lattice), the cells coloured (see glCubes)
-  cubeRelCells: { base: 5, lattice: 'cube', cells: true, twin: 'cubeRel', perspective: true,
+  cubeRelCells: { base: 5, arrows: '←⊙↑⊗→', lattice: 'cube', cells: true, twin: 'cubeRel', perspective: true,
               rule: 'from cube to cube, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
-  cubeFixedCells: { base: 6, lattice: 'cube', cells: true, twin: 'cubeFixed', perspective: true,
+  cubeFixedCells: { base: 6, arrows: '↑→⊙↓←⊗', lattice: 'cube', cells: true, twin: 'cubeFixed', perspective: true,
               rule: 'from cube to cube: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
   diagCells: { base: 8, lattice: 'cube', cells: true, twin: 'diag', shape: 'truncOcta', perspective: true,
                rule: 'from truncated octahedron to truncated octahedron (they fill space), through a hexagon (the 3 bits of each digit the signs of east, north and up): <b>0</b> SW down, <b>1</b> SW up, <b>2</b> NW down, <b>3</b> NW up, <b>4</b> SE down, <b>5</b> SE up, <b>6</b> NE down, <b>7</b> NE up' },
@@ -2363,7 +2364,7 @@ function buildWalkOf() {
   const ant = !!MODES[current.mode].antOf, step = STEPPERS[current.mode]();
   // an ant by its rule: counted by the colour it turned on (each colour its turn), not by digit
   const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
-  const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null;
+  const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null, turns = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
   // a fraction's walk repeats (see walkRepeat), walked 8 rounds; not an ant's, whose state is all its
   // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
@@ -2401,7 +2402,7 @@ function buildWalkOf() {
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
-    if (ant) left[i] = step.left;
+    if (ant) { left[i] = step.left; turns[i] = step.turn; }
     walked = i + 1;
     if (ant && loop && walked > loop.from + loop.period
         && (Math.abs(wx[walked] - wx[walked - loop.period] - loop.dx) > 1e-6 || Math.abs(wy[walked] - wy[walked - loop.period] - loop.dy) > 1e-6)) {
@@ -2421,7 +2422,7 @@ function buildWalkOf() {
   }
   Object.assign(walk, { vert: null, stepTiles: null, loop, n: steps, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
-                        skipZeros: !!MODES[current.mode].skipZeros, ant: ant ? step.colours : 0,
+                        skipZeros: !!MODES[current.mode].skipZeros, ant: ant ? step.colours : 0, turns,
                         highway: ant ? highwayOf(wx, wy, steps) : null, bridges,
                         points: false, keys, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
@@ -2629,14 +2630,14 @@ function cairoStepper(spiral = false) {
 
 /* Langton's ant: on each cell it turns by the cell's colour, one turn per colour (the rule), or by the
  * digit, the other way on a dark cell (Digits); the cell it leaves takes the next colour. Per tiling:
- * the turtle walk it goes through the cells with (a turn: its digit), its turns, left and right for
+ * the turtle walk it goes through the cells with (a turn: its digit) and their arrows, its turns, left and right for
  * Digits, and rules to start from. */
 const ANTS = {
-  antSquare: { inner: () => STEPPERS.turtle(), turns: { L: 0, N: 1, R: 2 }, lr: ['L', 'R'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
-  antTri: { inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, lr: ['L', 'R'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
-  antHex: { inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, lr: ['L1', 'R1'],
+  antSquare: { arrows: '←↑→', inner: () => STEPPERS.turtle(), turns: { L: 0, N: 1, R: 2 }, lr: ['L', 'R'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
+  antTri: { arrows: '↖↗', inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, lr: ['L', 'R'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
+  antHex: { arrows: '↙↖↑↗↘', inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, lr: ['L1', 'R1'],
             presets: ['L1 R1', 'L2 R2', 'L1 L2 R1', 'R2 L1 N L1 R2'] },
-  antCairo: { inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, lr: ['L1', 'R1'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
+  antCairo: { arrows: '↙↖↗↘', inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, lr: ['L1', 'R1'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
 };
 const antRules = Object.fromEntries(Object.entries(ANTS).map(([w, A]) => [w, A.presets[0]]));
 let antByDigits = false;
@@ -2666,7 +2667,8 @@ function antStepper(w) {
     step.turned = c;
     step.left = (c + 1) % k;
     cells.set(here, v - c + step.left);
-    const r = inner(antByDigits ? A.turns[A.lr[g ^ c]] : turns[c]);
+    step.turn = antByDigits ? A.turns[A.lr[g ^ c]] : turns[c];  // the turn it takes (its walk's digit)
+    const r = inner(step.turn);
     here = r[0];
     n++;
     let u = cells.get(here);
@@ -7168,14 +7170,21 @@ function updateStats() {
   // a number below 1 does not walk its integer part (every such number would start the same
   // way): its "0." is only shown, greyed
   let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
+  // above each digit, its step as an arrow (an ant's: the turn it took); a blank above the marks
+  const mode = MODES[current.mode], arrows = [...((mode.antOf ? ANTS[current.mode] : mode).arrows ?? '')];
+  const blank = '<span></span>';
+  let top = blank.repeat(a > 0 ? 1 : intLen ? 0 : 2);
   for (let i = a; i < b; i++) {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
     // describe the digits to its left. At the end it sits on a blank after the last digit.
-    html += i === cur ? `<span class="cur">${d[i]}</span>`
-      : walk.base <= 8 ? `<span style="color:${digitColour(d[i])}">${d[i]}</span>` : d[i];  // coloured as their chips
-    if (i === intLen - 1 && intLen < walk.n) html += '.';
+    const colour = walk.base <= 8 ? ` style="color:${digitColour(d[i])}"` : '';  // coloured as their chips
+    html += i === cur ? `<span class="cur">${d[i]}</span>` : colour ? `<span${colour}>${d[i]}</span>` : d[i];
+    const arrow = arrows[walk.ant ? walk.turns[i] : d[i]];
+    top += arrow ? `<span${i === cur ? ' class="cur"' : colour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
+    if (i === intLen - 1 && intLen < walk.n) { html += '.'; top += blank; }
   }
-  strip.innerHTML = html + (b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '');
+  html += b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
+  strip.innerHTML = arrows.length ? `<div class="arrows">${top}</div><div>${html}</div>` : html;
 }
 
 // How many characters fit on one line of the strip, measured again only when its font or width changes

@@ -280,6 +280,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .strip:not(.line) { font-family: inherit; word-break: normal; }  /* texts (Life rule, marked cells): normal font, whole words */
 .strip .cur { color: var(--accent-text); background: var(--accent); border-radius: 2px; }
 .strip .dim { opacity: 0.5; }  /* the "0." of a number below 1: shown, not walked */
+.strip .arrows { line-height: 1.1; }  /* each digit's step above it, one column each */
+.strip .arrows span { display: inline-flex; justify-content: center; width: 1ch; transform: scale(0.8); }  /* a digit's width, drawn smaller */
 
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
