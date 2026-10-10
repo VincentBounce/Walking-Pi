@@ -207,6 +207,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 .tabs button:hover:not(.active) { color: var(--text); border-bottom-color: var(--border); }
 .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.nav-shapes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }  /* the shapes, 4 a row */
+.nav-shapes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px; font-size: 10px; background: var(--panel); color: var(--muted); min-width: 0; }
+.nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-shapes button svg { width: 20px; height: 20px; }
+.nav-shapes button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .mode-list button {
   display: grid;

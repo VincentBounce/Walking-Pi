@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.416';
+const VERSION = '0.1.417';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1892,9 +1892,7 @@ function numberText(limit = Infinity) {
 // The categories of the (hidden) mode menu as tabs, and every choice of the selected tab as a
 // list. Picking a choice sets the menu and fires its change event, so the rest of the page only
 // ever deals with the menu.
-let modeTab = null;  // label of the category shown (may differ from the current mode's while browsing)
-let onCells = false;  // Grid or Cells: which of the twins the list shows (see MODES)
-let onAnt = false;  // on Cells, as an ant (see ANTS)
+let modeTab = null;  // the menu group of the mode in use (its display defaults, its digits)
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
 const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
@@ -1920,8 +1918,86 @@ function splitModeLabel(text) {
   return { name: name[0].toUpperCase() + name.slice(1), base: m[1] || '', detail: m[2] || (inName ? inName[2] : '') };
 }
 
-// The section's title, read with the card below it: "Walk on · Torus", "Populate · Cube"
-const WALK_HEADINGS = { 'Walks on surfaces': 'Walk on', 'Automata on surfaces': 'Populate' };
+/* The menu, from the top: what moves (Walk, Langton's ant, Automata), where (2D, 3D, Surfaces), on
+ * which shape, by which rule, and along the grid or on cells ('' where neither); in the menu's order.
+ * A family's tilings (Torus, Möbius strip, Sphere) share their place, picked by tabs under the shapes. */
+const NAV = {
+  turtle: ['Walk', '2D', 'Squares', 'Turtle', 'grid'], turtleCells: ['Walk', '2D', 'Squares', 'Turtle', 'cells'],
+  cardinal: ['Walk', '2D', 'Squares', 'Cardinal', 'grid'], cardinalCells: ['Walk', '2D', 'Squares', 'Cardinal', 'cells'],
+  king: ['Walk', '2D', 'Squares', 'King', 'cells'], spiral: ['Walk', '2D', 'Squares', 'Spiral', ''],
+  jump10: ['Walk', '2D', 'Squares', 'Spiral jumps, base 10', ''], jump64: ['Walk', '2D', 'Squares', 'Spiral jumps, base 64', ''],
+  search10: ['Walk', '2D', 'Squares', 'Spiral search, base 10', ''], search64: ['Walk', '2D', 'Squares', 'Spiral search, base 64', ''],
+  triTurtle: ['Walk', '2D', 'Triangles', 'Turtle', 'grid'], triTurtleCells: ['Walk', '2D', 'Triangles', 'Turtle', 'cells'],
+  triFixed: ['Walk', '2D', 'Triangles', 'Fixed', 'grid'], triFixedCells: ['Walk', '2D', 'Triangles', 'Fixed', 'cells'],
+  triSpiral: ['Walk', '2D', 'Triangles', 'Spiral', ''],
+  hexTurtle: ['Walk', '2D', 'Hexagons', 'Turtle', 'grid'], hexTurtleCells: ['Walk', '2D', 'Hexagons', 'Turtle', 'cells'],
+  hexFixed: ['Walk', '2D', 'Hexagons', 'Fixed', 'grid'], hexFixedCells: ['Walk', '2D', 'Hexagons', 'Fixed', 'cells'],
+  hexSpiral: ['Walk', '2D', 'Hexagons', 'Spiral', ''],
+  cairo: ['Walk', '2D', 'Cairo', 'Turtle', 'cells'],
+  cubeRel: ['Walk', '3D', 'Cubes', 'Turtle', 'grid'], cubeRelCells: ['Walk', '3D', 'Cubes', 'Turtle', 'cells'],
+  cubeFixed: ['Walk', '3D', 'Cubes', 'Fixed', 'grid'], cubeFixedCells: ['Walk', '3D', 'Cubes', 'Fixed', 'cells'],
+  diag: ['Walk', '3D', 'Cubes', 'Diagonals', 'grid'], diagCells: ['Walk', '3D', 'Cubes', 'Diagonals', 'cells'],
+  diamond: ['Walk', '3D', 'Diamond', 'Polymer', 'grid'],
+  cubeGrid: ['Walk', 'Surfaces', 'Cube', 'Turtle', 'grid'], cubeFlat: ['Walk', 'Surfaces', 'Cube', 'Turtle', 'cells'],
+  torusGrid: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'grid'], torusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
+  hexTorusGrid: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'grid'], hexTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
+  triTorusGrid: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'grid'], triTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
+  mobiusGrid: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'grid'], mobiusWalk: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'cells'],
+  mobiusHexGrid: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'grid'], mobiusHexWalk: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'cells'],
+  mobiusTriGrid: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'grid'], mobiusTriWalk: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'cells'],
+  tetraGrid: ['Walk', 'Surfaces', 'Tetrahedron', 'Turtle', 'grid'], tetraLR: ['Walk', 'Surfaces', 'Tetrahedron', 'Turtle', 'cells'],
+  octaGrid: ['Walk', 'Surfaces', 'Octahedron', 'Turtle', 'grid'], octaLR: ['Walk', 'Surfaces', 'Octahedron', 'Turtle', 'cells'],
+  stellaGrid: ['Walk', 'Surfaces', 'Stella octangula', 'Turtle', 'grid'], stellaLR: ['Walk', 'Surfaces', 'Stella octangula', 'Turtle', 'cells'],
+  dodecaGrid: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'grid'], dodecaLR: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'cells'],
+  hexSphereGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], hexSphereWalk: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
+  icosaGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], icosaLR: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
+  antSquare: ['Langton', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Langton', '2D', 'Triangles', 'Ant', 'cells'],
+  antHex: ['Langton', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Langton', '2D', 'Cairo', 'Ant', 'cells'],
+  lifeCube: ['Automata', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Automata', 'Surfaces', 'Torus', 'Life', ''],
+  lifeHexTorus: ['Automata', 'Surfaces', 'Hex torus', 'Life', ''], lifeTetra: ['Automata', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeOcta: ['Automata', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Automata', 'Surfaces', 'Stella octangula', 'Life', ''],
+  lifeDodeca: ['Automata', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Automata', 'Surfaces', 'Triangle sphere', 'Life', ''],
+  lifeHexSphere: ['Automata', 'Surfaces', 'Hexagon sphere', 'Life', ''],
+};
+const NAV_KINDS = [['Walk', 'walk2d'], ['Langton', 'grid'], ['Automata', 'glider']];
+const NAV_SPACES = ['2D', '3D', 'Surfaces'];
+const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
+  Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
+  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', 'Hex torus': 'torus', 'Triangle sphere': 'icosahedron', 'Hexagon sphere': 'hexagon' };
+const SHAPE_SHORT = { 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca',
+  'Triangle sphere': 'Tri sphere', 'Hexagon sphere': 'Hex sphere' };
+// the section's title
+const WALK_HEADINGS = { Walk: 'Walk', Langton: "Langton's ant", Automata: 'Populate' };
+// the values at a level under the choices above it (pre), in the menu's order
+const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
+// The mode for a choice at a level: the levels above as they are, the ones below kept where they can
+// be, else the first (Grid before Cells); in a family, its tiling in use or last chosen
+function navPick(level, value) {
+  const want = [...NAV[$('mode').value]];
+  want[level] = value;
+  let best = null, top = -1;
+  for (const [w, n] of Object.entries(NAV)) {
+    if (n.slice(0, level + 1).some((v, i) => v !== want[i])) continue;
+    let score = 0;
+    for (let i = level + 1; i < 5; i++) score = score * 4 + (n[i] === want[i] ? 2 : 0) + (i === 4 && n[i] !== 'cells' ? 1 : 0);
+    const fam = familyOf(w);
+    if (fam && fam.F.modes[fam.F.tabs[fam.F.tab][0]].includes(w)) score += 0.5;
+    if (score > top) { best = w; top = score; }
+  }
+  return best;
+}
+function navGo(level, value) {
+  const w = navPick(level, value);
+  if (!w || w === $('mode').value) return;
+  const fam = familyOf(w);
+  if (fam) torusTurned = fam.F.tabs[fam.F.tab][1];  // the tiling last chosen, turned or not
+  if (MODES[w].life && !MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
+    $('formula').value = presetFormula('random');
+    huntZone = 'all';
+  }
+  $('mode').value = w;
+  $('mode').dispatchEvent(new Event('change'));
+}
 
 // Surfaces that come in several tilings are one entry each in the list (Torus, Sphere), their
 // tiling picked by tabs under the list: modes, its walk modes per tiling [along the grid, on cells];
@@ -1948,15 +2024,10 @@ function familyOf(w) {
   }
   return null;
 }
-// The walk w along the grid, on cells and as an ant (undefined where it has none)
-function sidesOf(w) {
-  const e = MODES[w].antOf ?? w, E = MODES[e], grid = E.cells ? E.twin : e, cells = E.cells ? e : E.twin;
-  return { grid, cells, ant: MODES[w].antOf ? w : (grid && MODES[grid].ant) || (cells && MODES[cells].ant) };
-}
-// Under Grid | Cells | Ant, the ant's settings: by its rule (presets of its tiling, or typed) or by the digits
+// Langton's ant's settings, as its rule: by its rule (presets of its tiling, or typed) or by the digits
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
-  $('antRow').hidden = !A || modeTab !== modeTabOf();
+  $('antRow').hidden = !A;
   if ($('antRow').hidden) return;
   $('antClassic').classList.toggle('active', !antByDigits);
   $('antDigits').classList.toggle('active', antByDigits);
@@ -1981,115 +2052,74 @@ function setAntRule(w, rule) {
   compute();
 }
 function renderModePicker() {
-  const groups = Array.from($('mode').querySelectorAll('optgroup'));
-  const currentGroup = $('mode').selectedOptions[0].parentElement.label;
-  if (!modeTab) modeTab = currentGroup;
-  // Grid, Cells or Ant: as the walk in use where its tab has them, or as last chosen
-  const inUse = MODES[$('mode').value], hasTwins = (label) => Array.from(groups.find((g) => g.label === label).children).some((o) => MODES[o.value].twin);
-  if (modeTab === currentGroup && hasTwins(currentGroup)) { onCells = !!inUse.cells; onAnt = !!inUse.antOf; }
-  const shown = (o) => !MODES[o.value].antOf && (!MODES[o.value].twin || !!MODES[o.value].cells === onCells);
-  const start = (o) => !MODES[o.value].cells;  // another tab starts on its first choice, along lines
-  $('modeTabs').replaceChildren(galleryTab(), ...groups.map((g) => {
+  const w = $('mode').value, [kind, space, shape, rule] = NAV[w];
+  modeTab = modeTabOf();
+  const button = (html, active, go, title = '') => {
     const b = document.createElement('button');
-    b.innerHTML = `${icon(TAB_ICONS[g.label])} ${g.label}`;
+    b.type = 'button';
+    b.innerHTML = html;
+    b.title = title;
+    b.classList.toggle('active', active);
+    b.addEventListener('click', go);
+    return b;
+  };
+  // at the top: Walk, Langton, Automata (while a gallery setup is only shown on hover, the one in use)
+  const shownKind = NAV[galleryBefore?.w]?.[0] ?? kind;
+  $('modeTabs').replaceChildren(galleryTab(), ...NAV_KINDS.map(([k, pic]) => {
+    const b = button(`${icon(pic)} ${k}`, k === shownKind, () => { showPane(false); if (k !== kind) navGo(0, k); });
     b.setAttribute('role', 'tab');
-    // while a gallery setup is only shown on hover, the tab stays the one of the setup in use
-    const tabOf = (w) => $('mode').querySelector(`option[value="${w}"]`)?.parentElement.label;
-    b.classList.toggle('active', g.label === (galleryBefore ? tabOf(galleryBefore.w) : modeTab));
-    b.addEventListener('click', () => {  // another tab starts on its first choice
-      showPane(false);
-      if (g.label === modeTab) return;
-      modeTab = g.label;
-      $('mode').value = Array.from(g.querySelectorAll('option')).find(start).value;
-      if (MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
-        $('formula').value = presetFormula('random');
-        huntZone = 'all';
-      }
-      $('mode').dispatchEvent(new Event('change'));
-    });
     return b;
   }));
-  const group = groups.find((g) => g.label === modeTab);
-  $('walkHeading').textContent = WALK_HEADINGS[modeTab] ?? 'Walk';
-  const twins = hasTwins(modeTab);
-  $('walkOn').hidden = !twins;
-  $('walkOnGrid').classList.toggle('active', !onCells);
-  $('walkOnCells').classList.toggle('active', onCells && !onAnt);
-  $('walkOnAnt').classList.toggle('active', onAnt);
-  $('walkOnAnt').hidden = !Array.from(group.children).some((o) => MODES[o.value].antOf);
-  // a family of tilings is one entry (as its tiling in use, or as last chosen), at its first tiling's place
-  const inFamily = familyOf($('mode').value);
-  if (inFamily) inFamily.F.tab = inFamily.tab;
-  const optionOf = (w) => $('mode').querySelector(`option[value="${w}"]`);
-  const firstOf = (w) => { const f = familyOf(w); return !f || f.F.modes[0].includes(w); };
-  // under the list, the walk in use along the grid and on cells, each with its base and its digits,
-  // or what it is not on (that side then off)
-  const here = modeTab === currentGroup, cellsWord = modeTab === '3D walks' ? 'Cube' : 'Cells';
-  const { grid: gridW, cells: cellsW, ant: antW } = sidesOf($('mode').value);
-  const side = (b, word, w, none) => {
-    const info = !here || !w ? null : MODES[w].antOf ? { base: '', detail: antByDigits ? 'by the digits' : antRules[w] } : splitModeLabel(optionOf(w).text);
-    b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
-      + (here ? `<span class="mode-detail">${info ? info.detail : none}</span>` : '');
-    b.disabled = here && !w;
-  };
-  side($('walkOnGrid'), 'Grid', gridW, 'not on the grid');
-  side($('walkOnCells'), cellsWord, cellsW, `not on ${cellsWord.toLowerCase()}s`);
-  side($('walkOnAnt'), 'Ant', antW, 'turtles only');
-  renderAntRow();
-  // an entry on the other side only keeps its place there: after the twin of the entry before it
-  const options = Array.from(group.children), place = (o) => {
-    const m = MODES[o.value];
-    if (m.twin || !twins || !!m.cells === onCells) return options.indexOf(o);
-    let p = o.previousElementSibling;  // on its own side
-    while (p && (!MODES[p.value].twin || !!MODES[p.value].cells !== !!m.cells)) p = p.previousElementSibling;
-    return p ? options.indexOf(optionOf(MODES[p.value].twin)) + 0.5 : -1;
-  };
-  const listed = options.filter((o) => shown(o) && firstOf(o.value)).sort((a, b) => place(a) - place(b));
-  $('modeList').replaceChildren(...listed.map((entry) => {
-    const fam = familyOf(entry.value)?.F, o = fam ? optionOf(fam.modes[fam.tabs[fam.tab][0]][onCells ? 1 : 0]) ?? entry : entry;
-    const b = document.createElement('button');
-    const { base, detail } = splitModeLabel(o.text), name = fam ? fam.name : splitModeLabel(o.text).name;  // the Life tab already says "Life"
-    // an automaton's pill tells the shape of its cells, where a walk's tells its base
-    const mode = MODES[o.value], pill = mode.life ? SPHERES[mode.sphere].unit : base, info = mode.life ? '' : detail;
-    const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
-    const words = document.createElement('span');
-    // where a walk goes along the grid or on cells, its name alone: its bases and digits are under the list
-    words.append(part('mode-name', name), ...(info && !twins ? [part('mode-detail', info)] : []));
-    const pic = part('mode-icon', '');
-    pic.innerHTML = icon(MODE_ICONS[o.value]);
-    b.append(pic, words, ...(pill && !twins ? [part('mode-base', pill)] : []));
-    b.title = o.text;
-    b.setAttribute('role', 'option');
-    b.classList.toggle('active', o.value === (inUse.antOf ? cellsW : $('mode').value));  // an ant: its walk's entry
-    b.addEventListener('click', () => {
-      const w = onAnt && sidesOf(o.value).ant || o.value;  // on Ant, that walk's ant where it has one
-      if (w === $('mode').value) return;
-      if (fam) torusTurned = fam.tabs[fam.tab][1];  // the tiling last chosen, turned or not
-      $('mode').value = w;
-      $('mode').dispatchEvent(new Event('change'));
-    });
+  $('walkHeading').textContent = WALK_HEADINGS[kind];
+  // 2D, 3D, Surfaces (no 3D automata), those with nothing yet greyed
+  $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => kind !== 'Automata' || sp !== '3D').map((sp) => {
+    const b = button(sp, sp === space, () => navGo(1, sp));
+    b.disabled = !navValues(1, [kind]).includes(sp);
     return b;
   }));
+  // the shapes, as pictures with their (short) names
+  $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) =>
+    button(`${icon(SHAPE_ICONS[sh])}<span>${SHAPE_SHORT[sh] ?? sh}</span>`, sh === shape, () => navGo(2, sh), sh)));
   // a family picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
-  $('torusTiles').hidden = !(modeTab === currentGroup && inFamily);
-  if ($('torusTiles').hidden) return;
-  const { F, tab } = inFamily;
-  $('torusTiles').replaceChildren(...F.tabs.map(([f, turned, pic, name], i) => {
-    const b = document.createElement('button');
-    b.innerHTML = icon(pic);
-    b.title = name;
-    b.classList.toggle('active', i === tab);
-    b.addEventListener('click', () => {
+  const inFamily = familyOf(w);
+  if (inFamily) inFamily.F.tab = inFamily.tab;
+  $('torusTiles').hidden = !inFamily;
+  if (inFamily) {
+    const { F, tab } = inFamily;
+    $('torusTiles').replaceChildren(...F.tabs.map(([f, turned, pic, name], i) => button(icon(pic), i === tab, () => {
       if (i === tab) return;
       F.tab = i;
-      const w = F.modes[f][onCells ? 1 : 0];
-      if (w === $('mode').value) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
+      const v = F.modes[f][MODES[w].cells ? 1 : 0];
+      if (v === w) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
       torusTurned = turned;
-      $('mode').value = w;
+      $('mode').value = v;
       $('mode').dispatchEvent(new Event('change'));
-    });
-    return b;
+    }, name)));
+  }
+  // the rules, where there are several, each with its picture
+  const rules = navValues(3, [kind, space, shape]), optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
+  $('navRules').hidden = rules.length < 2;
+  $('navRules').replaceChildren(...rules.map((r) => {
+    const v = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
+    const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
+    return button(`<span class="mode-icon">${icon(MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`
+      + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => navGo(3, r));
   }));
+  // Grid | Cells (Cube in 3D): each with its base and its digits, or what it is not on (that side off)
+  const sides = navValues(4, [kind, space, shape, rule]);
+  $('walkOn').hidden = sides.includes('');
+  const side = (b, s, word, none) => {
+    const v = sides.includes(s) ? navPick(4, s) : null, here = NAV[w][4] === s;
+    const info = !v ? null : MODES[v].antOf ? { base: '', detail: antByDigits ? 'by the digits' : antRules[v] } : splitModeLabel(optionOf(v).text);
+    b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
+      + `<span class="mode-detail">${info ? info.detail : none}</span>`;
+    b.disabled = !v;
+    b.classList.toggle('active', here);
+  };
+  const cellsWord = space === '3D' ? 'Cube' : 'Cells';
+  side($('walkOnGrid'), 'grid', 'Grid', 'not on the grid');
+  side($('walkOnCells'), 'cells', cellsWord, `not on ${cellsWord.toLowerCase()}s`);
+  renderAntRow();
 }
 
 /* ---- 5.2 compute(): from the formula to a built walk ----------------------------------------- */
@@ -7508,18 +7538,8 @@ $('centered').addEventListener('change', () => {  // on: the camera turns to the
 });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
-function walkOn(side) {  // 'grid', 'cells' or 'ant'
-  const w = sidesOf($('mode').value)[side];
-  onCells = side !== 'grid';
-  onAnt = side === 'ant';
-  if (!w || modeTab !== modeTabOf()) { renderModePicker(); return; }
-  if (w === $('mode').value) return;
-  $('mode').value = w;
-  $('mode').dispatchEvent(new Event('change'));
-}
-$('walkOnGrid').addEventListener('click', () => walkOn('grid'));
-$('walkOnCells').addEventListener('click', () => walkOn('cells'));
-$('walkOnAnt').addEventListener('click', () => walkOn('ant'));
+$('walkOnGrid').addEventListener('click', () => navGo(4, 'grid'));
+$('walkOnCells').addEventListener('click', () => navGo(4, 'cells'));
 for (const [id, digits] of [['antClassic', false], ['antDigits', true]]) {
   $(id).addEventListener('click', () => { if (antByDigits === digits) return; antByDigits = digits; renderModePicker(); compute(); });
 }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261015s">
+  <link rel="stylesheet" href="style.css?v=20261015t">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -25,10 +25,10 @@
         <div class="walk-head">
           <h2 id="walkHeading">Walk</h2>
         </div>
-        <div id="modeList" class="mode-list" role="listbox"></div>
-        <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
-          <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button><button id="walkOnAnt" type="button" hidden>Ant</button>
-        </div>  <!-- under the list: its walks along the grid, or on cells -->
+        <div id="navSpace" class="choice-row" title="Where it goes: on the plane, in space, or on a surface"></div>
+        <div id="navShapes" class="nav-shapes" title="The shape of its cells"></div>
+        <div id="torusTiles" class="choice-row" hidden title="The tiles of the surface" role="tablist"></div>  <!-- under the shapes, when Torus, Möbius strip or Sphere is picked -->
+        <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
         <div id="antRow" hidden>  <!-- Langton's ant: by its rule or by the digits -->
           <div class="choice-row"><button id="antClassic" type="button">Classic rule</button><button id="antDigits" type="button">Digits</button></div>
           <div id="antPresets" class="ant-presets"></div>
@@ -37,7 +37,9 @@
             <input id="antRule" type="text" autocomplete="off" spellcheck="false">
           </label>
         </div>
-        <div id="torusTiles" class="choice-row" hidden title="The tiles of the surface" role="tablist"></div>  <!-- under the list, when Torus is picked -->
+        <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
+          <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
+        </div>  <!-- under the rules: along the grid, or on cells -->
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
             <optgroup label="2D walks">
@@ -325,6 +327,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261015s"></script>
+  <script src="main.js?v=20261015t"></script>
 </body>
 </html>
