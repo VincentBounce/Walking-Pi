@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.434';
+const VERSION = '0.1.435';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7235,14 +7235,16 @@ function updateStats() {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
     // describe the digits to its left. At the end it sits on a blank after the last digit.
     const colour = walk.base <= 8 ? ` style="color:${(walk.ant ? antChipColour : digitColour)(d[i])}"` : '';  // coloured as their chips
-    // an ant's arrow coloured as its turn's chip (left, right), not as the digit it read; the head on a
-    // dark cell, which turns it the other way: the digit and the arrow each in its own colour, not the gold
-    const turn = walk.ant ? lrTurns.indexOf(walk.turns[i]) : -1, flipped = i === cur && turn >= 0 && turn !== d[i];
-    const head = (k) => (flipped ? ` class="cur" style="background:${antChipColour(k)};color:#fff"` : ' class="cur"');
-    html += i === cur ? `<span${head(d[i])}>${d[i]}</span>` : colour ? `<span${colour}>${d[i]}</span>` : d[i];
+    // an ant's arrow coloured as its turn's chip (left, right), not as the digit it read. The head: the
+    // digit and its arrow inverted, white on their colours (an ant on a dark cell: each its own), as
+    // the chip lit; gold where the digits have no colours
+    const turn = walk.ant ? lrTurns.indexOf(walk.turns[i]) : -1;
+    const head = (c) => (colour ? ` class="cur" style="background:${c};color:#fff"` : ' class="cur"');
+    const chipColour = (k) => (walk.ant ? antChipColour : digitColour)(k);
+    html += i === cur ? `<span${head(colour && chipColour(d[i]))}>${d[i]}</span>` : colour ? `<span${colour}>${d[i]}</span>` : d[i];
     const arrow = arrows[walk.ant ? walk.turns[i] : d[i]];
     const arrowColour = walk.ant ? ` style="color:${antChipColour(turn)}"` : colour;
-    top += arrow ? `<span${i === cur ? head(turn) : arrowColour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
+    top += arrow ? `<span${i === cur ? head(colour && chipColour(walk.ant ? turn : d[i])) : arrowColour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
     if (i === intLen - 1 && intLen < walk.n) { html += '.'; top += blank; }
   }
   const end = b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
