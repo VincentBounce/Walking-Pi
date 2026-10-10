@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261015y">
+  <link rel="stylesheet" href="style.css?v=20261015z">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -261,7 +261,7 @@
         </div>
         <div class="row">
           <button id="restart" data-icon="start" title="Jump to start (R)" aria-label="Jump to start"></button>
-          <button id="back" class="open-only" data-icon="back" title="One step back (←)" aria-label="One step back"></button>
+          <button id="back" data-icon="back" title="One step back (←)" aria-label="One step back"></button>
           <button id="play" title="Play / pause (Space)">Play</button>
           <button id="step" class="open-only" data-icon="step" title="One step (→)" aria-label="One step"></button>
           <button id="end" class="open-only" data-icon="end" title="Jump to end (E)" aria-label="Jump to end"></button>
@@ -329,6 +329,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261015y"></script>
+  <script src="main.js?v=20261015z"></script>
 </body>
 </html>
