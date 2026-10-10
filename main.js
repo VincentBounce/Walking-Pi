@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.438';
+const VERSION = '0.1.439';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -683,13 +683,14 @@ const BANDS = 256;
 const PALETTES = {
   // unlit: the surfaces' tiles not walked; trail: a Life cell just dead, fading to unlit; alive: Life in one colour
   // directions: each step's colour by where it goes (its arrow), the same in every walk: left blue, straight
-  // on (north) gold, right pink, back (south) turquoise, then the diagonals between them and up, down;
+  // on (north) gold, right pink, back (south) turquoise, then the diagonals (↖ green, ↗ magenta, ↘ orange,
+  // ↙ violet: the opposite turns far apart) and up, down;
   // digits: for the walks whose digits are no direction, in the same colours; grey: a spiral's 0
   dark: { light: 60, digits: ['#4f7bff', '#f0609f', '#f2b630', '#2fbdb7', '#9270f5', '#7fc244', '#f28042', '#d466f0'], grey: '#e6edf3', mono: '#f0b429',
-          directions: { '←': '#4f7bff', '↑': '#f2b630', '→': '#f0609f', '↓': '#2fbdb7', '↖': '#7fc244', '↗': '#f28042', '↘': '#d466f0', '↙': '#9270f5', '⊙': '#f06b6b', '⊗': '#45c8f0' },
+          directions: { '←': '#4f7bff', '↑': '#f2b630', '→': '#f0609f', '↓': '#2fbdb7', '↖': '#7fc244', '↗': '#d466f0', '↘': '#f28042', '↙': '#9270f5', '⊙': '#f06b6b', '⊗': '#45c8f0' },
           unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(255, 255, 255, 0.25)', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
   light: { light: 48, digits: ['#2f5bea', '#e8438a', '#e0a100', '#13a8a2', '#7c4dff', '#5fa82a', '#f0702a', '#c03fe0'], grey: '#6e7781', mono: '#bf8700',
-           directions: { '←': '#2f5bea', '↑': '#e0a100', '→': '#e8438a', '↓': '#13a8a2', '↖': '#5fa82a', '↗': '#f0702a', '↘': '#c03fe0', '↙': '#7c4dff', '⊙': '#e5484d', '⊗': '#1aa3d6' },
+           directions: { '←': '#2f5bea', '↑': '#e0a100', '→': '#e8438a', '↓': '#13a8a2', '↖': '#5fa82a', '↗': '#c03fe0', '↘': '#f0702a', '↙': '#7c4dff', '⊙': '#e5484d', '⊗': '#1aa3d6' },
            unlit: '#eef1f5', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
 };
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], DIRECTION_COLOURS = {};
