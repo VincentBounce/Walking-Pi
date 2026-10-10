@@ -295,6 +295,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #crtLayer { background: #000; object-fit: contain; object-position: center top; image-rendering: pixelated; pointer-events: none;  /* over the walk, its pixels kept sharp */
              top: 52px; height: calc(100% - 52px - 120px); }  /* between the Grid switch and the bar: its last lines (the highway) in sight */
 .stage:has(#crtLayer:not([hidden])) { background: #000; }
+.stage:has(#crtLayer:not([hidden])) canvas:not(#crtLayer) { visibility: hidden; }  /* the walk under it hidden */
 /* The two boxes over the view (Play bottom left, Display top right): the same frame and
    translucency; hovering one opens the rest of it in the same frame (on touch screens, a tap) */
 .stage-box {

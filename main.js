@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.445';
+const VERSION = '0.1.446';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7419,30 +7419,55 @@ function tick(now = performance.now()) {
 /* An ant's walk as a CRT sweep: each step a pixel in the grey of its heading (8 sectors, the 4 of the
  * squares 4 greys apart), line by line up to the step played, as an old screen. The line is a whole
  * number of the highway's stretches, so that the chaos shows as snow and the highway as a barcode
- * (about as wide as high, without a highway). Drawn on, step by step; again from the start going back.
+ * (about as wide as high, without one). Drawn on, step by step; again from the start going back.
  * At the end, a highway goes on for a while (its stretch again and again, as it would for ever): the
  * app stops it as far as the cloud is wide, often a few lines only. */
-const crt = { key: null, W: 0, H: 0, img: null, upTo: 0, total: 0, cur: 0 };
+const crt = { key: null, W: 0, H: 0, img: null, upTo: 0, total: 0, cur: 0, stretch: 0, stretchOf: null };
 const crtOn = () => $('crt').checked && !!walk.ant && !walk.sphere && !!walk.n;
+const headingAt = (j) => (Math.round(Math.atan2(walk.wy[j + 1] - walk.wy[j], walk.wx[j + 1] - walk.wx[j]) / (Math.PI / 4)) + 8) % 8;
+// The stretch to line up: the highway's, else the walk's longest run of headings repeating every p steps
+// (3 times at least), p a whole number of the digits' period (as every highway's and bridge's stretch),
+// up to 100,000 steps and a few hundred million comparisons (a bridge too short for the app's hunt to
+// see it, 1/355 from step 1,912,656: 12 stretches of 2,940 steps); 0: none
+function crtStretch() {
+  if (walk.highway) return walk.highway.period;
+  const L = fractionPeriod()?.L, n = walk.n;
+  if (!L) return 0;
+  const d = new Uint8Array(n);
+  for (let i = 0; i < n; i++) d[i] = headingAt(i);
+  let best = 0, bestRun = 0;
+  for (let p = L; p <= Math.min(100000, n / 3) && (p / L) * n <= 3e8; p += L) {
+    let run = 0, longest = 0;
+    for (let i = p; i < n; i++) { if (d[i] === d[i - p]) { if (++run > longest) longest = run; } else run = 0; }
+    if (longest >= 3 * p && longest > bestRun) { best = p; bestRun = longest; }
+  }
+  return best;
+}
 function drawCrt() {
   const el = $('crtLayer');
   el.hidden = !crtOn();
   if (el.hidden) return;
   if (crt.key !== walk.wx || cur < crt.cur) {
-    const p = walk.highway?.period;
-    crt.total = walk.n + (p ? Math.round(walk.n * 0.12) : 0);
+    if (crt.stretchOf !== walk.wx) { crt.stretch = crtStretch(); crt.stretchOf = walk.wx; }  // once per walk
+    const p = crt.stretch;
+    crt.total = walk.n + (walk.highway ? Math.round(walk.n * 0.12) : 0);
     const side = Math.sqrt(crt.total);
-    crt.W = p ? p * Math.max(1, Math.round(side / p)) : Math.max(1, Math.round(side));
+    // a line of a whole number of stretches; a long stretch folded on a divisor of it near the side
+    // (its pattern then comes back every few lines, still in columns)
+    let W = Math.max(1, Math.round(side));
+    if (p && p <= side) W = p * Math.round(side / p);
+    else if (p) { W = p; for (let q = 1; q < p; q++) if (p % q === 0 && Math.abs(Math.log(q / side)) < Math.abs(Math.log(W / side))) W = q; }
+    crt.W = W;
     crt.H = Math.ceil(crt.total / crt.W);
     el.width = crt.W; el.height = crt.H;
     crt.img = el.getContext('2d').createImageData(crt.W, crt.H);
     crt.key = walk.wx; crt.upTo = 0;
   }
-  const { wx, wy } = walk, data = crt.img.data, H = walk.highway;
+  const data = crt.img.data, H = walk.highway;
   const end = cur >= walk.n ? crt.total : cur;
   for (let i = crt.upTo; i < end; i++) {
     const j = i < walk.n ? i : H.from + ((i - H.from) % H.period);  // past the end: the highway's stretch again
-    const sector = (Math.round(Math.atan2(wy[j + 1] - wy[j], wx[j + 1] - wx[j]) / (Math.PI / 4)) + 8) % 8, v = 30 + 32 * sector;
+    const v = 30 + 32 * headingAt(j);
     data[4 * i] = data[4 * i + 1] = data[4 * i + 2] = v; data[4 * i + 3] = 255;
   }
   crt.upTo = end; crt.cur = cur;
