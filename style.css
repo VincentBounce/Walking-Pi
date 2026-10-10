@@ -280,8 +280,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .strip:not(.line) { font-family: inherit; word-break: normal; }  /* texts (Life rule, marked cells): normal font, whole words */
 .strip .cur { color: var(--accent-text); background: var(--accent); border-radius: 2px; }
 .strip .dim { opacity: 0.5; }  /* the "0." of a number below 1: shown, not walked */
+.strip.turns { position: relative; padding-left: 30px; }  /* the walker before the arrows and the digits */
+.strip.turns > .icon { position: absolute; left: 0; top: 50%; width: 24px; height: 24px; transform: translateY(-50%); }
 .strip .arrows { line-height: 1.1; }  /* each digit's step above it, one column each */
-.strip .arrows span { display: inline-flex; justify-content: center; width: 1ch; transform: scale(0.8); }  /* a digit's width, drawn smaller */
+.strip .arrows span { display: inline-flex; justify-content: center; width: 1ch; }  /* a digit's width, centred on it */
 
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
 .stage.dragging { cursor: grabbing; }
@@ -372,7 +374,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar .stats.life { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.6fr) minmax(0, 0.6fr) minmax(0, 1.35fr); }
 .stage-bar .stats dt, .stage-bar .stats dd { white-space: nowrap; }
 .stage-bar .stats dd { text-align: left; }
-.stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 12px; }
+.stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 14px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 0; align-items: center; }
 .stage-bar .row button {  /* ⏮ Step ⏭: all alike, of one height with Play, their text or icon centred */

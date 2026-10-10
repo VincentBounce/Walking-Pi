@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.424';
+const VERSION = '0.1.425';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7144,7 +7144,7 @@ function updateStats() {
   }
   // digit strip around the current step
   const strip = $('digitStrip');
-  strip.classList.remove('line');  // one line of digits; the other texts may wrap
+  strip.classList.remove('line', 'turns');  // one line of digits; the other texts may wrap
   if (!walk.n) { strip.textContent = ''; return; }
   if (walk.ant && !antByDigits) { strip.textContent = `Rule ${antRules[current.mode]} · the number's digits are not used`; return; }  // an ant by its rule
   if (walk.points) {  // point modes: list the most recent marked cell numbers
@@ -7157,7 +7157,11 @@ function updateStats() {
   // One line of digits, exactly as many as fit (the strip is monospace, so it is a column count).
   // The head sits at 60 % of the line; at the start the line begins with the first digit, at the
   // end it finishes with the last one. The window then shrinks until "…", "0." and "." fit too.
+  // above each digit, its step as an arrow (an ant's: the turn it took); before both lines, the walker:
+  // a turtle turning relative to its heading, a compass going by fixed directions
+  const mode = MODES[current.mode], arrows = [...((mode.antOf ? ANTS[current.mode] : mode).arrows ?? '')];
   strip.classList.add('line');
+  strip.classList.toggle('turns', arrows.length > 0);
   const cols = stripColumns(strip), n = walk.n, d = walk.digits;
   const intLen = Math.min(current.head.length, n);
   let b = Math.min(n, Math.max(0, cur - Math.floor(cols * 0.6)) + cols), a = Math.max(0, b - cols);
@@ -7170,8 +7174,6 @@ function updateStats() {
   // a number below 1 does not walk its integer part (every such number would start the same
   // way): its "0." is only shown, greyed
   let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
-  // above each digit, its step as an arrow (an ant's: the turn it took); a blank above the marks
-  const mode = MODES[current.mode], arrows = [...((mode.antOf ? ANTS[current.mode] : mode).arrows ?? '')];
   const blank = '<span></span>';
   let top = blank.repeat(a > 0 ? 1 : intLen ? 0 : 2);
   for (let i = a; i < b; i++) {
@@ -7184,7 +7186,8 @@ function updateStats() {
     if (i === intLen - 1 && intLen < walk.n) { html += '.'; top += blank; }
   }
   html += b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
-  strip.innerHTML = arrows.length ? `<div class="arrows">${top}</div><div>${html}</div>` : html;
+  const walker = icon(['Turtle', 'Ant', 'Polymer'].includes(NAV[current.mode][3]) ? 'turtle' : 'compass');
+  strip.innerHTML = arrows.length ? `${walker}<div class="arrows">${top}</div><div>${html}</div>` : html;
 }
 
 // How many characters fit on one line of the strip, measured again only when its font or width changes
@@ -7192,8 +7195,9 @@ const stripMeasure = { key: '', cols: 0, ctx: null };
 function stripColumns(el) {
   // the width of the box it sits in, which keeps its width even while its details are folded away
   const box = el.closest('.stage-box') ?? el.parentElement, bs = getComputedStyle(box);
-  const width = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
-  const st = getComputedStyle(el), font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`, key = `${font}|${width}`;
+  const st = getComputedStyle(el);
+  const width = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight) - parseFloat(st.paddingLeft);  // less the walker's room
+  const font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`, key = `${font}|${width}`;
   if (stripMeasure.key !== key) {
     stripMeasure.ctx ??= document.createElement('canvas').getContext('2d');
     stripMeasure.ctx.font = font;
