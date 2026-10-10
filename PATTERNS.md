@@ -78,15 +78,15 @@ There the period's moves add up to a fixed step: a fraction drifts away as a fri
 
 ## 🐜 Langton's ant by the digits: late highways
 
-**Ant**, beside Grid and Cells, walks a turtle's cells as [Langton's ant](https://en.wikipedia.org/wiki/Langton%27s_ant); with **Digits** each digit turns it (0 left, 1 right; L1 / R1 on the Cairo pentagons), the other way on a dark cell, which then flips. A fraction's digits repeat, yet the ant first wanders in the mess it makes, for hundreds or millions of steps, until it may slip out into fresh cells on a **highway**: the same stretch of steps for ever, each one further on (its stretch is a whole number of the digits' period). When it starts cannot be foreseen: even for Langton's own ant, no one has proved that it always builds one.
+**Ant**, beside Grid and Cells, walks a turtle's cells as [Langton's ant](https://en.wikipedia.org/wiki/Langton%27s_ant); with **Digits** each digit turns it (0 left, 1 right; L1 / R1 on the Cairo pentagons), the other way on a dark cell, which then flips. A fraction's digits repeat, yet the ant first wanders in the mess it makes, for hundreds or millions of steps, until it may slip out into fresh cells on a **highway**: the same stretch of steps for ever, each one further on (its stretch is a whole number of the digits' period). When it starts cannot be foreseen: even for Langton's own ant, no one has proved that it always builds one. A highway may also be a **bridge**: it runs across a bay of the cloud and lands back in it, and the chaos goes on.
 
-Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000 steps and 5 stretches at least, its last stretch on cells first walked on it) and stops the ant as far along it as the cloud before it is wide. The search below ran apart, with the same rules and stops: every fraction 1/q with q ≤ 1,000 and every a/q with a ≤ 99 and q ≤ 9, in base 2, up to 50 million steps. Fractions that walk the same digits from some point on (the sevenths, or 1/q and 1/2q) often meet the same highway: they share a row. The app walks 20 million digits at most: past that, its links show the cloud, or the highway's start.
+Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000 steps and 5 stretches at least, its last stretch on cells first walked on it), follows it, and stops the ant as far along it as the cloud before it is wide; one that breaks before was a bridge. The search below ran apart, with the same rules and stops: every fraction 1/q with q ≤ 1,000 and every a/q with a ≤ 99 and q ≤ 9, in base 2, up to 50 million steps, each highway then followed until it was **endless for sure** (farther from the start than anything the ant walked before it, and going away). Fractions that walk the same digits from some point on (the sevenths, or 1/q and 1/2q) often meet the same highway: they share a row. The app walks 20 million digits at most: past that, its links show the cloud, or the highway's start.
 
 **Surprise** ranks how much order comes out of how little: the steps of chaos before the highway, over its stretch times the number's own digits (1/244: 6,369,167 ÷ (60 × 4) = 26,538). A short number, a long chaos and a short stretch make the sudden switch from a huge cloud to a straight road the most striking. Studies of Langton's ant measure the steps before the highway (its *transient*) and the highway's period, not the seed's size: this ratio is Walking Pi's own.
 
 ### Squares ant
 
-1,471 fractions: 1,289 build a highway, 158 none within 50 million steps, 24 unknown.
+1,471 fractions: 1,289 build an endless highway, 158 none within 50 million steps, 24 unknown.
 
 **The most surprising**:
 
@@ -94,8 +94,8 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 |--:|---|--:|--:|--:|--:|---|
 | 1 | [1/889](https://vincentbounce.github.io/Walking-Pi/#x=1/889&w=antSquare&d=20000000&r=digits) | 35,051,396 | 42 | 35,107,844 | 208,639 | the cloud only |
 | 2 | [1/589](https://vincentbounce.github.io/Walking-Pi/#x=1/589&w=antSquare&d=20000000&r=digits) | 38,673,200 | 90 | 38,752,220 | 107,426 | the cloud only |
-| 3 | [1/244](https://vincentbounce.github.io/Walking-Pi/#x=1/244&w=antSquare&d=6431687&r=digits) | 6,369,167 | 60 | 6,431,687 | 26,538 | whole |
-| 4 | [1/67](https://vincentbounce.github.io/Walking-Pi/#x=1/67&w=antSquare&d=14998443&r=digits) | 14,905,581 | 462 | 14,998,443 | 10,754 | whole |
+| 3 | [1/67](https://vincentbounce.github.io/Walking-Pi/#x=1/67&w=antSquare&d=20000000&r=digits) | 46,633,629 | 462 | 46,811,499 | 33,646 | the cloud only |
+| 4 | [1/244](https://vincentbounce.github.io/Walking-Pi/#x=1/244&w=antSquare&d=6431687&r=digits) | 6,369,167 | 60 | 6,431,687 | 26,538 | whole |
 | 5 | [1/444](https://vincentbounce.github.io/Walking-Pi/#x=1/444&w=antSquare&d=1391606&r=digits) | 1,367,594 | 36 | 1,391,606 | 9,497 | whole |
 | 6 | [1/62](https://vincentbounce.github.io/Walking-Pi/#x=1/62&w=antSquare&d=3878574&r=digits) | 3,846,924 | 150 | 3,878,574 | 8,549 | whole |
 | 7 | [1/699](https://vincentbounce.github.io/Walking-Pi/#x=1/699&w=antSquare&d=20000000&r=digits) | 37,385,220 | 1,160 | 37,657,820 | 8,057 | the cloud only |
@@ -117,38 +117,52 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 | 3 | [1/695](https://vincentbounce.github.io/Walking-Pi/#x=1/695&w=antSquare&d=17465366&r=digits) | 17,387,534 | 828 | 17,465,366 | 5,250 |
 | 4 | [33/7](https://vincentbounce.github.io/Walking-Pi/#x=33/7&w=antSquare&d=17342237&r=digits), [51/7](https://vincentbounce.github.io/Walking-Pi/#x=51/7&w=antSquare&d=17342237&r=digits), [66/7](https://vincentbounce.github.io/Walking-Pi/#x=66/7&w=antSquare&d=17342237&r=digits) | 16,842,827 | 16,110 | 17,342,237 | 348 |
 | 5 | [17/7](https://vincentbounce.github.io/Walking-Pi/#x=17/7&w=antSquare&d=16618934&r=digits), [25/7](https://vincentbounce.github.io/Walking-Pi/#x=25/7&w=antSquare&d=16618934&r=digits), [34/7](https://vincentbounce.github.io/Walking-Pi/#x=34/7&w=antSquare&d=16618934&r=digits), [50/7](https://vincentbounce.github.io/Walking-Pi/#x=50/7&w=antSquare&d=16618934&r=digits), [68/7](https://vincentbounce.github.io/Walking-Pi/#x=68/7&w=antSquare&d=16618934&r=digits) | 16,264,514 | 16,110 | 16,618,934 | 337 |
-| 6 | [1/67](https://vincentbounce.github.io/Walking-Pi/#x=1/67&w=antSquare&d=14998443&r=digits) | 14,905,581 | 462 | 14,998,443 | 10,754 |
-| 7 | [29/7](https://vincentbounce.github.io/Walking-Pi/#x=29/7&w=antSquare&d=15301914&r=digits), [55/7](https://vincentbounce.github.io/Walking-Pi/#x=55/7&w=antSquare&d=15301914&r=digits), [58/7](https://vincentbounce.github.io/Walking-Pi/#x=58/7&w=antSquare&d=15301914&r=digits), [1/56](https://vincentbounce.github.io/Walking-Pi/#x=1/56&w=antSquare&d=15301914&r=digits) | 14,786,394 | 16,110 | 15,301,914 | 306 |
-| 8 | [75/7](https://vincentbounce.github.io/Walking-Pi/#x=75/7&w=antSquare&d=14320301&r=digits), [93/7](https://vincentbounce.github.io/Walking-Pi/#x=93/7&w=antSquare&d=14320301&r=digits) | 13,885,331 | 16,110 | 14,320,301 | 287 |
-| 9 | [83/7](https://vincentbounce.github.io/Walking-Pi/#x=83/7&w=antSquare&d=14447633&r=digits), [85/7](https://vincentbounce.github.io/Walking-Pi/#x=85/7&w=antSquare&d=14447633&r=digits) | 13,754,903 | 16,110 | 14,447,633 | 285 |
-| 10 | [1/807](https://vincentbounce.github.io/Walking-Pi/#x=1/807&w=antSquare&d=14011299&r=digits) | 13,662,899 | 13,400 | 14,011,299 | 255 |
-| 11 | [1/830](https://vincentbounce.github.io/Walking-Pi/#x=1/830&w=antSquare&d=13432153&r=digits) | 13,280,617 | 984 | 13,432,153 | 3,374 |
-| 12 | [1/466](https://vincentbounce.github.io/Walking-Pi/#x=1/466&w=antSquare&d=11800143&r=digits) | 11,638,439 | 2,378 | 11,800,143 | 1,224 |
-| 13 | [1/392](https://vincentbounce.github.io/Walking-Pi/#x=1/392&w=antSquare&d=11587154&r=digits) | 11,316,674 | 7,728 | 11,587,154 | 366 |
-| 14 | [67/7](https://vincentbounce.github.io/Walking-Pi/#x=67/7&w=antSquare&d=11628074&r=digits) | 11,176,994 | 16,110 | 11,628,074 | 231 |
-| 15 | [1/802](https://vincentbounce.github.io/Walking-Pi/#x=1/802&w=antSquare&d=10825577&r=digits) | 9,804,977 | 12,600 | 10,825,577 | 195 |
-| 16 | [1/638](https://vincentbounce.github.io/Walking-Pi/#x=1/638&w=antSquare&d=7961141&r=digits) | 7,770,041 | 2,100 | 7,961,141 | 925 |
-| 17 | [1/836](https://vincentbounce.github.io/Walking-Pi/#x=1/836&w=antSquare&d=7731959&r=digits) | 7,601,909 | 1,530 | 7,731,959 | 1,242 |
-| 18 | [1/553](https://vincentbounce.github.io/Walking-Pi/#x=1/553&w=antSquare&d=8354223&r=digits) | 7,452,309 | 29,094 | 8,354,223 | 64 |
-| 19 | [1/244](https://vincentbounce.github.io/Walking-Pi/#x=1/244&w=antSquare&d=6431687&r=digits) | 6,369,167 | 60 | 6,431,687 | 26,538 |
-| 20 | [1/61](https://vincentbounce.github.io/Walking-Pi/#x=1/61&w=antSquare&d=6182528&r=digits) | 6,095,948 | 780 | 6,182,528 | 2,605 |
+| 6 | [29/7](https://vincentbounce.github.io/Walking-Pi/#x=29/7&w=antSquare&d=15301914&r=digits), [55/7](https://vincentbounce.github.io/Walking-Pi/#x=55/7&w=antSquare&d=15301914&r=digits), [58/7](https://vincentbounce.github.io/Walking-Pi/#x=58/7&w=antSquare&d=15301914&r=digits), [1/56](https://vincentbounce.github.io/Walking-Pi/#x=1/56&w=antSquare&d=15301914&r=digits) | 14,786,394 | 16,110 | 15,301,914 | 306 |
+| 7 | [75/7](https://vincentbounce.github.io/Walking-Pi/#x=75/7&w=antSquare&d=14320301&r=digits), [93/7](https://vincentbounce.github.io/Walking-Pi/#x=93/7&w=antSquare&d=14320301&r=digits) | 13,885,331 | 16,110 | 14,320,301 | 287 |
+| 8 | [83/7](https://vincentbounce.github.io/Walking-Pi/#x=83/7&w=antSquare&d=14447633&r=digits), [85/7](https://vincentbounce.github.io/Walking-Pi/#x=85/7&w=antSquare&d=14447633&r=digits) | 13,754,903 | 16,110 | 14,447,633 | 285 |
+| 9 | [1/807](https://vincentbounce.github.io/Walking-Pi/#x=1/807&w=antSquare&d=14011299&r=digits) | 13,662,899 | 13,400 | 14,011,299 | 255 |
+| 10 | [1/830](https://vincentbounce.github.io/Walking-Pi/#x=1/830&w=antSquare&d=13432153&r=digits) | 13,280,617 | 984 | 13,432,153 | 3,374 |
+| 11 | [1/466](https://vincentbounce.github.io/Walking-Pi/#x=1/466&w=antSquare&d=11800143&r=digits) | 11,638,439 | 2,378 | 11,800,143 | 1,224 |
+| 12 | [1/392](https://vincentbounce.github.io/Walking-Pi/#x=1/392&w=antSquare&d=11587154&r=digits) | 11,316,674 | 7,728 | 11,587,154 | 366 |
+| 13 | [67/7](https://vincentbounce.github.io/Walking-Pi/#x=67/7&w=antSquare&d=11628074&r=digits) | 11,176,994 | 16,110 | 11,628,074 | 231 |
+| 14 | [1/802](https://vincentbounce.github.io/Walking-Pi/#x=1/802&w=antSquare&d=10825577&r=digits) | 9,804,977 | 12,600 | 10,825,577 | 195 |
+| 15 | [1/638](https://vincentbounce.github.io/Walking-Pi/#x=1/638&w=antSquare&d=7961141&r=digits) | 7,770,041 | 2,100 | 7,961,141 | 925 |
+| 16 | [1/836](https://vincentbounce.github.io/Walking-Pi/#x=1/836&w=antSquare&d=7731959&r=digits) | 7,601,909 | 1,530 | 7,731,959 | 1,242 |
+| 17 | [1/553](https://vincentbounce.github.io/Walking-Pi/#x=1/553&w=antSquare&d=8354223&r=digits) | 7,452,309 | 29,094 | 8,354,223 | 64 |
+| 18 | [1/244](https://vincentbounce.github.io/Walking-Pi/#x=1/244&w=antSquare&d=6431687&r=digits) | 6,369,167 | 60 | 6,431,687 | 26,538 |
+| 19 | [1/61](https://vincentbounce.github.io/Walking-Pi/#x=1/61&w=antSquare&d=6182528&r=digits) | 6,095,948 | 780 | 6,182,528 | 2,605 |
+| 20 | [1/319](https://vincentbounce.github.io/Walking-Pi/#x=1/319&w=antSquare&d=6229200&r=digits) | 5,918,400 | 2,100 | 6,229,200 | 705 |
 
 **Beyond the app's 20 million digits**:
 
 | # | Numbers | Highway from step | Stretch | Stops at | Surprise | In the app |
 |--:|---|--:|--:|--:|--:|---|
-| 1 | [61/7](https://vincentbounce.github.io/Walking-Pi/#x=61/7&w=antSquare&d=20000000&r=digits) | 42,757,367 | 16,110 | 43,401,767 | 885 | the cloud only |
-| 2 | [1/527](https://vincentbounce.github.io/Walking-Pi/#x=1/527&w=antSquare&d=20000000&r=digits) | 41,545,659 | 1,800 | 41,801,259 | 5,770 | the cloud only |
-| 3 | [1/49](https://vincentbounce.github.io/Walking-Pi/#x=1/49&w=antSquare&d=20000000&r=digits) | 41,279,786 | 7,728 | 41,720,282 | 1,781 | the cloud only |
-| 4 | [1/589](https://vincentbounce.github.io/Walking-Pi/#x=1/589&w=antSquare&d=20000000&r=digits) | 38,673,200 | 90 | 38,752,220 | 107,426 | the cloud only |
-| 5 | [1/699](https://vincentbounce.github.io/Walking-Pi/#x=1/699&w=antSquare&d=20000000&r=digits) | 37,385,220 | 1,160 | 37,657,820 | 8,057 | the cloud only |
-| 6 | [1/889](https://vincentbounce.github.io/Walking-Pi/#x=1/889&w=antSquare&d=20000000&r=digits) | 35,051,396 | 42 | 35,107,844 | 208,639 | the cloud only |
-| 7 | [1/651](https://vincentbounce.github.io/Walking-Pi/#x=1/651&w=antSquare&d=20000000&r=digits) | 32,239,185 | 9,690 | 32,568,645 | 832 | the cloud only |
-| 8 | [1/851](https://vincentbounce.github.io/Walking-Pi/#x=1/851&w=antSquare&d=20000000&r=digits) | 26,818,559 | 85,536 | 27,844,991 | 78 | the cloud only |
-| 9 | [1/784](https://vincentbounce.github.io/Walking-Pi/#x=1/784&w=antSquare&d=20000000&r=digits) | 25,389,031 | 7,728 | 25,798,615 | 821 | the cloud only |
-| 10 | [1/691](https://vincentbounce.github.io/Walking-Pi/#x=1/691&w=antSquare&d=20000000&r=digits) | 24,054,797 | 31,740 | 25,419,617 | 189 | the cloud only |
-| 11 | [1/660](https://vincentbounce.github.io/Walking-Pi/#x=1/660&w=antSquare&d=20000000&r=digits) | 21,676,356 | 4,720 | 22,332,436 | 1,148 | the cloud only |
-| 12 | [1/224](https://vincentbounce.github.io/Walking-Pi/#x=1/224&w=antSquare&d=20000000&r=digits) | 20,677,609 | 16,110 | 21,289,789 | 321 | the cloud only |
+| 1 | [1/67](https://vincentbounce.github.io/Walking-Pi/#x=1/67&w=antSquare&d=20000000&r=digits) | 46,633,629 | 462 | 46,811,499 | 33,646 | the cloud only |
+| 2 | [61/7](https://vincentbounce.github.io/Walking-Pi/#x=61/7&w=antSquare&d=20000000&r=digits) | 42,757,367 | 16,110 | 43,401,767 | 885 | the cloud only |
+| 3 | [1/527](https://vincentbounce.github.io/Walking-Pi/#x=1/527&w=antSquare&d=20000000&r=digits) | 41,545,659 | 1,800 | 41,801,259 | 5,770 | the cloud only |
+| 4 | [1/49](https://vincentbounce.github.io/Walking-Pi/#x=1/49&w=antSquare&d=20000000&r=digits) | 41,279,786 | 7,728 | 41,720,282 | 1,781 | the cloud only |
+| 5 | [1/589](https://vincentbounce.github.io/Walking-Pi/#x=1/589&w=antSquare&d=20000000&r=digits) | 38,673,200 | 90 | 38,752,220 | 107,426 | the cloud only |
+| 6 | [1/699](https://vincentbounce.github.io/Walking-Pi/#x=1/699&w=antSquare&d=20000000&r=digits) | 37,385,220 | 1,160 | 37,657,820 | 8,057 | the cloud only |
+| 7 | [1/889](https://vincentbounce.github.io/Walking-Pi/#x=1/889&w=antSquare&d=20000000&r=digits) | 35,051,396 | 42 | 35,107,844 | 208,639 | the cloud only |
+| 8 | [1/651](https://vincentbounce.github.io/Walking-Pi/#x=1/651&w=antSquare&d=20000000&r=digits) | 32,239,185 | 9,690 | 32,568,645 | 832 | the cloud only |
+| 9 | [1/355](https://vincentbounce.github.io/Walking-Pi/#x=1/355&w=antSquare&d=20000000&r=digits) | 30,852,698 | 6,300 | 31,860,698 | 1,224 | the cloud only |
+| 10 | [1/851](https://vincentbounce.github.io/Walking-Pi/#x=1/851&w=antSquare&d=20000000&r=digits) | 26,818,559 | 85,536 | 27,844,991 | 78 | the cloud only |
+| 11 | [1/784](https://vincentbounce.github.io/Walking-Pi/#x=1/784&w=antSquare&d=20000000&r=digits) | 25,389,031 | 7,728 | 25,798,615 | 821 | the cloud only |
+| 12 | [1/691](https://vincentbounce.github.io/Walking-Pi/#x=1/691&w=antSquare&d=20000000&r=digits) | 24,054,797 | 31,740 | 25,419,617 | 189 | the cloud only |
+| 13 | [1/660](https://vincentbounce.github.io/Walking-Pi/#x=1/660&w=antSquare&d=20000000&r=digits) | 21,676,356 | 4,720 | 22,332,436 | 1,148 | the cloud only |
+| 14 | [1/224](https://vincentbounce.github.io/Walking-Pi/#x=1/224&w=antSquare&d=20000000&r=digits) | 20,677,609 | 16,110 | 21,289,789 | 321 | the cloud only |
+
+**Bridges** back into the cloud (7):
+
+| Number | Bridges: from step (steps long) | Then |
+|---|---|---|
+| [1/67](https://vincentbounce.github.io/Walking-Pi/#x=1/67&w=antSquare&d=20000000&r=digits) | 14,905,581 (26,419), 40,107,483 (6,517) | an endless highway from step 46,633,629 |
+| [1/98](https://vincentbounce.github.io/Walking-Pi/#x=1/98&w=antSquare&d=20000000&r=digits) | 53,287,731 (60,269) | chaos again, up to 60 million steps |
+| [1/355](https://vincentbounce.github.io/Walking-Pi/#x=1/355&w=antSquare&d=20000000&r=digits) | 1,909,717 (40,283), 21,523,021 (118,979) | an endless highway from step 30,852,698 |
+| [1/610](https://vincentbounce.github.io/Walking-Pi/#x=1/610&w=antSquare&d=20000000&r=digits) | 53,912,889 (7,111) | chaos again, up to 60 million steps |
+| [1/617](https://vincentbounce.github.io/Walking-Pi/#x=1/617&w=antSquare&d=20000000&r=digits) | 38,080,433 (23,567) | chaos again, up to 60 million steps |
+| [1/764](https://vincentbounce.github.io/Walking-Pi/#x=1/764&w=antSquare&d=20000000&r=digits) | 35,730,571 (9,429) | chaos again, up to 60 million steps |
+| [1/976](https://vincentbounce.github.io/Walking-Pi/#x=1/976&w=antSquare&d=1447309&r=digits) | 1,303,699 (4,301) | an endless highway from step 1,414,849 |
 
 <details><summary>No highway within 50 million steps (158)</summary>
 
@@ -164,15 +178,15 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 
 ### Cairo pentagons ant
 
-1,471 fractions: 923 build a highway, 527 none within 50 million steps, 21 unknown.
+1,471 fractions: 923 build an endless highway, 527 none within 50 million steps, 21 unknown.
 
 **The most surprising**:
 
 | # | Numbers | Highway from step | Stretch | Stops at | Surprise | In the app |
 |--:|---|--:|--:|--:|--:|---|
 | 1 | [1/356](https://vincentbounce.github.io/Walking-Pi/#x=1/356&w=antCairo&d=20000000&r=digits) | 42,716,629 | 55 | 42,758,814 | 194,166 | the cloud only |
-| 2 | [1/763](https://vincentbounce.github.io/Walking-Pi/#x=1/763&w=antCairo&d=15377313&r=digits) | 15,328,497 | 72 | 15,377,313 | 53,224 | whole |
-| 3 | [1/378](https://vincentbounce.github.io/Walking-Pi/#x=1/378&w=antCairo&d=13288556&r=digits) | 13,256,084 | 72 | 13,288,556 | 46,028 | whole |
+| 2 | [1/763](https://vincentbounce.github.io/Walking-Pi/#x=1/763&w=antCairo&d=20000000&r=digits) | 32,070,035 | 72 | 32,129,003 | 111,354 | the cloud only |
+| 3 | [1/378](https://vincentbounce.github.io/Walking-Pi/#x=1/378&w=antCairo&d=13300565&r=digits) | 13,267,805 | 72 | 13,300,565 | 46,069 | whole |
 | 4 | [1/624](https://vincentbounce.github.io/Walking-Pi/#x=1/624&w=antCairo&d=3009796&r=digits) | 3,000,172 | 24 | 3,009,796 | 31,252 | whole |
 | 5 | [1/202](https://vincentbounce.github.io/Walking-Pi/#x=1/202&w=antCairo&d=20000000&r=digits) | 31,641,880 | 300 | 31,811,380 | 26,368 | the cloud only |
 | 6 | [1/925](https://vincentbounce.github.io/Walking-Pi/#x=1/925&w=antCairo&d=20000000&r=digits) | 45,588,160 | 540 | 45,981,280 | 21,106 | the cloud only |
@@ -181,10 +195,10 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 | 9 | [1/692](https://vincentbounce.github.io/Walking-Pi/#x=1/692&w=antCairo&d=20000000&r=digits) | 24,579,246 | 860 | 24,896,586 | 7,145 | the cloud only |
 | 10 | [1/153](https://vincentbounce.github.io/Walking-Pi/#x=1/153&w=antCairo&d=3436278&r=digits) | 3,426,198 | 120 | 3,436,278 | 7,138 | whole |
 | 11 | [1/612](https://vincentbounce.github.io/Walking-Pi/#x=1/612&w=antCairo&d=3438602&r=digits) | 3,425,402 | 120 | 3,438,602 | 7,136 | whole |
-| 12 | [1/346](https://vincentbounce.github.io/Walking-Pi/#x=1/346&w=antCairo&d=20000000&r=digits) | 21,188,084 | 860 | 21,518,324 | 6,159 | the cloud only |
-| 13 | [1/360](https://vincentbounce.github.io/Walking-Pi/#x=1/360&w=antCairo&d=18781480&r=digits) | 18,650,152 | 768 | 18,781,480 | 6,071 | whole |
-| 14 | [1/189](https://vincentbounce.github.io/Walking-Pi/#x=1/189&w=antCairo&d=1662016&r=digits) | 1,642,864 | 72 | 1,662,016 | 5,704 | whole |
-| 15 | [1/854](https://vincentbounce.github.io/Walking-Pi/#x=1/854&w=antCairo&d=20000000&r=digits) | 22,720,916 | 1,200 | 22,830,116 | 4,734 | the cloud only |
+| 12 | [1/457](https://vincentbounce.github.io/Walking-Pi/#x=1/457&w=antCairo&d=14701623&r=digits) | 14,548,407 | 532 | 14,701,623 | 6,837 | whole |
+| 13 | [1/346](https://vincentbounce.github.io/Walking-Pi/#x=1/346&w=antCairo&d=20000000&r=digits) | 21,188,084 | 860 | 21,518,324 | 6,159 | the cloud only |
+| 14 | [1/360](https://vincentbounce.github.io/Walking-Pi/#x=1/360&w=antCairo&d=18781480&r=digits) | 18,650,152 | 768 | 18,781,480 | 6,071 | whole |
+| 15 | [1/189](https://vincentbounce.github.io/Walking-Pi/#x=1/189&w=antCairo&d=1662016&r=digits) | 1,642,864 | 72 | 1,662,016 | 5,704 | whole |
 
 **The latest seen whole in the app** (stopping within 20 million steps):
 
@@ -193,23 +207,23 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 | 1 | [1/360](https://vincentbounce.github.io/Walking-Pi/#x=1/360&w=antCairo&d=18781480&r=digits) | 18,650,152 | 768 | 18,781,480 | 6,071 |
 | 2 | [1/986](https://vincentbounce.github.io/Walking-Pi/#x=1/986&w=antCairo&d=18648929&r=digits) | 18,385,897 | 3,416 | 18,648,929 | 1,346 |
 | 3 | [1/914](https://vincentbounce.github.io/Walking-Pi/#x=1/914&w=antCairo&d=16423822&r=digits) | 16,301,994 | 532 | 16,423,822 | 7,661 |
-| 4 | [1/763](https://vincentbounce.github.io/Walking-Pi/#x=1/763&w=antCairo&d=15377313&r=digits) | 15,328,497 | 72 | 15,377,313 | 53,224 |
-| 5 | [1/978](https://vincentbounce.github.io/Walking-Pi/#x=1/978&w=antCairo&d=14793714&r=digits) | 14,713,524 | 810 | 14,793,714 | 4,541 |
-| 6 | [1/478](https://vincentbounce.github.io/Walking-Pi/#x=1/478&w=antCairo&d=13974027&r=digits) | 13,488,507 | 6,069 | 13,974,027 | 556 |
-| 7 | [1/378](https://vincentbounce.github.io/Walking-Pi/#x=1/378&w=antCairo&d=13288556&r=digits) | 13,256,084 | 72 | 13,288,556 | 46,028 |
-| 8 | [1/301](https://vincentbounce.github.io/Walking-Pi/#x=1/301&w=antCairo&d=10110986&r=digits) | 10,013,546 | 672 | 10,110,986 | 3,725 |
-| 9 | [1/485](https://vincentbounce.github.io/Walking-Pi/#x=1/485&w=antCairo&d=10147963&r=digits) | 10,001,419 | 3,408 | 10,147,963 | 734 |
-| 10 | [1/602](https://vincentbounce.github.io/Walking-Pi/#x=1/602&w=antCairo&d=9854661&r=digits) | 9,713,541 | 672 | 9,854,661 | 3,614 |
-| 11 | [1/278](https://vincentbounce.github.io/Walking-Pi/#x=1/278&w=antCairo&d=7744937&r=digits) | 7,475,009 | 22,494 | 7,744,937 | 83 |
-| 12 | [1/45](https://vincentbounce.github.io/Walking-Pi/#x=1/45&w=antCairo&d=6290301&r=digits) | 6,218,109 | 768 | 6,290,301 | 2,699 |
-| 13 | [1/785](https://vincentbounce.github.io/Walking-Pi/#x=1/785&w=antCairo&d=5860062&r=digits) | 5,812,586 | 572 | 5,860,062 | 2,540 |
-| 14 | [1/453](https://vincentbounce.github.io/Walking-Pi/#x=1/453&w=antCairo&d=5848713&r=digits) | 5,328,213 | 20,820 | 5,848,713 | 64 |
-| 15 | [1/915](https://vincentbounce.github.io/Walking-Pi/#x=1/915&w=antCairo&d=5124141&r=digits) | 4,885,461 | 2,040 | 5,124,141 | 599 |
-| 16 | [1/180](https://vincentbounce.github.io/Walking-Pi/#x=1/180&w=antCairo&d=4744037&r=digits) | 4,674,149 | 768 | 4,744,037 | 1,522 |
-| 17 | [1/556](https://vincentbounce.github.io/Walking-Pi/#x=1/556&w=antCairo&d=4462694&r=digits) | 4,385,690 | 138 | 4,462,694 | 7,945 |
-| 18 | [1/376](https://vincentbounce.github.io/Walking-Pi/#x=1/376&w=antCairo&d=4314193&r=digits) | 4,259,039 | 506 | 4,314,193 | 2,104 |
-| 19 | [1/101](https://vincentbounce.github.io/Walking-Pi/#x=1/101&w=antCairo&d=4103118&r=digits) | 4,038,318 | 300 | 4,103,118 | 3,365 |
-| 20 | [1/885](https://vincentbounce.github.io/Walking-Pi/#x=1/885&w=antCairo&d=4131757&r=digits) | 4,021,325 | 1,624 | 4,131,757 | 619 |
+| 4 | [1/978](https://vincentbounce.github.io/Walking-Pi/#x=1/978&w=antCairo&d=14793714&r=digits) | 14,713,524 | 810 | 14,793,714 | 4,541 |
+| 5 | [1/457](https://vincentbounce.github.io/Walking-Pi/#x=1/457&w=antCairo&d=14701623&r=digits) | 14,548,407 | 532 | 14,701,623 | 6,837 |
+| 6 | [1/378](https://vincentbounce.github.io/Walking-Pi/#x=1/378&w=antCairo&d=13300565&r=digits) | 13,267,805 | 72 | 13,300,565 | 46,069 |
+| 7 | [1/301](https://vincentbounce.github.io/Walking-Pi/#x=1/301&w=antCairo&d=11368844&r=digits) | 11,262,668 | 672 | 11,368,844 | 4,190 |
+| 8 | [1/485](https://vincentbounce.github.io/Walking-Pi/#x=1/485&w=antCairo&d=10147963&r=digits) | 10,001,419 | 3,408 | 10,147,963 | 734 |
+| 9 | [1/602](https://vincentbounce.github.io/Walking-Pi/#x=1/602&w=antCairo&d=9854661&r=digits) | 9,713,541 | 672 | 9,854,661 | 3,614 |
+| 10 | [1/278](https://vincentbounce.github.io/Walking-Pi/#x=1/278&w=antCairo&d=7744937&r=digits) | 7,475,009 | 22,494 | 7,744,937 | 83 |
+| 11 | [1/45](https://vincentbounce.github.io/Walking-Pi/#x=1/45&w=antCairo&d=6290301&r=digits) | 6,218,109 | 768 | 6,290,301 | 2,699 |
+| 12 | [1/785](https://vincentbounce.github.io/Walking-Pi/#x=1/785&w=antCairo&d=5860062&r=digits) | 5,812,586 | 572 | 5,860,062 | 2,540 |
+| 13 | [1/453](https://vincentbounce.github.io/Walking-Pi/#x=1/453&w=antCairo&d=5848713&r=digits) | 5,328,213 | 20,820 | 5,848,713 | 64 |
+| 14 | [1/915](https://vincentbounce.github.io/Walking-Pi/#x=1/915&w=antCairo&d=5124141&r=digits) | 4,885,461 | 2,040 | 5,124,141 | 599 |
+| 15 | [1/180](https://vincentbounce.github.io/Walking-Pi/#x=1/180&w=antCairo&d=4744037&r=digits) | 4,674,149 | 768 | 4,744,037 | 1,522 |
+| 16 | [1/556](https://vincentbounce.github.io/Walking-Pi/#x=1/556&w=antCairo&d=4462694&r=digits) | 4,385,690 | 138 | 4,462,694 | 7,945 |
+| 17 | [1/376](https://vincentbounce.github.io/Walking-Pi/#x=1/376&w=antCairo&d=4314193&r=digits) | 4,259,039 | 506 | 4,314,193 | 2,104 |
+| 18 | [1/101](https://vincentbounce.github.io/Walking-Pi/#x=1/101&w=antCairo&d=4103118&r=digits) | 4,038,318 | 300 | 4,103,118 | 3,365 |
+| 19 | [1/885](https://vincentbounce.github.io/Walking-Pi/#x=1/885&w=antCairo&d=4131757&r=digits) | 4,021,325 | 1,624 | 4,131,757 | 619 |
+| 20 | [1/153](https://vincentbounce.github.io/Walking-Pi/#x=1/153&w=antCairo&d=3436278&r=digits) | 3,426,198 | 120 | 3,436,278 | 7,138 |
 
 **Beyond the app's 20 million digits**:
 
@@ -218,13 +232,27 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 | 1 | [1/925](https://vincentbounce.github.io/Walking-Pi/#x=1/925&w=antCairo&d=20000000&r=digits) | 45,588,160 | 540 | 45,981,280 | 21,106 | the cloud only |
 | 2 | [1/335](https://vincentbounce.github.io/Walking-Pi/#x=1/335&w=antCairo&d=20000000&r=digits) | 45,028,778 | 3,168 | 45,779,594 | 3,553 | the cloud only |
 | 3 | [1/356](https://vincentbounce.github.io/Walking-Pi/#x=1/356&w=antCairo&d=20000000&r=digits) | 42,716,629 | 55 | 42,758,814 | 194,166 | the cloud only |
-| 4 | [1/202](https://vincentbounce.github.io/Walking-Pi/#x=1/202&w=antCairo&d=20000000&r=digits) | 31,641,880 | 300 | 31,811,380 | 26,368 | the cloud only |
-| 5 | [1/283](https://vincentbounce.github.io/Walking-Pi/#x=1/283&w=antCairo&d=20000000&r=digits) | 30,818,564 | 2,914 | 31,109,964 | 2,644 | the cloud only |
-| 6 | [1/974](https://vincentbounce.github.io/Walking-Pi/#x=1/974&w=antCairo&d=20000000&r=digits) | 26,475,735 | 12,393 | 27,330,852 | 534 | the cloud only |
-| 7 | [1/692](https://vincentbounce.github.io/Walking-Pi/#x=1/692&w=antCairo&d=20000000&r=digits) | 24,579,246 | 860 | 24,896,586 | 7,145 | the cloud only |
-| 8 | [1/777](https://vincentbounce.github.io/Walking-Pi/#x=1/777&w=antCairo&d=20000000&r=digits) | 22,976,332 | 7,488 | 23,268,364 | 767 | the cloud only |
-| 9 | [1/854](https://vincentbounce.github.io/Walking-Pi/#x=1/854&w=antCairo&d=20000000&r=digits) | 22,720,916 | 1,200 | 22,830,116 | 4,734 | the cloud only |
-| 10 | [1/346](https://vincentbounce.github.io/Walking-Pi/#x=1/346&w=antCairo&d=20000000&r=digits) | 21,188,084 | 860 | 21,518,324 | 6,159 | the cloud only |
+| 4 | [1/763](https://vincentbounce.github.io/Walking-Pi/#x=1/763&w=antCairo&d=20000000&r=digits) | 32,070,035 | 72 | 32,129,003 | 111,354 | the cloud only |
+| 5 | [1/202](https://vincentbounce.github.io/Walking-Pi/#x=1/202&w=antCairo&d=20000000&r=digits) | 31,641,880 | 300 | 31,811,380 | 26,368 | the cloud only |
+| 6 | [1/283](https://vincentbounce.github.io/Walking-Pi/#x=1/283&w=antCairo&d=20000000&r=digits) | 30,818,564 | 2,914 | 31,109,964 | 2,644 | the cloud only |
+| 7 | [1/974](https://vincentbounce.github.io/Walking-Pi/#x=1/974&w=antCairo&d=20000000&r=digits) | 26,475,735 | 12,393 | 27,330,852 | 534 | the cloud only |
+| 8 | [1/692](https://vincentbounce.github.io/Walking-Pi/#x=1/692&w=antCairo&d=20000000&r=digits) | 24,579,246 | 860 | 24,896,586 | 7,145 | the cloud only |
+| 9 | [1/478](https://vincentbounce.github.io/Walking-Pi/#x=1/478&w=antCairo&d=20000000&r=digits) | 23,439,464 | 6,069 | 24,058,502 | 966 | the cloud only |
+| 10 | [1/777](https://vincentbounce.github.io/Walking-Pi/#x=1/777&w=antCairo&d=20000000&r=digits) | 22,976,332 | 7,488 | 23,268,364 | 767 | the cloud only |
+| 11 | [1/854](https://vincentbounce.github.io/Walking-Pi/#x=1/854&w=antCairo&d=20000000&r=digits) | 22,720,916 | 1,200 | 22,830,116 | 4,734 | the cloud only |
+| 12 | [1/346](https://vincentbounce.github.io/Walking-Pi/#x=1/346&w=antCairo&d=20000000&r=digits) | 21,188,084 | 860 | 21,518,324 | 6,159 | the cloud only |
+
+**Bridges** back into the cloud (7):
+
+| Number | Bridges: from step (steps long) | Then |
+|---|---|---|
+| [1/301](https://vincentbounce.github.io/Walking-Pi/#x=1/301&w=antCairo&d=11368844&r=digits) | 10,013,546 (10,454) | an endless highway from step 11,262,668 |
+| [1/378](https://vincentbounce.github.io/Walking-Pi/#x=1/378&w=antCairo&d=13300565&r=digits) | 13,256,084 (3,916) | an endless highway from step 13,267,805 |
+| [1/404](https://vincentbounce.github.io/Walking-Pi/#x=1/404&w=antCairo&d=20000000&r=digits) | 11,855,520 (6,480) | chaos again, up to 60 million steps |
+| [1/457](https://vincentbounce.github.io/Walking-Pi/#x=1/457&w=antCairo&d=14701623&r=digits) | 3,487,885 (6,115), 4,000,025 (5,975) | an endless highway from step 14,548,407 |
+| [1/478](https://vincentbounce.github.io/Walking-Pi/#x=1/478&w=antCairo&d=20000000&r=digits) | 13,488,507 (67,493) | an endless highway from step 23,439,464 |
+| [1/763](https://vincentbounce.github.io/Walking-Pi/#x=1/763&w=antCairo&d=20000000&r=digits) | 15,328,497 (3,503) | an endless highway from step 32,070,035 |
+| [1/831](https://vincentbounce.github.io/Walking-Pi/#x=1/831&w=antCairo&d=20000000&r=digits) | 27,508,206 (65,794), 43,414,681 (73,319) | chaos again, up to 60 million steps |
 
 <details><summary>No highway within 50 million steps (527)</summary>
 
