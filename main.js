@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.429';
+const VERSION = '0.1.430';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7814,6 +7814,7 @@ window.addEventListener('hashchange', () => { const s = parseHash(); if (s) appl
 // A link with a setup opens that setup; otherwise π on the turtle walk. The link then follows the
 // setup on its events (see syncLink).
 new ResizeObserver(resize).observe(stage);
+new ResizeObserver(() => { statsDirty = true; }).observe($('animBar'));  // the bar opened or closed: its digits fill its new width
 updateSpeedLabel();
 resize();
 requestAnimationFrame(tick);
