@@ -286,6 +286,44 @@ Each base-3 digit turns the ant: 0 left, 1 straight on, 2 right, mirrored on a d
 | 14 | [1/1675](https://vincentbounce.github.io/Walking-Pi/#x=1/1675&w=antHex&d=8359402&r=digits%20L1%20N%20R1) | 8,218,162 | 1,320 | 8,359,402 | 1,245 |
 | 15 | [1/1811](https://vincentbounce.github.io/Walking-Pi/#x=1/1811&w=antHex&d=8618261&r=digits%20L1%20N%20R1) | 8,066,211 | 9,050 | 8,618,261 | 178 |
 
+### Tokarz's ant: straight on every N-th step
+
+In 2018, K. Tokarz studied a Langton's ant that goes straight on every N-th step ([arXiv 1807.08789](https://arxiv.org/abs/1807.08789)): for most N it ends in a bounded pattern that oscillates for ever, for some it builds a highway. With **Digits LNR** (base 3: 0 left, 1 straight on, 2 right, mirrored on a dark cell), it is the fraction (3<sup>N</sup> − 2) / (3<sup>N</sup> − 1), whose digits are N − 1 twos and a one, again and again: Langton's ant (right on a light cell, left on a dark one), straight on every N-th step. N from 2 to 30, up to 50 million steps:
+
+| N | Number | Then |
+|--:|---|---|
+| 2 | [7/8](https://vincentbounce.github.io/Walking-Pi/#x=7/8&w=antSquare&d=25152&r=digits%20LNR) | a highway from step 19,952, every 208 steps |
+| 3 | [25/26](https://vincentbounce.github.io/Walking-Pi/#x=25/26&w=antSquare&d=18552&r=digits%20LNR) | a highway from step 14,964, every 156 steps |
+| 4 | [79/80](https://vincentbounce.github.io/Walking-Pi/#x=79/80&w=antSquare&d=64&r=digits%20LNR) | a highway from step 0, every 8 steps |
+| 5 | [241/242](https://vincentbounce.github.io/Walking-Pi/#x=241/242&w=antSquare&d=885&r=digits%20LNR) | a highway from step 5, every 110 steps |
+| 6 | [727/728](https://vincentbounce.github.io/Walking-Pi/#x=727/728&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 69 cells of its start, up to 50 million steps |
+| 7 | [2185/2186](https://vincentbounce.github.io/Walking-Pi/#x=2185/2186&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 50 cells of its start, up to 50 million steps |
+| 8 | [6559/6560](https://vincentbounce.github.io/Walking-Pi/#x=6559/6560&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 54 cells of its start, up to 50 million steps |
+| 9 | [19681/19682](https://vincentbounce.github.io/Walking-Pi/#x=19681/19682&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 36 cells of its start, up to 50 million steps |
+| 10 | [59047/59048](https://vincentbounce.github.io/Walking-Pi/#x=59047/59048&w=antSquare&d=1447&r=digits%20LNR) | a highway from step 1,267, every 20 steps |
+| 11 | [177145/177146](https://vincentbounce.github.io/Walking-Pi/#x=177145/177146&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 67 cells of its start, up to 50 million steps |
+| 12 | [531439/531440](https://vincentbounce.github.io/Walking-Pi/#x=531439/531440&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 60 cells of its start, up to 50 million steps |
+| 13 | [1594321/1594322](https://vincentbounce.github.io/Walking-Pi/#x=1594321/1594322&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 63 cells of its start, up to 50 million steps |
+| 14 | [4782967/4782968](https://vincentbounce.github.io/Walking-Pi/#x=4782967/4782968&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 28 cells of its start, up to 50 million steps |
+| 15 | [14348905/14348906](https://vincentbounce.github.io/Walking-Pi/#x=14348905/14348906&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 28 cells of its start, up to 50 million steps |
+| 16 | [43046719/43046720](https://vincentbounce.github.io/Walking-Pi/#x=43046719/43046720&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 26 cells of its start, up to 50 million steps |
+| 17 | [129140161/129140162](https://vincentbounce.github.io/Walking-Pi/#x=129140161/129140162&w=antSquare&d=273339&r=digits%20LNR) | a highway from step 271,384, every 85 steps |
+| 18 | [387420487/387420488](https://vincentbounce.github.io/Walking-Pi/#x=387420487/387420488&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 61 cells of its start, up to 50 million steps |
+| 19 | [1162261465/1162261466](https://vincentbounce.github.io/Walking-Pi/#x=1162261465/1162261466&w=antSquare&d=38780&r=digits%20LNR) | a highway from step 34,980, every 475 steps |
+| 20 | [3486784399/3486784400](https://vincentbounce.github.io/Walking-Pi/#x=3486784399/3486784400&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 50 cells of its start, up to 50 million steps |
+| 21 | [10460353201/10460353202](https://vincentbounce.github.io/Walking-Pi/#x=10460353201/10460353202&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 69 cells of its start, up to 50 million steps |
+| 22 | [31381059607/31381059608](https://vincentbounce.github.io/Walking-Pi/#x=31381059607/31381059608&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 61 cells of its start, up to 50 million steps |
+| 23 | [94143178825/94143178826](https://vincentbounce.github.io/Walking-Pi/#x=94143178825/94143178826&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 67 cells of its start, up to 50 million steps |
+| 24 | [282429536479/282429536480](https://vincentbounce.github.io/Walking-Pi/#x=282429536479/282429536480&w=antSquare&d=50641&r=digits%20LNR) | a highway from step 48,913, every 96 steps |
+| 25 | [847288609441/847288609442](https://vincentbounce.github.io/Walking-Pi/#x=847288609441/847288609442&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 44 cells of its start, up to 50 million steps |
+| 26 | [2541865828327/2541865828328](https://vincentbounce.github.io/Walking-Pi/#x=2541865828327/2541865828328&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 65 cells of its start, up to 50 million steps |
+| 27 | [7625597484985/7625597484986](https://vincentbounce.github.io/Walking-Pi/#x=7625597484985/7625597484986&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 49 cells of its start, up to 50 million steps |
+| 28 | [22876792454959/22876792454960](https://vincentbounce.github.io/Walking-Pi/#x=22876792454959/22876792454960&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 38 cells of its start, up to 50 million steps |
+| 29 | [68630377364881/68630377364882](https://vincentbounce.github.io/Walking-Pi/#x=68630377364881/68630377364882&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 75 cells of its start, up to 50 million steps |
+| 30 | [205891132094647/205891132094648](https://vincentbounce.github.io/Walking-Pi/#x=205891132094647/205891132094648&w=antSquare&d=200000&r=digits%20LNR) | bounded: it stays within 21 cells of its start, up to 50 million steps |
+
+The latest highway: N = 17, after 271,384 steps of chaos. The links of the bounded ones show 200,000 steps.
+
 <br>
 
 <p align="center">⁂</p>
