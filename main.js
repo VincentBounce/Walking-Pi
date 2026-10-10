@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.442';
+const VERSION = '0.1.443';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -835,6 +835,9 @@ const MODES = {
   antTri: { get base() { return antBase('antTri'); }, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
   antHex: { get base() { return antBase('antHex'); }, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
   antCairo: { get base() { return antBase('antCairo'); }, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
+  // on a surface: the ant on the cells of its walk there, which keep their colours (turns: as the walk's)
+  antCube: { get base() { return antBase('antCube'); }, lattice: 'sphere', cells: true, sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
+             fill: false, antOf: 'cubeFlat', get rule() { return antRuleText('antCube'); } },
   spiral:   { base: 2, arrows: '□■', lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -866,7 +869,7 @@ const MODES = {
                    rule: 'on a Möbius strip of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
   mobiusTriWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of triangles: exit through the <b>0</b> left or <b>1</b> right edge (over its edge, onto the face behind)' },
-  cubeFlat: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'cubeGrid', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
+  cubeFlat: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'cubeGrid', ant: 'antCube', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
               rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
   octaLR:   { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, perspective: true, turns: [2, 1],
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
@@ -1132,15 +1135,15 @@ function updateDisplayMenu() {
   const mode = MODES[$('mode').value];
   $('cellsLabel').hidden = $('showPathRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
   // 2D: the cells' colours, Directions (one colour per digit; an ant's, by its turns or its states), Rainbow or Heatmap; a surface: Heatmap or not
-  $('heatmapRow').hidden = !shows('heatmap') || shows('cells');
+  $('heatmapRow').hidden = !shows('heatmap') || shows('cells') || !!mode.antOf;  // an ant on a surface: its cells' colours
   $('cellColours').hidden = !shows('cells');
   // an ant: Directions, or its states in Ink (the default), Amber or Teal
-  const byState = !!mode.antOf && $('colorMode').value === 'digit' && !!antRamp;
+  const byState = !!mode.antOf && (!shows('cells') || $('colorMode').value === 'digit') && !!antRamp;  // on a surface, always by state
   for (const b of $('cellColours').children) {
     b.classList.toggle('active', $('colorMode').value === b.dataset.colour && !byState);
     b.disabled = !mode.cells || (b.dataset.colour === 'visits' && !useful('visits'));
   }
-  $('antRamps').hidden = !shows('cells') || !mode.antOf;
+  $('antRamps').hidden = !mode.antOf;
   for (const b of $('antRamps').children) b.classList.toggle('active', byState && antRamp === b.dataset.ramp);
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
   // in 2D, Show path dims the cells under it, as the shading does on a surface, so that the rainbow
@@ -1178,6 +1181,7 @@ function relabelColours(mode) {
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
+  if (mode.antOf && !shows('cells')) antRamp ??= 'ink';  // an ant on a surface: its cells by their state
   sel.querySelector('option[value="digit"]').text = mode.antOf ? "The ant's colours" : names.digit;
   if (shows('cells')) {  // 2D: along lines the rainbow line; on cells the rainbow cells or the heatmap (Digits writes over either); an ant its colours
     if (mode.antOf && sel.value !== 'digit') antRamp = 'ink';  // an ant comes in with its states, in Ink
@@ -1926,7 +1930,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', antHex: 'hexagonFilled', antCairo: 'pentagons',
+  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -1979,6 +1983,7 @@ const NAV = {
   icosaGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], icosaLR: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
   antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'],
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
+  antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Hex torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
@@ -2658,6 +2663,8 @@ const ANTS = {
   antTri: { arrows: '↖↗', inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, digitPresets: ['LR'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
   antHex: { arrows: '↙↖↑↗↘', inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, digitPresets: ['L1 R1', 'L1 N R1', 'L2 L1 R1 R2', 'L2 L1 N R1 R2'],
             presets: ['L1 R1', 'L2 R2', 'L1 L2 R1', 'R2 L1 N L1 R2'] },
+  // on a surface, the walk it goes through the cells with is the surface's (see buildSphereWalk)
+  antCube: { arrows: '←↑→', inner: null, turns: { L: 0, N: 1, R: 2 }, digitPresets: ['LR', 'LNR'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
   antCairo: { arrows: '↙↖↗↘', inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, digitPresets: ['L1 R1', 'L2 R2', 'L2 L1 R1 R2'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
 };
 const antRules = Object.fromEntries(Object.entries(ANTS).map(([w, A]) => [w, A.presets[0]]));
@@ -2694,12 +2701,13 @@ const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRul
 // the step: turned, the colour of the cell it turned on; left, the colour it gave it; first, the step
 // the cell it is now on was first walked; cells, how many it walked; next(), the colour the cell it is
 // on would take. Its cells in one map, each its first step × 16 + its colour (12 colours at most)
-function antStepper(w) {
-  const A = ANTS[w], inner = A.inner(), turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length;
+// inner: the walk it goes through the cells with (a turn → [the cell it comes to, …]); here: its first cell
+function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0)) {
+  const A = ANTS[w], turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length;
   const words = turnWords(antDigitRules[w]);
   // by the digits: the turn digit g gives on a cell of colour c (mirrored on a dark one), as its index in the rule
   const took = (g, c) => (c ? words.indexOf(MIRROR[words[g]]) : g);
-  let here = key(0, 0), n = 0;
+  let n = 0;
   const cells = new Map([[here, 0]]);
   const step = (g) => {
     const v = cells.get(here), c = v % 16;
@@ -4367,11 +4375,14 @@ function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
 }
 
 function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
-  const { base, initial } = mode, kind = surfaceOf(mode);
+  const { initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
   const size = sphereSize(), g = mesh(size), R = radius(size), S = surfaceSteps(g, mode);
-  const len = seq.length;
+  const len = seq.length, w = current.mode, ant = !!mode.antOf;
+  // an ant: it walks the surface's cells by its turns, the cells keeping their colours (see antStepper)
+  const antStep = ant ? antStepper(w, (d) => { state = S.step(state, d); return state; }, S.start(startNo() - 1)[0]) : null;
+  const base = ant && !antByDigits ? antStep.colours : mode.base, turns = ant ? new Uint8Array(len) : null;
   const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
   const tile = new Int32Array(len + 1), cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
   const counts = new Int32Array(base * (len + 1));
@@ -4388,20 +4399,20 @@ function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
     maxDist[i] = m;
   };
   put(0);
-  const looped = loopWatch(seq, ahead);  // (tile, the edge it came in by)
+  const looped = loopWatch(seq, ahead);  // (tile, the edge it came in by); not an ant's, whose state is all its cells
   looped(0, S.key(state));
   let steps = len, loop = null;
   for (let i = 0; i < len; i++) {
-    state = S.step(state, seq[i]);
+    if (ant) { antStep(seq[i]); turns[i] = antStep.turn; } else state = S.step(state, seq[i]);
     t = state[0];
     if (!seen[t]) { seen[t] = 1; distinct++; if (distinct === g.n) coverStep = i + 1; }
     put(i + 1);
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + seq[i]]++;
-    const earlier = looped(i + 1, S.key(state));
+    counts[base * (i + 1) + (ant ? antStep.took : seq[i])]++;
+    const earlier = ant ? null : looped(i + 1, S.key(state));
     if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
-  Object.assign(walk, { n: steps, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
+  Object.assign(walk, { n: steps, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts, ant: ant ? antStep.colours : 0, turns,
                         lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
                         sphere: true, geo: g, R, tile, vert: null, stepTiles: null, loop, nodes: g.n, coverStep,
                         visits: new Int32Array(g.n), maxVisits: 0,
@@ -5830,6 +5841,10 @@ function drawSphere() {
         return L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
       };
     }
+  }
+  if (walk.ant) {  // an ant's cells by their colour: the times it was on each (its turns there), the one under it as it will be
+    palette = [null, ...Array.from({ length: walk.ant }, (_, k) => rampColour(k, walk.ant))];
+    levelOf = (t) => (visits[t] ? 1 + (visits[t] % walk.ant) : 0);
   }
   if (L && g.walls) {  // the pentagons of the hexagon sphere: walls, in stone grey
     const inner = levelOf, wall = new Set(g.walls);
