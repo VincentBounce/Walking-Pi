@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.418';
+const VERSION = '0.1.419';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1390,11 +1390,14 @@ const ICONS = (() => {
     hexSpiral: pathEl(pathOf(spiralOf(6, 15), false)),
     jump: pathEl('M3 17Q7.5 8 12 17Q16.5 8 21 17') + pathEl('M17.5 14.5L21 17L17 18.5'),
     search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + pathEl('M15.5 15.5L21 21'),
-    // tabs: a turtle (the walks), an ant (Langton's), seen from above, heading up
-    turtle: '<ellipse cx="12" cy="13.5" rx="5.6" ry="6.4"/>' + pathEl('M12 10.6L14.3 12V14.9L12 16.3L9.7 14.9V12Z', 'thin')
-      + '<circle cx="12" cy="4.6" r="1.9"/>' + pathEl('M7.4 9.6L4.6 7.6M16.6 9.6L19.4 7.6M7.6 17.6L5 20M16.4 17.6L19 20M12 19.9V21.8'),
-    ant: '<circle class="f" cx="12" cy="4.6" r="1.7"/><ellipse class="f" cx="12" cy="9.6" rx="1.5" ry="2.1"/><ellipse class="f" cx="12" cy="16.6" rx="2.9" ry="4.2"/>'
-      + pathEl('M11 3.4Q9.6 1.6 8 1.6M13 3.4Q14.4 1.6 16 1.6M10.6 8.6L6.6 6.4M10.5 9.8L5.6 10.2M10.7 11.2L7 14.6M13.4 8.6L17.4 6.4M13.5 9.8L18.4 10.2M13.3 11.2L17 14.6'),
+    // tabs: a turtle (the walks), an ant (Langton's), seen from above, heading up: their head, body and
+    // flippers filled, the ant's legs bent and bold, under its body
+    turtle: pathEl('M12 1.2C10.6 1.2 10 2.6 10 3.8S10.8 6.2 12 6.2 14 5 14 3.8 13.4 1.2 12 1.2Z', 'f')
+      + pathEl('M7.8 8.2Q3.6 5.6 1.4 8.4Q4.4 10.8 7.6 10.6Z', 'f') + pathEl('M16.2 8.2Q20.4 5.6 22.6 8.4Q19.6 10.8 16.4 10.6Z', 'f')
+      + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
+      + '<ellipse cx="12" cy="13.2" rx="5.2" ry="6.4" stroke-width="1.9"/>' + pathEl('M12 10.2L14 11.4V14.2L12 15.4L10 14.2V11.4Z', 'thin'),
+    ant: '<path d="M10.5 10L7 8.4 5.6 5.4M13.5 10L17 8.4 18.4 5.4M10.2 11.4L5.2 11.8 3.4 13.6M13.8 11.4L18.8 11.8 20.6 13.6M10.4 12.8L7.2 15.6 6.4 19.6M13.6 12.8L16.8 15.6 17.6 19.6M10.8 4.8L9.2 2.6 7.4 2.8M13.2 4.8L14.8 2.6 16.6 2.8" stroke-width="1.8"/>'
+      + '<ellipse class="f" cx="12" cy="6.2" rx="2.5" ry="2.2"/><ellipse class="f" cx="12" cy="11.1" rx="2" ry="2.5"/><ellipse class="f" cx="12" cy="17.8" rx="3.3" ry="4.4"/>',
     walk2d: pathEl('M3 20V15H8V10H12V16H17V6H21V3'),  // a walk on the square grid
     gallery: [[3.5, 3.5], [13.5, 3.5], [3.5, 13.5], [13.5, 13.5]].map(([x, y]) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1.6"/>`).join(''),
     glider: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20')
@@ -1922,7 +1925,7 @@ function splitModeLabel(text) {
   return { name: name[0].toUpperCase() + name.slice(1), base: m[1] || '', detail: m[2] || (inName ? inName[2] : '') };
 }
 
-/* The menu, from the top: what moves (Walk, Langton's ant, Automata), where (2D, 3D, Surfaces), on
+/* The menu, from the top: what moves (Walk, Langton's Ant, Life), where (2D, 3D, Surfaces), on
  * which shape, by which rule, and along the grid or on cells ('' where neither); in the menu's order.
  * A family's tilings (Torus, Möbius strip, Sphere) share their place, picked by tabs under the shapes. */
 const NAV = {
@@ -1955,15 +1958,15 @@ const NAV = {
   dodecaGrid: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'grid'], dodecaLR: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'cells'],
   hexSphereGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], hexSphereWalk: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
   icosaGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], icosaLR: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
-  antSquare: ['Langton', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Langton', '2D', 'Triangles', 'Ant', 'cells'],
-  antHex: ['Langton', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Langton', '2D', 'Cairo', 'Ant', 'cells'],
-  lifeCube: ['Automata', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Automata', 'Surfaces', 'Torus', 'Life', ''],
-  lifeHexTorus: ['Automata', 'Surfaces', 'Hex torus', 'Life', ''], lifeTetra: ['Automata', 'Surfaces', 'Tetrahedron', 'Life', ''],
-  lifeOcta: ['Automata', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Automata', 'Surfaces', 'Stella octangula', 'Life', ''],
-  lifeDodeca: ['Automata', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Automata', 'Surfaces', 'Triangle sphere', 'Life', ''],
-  lifeHexSphere: ['Automata', 'Surfaces', 'Hexagon sphere', 'Life', ''],
+  antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'],
+  antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
+  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeHexTorus: ['Life', 'Surfaces', 'Hex torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
+  lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Triangle sphere', 'Life', ''],
+  lifeHexSphere: ['Life', 'Surfaces', 'Hexagon sphere', 'Life', ''],
 };
-const NAV_KINDS = [['Walk', 'turtle'], ['Langton', 'ant'], ['Automata', 'glider']];
+const NAV_KINDS = [['Walk', 'turtle'], ['Ant', 'ant'], ['Life', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
@@ -1971,7 +1974,7 @@ const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon
 const SHAPE_SHORT = { 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca',
   'Triangle sphere': 'Tri sphere', 'Hexagon sphere': 'Hex sphere' };
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Langton: "Langton's ant", Automata: 'Populate' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Populate' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level: the levels above as they are, the ones below kept where they can
@@ -2067,7 +2070,7 @@ function renderModePicker() {
     b.addEventListener('click', go);
     return b;
   };
-  // at the top: Walk, Langton, Automata (while a gallery setup is only shown on hover, the one in use)
+  // at the top: Walk, Ant, Life (while a gallery setup is only shown on hover, the one in use)
   const shownKind = NAV[galleryBefore?.w]?.[0] ?? kind;
   $('modeTabs').replaceChildren(galleryTab(), ...NAV_KINDS.map(([k, pic]) => {
     const b = button(`${icon(pic)} ${k}`, k === shownKind, () => { showPane(false); if (k !== kind) navGo(0, k); });
@@ -2076,7 +2079,7 @@ function renderModePicker() {
   }));
   $('walkHeading').textContent = WALK_HEADINGS[kind];
   // 2D, 3D, Surfaces (no 3D automata), those with nothing yet greyed
-  $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => kind !== 'Automata' || sp !== '3D').map((sp) => {
+  $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => kind !== 'Life' || sp !== '3D').map((sp) => {
     const b = button(sp, sp === space, () => navGo(1, sp));
     b.disabled = !navValues(1, [kind]).includes(sp);
     return b;
