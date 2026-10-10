@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.425';
+const VERSION = '0.1.426';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7185,7 +7185,9 @@ function updateStats() {
     top += arrow ? `<span${i === cur ? ' class="cur"' : colour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
     if (i === intLen - 1 && intLen < walk.n) { html += '.'; top += blank; }
   }
-  html += b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
+  const end = b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
+  html += end;
+  if (cur >= n) top += end;  // the head past the last digit, on both lines
   const walker = icon(['Turtle', 'Ant', 'Polymer'].includes(NAV[current.mode][3]) ? 'turtle' : 'compass');
   strip.innerHTML = arrows.length ? `${walker}<div class="arrows">${top}</div><div>${html}</div>` : html;
 }
