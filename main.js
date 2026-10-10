@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.427';
+const VERSION = '0.1.428';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5604,6 +5604,7 @@ function styleKey(i) {
 // background): a deep blue (most of its cells) and pink, then gold, teal, violet, lime…; past them, hues round the wheel
 const ANT_COLOURS = ['#3d6bff', '#ff5fa2', '#ffc53d', '#36cfc9', '#9b6bff', '#8fd14f', '#ff8a4c', '#e86bff', '#5be0ff', '#ffe066', '#ff6b6b', '#7ee8a2'];
 const digitColour = (k) => walk.ant ? ANT_COLOURS[k] ?? `hsl(${(k * 360) / walk.ant}, 80%, 62%)`
+  : walk.skipZeros ? DIGIT_COLORS[1 - k]  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
   : walk.base <= 6 ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
@@ -6528,14 +6529,14 @@ function glFlat(to) {
     upload(S.flatKeys, keys);
     S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
   }
-  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${MONO}`) {  // the digits' colours (an ant's)
+  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${walk.skipZeros}|${MONO}`) {  // the digits' colours (an ant's)
     const pal = new Uint8Array(4 * 256);
     for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(Math.min(k, (walk.points ? walk.keyCount : walk.base) - 1))), 255], 4 * k);
     gl.bindTexture(gl.TEXTURE_2D, S.pal);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${MONO}`;
+    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${walk.skipZeros}|${MONO}`;
   }
   // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
