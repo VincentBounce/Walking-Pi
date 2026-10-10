@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.437';
+const VERSION = '0.1.438';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -830,10 +830,10 @@ const MODES = {
            rule: 'from pentagon to pentagon of the Cairo tiling, out through one of its 4 other edges: <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right' },
   // Langton's ant on the cells of a turtle walk (antOf: its walk in the list; see ANTS), its rule in the
   // ant settings (see antRuleText)
-  antSquare: { base: 2, lattice: 'square', cells: true, fill: false, antOf: 'turtle', get rule() { return antRuleText('antSquare'); } },
-  antTri: { base: 2, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
-  antHex: { base: 2, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
-  antCairo: { base: 2, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
+  antSquare: { get base() { return antBase('antSquare'); }, lattice: 'square', cells: true, fill: false, antOf: 'turtle', get rule() { return antRuleText('antSquare'); } },
+  antTri: { get base() { return antBase('antTri'); }, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
+  antHex: { get base() { return antBase('antHex'); }, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
+  antCairo: { get base() { return antBase('antCairo'); }, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
   spiral:   { base: 2, arrows: '□■', lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
@@ -2049,30 +2049,29 @@ function familyOf(w) {
   }
   return null;
 }
-// Langton's ant's settings, as its rule: by its rule (presets of its tiling, or typed) or by the digits
+// Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
   $('antRow').hidden = !A;
   if ($('antRow').hidden) return;
-  $('antClassic').classList.toggle('active', !antByDigits);
+  $('antColours').classList.toggle('active', !antByDigits);
   $('antDigits').classList.toggle('active', antByDigits);
-  $('antPresets').hidden = $('antRuleRow').hidden = antByDigits;
-  $('antDigitsNote').hidden = !antByDigits;
-  $('antDigitsNote').textContent = `0 turns ${A.lr[0]}, 1 turns ${A.lr[1]}; the other way on a dark cell`;
-  $('antPresets').replaceChildren(...A.presets.map((r) => {
+  $('antPresets').replaceChildren(...(antByDigits ? A.digitPresets : A.presets).map((r) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = r;
-    b.classList.toggle('active', r === antRules[w]);
+    b.classList.toggle('active', r === antRuleOf(w));
     b.addEventListener('click', () => setAntRule(w, r));
     return b;
   }));
-  $('antRuleName').textContent = `Rule, a turn per colour: ${Object.keys(A.turns).join(', ')}`;
-  if (document.activeElement !== $('antRule')) $('antRule').value = antRules[w];
+  $('antRuleName').textContent = antByDigits ? `Rule, a turn per digit, mirrored on a dark cell: ${Object.keys(A.turns).join(', ')}`
+    : `Rule, a turn per colour: ${Object.keys(A.turns).join(', ')}`;
+  if (document.activeElement !== $('antRule')) $('antRule').value = antRuleOf(w);
 }
+// a rule typed or picked, by the digits (its base the number of its turns) or by colour
 function setAntRule(w, rule) {
-  if (!antTurnsOf(w, rule)) { $('antRule').value = antRules[w]; return; }
-  antRules[w] = rule.toUpperCase().trim();
+  if (!(antByDigits ? antDigitTurnsOf : antTurnsOf)(w, rule)) { $('antRule').value = antRuleOf(w); return; }
+  (antByDigits ? antDigitRules : antRules)[w] = rule.toUpperCase().trim();
   renderModePicker();
   compute();
 }
@@ -2135,7 +2134,7 @@ function renderModePicker() {
   $('walkOn').hidden = sides.includes('');
   const side = (b, s, word, none) => {
     const v = sides.includes(s) ? navPick(4, s) : null, here = NAV[w][4] === s;
-    const info = !v ? null : MODES[v].antOf ? { base: '', detail: antByDigits ? 'by the digits' : antRules[v] } : splitModeLabel(optionOf(v).text);
+    const info = !v ? null : MODES[v].antOf ? { base: '', detail: antByDigits ? `digits ${antDigitRules[v]}` : antRules[v] } : splitModeLabel(optionOf(v).text);
     b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
       + `<span class="mode-detail">${info ? info.detail : none}</span>`;
     b.disabled = !v;
@@ -2415,7 +2414,7 @@ function buildWalkOf() {
     m = Math.max(m, Math.hypot(x, y, z));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + (byColour ? step.turned : ant ? g ^ step.turned : g)]++;  // an ant by the digits: the turn it took
+    counts[base * (i + 1) + (ant ? step.took : g)]++;  // an ant: the turn it took (by the digits) or its cell's colour
     if (ant) { left[i] = step.left; turns[i] = step.turn; }
     walked = i + 1;
     if (ant && loop && walked > loop.from + loop.period
@@ -2648,25 +2647,37 @@ function cairoStepper(spiral = false) {
   };
 }
 
-/* Langton's ant: on each cell it turns by the cell's colour, one turn per colour (the rule), or by the
- * digit, the other way on a dark cell (Digits); the cell it leaves takes the next colour. Per tiling:
- * the turtle walk it goes through the cells with (a turn: its digit) and their arrows, its turns, left and right for
- * Digits, and rules to start from. */
+/* Langton's ant: on each cell it turns by the cell's colour, one turn per colour (Colours), or by the
+ * digit, one turn per digit, mirrored on a dark cell (Digits: left and right swap, straight on stays); the
+ * cell it leaves takes the next colour. Per tiling: the turtle walk it goes through the cells with (a
+ * turn: its digit) and their arrows, its turns, and rules to start from, by the digits and by colour. */
 const ANTS = {
-  antSquare: { arrows: '←↑→', inner: () => STEPPERS.turtle(), turns: { L: 0, N: 1, R: 2 }, lr: ['L', 'R'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
-  antTri: { arrows: '↖↗', inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, lr: ['L', 'R'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
-  antHex: { arrows: '↙↖↑↗↘', inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, lr: ['L1', 'R1'],
+  antSquare: { arrows: '←↑→', inner: () => STEPPERS.turtle(), turns: { L: 0, N: 1, R: 2 }, digitPresets: ['LR', 'LNR'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
+  antTri: { arrows: '↖↗', inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, digitPresets: ['LR'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
+  antHex: { arrows: '↙↖↑↗↘', inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, digitPresets: ['L1 R1', 'L1 N R1', 'L2 L1 R1 R2', 'L2 L1 N R1 R2'],
             presets: ['L1 R1', 'L2 R2', 'L1 L2 R1', 'R2 L1 N L1 R2'] },
-  antCairo: { arrows: '↙↖↗↘', inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, lr: ['L1', 'R1'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
+  antCairo: { arrows: '↙↖↗↘', inner: () => cairoStepper(), turns: { L2: 0, L1: 1, R1: 2, R2: 3 }, digitPresets: ['L1 R1', 'L2 R2', 'L2 L1 R1 R2'], presets: ['L1 R1', 'L2 R2', 'L1 R2', 'L2 L1 R1 R2'] },
 };
 const antRules = Object.fromEntries(Object.entries(ANTS).map(([w, A]) => [w, A.presets[0]]));
+const antDigitRules = Object.fromEntries(Object.entries(ANTS).map(([w, A]) => [w, A.digitPresets[0]]));
 let antByDigits = false;
+const MIRROR = { L: 'R', R: 'L', N: 'N', L1: 'R1', R1: 'L1', L2: 'R2', R2: 'L2' };
+const turnWords = (rule) => rule.toUpperCase().match(/[LR][12]?|N/g) ?? [];
+// by the digits, a rule's turns, one per digit: different turns, each with its mirror among them (so that
+// a dark cell turns the ant by one of them), or null; the base it reads the digits in
+function antDigitTurnsOf(w, rule) {
+  const words = turnWords(rule);
+  if (words.join('') !== rule.toUpperCase().replace(/\s+/g, '') || words.length < 2 || new Set(words).size < words.length) return null;
+  return words.every((t) => ANTS[w].turns[t] !== undefined && words.includes(MIRROR[t])) ? words : null;
+}
+const antBase = (w) => (antByDigits ? turnWords(antDigitRules[w]).length : 2);
+const antRuleOf = (w) => (antByDigits ? antDigitRules[w] : antRules[w]);
 // a walk's arrows, one per digit (an ant's: per turn of the walk it goes through the cells with), none: []
 const ARROW_LISTS = {};
 const arrowsOf = (w) => (ARROW_LISTS[w] ??= [...((MODES[w].antOf ? ANTS[w] : MODES[w]).arrows ?? '')]);
 // a rule's turns (the turtle walk's digits), or null when it is not one: 2 to 12 of the tiling's turns
 function antTurnsOf(w, rule) {
-  const A = ANTS[w], words = rule.toUpperCase().match(/[LR][12]?|N/g) ?? [];
+  const A = ANTS[w], words = turnWords(rule);
   if (words.join('') !== rule.toUpperCase().replace(/\s+/g, '') || words.length < 2 || words.length > 12) return null;
   const turns = words.map((t) => A.turns[t]);
   return turns.every((t) => t !== undefined) ? turns : null;
@@ -2674,8 +2685,8 @@ function antTurnsOf(w, rule) {
 // a turn in words, for the Play card's chips (L, R on squares and triangles; L1, R1 on hexagons and pentagons)
 const TURN_WORDS = { L: 'left', R: 'right', N: 'straight', L1: 'left', R1: 'right', L2: 'sharp left', R2: 'sharp right' };
 const antRuleText = (w) => antByDigits
-  ? `turning by the digit, the other way on a dark cell, which changes colour as the ant leaves it: <b>0</b> ${TURN_WORDS[ANTS[w].lr[0]]}, <b>1</b> ${TURN_WORDS[ANTS[w].lr[1]]}`
-  : `turning by the colour of its cell, which then takes the next one: ${antRules[w].toUpperCase().match(/[LR][12]?|N/g).map((t, c) => `<b>${c}</b> ${TURN_WORDS[t]}`).join(', ')}`;
+  ? `turning by the digit, mirrored on a dark cell (left and right swap), which changes colour as the ant leaves it: ${turnWords(antDigitRules[w]).map((t, d) => `<b>${d}</b> ${TURN_WORDS[t]}`).join(', ')}`
+  : `turning by the colour of its cell, which then takes the next one: ${turnWords(antRules[w]).map((t, c) => `<b>${c}</b> ${TURN_WORDS[t]}`).join(', ')}`;
 // an ant by its rule: one chip per colour, its digits unused
 const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRules[w]).length : 0);
 // the step: turned, the colour of the cell it turned on; left, the colour it gave it; first, the step
@@ -2683,6 +2694,9 @@ const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRul
 // on would take. Its cells in one map, each its first step × 16 + its colour (12 colours at most)
 function antStepper(w) {
   const A = ANTS[w], inner = A.inner(), turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length;
+  const words = turnWords(antDigitRules[w]);
+  // by the digits: the turn digit g gives on a cell of colour c (mirrored on a dark one), as its index in the rule
+  const took = (g, c) => (c ? words.indexOf(MIRROR[words[g]]) : g);
   let here = key(0, 0), n = 0;
   const cells = new Map([[here, 0]]);
   const step = (g) => {
@@ -2690,7 +2704,8 @@ function antStepper(w) {
     step.turned = c;
     step.left = (c + 1) % k;
     cells.set(here, v - c + step.left);
-    step.turn = antByDigits ? A.turns[A.lr[g ^ c]] : turns[c];  // the turn it takes (its walk's digit)
+    step.took = antByDigits ? took(g, c) : c;  // the chip it counts in: the turn it takes (by the digits) or its cell's colour
+    step.turn = antByDigits ? A.turns[words[step.took]] : turns[c];  // the turn it takes (its walk's digit)
     const r = inner(step.turn);
     here = r[0];
     n++;
@@ -2702,7 +2717,7 @@ function antStepper(w) {
   };
   step.colours = k;
   step.next = () => ((cells.get(here) % 16) + 1) % k;
-  step.would = (g) => { const c = cells.get(here) % 16; return antByDigits ? A.turns[A.lr[g ^ c]] : turns[c]; };  // the turn it would take
+  step.would = (g) => { const c = cells.get(here) % 16; return antByDigits ? A.turns[words[took(g, c)]] : turns[c]; };  // the turn it would take
   return step;
 }
 // A highway: the walk ends repeating a stretch of p steps, each one shifted by the same (dx, dy) ≠ 0,
@@ -5115,7 +5130,7 @@ function getSetup() {
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = $('lifeRule').value;
-  if (mode.antOf) s.r = antByDigits ? 'digits' : antRules[w];
+  if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
   if (championCode) s.ch = championCode;
   return s;
 }
@@ -5136,8 +5151,10 @@ function applySetup(s) {
     if (s.s !== undefined) selectSize(kind, linkSize(kind, s.s));
   }
   if (s.r && MODES[s.w].antOf) {
-    antByDigits = s.r === 'digits';
-    if (!antByDigits && antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
+    antByDigits = s.r.startsWith('digits');
+    const rule = s.r.slice(6).trim();
+    if (antByDigits) antDigitRules[s.w] = antDigitTurnsOf(s.w, rule) ? rule.toUpperCase() : ANTS[s.w].digitPresets[0];
+    else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
   } else if (s.r) {
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
@@ -5642,7 +5659,7 @@ function rampColour(k, n) {
   return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(', ')})`;
 }
 // an ant's chips: by the digits, its turns (left, right) in the walk's colours; by its rule, its states
-const antChipColour = (k) => antByDigits ? DIRECTION_COLOURS[arrowsOf(current.mode)[ANTS[current.mode].turns[ANTS[current.mode].lr[k]]]]
+const antChipColour = (k) => antByDigits ? DIRECTION_COLOURS[arrowsOf(current.mode)[ANTS[current.mode].turns[turnWords(antDigitRules[current.mode])[k]]]]
   : rampColour(k, antColours(current.mode));
 // a digit's colour: its direction's (an ant's: the turn it took, or its state), else in the digits' order
 const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : DIRECTION_COLOURS[arrowsOf(current.mode)[k]] ?? GREY)
@@ -7232,7 +7249,7 @@ function updateStats() {
   // a number below 1 does not walk its integer part (every such number would start the same
   // way): its "0." is only shown, greyed
   let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
-  const blank = '<span></span>', lrTurns = mode.antOf ? ANTS[current.mode].lr.map((t) => ANTS[current.mode].turns[t]) : [];  // an ant's left, right
+  const blank = '<span></span>', lrTurns = mode.antOf ? turnWords(antDigitRules[current.mode]).map((t) => ANTS[current.mode].turns[t]) : [];  // an ant's turns, per digit
   let top = blank.repeat(a > 0 ? 1 : intLen ? 0 : 2);
   for (let i = a; i < b; i++) {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
@@ -7641,7 +7658,7 @@ $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
 $('walkOnGrid').addEventListener('click', () => navGo(4, 'grid'));
 $('walkOnCells').addEventListener('click', () => navGo(4, 'cells'));
-for (const [id, digits] of [['antClassic', false], ['antDigits', true]]) {
+for (const [id, digits] of [['antColours', false], ['antDigits', true]]) {
   $(id).addEventListener('click', () => { if (antByDigits === digits) return; antByDigits = digits; renderModePicker(); compute(); });
 }
 $('antRule').addEventListener('change', () => setAntRule($('mode').value, $('antRule').value));

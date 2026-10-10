@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261016n">
+  <link rel="stylesheet" href="style.css?v=20261016o">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -29,10 +29,9 @@
         <div id="navShapes" class="nav-shapes" title="The shape of its cells"></div>
         <div id="torusTiles" class="choice-row" hidden title="The tiles of the surface" role="tablist"></div>  <!-- under the shapes, when Torus, Möbius strip or Sphere is picked -->
         <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
-        <div id="antRow" hidden>  <!-- Langton's ant: by its rule or by the digits -->
-          <div class="choice-row"><button id="antClassic" type="button">Classic rule</button><button id="antDigits" type="button">Digits</button></div>
+        <div id="antRow" hidden>  <!-- Langton's ant: by colour or by the digits, each with its rule -->
+          <div class="choice-row"><button id="antColours" type="button">Colours</button><button id="antDigits" type="button">Digits</button></div>
           <div id="antPresets" class="ant-presets"></div>
-          <p id="antDigitsNote" class="muted" hidden></p>  <!-- Digits: how a digit turns the ant -->
           <label id="antRuleRow"><span id="antRuleName">Rule</span>
             <input id="antRule" type="text" autocomplete="off" spellcheck="false">
           </label>
@@ -332,6 +331,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261016n"></script>
+  <script src="main.js?v=20261016o"></script>
 </body>
 </html>
