@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261016r">
+  <link rel="stylesheet" href="style.css?v=20261016s">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -173,7 +173,7 @@
           </select>
         </label>
         <div id="lifeCustomRow" hidden><div class="field-label">Custom rule (B…/S…/C…, B…/S…/Immigration, or B2o/S2m34 on hexagons)</div>
-          <span class="field"><input id="lifeRule" type="text" value="B3/S23" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
+          <span class="field"><input id="lifeRule" class="custom" type="text" value="B3/S23" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
         </div>
         <div id="huntRow">
           <div class="field-label">Methuselah hunt</div>
@@ -331,6 +331,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261016r"></script>
+  <script src="main.js?v=20261016s"></script>
 </body>
 </html>

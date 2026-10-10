@@ -101,7 +101,8 @@ input[type=number], input[type=text], select {
 }
 /* the Custom formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
-#formula.custom { color: var(--accent); font-weight: 600; }  /* the number chosen: no card matches it */
+/* a value of one's own, in yellow bold: a formula no card matches, a rule no preset matches */
+.field input.custom { color: var(--accent); font-weight: 600; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
 input[type=checkbox] {

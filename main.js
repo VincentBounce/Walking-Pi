@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.441';
+const VERSION = '0.1.442';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2068,6 +2068,7 @@ function renderAntRow() {
   $('antRuleName').textContent = antByDigits ? `Rule, a turn per digit, mirrored on a dark cell: ${Object.keys(A.turns).join(', ')}`
     : `Rule, a turn per colour: ${Object.keys(A.turns).join(', ')}`;
   if (document.activeElement !== $('antRule')) $('antRule').value = antRuleOf(w);
+  $('antRule').classList.toggle('custom', !(antByDigits ? A.digitPresets : A.presets).includes(antRuleOf(w)));  // a rule of one's own
 }
 // a rule typed or picked, by the digits (its base the number of its turns) or by colour
 function setAntRule(w, rule) {
