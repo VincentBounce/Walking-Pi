@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.415';
+const VERSION = '0.1.416';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1030,10 +1030,10 @@ function digitsNeeded() {
 // turtle · along the lines of a square grid", 0 turn left + step, … An automaton: "4/3 in base 2
 // seeds the 2,560 cells of a torus of squares: 0 dead, 1 alive · rule B3/S23 · …".
 let shownSym = 'π';  // the number's symbol, for the description and a saved setup's name
-let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round (5 rounds in 2D and 3D)
-const LOOP_ROUNDS = 5;
+let digitsBeforeLoop = null;  // the count of digits asked before a loop cut it to its first round (8 rounds in 2D and 3D)
+const LOOP_ROUNDS = 8;  // the rounds a repeat is walked at least, and the stretches a highway or a bridge takes
 // A walk going off for ever (a drift, an ant's highway) walked as far as what it drew before is wide:
-// rounds of `shift` each, over twice the farthest it went from the start before (radius), 5 at least
+// rounds of `shift` each, over twice the farthest it went from the start before (radius), 8 at least
 const driftRounds = (radius, shift) => Math.max(LOOP_ROUNDS, Math.ceil((2 * radius) / shift));
 // The rainbow of a walk going round a loop: each round in the colours of the first one (the rounds are
 // drawn over each other); i, a step; rainbowLength(), the steps the rainbow spreads over
@@ -1063,7 +1063,7 @@ function describe(base, available) {
     const tail = mode.rule.slice(at + 2), pre = tail.slice(0, tail.indexOf('<b>')).trim(), edge = / edge\b/.test(tail) ? ' edge' : '';
     const around = pre ? ` · ${pre} …${edge}` : '';
     const highway = (walk.bridges?.length ? ` · ${walk.bridges.length === 1 ? 'a bridge' : `${walk.bridges.length} bridges`} back into its cloud, from step `
-      + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(b.to - b.from)} steps)`).join(', ') : '')
+      + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(Math.floor((b.to - b.from) / b.period))} stretches)`).join(', ') : '')
       + (walk.highway ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '');
     $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
@@ -1227,7 +1227,7 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 const wholeTotal = () => (current?.whole && current.formula === $('formula').value ? current.total : null);
 function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  // a walk that loops uses only the digits of its first round on a surface (see buildGridWalk), of 5 rounds
+  // a walk that loops uses only the digits of its first round on a surface (see buildGridWalk), of 8 rounds
   // in 2D and 3D: more would change nothing
   const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal();
   $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ${L.drift ? '→' : '↻'}`
@@ -2324,7 +2324,7 @@ function buildWalkOf() {
   const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
   const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
-  // a fraction's walk repeats (see walkRepeat), walked 5 rounds; not an ant's, whose state is all its
+  // a fraction's walk repeats (see walkRepeat), walked 8 rounds; not an ant's, whose state is all its
   // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
   let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0, nextLook = 2000;
@@ -2364,7 +2364,7 @@ function buildWalkOf() {
     walked = i + 1;
     if (ant && loop && walked > loop.from + loop.period
         && (Math.abs(wx[walked] - wx[walked - loop.period] - loop.dx) > 1e-6 || Math.abs(wy[walked] - wy[walked - loop.period] - loop.dy) > 1e-6)) {
-      bridges.push({ from: loop.from, to: walked });  // back into its cloud: not its highway
+      bridges.push({ from: loop.from, to: walked, period: loop.period });  // back into its cloud: not its highway
       loop = null;
       steps = len;
       nextLook = walked - (walked % 2000) + 2000;
@@ -2633,15 +2633,15 @@ function antStepper(w) {
   return step;
 }
 // A highway: the walk ends repeating a stretch of p steps, each one shifted by the same (dx, dy) ≠ 0,
-// over 1,000 steps at least (and 5 stretches): not a mere straight run through the mess; from its first step
+// over 1,000 steps at least (and 8 stretches, LOOP_ROUNDS): not a mere straight run through the mess; from its first step
 function highwayOf(xs, ys, n) {
   const same = (a, b) => Math.abs(a - b) < 1e-9;
-  for (let p = 1; p <= n / 5 && p <= 100000; p++) {  // up to 100,000 steps: by the digits, a stretch can take many of their periods (1/53 on squares: 57,980)
+  for (let p = 1; p <= n / LOOP_ROUNDS && p <= 100000; p++) {  // up to 100,000 steps: by the digits, a stretch can take many of their periods (1/53 on squares: 57,980)
     const dx = xs[n] - xs[n - p], dy = ys[n] - ys[n - p];
     if (same(dx, 0) && same(dy, 0)) continue;
     let i = n - p;
     while (i > 0 && same(xs[i - 1 + p] - xs[i - 1], dx) && same(ys[i - 1 + p] - ys[i - 1], dy)) i--;
-    if (n - i >= Math.max(5 * p, 1000)) return { from: i, period: p };
+    if (n - i >= Math.max(LOOP_ROUNDS * p, 1000)) return { from: i, period: p };
   }
   return null;
 }
