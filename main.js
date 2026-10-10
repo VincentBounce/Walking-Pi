@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.417';
+const VERSION = '0.1.418';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1390,7 +1390,11 @@ const ICONS = (() => {
     hexSpiral: pathEl(pathOf(spiralOf(6, 15), false)),
     jump: pathEl('M3 17Q7.5 8 12 17Q16.5 8 21 17') + pathEl('M17.5 14.5L21 17L17 18.5'),
     search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + pathEl('M15.5 15.5L21 21'),
-    // tabs
+    // tabs: a turtle (the walks), an ant (Langton's), seen from above, heading up
+    turtle: '<ellipse cx="12" cy="13.5" rx="5.6" ry="6.4"/>' + pathEl('M12 10.6L14.3 12V14.9L12 16.3L9.7 14.9V12Z', 'thin')
+      + '<circle cx="12" cy="4.6" r="1.9"/>' + pathEl('M7.4 9.6L4.6 7.6M16.6 9.6L19.4 7.6M7.6 17.6L5 20M16.4 17.6L19 20M12 19.9V21.8'),
+    ant: '<circle class="f" cx="12" cy="4.6" r="1.7"/><ellipse class="f" cx="12" cy="9.6" rx="1.5" ry="2.1"/><ellipse class="f" cx="12" cy="16.6" rx="2.9" ry="4.2"/>'
+      + pathEl('M11 3.4Q9.6 1.6 8 1.6M13 3.4Q14.4 1.6 16 1.6M10.6 8.6L6.6 6.4M10.5 9.8L5.6 10.2M10.7 11.2L7 14.6M13.4 8.6L17.4 6.4M13.5 9.8L18.4 10.2M13.3 11.2L17 14.6'),
     walk2d: pathEl('M3 20V15H8V10H12V16H17V6H21V3'),  // a walk on the square grid
     gallery: [[3.5, 3.5], [13.5, 3.5], [3.5, 13.5], [13.5, 13.5]].map(([x, y]) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1.6"/>`).join(''),
     glider: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20')
@@ -1959,7 +1963,7 @@ const NAV = {
   lifeDodeca: ['Automata', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Automata', 'Surfaces', 'Triangle sphere', 'Life', ''],
   lifeHexSphere: ['Automata', 'Surfaces', 'Hexagon sphere', 'Life', ''],
 };
-const NAV_KINDS = [['Walk', 'walk2d'], ['Langton', 'grid'], ['Automata', 'glider']];
+const NAV_KINDS = [['Walk', 'turtle'], ['Langton', 'ant'], ['Automata', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
