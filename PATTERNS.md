@@ -244,7 +244,7 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 
 ### Hexagons ant, Digits L1 N R1 (base 3, with straight on)
 
-Each base-3 digit turns the ant: 0 left, 1 straight on, 2 right, mirrored on a dark cell (left and right swap, straight on stays). 6,265 fractions (every 1/q with q ≤ 2,000, every a/q with q ≤ 120), up to 20 million steps so far: 3,774 build a highway, 2,448 none yet, 43 unknown (the cloud grew wider than the search's grid first). A longer search, up to 50 million steps, is running.
+Each base-3 digit turns the ant: 0 left, 1 straight on, 2 right, mirrored on a dark cell (left and right swap, straight on stays). 6,265 fractions (every 1/q with q ≤ 2,000, every a/q with q ≤ 120), up to 50 million steps: 3,777 build a highway (no bridge before any), 2,369 none within 50 million steps, 119 unknown (the cloud grew wider than the search's grid, 16,384 cells across, first).
 
 **The most surprising**:
 
@@ -270,21 +270,21 @@ Each base-3 digit turns the ant: 0 left, 1 straight on, 2 right, mirrored on a d
 
 | # | Numbers | Highway from step | Stretch | Stops at | Surprise |
 |--:|---|--:|--:|--:|--:|
-| 1 | [1/905](https://vincentbounce.github.io/Walking-Pi/#x=1/905&w=antHex&d=18928266&r=digits%20L1%20N%20R1) | 18,841,866 | 540 | 18,928,266 | 8,723 |
-| 2 | [1/437](https://vincentbounce.github.io/Walking-Pi/#x=1/437&w=antHex&d=14776499&r=digits%20L1%20N%20R1) | 14,721,059 | 198 | 14,776,499 | 18,587 |
-| 3 | [1/1839](https://vincentbounce.github.io/Walking-Pi/#x=1/1839&w=antHex&d=14108381&r=digits%20L1%20N%20R1) | 13,780,043 | 8,874 | 14,108,381 | 311 |
-| 4 | [1/1763](https://vincentbounce.github.io/Walking-Pi/#x=1/1763&w=antHex&d=11128820&r=digits%20L1%20N%20R1) | 11,039,444 | 336 | 11,128,820 | 6,571 |
-| 5 | [1/896](https://vincentbounce.github.io/Walking-Pi/#x=1/896&w=antHex&d=11240295&r=digits%20L1%20N%20R1) | 10,972,647 | 6,528 | 11,240,295 | 420 |
-| 6 | [1/1725](https://vincentbounce.github.io/Walking-Pi/#x=1/1725&w=antHex&d=11218600&r=digits%20L1%20N%20R1) | 10,855,600 | 12,100 | 11,218,600 | 179 |
-| 7 | [1/680](https://vincentbounce.github.io/Walking-Pi/#x=1/680&w=antHex&d=10367246&r=digits%20L1%20N%20R1) | 10,285,934 | 2,464 | 10,367,246 | 1,044 |
-| 8 | [1/692](https://vincentbounce.github.io/Walking-Pi/#x=1/692&w=antHex&d=11076450&r=digits%20L1%20N%20R1) | 10,243,110 | 55,556 | 11,076,450 | 46 |
-| 9 | [1/1734](https://vincentbounce.github.io/Walking-Pi/#x=1/1734&w=antHex&d=9466927&r=digits%20L1%20N%20R1) | 8,690,095 | 55,488 | 9,466,927 | 31 |
-| 10 | [1/379](https://vincentbounce.github.io/Walking-Pi/#x=1/379&w=antHex&d=8715113&r=digits%20L1%20N%20R1) | 8,374,157 | 4,158 | 8,715,113 | 503 |
-| 11 | [1/1675](https://vincentbounce.github.io/Walking-Pi/#x=1/1675&w=antHex&d=8359402&r=digits%20L1%20N%20R1) | 8,218,162 | 1,320 | 8,359,402 | 1,245 |
-| 12 | [1/1811](https://vincentbounce.github.io/Walking-Pi/#x=1/1811&w=antHex&d=8618261&r=digits%20L1%20N%20R1) | 8,066,211 | 9,050 | 8,618,261 | 178 |
-| 13 | [1/1834](https://vincentbounce.github.io/Walking-Pi/#x=1/1834&w=antHex&d=8586967&r=digits%20L1%20N%20R1) | 7,927,867 | 65,910 | 8,586,967 | 24 |
-| 14 | [1/1859](https://vincentbounce.github.io/Walking-Pi/#x=1/1859&w=antHex&d=8437410&r=digits%20L1%20N%20R1) | 7,510,770 | 77,220 | 8,437,410 | 19 |
-| 15 | [1/1108](https://vincentbounce.github.io/Walking-Pi/#x=1/1108&w=antHex&d=7668586&r=digits%20L1%20N%20R1) | 6,991,006 | 67,758 | 7,668,586 | 21 |
+| 1 | [1/1435](https://vincentbounce.github.io/Walking-Pi/#x=1/1435&w=antHex&d=29125870&r=digits%20L1%20N%20R1) | 28,816,990 | 9,360 | 29,125,870 | 616 |
+| 2 | [1/822](https://vincentbounce.github.io/Walking-Pi/#x=1/822&w=antHex&d=23052910&r=digits%20L1%20N%20R1) | 22,726,510 | 3,400 | 23,052,910 | 1,671 |
+| 3 | [1/263](https://vincentbounce.github.io/Walking-Pi/#x=1/263&w=antHex&d=23236101&r=digits%20L1%20N%20R1) | 22,568,001 | 19,650 | 23,236,101 | 287 |
+| 4 | [1/905](https://vincentbounce.github.io/Walking-Pi/#x=1/905&w=antHex&d=18928266&r=digits%20L1%20N%20R1) | 18,841,866 | 540 | 18,928,266 | 8,723 |
+| 5 | [1/437](https://vincentbounce.github.io/Walking-Pi/#x=1/437&w=antHex&d=14776499&r=digits%20L1%20N%20R1) | 14,721,059 | 198 | 14,776,499 | 18,587 |
+| 6 | [1/1839](https://vincentbounce.github.io/Walking-Pi/#x=1/1839&w=antHex&d=14108381&r=digits%20L1%20N%20R1) | 13,780,043 | 8,874 | 14,108,381 | 311 |
+| 7 | [1/1763](https://vincentbounce.github.io/Walking-Pi/#x=1/1763&w=antHex&d=11128820&r=digits%20L1%20N%20R1) | 11,039,444 | 336 | 11,128,820 | 6,571 |
+| 8 | [1/896](https://vincentbounce.github.io/Walking-Pi/#x=1/896&w=antHex&d=11240295&r=digits%20L1%20N%20R1) | 10,972,647 | 6,528 | 11,240,295 | 420 |
+| 9 | [1/1725](https://vincentbounce.github.io/Walking-Pi/#x=1/1725&w=antHex&d=11218600&r=digits%20L1%20N%20R1) | 10,855,600 | 12,100 | 11,218,600 | 179 |
+| 10 | [1/680](https://vincentbounce.github.io/Walking-Pi/#x=1/680&w=antHex&d=10367246&r=digits%20L1%20N%20R1) | 10,285,934 | 2,464 | 10,367,246 | 1,044 |
+| 11 | [1/692](https://vincentbounce.github.io/Walking-Pi/#x=1/692&w=antHex&d=11076450&r=digits%20L1%20N%20R1) | 10,243,110 | 55,556 | 11,076,450 | 46 |
+| 12 | [1/1734](https://vincentbounce.github.io/Walking-Pi/#x=1/1734&w=antHex&d=9466927&r=digits%20L1%20N%20R1) | 8,690,095 | 55,488 | 9,466,927 | 31 |
+| 13 | [1/379](https://vincentbounce.github.io/Walking-Pi/#x=1/379&w=antHex&d=8715113&r=digits%20L1%20N%20R1) | 8,374,157 | 4,158 | 8,715,113 | 503 |
+| 14 | [1/1675](https://vincentbounce.github.io/Walking-Pi/#x=1/1675&w=antHex&d=8359402&r=digits%20L1%20N%20R1) | 8,218,162 | 1,320 | 8,359,402 | 1,245 |
+| 15 | [1/1811](https://vincentbounce.github.io/Walking-Pi/#x=1/1811&w=antHex&d=8618261&r=digits%20L1%20N%20R1) | 8,066,211 | 9,050 | 8,618,261 | 178 |
 
 <br>
 
