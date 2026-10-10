@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.420';
+const VERSION = '0.1.421';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -837,6 +837,8 @@ const MODES = {
               rule: 'on the Ulam spiral: cell <b>n</b> is marked when the base-64 digits of n appear among them' },
   triSpiral: { base: 2, lattice: 'tri', skipZeros: true,
               rule: 'along a spiral of triangles: <b>1</b> draw the step, <b>0</b> move without drawing' },
+  cairoSpiral: { base: 2, lattice: 'cairo', skipZeros: true, fill: false,
+                 rule: 'along a spiral of Cairo pentagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
   hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
               rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
   tetraLR:  { base: 2, lattice: 'sphere', cells: true, twin: 'tetraGrid', sphere: 'tetra', initial: 48, turns: [2, 1],
@@ -1913,7 +1915,7 @@ const MODE_ICONS = {
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
-  spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
+  spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
 
 // "Cubes — base 5 (5 relative turns)" → name "Cubes", base "base 5", detail "5 relative turns"
@@ -1940,7 +1942,7 @@ const NAV = {
   hexTurtle: ['Walk', '2D', 'Hexagons', 'Turtle', 'grid'], hexTurtleCells: ['Walk', '2D', 'Hexagons', 'Turtle', 'cells'],
   hexFixed: ['Walk', '2D', 'Hexagons', 'Fixed', 'grid'], hexFixedCells: ['Walk', '2D', 'Hexagons', 'Fixed', 'cells'],
   hexSpiral: ['Walk', '2D', 'Hexagons', 'Spiral', ''],
-  cairo: ['Walk', '2D', 'Cairo', 'Turtle', 'cells'],
+  cairo: ['Walk', '2D', 'Cairo', 'Turtle', 'cells'], cairoSpiral: ['Walk', '2D', 'Cairo', 'Spiral', ''],
   cubeRel: ['Walk', '3D', 'Cubes', 'Turtle', 'grid'], cubeRelCells: ['Walk', '3D', 'Cubes', 'Turtle', 'cells'],
   cubeFixed: ['Walk', '3D', 'Cubes', 'Fixed', 'grid'], cubeFixedCells: ['Walk', '3D', 'Cubes', 'Fixed', 'cells'],
   diag: ['Walk', '3D', 'Cubes', 'Diagonals', 'grid'], diagCells: ['Walk', '3D', 'Cubes', 'Diagonals', 'cells'],
@@ -2607,11 +2609,17 @@ const CAIRO_TYPES = [[0, 0, 0], [1, 0, 0], [0, 0, 1], [1, 0, 1]].map(([i, j, o])
   });
   return { template: corners.map((p) => [(p[0] - m[0]) * CAIRO, (p[1] - m[1]) * CAIRO]), across, turns };
 });
-function cairoStepper() {
+// spiral: round the pentagons walked, out through the leftmost edge to one not walked yet (as Ulam's
+// spiral round the squares), the digits only telling which steps are drawn
+function cairoStepper(spiral = false) {
   let i = 0, j = 0, o = 0, k = 0;  // the pentagon, the edge come in by
+  const walked = new Set([key(0, 0)]);
   return (g) => {
-    const T = CAIRO_TYPES[cairoType(i, j, o)], [di, dj, o2, e] = T.across[T.turns[k][g]];
+    const T = CAIRO_TYPES[cairoType(i, j, o)];
+    if (spiral) g = Math.max(0, T.turns[k].findIndex((e) => { const [di, dj, o2] = T.across[e]; return !walked.has(key(2 * (i + di) + o2, j + dj)); }));
+    const [di, dj, o2, e] = T.across[T.turns[k][g]];
     i += di; j += dj; o = o2; k = e;
+    if (spiral) walked.add(key(2 * i + o, j));
     const [x, y] = cairoCentre(i, j, o);
     return [key(2 * i + o, j), x, y, 0];
   };
@@ -2736,6 +2744,7 @@ const STEPPERS = {
   hexFixedCells: () => hexStepper('fixed'),
   triSpiral: () => triStepper('spiral'),
   hexSpiral: () => hexStepper('spiral'),
+  cairoSpiral: () => cairoStepper(true),
   cubeRel: () => cubeStepper(true),
   cubeFixed: () => cubeStepper(false),
   cubeRelCells: () => cubeStepper(true),
