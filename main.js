@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.428';
+const VERSION = '0.1.429';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2362,7 +2362,8 @@ function buildWalkOf() {
   const cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1);
   const ant = !!MODES[current.mode].antOf, step = STEPPERS[current.mode]();
-  // an ant by its rule: counted by the colour it turned on (each colour its turn), not by digit
+  // an ant by its rule: counted by the colour it turned on (each colour its turn), not by digit; by the
+  // digits: by the turn it took (left or right), the other way from its digit on a dark cell
   const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
   const counts = new Int32Array(base * (len + 1)), left = ant ? new Uint8Array(len) : null, turns = ant ? new Uint8Array(len) : null;
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
@@ -2401,7 +2402,7 @@ function buildWalkOf() {
     m = Math.max(m, Math.hypot(x, y, z));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + (byColour ? step.turned : g)]++;
+    counts[base * (i + 1) + (byColour ? step.turned : ant ? g ^ step.turned : g)]++;  // an ant by the digits: the turn it took
     if (ant) { left[i] = step.left; turns[i] = step.turn; }
     walked = i + 1;
     if (ant && loop && walked > loop.from + loop.period
@@ -7175,7 +7176,7 @@ function updateStats() {
   // a number below 1 does not walk its integer part (every such number would start the same
   // way): its "0." is only shown, greyed
   let html = a > 0 ? '…' : (intLen ? '' : '<span class="dim">0.</span>');
-  const blank = '<span></span>';
+  const blank = '<span></span>', lrTurns = mode.antOf ? ANTS[current.mode].lr.map((t) => ANTS[current.mode].turns[t]) : [];  // an ant's left, right
   let top = blank.repeat(a > 0 ? 1 : intLen ? 0 : 2);
   for (let i = a; i < b; i++) {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
@@ -7183,7 +7184,9 @@ function updateStats() {
     const colour = walk.base <= 8 ? ` style="color:${digitColour(d[i])}"` : '';  // coloured as their chips
     html += i === cur ? `<span class="cur">${d[i]}</span>` : colour ? `<span${colour}>${d[i]}</span>` : d[i];
     const arrow = arrows[walk.ant ? walk.turns[i] : d[i]];
-    top += arrow ? `<span${i === cur ? ' class="cur"' : colour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
+    // an ant's arrow coloured as its turn's chip (left, right), not as the digit it read
+    const arrowColour = walk.ant ? ` style="color:${digitColour(lrTurns.indexOf(walk.turns[i]))}"` : colour;
+    top += arrow ? `<span${i === cur ? ' class="cur"' : arrowColour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
     if (i === intLen - 1 && intLen < walk.n) { html += '.'; top += blank; }
   }
   const end = b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
