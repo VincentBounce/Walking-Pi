@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.432';
+const VERSION = '0.1.433';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7224,11 +7224,14 @@ function updateStats() {
     // a reading head: the highlighted digit is the next one to play (step cur + 1); the stats
     // describe the digits to its left. At the end it sits on a blank after the last digit.
     const colour = walk.base <= 8 ? ` style="color:${(walk.ant ? antChipColour : digitColour)(d[i])}"` : '';  // coloured as their chips
-    html += i === cur ? `<span class="cur">${d[i]}</span>` : colour ? `<span${colour}>${d[i]}</span>` : d[i];
+    // an ant's arrow coloured as its turn's chip (left, right), not as the digit it read; the head on a
+    // dark cell, which turns it the other way: the digit and the arrow each in its own colour, not the gold
+    const turn = walk.ant ? lrTurns.indexOf(walk.turns[i]) : -1, flipped = i === cur && turn >= 0 && turn !== d[i];
+    const head = (k) => (flipped ? ` class="cur" style="background:${antChipColour(k)};color:#fff"` : ' class="cur"');
+    html += i === cur ? `<span${head(d[i])}>${d[i]}</span>` : colour ? `<span${colour}>${d[i]}</span>` : d[i];
     const arrow = arrows[walk.ant ? walk.turns[i] : d[i]];
-    // an ant's arrow coloured as its turn's chip (left, right), not as the digit it read
-    const arrowColour = walk.ant ? ` style="color:${antChipColour(lrTurns.indexOf(walk.turns[i]))}"` : colour;
-    top += arrow ? `<span${i === cur ? ' class="cur"' : arrowColour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
+    const arrowColour = walk.ant ? ` style="color:${antChipColour(turn)}"` : colour;
+    top += arrow ? `<span${i === cur ? head(turn) : arrowColour}>${arrow}\ufe0e</span>` : blank;  // as text, not an emoji
     if (i === intLen - 1 && intLen < walk.n) { html += '.'; top += blank; }
   }
   const end = b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
