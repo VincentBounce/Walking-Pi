@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.419';
+const VERSION = '0.1.420';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1390,8 +1390,8 @@ const ICONS = (() => {
     hexSpiral: pathEl(pathOf(spiralOf(6, 15), false)),
     jump: pathEl('M3 17Q7.5 8 12 17Q16.5 8 21 17') + pathEl('M17.5 14.5L21 17L17 18.5'),
     search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + pathEl('M15.5 15.5L21 21'),
-    // tabs: a turtle (the walks), an ant (Langton's), seen from above, heading up: their head, body and
-    // flippers filled, the ant's legs bent and bold, under its body
+    // a turtle (the walks turning relative to their heading) and an ant (Langton's, a tab), seen from
+    // above, heading up: their head, body and flippers filled, the ant's legs bent and bold, under its body
     turtle: pathEl('M12 1.2C10.6 1.2 10 2.6 10 3.8S10.8 6.2 12 6.2 14 5 14 3.8 13.4 1.2 12 1.2Z', 'f')
       + pathEl('M7.8 8.2Q3.6 5.6 1.4 8.4Q4.4 10.8 7.6 10.6Z', 'f') + pathEl('M16.2 8.2Q20.4 5.6 22.6 8.4Q19.6 10.8 16.4 10.6Z', 'f')
       + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
@@ -1966,7 +1966,7 @@ const NAV = {
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Triangle sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Hexagon sphere', 'Life', ''],
 };
-const NAV_KINDS = [['Walk', 'turtle'], ['Ant', 'ant'], ['Life', 'glider']];
+const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
@@ -2109,7 +2109,7 @@ function renderModePicker() {
   $('navRules').replaceChildren(...rules.map((r) => {
     const v = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
-    return button(`<span class="mode-icon">${icon(MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`
+    return button(`<span class="mode-icon">${icon(r === 'Turtle' ? 'turtle' : MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`  // a turtle for the walks turning relative to their heading
       + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => navGo(3, r));
   }));
   // Grid | Cells (Cube in 3D): each with its base and its digits, or what it is not on (that side off)
