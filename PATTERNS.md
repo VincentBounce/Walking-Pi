@@ -9,6 +9,12 @@ This file lists the most striking ones found so far, by walk, each opening the l
 - [Walks on surfaces](#walks-on-surfaces)
 - [Along the grid of the sphere of hexagons](#along-the-grid-of-the-sphere-of-hexagons)
 
+---
+
+---
+
+---
+
 ## 2D walks: rosettes
 
 On a walk that turns relative to its heading (a turtle), what counts is the period's total turn. When it is not a whole turn, each round of the period starts turned by the same angle, and after 4 rounds (on squares), 3 or 6 (on triangles and hexagons) the walk is back where it started, heading the same way: a **rosette** with that many-fold symmetry. When the total turn is 0, each round shifts the walk by the same step and it never closes: a frieze.
@@ -63,6 +69,12 @@ The tables list every fraction p/q below 1 with q ≤ 999, one per denominator, 
 ### Walks in fixed directions
 
 There the period's moves add up to a fixed step: a fraction drifts away as a frieze, unless that step is 0 and the period's figure closes on itself at once. Such closed figures are rare and look like closed scribbles, with no symmetry: on Triangles, 6 fixed directions, the biggest are [1/991](https://vincentbounce.github.io/Walking-Pi/#x=1/991&w=triFixed&d=991) and [1/823](https://vincentbounce.github.io/Walking-Pi/#x=1/823&w=triFixed&d=823).
+
+---
+
+---
+
+---
 
 ## Langton's ant by the digits: late highways
 
@@ -183,6 +195,12 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 1/167 (step 14,668,051), 1/289 (step 49,991,386), 1/299 (step 29,496,978), 1/334 (step 18,964,559), 1/355 (step 30,157,352), 1/365 (step 43,695,103), 1/477 (step 35,948,283), 1/487 (step 39,278,120), 1/509 (step 42,167,651), 1/598 (step 40,801,166), 1/613 (step 7,934,834), 1/668 (step 17,483,729), 1/670 (step 19,142,755), 1/734 (step 19,346,284), 1/857 (step 40,151,534), 1/903 (step 11,106,550), 1/905 (step 38,032,082), 1/913 (step 12,632,729), 1/919 (step 30,218,092), 1/923 (step 41,221,322), 1/931 (step 43,520,204).
 
 </details>
+
+---
+
+---
+
+---
 
 ## Walks on surfaces
 
@@ -402,6 +420,12 @@ Along the grid: see [the sphere of hexagons](#along-the-grid-of-the-sphere-of-he
 | 6 | [62/61](https://vincentbounce.github.io/Walking-Pi/#x=62/61&w=hexSphereWalk&d=5761&s=32) | 60 | 5,760 | 3,501 | 81 % |
 | 7 | [20/19](https://vincentbounce.github.io/Walking-Pi/#x=20/19&w=hexSphereWalk&d=2881&s=32) | 18 | 2,880 | 2,486 | 96 % |
 | 8 | [258/251](https://vincentbounce.github.io/Walking-Pi/#x=258/251&w=hexSphereWalk&d=4001&s=32) | 50 | 4,000 | 3,071 | 86 % |
+
+---
+
+---
+
+---
 
 ## Along the grid of the sphere of hexagons
 
