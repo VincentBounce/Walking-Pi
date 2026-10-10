@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.433';
+const VERSION = '0.1.434';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7185,6 +7185,17 @@ function updateStats() {
   if (walk.n && walk.counts) {  // each digit's count, on its chip
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
     c.forEach((v, d) => { const e = document.getElementById(`count${d}`); if (e) e.textContent = fmt(v); });
+  }
+  // step by step (paused, or at the slowest speed): the chip of the next step lit in its colour; an ant
+  // turned the other way by a dark cell, the chip of the digit it reads dashed too (not an ant by its rule)
+  const slow = walk.n && cur < walk.n && walk.counts && (!playing || stepsPerSecond() < 6.5) && !(walk.ant && !antByDigits);
+  const A = walk.ant ? ANTS[current.mode] : null;
+  const next = !slow ? -1 : A ? A.lr.map((t) => A.turns[t]).indexOf(walk.turns[cur]) : walk.digits[cur], read = slow && A ? walk.digits[cur] : -1;
+  for (const chip of $('ruleChips').children) {
+    const d = Number(chip.querySelector('small')?.id.slice(5));
+    chip.classList.toggle('next', d === next);
+    chip.classList.toggle('read', d === read && read !== next);
+    chip.style.setProperty('--c', chip.querySelector('b')?.style.background ?? '');
   }
   // digit strip around the current step
   const strip = $('digitStrip');

@@ -365,6 +365,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
 .rule-chip b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }
+.rule-chip.next, .rule-chip.read { border: 2px solid var(--c); padding: 3px 6px 3px 3px; }  /* the next step's chip, step by step */
+.rule-chip.next { background: color-mix(in srgb, var(--c) 12%, var(--bg)); }
+.rule-chip.read { border-style: dashed; }  /* an ant's digit read, turned the other way by a dark cell */
 .rule-chip small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .stage-bar .stage-more { margin-bottom: 9px; }
 /* the stats in one line of columns: the label over its value */
