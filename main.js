@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.421';
+const VERSION = '0.1.422';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1421,6 +1421,8 @@ const ICONS = (() => {
     pause: '<rect class="f" x="6" y="5" width="4" height="14" rx="1"/><rect class="f" x="14" y="5" width="4" height="14" rx="1"/>',
     start: pathEl('M5.5 5V19') + pathEl('M19 5L9 12L19 19Z', 'f'),
     end: pathEl('M18.5 5V19') + pathEl('M5 5L15 12L5 19Z', 'f'),
+    back: '<rect class="f" x="15.5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M13 5L4 12L13 19Z', 'f'),
+    step: '<rect class="f" x="5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M11 5L20 12L11 19Z', 'f'),
     star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
     copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/>' + pathEl('M15.5 8.5V5.5A2 2 0 0 0 13.5 3.5H5.5A2 2 0 0 0 3.5 5.5V13.5A2 2 0 0 0 5.5 15.5H8.5'),
     link: pathEl('M9.5 14.5L14.5 9.5') + pathEl('M8.5 11.5L6.5 13.5A3.5 3.5 0 0 0 10.5 17.5L12.5 15.5M15.5 12.5L17.5 10.5A3.5 3.5 0 0 0 13.5 6.5L11.5 8.5'),
@@ -7087,8 +7089,9 @@ function lifetimeText(L) {
 }
 
 function updateStats() {
-  // Jump to start greyed at the start, Step and Jump to end at the end (a Game of Life has none)
+  // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
+  $('back').disabled = cur === 0 || !!walk.life;
   $('step').disabled = $('end').disabled = cur >= walk.n;
   // the progress: a slider to go to any step (none for the Game of Life, which has no end)
   const finite = Number.isFinite(walk.n) && !walk.life;
@@ -7350,15 +7353,16 @@ $('speed').addEventListener('input', updateSpeedLabel);
 for (const [id, k] of [['slower', -10], ['faster', 10]]) {
   $(id).addEventListener('click', () => { $('speed').value = Math.min(100, Math.max(0, Number($('speed').value) + k)); updateSpeedLabel(); });
 }
-// the progress slider: back from the start, forward from where it is
-$('seek').addEventListener('input', () => {
-  const v = Number($('seek').value);
+// go to step v: back from the start, forward from where it is
+function seekTo(v) {
   play(false);
   if (v < cur) restart();
   advanceTo(v);
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
   statsDirty = true;
-});
+}
+$('seek').addEventListener('input', () => seekTo(Number($('seek').value)));
+$('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
@@ -7433,6 +7437,7 @@ document.addEventListener('keydown', (e) => {
   switch (e.key) {
     case ' ': e.preventDefault(); $('play').click(); break;
     case 'ArrowRight': $('step').click(); break;
+    case 'ArrowLeft': $('back').click(); break;
     case 'r': case 'R': $('restart').click(); break;
     case 'e': case 'E': $('end').click(); break;
     case 'f': case 'F': recentre(); break;

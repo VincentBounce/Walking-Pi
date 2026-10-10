@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261015x">
+  <link rel="stylesheet" href="style.css?v=20261015y">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -261,8 +261,9 @@
         </div>
         <div class="row">
           <button id="restart" data-icon="start" title="Jump to start (R)" aria-label="Jump to start"></button>
+          <button id="back" class="open-only" data-icon="back" title="One step back (←)" aria-label="One step back"></button>
           <button id="play" title="Play / pause (Space)">Play</button>
-          <button id="step" class="open-only" title="One step (→)">Step</button>
+          <button id="step" class="open-only" data-icon="step" title="One step (→)" aria-label="One step"></button>
           <button id="end" class="open-only" data-icon="end" title="Jump to end (E)" aria-label="Jump to end"></button>
           <span id="speedCtl" class="speed-ctl" title="Speed">  <!-- open only: slow on the left, fast on the right -->
             <svg id="slower" class="speed-icon" viewBox="0 0 24 24" role="button" aria-label="Slower"><title>Slower</title><path d="M3.5 16.5a8.5 7 0 0 1 17 0z"/><path d="M8 16.5 12 10.5l4 6M3.5 16.5H21"/><circle cx="21.5" cy="13.5" r="1.8"/><path d="M6.5 16.5 5.5 19.5M17.5 16.5l1 3"/></svg>
@@ -328,6 +329,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261015x"></script>
+  <script src="main.js?v=20261015y"></script>
 </body>
 </html>
