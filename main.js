@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.414';
+const VERSION = '0.1.415';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1206,7 +1206,7 @@ const renderSkyButtons = () => {  // the sky named after the theme: Dawn on a li
 
 function requestedDigits() {
   const n = Math.round(Number($('digits').value));
-  return Math.min(20_000_000, Math.max(10, n || 10));
+  return Math.min(50_000_000, Math.max(10, n || 10));
 }
 
 // The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
@@ -1214,7 +1214,7 @@ function requestedDigits() {
 // (typed, or from a link) then steps to the next one in DIGIT_STEPS.
 // For a random prime, walked whole, the stepper sets the prime's size instead, in decimal digits:
 // [ − ] 300 digits (p) [ + ], through PRIME_STEPS (100 to 2,000).
-const DIGIT_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7, 2e7];
+const DIGIT_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1e6, 2e6, 5e6, 1e7, 2e7, 5e7];
 const PRIME_STEPS = [100, 200, 300, 500, 1000, 2000];
 const randomPrimeSize = () => {  // the size of the random prime in the Formula field, if it is one
   const m = $('formula').value.match(/^\s*randprime\(\s*(\d+)\s*,\s*\d+\s*\)\s*$/);
@@ -1233,7 +1233,7 @@ function syncDigitsStepper() {
   $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ${L.drift ? '→' : '↻'}`
     : L ? `${fmt(n)} digits` : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
-    : 'Type a number of digits, from 10 to 20,000,000, then Enter';
+    : 'Type a number of digits, from 10 to 50,000,000, then Enter';
   // − goes below what is walked: the whole number's own length when it is shorter than the count
   $('digitsDown').disabled = Math.min(n, total ?? n) <= steps[0];
   $('digitsUp').disabled = n >= steps.at(-1) || (total !== null && total <= n);
@@ -7250,7 +7250,7 @@ function tick(now = performance.now()) {
 $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
-// 10 … 20 million
+// 10 … 50 million
 // The two edited fields (Custom formula, number of digits): entering one shows the value in use,
 // the cursor at its end (the plain number for the digits; formulaInUse is the last valid formula). Enter or ↵
 // leaves the field, and leaving it computes; but a wrong formula keeps you in the field, with its
