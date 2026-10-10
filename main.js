@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.426';
+const VERSION = '0.1.427';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -781,7 +781,7 @@ const FORMULA_NOTES = {
 
 /* ---- 2.3 Walk modes -------------------------------------------------------------------------- */
 // base: the base the digits are written in; arrows: each digit's step as the walker sees it, heading
-// up (⊙ up toward you, ⊗ down), shown above the digits (none where a digit is not a turn); lattice: how a step is taken ('square', 'tri', 'hex',
+// up (⊙ up toward you, ⊗ down; a spiral's □ moved, ■ drawn), shown above the digits (none where a digit is not a turn); lattice: how a step is taken ('square', 'tri', 'hex',
 // 'cube' or 'sphere' for a tiled surface); life: a Game of Life instead of a walk. The (hidden)
 // mode menu in index.html lists them, grouped as the tabs of the Walk section.
 // The 2D walks go along the lines of a grid, or from cell to cell (cells: true), twin: the other
@@ -826,7 +826,7 @@ const MODES = {
   antTri: { base: 2, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
   antHex: { base: 2, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
   antCairo: { base: 2, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
-  spiral:   { base: 2, lattice: 'square', skipZeros: true,
+  spiral:   { base: 2, arrows: '□■', lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
   jump10:   { base: 10, lattice: 'square', points: 'jump',
               rule: 'on the Ulam spiral: jump ahead <b>digit + 1</b> cells and mark the landing cell' },
@@ -836,11 +836,11 @@ const MODES = {
               rule: 'on the Ulam spiral: cell <b>n</b> is marked when the digits of n appear among them' },
   search64: { base: 64, lattice: 'square', points: 'search',
               rule: 'on the Ulam spiral: cell <b>n</b> is marked when the base-64 digits of n appear among them' },
-  triSpiral: { base: 2, lattice: 'tri', skipZeros: true,
+  triSpiral: { base: 2, arrows: '□■', lattice: 'tri', skipZeros: true,
               rule: 'along a spiral of triangles: <b>1</b> draw the step, <b>0</b> move without drawing' },
-  cairoSpiral: { base: 2, lattice: 'cairo', skipZeros: true, fill: false,
+  cairoSpiral: { base: 2, arrows: '□■', lattice: 'cairo', skipZeros: true, fill: false,
                  rule: 'along a spiral of Cairo pentagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
-  hexSpiral: { base: 2, lattice: 'hex', skipZeros: true,
+  hexSpiral: { base: 2, arrows: '□■', lattice: 'hex', skipZeros: true,
               rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
   tetraLR:  { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'tetraGrid', sphere: 'tetra', initial: 48, turns: [2, 1],
               rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
@@ -7158,7 +7158,7 @@ function updateStats() {
   // The head sits at 60 % of the line; at the start the line begins with the first digit, at the
   // end it finishes with the last one. The window then shrinks until "…", "0." and "." fit too.
   // above each digit, its step as an arrow (an ant's: the turn it took); before both lines, the walker:
-  // a turtle turning relative to its heading, a compass going by fixed directions
+  // a turtle turning relative to its heading, a compass going by fixed directions, a spiral winding round
   const mode = MODES[current.mode], arrows = [...((mode.antOf ? ANTS[current.mode] : mode).arrows ?? '')];
   strip.classList.add('line');
   strip.classList.toggle('turns', arrows.length > 0);
@@ -7188,7 +7188,7 @@ function updateStats() {
   const end = b < n ? '…' : cur >= n ? '<span class="cur">\u00a0</span>' : '';
   html += end;
   if (cur >= n) top += end;  // the head past the last digit, on both lines
-  const walker = icon(['Turtle', 'Ant', 'Polymer'].includes(NAV[current.mode][3]) ? 'turtle' : 'compass');
+  const walker = icon(mode.skipZeros ? 'spiral' : ['Turtle', 'Ant', 'Polymer'].includes(NAV[current.mode][3]) ? 'turtle' : 'compass');
   strip.innerHTML = arrows.length ? `${walker}<div class="arrows">${top}</div><div>${html}</div>` : html;
 }
 
