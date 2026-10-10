@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.413';
+const VERSION = '0.1.414';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1062,7 +1062,9 @@ function describe(base, available) {
     // the words around the digits, kept in the description: "exit through the … edge"
     const tail = mode.rule.slice(at + 2), pre = tail.slice(0, tail.indexOf('<b>')).trim(), edge = / edge\b/.test(tail) ? ' edge' : '';
     const around = pre ? ` · ${pre} …${edge}` : '';
-    const highway = walk.highway ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '';
+    const highway = (walk.bridges?.length ? ` · ${walk.bridges.length === 1 ? 'a bridge' : `${walk.bridges.length} bridges`} back into its cloud, from step `
+      + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(b.to - b.from)} steps)`).join(', ') : '')
+      + (walk.highway ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '');
     $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
@@ -2278,7 +2280,7 @@ function buildWalkOf() {
   visitData = firstVisitData = areaData = null;  // and its cells' visits and areas too
   glClear();  // a surface drawn by WebGL before (see 11.4b)
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
-  walk.ant = 0; walk.highway = null;  // set by an ant's walk only
+  walk.ant = 0; walk.highway = null; walk.bridges = null;  // set by an ant's walk only
   $('fillTooBig').hidden = true;
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -2327,17 +2329,20 @@ function buildWalkOf() {
   let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0, nextLook = 2000;
   // an ant on a highway goes on along it for ever: stopped as far as its cloud is wide (driftRounds;
-  // looked for every 2,000 steps, then every 5 % of them so far, and at the end). Its last stretch on fresh cells only, first walked on the
-  // highway: not a run along the edge of what it built before (a growing triangle's side), which ends
+  // looked for every 2,000 steps, then every 5 % of them so far, and at the end). Its last stretch on
+  // fresh cells only, first walked on the highway: not a run along the edge of what it built before (a
+  // growing triangle's side), which ends. Followed up to its stop: one that breaks was a bridge back into
+  // its cloud (1/67 on squares, from step 14,905,581), and the hunt goes on
   const first = ant ? new Int32Array(len + 1) : null;
   const highway = (n) => {
     const h = highwayOf(wx, wy, n);
     if (!h) return;
     for (let j = n - h.period + 1; j <= n; j++) if (first[j] < h.from) return;
-    const rounds = driftRounds(maxDist[h.from], Math.hypot(wx[h.from + h.period] - wx[h.from], wy[h.from + h.period] - wy[h.from]));
-    loop = { from: h.from, period: h.period, drift: true, rounds, cap: h.from + rounds * h.period };
+    const dx = wx[h.from + h.period] - wx[h.from], dy = wy[h.from + h.period] - wy[h.from], rounds = driftRounds(maxDist[h.from], Math.hypot(dx, dy));
+    loop = { from: h.from, period: h.period, drift: true, rounds, cap: h.from + rounds * h.period, dx, dy };
     steps = Math.min(steps, loop.cap);
   };
+  const bridges = [];
   cells[0] = 1;
   for (let i = 0; i < steps; i++) {
     const g = seq[i];
@@ -2357,6 +2362,13 @@ function buildWalkOf() {
     counts[base * (i + 1) + (byColour ? step.turned : g)]++;
     if (ant) left[i] = step.left;
     walked = i + 1;
+    if (ant && loop && walked > loop.from + loop.period
+        && (Math.abs(wx[walked] - wx[walked - loop.period] - loop.dx) > 1e-6 || Math.abs(wy[walked] - wy[walked - loop.period] - loop.dy) > 1e-6)) {
+      bridges.push({ from: loop.from, to: walked });  // back into its cloud: not its highway
+      loop = null;
+      steps = len;
+      nextLook = walked - (walked % 2000) + 2000;
+    }
     if (ant && !loop && walked === nextLook) { highway(walked); nextLook += Math.max(2000, 2000 * Math.floor(walked / 40000)); }
   }
   if (ant && !loop) highway(steps);
@@ -2369,7 +2381,7 @@ function buildWalkOf() {
   Object.assign(walk, { vert: null, stepTiles: null, loop, n: steps, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
                         skipZeros: !!MODES[current.mode].skipZeros, ant: ant ? step.colours : 0,
-                        highway: ant ? highwayOf(wx, wy, steps) : null,
+                        highway: ant ? highwayOf(wx, wy, steps) : null, bridges,
                         points: false, keys, labels: null, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
