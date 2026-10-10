@@ -4,18 +4,18 @@ An irrational number like π walks at random. A fraction's digits repeat: after 
 
 This file lists the most striking ones found so far, by walk, each opening the live page. The **Gallery** tab of the app holds a curated choice of them.
 
-- [2D walks: rosettes](#2d-walks-rosettes)
-- [Langton's ant by the digits: late highways](#langtons-ant-by-the-digits-late-highways)
-- [Walks on surfaces](#walks-on-surfaces)
-- [Along the grid of the sphere of hexagons](#along-the-grid-of-the-sphere-of-hexagons)
+- [🌸 2D walks: rosettes](#-2d-walks-rosettes)
+- [🐜 Langton's ant by the digits: late highways](#-langtons-ant-by-the-digits-late-highways)
+- [🌐 Walks on surfaces](#-walks-on-surfaces)
+- [💠 Along the grid of the sphere of hexagons](#-along-the-grid-of-the-sphere-of-hexagons)
 
----
+<br>
 
----
+<p align="center">⁂</p>
 
----
+<br>
 
-## 2D walks: rosettes
+## 🌸 2D walks: rosettes
 
 On a walk that turns relative to its heading (a turtle), what counts is the period's total turn. When it is not a whole turn, each round of the period starts turned by the same angle, and after 4 rounds (on squares), 3 or 6 (on triangles and hexagons) the walk is back where it started, heading the same way: a **rosette** with that many-fold symmetry. When the total turn is 0, each round shifts the walk by the same step and it never closes: a frieze.
 
@@ -70,13 +70,13 @@ The tables list every fraction p/q below 1 with q ≤ 999, one per denominator, 
 
 There the period's moves add up to a fixed step: a fraction drifts away as a frieze, unless that step is 0 and the period's figure closes on itself at once. Such closed figures are rare and look like closed scribbles, with no symmetry: on Triangles, 6 fixed directions, the biggest are [1/991](https://vincentbounce.github.io/Walking-Pi/#x=1/991&w=triFixed&d=991) and [1/823](https://vincentbounce.github.io/Walking-Pi/#x=1/823&w=triFixed&d=823).
 
----
+<br>
 
----
+<p align="center">⁂</p>
 
----
+<br>
 
-## Langton's ant by the digits: late highways
+## 🐜 Langton's ant by the digits: late highways
 
 **Ant**, beside Grid and Cells, walks a turtle's cells as [Langton's ant](https://en.wikipedia.org/wiki/Langton%27s_ant); with **Digits** each digit turns it (0 left, 1 right; L1 / R1 on the Cairo pentagons), the other way on a dark cell, which then flips. A fraction's digits repeat, yet the ant first wanders in the mess it makes, for hundreds or millions of steps, until it may slip out into fresh cells on a **highway**: the same stretch of steps for ever, each one further on (its stretch is a whole number of the digits' period). When it starts cannot be foreseen: even for Langton's own ant, no one has proved that it always builds one.
 
@@ -238,13 +238,13 @@ Walking Pi finds a highway (its stretch up to 100,000 steps, repeated over 1,000
 
 </details>
 
----
+<br>
 
----
+<p align="center">⁂</p>
 
----
+<br>
 
-## Walks on surfaces
+## 🌐 Walks on surfaces
 
 On a surface, the walk can only be in finitely many states (where it is, and which way it heads), so a fraction's walk always comes back to a state it had at the same point of its period, and goes round again from there. On a torus a period shifts the walk by a fixed step on its sheet, so every fraction closes, after turning round the ring and the tube a number of times; on the solids the period's figure is turned at each corner it passes, and the walk closes too (or not within the steps tried).
 
@@ -448,7 +448,7 @@ The tables list every fraction p/q between 1 and 2 with q ≤ 256 and a period o
 
 ### Hexagon sphere
 
-Along the grid: see [the sphere of hexagons](#along-the-grid-of-the-sphere-of-hexagons) below.
+Along the grid: see [the sphere of hexagons](#-along-the-grid-of-the-sphere-of-hexagons) below.
 
 **On cells** (base 2), size 32:
 
@@ -463,13 +463,13 @@ Along the grid: see [the sphere of hexagons](#along-the-grid-of-the-sphere-of-he
 | 7 | [20/19](https://vincentbounce.github.io/Walking-Pi/#x=20/19&w=hexSphereWalk&d=2881&s=32) | 18 | 2,880 | 2,486 | 96 % |
 | 8 | [258/251](https://vincentbounce.github.io/Walking-Pi/#x=258/251&w=hexSphereWalk&d=4001&s=32) | 50 | 4,000 | 3,071 | 86 % |
 
----
+<br>
 
----
+<p align="center">⁂</p>
 
----
+<br>
 
-## Along the grid of the sphere of hexagons
+## 💠 Along the grid of the sphere of hexagons
 
 In *Walks on surface grids*, the **Hexagon sphere** reads base-2 digits as turns: `0` left, `1` right. An irrational number like π draws noise; a fraction has digits that repeat, so each period of digits makes the same turns again. When the repeating word turns by 0° in total (its count of `0`s minus its count of `1`s is a multiple of 6), each period shifts the walker straight on, and on the sphere the walk comes back exactly onto itself after a while. The walk then stops after that first round (`… digits max ↻`), and Fill areas is set aside.
 
