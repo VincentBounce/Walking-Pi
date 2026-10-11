@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.470';
+const VERSION = '0.1.471';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1071,7 +1071,7 @@ function describe(base, available) {
   $('barNum').title = formulaInUse;
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
-  $('barBase').classList.remove('right');
+  $('barBase').parentElement.classList.remove('life');
   if (colours) base = colours;  // its chips, one per colour
   $('barLoop').hidden = mode.life || !walk.loop;
   $('ruleChips').replaceChildren();
@@ -1113,8 +1113,9 @@ function describe(base, available) {
     : `${number} ${seeded} of ${mode.where}`;
   // the title: the rule (its name, or the rule itself), not the number that may have seeded it
   const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
-  $('barBase').textContent = known ? `${known.dataset.name} · ${walk.life.ruleText}` : walk.life.ruleText;  // on the right (the title: the generation, see updateStats)
-  $('barBase').classList.add('right');
+  $('barBase').textContent = `Rule ${walk.life.ruleText}`;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
+  $('barBase').title = known ? known.dataset.name : '';
+  $('barBase').parentElement.classList.add('life');
   $('description').innerHTML = `${walk.life.colours > 1 ? 'A newborn takes the colour of most of its neighbours · ' : ''}Neighbours share an edge or a corner · ${lead}`;
 }
 
@@ -4698,7 +4699,7 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-const PLANE_SIDES = { square: [64, 128, 256, 512, 1024, 2048], hex: [32, 64, 128, 256, 512], tri: [32, 64, 128, 256], cairo: [16, 32, 64, 128, 256] };
+const PLANE_SIDES = { square: [8, 16, 24, 32, 64, 128, 256, 512, 1024, 2048], hex: [8, 16, 24, 32, 64, 128, 256, 512], tri: [8, 16, 24, 32, 64, 128, 256], cairo: [8, 16, 24, 32, 64, 128, 256] };
 const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none', pattern: 'acorn' };  // a soup of its own each visit (a link keeps its seed)
 const LIFE_PATTERNS = {  // LifeWiki's RLE
   rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
