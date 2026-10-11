@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.448';
+const VERSION = '0.1.449';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1083,7 +1083,8 @@ function describe(base, available) {
     const around = pre ? ` · ${pre} …${edge}` : '';
     const highway = (walk.bridges?.length ? ` · ${walk.bridges.length === 1 ? 'a bridge' : `${walk.bridges.length} bridges`} back into its cloud, from step `
       + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(Math.floor((b.to - b.from) / b.period))} stretches)`).join(', ') : '')
-      + (walk.highway ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '');
+      + (walk.highway && !walk.loop ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '')
+      + (loopText() ? ` · ${loopText()}` : '');  // why the length stops where it does
     $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
@@ -1277,12 +1278,6 @@ function loopText() {
       + ` for ever, and stops after ${fmt(rounds)} rounds${far}, ${fmt(total)} digits.`
     : `↻ From step ${fmt(L.from)}, this walk goes round the same ${fmt(period)} steps forever:`
       + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
-}
-// The status says how the digits came, then, a moment later, why the count stops where it does
-let loopNoteTimer = 0;
-function noteLoopLater() {
-  clearTimeout(loopNoteTimer);
-  loopNoteTimer = setTimeout(() => { const t = loopText(); if (t) $('status').textContent = t; }, 2500);
 }
 function stepDigits(delta) {
   const size = randomPrimeSize(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
@@ -2171,7 +2166,6 @@ function compute(keepDigits = false) {
     digitsBeforeLoop = null;
   }
   const mode = MODES[$('mode').value];
-  clearTimeout(loopNoteTimer);  // a new walk: its own status
   modeTab = $('mode').selectedOptions[0].parentElement.label;  // show the tab of the mode in use
   renderModePicker();
   if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
@@ -2183,7 +2177,7 @@ function compute(keepDigits = false) {
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
   $('huntStatus').textContent = '';
-  $('lengthSection').hidden = !!mode.life;  // Life takes one digit per cell of the surface
+  $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
   $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('sphereRow').hidden = mode.lattice !== 'sphere';
   syncSizeStepper();
@@ -2209,7 +2203,6 @@ function compute(keepDigits = false) {
     setCurrent(seqDigits(F.ast, want, base), base, kind, kind === 'rat' ? smallExact(F.ast) : null);
     $('status').textContent = note;
     buildWalk();
-    noteLoopLater();
     describe(base, n);
     $('copyNumber').hidden = false;
     showAll();
@@ -2229,7 +2222,6 @@ function compute(keepDigits = false) {
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
     ].filter(Boolean).join(' · ');
-    noteLoopLater();
     describe(base, total);
     syncDigitsStepper();  // a whole number's digits are now known
     $('copyNumber').hidden = false;
@@ -5337,14 +5329,16 @@ async function importSetups(file) {
  */
 
 /* ---- 11.1 Animation -------------------------------------------------------------------------- */
-function stepsPerSecond() {
-  const v = Number($('speed').value) / 100;
-  return 6 * 10 ** (v * 5); // 6 → 600,000 steps per second (logarithmic slider; 50 by default)
-}
-
+// The speeds the turtle and the rabbit step through (50 by default; the slowest one lights the next
+// step's chip, as step by step)
+const SPEEDS = [5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+let speedAt = 2;
+const stepsPerSecond = () => SPEEDS[speedAt];
 function updateSpeedLabel() {
   const s = stepsPerSecond();
-  $('speedLabel').textContent = `${s < 100 ? s.toFixed(s < 10 ? 1 : 0) : fmt(Math.round(s))} steps/s`;
+  $('speedLabel').textContent = `${s >= 1e6 ? `${s / 1e6}M` : s >= 1000 ? `${s / 1000}k` : s} steps/s`;
+  $('slower').disabled = speedAt === 0;
+  $('faster').disabled = speedAt === SPEEDS.length - 1;
 }
 
 function advanceTo(target) {
@@ -7235,7 +7229,7 @@ function updateStats() {
   // it counts in (an ant's: the turn it takes, or by its rule the colour of its cell); an ant by the digits
   // turned the other way by a dark cell, the chip of the digit it reads dashed too; by its rule, on a cell
   // walked before, the chip of a fresh one (colour 0) dashed, as the turn it would take there
-  const slow = walk.n && cur < walk.n && walk.counts && (!playing || stepsPerSecond() < 6.5);
+  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speedAt === 0);
   let next = -1;
   if (slow) for (let c = 0; c < walk.base; c++) if (walk.counts[walk.base * (cur + 1) + c] !== walk.counts[walk.base * cur + c]) next = c;
   const read = !slow || !walk.ant ? -1 : antByDigits ? walk.digits[cur] : 0;
@@ -7477,10 +7471,9 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
-$('speed').addEventListener('input', updateSpeedLabel);
-// the turtle and the rabbit: a tenth of the slider slower or faster
-for (const [id, k] of [['slower', -10], ['faster', 10]]) {
-  $(id).addEventListener('click', () => { $('speed').value = Math.min(100, Math.max(0, Number($('speed').value) + k)); updateSpeedLabel(); });
+// the turtle and the rabbit: the next speed down or up
+for (const [id, k] of [['slower', -1], ['faster', 1]]) {
+  $(id).addEventListener('click', () => { speedAt = Math.min(SPEEDS.length - 1, Math.max(0, speedAt + k)); updateSpeedLabel(); statsDirty = true; });
 }
 // go to step v: back from the start, forward from where it is
 function seekTo(v) {
@@ -7615,7 +7608,7 @@ if (!$('theme').value) $('theme').value = 'system';
 $('theme').addEventListener('change', applyTheme);
 systemLight.addEventListener('change', () => { if ($('theme').value === 'system') applyTheme(); });
 applyTheme();
-// the animation bar sits over the view: its clicks, drags (the speed slider) and wheel are its own
+// the animation bar sits over the view: its clicks, drags (the step slider) and wheel are its own
 for (const type of ['pointerdown', 'dblclick', 'wheel']) {
   $('animBar').addEventListener(type, (e) => e.stopPropagation());
   $('viewTools').addEventListener(type, (e) => e.stopPropagation());  // Inflate and the Display menu too

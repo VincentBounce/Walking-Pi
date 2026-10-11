@@ -85,7 +85,7 @@ h2 {
 
 label { display: block; margin-bottom: 10px; }
 label.check { display: flex; align-items: center; gap: 8px; }
-label.check { cursor: pointer; }
+label.check { }
 label.check:has(input:disabled) { opacity: 0.4; cursor: default; }  /* shown, but of no use here */
 
 input[type=number], input[type=text], select {
@@ -261,7 +261,6 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #progressBar { height: 100%; width: 0; background: var(--accent); transition: width 0.1s; }
 .muted { color: var(--muted); margin: 6px 0 0; font-size: 12px; }
 .fill-note { color: var(--muted); font-size: 12px; margin-left: auto; }  /* beside Fill areas, when it cannot fill */
-#status { margin: 0 0 10px; }  /* under the digits' count, above Copy */
 
 .stats {
   display: grid;
@@ -383,24 +382,25 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 14px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 0; align-items: center; }
-.stage-bar .row button {  /* ⏮ Step ⏭: all alike, of one height with Play, their text or icon centred */
-  flex: none; width: 48px; height: 32px; padding: 0; font-weight: 600;
+.stage-bar .row button {  /* ⏮ ◀▮ Play ▮▶ ⏭ 🐢 🐇: sharing the bar's width, of one height, their text or icon centred */
+  flex: 1; min-width: 0; height: 32px; padding: 0; font-weight: 600;
   display: inline-flex; align-items: center; justify-content: center;
 }
-.stage-bar:not(:hover) .row button.open-only { display: none; }  /* Step and ⏭ only while open */
-@media (hover: none) { .stage-bar:focus-within .row button.open-only { display: inline-flex; } }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
-.stage-bar #play { width: 72px; color: var(--accent); border-color: var(--accent); }
+.stage-bar #play { flex: 1.6; color: var(--accent); border-color: var(--accent); }
+/* the length above the buttons, as wide; under them how the digits came (open only) and the speed */
+.stage-bar .stepper { margin: 0 0 8px; }
+.stage-bar .progress { margin: -4px 0 8px; }
+.player-foot { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.player-foot #status { flex: 1; min-width: 0; margin: 0; }
+.stage-bar:not(:hover) #status { visibility: hidden; }
+@media (hover: none) { .stage-bar:focus-within #status { visibility: visible; } }
 /* the steps, on their own line above the buttons; the speed after ⏭, between a turtle and a rabbit */
 .stage-bar .seek-row { margin: 0 0 8px; gap: 10px; }
 #seek { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); }
-.speed-ctl { flex: 1; display: flex; align-items: center; gap: 6px; margin-left: 8px; min-width: 0; color: var(--muted); }
-.stage-bar:not(:hover) .speed-ctl { display: none; }
-@media (hover: none) { .stage-bar:focus-within .speed-ctl { display: flex; } }
-#speed { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); }
-.speed-icon { flex: none; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; cursor: pointer; }
-.speed-icon:hover { color: var(--accent); }  /* a click: slower or faster, a step of the slider */
-.speed-label { flex: none; min-width: 9ch; font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.speed-icon { flex: none; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.speed-label { flex: none; margin-left: auto; font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 .seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
 .stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .hint {
