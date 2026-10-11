@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.473';
+const VERSION = '0.1.474';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8015,15 +8015,15 @@ function updateStats() {
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
     // as bubbles: the run (lifetime, generation, alive, born, died, ever alive), then a row per colour
-    const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
+    const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back};--on:${back === LIFE_ALIVE ? UNLIT : '#fff'}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
     // the title: the generation, and how the run ends (or not yet)
     $('barNum').textContent = `Gen ${fmt(cur)}`;
     $('barLoop').hidden = false;
     $('barLoop').textContent = lifetimeText(L);
-    // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the run's)
+    // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the live cells', as the theme draws them)
     const row = (c, alive, born, died, ever) => [bubble(c, icon('aliveDot'), 'Alive', pc(alive)), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
-    $('lifeChips').innerHTML = L.colours === 1 ? row('#0f766e', L.aliveCount, L.born, L.dead, L.everAlive)
+    $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, L.aliveCount, L.born, L.dead, L.everAlive)
       : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
@@ -8512,7 +8512,7 @@ function applyTheme() {
   glPalette();
   renderColorButtons();
   renderSkyButtons();
-  needsFull = true;
+  needsFull = statsDirty = true;  // Life's bubbles in the theme's colours too
 }
 try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
 if (!$('theme').value) $('theme').value = 'system';
