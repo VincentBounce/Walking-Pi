@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.447';
+const VERSION = '0.1.448';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2063,6 +2063,7 @@ function familyOf(w) {
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
+  $('digitsSection').hidden = !!A && !antByDigits;  // an ant by colour reads no digit
   $('antRow').hidden = !A;
   if ($('antRow').hidden) return;
   $('antColours').classList.toggle('active', !antByDigits);
@@ -2182,7 +2183,7 @@ function compute(keepDigits = false) {
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
   $('huntStatus').textContent = '';
-  $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
+  $('lengthSection').hidden = !!mode.life;  // Life takes one digit per cell of the surface
   $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('sphereRow').hidden = mode.lattice !== 'sphere';
   syncSizeStepper();
