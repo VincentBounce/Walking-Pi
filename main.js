@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.474';
+const VERSION = '0.1.475';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1454,6 +1454,8 @@ const ICONS = (() => {
     zone2: dots([[12, 12]], 4),
     zone3: dots([[12, 12]], 6),
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
+    // Draw's eraser: a block tilted on its line
+    eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
     // numbers
     dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' + dots([[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]], 1.4),
     dragon: `<path class="thin" d="${pathOf(dragonOf(63), false)}"/>`,
@@ -4700,15 +4702,19 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 const PLANE_SIDES = { square: [8, 16, 24, 32, 64, 128, 256, 512, 1024, 2048], hex: [8, 16, 24, 32, 64, 128, 256, 512], tri: [8, 16, 24, 32, 64, 128, 256], cairo: [8, 16, 24, 32, 64, 128, 256] };
-const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none', pattern: 'acorn' };  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
+// (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
 let ghost = null;  // the cell under the pointer while drawing, where the brush would go
-const LIFE_PATTERNS = {  // LifeWiki's RLE
-  rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
-  diehard: ['Diehard', '6bo$2o$bo3b3o!'],
-  pulsar: ['Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!'],
-  gosper: ['Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!'],
+const LIFE_PATTERNS = {  // LifeWiki's RLE, what it does, its picture (5 × 5 pixels, see pixelIcon)
+  cell: ['Cell', 'o!', 'one cell, again to change its state', '.....,.....,..o..'],
+  glider: ['Glider', 'bo$2bo$3o!', 'flies off diagonally', '.....,..o..,...o.,.ooo.'],
+  rpentomino: ['R-pentomino', 'b2o$2o$bo!', 'settles at generation 1,103', '.....,..oo.,.oo..,..o..'],
+  acorn: ['Acorn', 'bo$3bo$2o2b3o!', 'settles at generation 5,206', '.....,.o...,...o.,oo.oo'],
+  diehard: ['Diehard', '6bo$2o$bo3b3o!', 'dies out at generation 130', '.....,....o,oo...,.o.oo'],
+  pulsar: ['Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!', 'beats with period 3', 'oo.oo,o...o,.....,o...o,oo.oo'],
+  gosper: ['Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!', 'a glider every 30 generations', 'oo.oo,oo.oo,...+.,....+,..+++'],
 };
 // the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
 // triangles turned by half a turn is itself (Cairo pentagons: none of their own)
@@ -4783,21 +4789,15 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   const W = plane.side, row = planeRow(kind, W), n = row * W, seed = new Uint8Array(n), last = W - 1;
   const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < row && y < W) seed[y * row + x] = c; };
   // the symmetry: a soup or the digits read at the first of a cell's copies (as dense as without); cells
-  // drawn or a pattern copied to all of them
+  // drawn copied to all of them
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
-  else if (plane.start === 'random' || (plane.start === 'pattern' && kind !== 'square')) {
+  else if (plane.start === 'random') {
     const p = plane.density / 100;
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
   } else {
     // cells drawn: a colour of another count of colours as one of these (one colour: alive), a dying state kept
-    if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), K > 1 ? ((c - 1) % K) + 1 : c < C ? c : 1);
-    else {
-      const pop = populationOf(`0,0:${LIFE_PATTERNS[plane.pattern][1]}`);
-      let w = 0, h = 0;
-      for (const k of pop.keys()) { const [x, y] = cellXY(k); w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
-      for (const k of pop.keys()) { const [x, y] = cellXY(k); put(x + ((W - w) >> 1), y + ((W - h) >> 1), 1); }
-    }
+    for (const [k, c] of population) put(...cellXY(k), K > 1 ? ((c - 1) % K) + 1 : c < C ? c : 1);
     if (symmetryOf(kind) !== 'none') {
       const own = seed.slice();
       for (let t = 0; t < n; t++) if (own[t]) for (const c of cellCopies(kind, W, t)) seed[c] = own[t];
@@ -4898,8 +4898,7 @@ function planeLead(number) {
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
-  const how = { random: `A random soup, ${soup},`, pattern: kind === 'square' ? `${LIFE_PATTERNS[plane.pattern][0]} in the middle` : `A random soup, ${soup},`,
-                draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
+  const how = { random: `A random soup, ${soup},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
   return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
@@ -4911,9 +4910,12 @@ function planeFromSetup(s) {
     plane.start = 'random';
     plane.density = Math.min(60, Math.max(5, Number(a) || 30));
     plane.seed = Number(b) || 1;
-  } else if (kind === 'pattern') { plane.start = 'pattern'; if (LIFE_PATTERNS[a]) plane.pattern = a; }
-  else plane.start = kind === 'draw' || kind === 'digits' ? kind : 'random';
+  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
+  if (plane.start === 'pattern') {  // an old link's pattern: drawn in the middle
+    plane.start = 'draw';
+    population = new Map(patternCells(LIFE_PATTERNS[a] ? a : 'acorn', 0, false).map(([x, y]) => [key(x + (plane.side >> 1), y + (plane.side >> 1)), 1]));
+  }
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
@@ -4927,7 +4929,6 @@ function renderPlaneRow() {
   $('planeTorus').checked = plane.torus;
   for (const b of $('lifeStartTabs').children) {
     b.classList.toggle('active', b.dataset.start === plane.start);
-    b.hidden = b.dataset.start === 'pattern' && kind !== 'square';
   }
   $('startSoup').hidden = plane.start !== 'random';
   const syms = PLANE_SYMMETRIES[kind];
@@ -4940,27 +4941,26 @@ function renderPlaneRow() {
     b.addEventListener('click', () => { plane.sym = y; planeReseed(); });
     return b;
   }));
-  $('startPattern').hidden = plane.start !== 'pattern' || kind !== 'square';
   $('startDraw').hidden = plane.start !== 'draw';
-  if (kind !== 'square') brush.id = 'cell';  // the patterns are squares'
+  // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
+  if (kind !== 'square') brush.id = 'cell';
   const K = ruleColours();
   brush.colour = Math.min(brush.colour, K);
-  for (const b of $('brushTiles').children) { b.classList.toggle('active', b.dataset.brush === brush.id); b.hidden = kind !== 'square'; }
-  $('brushTiles').hidden = kind !== 'square';
-  $('brushColours').replaceChildren(...(K > 1 ? LIFE_COLOURS.slice(0, K) : []).map((c, k) => {
+  for (const b of $('brushCards').children) { b.classList.toggle('active', b.dataset.brush === brush.id); b.hidden = kind !== 'square' && b.dataset.brush !== 'cell'; }
+  $('brushColours').replaceChildren(...(K > 1 ? LIFE_COLOURS.slice(0, K) : [LIFE_ALIVE]).map((c, k) => {
     const i = document.createElement('i');
     i.style.background = c;
-    i.title = LIFE_COLOUR_NAMES[k];
+    i.title = K > 1 ? LIFE_COLOUR_NAMES[k] : 'alive';
     i.classList.toggle('active', brush.colour === k + 1);
     i.addEventListener('click', () => { brush.colour = k + 1; renderPlaneRow(); });
     return i;
   }));
+  $('brushEraser').classList.toggle('active', brush.colour === 0);
   $('brushTurn').textContent = `↻ ${brush.turn * 90}°`;
-  $('brushTurn').hidden = $('brushFlip').hidden = brush.id === 'cell';
+  $('brushTurn').disabled = $('brushFlip').disabled = brush.id === 'cell';
   $('brushFlip').classList.toggle('active', brush.flip);
   $('soupDensity').value = plane.density;
   $('soupDensityLabel').textContent = `${plane.density} %`;
-  for (const b of $('startPattern').children) b.classList.toggle('active', b.dataset.pattern === plane.pattern);
 }
 // Behind the grid (grid layer, at each view): the sky or the page outside it, the page inside it, and,
 // zoomed in enough, its cells' outlines; dead edges, its border
@@ -5020,15 +5020,15 @@ function drawPlaneGrid() {
 // the grid's cells in the Life colours (Display), each generation: squares as one picture, a pixel a
 // cell; hexagons and triangles as polygons, one path a colour
 let planeCanvas = null, planeImage = null, planeColours = null;
-// The brush's cells around the cell clicked: a pattern mirrored, turned, then centred
-function brushCells() {
-  if (brush.id === 'cell') return [[0, 0]];
-  let pts = [...populationOf(`0,0:${LIFE_PATTERNS[brush.id][1]}`).keys()].map((k) => { const [x, y] = cellXY(k); return [brush.flip ? -x : x, y]; });
-  for (let k = 0; k < brush.turn; k++) pts = pts.map(([x, y]) => [-y, x]);
+// A pattern's cells around its middle: mirrored, turned, then centred
+function patternCells(id, turn, flip) {
+  let pts = [...populationOf(`0,0:${LIFE_PATTERNS[id][1]}`).keys()].map((k) => { const [x, y] = cellXY(k); return [flip ? -x : x, y]; });
+  for (let k = 0; k < turn; k++) pts = pts.map(([x, y]) => [-y, x]);
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), mx = Math.min(...xs), my = Math.min(...ys);
   const w = Math.max(...xs) - mx + 1, h = Math.max(...ys) - my + 1;
   return pts.map(([x, y]) => [x - mx - (w >> 1), y - my - (h >> 1)]);
 }
+const brushCells = () => patternCells(brush.id, brush.turn, brush.flip);
 // where the brush's cells go from a cell: wrapping round the grid, or the ones inside it
 function brushAt([cx, cy]) {
   const W = walk.plane.W, out = [];
@@ -5044,8 +5044,8 @@ function drawGhost() {
   const ctx = layers.overlay, { scale: s, ox, oy } = view;
   ctx.clearRect(0, 0, cw, ch);
   if (!drawing || !ghost || !walk.plane || walk.plane.kind !== 'square') return;
-  ctx.globalAlpha = 0.55;
-  ctx.fillStyle = walk.life.colours > 1 ? LIFE_COLOURS[brush.colour - 1] : LIFE_ALIVE;
+  ctx.globalAlpha = brush.colour ? 0.55 : 0.85;  // the eraser: the dead cells' colour
+  ctx.fillStyle = !brush.colour ? UNLIT : walk.life.colours > 1 ? LIFE_COLOURS[brush.colour - 1] : LIFE_ALIVE;
   for (const [x, y] of brushAt(ghost)) ctx.fillRect(ox + (x - 0.5) * s, oy + (y - 0.5) * s, s, s);
   ctx.globalAlpha = 1;
 }
@@ -5762,8 +5762,8 @@ function renderBattle() {
   $('battleTop').replaceChildren(...battle.top.map((r, i) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${fmt(r.contacts)} generations of battle</span>`
-      + `<span class="mode-detail">balance ${r.balance.toFixed(2)} · ${r.T >= 4000 ? 'still fighting at the cap' : `settles at gen ${fmt(r.T)}`}</span></span>`;
+    b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${fmt(r.contacts)} generations in contact</span>`
+      + `<span class="mode-detail">${r.T >= 4000 ? 'still fighting at the cap' : `of ${fmt(r.T)} before it settles`} · balance ${r.balance.toFixed(2)}</span></span>`;
     b.addEventListener('click', () => setLifeSeed(r.seed, 'battle'));
     return b;
   }));
@@ -5931,7 +5931,7 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    s.sd = plane.start === 'random' ? `random.${plane.density}.${plane.seed}` : plane.start === 'pattern' ? `pattern.${plane.pattern}` : plane.start;
+    s.sd = plane.start === 'random' ? `random.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
@@ -8414,26 +8414,19 @@ for (const b of $('lifeStartTabs').children) {
 $('soupDensity').addEventListener('input', () => { $('soupDensityLabel').textContent = `${$('soupDensity').value} %`; });
 $('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); planeReseed(); });
 $('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); planeReseed(); });
-$('startPattern').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name]]) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.textContent = name;
-  b.dataset.pattern = id;
-  b.addEventListener('click', () => { plane.pattern = id; planeReseed(); });
-  return b;
-}));
 $('clearDrawn').addEventListener('click', () => { population = new Map(); planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
-$('brushTiles').replaceChildren(...[['cell', 'Cell'], ...Object.entries(LIFE_PATTERNS).map(([id, [name]]) => [id, name])].map(([id, name]) => {
+$('brushCards').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name, , what, art]]) => {
   const b = document.createElement('button');
   b.type = 'button';
-  b.textContent = name;
+  b.innerHTML = `<span class="mode-icon">${pixelIcon(art)}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${what}</span></span>`;
   b.dataset.brush = id;
   b.addEventListener('click', () => { brush.id = id; renderPlaneRow(); });
   return b;
 }));
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % 4; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
+$('brushEraser').addEventListener('click', () => { brush.colour = 0; renderPlaneRow(); });
 $('battleBtn').addEventListener('click', huntBattles);
 for (const b of $('battleRadius').children) b.addEventListener('click', () => { battle.radius = Number(b.dataset.r); battle.top = []; renderBattle(); });
 for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
@@ -8451,7 +8444,7 @@ stage.addEventListener('pointerup', (e) => {
   if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
     if (!cell) return;
-    if (brush.id !== 'cell') for (const [x, y] of brushAt(cell)) population.set(key(x, y), walk.life.colours > 1 ? brush.colour : 1);
+    if (brush.id !== 'cell' || !brush.colour) for (const [x, y] of brushAt(cell)) { if (brush.colour) population.set(key(x, y), brush.colour); else population.delete(key(x, y)); }
     else {  // a cell: in the brush's colour, or off if it has it; one colour: alive, then each dying state, back to dead
       const k = key(...cell), v = population.get(k) ?? 0;
       const c = walk.life.colours > 1 ? (v === brush.colour ? 0 : brush.colour) : (v + 1) % walk.life.C;
