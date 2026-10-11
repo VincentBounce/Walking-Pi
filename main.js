@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.476';
+const VERSION = '0.1.477';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1454,6 +1454,8 @@ const ICONS = (() => {
     zone2: dots([[12, 12]], 4),
     zone3: dots([[12, 12]], 6),
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
+    // Life's grid edges: walls, a square in a frame
+    walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
     // numbers
@@ -4927,7 +4929,8 @@ function renderPlaneRow() {
   $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} ${{ tri: 'rhombi of 2 triangles', cairo: 'squares of 2 pentagons' }[kind] ?? PLANE_CELLS[kind]}`;
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  $('planeTorus').checked = plane.torus;
+  $('edgeTorus').classList.toggle('active', plane.torus);
+  $('edgeWalls').classList.toggle('active', !plane.torus);
   for (const b of $('lifeStartTabs').children) {
     b.classList.toggle('active', b.dataset.start === plane.start);
   }
@@ -8418,7 +8421,10 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
     compute(true);
   });
 }
-$('planeTorus').addEventListener('change', () => { plane.torus = $('planeTorus').checked; compute(true); });
+for (const [id, torus, pic] of [['edgeTorus', true, 'torus'], ['edgeWalls', false, 'walls']]) {
+  $(id).querySelector('svg').innerHTML = ICONS[pic];
+  $(id).addEventListener('click', () => { if (plane.torus === torus) return; plane.torus = torus; compute(true); });
+}
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; cleared = null; compute(true); });
 }

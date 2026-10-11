@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261018s">
+  <link rel="stylesheet" href="style.css?v=20261018t">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -144,7 +144,9 @@
             <span id="planeLabel"></span>
             <button id="planeUp" title="Bigger grid">+</button>
           </div>
-          <label class="check" title="The grid's edges glued, left to right and top to bottom (what leaves on one side comes back on the other); off, the cells past the edges are always dead"><input id="planeTorus" type="checkbox" checked> Wrap around (torus)</label>
+          <div id="planeEdges" class="choice-row two-tiles">  <!-- the grid's edges: glued (a torus), or walls -->
+            <button id="edgeTorus" type="button" title="The grid's edges glued, left to right and top to bottom: what leaves on one side comes back on the other"><span class="walk-on-name">Torus <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="mode-detail">wraps around</span></button><button id="edgeWalls" type="button" title="The cells past the edges always dead"><span class="walk-on-name">Walls <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="mode-detail">dead edges</span></button>
+          </div>
         </div>
         <div id="sphereRow" hidden>
           <div class="stepper">
@@ -399,6 +401,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261018s"></script>
+  <script src="main.js?v=20261018t"></script>
 </body>
 </html>
