@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.460';
+const VERSION = '0.1.461';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -923,6 +923,7 @@ const MODES = {
   life2d:     { base: 2, lattice: 'square', life: true, plane: 'square', where: 'a grid of squares' },  // on the plane (see plane)
   life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
   life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
+  life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
   lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
@@ -1939,7 +1940,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
+  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
 
@@ -1989,7 +1990,7 @@ const NAV = {
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
-  life2d: ['Life', '2D', 'Squares', 'Life', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
@@ -4670,7 +4671,7 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-const PLANE_SIDES = { square: [64, 128, 256, 512, 1024, 2048], hex: [32, 64, 128, 256, 512], tri: [32, 64, 128, 256] };
+const PLANE_SIDES = { square: [64, 128, 256, 512, 1024, 2048], hex: [32, 64, 128, 256, 512], tri: [32, 64, 128, 256], cairo: [16, 32, 64, 128, 256] };
 const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1, sym: 'mirror', pattern: 'acorn' };
 const LIFE_PATTERNS = {  // LifeWiki's RLE
   rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
@@ -4680,7 +4681,7 @@ const LIFE_PATTERNS = {  // LifeWiki's RLE
 };
 const SYMMETRIES = { mirror: 'mirrored', rotate: 'turning', kaleido: 'kaleidoscopic' };
 const ROOT3_2 = Math.sqrt(3) / 2;
-const planeRow = (kind, W) => (kind === 'tri' ? 2 * W : W);  // cells a row
+const planeRow = (kind, W) => (kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons)
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
@@ -4689,11 +4690,28 @@ function planeCorners(kind, x, y) {  // a cell's corners, in world units
     return [0, 1, 2, 3, 4, 5].map((k) => [cx + Math.cos(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3), cy + Math.sin(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3)]);
   }
   const i = x >> 1;
+  if (kind === 'cairo') return cairoCorners(i, y, x & 1).map(([u, v]) => [(u - CAIRO_0[0]) * CAIRO, (v - CAIRO_0[1]) * CAIRO]);  // the walks' pentagons
   return x & 1 ? [latticeAt(i + 1, y), latticeAt(i + 1, y + 1), latticeAt(i, y + 1)] : [latticeAt(i, y), latticeAt(i + 1, y), latticeAt(i, y + 1)];
+}
+// a point inside a polygon (its corners in turn)
+function insidePolygon(pts, u, v) {
+  let inside = false;
+  for (let k = 0, m = pts.length - 1; k < pts.length; m = k++) {
+    const [a, b] = pts[k], [c, d] = pts[m];
+    if ((b > v) !== (d > v) && u < ((c - a) * (v - b)) / (d - b) + a) inside = !inside;
+  }
+  return inside;
 }
 // the cell at a world point, or null outside the grid
 function planeCellAt(kind, W, wx, wy) {
   let x, y;
+  if (kind === 'cairo') {  // the pentagon holding the point, among those of the squares around
+    const i0 = Math.round(wx / CAIRO), j0 = Math.round(wy / CAIRO);
+    for (let j = j0 - 2; j <= j0 + 2; j++) for (let i = i0 - 2; i <= i0 + 2; i++) for (const o of [0, 1]) {
+      if (i >= 0 && j >= 0 && i < W && j < W && insidePolygon(planeCorners(kind, 2 * i + o, j), wx, wy)) return [2 * i + o, j];
+    }
+    return null;
+  }
   if (kind === 'square') { x = Math.round(wx); y = Math.round(wy); }
   else {
     const b = wy / ROOT3_2, a = wx - b / 2;
@@ -4750,11 +4768,20 @@ function planeNeighbours(kind, W, torus) {
     return x < 0 || y < 0 || x >= row || y >= W ? -1 : y * row + x;
   };
   const HEX = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+  // Cairo pentagons: the cells at each corner, its corners in grid units (cairoCorners), wrapping round
+  // the grid every W units
+  const cornerKey = (u, v) => { const r = (a) => { const k = Math.round(a * 1000); return torus ? ((k % (W * 1000)) + W * 1000) % (W * 1000) : k; }; return r(u) * 8388608 + r(v); };
+  const byCorner = new Map();
+  if (kind === 'cairo') for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) for (const [u, v] of cairoCorners(x >> 1, y, x & 1)) {
+    const k = cornerKey(u, v);
+    (byCorner.get(k) ?? byCorner.set(k, []).get(k)).push(y * row + x);
+  }
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
     const t = y * row + x, around = new Set();
     start[t] = list.length;
     if (kind === 'square') for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (dx || dy) around.add(at(x + dx, y + dy)); }
     else if (kind === 'hex') HEX.forEach(([dx, dy], q) => { const u = at(x + dx, y + dy); ring[6 * t + q] = u; around.add(u); });
+    else if (kind === 'cairo') for (const [u, v] of cairoCorners(x >> 1, y, x & 1)) for (const c of byCorner.get(cornerKey(u, v))) around.add(c);
     else {  // triangles: the 6 around each of its 3 corners (corner (a, b): ▲ of (a, b), (a−1, b), (a, b−1); ▼ of (a−1, b), (a−1, b−1), (a, b−1))
       const i = x >> 1, corners = x & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]];
       for (const [a, b] of corners) {
@@ -4812,7 +4839,7 @@ function planeReseed() {
   restart();
   syncLink();
 }
-const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles' };
+const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons' };
 // the description's lead: how the cells start, on which grid
 function planeLead(number) {
   const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
@@ -4820,7 +4847,7 @@ function planeLead(number) {
   const how = { random: `A random soup, ${soup},`, symmetric: `A ${sym} random soup, ${soup},`,
                 pattern: kind === 'square' ? `${LIFE_PATTERNS[plane.pattern][0]} in the middle` : `A random soup, ${soup},`,
                 draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start];
-  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${kind === 'tri' ? ' (two a rhombus)' : ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
+  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 256;  // fitted to the grid's sizes when built
@@ -4841,7 +4868,7 @@ function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   if (!kind) return;
   const sides = PLANE_SIDES[kind];
-  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} ${kind === 'tri' ? 'rhombi of 2 triangles' : PLANE_CELLS[kind]}`;
+  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} ${{ tri: 'rhombi of 2 triangles', cairo: 'squares of 2 pentagons' }[kind] ?? PLANE_CELLS[kind]}`;
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('planeTorus').checked = plane.torus;
@@ -4876,7 +4903,12 @@ function drawPlaneGrid() {
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff';
   ctx.beginPath();
   if (kind === 'square') ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
-  else {
+  else if (kind === 'cairo') {  // ragged all round: the cells in sight
+    for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
+      const [u, v] = planeCorners(kind, x, y)[0];
+      if (X(u) > -2 * s && Y(v) > -2 * s && X(u) < cw + 2 * s && Y(v) < ch + 2 * s) cell(x, y);
+    }
+  } else {
     const e = kind === 'hex' ? W - 1 : W;
     [[0, 0], [e, 0], [e, e], [0, e]].forEach(([a, b], k) => { const [u, v] = latticeAt(a, b); ctx[k ? 'lineTo' : 'moveTo'](X(u), Y(v)); });
     if (kind === 'hex') { ctx.fill(); ctx.beginPath(); for (let k = 0; k < W; k++) { cell(k, 0); cell(k, W - 1); cell(0, k); cell(W - 1, k); } }  // apart: the windings do not cancel
@@ -4888,7 +4920,7 @@ function drawPlaneGrid() {
     ctx.beginPath();
     if (kind === 'square') { ctx.rect(X(-1.5), Y(-1.5), (W + 2) * s, (W + 2) * s); ctx.rect(X(W - 0.5), Y(-0.5), -W * s, W * s); }
     else {
-      const out = kind === 'tri' ? [-2, -1, row, row + 1] : [-1, row];
+      const out = kind === 'hex' ? [-1, row] : [-2, -1, row, row + 1];
       for (let x = out[0]; x <= out.at(-1); x++) { cell(x, -1); cell(x, W); }
       for (let y = 0; y < W; y++) for (const x of out) cell(x, y);
     }
@@ -4968,7 +5000,7 @@ function drawLifePlane() {
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
-const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡' }[mode.plane]
+const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane]
   : ['cube', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : '▲');
 let ruleFittedTo = null;
 function fitRuleToShape() {

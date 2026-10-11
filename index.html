@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261017u">
+  <link rel="stylesheet" href="style.css?v=20261017x">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -113,6 +113,7 @@
               <option value="life2d">Life — square grid</option>
               <option value="life2dTri">Life — triangle grid</option>
               <option value="life2dHex">Life — hexagon grid</option>
+              <option value="life2dCairo">Life — Cairo pentagon grid</option>
             </optgroup>
             <optgroup label="Automata on surfaces">
               <option value="lifeCube">Life — cube</option>
@@ -189,6 +190,7 @@
             <option value="B3/S1234">■ B3/S1234 — Mazectric, longer corridors</option>
             <option value="B3678/S34678">■ B3678/S34678 — Day &amp; Night, alive and dead are symmetric</option>
             <option value="B2/S">■ B2/S — Seeds, explosive</option>
+            <option value="B34/S23">⬠ B34/S23 — Life-like on Cairo pentagons (7 neighbours): settles after a few hundred generations</option>
             <option value="custom">Custom…</option>
           </select>
         </label>
@@ -369,6 +371,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261017u"></script>
+  <script src="main.js?v=20261017x"></script>
 </body>
 </html>
