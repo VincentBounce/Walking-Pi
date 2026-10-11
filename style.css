@@ -289,6 +289,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .strip .arrows span { display: inline-flex; justify-content: center; width: 1ch; }  /* a digit's width, centred on it */
 
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; cursor: grab; }
+.stage.drawing { cursor: crosshair; }  /* Draw cells: a click colours a cell */
 .stage.dragging { cursor: grabbing; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* The two boxes over the view (Play bottom left, Display top right): the same frame and

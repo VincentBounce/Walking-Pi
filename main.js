@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.455';
+const VERSION = '0.1.456';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2059,6 +2059,9 @@ function familyOf(w) {
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
   $('digitsSection').hidden = !!A && !antByDigits;  // an ant by colour reads no digit
+  $('populationRow').hidden = w !== 'antSquare';
+  $('drawCells').classList.toggle('active', drawing);
+  $('clearCells').disabled = !population.size;
   $('antRow').hidden = !A;
   if ($('antRow').hidden) return;
   $('antColours').classList.toggle('active', !antByDigits);
@@ -2269,7 +2272,12 @@ function compute(keepDigits = false) {
     cache[key] = entry;
     // a long walk (millions of an ant's steps take seconds): the gauge shows first, a frame to paint it,
     // and slides on while the walk is built (the page stops meanwhile)
-    const finish = () => { if (job !== computeJob) return; done(entry, `Digits in ${(d.ms / 1000).toFixed(2)} s`); setBusy(false); };
+    const finish = () => {
+      if (job !== computeJob) return;
+      busy = false;  // the link follows the walk built (the gauge stays on until it is)
+      done(entry, `Digits in ${(d.ms / 1000).toFixed(2)} s`);
+      setBusy(false);
+    };
     if (n < 1e6) { finish(); return; }
     clearTimeout(busyTimer);
     $('digitsRow').classList.add('busy');
@@ -2671,6 +2679,56 @@ function cairoStepper(spiral = false) {
   };
 }
 
+/* A population: the cells coloured before the first step (drawn by hand, for the square ant), key(x, y)
+ * → its colour (1 and up; 0, the background, is not kept). In a link as Golly's multi-state RLE, the
+ * format of LifeWiki: "X,Y:rle", (X, Y) the top left cell from the start, then its rows, each a run of
+ * cells, "." none, "A"… "X" colours 1… 24 ("pA"… beyond), a count before a run of more than one,
+ * "$" the next row (a count before for empty ones), "!" the end: "40,-12:3A.B$2.CA!" */
+let population = new Map();
+const cellXY = (k) => [Math.floor(k / 2 ** 22) - 2 ** 21, (k % 2 ** 22) - 2 ** 21];  // key's inverse
+const rleState = (c) => (c === 0 ? '.' : c <= 24 ? String.fromCharCode(64 + c) : String.fromCharCode(112 + Math.floor((c - 25) / 24)) + String.fromCharCode(65 + ((c - 25) % 24)));
+function populationRle(pop) {
+  if (!pop.size) return '';
+  let x0 = Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const k of pop.keys()) { const [x, y] = cellXY(k); x0 = Math.min(x0, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const rows = Array.from({ length: y1 - y0 + 1 }, () => []);
+  for (const [k, c] of pop) { const [x, y] = cellXY(k); rows[y - y0][x - x0] = c; }
+  const run = (n, t) => (n > 1 ? n : '') + t;
+  let out = '', blank = 0;
+  for (const row of rows) {
+    if (!row.length) { blank++; continue; }
+    if (out || blank) out += run(blank + (out ? 1 : 0), '$');
+    blank = 0;
+    for (let x = 0; x < row.length;) {
+      const c = row[x] ?? 0;
+      let n = 1;
+      while ((row[x + n] ?? 0) === c && x + n < row.length) n++;
+      out += run(n, rleState(c));
+      x += n;
+    }
+  }
+  return `${x0},${y0}:${out}!`;
+}
+function populationOf(text) {
+  const pop = new Map(), m = /^(-?\d+),(-?\d+):(.*)$/.exec(text ?? '');
+  if (!m) return pop;
+  let x = +m[1], y = +m[2], n = '';
+  const s = m[3];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (/\d/.test(ch)) { n += ch; continue; }
+    const count = n ? +n : 1;
+    n = '';
+    if (ch === '!') break;
+    if (ch === '$') { y += count; x = +m[1]; continue; }
+    let c = ch === '.' || ch === 'b' ? 0 : ch === 'o' ? 1 : ch >= 'A' && ch <= 'X' ? ch.charCodeAt(0) - 64 : -1;
+    if (ch >= 'p' && ch <= 'y') c = 25 + 24 * (ch.charCodeAt(0) - 112) + (s.charCodeAt(++i) - 65);
+    if (c < 0) continue;
+    for (let j = 0; j < count; j++, x++) if (c) pop.set(key(x, y), c);
+  }
+  return pop;
+}
+
 /* Langton's ant: on each cell it turns by the cell's colour, one turn per colour (Colours), or by the
  * digit, one turn per digit, mirrored on a dark cell (Digits: left and right swap, straight on stays); the
  * cell it leaves takes the next colour. Per tiling: the turtle walk it goes through the cells with (a
@@ -2721,13 +2779,15 @@ const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRul
 // the cell it is now on was first walked; cells, how many it walked; next(), the colour the cell it is
 // on would take. Its cells in one map, each its first step × 16 + its colour (12 colours at most)
 // inner: the walk it goes through the cells with (a turn → [the cell it comes to, …]); here: its first cell
-function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0)) {
+// pop: the cells coloured before the first step (see population), each as it is until the ant comes
+function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0), pop = null) {
   const A = ANTS[w], turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length;
   const words = turnWords(antDigitRules[w]);
   // by the digits: the turn digit g gives on a cell of colour c (mirrored on a dark one), as its index in the rule
   const took = (g, c) => (c ? words.indexOf(MIRROR[words[g]]) : g);
   let n = 0;
-  const cells = new Map([[here, 0]]);
+  const colourOf = (cell) => (pop?.get(cell) ?? 0) % k;
+  const cells = new Map([[here, colourOf(here)]]);
   const step = (g) => {
     const v = cells.get(here), c = v % 16;
     step.turned = c;
@@ -2739,7 +2799,7 @@ function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0)) {
     here = r[0];
     n++;
     let u = cells.get(here);
-    if (u === undefined) cells.set(here, (u = n * 16));
+    if (u === undefined) cells.set(here, (u = n * 16 + colourOf(here)));
     step.first = Math.floor(u / 16);
     step.cells = cells.size;
     return r;
@@ -2788,7 +2848,7 @@ const STEPPERS = {
     };
   },
   cairo: () => cairoStepper(),
-  antSquare: () => antStepper('antSquare'),
+  antSquare: () => antStepper('antSquare', undefined, undefined, population),
   antTri: () => antStepper('antTri'),
   antHex: () => antStepper('antHex'),
   antCairo: () => antStepper('antCairo'),
@@ -5163,6 +5223,7 @@ function getSetup() {
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = $('lifeRule').value;
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
+  if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
   return s;
 }
@@ -5184,6 +5245,7 @@ function applySetup(s) {
   }
   if (s.r && MODES[s.w].antOf) {
     antByDigits = s.r.startsWith('digits');
+    population = populationOf(s.p);
     const rule = s.r.slice(6).trim();
     if (antByDigits) antDigitRules[s.w] = antDigitTurnsOf(s.w, rule) ? rule.toUpperCase() : ANTS[s.w].digitPresets[0];
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
@@ -5238,7 +5300,7 @@ function applyPendingView() {
 // The page link always holds the current setup (#x=pi&w=turtle&…), for bookmarks and sharing.
 // Readable links: #x=(1+sqrt(5))/2&w=turtle — formulas and rules keep / + ^ , : as they are
 const toHash = (s) => Object.entries(s)
-  .map(([k, v]) => `${k}=${encodeURIComponent(String(v)).replace(/%(2F|2B|5E|2C|3A)/g, (c) => decodeURIComponent(c))}`)
+  .map(([k, v]) => `${k}=${encodeURIComponent(String(v)).replace(/%(2F|2B|5E|2C|3A|24)/g, (c) => decodeURIComponent(c))}`)
   .join('&');
 function parseHash() {
   if (location.hash.length < 2) return null;
@@ -6863,6 +6925,23 @@ function tilePath(ctx, x, y) {
   ctx.lineTo(X(pts[0][0]), Y(pts[0][1]));  // back to the first corner: closePath slows a path of many tiles down more and more
 }
 
+// The population's cells (see population), under the walk, in the ant's colours by state; the ant's
+// own cells cover them as it walks
+function drawPopulation() {
+  if (!walk.ant || current?.mode !== 'antSquare' || !population.size) return;
+  const ctx = layers.fill, byColour = new Map();
+  for (const [k, c] of population) {
+    const col = c % walk.ant;
+    if (col) (byColour.get(col) ?? byColour.set(col, []).get(col)).push(k);
+  }
+  for (const [col, ks] of byColour) {
+    ctx.beginPath();
+    for (const k of ks) { const [x, y] = cellXY(k); tilePath(ctx, x, y); }
+    ctx.fillStyle = rampColour(col, walk.ant);
+    ctx.fill();
+  }
+}
+
 // Visits: the cell of every point and the most visits of any cell over the whole walk, which fixes
 // the log scale once, so a painted cell only changes colour when the walk comes back to it
 let visitData = null;  // { cell, max, seen } for the current walk
@@ -7415,6 +7494,7 @@ function tick(now = performance.now()) {
     if (flat && drawn !== cur) { drawn = cur; statsDirty = true; }
   }
   if (!flat && fillOn()) drawFill(cur);  // each region when it closes, under the path
+  if (needsFull) drawPopulation();
   if (!flat && walk.n && drawn < cur) {
     drawSegments(drawn, cur);
     drawn = cur;
@@ -7574,7 +7654,26 @@ function recentre() {
   }
   fitNow();
 }
-stage.addEventListener('dblclick', recentre);
+stage.addEventListener('dblclick', () => { if (!drawing) recentre(); });  // drawing: a double click is two cells
+// Draw cells (the square ant): a click on a cell gives it its next colour, back to none, and the walk is
+// built again from that population; a drag still pans
+let drawing = false, drawFrom = null;
+$('drawCells').addEventListener('click', () => {
+  drawing = !drawing;
+  if (drawing) $('autoFit').checked = false;  // the view stays where the cells are drawn
+  stage.classList.toggle('drawing', drawing);
+  renderAntRow();
+});
+$('clearCells').addEventListener('click', () => { population = new Map(); compute(true); });
+stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
+stage.addEventListener('pointerup', (e) => {
+  if (!drawFrom || current.mode !== 'antSquare' || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
+  const r = stage.getBoundingClientRect();
+  const x = Math.round((e.clientX - r.left - view.ox) / view.scale), y = Math.round((e.clientY - r.top - view.oy) / view.scale);
+  const k = key(x, y), c = ((population.get(k) ?? 0) + 1) % (walk.ant || 2);
+  if (c) population.set(k, c); else population.delete(k);
+  compute(true);
+});
 
 document.addEventListener('keydown', (e) => {
   if (e.target.matches('input[type=number], input[type=text], select')) return;
