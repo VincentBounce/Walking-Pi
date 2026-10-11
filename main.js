@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.471';
+const VERSION = '0.1.472';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4701,6 +4701,9 @@ function buildLife(seq, mode) {
  * two a rhombus (▲ then ▼), index y × row + x. */
 const PLANE_SIDES = { square: [8, 16, 24, 32, 64, 128, 256, 512, 1024, 2048], hex: [8, 16, 24, 32, 64, 128, 256, 512], tri: [8, 16, 24, 32, 64, 128, 256], cairo: [8, 16, 24, 32, 64, 128, 256] };
 const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none', pattern: 'acorn' };  // a soup of its own each visit (a link keeps its seed)
+// Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
+const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
+let ghost = null;  // the cell under the pointer while drawing, where the brush would go
 const LIFE_PATTERNS = {  // LifeWiki's RLE
   rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
   diehard: ['Diehard', '6bo$2o$bo3b3o!'],
@@ -4938,6 +4941,22 @@ function renderPlaneRow() {
   }));
   $('startPattern').hidden = plane.start !== 'pattern' || kind !== 'square';
   $('startDraw').hidden = plane.start !== 'draw';
+  if (kind !== 'square') brush.id = 'cell';  // the patterns are squares'
+  const K = ruleColours();
+  brush.colour = Math.min(brush.colour, K);
+  for (const b of $('brushTiles').children) { b.classList.toggle('active', b.dataset.brush === brush.id); b.hidden = kind !== 'square'; }
+  $('brushTiles').hidden = kind !== 'square';
+  $('brushColours').replaceChildren(...(K > 1 ? LIFE_COLOURS.slice(0, K) : []).map((c, k) => {
+    const i = document.createElement('i');
+    i.style.background = c;
+    i.title = LIFE_COLOUR_NAMES[k];
+    i.classList.toggle('active', brush.colour === k + 1);
+    i.addEventListener('click', () => { brush.colour = k + 1; renderPlaneRow(); });
+    return i;
+  }));
+  $('brushTurn').textContent = `↻ ${brush.turn * 90}°`;
+  $('brushTurn').hidden = $('brushFlip').hidden = brush.id === 'cell';
+  $('brushFlip').classList.toggle('active', brush.flip);
   $('soupDensity').value = plane.density;
   $('soupDensityLabel').textContent = `${plane.density} %`;
   for (const b of $('startPattern').children) b.classList.toggle('active', b.dataset.pattern === plane.pattern);
@@ -5000,6 +5019,35 @@ function drawPlaneGrid() {
 // the grid's cells in the Life colours (Display), each generation: squares as one picture, a pixel a
 // cell; hexagons and triangles as polygons, one path a colour
 let planeCanvas = null, planeImage = null, planeColours = null;
+// The brush's cells around the cell clicked: a pattern mirrored, turned, then centred
+function brushCells() {
+  if (brush.id === 'cell') return [[0, 0]];
+  let pts = [...populationOf(`0,0:${LIFE_PATTERNS[brush.id][1]}`).keys()].map((k) => { const [x, y] = cellXY(k); return [brush.flip ? -x : x, y]; });
+  for (let k = 0; k < brush.turn; k++) pts = pts.map(([x, y]) => [-y, x]);
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), mx = Math.min(...xs), my = Math.min(...ys);
+  const w = Math.max(...xs) - mx + 1, h = Math.max(...ys) - my + 1;
+  return pts.map(([x, y]) => [x - mx - (w >> 1), y - my - (h >> 1)]);
+}
+// where the brush's cells go from a cell: wrapping round the grid, or the ones inside it
+function brushAt([cx, cy]) {
+  const W = walk.plane.W, out = [];
+  for (const [dx, dy] of brushCells()) {
+    let x = cx + dx, y = cy + dy;
+    if (walk.plane.torus) { x = ((x % W) + W) % W; y = ((y % W) + W) % W; }
+    if (x >= 0 && y >= 0 && x < W && y < W) out.push([x, y]);
+  }
+  return out;
+}
+// the brush under the pointer, half seen (on squares; a cell elsewhere needs none)
+function drawGhost() {
+  const ctx = layers.overlay, { scale: s, ox, oy } = view;
+  ctx.clearRect(0, 0, cw, ch);
+  if (!drawing || !ghost || !walk.plane || walk.plane.kind !== 'square') return;
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = walk.life.colours > 1 ? LIFE_COLOURS[brush.colour - 1] : LIFE_ALIVE;
+  for (const [x, y] of brushAt(ghost)) ctx.fillRect(ox + (x - 0.5) * s, oy + (y - 0.5) * s, s, s);
+  ctx.globalAlpha = 1;
+}
 function drawLifePlane() {
   const L = walk.life, { kind, W, row } = walk.plane, ctx = layers.path, { scale: s, ox, oy } = view, n = row * W;
   for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
@@ -5032,6 +5080,7 @@ function drawLifePlane() {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+    drawGhost();
     return;
   }
   const groups = new Map();
@@ -8298,6 +8347,11 @@ stage.addEventListener('pointerdown', (e) => {
   stage.classList.add('dragging');
 });
 stage.addEventListener('pointermove', (e) => {
+  if (drawing && walk.plane && !e.target.closest('.stage-box')) {  // Draw: the brush follows the pointer
+    const r = stage.getBoundingClientRect();
+    const cell = planeCellAt(walk.plane.kind, walk.plane.W, (e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale);
+    if (String(cell) !== String(ghost)) { ghost = cell; drawGhost(); }
+  }
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   drag.x = e.clientX; drag.y = e.clientY;
@@ -8367,6 +8421,17 @@ $('startPattern').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [na
   return b;
 }));
 $('clearDrawn').addEventListener('click', () => { population = new Map(); planeReseed(); });
+stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
+$('brushTiles').replaceChildren(...[['cell', 'Cell'], ...Object.entries(LIFE_PATTERNS).map(([id, [name]]) => [id, name])].map(([id, name]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = name;
+  b.dataset.brush = id;
+  b.addEventListener('click', () => { brush.id = id; renderPlaneRow(); });
+  return b;
+}));
+$('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % 4; renderPlaneRow(); });
+$('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
 $('battleBtn').addEventListener('click', huntBattles);
 for (const b of $('battleRadius').children) b.addEventListener('click', () => { battle.radius = Number(b.dataset.r); battle.top = []; renderBattle(); });
 for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
@@ -8384,8 +8449,12 @@ stage.addEventListener('pointerup', (e) => {
   if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
     if (!cell) return;
-    const k = key(...cell), c = ((population.get(k) ?? 0) + 1) % walk.life.C;
-    if (c) population.set(k, c); else population.delete(k);
+    if (brush.id !== 'cell') for (const [x, y] of brushAt(cell)) population.set(key(x, y), walk.life.colours > 1 ? brush.colour : 1);
+    else {  // a cell: in the brush's colour, or off if it has it; one colour: alive, then each dying state, back to dead
+      const k = key(...cell), v = population.get(k) ?? 0;
+      const c = walk.life.colours > 1 ? (v === brush.colour ? 0 : brush.colour) : (v + 1) % walk.life.C;
+      if (c) population.set(k, c); else population.delete(k);
+    }
     planeReseed();
     return;
   }
