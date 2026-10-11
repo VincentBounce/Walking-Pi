@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261017q">
+  <link rel="stylesheet" href="style.css?v=20261017t">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -111,6 +111,8 @@
             </optgroup>
             <optgroup label="Automata on the plane">
               <option value="life2d">Life — square grid</option>
+              <option value="life2dTri">Life — triangle grid</option>
+              <option value="life2dHex">Life — hexagon grid</option>
             </optgroup>
             <optgroup label="Automata on surfaces">
               <option value="lifeCube">Life — cube</option>
@@ -164,9 +166,9 @@
         </div>
       </section>
 
-      <section id="automataSection" hidden>
-        <h2>Automata</h2>
-        <label id="lifeRuleRow">Rule
+      <section id="automataSection" hidden>  <!-- Life: its rule -->
+        <h2>Rule</h2>
+        <label id="lifeRuleRow">  <!-- under the section's title: no label of its own -->
           <select id="lifePreset">
             <option value="B3/S23">■▲ B3/S23 — Life (2 states)</option>
             <option value="B3/S23/Immigration">■▲ B3/S23/Immigration — Life with two civilisations, red and blue (3 states)</option>
@@ -193,8 +195,11 @@
         <div id="lifeCustomRow" hidden><div class="field-label">Custom rule (B…/S…/C…, B…/S…/Immigration, or B2o/S2m34 on hexagons)</div>
           <span class="field"><input id="lifeRule" class="custom" type="text" value="B3/S23" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
         </div>
+      </section>
+
+      <section id="startSection" hidden>  <!-- Life: how the cells start (the plane), or the hunt for a lasting start (the surfaces) -->
+        <h2>Start</h2>
         <div id="lifeStartRow" hidden>  <!-- Life on the plane: how the cells start -->
-          <div class="field-label">Start</div>
           <div id="lifeStartTabs" class="choice-row"><button type="button" data-start="random">Random</button><button type="button" data-start="symmetric">Symmetric</button><button type="button" data-start="pattern">Pattern</button><button type="button" data-start="draw">Draw</button><button type="button" data-start="digits">Digits</button></div>
           <div id="startSoup" class="start-panel">  <!-- Random and Symmetric: how many live, from which seed -->
             <div id="symmetryTabs" class="choice-row"><button type="button" data-sym="mirror">Mirror</button><button type="button" data-sym="rotate">Rotate</button><button type="button" data-sym="kaleido">Kaleidoscope</button></div>
@@ -364,6 +369,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261017q"></script>
+  <script src="main.js?v=20261017t"></script>
 </body>
 </html>

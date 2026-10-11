@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.458';
+const VERSION = '0.1.459';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -920,7 +920,9 @@ const MODES = {
                 rule: 'along the edges of a dodecahedron, its pentagons cut into triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   icosaGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
-  life2d:     { base: 2, lattice: 'square', life: true, plane: true, where: 'a square grid' },  // on the plane (see plane)
+  life2d:     { base: 2, lattice: 'square', life: true, plane: 'square', where: 'a grid of squares' },  // on the plane (see plane)
+  life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
+  life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
   lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
@@ -1040,7 +1042,7 @@ function updateRuleText() {}  // the rule is shown by describe (the Play card)
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
-  if (mode.plane) return plane.start === 'digits' ? plane.side ** 2 : 1;  // the digits only for a start by the digits
+  if (mode.plane) return plane.start === 'digits' ? planeRow(mode.plane, plane.side) * plane.side : 1;  // the digits only for a start by the digits
   if (mode.life) return SPHERES[surfaceOf(mode)].tiles(sphereSize());
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
@@ -1124,7 +1126,7 @@ const DISPLAY_BY_TAB = {
   '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Automata on the plane': ['colors', 'digit', 'mono', 'grid'],
+  'Automata on the plane': ['colors', 'digit', 'mono', 'grid', 'sky'],
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
@@ -1937,7 +1939,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2d: 'grid', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
+  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
 
@@ -1987,7 +1989,7 @@ const NAV = {
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
-  life2d: ['Life', '2D', 'Squares', 'Life', ''],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
@@ -2001,7 +2003,7 @@ const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon
   Dodecahedron: 'dodecahedron', Sphere: 'icosahedron' };
 const SHAPE_SHORT = { 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Populate' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level: the levels above as they are, the ones below kept where they can
@@ -2186,7 +2188,9 @@ function compute(keepDigits = false) {
   relabelColours(mode);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
   $('planeRow').hidden = $('lifeStartRow').hidden = !mode.plane;  // Life on the plane: its grid and its start
+  $('startSection').hidden = !mode.life;
   $('huntRow').hidden = !!mode.plane;  // the hunt is for the surfaces
+  fitRuleToShape();
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
@@ -4658,12 +4662,15 @@ function buildLife(seq, mode) {
   if (walk.shape) applyShape();
 }
 
-/* Life on the plane: a square grid of plane.side cells a side, its edges glued (a torus) or dead,
- * its cells starting as a random soup (so many % alive, from a seed), the same soup copied by a
- * symmetry of the square (mirror, rotation, kaleidoscope: one draw for a cell and all its copies), a
- * classic pattern in the middle, cells drawn by hand (the population, in RLE), or the number's digits.
- * It runs as the surfaces' Life does, its neighbours the 8 around each cell (fewer on dead edges). */
-const PLANE_SIDES = [64, 128, 256, 512, 1024, 2048];
+/* Life on the plane: a grid of squares, of hexagons or of triangles (a rhombus of them, as on paper),
+ * plane.side cells a side, its edges glued (a torus) or dead; its cells starting as a random soup (so
+ * many % alive, from a seed), the same soup copied by a symmetry (mirror, rotation, kaleidoscope on
+ * squares; turned by half a turn otherwise: one draw for a cell and all its copies), a classic pattern
+ * in the middle (squares), cells drawn by hand (the population, in RLE), or the number's digits. It
+ * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
+ * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
+ * two a rhombus (▲ then ▼), index y × row + x. */
+const PLANE_SIDES = { square: [64, 128, 256, 512, 1024, 2048], hex: [32, 64, 128, 256, 512], tri: [32, 64, 128, 256] };
 const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1, sym: 'mirror', pattern: 'acorn' };
 const LIFE_PATTERNS = {  // LifeWiki's RLE
   rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
@@ -4672,6 +4679,33 @@ const LIFE_PATTERNS = {  // LifeWiki's RLE
   gosper: ['Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!'],
 };
 const SYMMETRIES = { mirror: 'mirrored', rotate: 'turning', kaleido: 'kaleidoscopic' };
+const ROOT3_2 = Math.sqrt(3) / 2;
+const planeRow = (kind, W) => (kind === 'tri' ? 2 * W : W);  // cells a row
+const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
+function planeCorners(kind, x, y) {  // a cell's corners, in world units
+  if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
+  if (kind === 'hex') {  // pointy-topped, the centres 1 apart
+    const [cx, cy] = latticeAt(x, y);
+    return [0, 1, 2, 3, 4, 5].map((k) => [cx + Math.cos(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3), cy + Math.sin(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3)]);
+  }
+  const i = x >> 1;
+  return x & 1 ? [latticeAt(i + 1, y), latticeAt(i + 1, y + 1), latticeAt(i, y + 1)] : [latticeAt(i, y), latticeAt(i + 1, y), latticeAt(i, y + 1)];
+}
+// the cell at a world point, or null outside the grid
+function planeCellAt(kind, W, wx, wy) {
+  let x, y;
+  if (kind === 'square') { x = Math.round(wx); y = Math.round(wy); }
+  else {
+    const b = wy / ROOT3_2, a = wx - b / 2;
+    if (kind === 'hex') {  // the nearest centre, in cube coordinates
+      let q = Math.round(a), r = Math.round(b), s = Math.round(-a - b);
+      const dq = Math.abs(q - a), dr = Math.abs(r - b), ds = Math.abs(s + a + b);
+      if (dq > dr && dq > ds) q = -r - s; else if (dr > ds) r = -q - s;
+      x = q; y = r;
+    } else { const i = Math.floor(a), j = Math.floor(b); x = 2 * i + (a - i + b - j < 1 ? 0 : 1); y = j; }
+  }
+  return x >= 0 && y >= 0 && x < planeRow(kind, W) && y < W ? [x, y] : null;
+}
 // a number in [0, 1) for cell i of a seed's soup (a hash: the same cell, the same draw)
 function cellRandom(seed, i) {
   let h = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(i + 1, 0xc2b2ae35);
@@ -4680,88 +4714,116 @@ function cellRandom(seed, i) {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 // the cells' states at generation 0, as plane says
-function planeSeed(seq, C) {
-  const W = plane.side, seed = new Uint8Array(W * W), last = W - 1;
-  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < W) seed[y * W + x] = c; };
-  if (plane.start === 'digits') seed.set(seq.subarray(0, W * W));
+function planeSeed(kind, seq, C) {
+  const W = plane.side, row = planeRow(kind, W), n = row * W, seed = new Uint8Array(n), last = W - 1;
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < row && y < W) seed[y * row + x] = c; };
+  if (plane.start === 'digits') seed.set(seq.subarray(0, n));
   else if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), c % C);
-  else if (plane.start === 'pattern') {
+  else if (plane.start === 'pattern' && kind === 'square') {
     const pop = populationOf(`0,0:${LIFE_PATTERNS[plane.pattern][1]}`);
     let w = 0, h = 0;
     for (const k of pop.keys()) { const [x, y] = cellXY(k); w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
     for (const k of pop.keys()) { const [x, y] = cellXY(k); put(x + ((W - w) >> 1), y + ((W - h) >> 1), 1); }
   } else {
     // a cell's draw: its own, or that of the first of its copies under the symmetry
-    const rep = (x, y) => {
-      if (plane.start !== 'symmetric') return y * W + x;
-      if (plane.sym === 'rotate') return Math.min(y * W + x, x * W + last - y, (last - y) * W + last - x, (last - x) * W + y);
+    const rep = (t) => {
+      if (plane.start !== 'symmetric') return t;
+      if (kind !== 'square') return Math.min(t, n - 1 - t);  // half a turn: the only symmetry of a rhombus of hexagons or triangles
+      const x = t % W, y = (t - x) / W;
+      if (plane.sym === 'rotate') return Math.min(t, x * W + last - y, (last - y) * W + last - x, (last - x) * W + y);
       let a = Math.min(x, last - x), b = Math.min(y, last - y);
       if (plane.sym === 'kaleido' && a > b) [a, b] = [b, a];
       return b * W + a;
     };
     const p = plane.density / 100;
-    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (cellRandom(plane.seed, rep(x, y)) < p) seed[y * W + x] = 1;
+    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, rep(t)) < p) seed[t] = 1;
   }
   return seed;
 }
-// the 8 cells around each one (wrapping around, or not past the edges), as the surfaces' lists
-function planeNeighbours(W, torus) {
-  const start = new Int32Array(W * W + 1), list = new Int32Array(8 * W * W);
-  let q = 0;
-  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
-    start[y * W + x] = q;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      if (!dx && !dy) continue;
-      let u = x + dx, v = y + dy;
-      if (torus) { u = (u + W) % W; v = (v + W) % W; } else if (u < 0 || v < 0 || u >= W || v >= W) continue;
-      list[q++] = v * W + u;
+// the cells sharing an edge or a corner with each one (wrapping around, or not past the edges), as the
+// surfaces' lists; on hexagons, also the 6 around in turn (ring: Callahan's letters)
+function planeNeighbours(kind, W, torus) {
+  const row = planeRow(kind, W), n = row * W, start = new Int32Array(n + 1), list = [];
+  const ring = kind === 'hex' ? new Int32Array(6 * n).fill(-1) : null;
+  const at = (x, y) => {  // a cell's index (triangles: by their rhombus), −1 past a dead edge
+    if (torus) { const w = kind === 'tri' ? W : row; x = kind === 'tri' ? 2 * (((x >> 1) % w + w) % w) + (x & 1) : ((x % w) + w) % w; y = ((y % W) + W) % W; }
+    return x < 0 || y < 0 || x >= row || y >= W ? -1 : y * row + x;
+  };
+  const HEX = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+  for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
+    const t = y * row + x, around = new Set();
+    start[t] = list.length;
+    if (kind === 'square') for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (dx || dy) around.add(at(x + dx, y + dy)); }
+    else if (kind === 'hex') HEX.forEach(([dx, dy], q) => { const u = at(x + dx, y + dy); ring[6 * t + q] = u; around.add(u); });
+    else {  // triangles: the 6 around each of its 3 corners (corner (a, b): ▲ of (a, b), (a−1, b), (a, b−1); ▼ of (a−1, b), (a−1, b−1), (a, b−1))
+      const i = x >> 1, corners = x & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]];
+      for (const [a, b] of corners) {
+        for (const [p, q] of [[a, b], [a - 1, b], [a, b - 1]]) around.add(at(2 * p, q));
+        for (const [p, q] of [[a - 1, b], [a - 1, b - 1], [a, b - 1]]) around.add(at(2 * p + 1, q));
+      }
     }
+    around.delete(-1);
+    around.delete(t);
+    for (const u of around) list.push(u);
   }
-  start[W * W] = q;
-  return { start, list: list.subarray(0, q) };
+  start[n] = list.length;
+  return { start, list: Int32Array.from(list), ring };
 }
 function buildLifePlane(seq) {
-  const W = plane.side, n = W * W;
+  const kind = MODES[current.mode].plane, sides = PLANE_SIDES[kind];
+  if (!sides.includes(plane.side)) plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
+  const W = plane.side, row = planeRow(kind, W), n = row * W;
   let rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
-  if (rule.iso) {  // Callahan's letters need hexagons
+  if (rule.iso && kind !== 'hex') {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
     $('lifeCustomRow').hidden = true;
   }
   $('lifeRule').value = rule.text;
-  walk.life = { nbr: planeNeighbours(W, plane.torus), ring: null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text,
-                seed: planeSeed(seq, rule.C), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
+  const nbr = planeNeighbours(kind, W, plane.torus);
+  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text,
+                seed: planeSeed(kind, seq, rule.C), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: null, is3d: false, cells: null,
                         maxDist: null, base: rule.C, counts: null, lattice: 'square', skipZeros: false, points: false,
-                        keys: seq, labels: null, sphere: false, geo: { n }, plane: { W, torus: plane.torus }, tile: null,
+                        keys: seq, labels: null, sphere: false, geo: { n }, plane: { kind, W, row, torus: plane.torus }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
   updateHint();
   restart();
 }
+// the grid's frame: the corners of its four corner cells
+function planeBounds() {
+  const { kind, W, row } = walk.plane, b = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  for (const [x, y] of [[0, 0], [row - 1, 0], [0, W - 1], [row - 1, W - 1]]) for (const [u, v] of planeCorners(kind, x, y)) {
+    b.minX = Math.min(b.minX, u); b.maxX = Math.max(b.maxX, u); b.minY = Math.min(b.minY, v); b.maxY = Math.max(b.maxY, v);
+  }
+  return b;
+}
 // the same grid, another start (a density, a seed, a symmetry, a pattern, a cell drawn): no new digits
 function planeReseed() {
   const L = walk.life;
-  L.seed.set(planeSeed(walk.digits, L.C));
+  L.seed.set(planeSeed(walk.plane.kind, walk.digits, L.C));
   countSeed(L);
   describe(L.C, Infinity);
   renderPlaneRow();
   restart();
   syncLink();
 }
+const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles' };
 // the description's lead: how the cells start, on which grid
 function planeLead(number) {
-  const soup = `${plane.density} % alive (seed ${plane.seed})`;
-  const how = { random: `A random soup, ${soup},`, symmetric: `A ${SYMMETRIES[plane.sym]} random soup, ${soup},`,
-                pattern: `${LIFE_PATTERNS[plane.pattern][0]} in the middle`, draw: `${fmt(walk.life.seedAlive)} cells drawn`,
-                digits: `${number} the cells` }[plane.start];
-  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
+  const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
+  const sym = kind === 'square' ? SYMMETRIES[plane.sym] : 'half-turn symmetric';
+  const how = { random: `A random soup, ${soup},`, symmetric: `A ${sym} random soup, ${soup},`,
+                pattern: kind === 'square' ? `${LIFE_PATTERNS[plane.pattern][0]} in the middle` : `A random soup, ${soup},`,
+                draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start];
+  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${kind === 'tri' ? ' (two a rhombus)' : ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
-  plane.side = PLANE_SIDES.includes(Number(s.s)) ? Number(s.s) : 256;
+  plane.side = Number(s.s) || 256;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
   const [kind, a, b] = String(s.sd ?? 'random').split('.');
   if (kind === 'random' || SYMMETRIES[kind]) {
@@ -4773,33 +4835,74 @@ function planeFromSetup(s) {
   else plane.start = kind === 'draw' || kind === 'digits' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
 }
-// the grid's size, its edges and its start, as the controls say
+// the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
+// square on squares only)
 function renderPlaneRow() {
-  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} squares`;
-  $('planeDown').disabled = plane.side === PLANE_SIDES[0];
-  $('planeUp').disabled = plane.side === PLANE_SIDES.at(-1);
+  const kind = MODES[$('mode').value].plane;
+  if (!kind) return;
+  const sides = PLANE_SIDES[kind];
+  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} ${kind === 'tri' ? 'rhombi of 2 triangles' : PLANE_CELLS[kind]}`;
+  $('planeDown').disabled = plane.side <= sides[0];
+  $('planeUp').disabled = plane.side >= sides.at(-1);
   $('planeTorus').checked = plane.torus;
-  for (const b of $('lifeStartTabs').children) b.classList.toggle('active', b.dataset.start === plane.start);
+  for (const b of $('lifeStartTabs').children) {
+    b.classList.toggle('active', b.dataset.start === plane.start);
+    b.hidden = b.dataset.start === 'pattern' && kind !== 'square';
+  }
   for (const b of $('symmetryTabs').children) b.classList.toggle('active', b.dataset.sym === plane.sym);
   $('startSoup').hidden = plane.start !== 'random' && plane.start !== 'symmetric';
-  $('symmetryTabs').hidden = plane.start !== 'symmetric';
-  $('startPattern').hidden = plane.start !== 'pattern';
+  $('symmetryTabs').hidden = plane.start !== 'symmetric' || kind !== 'square';
+  $('startPattern').hidden = plane.start !== 'pattern' || kind !== 'square';
   $('startDraw').hidden = plane.start !== 'draw';
   $('soupDensity').value = plane.density;
   $('soupDensityLabel').textContent = `${plane.density} %`;
   for (const b of $('startPattern').children) b.classList.toggle('active', b.dataset.pattern === plane.pattern);
 }
-// the grid as one picture, a pixel per cell, in the Life colours (Display): drawn over the view
-let planeCanvas = null, planeImage = null;
-function drawLifePlane() {
-  const L = walk.life, W = walk.plane.W, ctx = layers.path, { scale: s, ox, oy } = view;
-  for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
-  if (!planeCanvas || planeCanvas.width !== W) {
-    planeCanvas = document.createElement('canvas');
-    planeCanvas.width = planeCanvas.height = W;
-    planeImage = planeCanvas.getContext('2d').createImageData(W, W);
+// Behind the grid (grid layer, at each view): the sky or the page outside it, the page inside it, and,
+// zoomed in enough, its cells' outlines; dead edges, its border
+function drawPlaneGrid() {
+  const ctx = layers.grid, { kind, W, row } = walk.plane, { scale: s, ox, oy } = view;
+  ctx.clearRect(0, 0, cw, ch);
+  drawSky(ctx);
+  const X = (u) => ox + u * s, Y = (v) => oy + v * s, outline = $('showGrid').checked && s >= 6;
+  // the page inside: the square, or the rhombus (through the hexagons' outer centres' half-steps)
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff';
+  ctx.beginPath();
+  if (kind === 'square') ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
+  else {
+    const o = kind === 'hex' ? -0.5 : 0, e = kind === 'hex' ? W - 0.5 : W;
+    [[o, o], [e, o], [e, e], [o, e]].forEach(([a, b], k) => { const [u, v] = latticeAt(a, b); ctx[k ? 'lineTo' : 'moveTo'](X(u), Y(v)); });
   }
-  const px = new Uint32Array(planeImage.data.buffer), pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
+  ctx.fill();
+  if (!outline) return;
+  ctx.strokeStyle = `rgba(${EDGE_RGB.join(', ')}, ${EDGE_ALPHA})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (kind === 'square') for (let k = 0; k <= W; k++) { ctx.moveTo(X(k - 0.5), Y(-0.5)); ctx.lineTo(X(k - 0.5), Y(W - 0.5)); ctx.moveTo(X(-0.5), Y(k - 0.5)); ctx.lineTo(X(W - 0.5), Y(k - 0.5)); }
+  else for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {  // the cells in sight
+    const c = planeCorners(kind, x, y), px = X(c[0][0]), py = Y(c[0][1]);
+    if (px < -s || py < -s || px > cw + s || py > ch + s) continue;
+    ctx.moveTo(px, py);
+    for (let k = 1; k < c.length; k++) ctx.lineTo(X(c[k][0]), Y(c[k][1]));
+    ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+}
+// the grid's cells in the Life colours (Display), each generation: squares as one picture, a pixel a
+// cell; hexagons and triangles as polygons, one path a colour
+let planeCanvas = null, planeImage = null, planeColours = null;
+function drawLifePlane() {
+  const L = walk.life, { kind, W, row } = walk.plane, ctx = layers.path, { scale: s, ox, oy } = view, n = row * W;
+  for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
+  if (kind === 'square') {
+    if (!planeCanvas || planeCanvas.width !== W) {
+      planeCanvas = document.createElement('canvas');
+      planeCanvas.width = planeCanvas.height = W;
+      planeImage = planeCanvas.getContext('2d').createImageData(W, W);
+    }
+    planeColours = new Uint32Array(planeImage.data.buffer);
+  } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
+  const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), red = pack(LIFE_RED), blue = pack(LIFE_BLUE);
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
@@ -4808,7 +4911,7 @@ function drawLifePlane() {
   const byActivity = colour === 'digit' ? Uint32Array.from({ length: Math.min(L.maxActivity, 65535) + 1 }, (_, v) => (v ? grad[level(v + 1, L.maxActivity + 1)] : 0)) : null;
   const byDying = Uint32Array.from({ length: L.C }, (_, st) => (st < 2 ? 0 : trail[Math.min(trail.length - 1, Math.round(((st - 1) / (L.C - 1)) * trail.length))]));
   const { alive: a, age, activity, died } = L, fade = L.C === 2 ? trail.length : 0;
-  for (let t = 0; t < px.length; t++) {
+  for (let t = 0; t < n; t++) {
     const st = a[t];
     px[t] = L.two && colour !== 'digit' ? (st === 1 ? red : st === 2 ? blue : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
@@ -4816,14 +4919,46 @@ function drawLifePlane() {
       : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
       : cur - died[t] < fade ? trail[cur - died[t]] : 0;  // age of live cells, a trail fading after death
   }
-  planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
-  if (!walk.plane.torus) {  // dead edges: the grid's border
-    ctx.strokeStyle = GREY;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+  if (kind === 'square') {
+    planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+    return;
   }
+  const groups = new Map();
+  for (let t = 0; t < n; t++) if (px[t]) (groups.get(px[t]) ?? groups.set(px[t], []).get(px[t])).push(t);
+  const small = s < 3;  // a few pixels a cell: a square at its centre does as well, and faster
+  for (const [c, ts] of groups) {
+    ctx.beginPath();
+    for (const t of ts) {
+      const x = t % row, pts = planeCorners(kind, x, (t - x) / row);
+      if (small) {
+        let u = 0, v = 0;
+        for (const [a, b] of pts) { u += a; v += b; }
+        ctx.rect(ox + (u / pts.length) * s - s / 2, oy + (v / pts.length) * s - s / 2, s, s);
+        continue;
+      }
+      ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
+      ctx.lineTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
+    }
+    ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
+    ctx.fill();
+  }
+}
+// the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
+// coming to another mode, a rule marked for another shape gives way to the first one for this shape
+const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡' }[mode.plane]
+  : ['cube', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : '▲');
+let ruleFittedTo = null;
+function fitRuleToShape() {
+  const w = $('mode').value, mode = MODES[w];
+  if (!mode.life || ruleFittedTo === w) return;
+  ruleFittedTo = w;
+  const options = [...$('lifePreset').options], now = options.find((o) => o.value === $('lifeRule').value);
+  if (!now || now.text.includes(lifeMark(mode))) return;  // a rule typed, or one for this shape: kept
+  const fit = options.find((o) => o.text.includes(lifeMark(mode)));
+  if (fit) $('lifePreset').value = $('lifeRule').value = fit.value;
 }
 
 function lifeReset() {
@@ -5439,6 +5574,7 @@ function applySetup(s) {
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
   } else if (s.r) {
     if (MODES[s.w].plane) planeFromSetup(s);
+    ruleFittedTo = s.w;  // a link's rule as it is
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
     $('lifePreset').value = preset ? s.r : 'custom';
@@ -5696,7 +5832,7 @@ function restart() {
     if (!walk.stepTiles) walk.visits[walk.tile[0]] = 1;  // a tile walk starts on its first tile
     if (walk.life) lifeReset();
   } else if (walk.plane) {  // the frame is the grid
-    bounds = { minX: -0.5, maxX: walk.plane.W - 0.5, minY: -0.5, maxY: walk.plane.W - 0.5 };
+    bounds = planeBounds();
     lifeReset();
   }
   if ($('autoFit').checked) fitToBounds(walk.sphere || walk.plane ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
@@ -5843,7 +5979,7 @@ const SKIES = {
   dark:  [[0, '#0a1530'], [0.45, '#1c2852'], [0.75, '#433262'], [0.92, '#7a4a5e'], [1, '#9c5f52']],  // twilight
   light: [[0, '#b9d0ea'], [0.5, '#dfe3f1'], [0.8, '#f2dde2'], [1, '#f8d2bd']],                          // dawn
 };
-const skyStops = () => (walk.is3d && $('sky').value === 'sky' ? SKIES[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'] : null);
+const skyStops = () => ((walk.is3d || walk.plane) && $('sky').value === 'sky' ? SKIES[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'] : null);
 const darkSky = () => skyStops() === SKIES.dark;
 function drawSky(ctx) {
   const stops = skyStops();
@@ -7653,7 +7789,8 @@ function tick(now = performance.now()) {
   easeView(dt);
   if (walk.plane) {  // Life on the plane: the grid as one picture, each generation
     if (needsFull) glClear();
-    if (needsFull || statsDirty) { drawGrid(); drawLifePlane(); updateStats(); }
+    if (needsFull) drawPlaneGrid();
+    if (needsFull || statsDirty) { drawLifePlane(); updateStats(); }
     needsFull = statsDirty = false;
     requestAnimationFrame(tick);
     return;
@@ -7866,7 +8003,11 @@ $('drawCells').addEventListener('change', () => {
 $('clearCells').addEventListener('click', () => { population = new Map(); compute(true); });
 // Life on the plane: the grid's size and edges (built again), its start (the cells only, but by the digits)
 for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
-  $(id).addEventListener('click', () => { plane.side = PLANE_SIDES[Math.min(PLANE_SIDES.length - 1, Math.max(0, PLANE_SIDES.indexOf(plane.side) + k))]; compute(true); });
+  $(id).addEventListener('click', () => {
+    const sides = PLANE_SIDES[MODES[$('mode').value].plane];
+    plane.side = sides[Math.min(sides.length - 1, Math.max(0, sides.indexOf(plane.side) + k))];
+    compute(true);
+  });
 }
 $('planeTorus').addEventListener('change', () => { plane.torus = $('planeTorus').checked; compute(true); });
 for (const b of $('lifeStartTabs').children) {
@@ -7889,10 +8030,12 @@ stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button ==
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
   const r = stage.getBoundingClientRect();
-  const x = Math.round((e.clientX - r.left - view.ox) / view.scale), y = Math.round((e.clientY - r.top - view.oy) / view.scale);
+  const wx = (e.clientX - r.left - view.ox) / view.scale, wy = (e.clientY - r.top - view.oy) / view.scale;
+  const x = Math.round(wx), y = Math.round(wy);
   if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
-    if (x < 0 || y < 0 || x >= walk.plane.W || y >= walk.plane.W) return;
-    const k = key(x, y), c = ((population.get(k) ?? 0) + 1) % walk.life.C;
+    const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
+    if (!cell) return;
+    const k = key(...cell), c = ((population.get(k) ?? 0) + 1) % walk.life.C;
     if (c) population.set(k, c); else population.delete(k);
     planeReseed();
     return;
