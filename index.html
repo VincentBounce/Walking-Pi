@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261018i">
+  <link rel="stylesheet" href="style.css?v=20261018k">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -293,6 +293,7 @@
         <div class="stage-more">  <!-- shown on hover, between the title and the Play row -->
           <p class="bar-sub"><span id="description"></span><span id="status"></span></p>  <!-- the walk, then how its digits came (computing, an error…) -->
           <div id="ruleChips" class="rule-chips"></div>
+          <div id="lifeChips" class="rule-chips life-chips" hidden></div>  <!-- Life: the run as bubbles, then a row per colour -->
           <dl class="stats">
             <dt id="lifetimeLabel" hidden>Lifetime</dt><dd id="sLifetime" hidden>—</dd>
             <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
@@ -395,6 +396,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261018i"></script>
+  <script src="main.js?v=20261018k"></script>
 </body>
 </html>

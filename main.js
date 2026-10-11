@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.468';
+const VERSION = '0.1.469';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1113,7 +1113,12 @@ function describe(base, available) {
   const lead = walk.plane ? planeLead(number) : start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
     : start ? `${{ hunt: 'A start found by the hunt', duel: 'A duel start', saved: 'A saved start' }[start]} on ${mode.where}`
     : `${number} ${seeded} of ${mode.where}`;
-  $('description').innerHTML = `${lead}: ${states} · rule ${walk.life.ruleText} · neighbours share an edge or a corner`;
+  // the title: the rule (its name, or the rule itself), not the number that may have seeded it
+  const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
+  $('barNum').textContent = known ? known.dataset.name : 'Your rule';
+  $('barNum').title = '';
+  $('barBase').textContent = walk.life.ruleText;
+  $('description').innerHTML = `${states} · neighbours share an edge or a corner · ${lead}`;
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
@@ -1437,6 +1442,13 @@ const ICONS = (() => {
     // hunt zones: the whole surface, then a patch of radius 1, 2 or 3
     zoneAll: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20'),
     // the symmetries of a Life start on the plane
+    // the Game of Life's bubbles: lifetime, generation, alive, born, died, ever alive
+    hourglass: pathEl('M7 4H17M7 20H17M8 4C8 9 16 10 16 12S8 15 8 20M16 4C16 9 8 10 8 12S16 15 16 20'),
+    generation: pathEl('M18.5 12A6.5 6.5 0 1 1 16.6 7.4') + pathEl('M17 3.5V7.5H13'),
+    aliveDot: '<circle class="f" cx="12" cy="12" r="5"/>',
+    born: pathEl('M12 6V18M6 12H18'),
+    died: pathEl('M7.5 7.5L16.5 16.5M16.5 7.5L7.5 16.5'),
+    ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
     symMirror: flags([[0, false], [0, true], [Math.PI, false], [Math.PI, true]]),
     symRotate: flags([0, 1, 2, 3].map((k) => [(k * Math.PI) / 2, false])),
@@ -4642,7 +4654,6 @@ function countSeed(L) {
 // the civilisations' colours (1, 2… : red, blue, gold, green, violet, orange) and their names
 const LIFE_COLOURS = [LIFE_RED, LIFE_BLUE, '#f2b630', '#3fb950', '#a371f7', '#ffa657'];
 const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange'];
-const colourCounts = (byColour) => Array.from({ length: byColour.length - 1 }, (_, k) => `${fmt(byColour[k + 1])} ${LIFE_COLOUR_NAMES[k]}`).join(', ');
 
 // Number of states of the current Life rule = the base the number is written in
 const lifeStates = () => (lifeRuleNow() || { C: 2 }).C;
@@ -7940,22 +7951,23 @@ function updateStats() {
     $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
   }
   document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
+  document.querySelector('.stage-bar .stats').hidden = !!walk.life;  // Life: bubbles instead (lifeChips)
+  $('lifeChips').hidden = !walk.life;
   STAT_LABELS[walk.life ? 'life' : walk.vert ? 'grid' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
   $('lStat0').hidden = $('sStep').hidden = !walk.life;  // a walk's step is the count by the slider
   $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
-    $('sStep').textContent = fmt(cur);
-    $('sPos').textContent = pc(L.aliveCount) + (L.colours > 1 ? ` · ${colourCounts(L.byColour)}`
-      : L.C > 2 ? ` · ${fmt(L.dyingCount)} dying` : '');
-    $('sDist').textContent = fmt(L.born);
-    $('sMax').textContent = fmt(L.dead);
-    $('sCells').textContent = pc(L.everAlive);
-    $('sLifetime').textContent = lifetimeText(L);
+    // as bubbles: the run (lifetime, generation, alive, born, died, ever alive), then a row per colour
+    const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
+    $('lifeChips').innerHTML = [
+      bubble('#c4934e', icon('hourglass'), 'Lifetime', lifetimeText(L)), bubble('#6e7781', icon('generation'), 'Generation', fmt(cur)),
+      bubble('#0f766e', icon('aliveDot'), 'Alive', pc(L.aliveCount) + (L.C > 2 && L.colours === 1 ? ` · ${fmt(L.dyingCount)} dying` : '')),
+      bubble('#3fb950', icon('born'), 'Born', fmt(L.born)), bubble('#e5534b', icon('died'), 'Died', fmt(L.dead)),
+      bubble('#a371f7', icon('ever'), 'Ever alive', pc(L.everAlive)),
+    ].join('') + (L.colours > 1 ? `<span class="chip-break"></span>${LIFE_COLOURS.slice(0, L.colours).map((c, k) => bubble(c, '', LIFE_COLOUR_NAMES[k][0].toUpperCase() + LIFE_COLOUR_NAMES[k].slice(1), pc(L.byColour[k + 1]))).join('')}` : '');
     $('digitStrip').classList.remove('line');
-    $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base ${L.C} · ${fmt(n)} cells, ` +
-      (L.colours > 1 ? colourCounts(L.seedByColour)
-        : `${fmt(L.seedAlive)} alive${L.C > 2 ? ` and ${fmt(L.seedDying)} dying` : ''}`) + ' at generation 0';
+    $('digitStrip').textContent = '';
     return;
   }
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
