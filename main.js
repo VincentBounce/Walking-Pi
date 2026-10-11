@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.475';
+const VERSION = '0.1.476';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4707,6 +4707,7 @@ const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + 
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
 let ghost = null;  // the cell under the pointer while drawing, where the brush would go
+let cleared = null;  // the cells Clear took away, back with Undo until something else is drawn or started
 const LIFE_PATTERNS = {  // LifeWiki's RLE, what it does, its picture (5 × 5 pixels, see pixelIcon)
   cell: ['Cell', 'o!', 'one cell, again to change its state', '.....,.....,..o..'],
   glider: ['Glider', 'bo$2bo$3o!', 'flies off diagonally', '.....,..o..,...o.,.ooo.'],
@@ -4947,15 +4948,23 @@ function renderPlaneRow() {
   const K = ruleColours();
   brush.colour = Math.min(brush.colour, K);
   for (const b of $('brushCards').children) { b.classList.toggle('active', b.dataset.brush === brush.id); b.hidden = kind !== 'square' && b.dataset.brush !== 'cell'; }
+  const eraser = document.createElement('i');
+  eraser.className = 'eraser';
+  eraser.title = 'eraser';
+  eraser.innerHTML = icon('eraser');
   $('brushColours').replaceChildren(...(K > 1 ? LIFE_COLOURS.slice(0, K) : [LIFE_ALIVE]).map((c, k) => {
     const i = document.createElement('i');
     i.style.background = c;
     i.title = K > 1 ? LIFE_COLOUR_NAMES[k] : 'alive';
-    i.classList.toggle('active', brush.colour === k + 1);
-    i.addEventListener('click', () => { brush.colour = k + 1; renderPlaneRow(); });
     return i;
-  }));
-  $('brushEraser').classList.toggle('active', brush.colour === 0);
+  }), eraser);
+  [...$('brushColours').children].forEach((i, k) => {  // the colours 1, 2…, then the eraser (0)
+    const c = i === eraser ? 0 : k + 1;
+    i.classList.toggle('active', brush.colour === c);
+    i.addEventListener('click', () => { brush.colour = c; renderPlaneRow(); });
+  });
+  $('clearDrawn').textContent = cleared ? 'Undo' : 'Clear';
+  $('clearDrawn').disabled = !cleared && !population.size;
   $('brushTurn').textContent = `↻ ${brush.turn * 90}°`;
   $('brushTurn').disabled = $('brushFlip').disabled = brush.id === 'cell';
   $('brushFlip').classList.toggle('active', brush.flip);
@@ -5124,12 +5133,13 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   const preset = [...$('lifePreset').options].find((o) => o.value === rule);
   $('lifePreset').value = preset ? rule : 'custom';
 }
+const COLOUR_STEPS = [1, 2, 4, 6];  // the colours' stepper: one, or 2, 4, 6 civilisations (an even fight)
 function renderColours() {
   const rule = parseRule(ruleBody($('lifeRule').value)), k = lifeColours;
   $('coloursLabel').innerHTML = (k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k))  // filled from the left
     .map((c, i) => `<i style="background:${c}" title="${k === 1 ? 'alive' : LIFE_COLOUR_NAMES[i]}"></i>`).join('');
   $('coloursDown').disabled = k === 1;
-  $('coloursUp').disabled = k === LIFE_COLOURS.length || !!rule?.iso;  // Callahan's letters: one colour
+  $('coloursUp').disabled = k >= COLOUR_STEPS.at(-1) || !!rule?.iso;  // Callahan's letters: one colour
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
@@ -5658,7 +5668,7 @@ function runHuntWorker(job) {
 }
 
 /* ---- 9.3b Battle hunt ------------------------------------------------------------------------ */
-/* Life on the plane in 2 or 4 colours: a patch for each, in the middle of its half or its quarter, the
+/* Life on the plane in 2, 4 or 6 colours: a patch for each, in the middle of its half, quarter or sixth, the
  * rest dead. A battle is good when it lasts and every colour keeps spreading, as much as the others:
  * - S_c = Σ g × (cells born of colour c at generation g): spreading, the later the more it counts;
  * - the balance, 1 / (1 + CV), CV the standard deviation of the S_c over their mean (0: all even);
@@ -5745,17 +5755,17 @@ function battleWorker() {
   };
 }
 const battle = { worker: null, radius: 2, top: [], status: '' };
-// each colour's patch: the middle of its half (2 colours) or quarter (4)
+// each colour's patch: the middle of its half (2 colours), quarter (4) or sixth (6: 3 columns, 2 rows)
 function battlePatches() {
-  const { W, row } = walk.plane, K = walk.life.colours;
-  const spots = K === 2 ? [[row / 4, W / 2], [(3 * row) / 4, W / 2]] : [[row / 4, W / 4], [(3 * row) / 4, W / 4], [row / 4, (3 * W) / 4], [(3 * row) / 4, (3 * W) / 4]];
+  const { W, row } = walk.plane, K = walk.life.colours, cols = K === 6 ? 3 : 2, rows = K === 2 ? 1 : 2;
+  const spots = Array.from({ length: K }, (_, i) => [(((i % cols) + 0.5) * row) / cols, ((Math.floor(i / cols) + 0.5) * W) / rows]);
   return spots.map(([x, y]) => lifePatch(battle.radius, Math.floor(y) * row + Math.floor(x)));
 }
-const battleOn = () => !!walk.plane && plane.start === 'random' && [2, 4].includes(walk.life?.colours);
+const battleOn = () => !!walk.plane && plane.start === 'random' && [2, 4, 6].includes(walk.life?.colours);
 function renderBattle() {
   $('battleRow').hidden = !battleOn();
   if ($('battleRow').hidden) return;
-  $('battleLayout').textContent = walk.life.colours === 2 ? '2 halves' : '4 quarters';
+  $('battleLayout').textContent = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' }[walk.life.colours];
   for (const b of $('battleRadius').children) { b.classList.toggle('active', Number(b.dataset.r) === battle.radius); b.disabled = !!battle.worker; }
   $('battleBtn').innerHTML = battle.worker ? `${icon('pause')} Stop` : `${icon('search')} Hunt battles`;
   $('battleStatus').textContent = battle.status;
@@ -5841,6 +5851,7 @@ function loadChampion() {
 // digits), 'hunt', 'duel' or 'saved' (a link or a saved setup). The link keeps the cells.
 function setLifeSeed(seed, how) {
   const L = walk.life;
+  cleared = null;  // another start: no Undo
   L.seed.set(seed);
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   countSeed(L);
@@ -8409,12 +8420,12 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 }
 $('planeTorus').addEventListener('change', () => { plane.torus = $('planeTorus').checked; compute(true); });
 for (const b of $('lifeStartTabs').children) {
-  b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; compute(true); });
+  b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; cleared = null; compute(true); });
 }
 $('soupDensity').addEventListener('input', () => { $('soupDensityLabel').textContent = `${$('soupDensity').value} %`; });
 $('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); planeReseed(); });
 $('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); planeReseed(); });
-$('clearDrawn').addEventListener('click', () => { population = new Map(); planeReseed(); });
+$('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name, , what, art]]) => {
   const b = document.createElement('button');
@@ -8426,12 +8437,11 @@ $('brushCards').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name
 }));
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % 4; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
-$('brushEraser').addEventListener('click', () => { brush.colour = 0; renderPlaneRow(); });
 $('battleBtn').addEventListener('click', huntBattles);
 for (const b of $('battleRadius').children) b.addEventListener('click', () => { battle.radius = Number(b.dataset.r); battle.top = []; renderBattle(); });
 for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
   $(id).addEventListener('click', () => {
-    lifeColours = Math.min(LIFE_COLOURS.length, Math.max(1, lifeColours + k));
+    lifeColours = k > 0 ? COLOUR_STEPS.find((v) => v > lifeColours) ?? lifeColours : COLOUR_STEPS.findLast((v) => v < lifeColours) ?? lifeColours;
     compute();
   });
 }
@@ -8444,6 +8454,7 @@ stage.addEventListener('pointerup', (e) => {
   if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
     if (!cell) return;
+    cleared = null;  // drawn again: no Undo
     if (brush.id !== 'cell' || !brush.colour) for (const [x, y] of brushAt(cell)) { if (brush.colour) population.set(key(x, y), brush.colour); else population.delete(key(x, y)); }
     else {  // a cell: in the brush's colour, or off if it has it; one colour: alive, then each dying state, back to dead
       const k = key(...cell), v = population.get(k) ?? 0;
