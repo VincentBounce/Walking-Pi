@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.450';
+const VERSION = '0.1.451';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2247,7 +2247,7 @@ function compute(keepDigits = false) {
   const slow = F.log10 > 6e6 || (F.root === 'randprime' && Number(F.ast.args[0].v) > 1000) || (F.kind === 'real' && quadratic && n > 1e6);
   $('status').textContent =
     (F.root === 'randprime' ? `Searching for a random ${fmt(Number(F.ast.args[0].v))}-digit prime…`
-      : `Computing ${sym} in base ${base}${integer || mode.life ? '' : ` · ${fmt(n)} digits`}…`) +
+      : `Computing ${sym} in base ${base}…`) +  // the count is beside it
     (slow ? ' (this can take a minute or more)' : '');
   worker.onmessage = (e) => {
     const d = e.data;
@@ -5329,16 +5329,20 @@ async function importSetups(file) {
  */
 
 /* ---- 11.1 Animation -------------------------------------------------------------------------- */
-// The speeds the turtle and the rabbit step through (50 by default; the slowest one lights the next
-// step's chip, as step by step)
+// The speed, in steps per second: typed (1 to 1,000,000), or the turtle and the rabbit step through
+// SPEEDS (50 by default; at 5 or less the next step's chip lights, as step by step)
 const SPEEDS = [5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
-let speedAt = 2;
-const stepsPerSecond = () => SPEEDS[speedAt];
+let speed = 50;
+const stepsPerSecond = () => speed;
 function updateSpeedLabel() {
-  const s = stepsPerSecond();
-  $('speedLabel').textContent = `${s >= 1e6 ? `${s / 1e6}M` : s >= 1000 ? `${s / 1000}k` : s} steps/s`;
-  $('slower').disabled = speedAt === 0;
-  $('faster').disabled = speedAt === SPEEDS.length - 1;
+  if (document.activeElement !== $('speedLabel')) $('speedLabel').value = `${fmt(speed)} steps/s`;
+  $('slower').disabled = speed <= 1;
+  $('faster').disabled = speed >= SPEEDS.at(-1);
+}
+function setSpeed(s) {
+  speed = Math.min(SPEEDS.at(-1), Math.max(1, Math.round(s)));
+  updateSpeedLabel();
+  statsDirty = true;
 }
 
 function advanceTo(target) {
@@ -7229,7 +7233,7 @@ function updateStats() {
   // it counts in (an ant's: the turn it takes, or by its rule the colour of its cell); an ant by the digits
   // turned the other way by a dark cell, the chip of the digit it reads dashed too; by its rule, on a cell
   // walked before, the chip of a fresh one (colour 0) dashed, as the turn it would take there
-  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speedAt === 0);
+  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speed <= 5);
   let next = -1;
   if (slow) for (let c = 0; c < walk.base; c++) if (walk.counts[walk.base * (cur + 1) + c] !== walk.counts[walk.base * cur + c]) next = c;
   const read = !slow || !walk.ant ? -1 : antByDigits ? walk.digits[cur] : 0;
@@ -7424,7 +7428,7 @@ $('digitsUp').addEventListener('click', () => stepDigits(1));
 // the last valid formula; a rule as it was). Enter or ↵ leaves the field, and leaving it applies it;
 // but a wrong formula keeps you in the field, with its error. Esc undoes the edit: back to the value
 // in use. For ↵, mousedown keeps the focus from going to the button first.
-const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? requestedDigits()), startLabel: () => String(startNo()),
+const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? requestedDigits()), startLabel: () => String(startNo()), speedLabel: () => String(speed),
                      antRule: () => antRuleOf($('mode').value) };
 for (const input of document.querySelectorAll('.field input')) {
   let before = '';
@@ -7471,17 +7475,12 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
-// a new status (how the digits came, an error…) shows for a moment over the turtle and the rabbit, then the speed again
-let statusTimer = 0;
-new MutationObserver(() => {
-  $('speedInfo').classList.add('fresh');
-  clearTimeout(statusTimer);
-  statusTimer = setTimeout(() => $('speedInfo').classList.remove('fresh'), 3000);
-}).observe($('status'), { childList: true, characterData: true, subtree: true });
-// the turtle and the rabbit: the next speed down or up
-for (const [id, k] of [['slower', -1], ['faster', 1]]) {
-  $(id).addEventListener('click', () => { speedAt = Math.min(SPEEDS.length - 1, Math.max(0, speedAt + k)); updateSpeedLabel(); statsDirty = true; });
-}
+// the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
+$('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
+$('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
+$('speedLabel').addEventListener('input', () => { $('speedLabel').value = $('speedLabel').value.replace(/\D/g, ''); });
+$('speedLabel').addEventListener('blur', updateSpeedLabel);  // "50 steps/s" again
+$('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) setSpeed(Number($('speedLabel').value)); });
 // go to step v: back from the start, forward from where it is
 function seekTo(v) {
   play(false);

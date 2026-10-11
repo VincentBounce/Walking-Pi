@@ -353,8 +353,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .ant-presets button.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
 .stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; }  /* grows upwards: the Play row stays at the bottom */
-.stage-bar:hover { width: 580px; }
-@media (hover: none) { .stage-bar:focus-within { width: 580px; } }
+.stage-bar:hover { width: 680px; }
+@media (hover: none) { .stage-bar:focus-within { width: 680px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
 .bar-title { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; }
 .bar-num { flex: none; max-width: 70%; font-size: 20px; font-weight: 700; color: var(--accent); overflow: hidden; text-overflow: ellipsis; }  /* the number first */
@@ -382,14 +382,14 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 14px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 0; align-items: center; }
-.stage-bar .row button {  /* ⏮ ◀▮ Play ▮▶ ⏭ 🐢 🐇: sharing the bar's width, of one height, their text or icon centred */
-  flex: 1; min-width: 0; height: 32px; padding: 0; font-weight: 600;
+.stage-bar .row button {  /* ⏮ ◀▮ ▮▶ ⏭: of one width and height, their icon centred; Play the rest */
+  flex: none; width: 48px; height: 32px; padding: 0; font-weight: 600;
   display: inline-flex; align-items: center; justify-content: center;
 }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
-.stage-bar #play { flex: 1.6; color: var(--accent); border-color: var(--accent); }
-/* the length above the buttons, as wide, of the folded bar's width; open, the speed on their right:
-   how the digits came for a moment, then the speed, over the turtle and the rabbit */
+.stage-bar #play { flex: 1; color: var(--accent); border-color: var(--accent); }
+/* the length above the buttons, as wide, of the folded bar's width; open, on their right how the digits
+   came over the speed, typed as the length, the turtle and the rabbit as wide as the jump buttons */
 .player-controls { display: flex; gap: 8px; }
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
 .player-side { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -399,13 +399,14 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar .progress { margin: -4px 0 8px; }
 .speed-info { height: 34px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; text-align: center; }
 .speed-info #status { margin: 0; font-size: 11px; line-height: 1.25; white-space: pre-line; overflow: hidden; max-height: 34px; }
-.speed-info:not(.fresh) #status, .speed-info.fresh .speed-label { display: none; }
+.stage-bar .speed-stepper { margin: 0; }
+.speed-stepper button { width: 48px; }
+.speed-stepper input { color: var(--text); font-weight: 400; }
 /* the steps, on their own line above the buttons; the speed after ⏭, between a turtle and a rabbit */
 .stage-bar .seek-row { margin: 0 0 8px; gap: 10px; }
 #seek { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); }
 .speed-icon { flex: none; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
-.speed-label { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
 .stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .hint {
