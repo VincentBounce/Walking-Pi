@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.472';
+const VERSION = '0.1.473';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4790,7 +4790,8 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
     const p = plane.density / 100;
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
   } else {
-    if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), c % C);
+    // cells drawn: a colour of another count of colours as one of these (one colour: alive), a dying state kept
+    if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), K > 1 ? ((c - 1) % K) + 1 : c < C ? c : 1);
     else {
       const pop = populationOf(`0,0:${LIFE_PATTERNS[plane.pattern][1]}`);
       let w = 0, h = 0;
@@ -5187,7 +5188,8 @@ function fitRuleToShape() {
   const w = $('mode').value, mode = MODES[w];
   if (!mode.life || ruleFittedTo === w) return;
   ruleFittedTo = w;
-  const options = [...$('lifePreset').options], now = options.find((o) => o.value === $('lifeRule').value);
+  // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
+  const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   if (!now || now.text.includes(lifeMark(mode))) return;  // a rule typed, or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) setRuleText(fit.value);
