@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261017k">
+  <link rel="stylesheet" href="style.css?v=20261017l">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -35,13 +35,14 @@
           <div id="antRuleRow"><div id="antRuleName" class="field-label">Rule</div>  <!-- not a label: a click on ↵ would focus the field again -->
             <span class="field"><input id="antRule" type="text" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
           </div>
-          <div id="populationRow" class="choice-row" hidden>  <!-- cells coloured before the first step, on squares -->
-            <button id="drawCells" type="button" title="Click a cell on the grid to colour it (each click its next colour, back to none), the walk then built again">Draw cells</button><button id="clearCells" type="button" title="No coloured cell before the first step">Clear</button>
-          </div>
         </div>
         <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
           <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
         </div>  <!-- under the rules: along the grid, or on cells -->
+        <div id="populationRow" class="draw-row" hidden>  <!-- the square ant: cells coloured before the first step -->
+          <label class="check" title="Click a cell on the grid to colour it (each click its next colour, back to none), the walk then built again"><input id="drawCells" type="checkbox"> Draw cells</label>
+          <button id="clearCells" type="button" title="No coloured cell before the first step" hidden>Clear</button>
+        </div>
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
             <optgroup label="2D walks">
@@ -342,6 +343,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261017k"></script>
+  <script src="main.js?v=20261017l"></script>
 </body>
 </html>

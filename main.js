@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.456';
+const VERSION = '0.1.457';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2060,7 +2060,9 @@ function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
   $('digitsSection').hidden = !!A && !antByDigits;  // an ant by colour reads no digit
   $('populationRow').hidden = w !== 'antSquare';
-  $('drawCells').classList.toggle('active', drawing);
+  if (w !== 'antSquare' && drawing) { drawing = false; stage.classList.remove('drawing'); }  // drawing ends with the square ant
+  $('drawCells').checked = drawing;
+  $('clearCells').hidden = !drawing;  // while drawing only
   $('clearCells').disabled = !population.size;
   $('antRow').hidden = !A;
   if ($('antRow').hidden) return;
@@ -7658,8 +7660,8 @@ stage.addEventListener('dblclick', () => { if (!drawing) recentre(); });  // dra
 // Draw cells (the square ant): a click on a cell gives it its next colour, back to none, and the walk is
 // built again from that population; a drag still pans
 let drawing = false, drawFrom = null;
-$('drawCells').addEventListener('click', () => {
-  drawing = !drawing;
+$('drawCells').addEventListener('change', () => {
+  drawing = $('drawCells').checked;
   if (drawing) $('autoFit').checked = false;  // the view stays where the cells are drawn
   stage.classList.toggle('drawing', drawing);
   renderAntRow();
