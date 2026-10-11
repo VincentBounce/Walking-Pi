@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261017z">
+  <link rel="stylesheet" href="style.css?v=20261018a">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -178,31 +178,38 @@
 
       <section id="automataSection" hidden>  <!-- Life: its rule -->
         <h2>Rule</h2>
-        <label id="lifeRuleRow">  <!-- under the section's title: no label of its own -->
+        <div id="ruleTabs" class="choice-row"></div>  <!-- the rules for the grid's shape, by character, as cards -->
+        <div id="ruleCards" class="mode-list rule-cards" role="listbox"></div>
+        <div class="rule-build">  <!-- your own: how many live neighbours give birth, let survive; the states (dying stages past 2) -->
+          <div class="build-row"><span>Birth</span><div id="ruleBirth" class="nchips"></div></div>
+          <div class="build-row"><span>Survive</span><div id="ruleSurvive" class="nchips"></div></div>
+          <div class="build-row"><span>States</span><div class="stepper"><button id="statesDown" title="Fewer states">−</button><span id="statesLabel"></span><button id="statesUp" title="More states: a cell that fails to survive goes through dying stages first">+</button></div></div>
+        </div>
+        <label id="lifeRuleRow" hidden>  <!-- the rules known, each marked for its shapes (■ ▲ ⬡ ⬠), with its tab and name: shown as cards (ruleCards) -->
           <select id="lifePreset">
-            <option value="B3/S23">■▲ B3/S23 — Life (2 states)</option>
-            <option value="B45/S345/C4">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
-            <option value="B34/S2/C4">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
-            <option value="B2/S/C3">■ B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
-            <option value="B2/S345/C4">■ B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
-            <option value="B34/S123/C3">⬡ B34/S123/C3 — lasts longest, ends in long loops (3 states)</option>
-            <option value="B24/S134/C4">⬡ B24/S134/C4 — on the edge of extinction (4 states)</option>
-            <option value="B24/S35">⬡ B24/S35 — Life-like, lasting, a few survivors</option>
-            <option value="B234/S234">⬡ B234/S234 — methuselahs: 3 cells can last 2,000+ generations</option>
-            <option value="B234/S1234">⬡ B234/S1234 — methuselahs, and every small start settles</option>
-            <option value="B2o/S2m34">⬡ B2o/S2m34 — Callahan's hexagonal Life, with gliders (o side by side, m one cell apart)</option>
-            <option value="B2/S24/C3">⬡ B2/S24/C3 — Life-like from a small start: most die, a few spread for a while (3 states)</option>
-            <option value="B1/S0123456">⬡ B1/S0123456 — snowflakes, grown from a few cells</option>
-            <option value="B36/S23">■ B36/S23 — HighLife, with a replicator</option>
-            <option value="B3/S12345">■ B3/S12345 — Maze, grows corridors</option>
-            <option value="B3/S1234">■ B3/S1234 — Mazectric, longer corridors</option>
-            <option value="B3678/S34678">■ B3678/S34678 — Day &amp; Night, alive and dead are symmetric</option>
-            <option value="B2/S">■ B2/S — Seeds, explosive</option>
-            <option value="B34/S23">⬠ B34/S23 — Life-like on Cairo pentagons (7 neighbours): settles after a few hundred generations</option>
+            <option value="B3/S23" data-tab="classics" data-name="Life">■▲ B3/S23 — Life (2 states)</option>
+            <option value="B45/S345/C4" data-tab="lasting" data-name="Sparse">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
+            <option value="B34/S2/C4" data-tab="lasting" data-name="Brink">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
+            <option value="B2/S/C3" data-tab="wild" data-name="Brian's Brain">■ B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
+            <option value="B2/S345/C4" data-tab="wild" data-name="Star Wars">■ B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
+            <option value="B34/S123/C3" data-tab="lasting" data-name="Long loops">⬡ B34/S123/C3 — lasts longest, ends in long loops (3 states)</option>
+            <option value="B24/S134/C4" data-tab="lasting" data-name="Brink">⬡ B24/S134/C4 — on the edge of extinction (4 states)</option>
+            <option value="B24/S35" data-tab="classics" data-name="Hex Life">⬡ B24/S35 — Life-like, lasting, a few survivors</option>
+            <option value="B234/S234" data-tab="lasting" data-name="Methuselahs">⬡ B234/S234 — methuselahs: 3 cells can last 2,000+ generations</option>
+            <option value="B234/S1234" data-tab="lasting" data-name="Settling methuselahs">⬡ B234/S1234 — methuselahs, and every small start settles</option>
+            <option value="B2o/S2m34" data-tab="classics" data-name="Callahan's Life">⬡ B2o/S2m34 — Callahan's hexagonal Life, with gliders (o side by side, m one cell apart)</option>
+            <option value="B2/S24/C3" data-tab="lasting" data-name="Few spread">⬡ B2/S24/C3 — Life-like from a small start: most die, a few spread for a while (3 states)</option>
+            <option value="B1/S0123456" data-tab="wild" data-name="Snowflakes">⬡ B1/S0123456 — snowflakes, grown from a few cells</option>
+            <option value="B36/S23" data-tab="classics" data-name="HighLife">■ B36/S23 — HighLife, with a replicator</option>
+            <option value="B3/S12345" data-tab="lasting" data-name="Maze">■ B3/S12345 — Maze, grows corridors</option>
+            <option value="B3/S1234" data-tab="lasting" data-name="Mazectric">■ B3/S1234 — Mazectric, longer corridors</option>
+            <option value="B3678/S34678" data-tab="classics" data-name="Day &amp; Night">■ B3678/S34678 — Day &amp; Night, alive and dead are symmetric</option>
+            <option value="B2/S" data-tab="wild" data-name="Seeds">■ B2/S — Seeds, explosive</option>
+            <option value="B34/S23" data-tab="classics" data-name="Cairo Life">⬠ B34/S23 — Life-like on Cairo pentagons (7 neighbours): settles after a few hundred generations</option>
             <option value="custom">Custom…</option>
           </select>
         </label>
-        <div id="lifeCustomRow" hidden><div class="field-label">Custom rule (B…/S…, B…/S…/C… with dying stages, or B2o/S2m34 on hexagons)</div>
+        <div id="lifeCustomRow"><div class="field-label" id="ruleName">Rule</div>
           <span class="field"><input id="lifeRule" class="custom" type="text" value="B3/S23" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
         </div>
       </section>
@@ -379,6 +386,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261017z"></script>
+  <script src="main.js?v=20261018a"></script>
 </body>
 </html>

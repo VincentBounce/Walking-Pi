@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.463';
+const VERSION = '0.1.464';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2194,12 +2194,12 @@ function compute(keepDigits = false) {
   $('colourSection').hidden = !mode.life;
   $('huntRow').hidden = !!mode.plane || ruleColours() > 2;  // the hunt is for the surfaces, in one or two colours
   renderColours();
+  renderRuleSection();
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
   $('huntStatus').textContent = '';
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
-  $('lifeCustomRow').hidden = !mode.life || $('lifePreset').value !== 'custom';
   $('sphereRow').hidden = mode.lattice !== 'sphere';
   syncSizeStepper();
   updateRuleText();
@@ -4646,7 +4646,6 @@ function buildLife(seq, mode) {
   if (rule.iso && !nbr.ring) {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
-    $('lifeCustomRow').hidden = true;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const seed = new Uint8Array(g.n);
@@ -4813,7 +4812,6 @@ function buildLifePlane(seq) {
   if (rule.iso && kind !== 'hex') {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
-    $('lifeCustomRow').hidden = true;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = planeNeighbours(kind, W, plane.torus);
@@ -5025,14 +5023,104 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   $('lifeRule').value = rule;
   const preset = [...$('lifePreset').options].find((o) => o.value === rule);
   $('lifePreset').value = preset ? rule : 'custom';
-  $('lifeCustomRow').hidden = !!preset;
 }
 function renderColours() {
   const rule = parseRule(ruleBody($('lifeRule').value)), k = lifeColours;
-  $('coloursLabel').innerHTML = k === 1 ? `<i style="background:${LIFE_ALIVE}"></i><span>alive · dead</span>`
-    : LIFE_COLOURS.slice(0, k).map((c, i) => `<i style="background:${c}" title="${LIFE_COLOUR_NAMES[i]}"></i>`).join('');
+  $('coloursLabel').innerHTML = (k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k))  // filled from the left
+    .map((c, i) => `<i style="background:${c}" title="${k === 1 ? 'alive' : LIFE_COLOUR_NAMES[i]}"></i>`).join('');
   $('coloursDown').disabled = k === 1;
   $('coloursUp').disabled = k === LIFE_COLOURS.length || !!rule?.iso;  // Callahan's letters: one colour
+}
+// The Rule section: the rules known for the grid's shape, by character (tabs), as cards, each with a
+// small picture of what it does (a soup of the shape after 30 generations); then your own, as chips (how
+// many live neighbours give birth, let survive) and the states, and the rule as text
+const RULE_TABS = { classics: 'Classics', lasting: 'Lasting', wild: 'Wild' };
+const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7 };
+let ruleTab = null;
+const thumbs = new Map();
+function ruleThumb(mark, text) {  // a data URL, kept per shape, rule and theme
+  const key = `${mark}|${text}|${MONO}`;
+  if (thumbs.has(key)) return thumbs.get(key);
+  const kind = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo' }[mark], rule = parseRule(text), W = { square: 18, hex: 14, tri: 10, cairo: 8 }[kind];
+  const { start, list, ring } = planeNeighbours(kind, W, true), n = planeRow(kind, W) * W;
+  let a = Uint8Array.from({ length: n }, (_, t) => (cellRandom(7, t) < 0.35 ? 1 : 0)), b = new Uint8Array(n);
+  for (let g = 0; g < 30; g++) {
+    for (let t = 0; t < n; t++) {
+      const was = a[t];
+      if (was >= 2) { b[t] = was + 1 < rule.C ? was + 1 : 0; continue; }
+      let c = 0;
+      if (rule.iso) { for (let q = 0; q < 6; q++) if (a[ring[6 * t + q]] === 1) c |= 1 << q; c += 16; }
+      else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
+      b[t] = was ? (rule.S[c] ? 1 : rule.C > 2 ? 2 : 0) : rule.B[c];
+    }
+    [a, b] = [b, a];
+  }
+  const canvas = document.createElement('canvas'), size = 40, ctx = canvas.getContext('2d');
+  canvas.width = canvas.height = size;
+  const row = planeRow(kind, W), corners = [];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let t = 0; t < n; t++) { const c = planeCorners(kind, t % row, Math.floor(t / row)); corners.push(c); for (const [u, v] of c) { x0 = Math.min(x0, u); y0 = Math.min(y0, v); x1 = Math.max(x1, u); y1 = Math.max(y1, v); } }
+  const k = size / Math.max(x1 - x0, y1 - y0);
+  for (let t = 0; t < n; t++) {
+    if (!a[t]) continue;
+    ctx.fillStyle = a[t] === 1 ? LIFE_ALIVE : LIFE_TRAIL[Math.min(LIFE_TRAIL.length - 1, 2 * (a[t] - 1))];
+    ctx.beginPath();
+    corners[t].forEach(([u, v], q) => ctx[q ? 'lineTo' : 'moveTo']((u - x0) * k, (v - y0) * k));
+    ctx.fill();
+  }
+  const url = canvas.toDataURL();
+  thumbs.set(key, url);
+  return url;
+}
+function renderRuleSection() {
+  const mode = MODES[$('mode').value];
+  if (!mode.life) return;
+  const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
+  const known = [...$('lifePreset').options].filter((o) => o.dataset.tab && o.text.includes(mark));
+  const tabs = Object.keys(RULE_TABS).filter((t) => known.some((o) => o.dataset.tab === t));
+  const mine = known.find((o) => o.value === now);
+  if (!tabs.includes(ruleTab)) ruleTab = mine?.dataset.tab ?? tabs[0];
+  $('ruleTabs').replaceChildren(...tabs.map((t) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = RULE_TABS[t];
+    b.classList.toggle('active', t === ruleTab);
+    b.addEventListener('click', () => { ruleTab = t; renderRuleSection(); });
+    return b;
+  }));
+  $('ruleTabs').hidden = tabs.length < 2;
+  $('ruleCards').replaceChildren(...known.filter((o) => o.dataset.tab === ruleTab).map((o) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rule-card';
+    b.classList.toggle('active', o.value === now);
+    b.innerHTML = `<img class="rule-thumb" alt="" src="${ruleThumb(mark, o.value)}"><span><span class="mode-name">${o.dataset.name}</span>`
+      + `<span class="mode-detail">${o.value} · ${o.text.split(' — ')[1] ?? ''}</span></span>`;
+    b.addEventListener('click', () => { setRuleText(o.value); compute(); });
+    return b;
+  }));
+  // your own: the chips of the rule in use (Callahan's letters read as their counts)
+  const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark];
+  const counts = (table) => Array.from({ length: N + 1 }, (_, c) => (rule.iso ? Array.from({ length: 64 }, (_, m) => m).some((m) => table[16 + m] && m.toString(2).replace(/0/g, '').length === c) : table[c] === 1));
+  const write = (B, S, C) => `B${B.map((on, c) => (on ? c : '')).join('')}/S${S.map((on, c) => (on ? c : '')).join('')}${C > 2 ? `/C${C}` : ''}`;
+  const B = counts(rule.B), S = counts(rule.S);
+  for (const [id, set, cls] of [['ruleBirth', B, 'birth'], ['ruleSurvive', S, 'survive']]) {
+    $(id).replaceChildren(...set.map((on, c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = c;
+      b.className = on ? cls : '';
+      b.title = `${c} live neighbour${c === 1 ? '' : 's'}`;
+      b.addEventListener('click', () => { set[c] = !set[c]; setRuleText(write(B, S, rule.C)); compute(); });
+      return b;
+    }));
+  }
+  $('statesLabel').textContent = rule.C === 2 ? '2 states' : `${rule.C} · ${rule.C - 2} dying`;
+  $('statesDown').disabled = rule.C === 2;
+  $('statesUp').disabled = rule.C === 10;
+  $('statesDown').onclick = () => { setRuleText(write(B, S, rule.C - 1)); compute(); };
+  $('statesUp').onclick = () => { setRuleText(write(B, S, rule.C + 1)); compute(); };
+  $('ruleName').textContent = mine ? `Rule · ${mine.dataset.name}` : 'Rule · your own';
 }
 let ruleFittedTo = null;
 function fitRuleToShape() {
@@ -8215,7 +8303,6 @@ $('huntBtn').addEventListener('click', huntClick);
 // Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
 $('lifePreset').addEventListener('change', () => {
   const custom = $('lifePreset').value === 'custom';
-  $('lifeCustomRow').hidden = !custom;
   if (custom) { $('lifeRule').focus(); return; }
   $('lifeRule').value = $('lifePreset').value;
   if (MODES[$('mode').value].life) compute();
