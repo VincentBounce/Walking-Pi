@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.466';
+const VERSION = '0.1.467';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1363,6 +1363,12 @@ const dragonOf = (turns) => fitIn(turtlePath(Array.from({ length: turns }, (_, k
 })), 20);
 const dots = (list, r) => list.map(([x, y]) => `<circle class="f" cx="${x}" cy="${y}" r="${r}"/>`).join('');
 const pathEl = (d, cls) => `<path${cls ? ` class="${cls}"` : ''} d="${d}"/>`;
+// The symmetries' pictures: a flag, and its copies (turned by a, mirrored across the upright when m)
+const FLAG = [[12.8, 11.6], [12.8, 1.6], [21.5, 5.4], [12.8, 9.2]];
+const flags = (copies) => copies.map(([a, m]) => pathEl(pathOf(FLAG.map(([x, y]) => {
+  const u = m ? 24 - x : x, c = Math.cos(a), s = Math.sin(a);
+  return [12 + (u - 12) * c - (y - 12) * s, 12 + (u - 12) * s + (y - 12) * c];
+})), 'f')).join('');
 
 // A triangle cut into 4 (its corners' midpoints joined), pointing at angle rot
 const tiledTriangle = (rot) => {
@@ -1430,6 +1436,12 @@ const ICONS = (() => {
       + [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]].map(([x, y]) => `<rect class="f" x="${r2(4 + x * 5.33)}" y="${r2(4 + y * 5.33)}" width="5.33" height="5.33"/>`).join(''),
     // hunt zones: the whole surface, then a patch of radius 1, 2 or 3
     zoneAll: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20'),
+    // the symmetries of a Life start on the plane
+    symNone: flags([[0, false]]),
+    symMirror: flags([[0, false], [0, true], [Math.PI, false], [Math.PI, true]]),
+    symRotate: flags([0, 1, 2, 3].map((k) => [(k * Math.PI) / 2, false])),
+    symKaleido: flags([0, 1, 2, 3].flatMap((k) => [[(k * Math.PI) / 2, false], [(k * Math.PI) / 2, true]])),
+    symHalf: flags([[0, false], [Math.PI, false]]),
     zone1: dots([[12, 12]], 2.5),
     zone2: dots([[12, 12]], 4),
     zone3: dots([[12, 12]], 6),
@@ -4680,14 +4692,30 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 const PLANE_SIDES = { square: [64, 128, 256, 512, 1024, 2048], hex: [32, 64, 128, 256, 512], tri: [32, 64, 128, 256], cairo: [16, 32, 64, 128, 256] };
-const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'mirror', pattern: 'acorn' };  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none', pattern: 'acorn' };  // a soup of its own each visit (a link keeps its seed)
 const LIFE_PATTERNS = {  // LifeWiki's RLE
   rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
   diehard: ['Diehard', '6bo$2o$bo3b3o!'],
   pulsar: ['Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!'],
   gosper: ['Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!'],
 };
-const SYMMETRIES = { mirror: 'mirrored', rotate: 'turning', kaleido: 'kaleidoscopic' };
+// the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
+// triangles turned by half a turn is itself (Cairo pentagons: none of their own)
+const SYMMETRIES = { none: ['symNone', 'None', ''], mirror: ['symMirror', 'Mirror', 'mirrored'], rotate: ['symRotate', 'Rotate', 'turning'],
+                     kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic'], half: ['symHalf', 'Half turn', 'turned by half a turn'] };
+const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'] };
+const symmetryOf = (kind) => (PLANE_SYMMETRIES[kind].includes(plane.sym) ? plane.sym : 'none');
+// a cell and its copies under the grid's symmetry (index y × row + x)
+function cellCopies(kind, W, t) {
+  const sym = symmetryOf(kind), n = planeRow(kind, W) * W, last = W - 1;
+  if (sym === 'none') return [t];
+  if (sym === 'half') return [t, n - 1 - t];
+  const x = t % W, y = (t - x) / W, at = ([u, v]) => v * W + u;
+  const turns = [[x, y], [last - y, x], [last - x, last - y], [y, last - x]];
+  if (sym === 'rotate') return turns.map(at);
+  const mirrors = [[x, y], [last - x, y], [x, last - y], [last - x, last - y]];
+  return (sym === 'mirror' ? mirrors : [...mirrors, ...mirrors.map(([u, v]) => [v, u])]).map(at);
+}
 const ROOT3_2 = Math.sqrt(3) / 2;
 const planeRow = (kind, W) => (kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons)
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
@@ -4743,26 +4771,25 @@ function cellRandom(seed, i) {
 function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell of a soup one of them
   const W = plane.side, row = planeRow(kind, W), n = row * W, seed = new Uint8Array(n), last = W - 1;
   const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < row && y < W) seed[y * row + x] = c; };
-  if (plane.start === 'digits') seed.set(seq.subarray(0, n));
-  else if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), c % C);
-  else if (plane.start === 'pattern' && kind === 'square') {
-    const pop = populationOf(`0,0:${LIFE_PATTERNS[plane.pattern][1]}`);
-    let w = 0, h = 0;
-    for (const k of pop.keys()) { const [x, y] = cellXY(k); w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
-    for (const k of pop.keys()) { const [x, y] = cellXY(k); put(x + ((W - w) >> 1), y + ((W - h) >> 1), 1); }
-  } else {
-    // a cell's draw: its own, or that of the first of its copies under the symmetry
-    const rep = (t) => {
-      if (plane.start !== 'symmetric') return t;
-      if (kind !== 'square') return Math.min(t, n - 1 - t);  // half a turn: the only symmetry of a rhombus of hexagons or triangles
-      const x = t % W, y = (t - x) / W;
-      if (plane.sym === 'rotate') return Math.min(t, x * W + last - y, (last - y) * W + last - x, (last - x) * W + y);
-      let a = Math.min(x, last - x), b = Math.min(y, last - y);
-      if (plane.sym === 'kaleido' && a > b) [a, b] = [b, a];
-      return b * W + a;
-    };
+  // the symmetry: a soup or the digits read at the first of a cell's copies (as dense as without); cells
+  // drawn or a pattern copied to all of them
+  const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
+  if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
+  else if (plane.start === 'random' || (plane.start === 'pattern' && kind !== 'square')) {
     const p = plane.density / 100;
-    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, rep(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, rep(t)) * K) : 1;
+    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
+  } else {
+    if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), c % C);
+    else {
+      const pop = populationOf(`0,0:${LIFE_PATTERNS[plane.pattern][1]}`);
+      let w = 0, h = 0;
+      for (const k of pop.keys()) { const [x, y] = cellXY(k); w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
+      for (const k of pop.keys()) { const [x, y] = cellXY(k); put(x + ((W - w) >> 1), y + ((W - h) >> 1), 1); }
+    }
+    if (symmetryOf(kind) !== 'none') {
+      const own = seed.slice();
+      for (let t = 0; t < n; t++) if (own[t]) for (const c of cellCopies(kind, W, t)) seed[c] = own[t];
+    }
   }
   return seed;
 }
@@ -4851,22 +4878,21 @@ const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cair
 // the description's lead: how the cells start, on which grid
 function planeLead(number) {
   const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
-  const sym = kind === 'square' ? SYMMETRIES[plane.sym] : 'half-turn symmetric';
+  const sym = SYMMETRIES[symmetryOf(kind)][2];
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start' }[lifeStart];
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
-  const how = { random: `A random soup, ${soup},`, symmetric: `A ${sym} random soup, ${soup},`,
-                pattern: kind === 'square' ? `${LIFE_PATTERNS[plane.pattern][0]} in the middle` : `A random soup, ${soup},`,
-                draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start];
+  const how = { random: `A random soup, ${soup},`, pattern: kind === 'square' ? `${LIFE_PATTERNS[plane.pattern][0]} in the middle` : `A random soup, ${soup},`,
+                draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
   return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 256;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
   const [kind, a, b] = String(s.sd ?? 'random').split('.');
+  plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
   if (kind === 'random' || SYMMETRIES[kind]) {
-    plane.start = kind === 'random' ? 'random' : 'symmetric';
-    if (SYMMETRIES[kind]) plane.sym = kind;
+    plane.start = 'random';
     plane.density = Math.min(60, Math.max(5, Number(a) || 30));
     plane.seed = Number(b) || 1;
   } else if (kind === 'pattern') { plane.start = 'pattern'; if (LIFE_PATTERNS[a]) plane.pattern = a; }
@@ -4887,9 +4913,17 @@ function renderPlaneRow() {
     b.classList.toggle('active', b.dataset.start === plane.start);
     b.hidden = b.dataset.start === 'pattern' && kind !== 'square';
   }
-  for (const b of $('symmetryTabs').children) b.classList.toggle('active', b.dataset.sym === plane.sym);
-  $('startSoup').hidden = plane.start !== 'random' && plane.start !== 'symmetric';
-  $('symmetryTabs').hidden = plane.start !== 'symmetric' || kind !== 'square';
+  $('startSoup').hidden = plane.start !== 'random';
+  const syms = PLANE_SYMMETRIES[kind];
+  $('symmetryRow').hidden = syms.length < 2;
+  $('symmetryTiles').replaceChildren(...syms.map((y) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `${icon(SYMMETRIES[y][0])}<span>${SYMMETRIES[y][1]}</span>`;
+    b.classList.toggle('active', y === symmetryOf(kind));
+    b.addEventListener('click', () => { plane.sym = y; planeReseed(); });
+    return b;
+  }));
   $('startPattern').hidden = plane.start !== 'pattern' || kind !== 'square';
   $('startDraw').hidden = plane.start !== 'draw';
   $('soupDensity').value = plane.density;
@@ -5689,11 +5723,11 @@ function getSetup() {
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && lifeColours > 1) s.k = lifeColours;
-  if (mode.plane) {  // the grid's side, dead edges (e=1), and its start: "random.30.7", "mirror.30.7", "pattern.acorn", "draw" (p=), "digits"
+  if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    s.sd = plane.start === 'random' || plane.start === 'symmetric' ? `${plane.start === 'random' ? 'random' : plane.sym}.${plane.density}.${plane.seed}`
-      : plane.start === 'pattern' ? `pattern.${plane.pattern}` : plane.start;
+    s.sd = plane.start === 'random' ? `random.${plane.density}.${plane.seed}` : plane.start === 'pattern' ? `pattern.${plane.pattern}` : plane.start;
+    if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
@@ -8163,7 +8197,6 @@ $('planeTorus').addEventListener('change', () => { plane.torus = $('planeTorus')
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; compute(true); });
 }
-for (const b of $('symmetryTabs').children) b.addEventListener('click', () => { plane.sym = b.dataset.sym; planeReseed(); });
 $('soupDensity').addEventListener('input', () => { $('soupDensityLabel').textContent = `${$('soupDensity').value} %`; });
 $('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); planeReseed(); });
 $('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); planeReseed(); });
