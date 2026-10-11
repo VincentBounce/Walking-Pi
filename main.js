@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.451';
+const VERSION = '0.1.452';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5329,9 +5329,9 @@ async function importSetups(file) {
  */
 
 /* ---- 11.1 Animation -------------------------------------------------------------------------- */
-// The speed, in steps per second: typed (1 to 1,000,000), or the turtle and the rabbit step through
+// The speed, in steps per second: typed (1 to 5,000,000), or the turtle and the rabbit step through
 // SPEEDS (50 by default; at 5 or less the next step's chip lights, as step by step)
-const SPEEDS = [5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+const SPEEDS = [5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000];
 let speed = 50;
 const stepsPerSecond = () => speed;
 function updateSpeedLabel() {
