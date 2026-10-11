@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.469';
+const VERSION = '0.1.470';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1071,6 +1071,7 @@ function describe(base, available) {
   $('barNum').title = formulaInUse;
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
+  $('barBase').classList.remove('right');
   if (colours) base = colours;  // its chips, one per colour
   $('barLoop').hidden = mode.life || !walk.loop;
   $('ruleChips').replaceChildren();
@@ -1105,9 +1106,6 @@ function describe(base, available) {
     return;
   }
   const cells = walk.life.seed.length, C = base;
-  const dying = C > 2 ? `, <b>2</b>${C > 3 ? `–<b>${C - 1}</b>` : ''} dying` : '';
-  const states = walk.life.colours > 1 ? `<b>0</b> dead, ${LIFE_COLOUR_NAMES.slice(0, walk.life.colours).map((name, k) => `<b>${k + 1}</b> ${name}`).join(', ')}, a newborn taking the colour of most of its neighbours`
-    : `<b>0</b> dead, <b>1</b> alive${dying}`;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
   const lead = walk.plane ? planeLead(number) : start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
@@ -1115,10 +1113,9 @@ function describe(base, available) {
     : `${number} ${seeded} of ${mode.where}`;
   // the title: the rule (its name, or the rule itself), not the number that may have seeded it
   const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
-  $('barNum').textContent = known ? known.dataset.name : 'Your rule';
-  $('barNum').title = '';
-  $('barBase').textContent = walk.life.ruleText;
-  $('description').innerHTML = `${states} · neighbours share an edge or a corner · ${lead}`;
+  $('barBase').textContent = known ? `${known.dataset.name} · ${walk.life.ruleText}` : walk.life.ruleText;  // on the right (the title: the generation, see updateStats)
+  $('barBase').classList.add('right');
+  $('description').innerHTML = `${walk.life.colours > 1 ? 'A newborn takes the colour of most of its neighbours · ' : ''}Neighbours share an edge or a corner · ${lead}`;
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
@@ -1442,9 +1439,7 @@ const ICONS = (() => {
     // hunt zones: the whole surface, then a patch of radius 1, 2 or 3
     zoneAll: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20'),
     // the symmetries of a Life start on the plane
-    // the Game of Life's bubbles: lifetime, generation, alive, born, died, ever alive
-    hourglass: pathEl('M7 4H17M7 20H17M8 4C8 9 16 10 16 12S8 15 8 20M16 4C16 9 8 10 8 12S16 15 16 20'),
-    generation: pathEl('M18.5 12A6.5 6.5 0 1 1 16.6 7.4') + pathEl('M17 3.5V7.5H13'),
+    // the Game of Life's bubbles: alive, born, died, ever alive
     aliveDot: '<circle class="f" cx="12" cy="12" r="5"/>',
     born: pathEl('M12 6V18M6 12H18'),
     died: pathEl('M7.5 7.5L16.5 16.5M16.5 7.5L7.5 16.5'),
@@ -5163,6 +5158,11 @@ function lifeReset() {
   L.blueCount = L.seedBlue;
   L.byColour = L.seedByColour.slice();
   L.born = L.dead = 0;
+  // civilisations: each colour's births, deaths, and cells ever of it (a bit per colour a cell had)
+  L.bornBy = new Int32Array(L.colours + 1);
+  L.deadBy = new Int32Array(L.colours + 1);
+  L.everBy = L.seedByColour.slice();
+  L.everMask = Uint8Array.from(L.seed, (v) => (L.colours > 1 && v ? 1 << v : 0));
   // lifetime: fingerprint of every generation's state; the first repeat gives the loop
   L.seen = new Map([[lifeFingerprint(L.alive), 0]]);
   L.stable = null;  // { T: first generation of the loop, P: its period, extinct }
@@ -5226,6 +5226,10 @@ function lifeStep() {
       now = was ? (L.S[c] ? 1 : C > 2 ? 2 : 0) : L.B[c];
     }
     b[t] = now;
+    if (two && now !== was) {  // a colour's births, deaths, and cells it has had
+      if (now) { if (!was) L.bornBy[now]++; if (!(L.everMask[t] & (1 << now))) { L.everMask[t] |= 1 << now; L.everBy[now]++; } }
+      else L.deadBy[was]++;
+    }
     const live = two ? now > 0 : now === 1;
     if (live) alive++;
     else if (now) dying++;
@@ -7960,12 +7964,15 @@ function updateStats() {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
     // as bubbles: the run (lifetime, generation, alive, born, died, ever alive), then a row per colour
     const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
-    $('lifeChips').innerHTML = [
-      bubble('#c4934e', icon('hourglass'), 'Lifetime', lifetimeText(L)), bubble('#6e7781', icon('generation'), 'Generation', fmt(cur)),
-      bubble('#0f766e', icon('aliveDot'), 'Alive', pc(L.aliveCount) + (L.C > 2 && L.colours === 1 ? ` · ${fmt(L.dyingCount)} dying` : '')),
-      bubble('#3fb950', icon('born'), 'Born', fmt(L.born)), bubble('#e5534b', icon('died'), 'Died', fmt(L.dead)),
-      bubble('#a371f7', icon('ever'), 'Ever alive', pc(L.everAlive)),
-    ].join('') + (L.colours > 1 ? `<span class="chip-break"></span>${LIFE_COLOURS.slice(0, L.colours).map((c, k) => bubble(c, '', LIFE_COLOUR_NAMES[k][0].toUpperCase() + LIFE_COLOUR_NAMES[k].slice(1), pc(L.byColour[k + 1]))).join('')}` : '');
+    // the title: the generation, and how the run ends (or not yet)
+    $('barNum').textContent = `Gen ${fmt(cur)}`;
+    $('barLoop').hidden = false;
+    $('barLoop').textContent = lifetimeText(L);
+    // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the run's)
+    const row = (c, alive, born, died, ever) => [bubble(c, icon('aliveDot'), 'Alive', pc(alive)), bubble(c, icon('born'), 'Born', fmt(born)),
+      bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
+    $('lifeChips').innerHTML = L.colours === 1 ? row('#0f766e', L.aliveCount, L.born, L.dead, L.everAlive)
+      : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
     return;

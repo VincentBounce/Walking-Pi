@@ -391,7 +391,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-chips:empty { display: none; }
 .life-chips .rule-chip b .icon { width: 13px; height: 13px; stroke: #fff; stroke-width: 2; vertical-align: 0; }  /* white on the bubble's colour */
 .life-chips .rule-chip b .icon .f { fill: #fff; }
-.chip-break { grid-column: 1 / -1; height: 0; }  /* the colours on a row of their own */
+.life-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }  /* a row a colour: alive, born, died, ever alive */
+#barBase.right { margin-left: auto; }  /* Life: its rule on the right of the title */
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
 .rule-chip b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }
