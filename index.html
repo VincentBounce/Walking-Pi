@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261017l">
+  <link rel="stylesheet" href="style.css?v=20261017q">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -109,6 +109,9 @@
               <option value="diagCells">Diagonals — base 8 (truncated octahedra)</option>
               <option value="diamond">Diamond — base 3 (gauche / trans / gauche)</option>
             </optgroup>
+            <optgroup label="Automata on the plane">
+              <option value="life2d">Life — square grid</option>
+            </optgroup>
             <optgroup label="Automata on surfaces">
               <option value="lifeCube">Life — cube</option>
               <option value="lifeTorus">Life — torus</option>
@@ -132,6 +135,14 @@
             </optgroup>
           </select>
         </label>
+        <div id="planeRow" hidden>  <!-- Life on the plane: the grid's size, and whether it wraps around -->
+          <div class="stepper">
+            <button id="planeDown" title="Smaller grid">−</button>
+            <span id="planeLabel"></span>
+            <button id="planeUp" title="Bigger grid">+</button>
+          </div>
+          <label class="check" title="The grid's edges glued, left to right and top to bottom (what leaves on one side comes back on the other); off, the cells past the edges are always dead"><input id="planeTorus" type="checkbox" checked> Wrap around (torus)</label>
+        </div>
         <div id="sphereRow" hidden>
           <div class="stepper">
             <button id="sizeDown" title="Smaller surface">−</button>
@@ -181,6 +192,16 @@
         </label>
         <div id="lifeCustomRow" hidden><div class="field-label">Custom rule (B…/S…/C…, B…/S…/Immigration, or B2o/S2m34 on hexagons)</div>
           <span class="field"><input id="lifeRule" class="custom" type="text" value="B3/S23" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
+        </div>
+        <div id="lifeStartRow" hidden>  <!-- Life on the plane: how the cells start -->
+          <div class="field-label">Start</div>
+          <div id="lifeStartTabs" class="choice-row"><button type="button" data-start="random">Random</button><button type="button" data-start="symmetric">Symmetric</button><button type="button" data-start="pattern">Pattern</button><button type="button" data-start="draw">Draw</button><button type="button" data-start="digits">Digits</button></div>
+          <div id="startSoup" class="start-panel">  <!-- Random and Symmetric: how many live, from which seed -->
+            <div id="symmetryTabs" class="choice-row"><button type="button" data-sym="mirror">Mirror</button><button type="button" data-sym="rotate">Rotate</button><button type="button" data-sym="kaleido">Kaleidoscope</button></div>
+            <div class="row soup-row"><input id="soupDensity" type="range" min="5" max="60" step="1" value="30" aria-label="Density"><span id="soupDensityLabel"></span><button id="soupDice" type="button" data-icon="dice" title="Another random soup" aria-label="Another random soup"></button></div>
+          </div>
+          <div id="startPattern" class="start-panel ant-presets"></div>
+          <div id="startDraw" class="start-panel draw-row"><span class="muted">Click a cell to give it life, again to change its state</span><button id="clearDrawn" type="button">Clear</button></div>
         </div>
         <div id="huntRow">
           <div class="field-label">Methuselah hunt</div>
@@ -343,6 +364,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261017l"></script>
+  <script src="main.js?v=20261017q"></script>
 </body>
 </html>

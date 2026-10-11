@@ -293,6 +293,12 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .draw-row { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }  /* under Grid | Cells: the switch, and Clear while drawing */
 .draw-row .check { flex: 1; margin: 0; }
 .draw-row button { width: auto; padding: 4px 12px; }
+.start-panel { margin: 0 0 10px; }
+#lifeStartTabs button { padding-left: 2px; padding-right: 2px; font-size: 11.5px; }  /* five starts on one row */
+.soup-row { align-items: center; margin: 8px 0 0; }
+.soup-row input { flex: 1; margin: 0; }
+.soup-row span { min-width: 3.5em; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
+.soup-row button { flex: none; width: 34px; padding: 4px 0; }
 .stage.dragging { cursor: grabbing; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* The two boxes over the view (Play bottom left, Display top right): the same frame and

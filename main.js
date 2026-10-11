@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.457';
+const VERSION = '0.1.458';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -920,6 +920,7 @@ const MODES = {
                 rule: 'along the edges of a dodecahedron, its pentagons cut into triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   icosaGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
+  life2d:     { base: 2, lattice: 'square', life: true, plane: true, where: 'a square grid' },  // on the plane (see plane)
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
   lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
@@ -1039,6 +1040,7 @@ function updateRuleText() {}  // the rule is shown by describe (the Play card)
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
+  if (mode.plane) return plane.start === 'digits' ? plane.side ** 2 : 1;  // the digits only for a start by the digits
   if (mode.life) return SPHERES[surfaceOf(mode)].tiles(sphereSize());
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
@@ -1105,7 +1107,7 @@ function describe(base, available) {
     : `<b>0</b> dead, <b>1</b> alive${dying}`;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
-  const lead = start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
+  const lead = walk.plane ? planeLead(number) : start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
     : start ? `${{ hunt: 'A start found by the hunt', duel: 'A duel start', saved: 'A saved start' }[start]} on ${mode.where}`
     : `${number} ${seeded} of ${mode.where}`;
   $('description').innerHTML = `${lead}: ${states} · rule ${walk.life.ruleText} · neighbours share an edge or a corner`;
@@ -1122,6 +1124,7 @@ const DISPLAY_BY_TAB = {
   '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
   '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Automata on the plane': ['colors', 'digit', 'mono', 'grid'],
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
   '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
@@ -1925,7 +1928,7 @@ let modeTab = null;  // the menu group of the mode in use (its display defaults,
 // The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
 // Filled: the relative modes (turn from your heading); outlined: the fixed directions.
 const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
-                    'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
+                    'Automata on the plane': 'glider', 'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
@@ -1934,7 +1937,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
+  life2d: 'grid', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
 };
 
@@ -1984,6 +1987,7 @@ const NAV = {
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
@@ -2058,9 +2062,11 @@ function familyOf(w) {
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
-  $('digitsSection').hidden = !!A && !antByDigits;  // an ant by colour reads no digit
+  $('digitsSection').hidden = (!!A && !antByDigits) || (!!MODES[w].plane && plane.start !== 'digits');  // an ant by colour, Life not by the digits: no digit read
   $('populationRow').hidden = w !== 'antSquare';
-  if (w !== 'antSquare' && drawing) { drawing = false; stage.classList.remove('drawing'); }  // drawing ends with the square ant
+  if (MODES[w].plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
+  else if (w !== 'antSquare') drawing = false;  // drawing ends with the square ant
+  stage.classList.toggle('drawing', drawing);
   $('drawCells').checked = drawing;
   $('clearCells').hidden = !drawing;  // while drawing only
   $('clearCells').disabled = !population.size;
@@ -2179,6 +2185,9 @@ function compute(keepDigits = false) {
   syncDigitsStepper();
   relabelColours(mode);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
+  $('planeRow').hidden = $('lifeStartRow').hidden = !mode.plane;  // Life on the plane: its grid and its start
+  $('huntRow').hidden = !!mode.plane;  // the hunt is for the surfaces
+  renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
   $('huntStatus').textContent = '';
@@ -2369,6 +2378,7 @@ function buildWalkOf() {
   glClear();  // a surface drawn by WebGL before (see 11.4b)
   fill = null;  // a new walk: its enclosed areas are computed again, and its layer starts empty
   walk.ant = 0; walk.highway = null; walk.bridges = null;  // set by an ant's walk only
+  walk.plane = null;  // set by Life on the plane only
   $('fillTooBig').hidden = true;
   fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
@@ -4611,6 +4621,7 @@ function countSeed(L) {
 const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
 
 function buildLife(seq, mode) {
+  if (mode.plane) { buildLifePlane(seq); return; }
   const { initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
@@ -4645,6 +4656,174 @@ function buildLife(seq, mode) {
   updateHint();
   restart();
   if (walk.shape) applyShape();
+}
+
+/* Life on the plane: a square grid of plane.side cells a side, its edges glued (a torus) or dead,
+ * its cells starting as a random soup (so many % alive, from a seed), the same soup copied by a
+ * symmetry of the square (mirror, rotation, kaleidoscope: one draw for a cell and all its copies), a
+ * classic pattern in the middle, cells drawn by hand (the population, in RLE), or the number's digits.
+ * It runs as the surfaces' Life does, its neighbours the 8 around each cell (fewer on dead edges). */
+const PLANE_SIDES = [64, 128, 256, 512, 1024, 2048];
+const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1, sym: 'mirror', pattern: 'acorn' };
+const LIFE_PATTERNS = {  // LifeWiki's RLE
+  rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
+  diehard: ['Diehard', '6bo$2o$bo3b3o!'],
+  pulsar: ['Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!'],
+  gosper: ['Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!'],
+};
+const SYMMETRIES = { mirror: 'mirrored', rotate: 'turning', kaleido: 'kaleidoscopic' };
+// a number in [0, 1) for cell i of a seed's soup (a hash: the same cell, the same draw)
+function cellRandom(seed, i) {
+  let h = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(i + 1, 0xc2b2ae35);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+// the cells' states at generation 0, as plane says
+function planeSeed(seq, C) {
+  const W = plane.side, seed = new Uint8Array(W * W), last = W - 1;
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < W) seed[y * W + x] = c; };
+  if (plane.start === 'digits') seed.set(seq.subarray(0, W * W));
+  else if (plane.start === 'draw') for (const [k, c] of population) put(...cellXY(k), c % C);
+  else if (plane.start === 'pattern') {
+    const pop = populationOf(`0,0:${LIFE_PATTERNS[plane.pattern][1]}`);
+    let w = 0, h = 0;
+    for (const k of pop.keys()) { const [x, y] = cellXY(k); w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
+    for (const k of pop.keys()) { const [x, y] = cellXY(k); put(x + ((W - w) >> 1), y + ((W - h) >> 1), 1); }
+  } else {
+    // a cell's draw: its own, or that of the first of its copies under the symmetry
+    const rep = (x, y) => {
+      if (plane.start !== 'symmetric') return y * W + x;
+      if (plane.sym === 'rotate') return Math.min(y * W + x, x * W + last - y, (last - y) * W + last - x, (last - x) * W + y);
+      let a = Math.min(x, last - x), b = Math.min(y, last - y);
+      if (plane.sym === 'kaleido' && a > b) [a, b] = [b, a];
+      return b * W + a;
+    };
+    const p = plane.density / 100;
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (cellRandom(plane.seed, rep(x, y)) < p) seed[y * W + x] = 1;
+  }
+  return seed;
+}
+// the 8 cells around each one (wrapping around, or not past the edges), as the surfaces' lists
+function planeNeighbours(W, torus) {
+  const start = new Int32Array(W * W + 1), list = new Int32Array(8 * W * W);
+  let q = 0;
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+    start[y * W + x] = q;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      let u = x + dx, v = y + dy;
+      if (torus) { u = (u + W) % W; v = (v + W) % W; } else if (u < 0 || v < 0 || u >= W || v >= W) continue;
+      list[q++] = v * W + u;
+    }
+  }
+  start[W * W] = q;
+  return { start, list: list.subarray(0, q) };
+}
+function buildLifePlane(seq) {
+  const W = plane.side, n = W * W;
+  let rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
+  if (rule.iso) {  // Callahan's letters need hexagons
+    rule = parseRule('B3/S23');
+    $('lifePreset').value = rule.text;
+    $('lifeCustomRow').hidden = true;
+  }
+  $('lifeRule').value = rule.text;
+  walk.life = { nbr: planeNeighbours(W, plane.torus), ring: null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text,
+                seed: planeSeed(seq, rule.C), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
+                died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
+  countSeed(walk.life);
+  lifeStart = null;
+  const one = new Float64Array(1);
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: null, is3d: false, cells: null,
+                        maxDist: null, base: rule.C, counts: null, lattice: 'square', skipZeros: false, points: false,
+                        keys: seq, labels: null, sphere: false, geo: { n }, plane: { W, torus: plane.torus }, tile: null,
+                        coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
+  updateHint();
+  restart();
+}
+// the same grid, another start (a density, a seed, a symmetry, a pattern, a cell drawn): no new digits
+function planeReseed() {
+  const L = walk.life;
+  L.seed.set(planeSeed(walk.digits, L.C));
+  countSeed(L);
+  describe(L.C, Infinity);
+  renderPlaneRow();
+  restart();
+  syncLink();
+}
+// the description's lead: how the cells start, on which grid
+function planeLead(number) {
+  const soup = `${plane.density} % alive (seed ${plane.seed})`;
+  const how = { random: `A random soup, ${soup},`, symmetric: `A ${SYMMETRIES[plane.sym]} random soup, ${soup},`,
+                pattern: `${LIFE_PATTERNS[plane.pattern][0]} in the middle`, draw: `${fmt(walk.life.seedAlive)} cells drawn`,
+                digits: `${number} the cells` }[plane.start];
+  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
+}
+function planeFromSetup(s) {
+  plane.side = PLANE_SIDES.includes(Number(s.s)) ? Number(s.s) : 256;
+  plane.torus = Number(s.e) !== 1;
+  const [kind, a, b] = String(s.sd ?? 'random').split('.');
+  if (kind === 'random' || SYMMETRIES[kind]) {
+    plane.start = kind === 'random' ? 'random' : 'symmetric';
+    if (SYMMETRIES[kind]) plane.sym = kind;
+    plane.density = Math.min(60, Math.max(5, Number(a) || 30));
+    plane.seed = Number(b) || 1;
+  } else if (kind === 'pattern') { plane.start = 'pattern'; if (LIFE_PATTERNS[a]) plane.pattern = a; }
+  else plane.start = kind === 'draw' || kind === 'digits' ? kind : 'random';
+  population = plane.start === 'draw' ? populationOf(s.p) : population;
+}
+// the grid's size, its edges and its start, as the controls say
+function renderPlaneRow() {
+  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} squares`;
+  $('planeDown').disabled = plane.side === PLANE_SIDES[0];
+  $('planeUp').disabled = plane.side === PLANE_SIDES.at(-1);
+  $('planeTorus').checked = plane.torus;
+  for (const b of $('lifeStartTabs').children) b.classList.toggle('active', b.dataset.start === plane.start);
+  for (const b of $('symmetryTabs').children) b.classList.toggle('active', b.dataset.sym === plane.sym);
+  $('startSoup').hidden = plane.start !== 'random' && plane.start !== 'symmetric';
+  $('symmetryTabs').hidden = plane.start !== 'symmetric';
+  $('startPattern').hidden = plane.start !== 'pattern';
+  $('startDraw').hidden = plane.start !== 'draw';
+  $('soupDensity').value = plane.density;
+  $('soupDensityLabel').textContent = `${plane.density} %`;
+  for (const b of $('startPattern').children) b.classList.toggle('active', b.dataset.pattern === plane.pattern);
+}
+// the grid as one picture, a pixel per cell, in the Life colours (Display): drawn over the view
+let planeCanvas = null, planeImage = null;
+function drawLifePlane() {
+  const L = walk.life, W = walk.plane.W, ctx = layers.path, { scale: s, ox, oy } = view;
+  for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
+  if (!planeCanvas || planeCanvas.width !== W) {
+    planeCanvas = document.createElement('canvas');
+    planeCanvas.width = planeCanvas.height = W;
+    planeImage = planeCanvas.getContext('2d').createImageData(W, W);
+  }
+  const px = new Uint32Array(planeImage.data.buffer), pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
+  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), red = pack(LIFE_RED), blue = pack(LIFE_BLUE);
+  const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
+  // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
+  const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
+  const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[level(a + 1, 65)]);
+  const byActivity = colour === 'digit' ? Uint32Array.from({ length: Math.min(L.maxActivity, 65535) + 1 }, (_, v) => (v ? grad[level(v + 1, L.maxActivity + 1)] : 0)) : null;
+  const byDying = Uint32Array.from({ length: L.C }, (_, st) => (st < 2 ? 0 : trail[Math.min(trail.length - 1, Math.round(((st - 1) / (L.C - 1)) * trail.length))]));
+  const { alive: a, age, activity, died } = L, fade = L.C === 2 ? trail.length : 0;
+  for (let t = 0; t < px.length; t++) {
+    const st = a[t];
+    px[t] = L.two && colour !== 'digit' ? (st === 1 ? red : st === 2 ? blue : 0)
+      : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
+      : colour === 'mono' ? (st === 1 ? alive : byDying[st])
+      : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
+      : cur - died[t] < fade ? trail[cur - died[t]] : 0;  // age of live cells, a trail fading after death
+  }
+  planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+  if (!walk.plane.torus) {  // dead edges: the grid's border
+    ctx.strokeStyle = GREY;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+  }
 }
 
 function lifeReset() {
@@ -4946,7 +5125,7 @@ const duelPossible = () => walk.geo.sides === 4 && !walk.geo.torus;
 // The zone chosen, or the whole surface when a duel no longer fits (another surface or rule)
 const zoneInUse = () => (huntZone.startsWith('duel') && !(duelPossible() && walk.life.two) ? 'all' : huntZone);
 function renderHuntList() {
-  if (!walk.life || !walk.geo) return;
+  if (!walk.life || !walk.geo || walk.plane) return;  // the hunt is for the surfaces
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
   $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3', 'duel', 'duel90'].map((zone) => {
     const duel = zone.startsWith('duel'), { patch, radius } = duel ? { patch: null } : huntPlan(zone);
@@ -5224,6 +5403,13 @@ function getSetup() {
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = $('lifeRule').value;
+  if (mode.plane) {  // the grid's side, dead edges (e=1), and its start: "random.30.7", "mirror.30.7", "pattern.acorn", "draw" (p=), "digits"
+    s.s = plane.side;
+    if (!plane.torus) s.e = 1;
+    s.sd = plane.start === 'random' || plane.start === 'symmetric' ? `${plane.start === 'random' ? 'random' : plane.sym}.${plane.density}.${plane.seed}`
+      : plane.start === 'pattern' ? `pattern.${plane.pattern}` : plane.start;
+    if (plane.start === 'draw' && population.size) s.p = populationRle(population);
+  }
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
@@ -5252,6 +5438,7 @@ function applySetup(s) {
     if (antByDigits) antDigitRules[s.w] = antDigitTurnsOf(s.w, rule) ? rule.toUpperCase() : ANTS[s.w].digitPresets[0];
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
   } else if (s.r) {
+    if (MODES[s.w].plane) planeFromSetup(s);
     $('lifeRule').value = s.r;
     const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
     $('lifePreset').value = preset ? s.r : 'custom';
@@ -5293,7 +5480,7 @@ function applyPendingView() {
     needsFull = true;
   }
   if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
-  else if (walk.life) placeZone();
+  else if (walk.life && !walk.plane) placeZone();
   renderHuntList();
   syncLink();  // with the start a setup's champion or hunt zone gave
 }
@@ -5508,8 +5695,11 @@ function restart() {
     walk.maxVisits = 1;
     if (!walk.stepTiles) walk.visits[walk.tile[0]] = 1;  // a tile walk starts on its first tile
     if (walk.life) lifeReset();
+  } else if (walk.plane) {  // the frame is the grid
+    bounds = { minX: -0.5, maxX: walk.plane.W - 0.5, minY: -0.5, maxY: walk.plane.W - 0.5 };
+    lifeReset();
   }
-  if ($('autoFit').checked) fitToBounds(walk.sphere ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
+  if ($('autoFit').checked) fitToBounds(walk.sphere || walk.plane ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
   needsFull = true;
   statsDirty = true;
   play(false);
@@ -7461,6 +7651,13 @@ function tick(now = performance.now()) {
     viewGoal = viewFor({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
   easeView(dt);
+  if (walk.plane) {  // Life on the plane: the grid as one picture, each generation
+    if (needsFull) glClear();
+    if (needsFull || statsDirty) { drawGrid(); drawLifePlane(); updateStats(); }
+    needsFull = statsDirty = false;
+    requestAnimationFrame(tick);
+    return;
+  }
   if (walk.sphere) {  // the sphere is redrawn as a whole (heat map + recent trail)
     morphStep(dt);  // flat ↔ round, while it is changing
     // auto-fit turns the camera to keep the walker in front, except on a torus: the view stays put
@@ -7667,11 +7864,39 @@ $('drawCells').addEventListener('change', () => {
   renderAntRow();
 });
 $('clearCells').addEventListener('click', () => { population = new Map(); compute(true); });
+// Life on the plane: the grid's size and edges (built again), its start (the cells only, but by the digits)
+for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
+  $(id).addEventListener('click', () => { plane.side = PLANE_SIDES[Math.min(PLANE_SIDES.length - 1, Math.max(0, PLANE_SIDES.indexOf(plane.side) + k))]; compute(true); });
+}
+$('planeTorus').addEventListener('change', () => { plane.torus = $('planeTorus').checked; compute(true); });
+for (const b of $('lifeStartTabs').children) {
+  b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; compute(true); });
+}
+for (const b of $('symmetryTabs').children) b.addEventListener('click', () => { plane.sym = b.dataset.sym; planeReseed(); });
+$('soupDensity').addEventListener('input', () => { $('soupDensityLabel').textContent = `${$('soupDensity').value} %`; });
+$('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); planeReseed(); });
+$('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); planeReseed(); });
+$('startPattern').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name]]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = name;
+  b.dataset.pattern = id;
+  b.addEventListener('click', () => { plane.pattern = id; planeReseed(); });
+  return b;
+}));
+$('clearDrawn').addEventListener('click', () => { population = new Map(); planeReseed(); });
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
-  if (!drawFrom || current.mode !== 'antSquare' || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
+  if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
   const r = stage.getBoundingClientRect();
   const x = Math.round((e.clientX - r.left - view.ox) / view.scale), y = Math.round((e.clientY - r.top - view.oy) / view.scale);
+  if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
+    if (x < 0 || y < 0 || x >= walk.plane.W || y >= walk.plane.W) return;
+    const k = key(x, y), c = ((population.get(k) ?? 0) + 1) % walk.life.C;
+    if (c) population.set(k, c); else population.delete(k);
+    planeReseed();
+    return;
+  }
   const k = key(x, y), c = ((population.get(k) ?? 0) + 1) % (walk.ant || 2);
   if (c) population.set(k, c); else population.delete(k);
   compute(true);
