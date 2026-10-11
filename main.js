@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.459';
+const VERSION = '0.1.460';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4865,15 +4865,35 @@ function drawPlaneGrid() {
   ctx.clearRect(0, 0, cw, ch);
   drawSky(ctx);
   const X = (u) => ox + u * s, Y = (v) => oy + v * s, outline = $('showGrid').checked && s >= 6;
-  // the page inside: the square, or the rhombus (through the hexagons' outer centres' half-steps)
+  const cell = (x, y) => {  // a cell's outline, added to the path
+    const c = planeCorners(kind, x, y);
+    ctx.moveTo(X(c[0][0]), Y(c[0][1]));
+    for (let k = 1; k < c.length; k++) ctx.lineTo(X(c[k][0]), Y(c[k][1]));
+    ctx.lineTo(X(c[0][0]), Y(c[0][1]));
+  };
+  // the page inside, to the cells' own outline: the square; the rhombus the triangles fill; the rhombus
+  // through the outer hexagons' centres, and those hexagons
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff';
   ctx.beginPath();
   if (kind === 'square') ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
   else {
-    const o = kind === 'hex' ? -0.5 : 0, e = kind === 'hex' ? W - 0.5 : W;
-    [[o, o], [e, o], [e, e], [o, e]].forEach(([a, b], k) => { const [u, v] = latticeAt(a, b); ctx[k ? 'lineTo' : 'moveTo'](X(u), Y(v)); });
+    const e = kind === 'hex' ? W - 1 : W;
+    [[0, 0], [e, 0], [e, e], [0, e]].forEach(([a, b], k) => { const [u, v] = latticeAt(a, b); ctx[k ? 'lineTo' : 'moveTo'](X(u), Y(v)); });
+    if (kind === 'hex') { ctx.fill(); ctx.beginPath(); for (let k = 0; k < W; k++) { cell(k, 0); cell(k, W - 1); cell(0, k); cell(W - 1, k); } }  // apart: the windings do not cancel
   }
   ctx.fill();
+  // dead edges: a wall round the grid, a cell thick, in the colour of the hexagon sphere's walls
+  if (!walk.plane.torus) {
+    ctx.fillStyle = LIFE_WALL;
+    ctx.beginPath();
+    if (kind === 'square') { ctx.rect(X(-1.5), Y(-1.5), (W + 2) * s, (W + 2) * s); ctx.rect(X(W - 0.5), Y(-0.5), -W * s, W * s); }
+    else {
+      const out = kind === 'tri' ? [-2, -1, row, row + 1] : [-1, row];
+      for (let x = out[0]; x <= out.at(-1); x++) { cell(x, -1); cell(x, W); }
+      for (let y = 0; y < W; y++) for (const x of out) cell(x, y);
+    }
+    ctx.fill('evenodd');
+  }
   if (!outline) return;
   ctx.strokeStyle = `rgba(${EDGE_RGB.join(', ')}, ${EDGE_ALPHA})`;
   ctx.lineWidth = 1;
