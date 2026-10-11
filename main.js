@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.449';
+const VERSION = '0.1.450';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2217,11 +2217,11 @@ function compute(keepDigits = false) {
     const t0 = performance.now();
     buildWalk();
     $('status').textContent = [
-      `${how} · walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
+      how, `Walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
       F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join('\n');
     describe(base, total);
     syncDigitsStepper();  // a whole number's digits are now known
     $('copyNumber').hidden = false;
@@ -7471,6 +7471,13 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
+// a new status (how the digits came, an error…) shows for a moment over the turtle and the rabbit, then the speed again
+let statusTimer = 0;
+new MutationObserver(() => {
+  $('speedInfo').classList.add('fresh');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => $('speedInfo').classList.remove('fresh'), 3000);
+}).observe($('status'), { childList: true, characterData: true, subtree: true });
 // the turtle and the rabbit: the next speed down or up
 for (const [id, k] of [['slower', -1], ['faster', 1]]) {
   $(id).addEventListener('click', () => { speedAt = Math.min(SPEEDS.length - 1, Math.max(0, speedAt + k)); updateSpeedLabel(); statsDirty = true; });

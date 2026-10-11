@@ -388,19 +388,24 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
 .stage-bar #play { flex: 1.6; color: var(--accent); border-color: var(--accent); }
-/* the length above the buttons, as wide; under them how the digits came (open only) and the speed */
+/* the length above the buttons, as wide, of the folded bar's width; open, the speed on their right:
+   how the digits came for a moment, then the speed, over the turtle and the rabbit */
+.player-controls { display: flex; gap: 8px; }
+.player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
+.player-side { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.stage-bar:not(:hover) .player-side { display: none; }
+@media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }
 .stage-bar .progress { margin: -4px 0 8px; }
-.player-foot { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
-.player-foot #status { flex: 1; min-width: 0; margin: 0; }
-.stage-bar:not(:hover) #status { visibility: hidden; }
-@media (hover: none) { .stage-bar:focus-within #status { visibility: visible; } }
+.speed-info { height: 34px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.speed-info #status { margin: 0; font-size: 11px; line-height: 1.25; white-space: pre-line; overflow: hidden; max-height: 34px; }
+.speed-info:not(.fresh) #status, .speed-info.fresh .speed-label { display: none; }
 /* the steps, on their own line above the buttons; the speed after ⏭, between a turtle and a rabbit */
 .stage-bar .seek-row { margin: 0 0 8px; gap: 10px; }
 #seek { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); }
 .speed-icon { flex: none; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
-.speed-label { flex: none; margin-left: auto; font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.speed-label { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
 .stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
 .hint {
