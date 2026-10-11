@@ -392,13 +392,18 @@ button.wide { width: 100%; margin-bottom: 10px; }
    typed as the length, the turtle and the rabbit as wide as the jump buttons */
 .player-controls { display: flex; gap: 8px; align-items: flex-end; }  /* the buttons where they were, open or not */
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
-.player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; }  /* as wide as "5,000,000 steps/s" needs */
+.player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
+.player-side .seek-count { margin-top: -4px; }  /* the step, just under the slider */
+.stage-bar:hover .seek-row .seek-count { display: none; }
+@media (hover: none) { .stage-bar:focus-within .seek-row .seek-count { display: none; } }  /* as wide as "5,000,000 steps/s" needs */
 .stage-bar:not(:hover) .player-side { display: none; }
 @media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }
 .stage-bar .progress { margin: 0 0 8px; }
 #digitsRow:not(.busy) .progress, #digitsRow.busy .stepper { display: none; }
 #digitsRow.busy .progress { position: relative; height: 34px; border: 1px solid var(--border); border-radius: 6px; }
+#progress.indeterminate #progressBar { width: 30% !important; animation: gauge-slide 1.2s ease-in-out infinite alternate; }  /* drawn apart: it slides on while the walk is built */
+@keyframes gauge-slide { from { transform: translateX(0); } to { transform: translateX(233%); } }
 #progressText { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
 #status:not(:empty)::before { content: ' · '; }  /* after the description */
 .stage-bar .speed-stepper { margin: 0; }

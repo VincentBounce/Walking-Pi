@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.454';
+const VERSION = '0.1.455';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2183,6 +2183,7 @@ function compute(keepDigits = false) {
   syncSizeStepper();
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
+  const job = ++computeJob;  // a walk built later is this one's only if no other compute came since
   championCode = null;  // a new start: no loaded champion any more
   const F = readFormula();
   syncNumberMenu();
@@ -2217,7 +2218,7 @@ function compute(keepDigits = false) {
     const t0 = performance.now();
     buildWalk();
     $('status').textContent = [
-      `${how} · walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
+      `${how} · Walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
       F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
@@ -2252,31 +2253,41 @@ function compute(keepDigits = false) {
   worker.onmessage = (e) => {
     const d = e.data;
     if (d.type === 'progress') {
+      $('progress').classList.remove('indeterminate');
       $('progressBar').style.width = `${Math.min(100, d.p * 100)}%`;
       $('progressText').textContent = `${Math.floor(Math.min(100, d.p * 100))} %`;
       return;
     }
     worker.terminate();
     worker = null;
-    setBusy(false);
     if (d.type === 'error') {
+      setBusy(false);
       $('status').textContent = `Formula: ${d.message}`;
       return;
     }
     const entry = { intPart: d.intPart, digits: d.digits, total: d.total, tests: d.tests, uncertain: d.uncertain };
     cache[key] = entry;
-    done(entry, `Digits in ${(d.ms / 1000).toFixed(2)} s`);
+    // a long walk (millions of an ant's steps take seconds): the gauge shows first, a frame to paint it,
+    // and slides on while the walk is built (the page stops meanwhile)
+    const finish = () => { if (job !== computeJob) return; done(entry, `Digits in ${(d.ms / 1000).toFixed(2)} s`); setBusy(false); };
+    if (n < 1e6) { finish(); return; }
+    clearTimeout(busyTimer);
+    $('digitsRow').classList.add('busy');
+    $('progress').classList.add('indeterminate');
+    $('progressText').textContent = 'Building the walk…';
+    requestAnimationFrame(() => setTimeout(finish, 0));
   };
   worker.postMessage({ ast: F.ast, n: want, base, mag: F.mag, nodes: F.nodes });
 }
 
 // While the worker computes, the link waits for the result; past half a second, a gauge takes the
-// length's place, until the digits are there
-let busy = false, busyTimer = 0;
+// length's place, until the digits are there and the walk built
+let busy = false, busyTimer = 0, computeJob = 0;
 function setBusy(on) {
   busy = on;
   $('progressBar').style.width = '0';
-  $('progressText').textContent = '';
+  $('progressText').textContent = on ? 'Computing…' : '';
+  $('progress').classList.toggle('indeterminate', on);  // a bar sliding along until the worker says how far it is
   clearTimeout(busyTimer);
   if (on) busyTimer = setTimeout(() => $('digitsRow').classList.add('busy'), 500);
   else $('digitsRow').classList.remove('busy');
@@ -7189,11 +7200,11 @@ function updateStats() {
   $('step').disabled = $('end').disabled = cur >= walk.n;
   // the progress: a slider to go to any step (none for the Game of Life, which has no end)
   const finite = Number.isFinite(walk.n) && !walk.life;
-  $('seek').parentElement.hidden = !finite;  // its whole line
+  $('seek').parentElement.hidden = $('seekCountOpen').hidden = !finite;  // its whole line
   if (finite) {
     $('seek').max = walk.n;
     if (document.activeElement !== $('seek')) $('seek').value = cur;
-    $('seekCount').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
     // as wide as its widest value, so the slider keeps its width: digits 1ch each (tabular), commas and
     // the " / " much narrower
     const digits = String(walk.n).length, commas = fmt(walk.n).length - digits;
