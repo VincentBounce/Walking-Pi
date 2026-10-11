@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.462';
+const VERSION = '0.1.463';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1184,7 +1184,7 @@ function updateDisplayMenu() {
 // The colour menu means something else for the Game of Life, and depends on its number of states.
 // In Life the plain states come first (the default); walks keep the gradient first.
 function relabelColours(mode) {
-  const life = !!mode.life, C = life ? lifeStates() : 2, K = life ? parseRule($('lifeRule').value)?.colours ?? 1 : 1, two = K > 1;
+  const life = !!mode.life, C = life ? lifeStates() : 2, K = life ? lifeColours : 1, two = K > 1;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
   const names = !life ? { gradient: 'Rainbow along the walk', cells: 'Rainbow cells along the walk', visits: 'Rainbow by number of visits',
                       digit: 'One colour per digit', mono: 'One colour' }
@@ -4632,7 +4632,7 @@ const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange'];
 const colourCounts = (byColour) => Array.from({ length: byColour.length - 1 }, (_, k) => `${fmt(byColour[k + 1])} ${LIFE_COLOUR_NAMES[k]}`).join(', ');
 
 // Number of states of the current Life rule = the base the number is written in
-const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
+const lifeStates = () => (lifeRuleNow() || { C: 2 }).C;
 
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
@@ -4642,18 +4642,18 @@ function buildLife(seq, mode) {
   const size = sphereSize();
   const g = mesh(size);
   const nbr = cornerNeighbours(g);
-  let rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
+  let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && !nbr.ring) {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
     $('lifeCustomRow').hidden = true;
   }
-  $('lifeRule').value = rule.text;
+  $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const seed = new Uint8Array(g.n);
   seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: rule.text, seed,
+  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -4809,15 +4809,15 @@ function buildLifePlane(seq) {
   const kind = MODES[current.mode].plane, sides = PLANE_SIDES[kind];
   if (!sides.includes(plane.side)) plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
   const W = plane.side, row = planeRow(kind, W), n = row * W;
-  let rule = parseRule($('lifeRule').value) || parseRule('B3/S23');
+  let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && kind !== 'hex') {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
     $('lifeCustomRow').hidden = true;
   }
-  $('lifeRule').value = rule.text;
+  $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = planeNeighbours(kind, W, plane.torus);
-  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: rule.text,
+  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -5011,12 +5011,15 @@ function drawLifePlane() {
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane]
   : ['cube', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : '▲');
-// Life's colours: 1, alive or dead (and a Generations rule's dying stages), or 2 to 6 civilisations: the
-// rule's own births and survivals, its colours in its tail ("/Immigration", "/Colours4")
-const ruleColours = () => parseRule($('lifeRule').value)?.colours ?? 1;
-const withColours = (rule, k) => {
-  const bs = rule.replace(/\/(C\d+|Immigration|Colours\d)$/i, '');
-  return k === 2 ? `${bs}/Immigration` : k > 2 ? `${bs}/Colours${k}` : bs;
+// Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
+// rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
+// ("/Immigration", "/Colours4"), which old links may still carry
+let lifeColours = 1;
+const ruleColours = () => lifeColours;
+const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d)$/i, '');  // births, survivals (and dying stages), no colours
+const lifeRuleNow = () => {
+  const body = ruleBody($('lifeRule').value);
+  return parseRule(lifeColours === 1 ? body : `${body.replace(/\/C\d+$/i, '')}${lifeColours === 2 ? '/Immigration' : `/Colours${lifeColours}`}`);
 };
 function setRuleText(rule) {  // the rule field, and its preset if it is one
   $('lifeRule').value = rule;
@@ -5025,7 +5028,7 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   $('lifeCustomRow').hidden = !!preset;
 }
 function renderColours() {
-  const rule = parseRule($('lifeRule').value), k = rule?.colours ?? 1;
+  const rule = parseRule(ruleBody($('lifeRule').value)), k = lifeColours;
   $('coloursLabel').innerHTML = k === 1 ? `<i style="background:${LIFE_ALIVE}"></i><span>alive · dead</span>`
     : LIFE_COLOURS.slice(0, k).map((c, i) => `<i style="background:${c}" title="${LIFE_COLOUR_NAMES[i]}"></i>`).join('');
   $('coloursDown').disabled = k === 1;
@@ -5038,8 +5041,8 @@ function fitRuleToShape() {
   ruleFittedTo = w;
   const options = [...$('lifePreset').options], now = options.find((o) => o.value === $('lifeRule').value);
   if (!now || now.text.includes(lifeMark(mode))) return;  // a rule typed, or one for this shape: kept
-  const fit = options.find((o) => o.text.includes(lifeMark(mode))), k = ruleColours();
-  if (fit) setRuleText(k > 1 && !parseRule(fit.value).iso ? withColours(fit.value, k) : fit.value);  // the colours kept
+  const fit = options.find((o) => o.text.includes(lifeMark(mode)));
+  if (fit) setRuleText(fit.value);
 }
 
 function lifeReset() {
@@ -5396,7 +5399,7 @@ function renderHuntList() {
 // Each click is a new random number, and the zone is placed once it is built (see placeZone)
 function pickHuntZone(zone) {
   huntZone = zone;
-  if (zone.startsWith('duel') && !walk.life.two) $('lifePreset').value = $('lifeRule').value = 'B3/S23/Immigration';
+  if (zone.startsWith('duel') && !walk.life.two) lifeColours = 2;  // a duel: red against blue
   $('formula').value = presetFormula('random');
   compute();  // built at once: random digits need no worker
   $('huntStatus').textContent = '';
@@ -5629,7 +5632,8 @@ function getSetup() {
   if (modeStarts() && startNo() > 1) s.st = startNo();
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
-  if (mode.life) s.r = $('lifeRule').value;
+  if (mode.life) s.r = ruleBody($('lifeRule').value);
+  if (mode.life && lifeColours > 1) s.k = lifeColours;
   if (mode.plane) {  // the grid's side, dead edges (e=1), and its start: "random.30.7", "mirror.30.7", "pattern.acorn", "draw" (p=), "digits"
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
@@ -5667,9 +5671,8 @@ function applySetup(s) {
   } else if (s.r) {
     if (MODES[s.w].plane) planeFromSetup(s);
     ruleFittedTo = s.w;  // a link's rule as it is
-    $('lifeRule').value = s.r;
-    const preset = Array.from($('lifePreset').options).find((o) => o.value === s.r);
-    $('lifePreset').value = preset ? s.r : 'custom';
+    lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
+    setRuleText(ruleBody(s.r));
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
   // changes (as picking a walk does); within a tab, what was chosen stays
@@ -8120,7 +8123,7 @@ $('startPattern').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [na
 $('clearDrawn').addEventListener('click', () => { population = new Map(); planeReseed(); });
 for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
   $(id).addEventListener('click', () => {
-    setRuleText(withColours(parseRule($('lifeRule').value)?.text ?? 'B3/S23', Math.min(LIFE_COLOURS.length, Math.max(1, ruleColours() + k))));
+    lifeColours = Math.min(LIFE_COLOURS.length, Math.max(1, lifeColours + k));
     compute();
   });
 }
@@ -8218,7 +8221,7 @@ $('lifePreset').addEventListener('change', () => {
   if (MODES[$('mode').value].life) compute();
 });
 $('lifeRule').addEventListener('change', () => {
-  if (!parseRule($('lifeRule').value)) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states), B3/S23/Immigration or, on hexagons, B2o/S2m34'; return; }
+  if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
 let copyReset = 0;  // the label comes back 1.5 s after the last click
