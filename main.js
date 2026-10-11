@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.465';
+const VERSION = '0.1.466';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4680,7 +4680,7 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 const PLANE_SIDES = { square: [64, 128, 256, 512, 1024, 2048], hex: [32, 64, 128, 256, 512], tri: [32, 64, 128, 256], cairo: [16, 32, 64, 128, 256] };
-const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1, sym: 'mirror', pattern: 'acorn' };
+const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'mirror', pattern: 'acorn' };  // a soup of its own each visit (a link keeps its seed)
 const LIFE_PATTERNS = {  // LifeWiki's RLE
   rpentomino: ['R-pentomino', 'b2o$2o$bo!'], acorn: ['Acorn', 'bo$3bo$2o2b3o!'], glider: ['Glider', 'bo$2bo$3o!'],
   diehard: ['Diehard', '6bo$2o$bo3b3o!'],
