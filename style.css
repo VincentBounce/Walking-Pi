@@ -294,6 +294,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .draw-row .check { flex: 1; margin: 0; }
 .draw-row button { width: auto; padding: 4px 12px; }
 .start-panel { margin: 0 0 10px; }
+.colour-swatches { display: flex; gap: 6px; justify-content: center; align-items: center; }  /* Life's colours: a square each */
+.colour-swatches i { width: 18px; height: 18px; border-radius: 4px; }
+.colour-swatches span { font-size: 12px; color: var(--muted); font-weight: 400; }
 #lifeStartTabs button { padding-left: 2px; padding-right: 2px; font-size: 11.5px; }  /* five starts on one row */
 .soup-row { align-items: center; margin: 8px 0 0; }
 .soup-row input { flex: 1; margin: 0; }

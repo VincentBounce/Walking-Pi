@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.461';
+const VERSION = '0.1.462';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1106,7 +1106,7 @@ function describe(base, available) {
   }
   const cells = walk.life.seed.length, C = base;
   const dying = C > 2 ? `, <b>2</b>${C > 3 ? `–<b>${C - 1}</b>` : ''} dying` : '';
-  const states = walk.life.two ? '<b>0</b> dead, <b>1</b> red, <b>2</b> blue, a newborn taking the colour of most of its neighbours'
+  const states = walk.life.colours > 1 ? `<b>0</b> dead, ${LIFE_COLOUR_NAMES.slice(0, walk.life.colours).map((name, k) => `<b>${k + 1}</b> ${name}`).join(', ')}, a newborn taking the colour of most of its neighbours`
     : `<b>0</b> dead, <b>1</b> alive${dying}`;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
@@ -1184,11 +1184,11 @@ function updateDisplayMenu() {
 // The colour menu means something else for the Game of Life, and depends on its number of states.
 // In Life the plain states come first (the default); walks keep the gradient first.
 function relabelColours(mode) {
-  const life = !!mode.life, C = life ? lifeStates() : 2, two = life && !!parseRule($('lifeRule').value)?.two;
+  const life = !!mode.life, C = life ? lifeStates() : 2, K = life ? parseRule($('lifeRule').value)?.colours ?? 1 : 1, two = K > 1;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
   const names = !life ? { gradient: 'Rainbow along the walk', cells: 'Rainbow cells along the walk', visits: 'Rainbow by number of visits',
                       digit: 'One colour per digit', mono: 'One colour' }
-    : { mono: two ? 'Civilisations: red · blue · dead' : `States: alive${dying} · dead`,
+    : { mono: two ? `Civilisations: ${LIFE_COLOUR_NAMES.slice(0, K).join(' · ')} · dead` : `States: alive${dying} · dead`,
         gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
@@ -2190,8 +2190,10 @@ function compute(keepDigits = false) {
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
   $('planeRow').hidden = $('lifeStartRow').hidden = !mode.plane;  // Life on the plane: its grid and its start
   $('startSection').hidden = !mode.life;
-  $('huntRow').hidden = !!mode.plane;  // the hunt is for the surfaces
   fitRuleToShape();
+  $('colourSection').hidden = !mode.life;
+  $('huntRow').hidden = !!mode.plane || ruleColours() > 2;  // the hunt is for the surfaces, in one or two colours
+  renderColours();
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
@@ -4593,10 +4595,11 @@ function hexClass(mask) {
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 function parseRule(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+)|\/(IMMIGRATION))?H?$/);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+)|\/(IMMIGRATION)|\/COLOURS(\d))?H?$/);
   if (!m || /^[OMP]/.test(m[1]) || /^[OMP]/.test(m[2])) return null;
-  const two = !!m[4], C = two ? 3 : m[3] ? Number(m[3]) : 2, iso = /[OMP]/.test(m[1] + m[2]);
-  if (C < 2 || C > 10 || (iso && two)) return null;  // one digit per cell in base C: bases 2 to 10
+  // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration)
+  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = colours > 1 ? colours + 1 : m[3] ? Number(m[3]) : 2, iso = /[OMP]/.test(m[1] + m[2]);
+  if (C < 2 || C > 10 || colours > LIFE_COLOURS.length || (iso && colours > 1)) return null;  // one digit per cell in base C: bases 2 to 10
   const table = (spec) => {
     const a = new Uint8Array(80);
     for (const [, d, letters] of spec.matchAll(/(\d)([OMP]*)/g)) {
@@ -4608,19 +4611,25 @@ function parseRule(text) {
     }
     return a;
   };
-  const tail = two ? '/Immigration' : C > 2 ? `/C${C}` : '';
-  return { B: table(m[1]), S: table(m[2]), C, two, iso, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
+  const tail = two ? '/Immigration' : colours > 2 ? `/Colours${colours}` : C > 2 ? `/C${C}` : '';
+  return { B: table(m[1]), S: table(m[2]), C, two, colours, iso, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
 }
 
 // The starting counts of a Life run: live cells (and the blue ones with two civilisations), dying ones
 function countSeed(L) {
-  L.seedAlive = L.seedBlue = L.seedDying = 0;
+  L.seedAlive = L.seedDying = 0;
+  L.seedByColour = new Int32Array(L.colours + 1);  // civilisations: the cells of each colour
   for (const v of L.seed) {
-    if (L.two ? v > 0 : v === 1) L.seedAlive++;
+    if (L.colours > 1 ? v > 0 : v === 1) L.seedAlive++;
     else if (v) L.seedDying++;
-    if (L.two && v === 2) L.seedBlue++;
+    if (L.colours > 1) L.seedByColour[v]++;
   }
+  L.seedBlue = L.seedByColour[2] ?? 0;
 }
+// the civilisations' colours (1, 2… : red, blue, gold, green, violet, orange) and their names
+const LIFE_COLOURS = [LIFE_RED, LIFE_BLUE, '#f2b630', '#3fb950', '#a371f7', '#ffa657'];
+const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange'];
+const colourCounts = (byColour) => Array.from({ length: byColour.length - 1 }, (_, k) => `${fmt(byColour[k + 1])} ${LIFE_COLOUR_NAMES[k]}`).join(', ');
 
 // Number of states of the current Life rule = the base the number is written in
 const lifeStates = () => (parseRule($('lifeRule').value) || { C: 2 }).C;
@@ -4644,7 +4653,7 @@ function buildLife(seq, mode) {
   seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text, seed,
+  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: rule.text, seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -4732,7 +4741,7 @@ function cellRandom(seed, i) {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 // the cells' states at generation 0, as plane says
-function planeSeed(kind, seq, C) {
+function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell of a soup one of them
   const W = plane.side, row = planeRow(kind, W), n = row * W, seed = new Uint8Array(n), last = W - 1;
   const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < row && y < W) seed[y * row + x] = c; };
   if (plane.start === 'digits') seed.set(seq.subarray(0, n));
@@ -4754,7 +4763,7 @@ function planeSeed(kind, seq, C) {
       return b * W + a;
     };
     const p = plane.density / 100;
-    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, rep(t)) < p) seed[t] = 1;
+    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, rep(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, rep(t)) * K) : 1;
   }
   return seed;
 }
@@ -4808,8 +4817,8 @@ function buildLifePlane(seq) {
   }
   $('lifeRule').value = rule.text;
   const nbr = planeNeighbours(kind, W, plane.torus);
-  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, ruleText: rule.text,
-                seed: planeSeed(kind, seq, rule.C), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
+  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: rule.text,
+                seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
   lifeStart = null;
@@ -4832,7 +4841,7 @@ function planeBounds() {
 // the same grid, another start (a density, a seed, a symmetry, a pattern, a cell drawn): no new digits
 function planeReseed() {
   const L = walk.life;
-  L.seed.set(planeSeed(walk.plane.kind, walk.digits, L.C));
+  L.seed.set(planeSeed(walk.plane.kind, walk.digits, L.C, L.colours));
   countSeed(L);
   describe(L.C, Infinity);
   renderPlaneRow();
@@ -4955,7 +4964,7 @@ function drawLifePlane() {
     planeColours = new Uint32Array(planeImage.data.buffer);
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
-  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), red = pack(LIFE_RED), blue = pack(LIFE_BLUE);
+  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...LIFE_COLOURS.map(pack)];
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
@@ -4965,7 +4974,7 @@ function drawLifePlane() {
   const { alive: a, age, activity, died } = L, fade = L.C === 2 ? trail.length : 0;
   for (let t = 0; t < n; t++) {
     const st = a[t];
-    px[t] = L.two && colour !== 'digit' ? (st === 1 ? red : st === 2 ? blue : 0)
+    px[t] = L.colours > 1 && colour !== 'digit' ? civ[st]
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
       : colour === 'mono' ? (st === 1 ? alive : byDying[st])
       : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
@@ -5002,6 +5011,26 @@ function drawLifePlane() {
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane]
   : ['cube', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : '▲');
+// Life's colours: 1, alive or dead (and a Generations rule's dying stages), or 2 to 6 civilisations: the
+// rule's own births and survivals, its colours in its tail ("/Immigration", "/Colours4")
+const ruleColours = () => parseRule($('lifeRule').value)?.colours ?? 1;
+const withColours = (rule, k) => {
+  const bs = rule.replace(/\/(C\d+|Immigration|Colours\d)$/i, '');
+  return k === 2 ? `${bs}/Immigration` : k > 2 ? `${bs}/Colours${k}` : bs;
+};
+function setRuleText(rule) {  // the rule field, and its preset if it is one
+  $('lifeRule').value = rule;
+  const preset = [...$('lifePreset').options].find((o) => o.value === rule);
+  $('lifePreset').value = preset ? rule : 'custom';
+  $('lifeCustomRow').hidden = !!preset;
+}
+function renderColours() {
+  const rule = parseRule($('lifeRule').value), k = rule?.colours ?? 1;
+  $('coloursLabel').innerHTML = k === 1 ? `<i style="background:${LIFE_ALIVE}"></i><span>alive · dead</span>`
+    : LIFE_COLOURS.slice(0, k).map((c, i) => `<i style="background:${c}" title="${LIFE_COLOUR_NAMES[i]}"></i>`).join('');
+  $('coloursDown').disabled = k === 1;
+  $('coloursUp').disabled = k === LIFE_COLOURS.length || !!rule?.iso;  // Callahan's letters: one colour
+}
 let ruleFittedTo = null;
 function fitRuleToShape() {
   const w = $('mode').value, mode = MODES[w];
@@ -5009,15 +5038,15 @@ function fitRuleToShape() {
   ruleFittedTo = w;
   const options = [...$('lifePreset').options], now = options.find((o) => o.value === $('lifeRule').value);
   if (!now || now.text.includes(lifeMark(mode))) return;  // a rule typed, or one for this shape: kept
-  const fit = options.find((o) => o.text.includes(lifeMark(mode)));
-  if (fit) $('lifePreset').value = $('lifeRule').value = fit.value;
+  const fit = options.find((o) => o.text.includes(lifeMark(mode))), k = ruleColours();
+  if (fit) setRuleText(k > 1 && !parseRule(fit.value).iso ? withColours(fit.value, k) : fit.value);  // the colours kept
 }
 
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
   for (let t = 0; t < L.alive.length; t++) {
-    const live = L.two ? L.alive[t] > 0 : L.alive[t] === 1;
+    const live = L.colours > 1 ? L.alive[t] > 0 : L.alive[t] === 1;
     L.age[t] = L.ever[t] = live ? 1 : 0;
   }
   L.died.fill(-1e9);
@@ -5026,6 +5055,7 @@ function lifeReset() {
   L.aliveCount = L.everAlive = L.seedAlive;
   L.dyingCount = L.seedDying;
   L.blueCount = L.seedBlue;
+  L.byColour = L.seedByColour.slice();
   L.born = L.dead = 0;
   // lifetime: fingerprint of every generation's state; the first repeat gives the loop
   L.seen = new Map([[lifeFingerprint(L.alive), 0]]);
@@ -5059,8 +5089,9 @@ function lifeTrack(gen) {
 // cell that fails to survive goes through the dying states 2 … C−1 and cannot be born again
 // until it is dead (state 0). A cell dying at generation g records died = g (fading trail).
 function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, two = L.two;
-  let alive = 0, dying = 0, blues = 0;
+  const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1;
+  const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1);
+  let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
     let now;
@@ -5068,10 +5099,18 @@ function lifeStep() {
       now = 0;  // a wall (a pentagon of the hexagon sphere)
     } else if (was >= 2 && !two) {
       now = was + 1 < C ? was + 1 : 0;  // one more dying stage, or dead
-    } else if (two) {  // live neighbours, and how many of them are blue
-      let c = 0, blue = 0;
-      for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; blue += v === 2; } }
-      now = was ? (L.S[c] ? was : 0) : !L.B[c] ? 0 : 2 * blue > c ? 2 : 2 * blue < c ? 1 : 1 + (t & 1);
+    } else if (two) {  // civilisations: live neighbours, and how many of each colour; a newborn takes the colour most of them have
+      let c = 0;
+      around.fill(0);
+      for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; around[v]++; } }
+      if (was) now = L.S[c] ? was : 0;
+      else if (!L.B[c]) now = 0;
+      else {  // a tie: one of the colours tied, drawn from the cell and the generation (the same run, the same draw)
+        let most = 0, tied = 0;
+        for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; } else if (around[k] === most) tied++; }
+        let pick = tied > 1 ? Math.floor(cellRandom(gen, t) * tied) : 0;
+        for (let k = 1; k <= K; k++) if (around[k] === most && pick-- === 0) { now = k; break; }
+      }
     } else {
       let c = 0;
       if (ring) {  // where the live neighbours sit around the hexagon
@@ -5084,7 +5123,7 @@ function lifeStep() {
     const live = two ? now > 0 : now === 1;
     if (live) alive++;
     else if (now) dying++;
-    if (two && now === 2) blues++;
+    if (two) byColour[now]++;
     if (now === was) {
       if (live && L.age[t] < 65535) L.age[t]++;
       continue;
@@ -5104,7 +5143,8 @@ function lifeStep() {
   L.next = a;
   L.aliveCount = alive;
   L.dyingCount = dying;
-  L.blueCount = blues;
+  L.byColour = byColour;
+  L.blueCount = byColour[2] ?? 0;
   lifeTrack(gen);
 }
 
@@ -6291,8 +6331,8 @@ function drawSphere() {
     const colour = $('colorMode').value;
     // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
     const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
-    if (L.two && colour !== 'digit') {  // each civilisation in its colour
-      palette = [null, LIFE_RED, LIFE_BLUE];
+    if (L.colours > 1 && colour !== 'digit') {  // each civilisation in its colour
+      palette = [null, ...LIFE_COLOURS.slice(0, L.colours)];
       levelOf = (t) => L.alive[t];
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...LIFE_TRAIL];
@@ -7676,7 +7716,7 @@ function updateStats() {
   if (walk.life) {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
     $('sStep').textContent = fmt(cur);
-    $('sPos').textContent = pc(L.aliveCount) + (L.two ? ` · ${fmt(L.aliveCount - L.blueCount)} red, ${fmt(L.blueCount)} blue`
+    $('sPos').textContent = pc(L.aliveCount) + (L.colours > 1 ? ` · ${colourCounts(L.byColour)}`
       : L.C > 2 ? ` · ${fmt(L.dyingCount)} dying` : '');
     $('sDist').textContent = fmt(L.born);
     $('sMax').textContent = fmt(L.dead);
@@ -7684,7 +7724,7 @@ function updateStats() {
     $('sLifetime').textContent = lifetimeText(L);
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = `Rule ${L.ruleText} · seeded in base ${L.C} · ${fmt(n)} cells, ` +
-      (L.two ? `${fmt(L.seedAlive - L.seedBlue)} red and ${fmt(L.seedBlue)} blue`
+      (L.colours > 1 ? colourCounts(L.seedByColour)
         : `${fmt(L.seedAlive)} alive${L.C > 2 ? ` and ${fmt(L.seedDying)} dying` : ''}`) + ' at generation 0';
     return;
   }
@@ -8078,6 +8118,12 @@ $('startPattern').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [na
   return b;
 }));
 $('clearDrawn').addEventListener('click', () => { population = new Map(); planeReseed(); });
+for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
+  $(id).addEventListener('click', () => {
+    setRuleText(withColours(parseRule($('lifeRule').value)?.text ?? 'B3/S23', Math.min(LIFE_COLOURS.length, Math.max(1, ruleColours() + k))));
+    compute();
+  });
+}
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
