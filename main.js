@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.464';
+const VERSION = '0.1.465';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1043,7 +1043,7 @@ function updateRuleText() {}  // the rule is shown by describe (the Play card)
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
-  if (mode.plane) return plane.start === 'digits' ? planeRow(mode.plane, plane.side) * plane.side : 1;  // the digits only for a start by the digits
+  if (mode.plane) return plane.start === 'digits' ? planeRow(mode.plane, plane.side) * plane.side : 256;  // all the digits for a start by the digits; else a hunt's patch
   if (mode.life) return SPHERES[surfaceOf(mode)].tiles(sphereSize());
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
@@ -2192,7 +2192,7 @@ function compute(keepDigits = false) {
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
   $('colourSection').hidden = !mode.life;
-  $('huntRow').hidden = !!mode.plane || ruleColours() > 2;  // the hunt is for the surfaces, in one or two colours
+  $('huntRow').hidden = (!!mode.plane && plane.start !== 'random') || ruleColours() > 2;  // in one or two colours; on the plane, with Random
   renderColours();
   renderRuleSection();
   renderPlaneRow();
@@ -4839,6 +4839,7 @@ function planeBounds() {
 // the same grid, another start (a density, a seed, a symmetry, a pattern, a cell drawn): no new digits
 function planeReseed() {
   const L = walk.life;
+  lifeStart = null;  // the plane's own start again, not the hunt's
   L.seed.set(planeSeed(walk.plane.kind, walk.digits, L.C, L.colours));
   countSeed(L);
   describe(L.C, Infinity);
@@ -4851,6 +4852,9 @@ const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cair
 function planeLead(number) {
   const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
   const sym = kind === 'square' ? SYMMETRIES[plane.sym] : 'half-turn symmetric';
+  const found = { hunt: 'A start found by the hunt', saved: 'A saved start' }[lifeStart];
+  if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
+  if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup},`, symmetric: `A ${sym} random soup, ${soup},`,
                 pattern: kind === 'square' ? `${LIFE_PATTERNS[plane.pattern][0]} in the middle` : `A random soup, ${soup},`,
                 draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start];
@@ -5031,71 +5035,32 @@ function renderColours() {
   $('coloursDown').disabled = k === 1;
   $('coloursUp').disabled = k === LIFE_COLOURS.length || !!rule?.iso;  // Callahan's letters: one colour
 }
-// The Rule section: the rules known for the grid's shape, by character (tabs), as cards, each with a
-// small picture of what it does (a soup of the shape after 30 generations); then your own, as chips (how
-// many live neighbours give birth, let survive) and the states, and the rule as text
-const RULE_TABS = { classics: 'Classics', lasting: 'Lasting', wild: 'Wild' };
+// The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
+// what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
+// birth, let survive) and the states, and the rule as text
 const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7 };
-let ruleTab = null;
-const thumbs = new Map();
-function ruleThumb(mark, text) {  // a data URL, kept per shape, rule and theme
-  const key = `${mark}|${text}|${MONO}`;
-  if (thumbs.has(key)) return thumbs.get(key);
-  const kind = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo' }[mark], rule = parseRule(text), W = { square: 18, hex: 14, tri: 10, cairo: 8 }[kind];
-  const { start, list, ring } = planeNeighbours(kind, W, true), n = planeRow(kind, W) * W;
-  let a = Uint8Array.from({ length: n }, (_, t) => (cellRandom(7, t) < 0.35 ? 1 : 0)), b = new Uint8Array(n);
-  for (let g = 0; g < 30; g++) {
-    for (let t = 0; t < n; t++) {
-      const was = a[t];
-      if (was >= 2) { b[t] = was + 1 < rule.C ? was + 1 : 0; continue; }
-      let c = 0;
-      if (rule.iso) { for (let q = 0; q < 6; q++) if (a[ring[6 * t + q]] === 1) c |= 1 << q; c += 16; }
-      else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
-      b[t] = was ? (rule.S[c] ? 1 : rule.C > 2 ? 2 : 0) : rule.B[c];
-    }
-    [a, b] = [b, a];
-  }
-  const canvas = document.createElement('canvas'), size = 40, ctx = canvas.getContext('2d');
-  canvas.width = canvas.height = size;
-  const row = planeRow(kind, W), corners = [];
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (let t = 0; t < n; t++) { const c = planeCorners(kind, t % row, Math.floor(t / row)); corners.push(c); for (const [u, v] of c) { x0 = Math.min(x0, u); y0 = Math.min(y0, v); x1 = Math.max(x1, u); y1 = Math.max(y1, v); } }
-  const k = size / Math.max(x1 - x0, y1 - y0);
-  for (let t = 0; t < n; t++) {
-    if (!a[t]) continue;
-    ctx.fillStyle = a[t] === 1 ? LIFE_ALIVE : LIFE_TRAIL[Math.min(LIFE_TRAIL.length - 1, 2 * (a[t] - 1))];
-    ctx.beginPath();
-    corners[t].forEach(([u, v], q) => ctx[q ? 'lineTo' : 'moveTo']((u - x0) * k, (v - y0) * k));
-    ctx.fill();
-  }
-  const url = canvas.toDataURL();
-  thumbs.set(key, url);
-  return url;
-}
+const RULE_ICONS = {
+  'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
+  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.',
+  'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
+  'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
+  'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
+  'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
+  'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.',
+};
+const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
+  .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`;
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
   if (!mode.life) return;
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
-  const known = [...$('lifePreset').options].filter((o) => o.dataset.tab && o.text.includes(mark));
-  const tabs = Object.keys(RULE_TABS).filter((t) => known.some((o) => o.dataset.tab === t));
-  const mine = known.find((o) => o.value === now);
-  if (!tabs.includes(ruleTab)) ruleTab = mine?.dataset.tab ?? tabs[0];
-  $('ruleTabs').replaceChildren(...tabs.map((t) => {
+  const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
+  $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = RULE_TABS[t];
-    b.classList.toggle('active', t === ruleTab);
-    b.addEventListener('click', () => { ruleTab = t; renderRuleSection(); });
-    return b;
-  }));
-  $('ruleTabs').hidden = tabs.length < 2;
-  $('ruleCards').replaceChildren(...known.filter((o) => o.dataset.tab === ruleTab).map((o) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'rule-card';
     b.classList.toggle('active', o.value === now);
-    b.innerHTML = `<img class="rule-thumb" alt="" src="${ruleThumb(mark, o.value)}"><span><span class="mode-name">${o.dataset.name}</span>`
-      + `<span class="mode-detail">${o.value} · ${o.text.split(' — ')[1] ?? ''}</span></span>`;
+    b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}</span>`
+      + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
     b.addEventListener('click', () => { setRuleText(o.value); compute(); });
     return b;
   }));
@@ -5443,14 +5408,14 @@ const duelPossible = () => walk.geo.sides === 4 && !walk.geo.torus;
 // The zone chosen, or the whole surface when a duel no longer fits (another surface or rule)
 const zoneInUse = () => (huntZone.startsWith('duel') && !(duelPossible() && walk.life.two) ? 'all' : huntZone);
 function renderHuntList() {
-  if (!walk.life || !walk.geo || walk.plane) return;  // the hunt is for the surfaces
+  if (!walk.life || !walk.geo) return;
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
   $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3', 'duel', 'duel90'].map((zone) => {
     const duel = zone.startsWith('duel'), { patch, radius } = duel ? { patch: null } : huntPlan(zone);
     const b = document.createElement('button');
     const words = document.createElement('span');
     words.append(part('mode-name', zone === 'duel' ? 'Radius duel' : zone === 'duel90' ? 'Radius duel R-pentomino 90°'
-                   : patch ? `Radius ${radius}` : 'Whole surface'),
+                   : patch ? `Radius ${radius}` : walk.plane ? 'Whole grid' : 'Whole surface'),
                  part('mode-detail', zone === 'duel' ? '9 red cells, 9 blue on the opposite face'
                    : zone === 'duel90' ? 'blue R-pentomino, the red one turned 90° on the opposite face'
                    : `${fmt(patch ? patch.length : walk.geo.n)} cells`));
@@ -5462,6 +5427,7 @@ function renderHuntList() {
     b.setAttribute('role', 'option');
     b.classList.toggle('active', zone === zoneInUse());
     b.disabled = !!hunt.worker || (duel && !duelPossible());  // the zone is fixed while a hunt runs
+    b.hidden = duel && !!walk.plane;  // a duel needs the cube's opposite faces
     b.addEventListener('click', () => pickHuntZone(zone));
     return b;
   }));
@@ -5499,7 +5465,7 @@ function pickHuntZone(zone) {
 // what seeds the cells), a duel its first ones as dead or its side's colour, or the two R-pentominoes
 function placeZone() {
   const zone = zoneInUse();
-  if (zone === 'all') return;
+  if (zone === 'all' || (walk.plane && plane.start !== 'random')) return;  // on the plane, a zone is a Random start's
   if (zone === 'duel90') { placePentominoDuel(); return; }
   const { patch, radius, colours } = huntPlan(zone), d = walk.digits, seed = new Uint8Array(walk.life.seed.length);
   patch.forEach((t, k) => { seed[t] = colours ? (d[k] % 2) * colours[k] : d[k]; });
@@ -5589,6 +5555,7 @@ function runHuntWorker(job) {
 // The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
 // else the tile that faces the default camera
 function patchCentre() {
+  if (walk.plane) { const { W, row } = walk.plane; return (W >> 1) * row + (row >> 1); }  // the plane: its middle cell
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
   if (g.sides === 4) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);
@@ -5799,7 +5766,7 @@ function applyPendingView() {
     needsFull = true;
   }
   if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
-  else if (walk.life && !walk.plane) placeZone();
+  else if (walk.life) placeZone();
   renderHuntList();
   syncLink();  // with the start a setup's champion or hunt zone gave
 }

@@ -295,10 +295,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .draw-row button { width: auto; padding: 4px 12px; }
 .start-panel { margin: 0 0 10px; }
 .colour-swatches { display: flex; gap: 6px; justify-content: flex-start; align-items: center; padding-left: 4px; }  /* Life's colours: a square each, from the left */
-/* the Rule section: cards with a picture, then chips of neighbour counts */
+/* the Rule section: cards with a pixel picture, then chips of neighbour counts */
 .rule-cards { margin-bottom: 10px; }
-.rule-card { display: flex; align-items: center; gap: 10px; text-align: left; }
-.rule-thumb { flex: none; width: 40px; height: 40px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); }
+.rule-icon rect { fill: currentColor; stroke: none; }
+.rule-icon rect.dim { opacity: 0.4; }
 .rule-build { margin: 0 0 10px; }
 .build-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .build-row > span { width: 52px; font-size: 12px; color: var(--muted); flex: none; }
