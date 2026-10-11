@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261017e">
+  <link rel="stylesheet" href="style.css?v=20261017f">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -260,7 +260,7 @@
                 <button id="digitsUp" title="More digits">+</button>
               </div>
               <input id="digits" type="hidden" value="20000">
-              <div id="progress" class="progress" hidden><div id="progressBar"></div></div>
+              <div id="progress" class="progress"><div id="progressBar"></div><span id="progressText"></span></div>  <!-- in the length's place, while the digits take long -->
             </div>
             <div class="row play-row">
               <button id="restart" data-icon="start" title="Jump to start (R)" aria-label="Jump to start"></button>
@@ -339,6 +339,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261017e"></script>
+  <script src="main.js?v=20261017f"></script>
 </body>
 </html>

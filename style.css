@@ -396,7 +396,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar:not(:hover) .player-side { display: none; }
 @media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }
-.stage-bar .progress { margin: -4px 0 8px; }
+.stage-bar .progress { margin: 0 0 8px; }
+#digitsRow:not(.busy) .progress, #digitsRow.busy .stepper { display: none; }
+#digitsRow.busy .progress { position: relative; height: 34px; border: 1px solid var(--border); border-radius: 6px; }
+#progressText { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
 .speed-info { height: 34px; margin-bottom: 8px; display: flex; align-items: center; }
 .speed-info #status { margin: 0; font-size: 11px; line-height: 1.25; white-space: pre-line; overflow: hidden; max-height: 34px; }
 .stage-bar .speed-stepper { margin: 0; }

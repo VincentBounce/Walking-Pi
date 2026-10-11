@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.452';
+const VERSION = '0.1.453';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1059,6 +1059,7 @@ const driftRounds = (radius, shift) => Math.max(LOOP_ROUNDS, Math.ceil((2 * radi
 const closedLoop = () => walk.loop?.period && !walk.loop.drift;  // a drift's rounds are side by side: one rainbow over them all
 const roundStep = (i) => { const L = walk.loop; return closedLoop() && i >= L.from + L.period ? L.from + ((i - L.from) % L.period) : i; };
 const rainbowLength = () => (closedLoop() ? walk.loop.from + walk.loop.period : walk.n);
+let walkTiming = '';  // how the digits came and how long the walk took to build, said in the description
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
@@ -1084,7 +1085,8 @@ function describe(base, available) {
     const highway = (walk.bridges?.length ? ` · ${walk.bridges.length === 1 ? 'a bridge' : `${walk.bridges.length} bridges`} back into its cloud, from step `
       + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(Math.floor((b.to - b.from) / b.period))} stretches)`).join(', ') : '')
       + (walk.highway && !walk.loop ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '')
-      + (loopText() ? ` · ${loopText()}` : '');  // why the length stops where it does
+      + (loopText() ? ` · ${loopText()}` : '')  // why the length stops where it does
+      + (walkTiming ? ` · ${walkTiming}` : '');  // how the digits came
     $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
@@ -2216,8 +2218,8 @@ function compute(keepDigits = false) {
     // the digits' time, then the walk's (millions of an ant's steps take far longer than its digits)
     const t0 = performance.now();
     buildWalk();
+    walkTiming = `${how} · walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`;  // at the end of the description
     $('status').textContent = [
-      how, `Walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
       F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
@@ -2253,6 +2255,7 @@ function compute(keepDigits = false) {
     const d = e.data;
     if (d.type === 'progress') {
       $('progressBar').style.width = `${Math.min(100, d.p * 100)}%`;
+      $('progressText').textContent = `${Math.floor(Math.min(100, d.p * 100))} %`;
       return;
     }
     worker.terminate();
@@ -2269,12 +2272,16 @@ function compute(keepDigits = false) {
   worker.postMessage({ ast: F.ast, n: want, base, mag: F.mag, nodes: F.nodes });
 }
 
-// While the worker computes: the progress bar shows, and the link waits for the result
-let busy = false;
+// While the worker computes, the link waits for the result; past half a second, a gauge takes the
+// length's place, until the digits are there
+let busy = false, busyTimer = 0;
 function setBusy(on) {
   busy = on;
   $('progressBar').style.width = '0';
-  $('progress').hidden = !on;  // the bar only shows while computing
+  $('progressText').textContent = '';
+  clearTimeout(busyTimer);
+  if (on) busyTimer = setTimeout(() => $('digitsRow').classList.add('busy'), 500);
+  else $('digitsRow').classList.remove('busy');
 }
 
 /* ---- 5.3 Building the walk ------------------------------------------------------------------- */
@@ -5330,7 +5337,7 @@ async function importSetups(file) {
 
 /* ---- 11.1 Animation -------------------------------------------------------------------------- */
 // The speed, in steps per second: typed (1 to 5,000,000), or the turtle and the rabbit step through
-// SPEEDS (50 by default; at 5 or less the next step's chip lights, as step by step)
+// SPEEDS (50 by default; at 10 or less the next step's chip lights, as step by step)
 const SPEEDS = [5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000];
 let speed = 50;
 const stepsPerSecond = () => speed;
@@ -7233,7 +7240,7 @@ function updateStats() {
   // it counts in (an ant's: the turn it takes, or by its rule the colour of its cell); an ant by the digits
   // turned the other way by a dark cell, the chip of the digit it reads dashed too; by its rule, on a cell
   // walked before, the chip of a fresh one (colour 0) dashed, as the turn it would take there
-  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speed <= 5);
+  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speed <= 10);
   let next = -1;
   if (slow) for (let c = 0; c < walk.base; c++) if (walk.counts[walk.base * (cur + 1) + c] !== walk.counts[walk.base * cur + c]) next = c;
   const read = !slow || !walk.ant ? -1 : antByDigits ? walk.digits[cur] : 0;
