@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.453';
+const VERSION = '0.1.454';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1059,7 +1059,6 @@ const driftRounds = (radius, shift) => Math.max(LOOP_ROUNDS, Math.ceil((2 * radi
 const closedLoop = () => walk.loop?.period && !walk.loop.drift;  // a drift's rounds are side by side: one rainbow over them all
 const roundStep = (i) => { const L = walk.loop; return closedLoop() && i >= L.from + L.period ? L.from + ((i - L.from) % L.period) : i; };
 const rainbowLength = () => (closedLoop() ? walk.loop.from + walk.loop.period : walk.n);
-let walkTiming = '';  // how the digits came and how long the walk took to build, said in the description
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
@@ -1085,8 +1084,7 @@ function describe(base, available) {
     const highway = (walk.bridges?.length ? ` · ${walk.bridges.length === 1 ? 'a bridge' : `${walk.bridges.length} bridges`} back into its cloud, from step `
       + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(Math.floor((b.to - b.from) / b.period))} stretches)`).join(', ') : '')
       + (walk.highway && !walk.loop ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '')
-      + (loopText() ? ` · ${loopText()}` : '')  // why the length stops where it does
-      + (walkTiming ? ` · ${walkTiming}` : '');  // how the digits came
+      + (loopText() ? ` · ${loopText()}` : '');  // why the length stops where it does
     $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
@@ -2218,12 +2216,12 @@ function compute(keepDigits = false) {
     // the digits' time, then the walk's (millions of an ant's steps take far longer than its digits)
     const t0 = performance.now();
     buildWalk();
-    walkTiming = `${how} · walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`;  // at the end of the description
     $('status').textContent = [
+      `${how} · walk built in ${((performance.now() - t0) / 1000).toFixed(2)} s`,
       F.root === 'randprime' && `a random ${fmt(Number(F.ast.args[0].v))}-digit probable prime, found after ${fmt(entry.tests)} Miller–Rabin tests`,
       note,
       entry.uncertain && '⚠ the value is extremely close to a round number: the last digits could be off by one',
-    ].filter(Boolean).join('\n');
+    ].filter(Boolean).join(' · ');
     describe(base, total);
     syncDigitsStepper();  // a whole number's digits are now known
     $('copyNumber').hidden = false;

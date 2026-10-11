@@ -388,8 +388,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
 .stage-bar #play { flex: 1; color: var(--accent); border-color: var(--accent); }
-/* the length above the buttons, as wide, of the folded bar's width; open, on their right how the digits
-   came over the speed, typed as the length, the turtle and the rabbit as wide as the jump buttons */
+/* the length above the buttons, as wide, of the folded bar's width; open, on their right the speed,
+   typed as the length, the turtle and the rabbit as wide as the jump buttons */
 .player-controls { display: flex; gap: 8px; align-items: flex-end; }  /* the buttons where they were, open or not */
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
 .player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; }  /* as wide as "5,000,000 steps/s" needs */
@@ -400,8 +400,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #digitsRow:not(.busy) .progress, #digitsRow.busy .stepper { display: none; }
 #digitsRow.busy .progress { position: relative; height: 34px; border: 1px solid var(--border); border-radius: 6px; }
 #progressText { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
-.speed-info { height: 34px; margin-bottom: 8px; display: flex; align-items: center; }
-.speed-info #status { margin: 0; font-size: 11px; line-height: 1.25; white-space: pre-line; overflow: hidden; max-height: 34px; }
+#status:not(:empty)::before { content: ' · '; }  /* after the description */
 .stage-bar .speed-stepper { margin: 0; }
 .speed-stepper button { width: 48px; }
 .speed-stepper input, .speed-stepper button { height: 32px; }  /* as high as the buttons beside */
