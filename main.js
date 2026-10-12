@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.479';
+const VERSION = '0.1.480';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4900,7 +4900,7 @@ function planeLead(number) {
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
   if (lifeStart?.zone) {  // a zone of the hunt, a random start in it
     const K = walk.life.colours, r = lifeStart.zone.slice(6);
-    return `${K === 1 ? `Random cells within radius ${r} of the middle` : r ? `Each colour random cells within radius ${r} of the middle of its part (${PLANE_PARTS[K]})`
+    return `${K === 1 ? `Random cells within radius ${r} of the middle` : r ? `Each colour random cells within radius ${r}, side by side round the middle (${PLANE_PARTS[K]})`
       : `Each colour a soup of its part (${PLANE_PARTS[K]}), ${plane.density} % alive`}${sym ? `, ${sym},` : ''} of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   }
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
@@ -5677,8 +5677,8 @@ function runHuntWorker(job) {
 /* ---- 9.3b The hunt on the plane ------------------------------------------------------------- */
 /* Life on the plane in 1, 2, 4 or 6 colours, one hunt: random starts in a zone, then tweaks of the
  * best (1 to 3 cells changed); the 5 best kept. The zone: the whole grid (a soup as dense as the
- * slider says) or a patch of radius 1, 2 or 3 in the middle; in colours, one for each colour, in its
- * half, quarter or sixth (3 columns, 2 rows), the whole of it or a patch in its middle.
+ * slider says) or a patch of radius 1, 2 or 3 in the middle; in colours, one for each colour: the
+ * whole of its half, quarter or sixth (3 columns, 2 rows), or patches side by side round the middle.
  * - One colour, the longest life: the generation the run starts repeating at (fewer cells first).
  *   A patch with at most 20,000 starts has them all tried (the true record), no tweaks.
  * - Colours, a battle: it lasts and every colour keeps spreading, as much as the others.
@@ -5757,7 +5757,8 @@ function planeHuntWorker() {
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
-      return { score: contacts[T] / (1 + cv), contacts: contacts[T], T, P, end, balance: 1 / (1 + cv) };
+      // (no contact at all: the longer first)
+      return { score: contacts[T] / (1 + cv) + T / 1e6, contacts: contacts[T], T, P, end, balance: 1 / (1 + cv) };
     };
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
     const randomSeed = () => {
@@ -5803,17 +5804,22 @@ function planeHuntWorker() {
 const planeHunt = { worker: null, zone: 'all', top: [], status: '' };
 const PLANE_ZONES = { all: ['zoneAll', 'Whole'], radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'] };
 const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
-// The zone: a patch a colour (its part of the grid, the whole of it or a radius round its middle).
+// The zone: a patch a colour, the whole of its part of the grid (half, quarter, sixth), or a radius,
+// the colours' patches side by side round the middle.
 // With a symmetry it defines the start: the zone and all its copies, of which only the first of each
-// cell's copies is chosen, the others copied from it (in colours, a copy takes its part's colour).
+// cell's copies is chosen, the others copied from it (in colours, a copy takes the colour of the patch
+// it falls in, else of its part).
 // Returns the cells chosen [cell, colour], the copies [cell, cell copied, colour], the cells of a
 // colour, how dense the random starts are, and how many starts when few enough to try them all.
 function planeHuntPlan() {
   const { kind, W, row } = walk.plane, { colours: K, C } = walk.life, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
-  const part = (t) => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row) + 1; };
-  const r = Number(planeHunt.zone.slice(6)), zone = new Set();
+  const r = Number(planeHunt.zone.slice(6)), zone = new Set(), mine = new Map();  // mine: a patch's cells, its colour
+  const part = (t) => mine.get(t) ?? (() => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row) + 1; })();
   if (!r) for (let t = 0; t < row * W; t++) zone.add(t);
-  else for (let i = 0; i < K; i++) for (const t of lifePatch(r, Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols))) zone.add(t);
+  else for (let i = 0; i < K; i++) {  // side by side round the middle, touching, so that they meet
+    const dx = Math.floor(((2 * (i % cols) - (cols - 1)) * (2 * r + 1)) / 2), dy = Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * (2 * r + 1)) / 2);
+    for (const t of lifePatch(r, ((W >> 1) + dy) * row + (row >> 1) + dx)) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); }
+  }
   for (const t of [...zone]) for (const c of cellCopies(kind, W, t)) zone.add(c);
   const cells = [], copies = [];
   for (const t of zone) {
