@@ -872,3 +872,72 @@ The best, checked in the app (soups at 30 %, seed 7):
 | B34/S23 (the 2-state default) | 2 | gen 283, period-4 loop | gen 334, period-12 loop | none found | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B34/S23&s=64&sd=random.30.7) |
 
 A ship's cells are written as the plane's rows (two pentagons a square, `A` alive, `B` `C` dying), drawn at an even square: the tiling repeats every 2 squares, so a pattern fits every other square only.
+
+
+## 🎨 Draw's patterns for the rules of each grid
+
+For each rule offered (Life's own patterns on squares come from LifeWiki), 3,000 small random starts (the cells within 2 steps of one, half of them alive) on a 64 torus (triangles 48): the smallest spaceships of each speed, the oscillators, and the start lasting longest. Each was then checked in the app, on a 64 grid: a ship comes back moved after its period, an oscillator in place, and a methuselah's lifetime is the app's. In Draw, a rule shows its own patterns; a rule of your own shows all of its grid's.
+
+### Squares
+
+| Rule | Pattern | What it does | Try it |
+|---|---|---|---|
+| B3678/S34678 | Oscillator | period 16 · 5 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B3678/S34678&s=64&sd=draw&p=32,32:.A$.A$2A$A!) |
+| B3678/S34678 | Methuselah | loops from generation 219 · 14 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B3678/S34678&s=64&sd=draw&p=32,32:2.A$2A2.A$2A2.A$A.2A$2A.2A!) |
+| B36/S23 | Glider | flies, period 4 · 5 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B36/S23&s=64&sd=draw&p=32,32:A$A.A$2A!) |
+| B36/S23 | Oscillator | period 10 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B36/S23&s=64&sd=draw&p=32,32:5.A2.A$2A2.A3.A$2A2.2A.2A!) |
+| B36/S23 | Methuselah | loops from generation 2,652 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B36/S23&s=64&sd=draw&p=32,32:A.2A$3.2A$2A$3.2A$3A!) |
+| B2/S/C3 | Glider | flies, period 1 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S/C3&s=64&sd=draw&p=32,32:2A$2B!) |
+| B2/S/C3 | Spaceship | flies, period 4 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S/C3&s=64&sd=draw&p=32,32:.A$BAB$3.A$2.B!) |
+| B2/S/C3 | Methuselah | loops from generation 2,595 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S/C3&s=64&sd=draw&p=32,32:3.2A$A$.4A$4.A$3A.A!) |
+| B2/S345/C4 | Glider | flies, period 1 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S345/C4&s=64&sd=draw&p=32,32:CBA$CBA!) |
+| B2/S345/C4 | Methuselah | loops from generation 3,739 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S345/C4&s=64&sd=draw&p=32,32:3A$.3A$3.A$3A$2A!) |
+| B3/S12345 | Methuselah | settles at generation 430 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B3/S12345&s=64&sd=draw&p=32,32:A3.A$2.A$2A$5A!) |
+| B2/S | Glider | flies, period 1 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S&s=64&sd=draw&p=32,32:A$.A$.A$A!) |
+
+### Hexagons
+
+| Rule | Pattern | What it does | Try it |
+|---|---|---|---|
+| B34/S123/C3 | Oscillator | period 8 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B34/S123/C3&s=64&sd=draw&p=32,32:2.A$.A$2A$A$A!) |
+| B2/S34 | Oscillator | period 48 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2/S34&s=64&sd=draw&p=32,32:3.A$$2.A$.2A$$2A!) |
+| B2/S34 | Methuselah | loops from generation 254 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2/S34&s=64&sd=draw&p=32,32:4.A$4.A$3.A$4A$3A!) |
+| B24/S35 | Oscillator | period 6 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B24/S35&s=64&sd=draw&p=32,32:3.A$2.A$.A$A!) |
+| B24/S134/C4 | Glider | flies, period 2 · 16 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B24/S134/C4&s=64&sd=draw&p=32,32:3.AC$.AB.B$ACACAC$AB.B$.AC!) |
+| B24/S134/C4 | Methuselah | settles at generation 3,448 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B24/S134/C4&s=64&sd=draw&p=32,32:4.A$.A2.A$A.2A$A2.A$.A!) |
+| B2o/S2m34 | Glider | flies, period 4 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2o/S2m34&s=64&sd=draw&p=32,32:.A$A$A2.A$A$A!) |
+| B2o/S2m34 | Spaceship | flies, period 48 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2o/S2m34&s=64&sd=draw&p=32,32:3.A$2.A$$2.3A$4A$.2A$A!) |
+| B2o/S2m34 | Oscillator | period 30 · 14 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2o/S2m34&s=64&sd=draw&p=32,32:4.A$3.2A$7A$.A2.A$.A2.A!) |
+| B2o/S2m34 | Methuselah | loops from generation 352 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2o/S2m34&s=64&sd=draw&p=32,32:2.2A$.2A.A$2A2.A$A2.A$.2A!) |
+| B2/S24/C3 | Glider | flies, period 6 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2/S24/C3&s=64&sd=draw&p=32,32:3.BA$4.B$4.A$2.AB$.A$2A$A!) |
+| B2/S24/C3 | Spaceship | flies, period 6 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2/S24/C3&s=64&sd=draw&p=32,32:.ABA$B2.B$2.A$2.2A$2.2A!) |
+| B2/S24/C3 | Oscillator | period 9 · 15 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2/S24/C3&s=64&sd=draw&p=32,32:.ABA$.B.BA$A2.A$B2A$A.B$BA!) |
+| B2/S24/C3 | Methuselah | settles at generation 3,795 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2/S24/C3&s=64&sd=draw&p=32,32:4.A$4.A$2A2.A$4A!) |
+| B234/S1234 | Methuselah | loops from generation 2,193 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B234/S1234&s=64&sd=draw&p=32,32:2.2A$.2A$A.3A$.2A$A.A!) |
+| B234/S234 | Methuselah | loops from generation 2,885 · 8 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B234/S234&s=64&sd=draw&p=32,32:2.A.A$.A2.A$4.A$2A$2.A!) |
+
+### Triangles
+
+| Rule | Pattern | What it does | Try it |
+|---|---|---|---|
+| B3/S23 | Oscillator | period 8 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B3/S23&s=64&sd=draw&p=64,32:4A!) |
+| B3/S23 | Methuselah | loops from generation 1,166 · 19 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B3/S23&s=64&sd=draw&p=64,32:4.A2.2A$.A3.2A.A$3A.A.3A$2.2A.A$.A.A!) |
+| B34/S2/C4 | Methuselah | settles at generation 4,089 · 20 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B34/S2/C4&s=64&sd=draw&p=64,32:3.A2.2A$.3A3.3A$2.A.3A$3A3.A$2.3A!) |
+| B45/S345/C4 | Oscillator | period 4 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B45/S345/C4&s=64&sd=draw&p=64,32:5.3A$2.C3.A$.A3.C$3A!) |
+| B45/S345/C4 | Methuselah | settles at generation 1,847 · 17 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B45/S345/C4&s=64&sd=draw&p=64,32:4.A.2A.A$2.2A2.2A.A$2.3A2.A$A3.A.A$.A!) |
+
+### Cairo pentagons
+
+| Rule | Pattern | What it does | Try it |
+|---|---|---|---|
+| B34/S23 | Oscillator | period 6 · 7 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B34/S23&s=64&sd=draw&p=64,32:3.A.A$A2.2A$3.A.A!) |
+| B23/S6/C3 | Glider | flies, period 2 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B23/S6/C3&s=64&sd=draw&p=64,32:$3.A$B.AB.A$2.B!) |
+| B23/S6/C3 | Oscillator | period 6 · 25 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B23/S6/C3&s=64&sd=draw&p=64,32:A.B2.AB2A$B3.BA.ABA$3.2A2B2.A$B2.A.A3B$2.B3.A!) |
+| B23/S6/C3 | Methuselah | loops from generation 2,901 · 13 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B23/S6/C3&s=64&sd=draw&p=64,32:5.A.A$3.A2.A2.A$A.3A3.A$2.A2.2A!) |
+| B24/S346/C4 | Glider | flies, period 2 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B24/S346/C4&s=64&sd=draw&p=64,32:$3.A$BCAB.A$C.BC!) |
+| B24/S346/C4 | Spaceship | flies, period 16 · 28 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B24/S346/C4&s=64&sd=draw&p=64,32:3.A3.A$8A.A.A$B.ACBABC2A.C$A2.B2.B2.C$2.C$8.C!) |
+| B24/S346/C4 | Methuselah | settles at generation 1,338 · 14 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B24/S346/C4&s=64&sd=draw&p=64,32:$3.A.A$2.A.A2.A$.3A2.2A$A.3A!) |
+| B2347/S35/C3 | Glider | flies, period 2 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:AB.A$B.AB!) |
+| B2347/S35/C3 | Spaceship | flies, period 4 · 19 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:7.A$2.3A2B2A2.B$A.2B2.B2A2.B$6.B.B2.A!) |
+| B2347/S35/C3 | Oscillator | period 3 · 8 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:B.2A$A.BA$B.A!) |
+| B2347/S35/C3 | Methuselah | loops from generation 3,997 · 13 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:.3A3.A$.2A2.2A$A.4A!) |

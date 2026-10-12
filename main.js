@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.483';
+const VERSION = '0.1.484';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4715,15 +4715,64 @@ const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + 
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
 let ghost = null;  // the cell under the pointer while drawing, where the brush would go
 let cleared = null;  // the cells Clear took away, back with Undo until something else is drawn or started
-const LIFE_PATTERNS = {  // LifeWiki's RLE, what it does, its picture (5 × 5 pixels, see pixelIcon)
-  cell: ['Cell', 'o!', 'one cell, again to change its state', '.....,.....,..o..'],
-  glider: ['Glider', 'bo$2bo$3o!', 'flies off diagonally', '.....,..o..,...o.,.ooo.'],
-  rpentomino: ['R-pentomino', 'b2o$2o$bo!', 'settles at generation 1,103', '.....,..oo.,.oo..,..o..'],
-  acorn: ['Acorn', 'bo$3bo$2o2b3o!', 'settles at generation 5,206', '.....,.o...,...o.,oo.oo'],
-  diehard: ['Diehard', '6bo$2o$bo3b3o!', 'dies out at generation 130', '.....,....o,oo...,.o.oo'],
-  pulsar: ['Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!', 'beats with period 3', 'oo.oo,o...o,.....,o...o,oo.oo'],
-  gosper: ['Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!', 'a glider every 30 generations', 'oo.oo,oo.oo,...+.,....+,..+++'],
-};
+// Draw's patterns, each for the rules it was found with (a rule of your own: all its grid's): [id, grid,
+// rules, name, RLE (the plane's rows: two triangles or pentagons a square, its first square an even one
+// on Cairo; o or A alive, B C… dying), what it does, its picture (5 × 5 pixels; else its cells)]
+const BRUSH_CELL = ['cell', '', [], 'Cell', 'o!', 'one cell, again to change its state', '.....,.....,..o..'];
+const DRAW_PATTERNS = [
+  ['glider', 'square', ['B3/S23', 'B36/S23'], 'Glider', 'bo$2bo$3o!', 'flies off diagonally', '.....,..o..,...o.,.ooo.'],
+  ['rpentomino', 'square', ['B3/S23'], 'R-pentomino', 'b2o$2o$bo!', 'settles at generation 1,103', '.....,..oo.,.oo..,..o..'],
+  ['acorn', 'square', ['B3/S23'], 'Acorn', 'bo$3bo$2o2b3o!', 'settles at generation 5,206', '.....,.o...,...o.,oo.oo'],
+  ['diehard', 'square', ['B3/S23'], 'Diehard', '6bo$2o$bo3b3o!', 'dies out at generation 130', '.....,....o,oo...,.o.oo'],
+  ['pulsar', 'square', ['B3/S23'], 'Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!', 'beats with period 3', 'oo.oo,o...o,.....,o...o,oo.oo'],
+  ['gosper', 'square', ['B3/S23'], 'Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!', 'a glider every 30 generations', 'oo.oo,oo.oo,...+.,....+,..+++'],
+  // found by a search of each rule's small starts (PATTERNS.md); their pictures are their cells
+  ['daynight-osc', 'square', ['B3678/S34678'], 'Oscillator', '.A$.A$2A$A!', 'period 16 · 5 cells'],
+  ['daynight-meth', 'square', ['B3678/S34678'], 'Methuselah', '2.A$2A2.A$2A2.A$A.2A$2A.2A!', 'loops from generation 219 · 14 cells'],
+  ['loops-osc', 'hex', ['B34/S123/C3'], 'Oscillator', '2.A$.A$2A$A$A!', 'period 8 · 6 cells'],
+  ['hexclassic-osc', 'hex', ['B2/S34'], 'Oscillator', '3.A$$2.A$.2A$$2A!', 'period 48 · 6 cells'],
+  ['hexclassic-meth', 'hex', ['B2/S34'], 'Methuselah', '4.A$4.A$3.A$4A$3A!', 'loops from generation 254 · 10 cells'],
+  ['highlife-ship0', 'square', ['B36/S23'], 'Glider', 'A$A.A$2A!', 'flies, period 4 · 5 cells'],
+  ['highlife-osc', 'square', ['B36/S23'], 'Oscillator', '5.A2.A$2A2.A3.A$2A2.2A.2A!', 'period 10 · 12 cells'],
+  ['highlife-meth', 'square', ['B36/S23'], 'Methuselah', 'A.2A$3.2A$2A$3.2A$3A!', 'loops from generation 2,652 · 12 cells'],
+  ['hexlife-osc', 'hex', ['B24/S35'], 'Oscillator', '3.A$2.A$.A$A!', 'period 6 · 4 cells'],
+  ['hbrink-ship0', 'hex', ['B24/S134/C4'], 'Glider', '3.AC$.AB.B$ACACAC$AB.B$.AC!', 'flies, period 2 · 16 cells'],
+  ['hbrink-meth', 'hex', ['B24/S134/C4'], 'Methuselah', '4.A$.A2.A$A.2A$A2.A$.A!', 'settles at generation 3,448 · 9 cells'],
+  ['brian-ship0', 'square', ['B2/S/C3'], 'Glider', '2A$2B!', 'flies, period 1 · 4 cells'],
+  ['brian-ship1', 'square', ['B2/S/C3'], 'Spaceship', '.A$BAB$3.A$2.B!', 'flies, period 4 · 6 cells'],
+  ['brian-meth', 'square', ['B2/S/C3'], 'Methuselah', '3.2A$A$.4A$4.A$3A.A!', 'loops from generation 2,595 · 12 cells'],
+  ['callahan-ship0', 'hex', ['B2o/S2m34'], 'Glider', '.A$A$A2.A$A$A!', 'flies, period 4 · 6 cells'],
+  ['callahan-ship1', 'hex', ['B2o/S2m34'], 'Spaceship', '3.A$2.A$$2.3A$4A$.2A$A!', 'flies, period 48 · 12 cells'],
+  ['callahan-osc', 'hex', ['B2o/S2m34'], 'Oscillator', '4.A$3.2A$7A$.A2.A$.A2.A!', 'period 30 · 14 cells'],
+  ['callahan-meth', 'hex', ['B2o/S2m34'], 'Methuselah', '2.2A$.2A.A$2A2.A$A2.A$.2A!', 'loops from generation 352 · 12 cells'],
+  ['starwars-ship0', 'square', ['B2/S345/C4'], 'Glider', 'CBA$CBA!', 'flies, period 1 · 6 cells'],
+  ['starwars-meth', 'square', ['B2/S345/C4'], 'Methuselah', '3A$.3A$3.A$3A$2A!', 'loops from generation 3,739 · 12 cells'],
+  ['maze-meth', 'square', ['B3/S12345'], 'Methuselah', 'A3.A$2.A$2A$5A!', 'settles at generation 430 · 10 cells'],
+  ['cairolife-osc', 'cairo', ['B34/S23'], 'Oscillator', '3.A.A$A2.2A$3.A.A!', 'period 6 · 7 cells'],
+  ['tlife-osc', 'tri', ['B3/S23'], 'Oscillator', '4A!', 'period 8 · 4 cells'],
+  ['tlife-meth', 'tri', ['B3/S23'], 'Methuselah', '4.A2.2A$.A3.2A.A$3A.A.3A$2.2A.A$.A.A!', 'loops from generation 1,166 · 19 cells'],
+  ['tbrink-meth', 'tri', ['B34/S2/C4'], 'Methuselah', '3.A2.2A$.3A3.3A$2.A.3A$3A3.A$2.3A!', 'settles at generation 4,089 · 20 cells'],
+  ['cairogliders-ship0', 'cairo', ['B23/S6/C3'], 'Glider', '$3.A$B.AB.A$2.B!', 'flies, period 2 · 6 cells'],
+  ['cairogliders-osc', 'cairo', ['B23/S6/C3'], 'Oscillator', 'A.B2.AB2A$B3.BA.ABA$3.2A2B2.A$B2.A.A3B$2.B3.A!', 'period 6 · 25 cells'],
+  ['cairogliders-meth', 'cairo', ['B23/S6/C3'], 'Methuselah', '5.A.A$3.A2.A2.A$A.3A3.A$2.A2.2A!', 'loops from generation 2,901 · 13 cells'],
+  ['few-ship0', 'hex', ['B2/S24/C3'], 'Glider', '3.BA$4.B$4.A$2.AB$.A$2A$A!', 'flies, period 6 · 10 cells'],
+  ['few-ship1', 'hex', ['B2/S24/C3'], 'Spaceship', '.ABA$B2.B$2.A$2.2A$2.2A!', 'flies, period 6 · 10 cells'],
+  ['few-osc', 'hex', ['B2/S24/C3'], 'Oscillator', '.ABA$.B.BA$A2.A$B2A$A.B$BA!', 'period 9 · 15 cells'],
+  ['few-meth', 'hex', ['B2/S24/C3'], 'Methuselah', '4.A$4.A$2A2.A$4A!', 'settles at generation 3,795 · 9 cells'],
+  ['tsparse-osc', 'tri', ['B45/S345/C4'], 'Oscillator', '5.3A$2.C3.A$.A3.C$3A!', 'period 4 · 10 cells'],
+  ['tsparse-meth', 'tri', ['B45/S345/C4'], 'Methuselah', '4.A.2A.A$2.2A2.2A.A$2.3A2.A$A3.A.A$.A!', 'settles at generation 1,847 · 17 cells'],
+  ['smeth-meth', 'hex', ['B234/S1234'], 'Methuselah', '2.2A$.2A$A.3A$.2A$A.A!', 'loops from generation 2,193 · 12 cells'],
+  ['meth-meth', 'hex', ['B234/S234'], 'Methuselah', '2.A.A$.A2.A$4.A$2A$2.A!', 'loops from generation 2,885 · 8 cells'],
+  ['cairowars-ship0', 'cairo', ['B24/S346/C4'], 'Glider', '$3.A$BCAB.A$C.BC!', 'flies, period 2 · 9 cells'],
+  ['cairowars-ship1', 'cairo', ['B24/S346/C4'], 'Spaceship', '3.A3.A$8A.A.A$B.ACBABC2A.C$A2.B2.B2.C$2.C$8.C!', 'flies, period 16 · 28 cells'],
+  ['cairowars-meth', 'cairo', ['B24/S346/C4'], 'Methuselah', '$3.A.A$2.A.A2.A$.3A2.2A$A.3A!', 'settles at generation 1,338 · 14 cells'],
+  ['seeds-ship0', 'square', ['B2/S'], 'Glider', 'A$.A$.A$A!', 'flies, period 1 · 4 cells'],
+  ['longcairo-ship0', 'cairo', ['B2347/S35/C3'], 'Glider', 'AB.A$B.AB!', 'flies, period 2 · 6 cells'],
+  ['longcairo-ship1', 'cairo', ['B2347/S35/C3'], 'Spaceship', '7.A$2.3A2B2A2.B$A.2B2.B2A2.B$6.B.B2.A!', 'flies, period 4 · 19 cells'],
+  ['longcairo-osc', 'cairo', ['B2347/S35/C3'], 'Oscillator', 'B.2A$A.BA$B.A!', 'period 3 · 8 cells'],
+  ['longcairo-meth', 'cairo', ['B2347/S35/C3'], 'Methuselah', '.3A3.A$.2A2.2A$A.4A!', 'loops from generation 3,997 · 13 cells'],
+];
+const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]));
 // the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
 // triangles turned by half a turn is itself (Cairo pentagons: none of their own)
 const SYMMETRIES = { none: ['symNone', 'None', ''], mirror: ['symMirror', 'Mirror', 'mirrored'], rotate: ['symRotate', 'Rotate', 'turning'],
@@ -4805,7 +4854,7 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
   } else {
     // cells drawn: a colour of another count of colours as one of these (one colour: alive), a dying state kept
-    for (const [k, c] of population) put(...cellXY(k), K > 1 ? ((c - 1) % K) + 1 : c < C ? c : 1);
+    for (const [k, c] of population) put(...cellXY(k), c <= K * (C - 1) ? c : K > 1 ? ((c - 1) % K) + 1 : 1);  // a state of these colours and states, else alive
     if (symmetryOf(kind) !== 'none') {
       const own = seed.slice();
       for (let t = 0; t < n; t++) if (own[t]) for (const c of cellCopies(kind, W, t)) seed[c] = own[t];
@@ -4929,7 +4978,7 @@ function planeFromSetup(s) {
   population = plane.start === 'draw' ? populationOf(s.p) : population;
   if (plane.start === 'pattern') {  // an old link's pattern: drawn in the middle
     plane.start = 'draw';
-    population = new Map(patternCells(LIFE_PATTERNS[a] ? a : 'acorn', 0, false).map(([x, y]) => [key(x + (plane.side >> 1), y + (plane.side >> 1)), 1]));
+    population = new Map(orientPattern('square', (DRAW_BY_ID.get(a) ?? DRAW_BY_ID.get('acorn'))[4], 0, false).map(([x, y]) => [key(x + (plane.side >> 1), y + (plane.side >> 1)), 1]));
   }
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
@@ -4959,10 +5008,18 @@ function renderPlaneRow() {
   }));
   $('startDraw').hidden = plane.start !== 'draw';
   // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
-  if (kind !== 'square') brush.id = 'cell';
+  const rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? ''), mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
+  const fits = (p) => p[0] === 'cell' || (p[1] === kind && (mine || p[2].includes(rule)));  // the rule's patterns; your own rule: all the grid's
+  if (!fits(DRAW_BY_ID.get(brush.id))) brush.id = 'cell';
+  brush.turn %= PATTERN_TURNS[kind];
   const K = ruleColours();
   brush.colour = Math.min(brush.colour, K);
-  for (const b of $('brushCards').children) { b.classList.toggle('active', b.dataset.brush === brush.id); b.hidden = kind !== 'square' && b.dataset.brush !== 'cell'; }
+  for (const b of $('brushCards').children) {
+    const p = DRAW_BY_ID.get(b.dataset.brush);
+    b.classList.toggle('active', p[0] === brush.id);
+    b.hidden = !fits(p);
+    b.querySelector('.mode-detail').textContent = p[5] + (mine && p[2].length ? ` · ${p[2][0]}` : '');  // your own rule: which rule it is for
+  }
   const eraser = document.createElement('i');
   eraser.className = 'eraser';
   eraser.title = 'eraser';
@@ -4980,7 +5037,7 @@ function renderPlaneRow() {
   });
   $('clearDrawn').textContent = cleared ? 'Undo' : 'Clear';
   $('clearDrawn').disabled = !cleared && !population.size;
-  $('brushTurn').textContent = `↻ ${brush.turn * 90}°`;
+  $('brushTurn').textContent = `↻ ${(brush.turn * 360) / PATTERN_TURNS[kind]}°`;
   $('brushTurn').disabled = $('brushFlip').disabled = brush.id === 'cell';
   $('brushFlip').classList.toggle('active', brush.flip);
   $('soupDensity').value = plane.density;
@@ -5044,34 +5101,76 @@ function drawPlaneGrid() {
 // the grid's cells in the Life colours (Display), each generation: squares as one picture, a pixel a
 // cell; hexagons and triangles as polygons, one path a colour
 let planeCanvas = null, planeImage = null, planeColours = null;
-// A pattern's cells around its middle: mirrored, turned, then centred
-function patternCells(id, turn, flip) {
-  let pts = [...populationOf(`0,0:${LIFE_PATTERNS[id][1]}`).keys()].map((k) => { const [x, y] = cellXY(k); return [flip ? -x : x, y]; });
-  for (let k = 0; k < turn; k++) pts = pts.map(([x, y]) => [-y, x]);
-  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), mx = Math.min(...xs), my = Math.min(...ys);
-  const w = Math.max(...xs) - mx + 1, h = Math.max(...ys) - my + 1;
-  return pts.map(([x, y]) => [x - mx - (w >> 1), y - my - (h >> 1)]);
+// A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
+const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4 };
+const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
+// A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
+// middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
+// the grid turns about (the middle of a square or a hexagon, a corner of triangles or of 4 pentagons),
+// then the cells found there, on a grid big enough
+function orientPattern(kind, rle, turn, flip) {
+  const V = 256, T = 128, pairs = kind === 'tri' || kind === 'cairo', grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
+  const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : latticeAt(T, T);
+  const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] : pivot[0];
+  const a = (2 * Math.PI * turn) / PATTERN_TURNS[kind], cos = Math.cos(a), sin = Math.sin(a), cells = [];
+  for (const [k, v] of populationOf(`0,0:${rle}`)) {
+    const [x, y] = cellXY(k);
+    let [u, w] = cellMiddle(kind, x + (pairs ? 2 * T : T), y + T);
+    if (flip) u = 2 * axis - u;
+    u -= pivot[0];
+    w -= pivot[1];
+    const c = planeCellAt(kind, V, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos);
+    if (c) cells.push([...c, v]);
+  }
+  const square = (x) => (pairs ? x >> 1 : x), i0 = Math.min(...cells.map((c) => square(c[0])));
+  let j0 = Math.min(...cells.map((c) => c[1]));
+  if (kind === 'cairo' && (i0 + j0) & 1) j0--;  // the tiling repeats every other square
+  return cells.map(([x, y, v]) => [x - (pairs ? 2 * i0 : i0), y - j0, v]);
 }
-const brushCells = () => patternCells(brush.id, brush.turn, brush.flip);
-// where the brush's cells go from a cell: wrapping round the grid, or the ones inside it
+let brushMemo = null;
+function brushCells() {
+  const kind = walk.plane.kind, k = `${kind}|${brush.id}|${brush.turn}|${brush.flip}`;
+  if (brushMemo?.k !== k) brushMemo = { k, cells: brush.id === 'cell' ? [[0, 0, 1]] : orientPattern(kind, DRAW_BY_ID.get(brush.id)[4], brush.turn, brush.flip) };
+  return brushMemo.cells;
+}
+// where the brush's cells go, round the cell pointed at (Cairo: from an even square): wrapping round the
+// grid, or the ones inside it; [x, y, state]
 function brushAt([cx, cy]) {
-  const W = walk.plane.W, out = [];
-  for (const [dx, dy] of brushCells()) {
-    let x = cx + dx, y = cy + dy;
-    if (walk.plane.torus) { x = ((x % W) + W) % W; y = ((y % W) + W) % W; }
-    if (x >= 0 && y >= 0 && x < W && y < W) out.push([x, y]);
+  const { kind, W, torus } = walk.plane, row = planeRow(kind, W), pairs = kind === 'tri' || kind === 'cairo', out = [];
+  if (brush.id === 'cell') return [[cx, cy, 1]];
+  const cells = brushCells(), square = (x) => (pairs ? x >> 1 : x);
+  let i = square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1), j = cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1);
+  if (kind === 'cairo' && (i + j) & 1) j--;
+  for (const [dx, dy, v] of cells) {
+    let x = (pairs ? 2 * i : i) + dx, y = j + dy;
+    if (torus) { x = ((x % row) + row) % row; y = ((y % W) + W) % W; }
+    if (x >= 0 && y >= 0 && x < row && y < W) out.push([x, y, v]);
   }
   return out;
 }
-// the brush under the pointer, half seen (on squares; a cell elsewhere needs none)
+// the brush under the pointer, half seen
 function drawGhost() {
   const ctx = layers.overlay, { scale: s, ox, oy } = view;
   ctx.clearRect(0, 0, cw, ch);
-  if (!drawing || !ghost || !walk.plane || walk.plane.kind !== 'square') return;
+  if (!drawing || !ghost || !walk.plane) return;
   ctx.globalAlpha = brush.colour ? 0.55 : 0.85;  // the eraser: the dead cells' colour
   ctx.fillStyle = !brush.colour ? UNLIT : walk.life.colours > 1 ? LIFE_COLOURS[brush.colour - 1] : LIFE_ALIVE;
-  for (const [x, y] of brushAt(ghost)) ctx.fillRect(ox + (x - 0.5) * s, oy + (y - 0.5) * s, s, s);
+  ctx.beginPath();
+  for (const [x, y] of brushAt(ghost)) {
+    const pts = planeCorners(walk.plane.kind, x, y);
+    pts.forEach(([u, v], k) => ctx[k ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s));
+    ctx.closePath();
+  }
+  ctx.fill();
   ctx.globalAlpha = 1;
+}
+// a pattern's picture: its own cells, fitted in the icon (dying ones fainter)
+function cellsIcon(kind, rle) {
+  const polys = orientPattern(kind, rle, 0, false).map(([x, y, v]) => [planeCorners(kind, x, y), v]), all = polys.flatMap((p) => p[0]);
+  const x0 = Math.min(...all.map((p) => p[0])), y0 = Math.min(...all.map((p) => p[1]));
+  const size = Math.max(Math.max(...all.map((p) => p[0])) - x0, Math.max(...all.map((p) => p[1])) - y0, 3);
+  return `<svg class="icon rule-icon" viewBox="${x0 - 0.2} ${y0 - 0.2} ${size + 0.4} ${size + 0.4}" aria-hidden="true">${polys
+    .map(([pts, v]) => `<polygon points="${pts.map((p) => p.map((c) => c.toFixed(2)).join(',')).join(' ')}"${v > 1 ? ' class="dim"' : ''}/>`).join('')}</svg>`;
 }
 function drawLifePlane() {
   const L = walk.life, { kind, W, row } = walk.plane, ctx = layers.path, { scale: s, ox, oy } = view, n = row * W;
@@ -5128,6 +5227,7 @@ function drawLifePlane() {
     ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
     ctx.fill();
   }
+  drawGhost();
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
@@ -8521,15 +8621,15 @@ $('soupDensity').addEventListener('change', () => { plane.density = Number($('so
 $('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); reseedStart(); });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
-$('brushCards').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name, , what, art]]) => {
+$('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {
   const b = document.createElement('button');
   b.type = 'button';
-  b.innerHTML = `<span class="mode-icon">${pixelIcon(art)}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${what}</span></span>`;
+  b.innerHTML = `<span class="mode-icon">${art ? pixelIcon(art) : cellsIcon(kind, rle)}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${what}</span></span>`;
   b.dataset.brush = id;
   b.addEventListener('click', () => { brush.id = id; renderPlaneRow(); });
   return b;
 }));
-$('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % 4; renderPlaneRow(); });
+$('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % PATTERN_TURNS[MODES[$('mode').value].plane]; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
 $('planeHuntBtn').addEventListener('click', huntPlane);
 $('planeZones').replaceChildren(...Object.entries(PLANE_ZONES).map(([zone, [pic, name]]) => {
@@ -8556,7 +8656,8 @@ stage.addEventListener('pointerup', (e) => {
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
     if (!cell) return;
     cleared = null;  // drawn again: no Undo
-    if (brush.id !== 'cell' || !brush.colour) for (const [x, y] of brushAt(cell)) { if (brush.colour) population.set(key(x, y), brush.colour); else population.delete(key(x, y)); }
+    const K = walk.life.colours;  // a pattern's state: alive in the brush's colour, or dying of it (see parseRule)
+    if (brush.id !== 'cell' || !brush.colour) for (const [x, y, v] of brushAt(cell)) { if (brush.colour) population.set(key(x, y), K > 1 ? brush.colour + K * (v - 1) : v); else population.delete(key(x, y)); }
     else {  // a cell: in the brush's colour, or off if it has it; one colour: alive, then each dying state, back to dead
       const k = key(...cell), v = population.get(k) ?? 0;
       const c = walk.life.colours > 1 ? (v === brush.colour ? 0 : brush.colour) : (v + 1) % walk.life.C;
