@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.481';
+const VERSION = '0.1.482';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4620,11 +4620,14 @@ function hexClass(mask) {
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 function parseRule(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+)|\/(IMMIGRATION)|\/COLOURS(\d))?H?$/);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d))?H?$/);
   if (!m || /^[OMP]/.test(m[1]) || /^[OMP]/.test(m[2])) return null;
-  // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration)
-  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = colours > 1 ? colours + 1 : m[3] ? Number(m[3]) : 2, iso = /[OMP]/.test(m[1] + m[2]);
-  if (C < 2 || C > 10 || colours > LIFE_COLOURS.length || (iso && colours > 1)) return null;  // one digit per cell in base C: bases 2 to 10
+  // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration),
+  // apart from the states C (alive, the dying stages, dead). A cell: 0 dead, k alive of colour k (1 … K),
+  // k + K × s dying of colour k at stage s (1 … C − 2). A start has live cells only: one digit a cell in
+  // base K + 1 (one colour: in base C, its dying stages too)
+  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = /[OMP]/.test(m[1] + m[2]);
+  if (C < 2 || C > 10 || colours > LIFE_COLOURS.length) return null;
   const table = (spec) => {
     const a = new Uint8Array(80);
     for (const [, d, letters] of spec.matchAll(/(\d)([OMP]*)/g)) {
@@ -4636,8 +4639,8 @@ function parseRule(text) {
     }
     return a;
   };
-  const tail = two ? '/Immigration' : colours > 2 ? `/Colours${colours}` : C > 2 ? `/C${C}` : '';
-  return { B: table(m[1]), S: table(m[2]), C, two, colours, iso, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
+  const tail = (C > 2 ? `/C${C}` : '') + (two ? '/Immigration' : colours > 2 ? `/Colours${colours}` : '');
+  return { B: table(m[1]), S: table(m[2]), C, two, colours, iso, base: colours > 1 ? colours + 1 : C, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
 }
 
 // The starting counts of a Life run: live cells (and the blue ones with two civilisations), dying ones
@@ -4645,18 +4648,20 @@ function countSeed(L) {
   L.seedAlive = L.seedDying = 0;
   L.seedByColour = new Int32Array(L.colours + 1);  // civilisations: the cells of each colour
   for (const v of L.seed) {
-    if (L.colours > 1 ? v > 0 : v === 1) L.seedAlive++;
+    if (v && v <= L.colours) L.seedAlive++;
     else if (v) L.seedDying++;
-    if (L.colours > 1) L.seedByColour[v]++;
+    if (L.colours > 1 && v <= L.colours) L.seedByColour[v]++;
   }
   L.seedBlue = L.seedByColour[2] ?? 0;
 }
 // the civilisations' colours (1, 2… : red, blue, gold, green, violet, orange) and their names
 const LIFE_COLOURS = [LIFE_RED, LIFE_BLUE, '#f2b630', '#3fb950', '#a371f7', '#ffa657'];
 const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange'];
+// in colours, the colour of each state from 1: alive in its colour, then fainter at each dying stage
+const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ length: K * (C - 2) }, (_, i) => faded(LIFE_COLOURS[i % K], 1 - (Math.floor(i / K) + 1) / (C - 1)))];
 
 // Number of states of the current Life rule = the base the number is written in
-const lifeStates = () => (lifeRuleNow() || { C: 2 }).C;
+const lifeStates = () => (lifeRuleNow() || { base: 2 }).base;  // one colour: C; colours: K + 1 (a start has live cells only)
 
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
@@ -4671,7 +4676,7 @@ function buildLife(seq, mode) {
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
-  if (rule.colours === 1) $('lifeRule').value = rule.text;  // in colours, the field keeps its dying states for later
+  $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const seed = new Uint8Array(g.n);
   seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
   for (const t of g.walls ?? []) seed[t] = 0;
@@ -4683,7 +4688,7 @@ function buildLife(seq, mode) {
   lifeStart = null;  // the number's digits
   const one = new Float64Array(1);
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
-                        maxDist: null, base: rule.C, counts: null, lattice: 'sphere', skipZeros: false, points: false,
+                        maxDist: null, base: rule.base, counts: null, lattice: 'sphere', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
                         xs: new Float64Array(1), ys: new Float64Array(1) });
@@ -4848,14 +4853,17 @@ function planeNeighbours(kind, W, torus) {
 }
 function buildLifePlane(seq) {
   const kind = MODES[current.mode].plane, sides = PLANE_SIDES[kind];
-  if (!sides.includes(plane.side)) plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
+  if (!sides.includes(plane.side)) {  // a link's size not offered: the nearest one, said at once
+    plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
+    renderPlaneRow();
+  }
   const W = plane.side, row = planeRow(kind, W), n = row * W;
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && kind !== 'hex') {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
-  if (rule.colours === 1) $('lifeRule').value = rule.text;  // in colours, the field keeps its dying states for later
+  $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = planeNeighbours(kind, W, plane.torus);
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
@@ -4864,7 +4872,7 @@ function buildLifePlane(seq) {
   lifeStart = null;
   const one = new Float64Array(1);
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: null, is3d: false, cells: null,
-                        maxDist: null, base: rule.C, counts: null, lattice: 'square', skipZeros: false, points: false,
+                        maxDist: null, base: rule.base, counts: null, lattice: 'square', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: false, geo: { n }, plane: { kind, W, row, torus: plane.torus }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
   updateHint();
@@ -4887,7 +4895,7 @@ function planeReseed() {
   lifeStart = null;  // the plane's own start again, not the hunt's
   L.seed.set(planeSeed(walk.plane.kind, walk.digits, L.C, L.colours));
   countSeed(L);
-  describe(L.C, Infinity);
+  describe(walk.base, Infinity);
   renderPlaneRow();
   restart();
   syncLink();
@@ -5077,7 +5085,7 @@ function drawLifePlane() {
     planeColours = new Uint32Array(planeImage.data.buffer);
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
-  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...LIFE_COLOURS.map(pack)];
+  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
@@ -5133,7 +5141,7 @@ const ruleColours = () => lifeColours;
 const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d)$/i, '');  // births, survivals (and dying stages), no colours
 const lifeRuleNow = () => {
   const body = ruleBody($('lifeRule').value);
-  return parseRule(lifeColours === 1 ? body : `${body.replace(/\/C\d+$/i, '')}${lifeColours === 2 ? '/Immigration' : `/Colours${lifeColours}`}`);
+  return parseRule(lifeColours === 1 ? body : `${body}${lifeColours === 2 ? '/Immigration' : `/Colours${lifeColours}`}`);
 };
 function setRuleText(rule) {  // the rule field, and its preset if it is one
   $('lifeRule').value = rule;
@@ -5142,11 +5150,11 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
 }
 const COLOUR_STEPS = [1, 2, 4, 6];  // the colours' stepper: one, or 2, 4, 6 civilisations (an even fight)
 function renderColours() {
-  const rule = parseRule(ruleBody($('lifeRule').value)), k = lifeColours;
+  const k = lifeColours;
   $('coloursLabel').innerHTML = (k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k))  // filled from the left
     .map((c, i) => `<i style="background:${c}" title="${k === 1 ? 'alive' : LIFE_COLOUR_NAMES[i]}"></i>`).join('');
   $('coloursDown').disabled = k === 1;
-  $('coloursUp').disabled = k >= COLOUR_STEPS.at(-1) || !!rule?.iso;  // Callahan's letters: one colour
+  $('coloursUp').disabled = k >= COLOUR_STEPS.at(-1);
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
@@ -5216,7 +5224,7 @@ function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
   for (let t = 0; t < L.alive.length; t++) {
-    const live = L.colours > 1 ? L.alive[t] > 0 : L.alive[t] === 1;
+    const live = L.alive[t] > 0 && L.alive[t] <= L.colours;
     L.age[t] = L.ever[t] = live ? 1 : 0;
   }
   L.died.fill(-1e9);
@@ -5260,49 +5268,48 @@ function lifeTrack(gen) {
   else L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 };
 }
 
-// One generation. Only alive cells (state 1) count as live neighbours. With C > 2 states a
-// cell that fails to survive goes through the dying states 2 … C−1 and cannot be born again
-// until it is dead (state 0). A cell dying at generation g records died = g (fading trail).
+// One generation. A cell: 0 dead, k alive of colour k (1 … K, one colour: 1), k + K × s dying of colour
+// k at stage s (1 … C − 2, see parseRule). Only live cells count as neighbours (on hexagons maybe where
+// they sit, Callahan's letters); a newborn takes the colour most of them have. With C > 2 states a cell
+// that fails to survive goes through the dying stages, keeping its colour, and cannot be born again until
+// it is dead. A cell dying at generation g records died = g (fading trail).
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1;
-  const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1);
+  const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
     let now;
     if (start[t] === start[t + 1]) {
       now = 0;  // a wall (a pentagon of the hexagon sphere)
-    } else if (was >= 2 && !two) {
-      now = was + 1 < C ? was + 1 : 0;  // one more dying stage, or dead
-    } else if (two) {  // civilisations: live neighbours, and how many of each colour; a newborn takes the colour most of them have
+    } else if (was > K) {
+      now = was + K <= last ? was + K : 0;  // one more dying stage, or dead
+    } else {
       let c = 0;
       around.fill(0);
-      for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; around[v]++; } }
-      if (was) now = L.S[c] ? was : 0;
+      if (ring) {  // where the live neighbours sit around the hexagon
+        for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; } }
+        c += 16;
+      } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; } }
+      if (was) now = L.S[c] ? was : C > 2 ? was + K : 0;
       else if (!L.B[c]) now = 0;
+      else if (!two) now = 1;
       else {  // a tie: one of the colours tied, drawn from the cell and the generation (the same run, the same draw)
         let most = 0, tied = 0;
         for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; } else if (around[k] === most) tied++; }
         let pick = tied > 1 ? Math.floor(cellRandom(gen, t) * tied) : 0;
         for (let k = 1; k <= K; k++) if (around[k] === most && pick-- === 0) { now = k; break; }
       }
-    } else {
-      let c = 0;
-      if (ring) {  // where the live neighbours sit around the hexagon
-        for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] === 1) c |= 1 << q; }
-        c += 16;
-      } else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
-      now = was ? (L.S[c] ? 1 : C > 2 ? 2 : 0) : L.B[c];
     }
     b[t] = now;
-    if (two && now !== was) {  // a colour's births, deaths, and cells it has had
-      if (now) { if (!was) L.bornBy[now]++; if (!(L.everMask[t] & (1 << now))) { L.everMask[t] |= 1 << now; L.everBy[now]++; } }
+    const live = now > 0 && now <= K, wasLive = was > 0 && was <= K;
+    if (two && live !== wasLive) {  // a colour's births, deaths, and cells it has had
+      if (live) { L.bornBy[now]++; if (!(L.everMask[t] & (1 << now))) { L.everMask[t] |= 1 << now; L.everBy[now]++; } }
       else L.deadBy[was]++;
     }
-    const live = two ? now > 0 : now === 1;
     if (live) alive++;
     else if (now) dying++;
-    if (two) byColour[now]++;
+    if (two && live) byColour[now]++;
     if (now === was) {
       if (live && L.age[t] < 65535) L.age[t]++;
       continue;
@@ -5312,7 +5319,7 @@ function lifeStep() {
       L.born++;
       L.age[t] = 1;
       if (!L.ever[t]) { L.ever[t] = 1; L.everAlive++; }
-    } else if (two || was === 1) {
+    } else if (wasLive) {
       L.dead++;
       L.age[t] = 0;
       L.died[t] = gen;
@@ -5356,23 +5363,20 @@ function lifeStep() {
 function huntWorker() {
   self.onmessage = (e) => {
     const { n, start, list, ring, B, S, C, two, randomRuns, tweaks, cap, patch, colours, against, exhaustive, from, fromBest } = e.data;
+    const K = two ? 2 : 1, last = K * (C - 1);  // a cell as in lifeStep: k alive of colour k, k + K × s dying
+    const V = two ? K + 1 : C;  // a start's cell: dead or alive of a colour (one colour: or dying)
     const step = (a, b) => {
-      for (let t = 0; t < n; t++) {  // the same generation as lifeStep
+      for (let t = 0; t < n; t++) {  // the same generation as lifeStep (a tie between red and blue: by the cell)
         const was = a[t];
         if (start[t] === start[t + 1]) { b[t] = 0; continue; }  // a wall
-        if (two) {
-          let c = 0, blue = 0;
-          for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; blue += v === 2; } }
-          b[t] = was ? (S[c] ? was : 0) : !B[c] ? 0 : 2 * blue > c ? 2 : 2 * blue < c ? 1 : 1 + (t & 1);
-          continue;
-        }
-        if (was >= 2) { b[t] = was + 1 < C ? was + 1 : 0; continue; }
-        let c = 0;
+        if (was > K) { b[t] = was + K <= last ? was + K : 0; continue; }
+        let c = 0, blue = 0;
         if (ring) {
-          for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] === 1) c |= 1 << q; }
+          for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; blue += a[v] === 2; } }
           c += 16;
-        } else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
-        b[t] = was ? (S[c] ? 1 : C > 2 ? 2 : 0) : B[c];
+        } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; blue += v === 2; } }
+        const live = ring ? (c - 16).toString(2).replace(/0/g, '').length : c;
+        b[t] = was ? (S[c] ? was : C > 2 ? was + K : 0) : !B[c] ? 0 : !two ? 1 : 2 * blue > live ? 2 : 2 * blue < live ? 1 : 1 + (t & 1);
       }
     };
     const fingerprint = (s) => {
@@ -5384,7 +5388,7 @@ function huntWorker() {
       return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
     };
     // with an opponent (against: red is hunted against a fixed blue start), the red and blue cells
-    const civs = (s) => { let red = 0, blue = 0; for (let t = 0; t < n; t++) { red += s[t] === 1; blue += s[t] === 2; } return { red, blue }; };
+    const civs = (s) => { let red = 0, blue = 0; for (let t = 0; t < n; t++) { red += s[t] === 1; blue += s[t] === 2; } return { red, blue }; };  // the live ones
     // { T, P } — P = 0 when still unsettled at the cap. Against an opponent: { T, winner } as soon as
     // a civilisation is wiped out, else also the red and blue cells when it settles
     const lifetime = (seed) => {
@@ -5406,11 +5410,11 @@ function huntWorker() {
     const score = (r) => (!against ? r.T : r.winner === 'red' ? 2e9 - r.T : r.winner ? r.T : 1e9 + r.red - r.blue);
     // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
     const free = patch || Array.from({ length: n }, (_, t) => t).filter((t) => start[t] < start[t + 1]);
-    const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * C); return s; };
+    const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * V); return s; };
     // start number k of an exhaustive search: k written in base C over the patch; with colours (one
     // side of a duel) in base 2, each cell dead or of its colour
     const nthSeed = (k) => {
-      const s = against ? Uint8Array.from(against) : new Uint8Array(n), base = colours ? 2 : C;
+      const s = against ? Uint8Array.from(against) : new Uint8Array(n), base = colours ? 2 : V;
       free.forEach((t, i) => { const d = k % base; k = Math.floor(k / base); s[t] = colours ? d * colours[i] : d; });
       return s;
     };
@@ -5432,7 +5436,7 @@ function huntWorker() {
     for (let i = 1; i <= tweaks; i++) {
       const seed = bestSeed.slice();
       const flips = 1 + Math.floor(Math.random() * 3);
-      for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * C);
+      for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * V);
       const r = lifetime(seed);
       const accepted = score(r) >= score(best);  // equal scores are accepted too, to drift
       if (accepted) { best = r; bestSeed = seed; kept++; }
@@ -5514,7 +5518,7 @@ function huntPlan(zone) {
     return { patch: [...red, ...blue], radius: 1, all: 0, colours: Uint8Array.from([...red.map(() => 1), ...blue.map(() => 2)]),
              sides: [{ name: 'blue', patch: blue, colour: 2 }, { name: 'red', patch: red, colour: 1 }] };
   }
-  const radius = Number(zone.slice(6)), patch = lifePatch(radius), count = walk.life.C ** patch.length;
+  const radius = Number(zone.slice(6)), patch = lifePatch(radius), count = walk.base ** patch.length;
   return { patch, radius, all: count <= 20000 ? count : 0 };  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
 }
 
@@ -5695,27 +5699,22 @@ function planeHuntWorker() {
   };
   self.onmessage = (e) => {
     const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks, all } = e.data;
-    const around = new Int32Array(K + 1);
-    // one generation; in colours, the births of each into born, and whether two colours touch
+    const around = new Int32Array(K + 1), last = K * (C - 1);
+    // one generation (as lifeStep); in colours, the births of each into born, and whether two colours touch
     const step = (a, b, gen, born) => {
       let contact = false;
       for (let t = 0; t < n; t++) {
         const was = a[t];
-        if (K === 1) {  // alive, then the dying states; on hexagons maybe Callahan's letters (ring)
-          if (was >= 2) { b[t] = was + 1 < C ? was + 1 : 0; continue; }
-          let c = 0;
-          if (ring) {
-            for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] === 1) c |= 1 << q; }
-            c += 16;
-          } else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
-          b[t] = was ? (S[c] ? 1 : C > 2 ? 2 : 0) : B[c];
-          continue;
-        }
+        if (was > K) { b[t] = was + K <= last ? was + K : 0; continue; }  // one more dying stage, or dead
         let c = 0;
         around.fill(0);
-        for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; around[v]++; if (was && v !== was) contact = true; } }
+        if (ring) {
+          for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; if (was && a[v] !== was) contact = true; } }
+          c += 16;
+        } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; if (was && v !== was) contact = true; } }
         let now = 0;
-        if (was) now = S[c] ? was : 0;
+        if (was) now = S[c] ? was : C > 2 ? was + K : 0;
+        else if (B[c] && K === 1) now = 1;
         else if (B[c]) {
           let most = 0, tied = 0;
           for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; } else if (around[k] === most) tied++; }
@@ -5753,7 +5752,7 @@ function planeHuntWorker() {
       if (K === 1) {
         let live = 0;
         for (let t = 0; t < n; t++) live += seed[t] > 0;
-        return { score: T - live / 1e6, T, P, end, live, extinct: !a.some((v) => v) };
+        return { score: T - live / 1e6, T, P, end, live, extinct: !a.some((v) => v) };  // (live: the start's cells)
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
@@ -5763,7 +5762,7 @@ function planeHuntWorker() {
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
     const randomSeed = () => {
       const s = new Uint8Array(n);
-      for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));
+      for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));  // colours: live cells only
       return copy(s);
     };
     const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
@@ -5946,9 +5945,9 @@ function setLifeSeed(seed, how) {
   L.seed.set(seed);
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   countSeed(L);
-  championCode = encodeCells(L.seed, L.C);  // in its shortest form
+  championCode = encodeCells(L.seed, walk.base);  // in its shortest form
   lifeStart = how;
-  describe(L.C, Infinity);
+  describe(walk.base, Infinity);
   restart();
   syncLink();
 }
@@ -6731,7 +6730,7 @@ function drawSphere() {
     // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
     const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
     if (L.colours > 1 && colour !== 'digit') {  // each civilisation in its colour
-      palette = [null, ...LIFE_COLOURS.slice(0, L.colours)];
+      palette = [null, ...civColours(L.colours, L.C)];
       levelOf = (t) => L.alive[t];
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...LIFE_TRAIL];
