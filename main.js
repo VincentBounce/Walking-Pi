@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.480';
+const VERSION = '0.1.481';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4671,7 +4671,7 @@ function buildLife(seq, mode) {
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
-  $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
+  if (rule.colours === 1) $('lifeRule').value = rule.text;  // in colours, the field keeps its dying states for later
   const seed = new Uint8Array(g.n);
   seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
   for (const t of g.walls ?? []) seed[t] = 0;
@@ -4855,7 +4855,7 @@ function buildLifePlane(seq) {
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
-  $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
+  if (rule.colours === 1) $('lifeRule').value = rule.text;  // in colours, the field keeps its dying states for later
   const nbr = planeNeighbours(kind, W, plane.torus);
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
@@ -5159,7 +5159,7 @@ const RULE_ICONS = {
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
-  'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.',
+  'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.', 'B2/S34': '.....,.o.o.,..o..,.o.o.,.....',
 };
 const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
   .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`;
