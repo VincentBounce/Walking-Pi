@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.477';
+const VERSION = '0.1.478';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2216,10 +2216,10 @@ function compute(keepDigits = false) {
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
   $('colourSection').hidden = !mode.life;
-  $('huntRow').hidden = (!!mode.plane && (plane.start !== 'random' || ruleColours() > 1)) || ruleColours() > 2;  // one colour on the plane (else battles), with Random
+  $('huntRow').hidden = !!mode.plane || ruleColours() > 2;  // the surfaces' hunt (the plane has its own, see renderPlaneHunt)
   renderColours();
   renderRuleSection();
-  if (!mode.plane) { stopBattle(); $('battleRow').hidden = true; }
+  if (!mode.plane) { stopPlaneHunt(); $('planeHuntRow').hidden = true; }
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   stopHunt();
@@ -4869,10 +4869,9 @@ function buildLifePlane(seq) {
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
   updateHint();
   restart();
-  stopBattle();  // a new grid, rule or colours: the battles found were another game's
-  battle.top = [];
-  battle.status = '';
-  renderBattle();
+  planeHunt.top = [];  // a new grid, rule or colours: the starts found were another game's
+  planeHunt.status = '';
+  stopPlaneHunt();
 }
 // the grid's frame: the corners of its four corner cells
 function planeBounds() {
@@ -4899,6 +4898,11 @@ function planeLead(number) {
   const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
   const sym = SYMMETRIES[symmetryOf(kind)][2];
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
+  if (lifeStart?.zone) {  // a zone of the hunt, a random start in it
+    const K = walk.life.colours, r = lifeStart.zone.slice(6);
+    return `${K === 1 ? `Random cells within radius ${r} of the middle` : r ? `Each colour random cells within radius ${r} of the middle of its part (${PLANE_PARTS[K]})`
+      : `Each colour a soup of its part (${PLANE_PARTS[K]}), ${plane.density} % alive`} of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
+  }
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
@@ -5584,7 +5588,7 @@ function pickHuntZone(zone) {
 // what seeds the cells), a duel its first ones as dead or its side's colour, or the two R-pentominoes
 function placeZone() {
   const zone = zoneInUse();
-  if (zone === 'all' || (walk.plane && plane.start !== 'random')) return;  // on the plane, a zone is a Random start's
+  if (zone === 'all' || walk.plane) return;  // the plane has its own zones (see pickPlaneZone)
   if (zone === 'duel90') { placePentominoDuel(); return; }
   const { patch, radius, colours } = huntPlan(zone), d = walk.digits, seed = new Uint8Array(walk.life.seed.length);
   patch.forEach((t, k) => { seed[t] = colours ? (d[k] % 2) * colours[k] : d[k]; });
@@ -5670,15 +5674,19 @@ function runHuntWorker(job) {
                             cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), colours: hunt.colours, ...job });
 }
 
-/* ---- 9.3b Battle hunt ------------------------------------------------------------------------ */
-/* Life on the plane in 2, 4 or 6 colours: a patch for each, in the middle of its half, quarter or sixth, the
- * rest dead. A battle is good when it lasts and every colour keeps spreading, as much as the others:
- * - S_c = Σ g × (cells born of colour c at generation g): spreading, the later the more it counts;
- * - the balance, 1 / (1 + CV), CV the standard deviation of the S_c over their mean (0: all even);
- * - the fight, the generations before the run repeats (or the cap) with two colours side by side.
- * Score = generations in contact × balance. Random patches first, then tweaks of the best (1 to 3
- * cells flipped); the 5 best kept. In a worker with its own copy of the step (as lifeStep's). */
-function battleWorker() {
+/* ---- 9.3b The hunt on the plane ------------------------------------------------------------- */
+/* Life on the plane in 1, 2, 4 or 6 colours, one hunt: random starts in a zone, then tweaks of the
+ * best (1 to 3 cells changed); the 5 best kept. The zone: the whole grid (a soup as dense as the
+ * slider says) or a patch of radius 1, 2 or 3 in the middle; in colours, one for each colour, in its
+ * half, quarter or sixth (3 columns, 2 rows), the whole of it or a patch in its middle.
+ * - One colour, the longest life: the generation the run starts repeating at (fewer cells first).
+ *   A patch with at most 20,000 starts has them all tried (the true record), no tweaks.
+ * - Colours, a battle: it lasts and every colour keeps spreading, as much as the others.
+ *   S_c = Σ g × (cells born of colour c at generation g), the later the more it counts; the balance,
+ *   1 / (1 + CV), CV the standard deviation of the S_c over their mean (0: all even); score = the
+ *   generations with two colours side by side, before the run repeats (or the cap), × the balance.
+ * In a worker with its own copy of the step (as lifeStep's). */
+function planeHuntWorker() {
   const cellRandom = (seed, i) => {  // as the page's
     let h = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(i + 1, 0xc2b2ae35);
     h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
@@ -5686,13 +5694,23 @@ function battleWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, B, S, K, patches, cap, runs, tweaks } = e.data;
+    const { n, start, list, ring, B, S, C, K, patches, density, cap, runs, tweaks, all } = e.data;
     const around = new Int32Array(K + 1);
-    // one generation; the births of each colour into born, and whether two colours touch
+    // one generation; in colours, the births of each into born, and whether two colours touch
     const step = (a, b, gen, born) => {
       let contact = false;
       for (let t = 0; t < n; t++) {
         const was = a[t];
+        if (K === 1) {  // alive, then the dying states; on hexagons maybe Callahan's letters (ring)
+          if (was >= 2) { b[t] = was + 1 < C ? was + 1 : 0; continue; }
+          let c = 0;
+          if (ring) {
+            for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] === 1) c |= 1 << q; }
+            c += 16;
+          } else for (let q = start[t]; q < start[t + 1]; q++) c += a[list[q]] === 1;
+          b[t] = was ? (S[c] ? 1 : C > 2 ? 2 : 0) : B[c];
+          continue;
+        }
         let c = 0;
         around.fill(0);
         for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v) { c++; around[v]++; if (was && v !== was) contact = true; } }
@@ -5714,31 +5732,49 @@ function battleWorker() {
       for (let t = 0; t < n; t++) { h1 = Math.imul(h1 ^ s[t], 0x01000193); h2 = Math.imul(h2 ^ (s[t] + t), 0x5bd1e995); }
       return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
     };
-    const battle = (seed) => {
-      let a = Uint8Array.from(seed), b = new Uint8Array(n), contacts = 0, T = cap;
+    // the cells a start may use, with their colour
+    const cells = patches.flatMap((patch, k) => Array.from(patch, (t) => [t, k + 1]));
+    // a run: its lifetime T (the generation it starts repeating from, P later), its end state, and its score
+    const run = (seed) => {
+      let a = Uint8Array.from(seed), b = new Uint8Array(n), contacts = 0, T = cap, P = 0, end = 0;
       const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), seen = new Map([[fingerprint(a), 0]]);
       for (let g = 1; g <= cap; g++) {
         born.fill(0);
         if (step(a, b, g, born)) contacts++;
         for (let k = 1; k <= K; k++) spread[k] += g * born[k];
         [a, b] = [b, a];
-        const f = fingerprint(a);
-        if (seen.has(f)) { T = seen.get(f); break; }
-        seen.set(f, g);
+        end = fingerprint(a);
+        if (seen.has(end)) { T = seen.get(end); P = g - T; break; }
+        seen.set(end, g);
+      }
+      if (K === 1) {
+        let live = 0;
+        for (const [t] of cells) live += seed[t] > 0;
+        return { score: T - live / 1e6, T, P, end, live, extinct: !a.some((v) => v) };
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
-      return { score: contacts / (1 + cv), contacts, T, balance: 1 / (1 + cv), spread: S_ };
+      return { score: contacts / (1 + cv), contacts, T, P, end, balance: 1 / (1 + cv) };
     };
+    // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
     const randomSeed = () => {
       const s = new Uint8Array(n);
-      patches.forEach((patch, k) => { for (const t of patch) if (Math.random() < 0.5) s[t] = k + 1; });
+      for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));
       return s;
     };
-    const top = [];  // the 5 best: { ...battle, seed }
+    const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
+      const s = new Uint8Array(n);
+      for (const [t] of cells) { s[t] = k % C; k = Math.floor(k / C); }
+      return s;
+    };
+    const top = [];  // the 5 best: { ...run, seed }
     const keep = (r, seed) => {
       if (top.length === 5 && r.score <= top[4].score) return false;
-      if (top.some((x) => x.T === r.T && x.contacts === r.contacts && x.spread.every((v, k) => v === r.spread[k]))) return false;  // the same battle
+      // the same run: ending alike at the same T; one colour, as long with the same period (a turned copy,
+      // or cells that change nothing), the fewer cells kept
+      const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end));
+      if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
+      if (same >= 0) top.splice(same, 1);
       top.push({ ...r, seed });
       top.sort((x, y) => y.score - x.score);
       top.length = Math.min(top.length, 5);
@@ -5747,60 +5783,92 @@ function battleWorker() {
     const report = (phase, i, total, changed) => {
       if (changed || i % 10 === 0 || i === total) self.postMessage({ type: 'progress', phase, i, total, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
     };
-    for (let i = 1; i <= runs; i++) { const seed = randomSeed(); report(1, i, runs, keep(battle(seed), seed)); }
-    const cells = patches.flatMap((patch, k) => patch.map((t) => [t, k + 1]));
-    for (let i = 1; i <= tweaks && top.length; i++) {  // flip 1 to 3 cells of the best: dead or of its colour
+    const total = all || runs;
+    for (let i = 1; i <= total; i++) { const seed = all ? nthSeed(i - 1) : randomSeed(); report(1, i, total, keep(run(seed), seed)); }
+    for (let i = 1; i <= (all ? 0 : tweaks) && top.length; i++) {  // change 1 to 3 cells of the best
       const seed = top[0].seed.slice();
-      for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) { const [t, k] = cells[Math.floor(Math.random() * cells.length)]; seed[t] = seed[t] ? 0 : k; }
-      report(2, i, tweaks, keep(battle(seed), seed));
+      for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
+        const [t, k] = cells[Math.floor(Math.random() * cells.length)];
+        seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C);
+      }
+      report(2, i, tweaks, keep(run(seed), seed));
     }
     self.postMessage({ type: 'done' });
   };
 }
-const battle = { worker: null, radius: 2, top: [], status: '' };
-// each colour's patch: the middle of its half (2 colours), quarter (4) or sixth (6: 3 columns, 2 rows)
-function battlePatches() {
-  const { W, row } = walk.plane, K = walk.life.colours, cols = K === 6 ? 3 : 2, rows = K === 2 ? 1 : 2;
-  const spots = Array.from({ length: K }, (_, i) => [(((i % cols) + 0.5) * row) / cols, ((Math.floor(i / cols) + 0.5) * W) / rows]);
-  return spots.map(([x, y]) => lifePatch(battle.radius, Math.floor(y) * row + Math.floor(x)));
+const planeHunt = { worker: null, zone: 'all', top: [], status: '' };
+const PLANE_ZONES = { all: ['zoneAll', 'Whole'], radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'] };
+const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
+// the zone's patches, one a colour (its part of the grid: the whole of it, or a radius round its
+// middle), how dense its random starts are, and how many starts there are when few enough to try all
+function planeHuntPlan() {
+  const { W, row } = walk.plane, { colours: K, C } = walk.life, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
+  if (planeHunt.zone === 'all') {
+    const patches = Array.from({ length: K }, () => []);
+    for (let t = 0; t < row * W; t++) { const x = t % row, y = (t - x) / row; patches[Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row)].push(t); }
+    return { patches, density: plane.density / 100, all: 0 };
+  }
+  const r = Number(planeHunt.zone.slice(6));
+  const patches = Array.from({ length: K }, (_, i) => lifePatch(r, Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
+  const count = K === 1 ? C ** patches[0].length : Infinity;
+  return { patches, density: 0.5, all: count <= 20000 ? count : 0 };
 }
-const battleOn = () => !!walk.plane && plane.start === 'random' && [2, 4, 6].includes(walk.life?.colours);
-function renderBattle() {
-  $('battleRow').hidden = !battleOn();
-  if ($('battleRow').hidden) return;
-  $('battleLayout').textContent = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' }[walk.life.colours];
-  for (const b of $('battleRadius').children) { b.classList.toggle('active', Number(b.dataset.r) === battle.radius); b.disabled = !!battle.worker; }
-  $('battleBtn').innerHTML = battle.worker ? `${icon('pause')} Stop` : `${icon('search')} Hunt battles`;
-  $('battleStatus').textContent = battle.status;
-  $('battleTop').replaceChildren(...battle.top.map((r, i) => {
+const planeHuntOn = () => !!walk.plane && plane.start === 'random' && COLOUR_STEPS.includes(walk.life?.colours);
+function renderPlaneHunt() {
+  $('planeHuntRow').hidden = !planeHuntOn();
+  if ($('planeHuntRow').hidden) return;
+  const K = walk.life.colours, { patches, all } = planeHuntPlan(), busy = !!planeHunt.worker;
+  $('planeHuntTitle').textContent = K === 1 ? 'Hunt · the longest life' : `Hunt · a battle in ${PLANE_PARTS[K]}`;
+  for (const b of $('planeZones').children) { b.classList.toggle('active', b.dataset.zone === planeHunt.zone); b.disabled = busy; }
+  $('planeZoneCells').textContent = K === 1 ? `${fmt(patches[0].length)} cells${all ? ` · all ${fmt(all)} starts tried` : ''}`
+    : `${fmt(patches[0].length)} cells a colour`;
+  $('planeHuntBtn').innerHTML = busy ? `${icon('pause')} Stop` : `${icon('search')} Hunt`;
+  $('planeHuntStatus').textContent = planeHunt.status;
+  $('planeHuntTop').replaceChildren(...planeHunt.top.map((r, i) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${fmt(r.contacts)} generations in contact</span>`
-      + `<span class="mode-detail">${r.T >= 4000 ? 'still fighting at the cap' : `of ${fmt(r.T)} before it settles`} · balance ${r.balance.toFixed(2)}</span></span>`;
-    b.addEventListener('click', () => setLifeSeed(r.seed, 'battle'));
+    const [name, detail] = K === 1
+      ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
+      : [`${fmt(r.contacts)} generations in contact`, `${r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'} · balance ${r.balance.toFixed(2)}`];
+    b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
+    b.addEventListener('click', () => setLifeSeed(r.seed, K === 1 ? 'hunt' : 'battle'));
     return b;
   }));
 }
-function stopBattle() {
-  battle.worker?.terminate();
-  battle.worker = null;
-  renderBattle();
+function stopPlaneHunt() {
+  planeHunt.worker?.terminate();
+  planeHunt.worker = null;
+  renderPlaneHunt();
 }
-function huntBattles() {
-  if (battle.worker) { stopBattle(); return; }
-  const L = walk.life, patches = battlePatches();
-  battle.top = [];
-  battle.worker = new Worker(URL.createObjectURL(new Blob([`(${battleWorker.toString()})()`], { type: 'text/javascript' })));
-  battle.worker.onmessage = (e) => {
+// a zone picked: one random start in it at once (the whole grid alone: the soup)
+function pickPlaneZone(zone) {
+  planeHunt.zone = zone;
+  planeHunt.top = [];
+  planeHunt.status = '';
+  const L = walk.life, { patches, density } = planeHuntPlan();
+  if (zone === 'all' && L.colours === 1) { planeReseed(); return; }
+  const seed = new Uint8Array(L.seed.length);
+  patches.forEach((patch, k) => { for (const t of patch) if (Math.random() < density) seed[t] = L.colours > 1 ? k + 1 : 1; });
+  setLifeSeed(seed, { zone });
+  renderPlaneHunt();
+}
+function huntPlane() {
+  if (planeHunt.worker) { stopPlaneHunt(); return; }
+  const L = walk.life, { patches, density, all } = planeHuntPlan(), K = L.colours;
+  planeHunt.top = [];
+  planeHunt.worker = new Worker(URL.createObjectURL(new Blob([`(${planeHuntWorker.toString()})()`], { type: 'text/javascript' })));
+  planeHunt.worker.onmessage = (e) => {
     const d = e.data;
-    if (d.type === 'done') { battle.status = `Done · the best battle: ${battle.top.length ? `${fmt(battle.top[0].contacts)} generations` : 'none'}`; stopBattle(); return; }
-    if (d.top) battle.top = d.top;
-    battle.status = `${d.phase === 1 ? 'Random patches' : 'Tweaks of the best'} ${fmt(d.i)} / ${fmt(d.total)}`;
-    renderBattle();
+    if (d.type === 'done') { planeHunt.status = `Done · ${fmt(planeHunt.top.length)} best kept, a click plays one`; stopPlaneHunt(); return; }
+    if (d.top) planeHunt.top = d.top;
+    planeHunt.status = `${d.phase === 1 ? (all ? 'Starts' : 'Random starts') : 'Tweaks of the best'} ${fmt(d.i)} / ${fmt(d.total)}`;
+    renderPlaneHunt();
   };
-  battle.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, B: L.B, S: L.S, K: L.colours,
-                              patches: patches.map((p) => Int32Array.from(p)), cap: 4000, runs: 200, tweaks: 400 });
-  renderBattle();
+  planeHunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
+                                 patches: patches.map((p) => Int32Array.from(p)), density, all,
+                                 cap: K === 1 ? 50000 : 4000, runs: K === 1 ? HUNT_STARTS : 200, tweaks: K === 1 ? HUNT_TWEAKS : 400 });
+  planeHunt.status = 'Starting…';
+  renderPlaneHunt();
 }
 
 /* ---- 9.4 Patches ----------------------------------------------------------------------------- */
@@ -8443,8 +8511,15 @@ $('brushCards').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name
 }));
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % 4; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
-$('battleBtn').addEventListener('click', huntBattles);
-for (const b of $('battleRadius').children) b.addEventListener('click', () => { battle.radius = Number(b.dataset.r); battle.top = []; renderBattle(); });
+$('planeHuntBtn').addEventListener('click', huntPlane);
+$('planeZones').replaceChildren(...Object.entries(PLANE_ZONES).map(([zone, [pic, name]]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.zone = zone;
+  b.innerHTML = `${icon(pic)}<span>${name}</span>`;
+  b.addEventListener('click', () => pickPlaneZone(zone));
+  return b;
+}));
 for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
   $(id).addEventListener('click', () => {
     lifeColours = k > 0 ? COLOUR_STEPS.find((v) => v > lifeColours) ?? lifeColours : COLOUR_STEPS.findLast((v) => v < lifeColours) ?? lifeColours;

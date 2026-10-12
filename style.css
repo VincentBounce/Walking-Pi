@@ -294,6 +294,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .draw-row .check { flex: 1; margin: 0; }
 .draw-row button { width: auto; padding: 4px 12px; }
 .start-panel { margin: 0 0 10px; }
+.zone-cells { margin: -4px 0 8px; font-size: 12px; }  /* the hunt's zone: its cells */
 .colour-swatches { display: flex; gap: 6px; justify-content: flex-start; align-items: center; padding-left: 4px; }  /* Life's colours: a square each, from the left */
 /* the Rule section: cards with a pixel picture, then chips of neighbour counts */
 .rule-cards { margin-bottom: 10px; }
