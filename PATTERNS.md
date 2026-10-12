@@ -854,3 +854,21 @@ The tables below list every such fraction p/q between 1 and 2 with q ≤ 512 and
 | 17 | [406/397](https://vincentbounce.github.io/Walking-Pi/#x=406/397&w=hexSphereGrid&d=10000&s=32) | 44 | `000001011100110110…` | 0 | 44 | 31 | 0.0 % | 5 ([4](https://vincentbounce.github.io/Walking-Pi/#x=406/397&w=hexSphereGrid&d=10000&s=32&st=4)) |
 | 18 | [268/265](https://vincentbounce.github.io/Walking-Pi/#x=268/265&w=hexSphereGrid&d=10000&s=32) | 52 | `000000101110010111…` | 0 | 260 | 90 | 0.3 % | 5 ([1](https://vincentbounce.github.io/Walking-Pi/#x=268/265&w=hexSphereGrid&d=10000&s=32)) |
 | 19 | [306/305](https://vincentbounce.github.io/Walking-Pi/#x=306/305&w=hexSphereGrid&d=10000&s=32) | 60 | `000000001101011011…` | 0 | 60 | 37 | 0.1 % | 5 ([2](https://vincentbounce.github.io/Walking-Pi/#x=306/305&w=hexSphereGrid&d=10000&s=32&st=2)) |
+
+
+## 🧬 Life on Cairo pentagons: rules with dying states
+
+Each pentagon of the Cairo tiling touches 7 others (5 by an edge, 2 by a corner). All the rules B ⊂ {2…7}, S ⊂ {0…6} with 2 to 6 states (40,320 rules) were run on soups 30 % alive (a torus of 32 × 32 squares, 2,048 pentagons, up to 2,000 generations); then the 1,493 that stay lively, or settle late, were given 300 small random starts each (the cells within 2 steps of one) on a 64 torus, looking for spaceships (the same cells again, moved by a whole tile of the tiling) and oscillators. **1,021 of them have spaceships**, most of period 2, as Brian's Brain does on squares.
+
+The best, checked in the app (soups at 30 %, seed 7):
+
+| Rule | States | Soup 64 | Soup 128 | Smallest ship | Try it |
+|---|--:|---|---|---|---|
+| **B24/S346/C4** | 4 | never settles (8,000+), ~6 % alive | never settles, ~7 % alive | 9 cells, period 2, diagonal | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B24/S346/C4&s=64&sd=random.30.7) · [ship](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B24/S346/C4&s=32&sd=draw&p=32,16:6.$2.AB.A$C.BCAB$2.C!) |
+| **B23/S6/C3** | 3 | gen 1,974, period-6 loop | gen 2,934, period-18 loop | 6 cells, period 2 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B23/S6/C3&s=64&sd=random.30.7) · [ship](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B23/S6/C3&s=32&sd=draw&p=32,16:3.B$A.BA.B$2.A!) |
+| **B2347/S35/C3** | 3 | gen 5,592, period-3 loop | gen 3,376, period-90 loop | 8 cells, period 2 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=random.30.7) · [ship](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=32&sd=draw&p=32,16:8.$2.2A.B.A$A.2B2.B!) |
+| **B245/S045/C4** | 4 | settles fast | settles fast | **5 cells**, period 4: the smallest found | [ship](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B245/S045/C4&s=32&sd=draw&p=32,16:2.AB.B$A2.B!) |
+| **B2/S345/C4** (Star Wars) | 4 | gen 462 | | 9 cells, period 2; an oscillator of period 40 (46 cells) | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2/S345/C4&s=64&sd=random.30.7) · [ship](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2/S345/C4&s=32&sd=draw&p=32,16:3.A$2A2B.C$B.2C!) |
+| B34/S23 (the 2-state default) | 2 | gen 283, period-4 loop | gen 334, period-12 loop | none found | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B34/S23&s=64&sd=random.30.7) |
+
+A ship's cells are written as the plane's rows (two pentagons a square, `A` alive, `B` `C` dying), drawn at an even square: the tiling repeats every 2 squares, so a pattern fits every other square only.
