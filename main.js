@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.478';
+const VERSION = '0.1.479';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4901,7 +4901,7 @@ function planeLead(number) {
   if (lifeStart?.zone) {  // a zone of the hunt, a random start in it
     const K = walk.life.colours, r = lifeStart.zone.slice(6);
     return `${K === 1 ? `Random cells within radius ${r} of the middle` : r ? `Each colour random cells within radius ${r} of the middle of its part (${PLANE_PARTS[K]})`
-      : `Each colour a soup of its part (${PLANE_PARTS[K]}), ${plane.density} % alive`} of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
+      : `Each colour a soup of its part (${PLANE_PARTS[K]}), ${plane.density} % alive`}${sym ? `, ${sym},` : ''} of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   }
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
@@ -4946,7 +4946,7 @@ function renderPlaneRow() {
     b.type = 'button';
     b.innerHTML = `${icon(SYMMETRIES[y][0])}<span>${SYMMETRIES[y][1]}</span>`;
     b.classList.toggle('active', y === symmetryOf(kind));
-    b.addEventListener('click', () => { plane.sym = y; planeReseed(); });
+    b.addEventListener('click', () => { plane.sym = y; reseedStart(); });
     return b;
   }));
   $('startDraw').hidden = plane.start !== 'draw';
@@ -5694,7 +5694,7 @@ function planeHuntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, patches, density, cap, runs, tweaks, all } = e.data;
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks, all } = e.data;
     const around = new Int32Array(K + 1);
     // one generation; in colours, the births of each into born, and whether two colours touch
     const step = (a, b, gen, born) => {
@@ -5732,15 +5732,18 @@ function planeHuntWorker() {
       for (let t = 0; t < n; t++) { h1 = Math.imul(h1 ^ s[t], 0x01000193); h2 = Math.imul(h2 ^ (s[t] + t), 0x5bd1e995); }
       return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
     };
-    // the cells a start may use, with their colour
-    const cells = patches.flatMap((patch, k) => Array.from(patch, (t) => [t, k + 1]));
+    // the cells a start chooses, with their colour; then, with a symmetry, the copies of these (cell, the
+    // cell copied, the copy's colour: the colour of its part)
+    const cells = Array.from({ length: flat.length / 2 }, (_, i) => [flat[2 * i], flat[2 * i + 1]]);
+    const copy = (s) => { for (let i = 0; i < copies.length; i += 3) s[copies[i]] = s[copies[i + 1]] ? (K > 1 ? copies[i + 2] : s[copies[i + 1]]) : 0; return s; };
     // a run: its lifetime T (the generation it starts repeating from, P later), its end state, and its score
     const run = (seed) => {
-      let a = Uint8Array.from(seed), b = new Uint8Array(n), contacts = 0, T = cap, P = 0, end = 0;
+      let a = Uint8Array.from(seed), b = new Uint8Array(n), T = cap, P = 0, end = 0;
       const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), seen = new Map([[fingerprint(a), 0]]);
+      const contacts = [0];  // the generations in contact up to each one (counted up to T)
       for (let g = 1; g <= cap; g++) {
         born.fill(0);
-        if (step(a, b, g, born)) contacts++;
+        contacts.push(contacts[g - 1] + step(a, b, g, born));
         for (let k = 1; k <= K; k++) spread[k] += g * born[k];
         [a, b] = [b, a];
         end = fingerprint(a);
@@ -5749,23 +5752,23 @@ function planeHuntWorker() {
       }
       if (K === 1) {
         let live = 0;
-        for (const [t] of cells) live += seed[t] > 0;
+        for (let t = 0; t < n; t++) live += seed[t] > 0;
         return { score: T - live / 1e6, T, P, end, live, extinct: !a.some((v) => v) };
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
-      return { score: contacts / (1 + cv), contacts, T, P, end, balance: 1 / (1 + cv) };
+      return { score: contacts[T] / (1 + cv), contacts: contacts[T], T, P, end, balance: 1 / (1 + cv) };
     };
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
     const randomSeed = () => {
       const s = new Uint8Array(n);
       for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));
-      return s;
+      return copy(s);
     };
     const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
       const s = new Uint8Array(n);
       for (const [t] of cells) { s[t] = k % C; k = Math.floor(k / C); }
-      return s;
+      return copy(s);
     };
     const top = [];  // the 5 best: { ...run, seed }
     const keep = (r, seed) => {
@@ -5791,6 +5794,7 @@ function planeHuntWorker() {
         const [t, k] = cells[Math.floor(Math.random() * cells.length)];
         seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C);
       }
+      copy(seed);
       report(2, i, tweaks, keep(run(seed), seed));
     }
     self.postMessage({ type: 'done' });
@@ -5799,29 +5803,38 @@ function planeHuntWorker() {
 const planeHunt = { worker: null, zone: 'all', top: [], status: '' };
 const PLANE_ZONES = { all: ['zoneAll', 'Whole'], radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'] };
 const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
-// the zone's patches, one a colour (its part of the grid: the whole of it, or a radius round its
-// middle), how dense its random starts are, and how many starts there are when few enough to try all
+// The zone: a patch a colour (its part of the grid, the whole of it or a radius round its middle).
+// With a symmetry it defines the start: the zone and all its copies, of which only the first of each
+// cell's copies is chosen, the others copied from it (in colours, a copy takes its part's colour).
+// Returns the cells chosen [cell, colour], the copies [cell, cell copied, colour], the cells of a
+// colour, how dense the random starts are, and how many starts when few enough to try them all.
 function planeHuntPlan() {
-  const { W, row } = walk.plane, { colours: K, C } = walk.life, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
-  if (planeHunt.zone === 'all') {
-    const patches = Array.from({ length: K }, () => []);
-    for (let t = 0; t < row * W; t++) { const x = t % row, y = (t - x) / row; patches[Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row)].push(t); }
-    return { patches, density: plane.density / 100, all: 0 };
+  const { kind, W, row } = walk.plane, { colours: K, C } = walk.life, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
+  const part = (t) => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row) + 1; };
+  const r = Number(planeHunt.zone.slice(6)), zone = new Set();
+  if (!r) for (let t = 0; t < row * W; t++) zone.add(t);
+  else for (let i = 0; i < K; i++) for (const t of lifePatch(r, Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols))) zone.add(t);
+  for (const t of [...zone]) for (const c of cellCopies(kind, W, t)) zone.add(c);
+  const cells = [], copies = [];
+  for (const t of zone) {
+    const first = Math.min(...cellCopies(kind, W, t));
+    if (first === t) cells.push([t, part(t)]); else copies.push([t, first, part(t)]);
   }
-  const r = Number(planeHunt.zone.slice(6));
-  const patches = Array.from({ length: K }, (_, i) => lifePatch(r, Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
-  const count = K === 1 ? C ** patches[0].length : Infinity;
-  return { patches, density: 0.5, all: count <= 20000 ? count : 0 };
+  const count = K === 1 && r ? C ** cells.length : Infinity;
+  return { cells, copies, perColour: Math.round(zone.size / K), density: r ? 0.5 : plane.density / 100, all: count <= 20000 ? count : 0 };
 }
+// the start again, after its symmetry, density or seed changed: in Hunt, a new start in the zone (the
+// starts found were of another kind), else the start chosen
+const reseedStart = () => (planeHuntOn() ? pickPlaneZone(planeHunt.zone) : planeReseed());
 const planeHuntOn = () => !!walk.plane && plane.start === 'random' && COLOUR_STEPS.includes(walk.life?.colours);
 function renderPlaneHunt() {
   $('planeHuntRow').hidden = !planeHuntOn();
   if ($('planeHuntRow').hidden) return;
-  const K = walk.life.colours, { patches, all } = planeHuntPlan(), busy = !!planeHunt.worker;
+  const K = walk.life.colours, { cells, perColour, all } = planeHuntPlan(), busy = !!planeHunt.worker, sym = symmetryOf(walk.plane.kind);
   $('planeHuntTitle').textContent = K === 1 ? 'Hunt · the longest life' : `Hunt · a battle in ${PLANE_PARTS[K]}`;
   for (const b of $('planeZones').children) { b.classList.toggle('active', b.dataset.zone === planeHunt.zone); b.disabled = busy; }
-  $('planeZoneCells').textContent = K === 1 ? `${fmt(patches[0].length)} cells${all ? ` · all ${fmt(all)} starts tried` : ''}`
-    : `${fmt(patches[0].length)} cells a colour`;
+  $('planeZoneCells').textContent = `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`
+    + (all ? ` · all ${fmt(all)} starts tried` : '');
   $('planeHuntBtn').innerHTML = busy ? `${icon('pause')} Stop` : `${icon('search')} Hunt`;
   $('planeHuntStatus').textContent = planeHunt.status;
   $('planeHuntTop').replaceChildren(...planeHunt.top.map((r, i) => {
@@ -5845,16 +5858,17 @@ function pickPlaneZone(zone) {
   planeHunt.zone = zone;
   planeHunt.top = [];
   planeHunt.status = '';
-  const L = walk.life, { patches, density } = planeHuntPlan();
-  if (zone === 'all' && L.colours === 1) { planeReseed(); return; }
+  const L = walk.life, { cells, copies, density } = planeHuntPlan();
+  if (zone === 'all' && L.colours === 1) { planeReseed(); renderPlaneHunt(); return; }
   const seed = new Uint8Array(L.seed.length);
-  patches.forEach((patch, k) => { for (const t of patch) if (Math.random() < density) seed[t] = L.colours > 1 ? k + 1 : 1; });
+  for (const [t, k] of cells) if (Math.random() < density) seed[t] = k;
+  for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
   setLifeSeed(seed, { zone });
   renderPlaneHunt();
 }
 function huntPlane() {
   if (planeHunt.worker) { stopPlaneHunt(); return; }
-  const L = walk.life, { patches, density, all } = planeHuntPlan(), K = L.colours;
+  const L = walk.life, { cells, copies, density, all } = planeHuntPlan(), K = L.colours;
   planeHunt.top = [];
   planeHunt.worker = new Worker(URL.createObjectURL(new Blob([`(${planeHuntWorker.toString()})()`], { type: 'text/javascript' })));
   planeHunt.worker.onmessage = (e) => {
@@ -5865,7 +5879,7 @@ function huntPlane() {
     renderPlaneHunt();
   };
   planeHunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
-                                 patches: patches.map((p) => Int32Array.from(p)), density, all,
+                                 cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all,
                                  cap: K === 1 ? 50000 : 4000, runs: K === 1 ? HUNT_STARTS : 200, tweaks: K === 1 ? HUNT_TWEAKS : 400 });
   planeHunt.status = 'Starting…';
   renderPlaneHunt();
@@ -8497,8 +8511,8 @@ for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; cleared = null; compute(true); });
 }
 $('soupDensity').addEventListener('input', () => { $('soupDensityLabel').textContent = `${$('soupDensity').value} %`; });
-$('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); planeReseed(); });
-$('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); planeReseed(); });
+$('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); reseedStart(); });
+$('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); reseedStart(); });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...Object.entries(LIFE_PATTERNS).map(([id, [name, , what, art]]) => {
