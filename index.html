@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261020j">
+  <link rel="stylesheet" href="style.css?v=20261020k">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -29,6 +29,24 @@
         <div id="navSpace" class="choice-row" title="Where it goes: on the plane, in space, or on a surface"></div>
         <div id="navShapes" class="nav-shapes" title="The shape of its cells"></div>
         <div id="torusTiles" class="choice-row" hidden title="The tiles of the surface" role="tablist"></div>  <!-- under the shapes, when Torus, Möbius strip or Sphere is picked -->
+        <div id="sizeRow" hidden>  <!-- a surface's size, under its tiles -->
+          <div class="stepper">
+            <button id="sizeDown" title="Smaller surface">−</button>
+            <span id="sizeLabel"></span>
+            <button id="sizeUp" title="Bigger surface">+</button>
+          </div>
+          <select id="sphereF" hidden></select>
+        </div>
+        <div id="planeRow" hidden>  <!-- Life on the plane: the grid's size, and whether it wraps around -->
+          <div class="stepper">
+            <button id="planeDown" title="Smaller grid">−</button>
+            <span id="planeLabel"></span>
+            <button id="planeUp" title="Bigger grid">+</button>
+          </div>
+          <div id="planeEdges" class="choice-row two-tiles">  <!-- the grid's edges: glued (a torus), or walls -->
+            <button id="edgeTorus" type="button" title="The grid's edges glued, left to right and top to bottom: what leaves on one side comes back on the other"><span class="walk-on-name">Torus <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="mode-detail">wraps around</span></button><button id="edgeWalls" type="button" title="The cells past the edges always dead"><span class="walk-on-name">Walls <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="mode-detail">dead edges</span></button>
+          </div>
+        </div>
         <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
         <div id="antRow" hidden>  <!-- Langton's ant: by colour or by the digits, each with its rule -->
           <div class="choice-row"><button id="antColours" type="button">Colours</button><button id="antDigits" type="button">Digits</button></div>
@@ -139,23 +157,7 @@
             </optgroup>
           </select>
         </label>
-        <div id="planeRow" hidden>  <!-- Life on the plane: the grid's size, and whether it wraps around -->
-          <div class="stepper">
-            <button id="planeDown" title="Smaller grid">−</button>
-            <span id="planeLabel"></span>
-            <button id="planeUp" title="Bigger grid">+</button>
-          </div>
-          <div id="planeEdges" class="choice-row two-tiles">  <!-- the grid's edges: glued (a torus), or walls -->
-            <button id="edgeTorus" type="button" title="The grid's edges glued, left to right and top to bottom: what leaves on one side comes back on the other"><span class="walk-on-name">Torus <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="mode-detail">wraps around</span></button><button id="edgeWalls" type="button" title="The cells past the edges always dead"><span class="walk-on-name">Walls <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg></span><span class="mode-detail">dead edges</span></button>
-          </div>
-        </div>
         <div id="sphereRow" hidden>
-          <div class="stepper">
-            <button id="sizeDown" title="Smaller surface">−</button>
-            <span id="sizeLabel"></span>
-            <button id="sizeUp" title="Bigger surface">+</button>
-          </div>
-          <select id="sphereF" hidden></select>
           <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover to see them all" hidden>
             <button id="startDown" title="Previous start">−</button>
             <span class="field"><input id="startLabel" type="text" inputmode="numeric" maxlength="7" spellcheck="false" autocomplete="off" title="Type a start number, then Enter"><button class="enter" type="button" tabindex="-1" title="Start here (Enter)">↵</button></span>
@@ -392,6 +394,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261020j"></script>
+  <script src="main.js?v=20261020k"></script>
 </body>
 </html>

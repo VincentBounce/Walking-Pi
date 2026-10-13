@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.510';
+const VERSION = '0.1.511';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2225,7 +2225,7 @@ function compute(keepDigits = false) {
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
-  $('sphereRow').hidden = mode.lattice !== 'sphere';
+  $('sphereRow').hidden = $('sizeRow').hidden = mode.lattice !== 'sphere';  // the size under the tiles; a walk's starts and loops further down
   syncSizeStepper();
   updateRuleText();
   if (worker) { worker.terminate(); worker = null; setBusy(false); }
