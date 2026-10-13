@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.490';
+const VERSION = '0.1.491';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -592,7 +592,7 @@ function formulaWorker() {
       const s = digitString(v / G, base).padStart(n + 1, '0');
       const intPart = s.slice(0, s.length - n);
       const digits = new Uint8Array(n);
-      for (let i = 0; i < n; i++) digits[i] = s.charCodeAt(intPart.length + i) - 48;
+      for (let i = 0; i < n; i++) { const c = s.charCodeAt(intPart.length + i); digits[i] = base < 64 && c >= 97 ? c - 87 : c - 48; }  // past base 10: a, b, c…
       // the first guard digits all 0 or all b − 1: the value is extremely close to a round number,
       // and the last digits kept could be off by one
       const top = (v % G) / B ** BigInt(guard - 12);
@@ -1903,7 +1903,7 @@ function sieve(limit) {
 function setCurrent(entry, base, kind, ratio = null) {
   const t = entry.intPart.replace(/^0+/, '');   // integer part without leading zeros
   const head = new Uint8Array(t.length);
-  for (let i = 0; i < t.length; i++) head[i] = t.charCodeAt(i) - 48;
+  for (let i = 0; i < t.length; i++) { const c = t.charCodeAt(i); head[i] = base < 64 && c >= 97 ? c - 87 : c - 48; }  // past base 10: a, b, c…
   // total: how many digits the whole number has (a whole number's are only sent up to the count used)
   current = { head, digits: entry.digits, base, total: entry.total ?? head.length + entry.digits.length, mode: $('mode').value,
               whole: entry.total !== undefined, formula: formulaInUse,  // whole: a whole number, its digits all known
@@ -4623,7 +4623,7 @@ function hexClass(mask) {
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 function parseRule(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d))?H?$/);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[OMP]/.test(m[1]) || /^[OMP]/.test(m[2])) return null;
   // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration),
   // apart from the states C (alive, the dying stages, dead). A cell: 0 dead, k alive of colour k (1 … K),
@@ -4658,8 +4658,8 @@ function countSeed(L) {
   L.seedBlue = L.seedByColour[2] ?? 0;
 }
 // the civilisations' colours (1, 2… : red, blue, gold, green, violet, orange) and their names
-const LIFE_COLOURS = [LIFE_RED, LIFE_BLUE, '#f2b630', '#3fb950', '#a371f7', '#ffa657'];
-const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange'];
+const LIFE_COLOURS = [LIFE_RED, LIFE_BLUE, '#f2b630', '#3fb950', '#a371f7', '#ffa657', '#22b8cf', '#e64980', '#9bd02f', '#a5713d', '#3b4cc0', '#7d8a2e'];
+const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange', 'cyan', 'pink', 'lime', 'brown', 'navy', 'olive'];
 // in colours, the colour of each state from 1: alive in its colour, then fainter at each dying stage
 const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ length: K * (C - 2) }, (_, i) => faded(LIFE_COLOURS[i % K], 1 - (Math.floor(i / K) + 1) / (C - 1)))];
 
@@ -4701,6 +4701,7 @@ function buildLife(seq, mode) {
   updateHint();
   restart();
   if (walk.shape) applyShape();
+  renderColours();  // the blocks a figure fits, now that it is built
   autoplay();
 }
 
@@ -4933,6 +4934,7 @@ function buildLifePlane(seq) {
   planeHunt.top = [];  // a new grid, rule or colours: the starts found were another game's
   planeHunt.status = '';
   stopPlaneHunt();
+  renderColours();  // the blocks a figure fits, now that it is built
   autoplay();
 }
 // the grid's frame: the corners of its four corner cells
@@ -5243,7 +5245,7 @@ const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡'
 // ("/Immigration", "/Colours4"), which old links may still carry
 let lifeColours = 1;
 const ruleColours = () => lifeColours;
-const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d)$/i, '');  // births, survivals (and dying stages), no colours
+const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d+)$/i, '');  // births, survivals (and dying stages), no colours
 const lifeRuleNow = () => {
   const body = ruleBody($('lifeRule').value);
   return parseRule(lifeColours === 1 ? body : `${body}${lifeColours === 2 ? '/Immigration' : `/Colours${lifeColours}`}`);
@@ -5253,13 +5255,43 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   const preset = [...$('lifePreset').options].find((o) => o.value === rule);
   $('lifePreset').value = preset ? rule : 'custom';
 }
-const COLOUR_STEPS = [1, 2, 4, 6];  // the colours' stepper: one, or 2, 4, 6 civilisations (an even fight)
+// The colours, as blocks: one (black), or 2, 3, 4, 6, 8, 12 civilisations, each block its colours in
+// a cols × rows grid; a block greyed when the figure has no fair spots for that many (see coloursFit)
+const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
+const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 12: [4, 3] };
+// Fair spots for k colours, that the figure's symmetries swap: a solid's faces, corners or edges'
+// middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
+// edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
+// its halves or quarters
+const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
+                        icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
+function coloursFit(k) {
+  const mode = MODES[$('mode').value], [a, b] = COLOUR_GRID[k];
+  if (k === 1) return true;
+  if (mode.plane) {
+    if (!plane.torus) return k === 2 || k === 4;
+    const W = plane.side, even = mode.plane === 'cairo' ? 2 : 1;  // Cairo: blocks of whole tiles (2 squares)
+    return W % (a * even) === 0 && W % (b * even) === 0;
+  }
+  if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
+  const g = walk.geo;  // a torus of the surfaces
+  return !!g?.nu && ((g.nu % a === 0 && g.nv % b === 0) || (g.nu % b === 0 && g.nv % a === 0));
+}
+const colourBlock = (k) => {
+  const [cols, rows] = COLOUR_GRID[k], cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
+  return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
+};
 function renderColours() {
-  const k = lifeColours;
-  $('coloursLabel').innerHTML = (k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k))  // filled from the left
-    .map((c, i) => `<i style="background:${c}" title="${k === 1 ? 'alive' : LIFE_COLOUR_NAMES[i]}"></i>`).join('');
-  $('coloursDown').disabled = k === 1;
-  $('coloursUp').disabled = k >= COLOUR_STEPS.at(-1);
+  $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = colourBlock(k);
+    b.title = k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`;
+    b.classList.toggle('active', k === lifeColours);
+    b.disabled = !coloursFit(k);
+    b.addEventListener('click', () => { lifeColours = k; compute(); });
+    return b;
+  }));
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
@@ -5345,7 +5377,7 @@ function lifeReset() {
   L.bornBy = new Int32Array(L.colours + 1);
   L.deadBy = new Int32Array(L.colours + 1);
   L.everBy = L.seedByColour.slice();
-  L.everMask = Uint8Array.from(L.seed, (v) => (L.colours > 1 && v ? 1 << v : 0));
+  L.everMask = Uint16Array.from(L.seed, (v) => (L.colours > 1 && v ? 1 << v : 0));  // up to 12 colours
   // lifetime: fingerprint of every generation's state; the first repeat gives the loop
   L.seen = new Map([[lifeFingerprint(L.alive), 0]]);
   L.stable = null;  // { T: first generation of the loop, P: its period, extinct }
@@ -5912,7 +5944,7 @@ const huntId = (r) => `${r.T}|${r.end}`;
 const PLANE_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
                       radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'] };
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
+const PLANE_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
 // The zone: a patch a colour, the whole of its part of the grid (half, quarter, sixth), or a radius,
 // the colours' patches side by side round the middle.
 // With a symmetry it defines the start: the zone and all its copies, of which only the first of each
@@ -5921,7 +5953,7 @@ const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
 // Returns the cells chosen [cell, colour], the copies [cell, cell copied, colour], the cells of a
 // colour, how dense the random starts are, and how many starts when few enough to try them all.
 function planeHuntPlan() {
-  const { kind, W, row } = walk.plane, { colours: K, C } = walk.life, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
+  const { kind, W, row } = walk.plane, { colours: K, C } = walk.life, [cols, rows] = COLOUR_GRID[K];
   const r = zoneRadius(planeHunt.zone), zone = new Set(), mine = new Map();  // mine: a patch's cells, its colour
   const part = (t) => mine.get(t) ?? (() => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row) + 1; })();
   if (!r) for (let t = 0; t < row * W; t++) zone.add(t);
@@ -5947,7 +5979,7 @@ function renderPlaneHunt() {
   if ($('planeHuntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = planeHuntPlan(), busy = !!planeHunt.worker, sym = symmetryOf(walk.plane.kind);
   $('planeHuntTitle').textContent = K === 1 ? 'Hunt · the longest life' : `Hunt · a battle in ${PLANE_PARTS[K]}`;
-  const { W } = walk.plane, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
+  const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K];
   for (const b of $('planeZones').children) {  // a radius whose patches do not fit the grid: greyed
     const side = 2 * zoneRadius(b.dataset.zone) + 1;
     b.classList.toggle('active', b.dataset.zone === planeHunt.zone);
@@ -8259,6 +8291,7 @@ function updateStats() {
     const row = (c, alive, born, died, ever) => [bubble(c, icon('aliveDot'), 'Alive', pc(alive)), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
     $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, L.aliveCount, L.born, L.dead, L.everAlive)
+      : L.colours > 6 ? LIFE_COLOURS.slice(0, L.colours).map((c, k) => bubble(c, icon('aliveDot'), LIFE_COLOUR_NAMES[k], pc(L.byColour[k + 1]))).join('')  // many: the live cells only
       : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
@@ -8672,12 +8705,6 @@ $('planeZones').replaceChildren(...Object.entries(PLANE_ZONES).map(([zone, [pic,
   b.addEventListener('click', () => pickPlaneZone(zone));
   return b;
 }));
-for (const [id, k] of [['coloursDown', -1], ['coloursUp', 1]]) {
-  $(id).addEventListener('click', () => {
-    lifeColours = k > 0 ? COLOUR_STEPS.find((v) => v > lifeColours) ?? lifeColours : COLOUR_STEPS.findLast((v) => v < lifeColours) ?? lifeColours;
-    compute();
-  });
-}
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;

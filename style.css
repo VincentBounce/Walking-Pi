@@ -292,6 +292,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .draw-row button { width: auto; padding: 4px 12px; }
 .start-panel { margin: 0 0 10px; }
 .zone-cells { margin: -4px 0 8px; font-size: 12px; }  /* the hunt's zone: its cells */
+.colour-blocks { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }  /* 1 to 12 colours, square blocks */
+.colour-blocks button { aspect-ratio: 1; padding: 4px; line-height: 0; background: var(--panel); }
+.colour-blocks button svg { width: 100%; height: 100%; border-radius: 3px; }
+.colour-blocks button.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.colour-blocks button:disabled { opacity: 0.3; }
 .colour-swatches { display: flex; gap: 6px; justify-content: flex-start; align-items: center; padding-left: 4px; }  /* Life's colours: a square each, from the left */
 /* the Rule section: cards with a pixel picture, then chips of neighbour counts */
 .rule-cards { margin-bottom: 10px; }
