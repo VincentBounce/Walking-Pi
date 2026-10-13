@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.512';
+const VERSION = '0.1.513';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1113,7 +1113,7 @@ function describe(base, available) {
     : plane.start === 'digits' ? `${number} ${seeded} of ${mode.where}` : `A random soup, ${plane.density} % alive (seed ${plane.seed}), on ${mode.where}`;
   // the title: the rule (its name, or the rule itself), not the number that may have seeded it
   const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
-  $('barBase').textContent = `Rule ${walk.life.ruleText}`;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
+  $('barBase').textContent = walk.life.ruleText;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
   $('barBase').title = known ? known.dataset.name : '';
   $('barBase').parentElement.classList.add('life');
   $('description').innerHTML = `${walk.life.colours > 1 ? 'A newborn takes the colour of most of its neighbours · ' : ''}Neighbours share an edge or a corner · ${lead}`;
@@ -8197,9 +8197,8 @@ const STAT_LABELS = {
 // Short enough for one line of the stats: "gen 898, period-2 loop"
 function lifetimeText(L) {
   const s = L.stable;
-  if (!s) return L.seen.size >= LIFE_TRACK ? `not settled after ${fmt(LIFE_TRACK)} gen` : 'not settled yet';
-  const what = s.extinct ? 'dies out' : s.P === 1 ? 'frozen' : `period-${fmt(s.P)} loop`;
-  return `gen ${fmt(s.T)}, ${what}`;
+  if (!s) return L.seen.size >= LIFE_TRACK ? `not settled · ${fmt(LIFE_TRACK)}` : 'not settled yet';
+  return s.extinct ? `dies at ${fmt(s.T)}` : s.P === 1 ? `still from ${fmt(s.T)}` : `period ${fmt(s.P)} from ${fmt(s.T)}`;  // short: the title's middle
 }
 
 function updateStats() {

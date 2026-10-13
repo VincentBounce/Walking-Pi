@@ -402,7 +402,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .life-chips .rule-chip b .icon { width: 13px; height: 13px; stroke: var(--on); stroke-width: 2; vertical-align: 0; }  /* white on the bubble's colour (one colour: the dead cells' on the live ones') */
 .life-chips .rule-chip b .icon .f { fill: var(--on); }
 .life-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }  /* a row a colour: alive, born, died, ever alive */
-.bar-title.life { display: grid; grid-template-columns: 1fr auto 1fr; }  /* Life: the lifetime in the middle, still as the generation grows */
+.bar-title.life { display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); }  /* Life: the lifetime in the middle, still as the generation grows; the generation and the rule never cut, the lifetime shortened first */
 .bar-title.life .bar-num { max-width: none; }
 .bar-title.life #barBase { justify-self: end; }  /* Life: its rule on the right of the title */
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
