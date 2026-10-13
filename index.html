@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walking Pi</title>
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261019f">
+  <link rel="stylesheet" href="style.css?v=20261019g">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -223,9 +223,6 @@
         <h2>Start</h2>
         <div id="lifeStartRow" hidden>  <!-- Life on the plane: how the cells start -->
           <div id="lifeStartTabs" class="choice-row"><button type="button" data-start="random">Hunt</button><button type="button" data-start="draw">Draw</button><button type="button" data-start="digits">Digits</button></div>
-          <div id="startSoup" class="start-panel">  <!-- Random: how many live, from which seed -->
-            <div class="row soup-row"><input id="soupDensity" type="range" min="5" max="60" step="1" value="30" aria-label="Density"><span id="soupDensityLabel"></span><button id="soupDice" type="button" data-icon="dice" title="Another random soup" aria-label="Another random soup"></button></div>
-          </div>
           <div id="startDraw" class="start-panel">  <!-- Draw: a brush (a cell, or a pattern turned as chosen), in a colour or the eraser -->
             <div id="brushCards" class="mode-list rule-cards" role="listbox"></div>
             <div class="draw-row turn-row"><button id="brushTurn" type="button" title="A quarter turn more">↻ 0°</button><button id="brushFlip" type="button" title="Mirrored">⇋ Mirror</button></div>
@@ -355,6 +352,7 @@
           <div id="viewSection">  <!-- with Grid and Auto-rotate (Auto-fit): the view, then its form -->
             <label class="check open-only" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click)"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
             <label class="check open-only" id="autoRotateRow" hidden title="Turn the view slowly, swaying up and down so that the top and the bottom show too; it starts Auto-fit, and a hand rotation stops it"><input id="autoRotate" type="checkbox"> Auto-rotate</label>  <!-- the other of Auto-fit and Auto-rotate -->
+            <label class="check" id="autoPlayRow" hidden title="Life: play as soon as anything is changed (not while drawing)"><input id="autoPlay" type="checkbox" checked> Autoplay</label>
             <label class="check" id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole; elsewhere, the camera as it starts (turning the view unchecks it)"><input id="centered" type="checkbox" checked> <span id="centeredName">Centered pattern</span></label>
             <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
             <div id="shapeRow" hidden>
@@ -406,6 +404,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261019f"></script>
+  <script src="main.js?v=20261019g"></script>
 </body>
 </html>

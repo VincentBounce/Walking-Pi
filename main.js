@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.485';
+const VERSION = '0.1.486';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1453,6 +1453,7 @@ const ICONS = (() => {
     zone1: dots([[12, 12]], 2.5),
     zone2: dots([[12, 12]], 4),
     zone3: dots([[12, 12]], 6),
+    zone4: dots([[12, 12]], 8),
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
@@ -2217,6 +2218,7 @@ function compute(keepDigits = false) {
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
   $('colourSection').hidden = !mode.life;
+  $('autoPlayRow').hidden = !mode.life;
   $('huntRow').hidden = !!mode.plane || ruleColours() > 2;  // the surfaces' hunt (the plane has its own, see renderPlaneHunt)
   renderColours();
   renderRuleSection();
@@ -4699,6 +4701,7 @@ function buildLife(seq, mode) {
   updateHint();
   restart();
   if (walk.shape) applyShape();
+  autoplay();
 }
 
 /* Life on the plane: a grid of squares, of hexagons or of triangles (a rhombus of them, as on paper),
@@ -4930,6 +4933,7 @@ function buildLifePlane(seq) {
   planeHunt.top = [];  // a new grid, rule or colours: the starts found were another game's
   planeHunt.status = '';
   stopPlaneHunt();
+  autoplay();
 }
 // the grid's frame: the corners of its four corner cells
 function planeBounds() {
@@ -4948,6 +4952,7 @@ function planeReseed() {
   describe(walk.base, Infinity);
   renderPlaneRow();
   restart();
+  autoplay();
   syncLink();
 }
 const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons' };
@@ -4957,7 +4962,7 @@ function planeLead(number) {
   const sym = SYMMETRIES[symmetryOf(kind)][2];
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
   if (lifeStart?.zone) {  // a zone of the hunt, a random start in it
-    const K = walk.life.colours, r = lifeStart.zone.slice(6);
+    const K = walk.life.colours, r = zoneRadius(lifeStart.zone);
     return `${K === 1 ? `Random cells within radius ${r} of the middle` : r ? `Each colour random cells within radius ${r}, side by side round the middle (${PLANE_PARTS[K]})`
       : `Each colour a soup of its part (${PLANE_PARTS[K]}), ${plane.density} % alive`}${sym ? `, ${sym},` : ''} of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   }
@@ -4974,6 +4979,7 @@ function planeFromSetup(s) {
   if (kind === 'random' || SYMMETRIES[kind]) {
     plane.start = 'random';
     plane.density = Math.min(60, Math.max(5, Number(a) || 30));
+    planeHunt.zone = `d${plane.density}`;  // its tile, when one of them
     plane.seed = Number(b) || 1;
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -4996,7 +5002,6 @@ function renderPlaneRow() {
   for (const b of $('lifeStartTabs').children) {
     b.classList.toggle('active', b.dataset.start === plane.start);
   }
-  $('startSoup').hidden = plane.start !== 'random';
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -5041,8 +5046,6 @@ function renderPlaneRow() {
   $('brushTurn').textContent = `↻ ${(brush.turn * 360) / PATTERN_TURNS[kind]}°`;
   $('brushTurn').disabled = $('brushFlip').disabled = brush.id === 'cell';
   $('brushFlip').classList.toggle('active', brush.flip);
-  $('soupDensity').value = plane.density;
-  $('soupDensityLabel').textContent = `${plane.density} %`;
 }
 // Behind the grid (grid layer, at each view): the sky or the page outside it, the page inside it, and,
 // zoomed in enough, its cells' outlines; dead edges, its border
@@ -5902,9 +5905,12 @@ function planeHuntWorker() {
     self.postMessage({ type: 'done' });
   };
 }
-const planeHunt = { worker: null, zone: 'all', top: [], status: '', picked: null };  // picked: the result played (its T and end)
+const planeHunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
-const PLANE_ZONES = { all: ['zoneAll', 'Whole'], radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'] };
+// the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
+const PLANE_ZONES = { d10: ['zoneAll', 'Whole 10 %'], d20: ['zoneAll', 'Whole 20 %'], d30: ['zoneAll', 'Whole 30 %'], d50: ['zoneAll', 'Whole 50 %'],
+                      radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'] };
+const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
 // The zone: a patch a colour, the whole of its part of the grid (half, quarter, sixth), or a radius,
 // the colours' patches side by side round the middle.
@@ -5915,7 +5921,7 @@ const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
 // colour, how dense the random starts are, and how many starts when few enough to try them all.
 function planeHuntPlan() {
   const { kind, W, row } = walk.plane, { colours: K, C } = walk.life, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
-  const r = Number(planeHunt.zone.slice(6)), zone = new Set(), mine = new Map();  // mine: a patch's cells, its colour
+  const r = zoneRadius(planeHunt.zone), zone = new Set(), mine = new Map();  // mine: a patch's cells, its colour
   const part = (t) => mine.get(t) ?? (() => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row) + 1; })();
   if (!r) for (let t = 0; t < row * W; t++) zone.add(t);
   else for (let i = 0; i < K; i++) {  // side by side round the middle, touching, so that they meet
@@ -5929,10 +5935,10 @@ function planeHuntPlan() {
     if (first === t) cells.push([t, part(t)]); else copies.push([t, first, part(t)]);
   }
   const count = K === 1 && r ? C ** cells.length : Infinity;
-  return { cells, copies, perColour: Math.round(zone.size / K), density: r ? 0.5 : plane.density / 100, all: count <= 20000 ? count : 0 };
+  return { cells, copies, perColour: Math.round(zone.size / K), density: r ? 0.5 : Number(planeHunt.zone.slice(1)) / 100, all: count <= 20000 ? count : 0 };
 }
-// the start again, after its symmetry, density or seed changed: in Hunt, a new start in the zone (the
-// starts found were of another kind), else the start chosen
+// the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
+// another kind), else the start chosen
 const reseedStart = () => (planeHuntOn() ? pickPlaneZone(planeHunt.zone) : planeReseed());
 const planeHuntOn = () => !!walk.plane && plane.start === 'random' && COLOUR_STEPS.includes(walk.life?.colours);
 function renderPlaneHunt() {
@@ -5940,7 +5946,12 @@ function renderPlaneHunt() {
   if ($('planeHuntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = planeHuntPlan(), busy = !!planeHunt.worker, sym = symmetryOf(walk.plane.kind);
   $('planeHuntTitle').textContent = K === 1 ? 'Hunt · the longest life' : `Hunt · a battle in ${PLANE_PARTS[K]}`;
-  for (const b of $('planeZones').children) { b.classList.toggle('active', b.dataset.zone === planeHunt.zone); b.disabled = busy; }
+  const { W } = walk.plane, cols = K === 6 ? 3 : K === 1 ? 1 : 2, rows = K <= 2 ? 1 : 2;
+  for (const b of $('planeZones').children) {  // a radius whose patches do not fit the grid: greyed
+    const side = 2 * zoneRadius(b.dataset.zone) + 1;
+    b.classList.toggle('active', b.dataset.zone === planeHunt.zone);
+    b.disabled = busy || (side > 1 && (cols * side > W || rows * side > W));
+  }
   $('planeZoneCells').textContent = `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`
     + (all ? ` · all ${fmt(all)} starts tried` : '');
   $('planeHuntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt`;
@@ -5974,7 +5985,11 @@ function pickPlaneZone(zone) {
   planeHunt.top = [];
   planeHunt.status = '';
   const L = walk.life, { cells, copies, density } = planeHuntPlan();
-  if (zone === 'all' && L.colours === 1) { planeReseed(); renderPlaneHunt(); return; }
+  if (!zoneRadius(zone)) {  // the whole grid: a new soup each time, as dense as said
+    plane.density = Number(zone.slice(1));
+    plane.seed = 1 + Math.floor(Math.random() * 999999999);
+    if (L.colours === 1) { planeReseed(); renderPlaneHunt(); return; }
+  }
   const seed = new Uint8Array(L.seed.length);
   for (const [t, k] of cells) if (Math.random() < density) seed[t] = k;
   for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
@@ -6064,6 +6079,7 @@ function setLifeSeed(seed, how) {
   lifeStart = how;
   describe(walk.base, Infinity);
   restart();
+  autoplay();
   syncLink();
 }
 
@@ -6421,6 +6437,8 @@ function fitWhole() {
   fitToBounds(padBounds(bounds));
 }
 
+// Life: a run plays as soon as it is set up (Autoplay, on at first), unless cells are being drawn
+const autoplay = () => { if (walk.life && !drawing && $('autoPlay').checked) play(true); };
 function restart() {
   faced = false;
   cur = 0;
@@ -8630,9 +8648,6 @@ for (const [id, torus, pic] of [['edgeTorus', true, 'torus'], ['edgeWalls', fals
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; cleared = null; compute(true); });
 }
-$('soupDensity').addEventListener('input', () => { $('soupDensityLabel').textContent = `${$('soupDensity').value} %`; });
-$('soupDensity').addEventListener('change', () => { plane.density = Number($('soupDensity').value); reseedStart(); });
-$('soupDice').addEventListener('click', () => { plane.seed = 1 + Math.floor(Math.random() * 999999999); reseedStart(); });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {
