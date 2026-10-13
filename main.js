@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.499';
+const VERSION = '0.1.500';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5628,8 +5628,8 @@ function huntWorker() {
     const keep = (r, seed) => {
       if (top.length === 5 && r.score <= top[4].score) return false;
       // the same run: ending alike at the same T; one colour, as long with the same period (a turned copy,
-      // or cells that change nothing), the fewer cells kept
-      const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end));
+      // or cells that change nothing), the fewer cells kept; colours, as long in contact as evenly (turned)
+      const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-9)));
       if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
       if (same >= 0) top.splice(same, 1);
       top.push({ ...r, seed, pick: seed.pick });
@@ -5785,13 +5785,18 @@ function renderHunt() {
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'Random starts, then tweaks of the best: the 5 best kept, a click plays one';
   $('huntStatus').textContent = hunt.status;
-  $('huntTop').replaceChildren(...hunt.top.map((r, i) => {
+  // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided),
+  // a life by its length against the best one's (green 80 % and up, orange from 50 %)
+  const light = (r) => { const q = K === 1 ? r.T / Math.max(...hunt.top.map((x) => x.T)) : r.balance, [hi, lo] = K === 1 ? [0.8, 0.5] : [0.6, 0.3];
+    return q >= hi ? ['#30a46c', 'even'] : q >= lo ? ['#f0a020', 'uneven'] : ['#e5484d', K === 1 ? 'much shorter' : 'one-sided']; };
+  $('huntTop').replaceChildren(...hunt.top.map((r) => {
     const b = document.createElement('button');
     b.type = 'button';
     const [name, detail] = K === 1
       ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
       : [`${fmt(r.contacts)} generations in contact`, `${r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'} · balance ${r.balance.toFixed(2)}`];
-    b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
+    const [colour, word] = light(r);
+    b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
     b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
     b.addEventListener('click', () => playHuntResult(r));
     return b;
