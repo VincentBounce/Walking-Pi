@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.500';
+const VERSION = '0.1.501';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5785,9 +5785,11 @@ function renderHunt() {
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'Random starts, then tweaks of the best: the 5 best kept, a click plays one';
   $('huntStatus').textContent = hunt.status;
-  // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided),
-  // a life by its length against the best one's (green 80 % and up, orange from 50 %)
-  const light = (r) => { const q = K === 1 ? r.T / Math.max(...hunt.top.map((x) => x.T)) : r.balance, [hi, lo] = K === 1 ? [0.8, 0.5] : [0.6, 0.3];
+  // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
+  // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
+  // and up, orange from 50 %)
+  const light = (r) => {
+    if (K > 1 && !r.contacts) return ['#8b949e', 'no contact']; const q = K === 1 ? r.T / Math.max(...hunt.top.map((x) => x.T)) : r.balance, [hi, lo] = K === 1 ? [0.8, 0.5] : [0.6, 0.3];
     return q >= hi ? ['#30a46c', 'even'] : q >= lo ? ['#f0a020', 'uneven'] : ['#e5484d', K === 1 ? 'much shorter' : 'one-sided']; };
   $('huntTop').replaceChildren(...hunt.top.map((r) => {
     const b = document.createElement('button');
