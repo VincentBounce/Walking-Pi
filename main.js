@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.492';
+const VERSION = '0.1.493';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2090,7 +2090,7 @@ function familyOf(w) {
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
-  $('digitsSection').hidden = (!!A && !antByDigits) || (!!MODES[w].plane && plane.start !== 'digits');  // an ant by colour, Life not by the digits: no digit read
+  $('digitsSection').hidden = (!!A && !antByDigits) || (!!MODES[w].life && plane.start !== 'digits');  // an ant by colour, Life not by the digits: no digit read
   $('populationRow').hidden = w !== 'antSquare';
   if (MODES[w].plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
   else if (w !== 'antSquare') drawing = false;  // drawing ends with the square ant
