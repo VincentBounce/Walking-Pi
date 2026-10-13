@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.484';
+const VERSION = '0.1.485';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1467,6 +1467,7 @@ const ICONS = (() => {
     // buttons
     play: pathEl('M7 4.5L19.5 12L7 19.5Z', 'f'),
     pause: '<rect class="f" x="6" y="5" width="4" height="14" rx="1"/><rect class="f" x="14" y="5" width="4" height="14" rx="1"/>',
+    stop: '<rect class="f" x="6" y="6" width="12" height="12" rx="1.5"/>',
     start: pathEl('M5.5 5V19') + pathEl('M19 5L9 12L19 19Z', 'f'),
     end: pathEl('M18.5 5V19') + pathEl('M5 5L15 12L5 19Z', 'f'),
     back: '<rect class="f" x="15.5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M13 5L4 12L13 19Z', 'f'),
@@ -5901,7 +5902,8 @@ function planeHuntWorker() {
     self.postMessage({ type: 'done' });
   };
 }
-const planeHunt = { worker: null, zone: 'all', top: [], status: '' };
+const planeHunt = { worker: null, zone: 'all', top: [], status: '', picked: null };  // picked: the result played (its T and end)
+const huntId = (r) => `${r.T}|${r.end}`;
 const PLANE_ZONES = { all: ['zoneAll', 'Whole'], radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'] };
 const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
 // The zone: a patch a colour, the whole of its part of the grid (half, quarter, sixth), or a radius,
@@ -5941,7 +5943,7 @@ function renderPlaneHunt() {
   for (const b of $('planeZones').children) { b.classList.toggle('active', b.dataset.zone === planeHunt.zone); b.disabled = busy; }
   $('planeZoneCells').textContent = `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`
     + (all ? ` · all ${fmt(all)} starts tried` : '');
-  $('planeHuntBtn').innerHTML = busy ? `${icon('pause')} Stop` : `${icon('search')} Hunt`;
+  $('planeHuntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt`;
   $('planeHuntStatus').textContent = planeHunt.status;
   $('planeHuntTop').replaceChildren(...planeHunt.top.map((r, i) => {
     const b = document.createElement('button');
@@ -5950,9 +5952,16 @@ function renderPlaneHunt() {
       ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
       : [`${fmt(r.contacts)} generations in contact`, `${r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'} · balance ${r.balance.toFixed(2)}`];
     b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
-    b.addEventListener('click', () => setLifeSeed(r.seed, K === 1 ? 'hunt' : 'battle'));
+    b.classList.toggle('active', huntId(r) === planeHunt.picked);  // the one played, wherever it is now
+    b.addEventListener('click', () => playHuntResult(r));
     return b;
   }));
+}
+// a result played: its start, kept picked (lit) until another one is
+function playHuntResult(r) {
+  planeHunt.picked = huntId(r);
+  setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
+  renderPlaneHunt();
 }
 function stopPlaneHunt() {
   planeHunt.worker?.terminate();
@@ -5973,7 +5982,12 @@ function pickPlaneZone(zone) {
   renderPlaneHunt();
 }
 function huntPlane() {
-  if (planeHunt.worker) { stopPlaneHunt(); return; }
+  if (planeHunt.worker) {  // Stop hunt and play: the one picked if still among the best, else the best
+    stopPlaneHunt();
+    const r = planeHunt.top.find((x) => huntId(x) === planeHunt.picked) ?? planeHunt.top[0];
+    if (r) { playHuntResult(r); play(true); }
+    return;
+  }
   const L = walk.life, { cells, copies, density, all } = planeHuntPlan(), K = L.colours;
   planeHunt.top = [];
   planeHunt.worker = new Worker(URL.createObjectURL(new Blob([`(${planeHuntWorker.toString()})()`], { type: 'text/javascript' })));
