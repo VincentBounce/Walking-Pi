@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.506';
+const VERSION = '0.1.507';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5872,11 +5872,16 @@ function huntClick() {
 /* ---- 9.1b Patterns ------------------------------------------------------------------------- */
 // The hunt's Patterns zone: at each colour's fair spot, one of the rule's patterns (Draw's), turned or
 // mirrored; the hunt mixes them, which pattern and which way for each colour. On the plane, the torus
-// of squares, and faces: the cube's squares, the tetrahedron's, the octahedron's and the icosahedron's
-// triangles (a face cut as the plane's triangles are, f × f, see flatPolyhedron), a pattern on a face.
+// of squares, and faces: the cube's squares, the triangles of the tetrahedron, the octahedron, the
+// icosahedron, the dodecahedron's pentagons and the stella's tips (each cut as the plane's triangles
+// are, f × f, see flatPolyhedron), a pattern on a face.
 const CUBE_FACES = [1, 2, 3, 4, 6];  // the cube: its colours on faces
 const TRI_FACES = { tetra: () => ({ 4: TETRA4.map((p) => p.map((v) => -v)) }), octa: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 }) };
 TRI_FACES.icosa = TRI_FACES.octa;  // the icosahedron's faces include the octahedron's directions
+// the dodecahedron: a pentagon's 5 triangles (cut from its middle, as the plane's), the pattern in its
+// first; the stella: a tip's 3 triangles, the pattern in the one most facing it
+TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 12: ICO() });
+TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   return !!walk.life && (!!m.plane || m.sphere === 'torus' || (m.sphere === 'cube' && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
@@ -5902,7 +5907,8 @@ function patternAt(i, K, cells) {
   }
   if (g.sides === 3) {  // a triangle face: its own rows and triangles, the pattern round its middle
     const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(TRI_FACES[sphere]()[K][i]);
-    const face = d ? g.faces.reduce((best, fc, k) => (dot3(fc.normal, d) > dot3(g.faces[best].normal, d) ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
+    const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
+    const face = d ? g.faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(g.faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
     const at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((w >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
     for (const [x, y, v] of cells) { const k = at.get(`${x + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + k, v]); }
     return out;
