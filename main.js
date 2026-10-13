@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.503';
+const VERSION = '0.1.504';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5866,10 +5866,20 @@ function huntClick() {
 
 /* ---- 9.1b Patterns ------------------------------------------------------------------------- */
 // The hunt's Patterns zone: at each colour's fair spot, one of the rule's patterns (Draw's), turned or
-// mirrored; the hunt mixes them, which pattern and which way for each colour. On the plane, the cube's
-// faces, the torus of squares.
+// mirrored; the hunt mixes them, which pattern and which way for each colour. On the plane, the torus
+// of squares, and faces: the cube's squares, the tetrahedron's, the octahedron's and the icosahedron's
+// triangles (a face cut as the plane's triangles are, f × f, see flatPolyhedron), a pattern on a face.
 const CUBE_FACES = [1, 2, 3, 4, 6];  // the cube: its colours on faces
-const patternsOn = () => { const m = MODES[$('mode').value]; return !!walk.life && (!!m.plane || m.sphere === 'torus' || (m.sphere === 'cube' && CUBE_FACES.includes(walk.life.colours))); };
+const TRI_FACES = { tetra: () => ({ 4: TETRA4.map((p) => p.map((v) => -v)) }), octa: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 }) };
+TRI_FACES.icosa = TRI_FACES.octa;  // the icosahedron's faces include the octahedron's directions
+const patternsOn = () => {
+  const m = MODES[$('mode').value], K = walk.life?.colours;
+  return !!walk.life && (!!m.plane || m.sphere === 'torus' || (m.sphere === 'cube' && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
+};
+// the grid the patterns are of: the plane's, squares on the cube and the torus, triangles on the others
+const patternKind = () => walk.plane?.kind ?? (walk.geo.sides === 3 ? 'tri' : 'square');
+// a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
+const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
 // plane or the torus (a lattice, see huntParts), the middle of its face of the cube
 function patternAt(i, K, cells) {
@@ -5885,6 +5895,13 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
   }
+  if (g.sides === 3) {  // a triangle face: its own rows and triangles, the pattern round its middle
+    const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(TRI_FACES[sphere]()[K][i]);
+    const face = d ? g.faces.reduce((best, fc, k) => (dot3(fc.normal, d) > dot3(g.faces[best].normal, d) ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
+    const at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((w >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
+    for (const [x, y, v] of cells) { const k = at.get(`${x + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + k, v]); }
+    return out;
+  }
   const dir = K === 1 ? AXES[3] : SOLID_SPOTS.cube()[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k])), m = g.size >> 1;  // the cube: its face
   for (const [x, y, v] of cells) {
     const r = m + y - (h >> 1), c = m + x - (w >> 1);
@@ -5895,9 +5912,9 @@ function patternAt(i, K, cells) {
 // each colour's choices: the rule's patterns (a rule of your own: all its grid's) that fit its block,
 // every way they turn and mirror (the same shape once), at its spot, as [cell, state…] in its colour
 function patternChoices() {
-  const L = walk.life, g = walk.geo, K = L.colours, kind = walk.plane?.kind ?? 'square', rule = L.ruleText, [cols, rows] = COLOUR_GRID[K];
+  const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K];
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu, g.nv) / Math.max(cols, rows) : g.size;
+  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu, g.nv) / Math.max(cols, rows) : g.sides === 3 ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
