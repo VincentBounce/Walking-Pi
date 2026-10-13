@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.491';
+const VERSION = '0.1.492';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1108,9 +1108,9 @@ function describe(base, available) {
   const cells = walk.life.seed.length, C = base;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
-  const lead = walk.plane ? planeLead(number) : start?.radius ? `${number} the ${fmt(start.cells)} cells within radius ${start.radius} of a cell of ${mode.where}, the others dead`
-    : start ? `${{ hunt: 'A start found by the hunt', duel: 'A duel start', saved: 'A saved start' }[start]} on ${mode.where}`
-    : `${number} ${seeded} of ${mode.where}`;
+  const lead = walk.plane ? planeLead(number) : start?.zone ? `${zoneWords(start.zone)} on ${mode.where}, the others dead`
+    : start ? `${{ hunt: 'A start found by the hunt', battle: 'A battle found by the hunt', saved: 'A saved start' }[start]} on ${mode.where}`
+    : plane.start === 'digits' ? `${number} ${seeded} of ${mode.where}` : `A random soup, ${plane.density} % alive (seed ${plane.seed}), on ${mode.where}`;
   // the title: the rule (its name, or the rule itself), not the number that may have seeded it
   const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
   $('barBase').textContent = `Rule ${walk.life.ruleText}`;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
@@ -2056,7 +2056,6 @@ function navGo(level, value) {
   if (fam) torusTurned = fam.F.tabs[fam.F.tab][1];  // the tiling last chosen, turned or not
   if (MODES[w].life && !MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
     $('formula').value = presetFormula('random');
-    huntZone = 'all';
   }
   $('mode').value = w;
   $('mode').dispatchEvent(new Event('change'));
@@ -2214,19 +2213,17 @@ function compute(keepDigits = false) {
   syncDigitsStepper();
   relabelColours(mode);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
-  $('planeRow').hidden = $('lifeStartRow').hidden = !mode.plane;  // Life on the plane: its grid and its start
+  $('planeRow').hidden = !mode.plane;  // Life on the plane: its grid
+  $('lifeStartRow').hidden = !mode.life;  // its start: Hunt, Draw (the plane only), Digits
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
   $('colourSection').hidden = !mode.life;
   $('autoPlayRow').hidden = !mode.life;
-  $('huntRow').hidden = !!mode.plane || ruleColours() > 2;  // the surfaces' hunt (the plane has its own, see renderPlaneHunt)
   renderColours();
   renderRuleSection();
-  if (!mode.plane) { stopPlaneHunt(); $('planeHuntRow').hidden = true; }
+  if (!mode.life) { stopHunt(); $('huntRow').hidden = true; }
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
-  stopHunt();
-  $('huntStatus').textContent = '';
   $('digitsRow').hidden = !!mode.life;  // Life takes one digit per cell of the surface
   $('sphereRow').hidden = mode.lattice !== 'sphere';
   syncSizeStepper();
@@ -4666,6 +4663,23 @@ const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ lengt
 // Number of states of the current Life rule = the base the number is written in
 const lifeStates = () => (lifeRuleNow() || { base: 2 }).base;  // one colour: C; colours: K + 1 (a start has live cells only)
 
+// A surface's start, as the Start says: its digits (one base-C digit a cell: 0 dead, 1 alive, 2… dying;
+// in colours, base K + 1), or a soup as dense as said, from its seed (in colours, each live cell's colour
+// drawn too)
+function surfaceSeed(seq, n, C, K) {
+  const seed = new Uint8Array(n), p = plane.density / 100;
+  if (plane.start === 'digits') seed.set(seq.subarray(0, n));
+  else for (let t = 0; t < n; t++) if (cellRandom(plane.seed, t) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, t) * K) : 1;
+  return seed;
+}
+// the same grid, another soup (a new seed, density): a surface's or the plane's
+function lifeReseed() {
+  if (walk.plane) { planeReseed(); return; }
+  const L = walk.life;
+  L.seed.set(surfaceSeed(walk.digits, L.seed.length, L.C, L.colours));
+  for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
+  setLifeSeed(L.seed.slice(), null);
+}
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
   const { initial } = mode, kind = surfaceOf(mode);
@@ -4680,8 +4694,8 @@ function buildLife(seq, mode) {
     $('lifePreset').value = rule.text;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
-  const seed = new Uint8Array(g.n);
-  seed.set(seq.subarray(0, g.n));  // one base-C digit per cell: its initial state (0 dead, 1 alive, 2… dying)
+  if (plane.start === 'draw') plane.start = 'random';  // no drawing on the surfaces
+  const seed = surfaceSeed(seq, g.n, rule.C, rule.colours);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
@@ -4701,6 +4715,9 @@ function buildLife(seq, mode) {
   updateHint();
   restart();
   if (walk.shape) applyShape();
+  hunt.top = [];  // a new surface, rule or colours: the starts found were another game's
+  hunt.status = '';
+  stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
   autoplay();
 }
@@ -4931,9 +4948,9 @@ function buildLifePlane(seq) {
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
   updateHint();
   restart();
-  planeHunt.top = [];  // a new grid, rule or colours: the starts found were another game's
-  planeHunt.status = '';
-  stopPlaneHunt();
+  hunt.top = [];  // a new grid, rule or colours: the starts found were another game's
+  hunt.status = '';
+  stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
   autoplay();
 }
@@ -4959,15 +4976,17 @@ function planeReseed() {
 }
 const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons' };
 // the description's lead: how the cells start, on which grid
+// a zone of the hunt, a random start in it, in words
+function zoneWords(zone) {
+  const K = walk.life.colours, r = zoneRadius(zone), d = Number(zone.slice(1));
+  return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
+    : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
+}
 function planeLead(number) {
   const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
   const sym = SYMMETRIES[symmetryOf(kind)][2];
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
-  if (lifeStart?.zone) {  // a zone of the hunt, a random start in it
-    const K = walk.life.colours, r = zoneRadius(lifeStart.zone);
-    return `${K === 1 ? `Random cells within radius ${r} of the middle` : r ? `Each colour random cells within radius ${r}, side by side round the middle (${PLANE_PARTS[K]})`
-      : `Each colour a soup of its part (${PLANE_PARTS[K]}), ${plane.density} % alive`}${sym ? `, ${sym},` : ''} of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
-  }
+  if (lifeStart?.zone) return `${zoneWords(lifeStart.zone)}${sym ? `, ${sym},` : ''} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
@@ -4981,7 +5000,7 @@ function planeFromSetup(s) {
   if (kind === 'random' || SYMMETRIES[kind]) {
     plane.start = 'random';
     plane.density = Math.min(60, Math.max(5, Number(a) || 30));
-    planeHunt.zone = `d${plane.density}`;  // its tile, when one of them
+    hunt.zone = `d${plane.density}`;  // its tile, when one of them
     plane.seed = Number(b) || 1;
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -4994,7 +5013,11 @@ function planeFromSetup(s) {
 // square on squares only)
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
-  if (!kind) return;
+  for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on the plane only)
+    b.classList.toggle('active', b.dataset.start === plane.start);
+    b.disabled = b.dataset.start === 'draw' && !kind;
+  }
+  if (!kind) { $('symmetryRow').hidden = $('startDraw').hidden = true; return; }
   const sides = PLANE_SIDES[kind];
   $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)}`;  // the shape is the tile above; its cells on hover
   $('planeLabel').title = `${fmt(planeRow(kind, plane.side) * plane.side)} ${PLANE_CELLS[kind]}${{ tri: ', two a rhombus', cairo: ', two a square' }[kind] ?? ''}`;
@@ -5002,9 +5025,6 @@ function renderPlaneRow() {
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', plane.torus);
   $('edgeWalls').classList.toggle('active', !plane.torus);
-  for (const b of $('lifeStartTabs').children) {
-    b.classList.toggle('active', b.dataset.start === plane.start);
-  }
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -5473,350 +5493,16 @@ function lifeStep() {
 }
 
 /* ==============================================================================================
- * PART 9 — METHUSELAH HUNT
+ * PART 9 — THE HUNT
  * ==============================================================================================
  *
- * A methuselah is a small start that takes very long to settle. The hunt looks for the start with
- * the longest lifetime on the current surface, size and rule:
- * - Where: the whole surface, or a patch of radius 1, 2 or 3 around a centre cell. A radius counts
- *   Life-neighbour steps, so it is a 3×3, 5×5 or 7×7 square on squares and a small disc on
- *   triangles: one word for both. The rest of the surface starts dead.
- * - Duel (on the cube, with two civilisations): a blue patch and a red patch of radius 1 on two
- *   opposite faces. The hunt finds the most durable blue start alone on its face (all 512 starts
- *   of its 9 cells), then the red start that does best against that blue one (all 512 again, each
- *   played with the blue one): red winning first, then red still alive when the run settles (by how
- *   many more red cells than blue), then red lasting longest before it is wiped out. Then it plays.
- * - How: when a patch has at most 20,000 possible starts, all of them are tried, and the result is
- *   then the true record for that patch; otherwise 1,000 random starts, then 2,000 tweaks of the
- *   best one (hill climbing). For the same lifetime, the start with fewer live cells wins.
- * - One button: 🔍 Hunt, then ⏭ skip to the tweaks, then ▶︎ play the best so far.
- * The search runs in a worker with its own copy of the Life step, so the page stays fluid.
+ * On any grid, in the Hunt start: random starts in a zone, then tweaks of the best, the 5 best kept.
+ * One colour: the start that lasts longest (a methuselah); colours: the longest, most even battle.
+ * The zone: the whole grid, as dense as said, or patches of a radius; in colours, a patch (or a part
+ * of the grid) for each colour, at fair spots of the figure (see huntPatches).
  */
 
-/* ---- 9.1 The hunt worker --------------------------------------------------------------------- */
-/* Runs in a Web Worker. Lifetime = T, the generation where the run starts repeating (dying out,
- * frozen or looping), found with the same state fingerprints as the Lifetime stat.
- * Phase 1: random starts (each cell a uniform random state). Phase 2: hill climbing — flip 1 to 3
- * random cells of the best start and keep the change when it lasts at least as long. */
-function huntWorker() {
-  self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, two, randomRuns, tweaks, cap, patch, colours, against, exhaustive, from, fromBest } = e.data;
-    const K = two ? 2 : 1, last = K * (C - 1);  // a cell as in lifeStep: k alive of colour k, k + K × s dying
-    const V = two ? K + 1 : C;  // a start's cell: dead or alive of a colour (one colour: or dying)
-    const step = (a, b) => {
-      for (let t = 0; t < n; t++) {  // the same generation as lifeStep (a tie between red and blue: by the cell)
-        const was = a[t];
-        if (start[t] === start[t + 1]) { b[t] = 0; continue; }  // a wall
-        if (was > K) { b[t] = was + K <= last ? was + K : 0; continue; }
-        let c = 0, blue = 0;
-        if (ring) {
-          for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; blue += a[v] === 2; } }
-          c += 16;
-        } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; blue += v === 2; } }
-        const live = ring ? (c - 16).toString(2).replace(/0/g, '').length : c;
-        b[t] = was ? (S[c] ? was : C > 2 ? was + K : 0) : !B[c] ? 0 : !two ? 1 : 2 * blue > live ? 2 : 2 * blue < live ? 1 : 1 + (t & 1);
-      }
-    };
-    const fingerprint = (s) => {
-      let h1 = 0x811c9dc5, h2 = 0x01000193;
-      for (let t = 0; t < n; t++) {
-        h1 = Math.imul(h1 ^ s[t], 0x01000193);
-        h2 = Math.imul(h2 ^ (s[t] + t), 0x5bd1e995);
-      }
-      return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
-    };
-    // with an opponent (against: red is hunted against a fixed blue start), the red and blue cells
-    const civs = (s) => { let red = 0, blue = 0; for (let t = 0; t < n; t++) { red += s[t] === 1; blue += s[t] === 2; } return { red, blue }; };  // the live ones
-    // { T, P } — P = 0 when still unsettled at the cap. Against an opponent: { T, winner } as soon as
-    // a civilisation is wiped out, else also the red and blue cells when it settles
-    const lifetime = (seed) => {
-      let a = Uint8Array.from(seed), b = new Uint8Array(n);
-      const seen = new Map([[fingerprint(a), 0]]);
-      for (let g = 1; g <= cap; g++) {
-        step(a, b);
-        [a, b] = [b, a];
-        const count = against && civs(a);
-        if (count && !(count.red && count.blue)) return { T: g, P: 0, winner: count.red ? 'red' : 'blue' };
-        const k = fingerprint(a), first = seen.get(k);
-        if (first !== undefined) return { T: first, P: g - first, ...count };
-        seen.set(k, g);
-      }
-      return { T: cap, P: 0, ...(against && civs(a)) };
-    };
-    // how good a run is: its lifetime; against an opponent, red winning (sooner is better), then red
-    // alive at the end (by its lead in cells), then red wiped out (later is better)
-    const score = (r) => (!against ? r.T : r.winner === 'red' ? 2e9 - r.T : r.winner ? r.T : 1e9 + r.red - r.blue);
-    // the cells a start may use: the whole surface, or a small patch (the rest starts dead)
-    const free = patch || Array.from({ length: n }, (_, t) => t).filter((t) => start[t] < start[t + 1]);
-    const randomSeed = () => { const s = new Uint8Array(n); for (const t of free) s[t] = Math.floor(Math.random() * V); return s; };
-    // start number k of an exhaustive search: k written in base C over the patch; with colours (one
-    // side of a duel) in base 2, each cell dead or of its colour
-    const nthSeed = (k) => {
-      const s = against ? Uint8Array.from(against) : new Uint8Array(n), base = colours ? 2 : V;
-      free.forEach((t, i) => { const d = k % base; k = Math.floor(k / base); s[t] = colours ? d * colours[i] : d; });
-      return s;
-    };
-    const live = (s) => { let c = 0; for (const t of free) c += s[t] > 0; return c; };
-
-    // from: a champion to go on tweaking (the random starts were skipped)
-    let best = fromBest || null, bestSeed = from ? Uint8Array.from(from) : null, kept = 0;  // kept: tweaks applied
-    const report = (phase, i, total, changed) => {
-      if (changed || i % 100 === 0 || i === total) self.postMessage({
-        type: 'progress', phase, i, total, best, kept, exhaustive, seed: changed ? bestSeed.slice() : null });
-    };
-    for (let i = 1; i <= randomRuns; i++) {
-      const seed = exhaustive ? nthSeed(i - 1) : randomSeed(), r = lifetime(seed);
-      // best score first; for the same score, the start with fewer live cells
-      const improved = !best || score(r) > score(best) || (score(r) === score(best) && live(seed) < live(bestSeed));
-      if (improved) { best = r; bestSeed = seed; }
-      report(1, i, randomRuns, improved);
-    }
-    for (let i = 1; i <= tweaks; i++) {
-      const seed = bestSeed.slice();
-      const flips = 1 + Math.floor(Math.random() * 3);
-      for (let f = 0; f < flips; f++) seed[free[Math.floor(Math.random() * free.length)]] = Math.floor(Math.random() * V);
-      const r = lifetime(seed);
-      const accepted = score(r) >= score(best);  // equal scores are accepted too, to drift
-      if (accepted) { best = r; bestSeed = seed; kept++; }
-      report(2, i, tweaks, accepted);
-    }
-    self.postMessage({ type: 'done' });
-  };
-}
-
-/* ---- 9.2 Hunt state and the one-button flow -------------------------------------------------- */
-const hunt = { worker: null, key: null, best: null, seed: null, kept: 0, patch: null, colours: null, exhaustive: 0, tried: 0,
-               tweaks: 0, phase: 0,  // phase: 1 random starts, 2 tweaks
-               duel: null };  // a duel: { sides, found }, its sides hunted one after the other
-
-// A hunt belongs to one surface, size and rule: anything else makes its champion meaningless
-const huntKey = () => `${$('mode').value}|${$('sphereF').value}|${walk.life ? walk.life.ruleText : ''}`;
-
-// Stop the hunt. When it ends normally or with ▶︎ Play the best so far, the best start found is
-// loaded and played at once; when something else changed (number, surface, rule…) it is dropped.
-function stopHunt(loadBest = false) {
-  if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
-  hunt.duel = null;
-  hunt.phase = 0;
-  renderHuntList();
-  if (loadBest && hunt.seed) loadChampion();
-}
-
-function lifetimeWords(r) {
-  if (r.winner) return `${r.winner} wins at generation ${fmt(r.T)}`;
-  const both = r.red === undefined ? '' : `, ${fmt(r.red)} red and ${fmt(r.blue)} blue`;  // a duel that settles
-  if (!r.P) return `still changing after ${fmt(r.T)} generations${both}`;
-  return (r.P === 1 ? `settles at generation ${fmt(r.T)}` : `period-${fmt(r.P)} loop from generation ${fmt(r.T)}`) + both;
-}
-
-// One button runs the whole hunt: 🔍 Hunt starts the random starts, ⏭ skips to the tweaks,
-// ▶︎ plays the best so far. A worker cannot hear a click in the middle of its loop, so skipping
-// ends it and starts another one on the tweaks, from the best start found.
-const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;
-function huntClick() {
-  if (!hunt.worker && zoneInUse() === 'duel90') pickHuntZone('duel90');  // nothing to hunt: play it again
-  else if (!hunt.worker) startHunt();
-  else if (hunt.duel) nextDuelSide();
-  else if (hunt.phase === 1 && hunt.tweaks) skipToTweaks();
-  else stopHunt(true);
-}
-
-function setHuntPhase(phase) {
-  if (phase === hunt.phase) return;
-  hunt.phase = phase;
-  $('huntBtn').innerHTML = phase === 1 && hunt.tweaks ? `${icon('end')} Skip to the tweaks` : `${icon('play')} Play the best so far`;
-}
-
-// The hunt works on random starts, so the number becomes 🎲 Random digits first
-function startHunt() {
-  if (!walk.life) return;
-  if (!isRandomDigits()) {
-    $('formula').value = presetFormula('random');
-    compute();
-  }
-  stopHunt();
-  const { patch, radius, all, sides } = huntPlan(zoneInUse());
-  if (sides) { hunt.duel = { sides, found: [] }; runDuelSide(); return; }
-  hunt.duel = null;
-  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch, radius, colours: null, tried: 0,
-                        exhaustive: all, tweaks: all ? 0 : HUNT_TWEAKS });
-  $('huntStatus').textContent = 'Starting…';
-  runHuntWorker({ randomRuns: all || HUNT_STARTS, tweaks: hunt.tweaks, exhaustive: !!all });
-}
-
-
-/* ---- 9.3 Zones: the whole surface or a radius, as cards -------------------------------------- */
-// Where the starts go: the whole surface, or the cells within a radius of 1, 2 or 3 steps.
-// all: the number of possible starts when few enough to try them all (then no tweaks), else 0.
-function huntPlan(zone) {
-  if (zone === 'all') return { patch: null, radius: 0, all: 0 };
-  if (zone === 'duel') {  // red around the usual centre, blue around the same cell of the opposite face
-    const g = walk.geo, c = patchCentre(), face = Math.floor(c / g.perFace);
-    const red = lifePatch(1, c), blue = lifePatch(1, c + ((face ^ 1) - face) * g.perFace);
-    return { patch: [...red, ...blue], radius: 1, all: 0, colours: Uint8Array.from([...red.map(() => 1), ...blue.map(() => 2)]),
-             sides: [{ name: 'blue', patch: blue, colour: 2 }, { name: 'red', patch: red, colour: 1 }] };
-  }
-  const radius = Number(zone.slice(6)), patch = lifePatch(radius), count = walk.base ** patch.length;
-  return { patch, radius, all: count <= 20000 ? count : 0 };  // 2 states on 9 squares or 13 triangles, 3 states on 9 squares
-}
-
-// Where the starts go, as cards like the walk modes: the whole surface or a radius of 1, 2 or 3,
-// with the real cell counts of the current surface. The hunt button tells how many starts it tries.
-let huntZone = 'all';
-const HUNT_ICONS = { all: 'zoneAll', radius1: 'zone1', radius2: 'zone2', radius3: 'zone3', duel: 'duel', duel90: 'duel' };
-// The R-pentomino (..X / XXX / .X.), as (row, column) around a face's centre cell: the most durable
-// 9-cell start, the one the duel hunt finds on both sides. Found for both, it gives two mirror images
-// that stay mirror images (a draw); the duel90 zone turns the red one by 90° to break that symmetry.
-const R_PENTOMINO = [[-1, 1], [0, -1], [0, 0], [0, 1], [1, 0]];
-// The duel needs two opposite faces: the cube (its faces come in opposite pairs 0–1, 2–3, 4–5)
-const duelPossible = () => walk.geo.sides === 4 && !walk.geo.torus;
-// The zone chosen, or the whole surface when a duel no longer fits (another surface or rule)
-const zoneInUse = () => (huntZone.startsWith('duel') && !(duelPossible() && walk.life.two) ? 'all' : huntZone);
-function renderHuntList() {
-  if (!walk.life || !walk.geo) return;
-  const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
-  $('huntList').replaceChildren(...['all', 'radius1', 'radius2', 'radius3', 'duel', 'duel90'].map((zone) => {
-    const duel = zone.startsWith('duel'), { patch, radius } = duel ? { patch: null } : huntPlan(zone);
-    const b = document.createElement('button');
-    const words = document.createElement('span');
-    words.append(part('mode-name', zone === 'duel' ? 'Radius duel' : zone === 'duel90' ? 'Radius duel R-pentomino 90°'
-                   : patch ? `Radius ${radius}` : walk.plane ? 'Whole grid' : 'Whole surface'),
-                 part('mode-detail', zone === 'duel' ? '9 red cells, 9 blue on the opposite face'
-                   : zone === 'duel90' ? 'blue R-pentomino, the red one turned 90° on the opposite face'
-                   : `${fmt(patch ? patch.length : walk.geo.n)} cells`));
-    if (zone === 'duel') b.title = 'The most durable blue start alone on its face, then the red start that does best against it on the opposite face, then the duel plays';
-    if (zone === 'duel90') b.title = 'The R-pentomino in blue, and in red turned by 90° on the opposite face: no longer mirror images, so one can win';
-    const pic = part('mode-icon', '');
-    pic.innerHTML = icon(HUNT_ICONS[zone]);
-    b.append(pic, words);
-    b.setAttribute('role', 'option');
-    b.classList.toggle('active', zone === zoneInUse());
-    b.disabled = !!hunt.worker || (duel && !duelPossible());  // the zone is fixed while a hunt runs
-    b.hidden = duel && !!walk.plane;  // a duel needs the cube's opposite faces
-    b.addEventListener('click', () => pickHuntZone(zone));
-    return b;
-  }));
-  if (hunt.worker) return;
-  if (zoneInUse() === 'duel90') {
-    $('huntBtn').innerHTML = `${icon('play')} Play the duel`;
-    $('huntBtn').title = 'Start the R-pentomino duel again';
-    return;
-  }
-  const { all, sides } = huntPlan(zoneInUse());
-  if (sides) {
-    $('huntBtn').innerHTML = `${icon('search')} Hunt blue, then red`;
-    $('huntBtn').title = 'All 512 blue starts alone, the most durable one; then all 512 red starts against it, the best one; then the duel plays';
-    return;
-  }
-  $('huntBtn').innerHTML = `${icon('search')} ${all ? `Hunt all ${fmt(all)}` : `Hunt ${fmt(HUNT_STARTS)} first`}`;
-  $('huntBtn').title = all ? `Try all ${fmt(all)} starts, then play the best. Click again to play the best so far`
-    : `${fmt(HUNT_STARTS)} random starts, then ${fmt(HUNT_TWEAKS)} tweaks of the best one, then it plays. Click again to skip to the tweaks, then to play the best so far`;
-}
-
-// Choosing a zone shows a first random start in it at once (clicking again draws another one):
-// the whole surface is a new draw of 🎲 Random digits; a radius fills its cells at random, the rest dead
-// Each click is a new random number, and the zone is placed once it is built (see placeZone)
-function pickHuntZone(zone) {
-  huntZone = zone;
-  if (zone.startsWith('duel') && !walk.life.two) lifeColours = 2;  // a duel: red against blue
-  $('formula').value = presetFormula('random');
-  compute();  // built at once: random digits need no worker
-  $('huntStatus').textContent = '';
-  if (zone === 'duel90') play(true);  // nothing drawn: the duel plays at once
-}
-
-// After every build of a Life run (new number, surface, size or rule), the chosen zone's start: the
-// whole surface keeps the number's digits, a radius takes its first ones (so the formula shown is
-// what seeds the cells), a duel its first ones as dead or its side's colour, or the two R-pentominoes
-function placeZone() {
-  const zone = zoneInUse();
-  if (zone === 'all' || walk.plane) return;  // the plane has its own zones (see pickPlaneZone)
-  if (zone === 'duel90') { placePentominoDuel(); return; }
-  const { patch, radius, colours } = huntPlan(zone), d = walk.digits, seed = new Uint8Array(walk.life.seed.length);
-  patch.forEach((t, k) => { seed[t] = colours ? (d[k] % 2) * colours[k] : d[k]; });
-  setLifeSeed(seed, colours ? 'duel' : { radius, cells: patch.length });
-}
-
-// A duel hunt: all 512 blue starts alone on their face, then all 512 red starts against the best blue
-// one; the red champion comes with that blue start, so it is the duel to play
-function runDuelSide() {
-  const { sides, found } = hunt.duel, side = sides[found.length], all = 2 ** side.patch.length;
-  Object.assign(hunt, { key: huntKey(), best: null, seed: null, kept: 0, patch: side.patch, radius: 1, tried: 0,
-                        colours: new Uint8Array(side.patch.length).fill(side.colour), exhaustive: all, tweaks: 0 });
-  runHuntWorker({ randomRuns: all, tweaks: 0, exhaustive: true, against: found[0]?.seed ?? null });
-  const last = hunt.duel.found.length === hunt.duel.sides.length - 1;
-  $('huntBtn').innerHTML = last ? `${icon('play')} Play the duel` : `${icon('end')} Skip to ${hunt.duel.sides[1].name}`;
-}
-function nextDuelSide() {
-  if (hunt.worker) { hunt.worker.terminate(); hunt.worker = null; }
-  const { sides, found } = hunt.duel;
-  const side = sides[found.length];
-  if (hunt.seed) found.push({ ...side, seed: hunt.seed, best: hunt.best });
-  else found.push(null);  // skipped before its first start: this side starts empty
-  if (found.length < sides.length) { runDuelSide(); return; }
-  hunt.duel = null;
-  stopHunt();
-  const L = walk.life, seed = new Uint8Array(L.seed.length);
-  for (const f of found) if (f) f.seed.forEach((v, t) => { if (v) seed[t] = v; });
-  setLifeSeed(seed, 'duel');
-  $('status').innerHTML = `${icon('dice')} duel: ` + found.filter(Boolean).map((f, i) =>
-    `${f.name} ${i ? 'against it' : 'alone'}: ${lifetimeWords(f.best)} (${fmt(f.seed.reduce((a, v) => a + (v === f.colour), 0))} cells)`).join(' · ');
-  $('huntStatus').textContent = '';
-  play(true);
-}
-
-function skipToTweaks() {
-  hunt.worker.terminate();
-  hunt.worker = null;
-  if (!hunt.seed) {  // not even one start finished
-    stopHunt();
-    $('huntStatus').textContent = 'Stopped before the first start was measured.';
-    return;
-  }
-  runHuntWorker({ randomRuns: 0, tweaks: hunt.tweaks, exhaustive: false, from: hunt.seed, fromBest: hunt.best });
-  setHuntPhase(2);
-}
-
-// Blue R-pentomino on the face behind, red one turned by 90° on the face in front
-function placePentominoDuel() {
-  const L = walk.life, g = walk.geo, c = patchCentre(), face = Math.floor(c / g.perFace);
-  const blue = c + ((face ^ 1) - face) * g.perFace, seed = new Uint8Array(L.seed.length);
-  for (const [r, k] of R_PENTOMINO) {
-    seed[blue + r * g.size + k] = 2;
-    seed[c + k * g.size - r] = 1;  // (row, column) → (column, −row): a quarter turn
-  }
-  setLifeSeed(seed, 'duel');
-  $('status').textContent = 'Duel: a blue R-pentomino against a red one turned by 90°, on opposite faces';
-}
-
-function runHuntWorker(job) {
-  const L = walk.life;
-  const src = `(${huntWorker.toString()})()`;
-  hunt.worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-  setHuntPhase(job.randomRuns ? 1 : 2);
-  renderHuntList();
-  hunt.worker.onmessage = (e) => {
-    const d = e.data;
-    if (d.type === 'done') {
-      if (hunt.duel) nextDuelSide();
-      else stopHunt(true);
-      return;
-    }
-    setHuntPhase(d.phase);
-    hunt.best = d.best;
-    hunt.kept = d.kept;
-    if (d.phase === 1) hunt.tried = d.i;
-    if (d.seed) hunt.seed = d.seed;
-    const phase = d.phase === 1 ? `${hunt.duel ? `${hunt.duel.sides[hunt.duel.found.length].name} start`
-      : d.exhaustive ? 'start' : 'random start'} ${fmt(d.i)} / ${fmt(d.total)}`
-      : `tweak ${fmt(d.i)} / ${fmt(d.total)} (${fmt(d.kept)} kept)`;
-    $('huntStatus').textContent = `${phase} · record: ${lifetimeWords(d.best)}`;
-  };
-  hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, two: L.two,
-                            cap: 50000, patch: hunt.patch && Int32Array.from(hunt.patch), colours: hunt.colours, ...job });
-}
-
-/* ---- 9.3b The hunt on the plane ------------------------------------------------------------- */
+/* ---- 9.1 The hunt worker, its zones, its results --------------------------------------------- */
 /* Life on the plane in 1, 2, 4 or 6 colours, one hunt: random starts in a zone, then tweaks of the
  * best (1 to 3 cells changed); the 5 best kept. The zone: the whole grid (a soup as dense as the
  * slider says) or a patch of radius 1, 2 or 3 in the middle; in colours, one for each colour: the
@@ -5828,7 +5514,7 @@ function runHuntWorker(job) {
  *   1 / (1 + CV), CV the standard deviation of the S_c over their mean (0: all even); score = the
  *   generations with two colours side by side, before the run repeats (or the cap), × the balance.
  * In a worker with its own copy of the step (as lifeStep's). */
-function planeHuntWorker() {
+function huntWorker() {
   const cellRandom = (seed, i) => {  // as the page's
     let h = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(i + 1, 0xc2b2ae35);
     h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
@@ -5843,6 +5529,7 @@ function planeHuntWorker() {
       let contact = false;
       for (let t = 0; t < n; t++) {
         const was = a[t];
+        if (start[t] === start[t + 1]) { b[t] = 0; continue; }  // a wall (a pentagon of the hexagon sphere)
         if (was > K) { b[t] = was + K <= last ? was + K : 0; continue; }  // one more dying stage, or dead
         let c = 0;
         around.fill(0);
@@ -5938,122 +5625,179 @@ function planeHuntWorker() {
     self.postMessage({ type: 'done' });
   };
 }
-const planeHunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  // picked: the result played (its T and end)
+const hunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
 // the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
-const PLANE_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
+const HUNT_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
                       radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'] };
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-const PLANE_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
-// The zone: a patch a colour, the whole of its part of the grid (half, quarter, sixth), or a radius,
-// the colours' patches side by side round the middle.
-// With a symmetry it defines the start: the zone and all its copies, of which only the first of each
-// cell's copies is chosen, the others copied from it (in colours, a copy takes the colour of the patch
-// it falls in, else of its part).
-// Returns the cells chosen [cell, colour], the copies [cell, cell copied, colour], the cells of a
-// colour, how dense the random starts are, and how many starts when few enough to try them all.
-function planeHuntPlan() {
-  const { kind, W, row } = walk.plane, { colours: K, C } = walk.life, [cols, rows] = COLOUR_GRID[K];
-  const r = zoneRadius(planeHunt.zone), zone = new Set(), mine = new Map();  // mine: a patch's cells, its colour
-  const part = (t) => mine.get(t) ?? (() => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row) + 1; })();
-  if (!r) for (let t = 0; t < row * W; t++) zone.add(t);
-  else for (let i = 0; i < K; i++) {  // side by side round the middle, touching, so that they meet
-    const dx = Math.floor(((2 * (i % cols) - (cols - 1)) * (2 * r + 1)) / 2), dy = Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * (2 * r + 1)) / 2);
-    for (const t of lifePatch(r, ((W >> 1) + dy) * row + (row >> 1) + dx)) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); }
+const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
+const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;  // one colour: random starts, then tweaks of the best
+// The rules whose colours meet only when they start side by side (measured: none in contact from 16
+// cells apart): on the plane, their patches touch round the middle; the others' sit at fair spots
+const NEAR_RULES = ['B3678/S34678', 'B34/S123/C3', 'B2/S34', 'B24/S35', 'B2o/S2m34', 'B34/S23', 'B2/S24/C3', 'B23/S6/C3'];
+// A solid's fair spots for k colours (see coloursFit), as directions: its faces, corners or edges'
+// middles, or a few of them that its turns swap (2 opposite, 3 round a corner, 4 as a tetrahedron's)
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const CORNERS8 = [[1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1], [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1]];
+const TETRA4 = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+const EDGES12 = [[1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0], [1, 0, 1], [1, 0, -1], [-1, 0, 1], [-1, 0, -1], [0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]];
+const ICO = () => POLYHEDRA.icosa.P, nearest3 = (d) => [...ICO()].sort((p, q) => dot3(q, d) / Math.hypot(...q) - dot3(p, d) / Math.hypot(...p)).slice(0, 3);
+const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: [ICO()[0], ICO()[11], ICO()[5]], 4: TETRA4, 8: CORNERS8, 12: ICO() });
+const SOLID_SPOTS = {
+  cube: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),
+  octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: TETRA4, 6: AXES, 8: CORNERS8, 12: EDGES12 }),
+  tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
+  stella: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 6: AXES, 8: CORNERS8 }),
+  dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
+  icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
+};
+// Each colour's part of the grid: radius r, a patch round each spot; else (r = 0) the whole grid,
+// each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
+// a rule whose colours must start side by side, touching patches round the middle); on a torus, a
+// lattice; on a solid, its fair spots (see SOLID_SPOTS); one colour, the middle or the front
+function huntParts(r, K) {
+  const L = walk.life, g = walk.geo, n = L.alive.length, [cols, rows] = COLOUR_GRID[K], open = (t) => L.nbr.start[t] < L.nbr.start[t + 1];
+  const parts = Array.from({ length: K }, () => []);
+  if (walk.plane) {
+    const { W, row } = walk.plane, block = (t) => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row); };
+    if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
+    const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
+    return parts.map((_, i) => lifePatch(r, near
+      ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
+      : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
   }
-  for (const t of [...zone]) for (const c of cellCopies(kind, W, t)) zone.add(c);
+  if (g.torus) {  // cells u × nv + v; the blocks along whichever way they divide
+    const [a, b] = g.nu % cols === 0 && g.nv % rows === 0 ? [cols, rows] : [rows, cols], block = (t) => Math.floor(((t / g.nv | 0) * a) / g.nu) * b + Math.floor(((t % g.nv) * b) / g.nv);
+    if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
+    return parts.map((_, i) => (K === 1 ? lifePatch(r) : lifePatch(r, Math.floor(((Math.floor(i / b) + 0.5) * g.nu) / a) * g.nv + Math.floor((((i % b) + 0.5) * g.nv) / b))));
+  }
+  const spots = K === 1 ? null : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K].map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
+  const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (dot3(d, c) > dot3(spots[best], c)) best = k; }); return best; };
+  if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
+  if (K === 1) return [lifePatch(r)];
+  return spots.map((d) => {  // the open cell nearest each spot
+    let best = -1;
+    for (let t = 0; t < n; t++) if (open(t) && (best < 0 || dot3(up(t), d) > dot3(up(best), d))) best = t;
+    return lifePatch(r, best);
+  });
+}
+// The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
+// zone and all its copies, of which only the first of each cell's copies is chosen, the others copied
+// from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
+// colour], the copies [cell, cell copied, colour], the cells of a colour, how dense the random starts
+// are, and how many starts when few enough to try them all.
+function huntPlan() {
+  const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
+  huntParts(r, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
   const cells = [], copies = [];
-  for (const t of zone) {
-    const first = Math.min(...cellCopies(kind, W, t));
-    if (first === t) cells.push([t, part(t)]); else copies.push([t, first, part(t)]);
-  }
+  if (walk.plane) {
+    const { kind, W } = walk.plane;
+    for (const t of [...zone]) for (const c of cellCopies(kind, W, t)) zone.add(c);
+    const partOf = new Map();  // a copy outside the patches: its part's colour
+    if (symmetryOf(kind) !== 'none') huntParts(0, K).forEach((p, i) => p.forEach((t) => partOf.set(t, i + 1)));
+    const colourOf = (t) => mine.get(t) ?? partOf.get(t);
+    for (const t of zone) {
+      const first = Math.min(...cellCopies(kind, W, t));
+      if (first === t) cells.push([t, colourOf(t)]); else copies.push([t, first, colourOf(t)]);
+    }
+  } else for (const t of zone) cells.push([t, mine.get(t)]);
   const count = K === 1 && r ? C ** cells.length : Infinity;
-  return { cells, copies, perColour: Math.round(zone.size / K), density: r ? 0.5 : Number(planeHunt.zone.slice(1)) / 100, all: count <= 20000 ? count : 0 };
+  return { cells, copies, perColour: Math.round(zone.size / K), density: r ? 0.5 : Number(hunt.zone.slice(1)) / 100, all: count <= 20000 ? count : 0 };
 }
 // the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
 // another kind), else the start chosen
-const reseedStart = () => (planeHuntOn() ? pickPlaneZone(planeHunt.zone) : planeReseed());
-const planeHuntOn = () => !!walk.plane && plane.start === 'random' && COLOUR_STEPS.includes(walk.life?.colours);
-function renderPlaneHunt() {
-  $('planeHuntRow').hidden = !planeHuntOn();
-  if ($('planeHuntRow').hidden) return;
-  const K = walk.life.colours, { cells, perColour, all } = planeHuntPlan(), busy = !!planeHunt.worker, sym = symmetryOf(walk.plane.kind);
-  $('planeHuntTitle').textContent = K === 1 ? 'Hunt · the longest life' : `Hunt · a battle in ${PLANE_PARTS[K]}`;
-  const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K];
-  for (const b of $('planeZones').children) {  // a radius whose patches do not fit the grid: greyed
-    const side = 2 * zoneRadius(b.dataset.zone) + 1;
-    b.classList.toggle('active', b.dataset.zone === planeHunt.zone);
-    b.disabled = busy || (side > 1 && (cols * side > W || rows * side > W));
+const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
+const huntOn = () => !!walk.life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);
+function renderHunt() {
+  $('huntRow').hidden = !huntOn();
+  if ($('huntRow').hidden) return;
+  const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
+  $('huntTitle').textContent = K === 1 ? 'Hunt · the longest life' : walk.plane ? `Hunt · a battle in ${COLOUR_PARTS[K]}` : `Hunt · a battle of ${K} colours`;
+  const key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}`;
+  if (hunt.fitKey !== key) {  // a radius whose patches do not fit the grid (overlap): greyed
+    hunt.fitKey = key;
+    hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
+      const r = zoneRadius(zone);
+      if (!r) return [zone, true];
+      if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
+      const parts = huntParts(r, K);
+      return [zone, new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
+    }));
   }
-  $('planeZoneCells').textContent = `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`
+  for (const b of $('huntZones').children) {
+    b.classList.toggle('active', b.dataset.zone === hunt.zone);
+    b.disabled = busy || !hunt.fits[b.dataset.zone];
+  }
+  $('zoneCells').textContent = `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`
     + (all ? ` · all ${fmt(all)} starts tried` : '');
-  $('planeHuntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt`;
-  $('planeHuntStatus').textContent = planeHunt.status;
-  $('planeHuntTop').replaceChildren(...planeHunt.top.map((r, i) => {
+  $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt`;
+  $('huntStatus').textContent = hunt.status;
+  $('huntTop').replaceChildren(...hunt.top.map((r, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     const [name, detail] = K === 1
       ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
       : [`${fmt(r.contacts)} generations in contact`, `${r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'} · balance ${r.balance.toFixed(2)}`];
     b.innerHTML = `<span class="mode-icon">${i + 1}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
-    b.classList.toggle('active', huntId(r) === planeHunt.picked);  // the one played, wherever it is now
+    b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
     b.addEventListener('click', () => playHuntResult(r));
     return b;
   }));
 }
 // a result played: its start, kept picked (lit) until another one is
 function playHuntResult(r) {
-  planeHunt.picked = huntId(r);
+  hunt.picked = huntId(r);
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
-  renderPlaneHunt();
+  renderHunt();
 }
-function stopPlaneHunt() {
-  planeHunt.worker?.terminate();
-  planeHunt.worker = null;
-  renderPlaneHunt();
+function stopHunt() {
+  hunt.worker?.terminate();
+  hunt.worker = null;
+  renderHunt();
 }
 // a zone picked: one random start in it at once (the whole grid alone: the soup)
-function pickPlaneZone(zone) {
-  planeHunt.zone = zone;
-  planeHunt.top = [];
-  planeHunt.status = '';
-  const L = walk.life, { cells, copies, density } = planeHuntPlan();
+function pickZone(zone) {
+  hunt.zone = zone;
+  hunt.top = [];
+  hunt.status = '';
+  const L = walk.life, { cells, copies, density } = huntPlan();
   if (!zoneRadius(zone)) {  // the whole grid: a new soup each time, as dense as said
     plane.density = Number(zone.slice(1));
     plane.seed = 1 + Math.floor(Math.random() * 999999999);
-    if (L.colours === 1) { planeReseed(); renderPlaneHunt(); return; }
+    if (L.colours === 1) { lifeReseed(); renderHunt(); return; }
   }
   const seed = new Uint8Array(L.seed.length);
   for (const [t, k] of cells) if (Math.random() < density) seed[t] = k;
   for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
   setLifeSeed(seed, { zone });
-  renderPlaneHunt();
+  renderHunt();
 }
-function huntPlane() {
-  if (planeHunt.worker) {  // Stop hunt and play: the one picked if still among the best, else the best
-    stopPlaneHunt();
-    const r = planeHunt.top.find((x) => huntId(x) === planeHunt.picked) ?? planeHunt.top[0];
+function huntClick() {
+  if (hunt.worker) {  // Stop hunt and play: the one picked if still among the best, else the best
+    stopHunt();
+    const r = hunt.top.find((x) => huntId(x) === hunt.picked) ?? hunt.top[0];
     if (r) { playHuntResult(r); play(true); }
     return;
   }
-  const L = walk.life, { cells, copies, density, all } = planeHuntPlan(), K = L.colours;
-  planeHunt.top = [];
-  planeHunt.worker = new Worker(URL.createObjectURL(new Blob([`(${planeHuntWorker.toString()})()`], { type: 'text/javascript' })));
-  planeHunt.worker.onmessage = (e) => {
+  const L = walk.life, { cells, copies, density, all } = huntPlan(), K = L.colours;
+  hunt.top = [];
+  hunt.worker = new Worker(URL.createObjectURL(new Blob([`(${huntWorker.toString()})()`], { type: 'text/javascript' })));
+  hunt.worker.onmessage = (e) => {
     const d = e.data;
-    if (d.type === 'done') { planeHunt.status = `Done · ${fmt(planeHunt.top.length)} best kept, a click plays one`; stopPlaneHunt(); return; }
-    if (d.top) planeHunt.top = d.top;
-    planeHunt.status = `${d.phase === 1 ? (all ? 'Starts' : 'Random starts') : 'Tweaks of the best'} ${fmt(d.i)} / ${fmt(d.total)}`;
-    renderPlaneHunt();
+    if (d.type === 'done') { hunt.status = `Done · ${fmt(hunt.top.length)} best kept, a click plays one`; stopHunt(); return; }
+    if (d.top) hunt.top = d.top;
+    hunt.status = `${d.phase === 1 ? (all ? 'Starts' : 'Random starts') : 'Tweaks of the best'} ${fmt(d.i)} / ${fmt(d.total)}`;
+    renderHunt();
   };
-  planeHunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
+  hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
                                  cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all,
                                  cap: K === 1 ? 50000 : 4000, runs: K === 1 ? HUNT_STARTS : 200, tweaks: K === 1 ? HUNT_TWEAKS : 400 });
-  planeHunt.status = 'Starting…';
-  renderPlaneHunt();
+  hunt.status = 'Starting…';
+  renderHunt();
 }
 
-/* ---- 9.4 Patches ----------------------------------------------------------------------------- */
+/* ---- 9.2 Patches ----------------------------------------------------------------------------- */
 // The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
 // else the tile that faces the default camera
 function patchCentre() {
@@ -6084,21 +5828,7 @@ function lifePatch(r, centre = patchCentre()) {
 }
 
 
-/* ---- 9.5 Loading a start --------------------------------------------------------------------- */
-// Load the champion as the starting pattern of the current Life run
-function loadChampion() {
-  const L = walk.life;
-  if (!L || !hunt.seed || hunt.key !== huntKey()) return;
-  setLifeSeed(hunt.seed, 'hunt');
-  const how = (hunt.exhaustive ? (hunt.tried >= hunt.exhaustive ? `the best of all ${fmt(hunt.exhaustive)} starts`
-      : `the best of the first ${fmt(hunt.tried)} of ${fmt(hunt.exhaustive)} starts`)
-    : hunt.kept ? `random start + ${fmt(hunt.kept)} tweak${hunt.kept > 1 ? 's' : ''}` : 'random start')
-    + (hunt.patch ? `, radius ${hunt.radius}: ${fmt(hunt.patch.length)} cells` : '');
-  $('status').innerHTML = `${icon('dice')} champion: ${lifetimeWords(hunt.best)} (${how}) · ${fmt(L.seedAlive)} live cells at the start`;
-  $('huntStatus').textContent = '';
-  play(true);  // watch it at once
-}
-
+/* ---- 9.3 Loading a start --------------------------------------------------------------------- */
 // Replace the starting pattern of the current Life run and go back to generation 0. how: where it
 // comes from, for the description — { radius, cells } (a zone filled with the number's first
 // digits), 'hunt', 'duel' or 'saved' (a link or a saved setup). The link keeps the cells.
@@ -6200,6 +5930,7 @@ function getSetup() {
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
+  if (mode.life && !mode.plane) s.sd = plane.start === 'digits' ? 'digits' : `random.${plane.density}.${plane.seed}`;  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
@@ -6229,6 +5960,11 @@ function applySetup(s) {
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
   } else if (s.r) {
     if (MODES[s.w].plane) planeFromSetup(s);
+    else {  // a surface's start: a soup, or its digits (an old link's, with no sd)
+      const [kind, a, b] = String(s.sd ?? 'digits').split('.');
+      plane.start = kind === 'random' ? 'random' : 'digits';
+      if (kind === 'random') { plane.density = Math.min(60, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = `d${plane.density}`; }
+    }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
     setRuleText(ruleBody(s.r));
@@ -6270,8 +6006,6 @@ function applyPendingView() {
     needsFull = true;
   }
   if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
-  else if (walk.life) placeZone();
-  renderHuntList();
   syncLink();  // with the start a setup's champion or hunt zone gave
 }
 
@@ -8694,15 +8428,15 @@ $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind
 }));
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % PATTERN_TURNS[MODES[$('mode').value].plane]; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
-$('planeHuntBtn').addEventListener('click', huntPlane);
+$('huntBtn').addEventListener('click', huntClick);
 $('autoPlay').addEventListener('change', autoplay);  // turned on: it plays at once
-$('planeZones').replaceChildren(...Object.entries(PLANE_ZONES).map(([zone, [pic, name]]) => {
+$('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
   const b = document.createElement('button');
   b.type = 'button';
   b.dataset.zone = zone;
   b.innerHTML = `${icon(pic)}<span>${name}</span>`;
   b.title = zoneRadius(zone) ? `Random starts within radius ${zoneRadius(zone)}` : `The whole grid, ${name} alive`;
-  b.addEventListener('click', () => pickPlaneZone(zone));
+  b.addEventListener('click', () => pickZone(zone));
   return b;
 }));
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
@@ -8795,7 +8529,6 @@ $('perspective').addEventListener('change', () => {
   if (walk.sphere) bounds = surfaceBounds();  // its frame, larger in perspective
   if ($('autoFit').checked) fitWhole();
 });
-$('huntBtn').addEventListener('click', huntClick);
 // Rule menu: a preset fills the rule field; Custom… shows the field to type any rule
 $('lifePreset').addEventListener('change', () => {
   const custom = $('lifePreset').value === 'custom';
