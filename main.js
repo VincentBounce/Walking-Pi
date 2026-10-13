@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.504';
+const VERSION = '0.1.505';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5322,7 +5322,7 @@ function renderColours() {
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.innerHTML = colourBlock(k);
+    b.innerHTML = `${colourBlock(k)}<span>${k === 1 ? 'One' : k}</span>`;
     b.title = k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`;
     b.classList.toggle('active', k === lifeColours);
     b.disabled = !coloursFit(k);
