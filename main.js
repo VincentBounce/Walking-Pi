@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.487';
+const VERSION = '0.1.488';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8661,6 +8661,7 @@ $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % PATTERN_TURNS[MODES[$('mode').value].plane]; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
 $('planeHuntBtn').addEventListener('click', huntPlane);
+$('autoPlay').addEventListener('change', autoplay);  // turned on: it plays at once
 $('planeZones').replaceChildren(...Object.entries(PLANE_ZONES).map(([zone, [pic, name]]) => {
   const b = document.createElement('button');
   b.type = 'button';
