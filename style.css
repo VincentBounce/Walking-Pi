@@ -156,6 +156,7 @@ button.primary {
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
 .field-label { margin-bottom: 4px; }
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.stepper span small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.2; }  /* a size: what to picture, then its tiles */
 .stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; white-space: nowrap; }  /* the setup at a glance */
 /* the number of digits can be typed: a field that looks like the label until it is hovered or used */
 #loopLabel { color: var(--text); }

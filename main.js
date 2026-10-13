@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.509';
+const VERSION = '0.1.510';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3833,7 +3833,13 @@ const SPHERES = {
 function syncSizeStepper() {
   const sel = $('sphereF');
   syncLoopRow();
-  $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
+  // the size: on top, the shape to picture (a solid's edge, in tiles; a torus's tiles round × along);
+  // under it, its tiles
+  const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize(), { tiles, unit } = SPHERES[kind] ?? {};
+  if (tiles && sel.selectedOptions[0]) {
+    const shape = TORI.includes(kind) ? sel.selectedOptions[0].text.replace(` ${unit}`, '') : `Edge ${fmt(f)}`;
+    $('sizeLabel').innerHTML = `${shape}<small>${fmt(tiles(f))} ${unit}</small>`;
+  } else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   const starts = modeStarts();
@@ -5041,8 +5047,8 @@ function renderPlaneRow() {
   }
   if (!kind) { $('symmetryRow').hidden = $('startDraw').hidden = true; return; }
   const sides = PLANE_SIDES[kind];
-  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)}`;  // the shape is the tile above; its cells on hover
-  $('planeLabel').title = `${fmt(planeRow(kind, plane.side) * plane.side)} ${PLANE_CELLS[kind]}${{ tri: ', two a rhombus', cairo: ', two a square' }[kind] ?? ''}`;
+  // the size: the grid's side on top, its cells under it
+  $('planeLabel').innerHTML = `${fmt(plane.side)} × ${fmt(plane.side)}<small>${fmt(planeRow(kind, plane.side) * plane.side)} ${{ cairo: 'pentagons' }[kind] ?? PLANE_CELLS[kind]}</small>`;
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', plane.torus);
