@@ -876,7 +876,7 @@ A ship's cells are written as the plane's rows (two pentagons a square, `A` aliv
 
 ## 🎨 Draw's patterns for the rules of each grid
 
-For each rule offered (Life's own patterns on squares come from LifeWiki), 3,000 small random starts (the cells within 2 steps of one, half of them alive) on a 64 torus (triangles 48): the smallest spaceships of each speed, the oscillators, and the start lasting longest. Each was then checked in the app, on a 64 grid: a ship comes back moved after its period, an oscillator in place, and a methuselah's lifetime is the app's. In Draw, a rule shows its own patterns; a rule of your own shows all of its grid's.
+For each rule offered (Life's own patterns on squares come from LifeWiki), 3,000 small random starts (the cells within 2 steps of one, half of them alive) on a 64 × 64 torus (triangles 48 × 48): the smallest spaceships of each speed, the oscillators, and the start lasting longest. Each was then checked in the app, on a 64 × 64 grid: a ship comes back moved after its period, an oscillator in place, and a methuselah's lifetime is the app's. In Draw, a rule shows its own patterns; a rule of your own shows all of its grid's.
 
 ### Squares
 
