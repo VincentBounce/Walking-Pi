@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.493';
+const VERSION = '0.1.494';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6204,7 +6204,7 @@ function fitWhole() {
   fitToBounds(padBounds(bounds));
 }
 
-// Life: a run plays as soon as it is set up (Autoplay, on at first), unless cells are being drawn
+// Life: a run plays as soon as it is set up (Autoplay, off at first), unless cells are being drawn
 const autoplay = () => { if (walk.life && !drawing && $('autoPlay').checked) play(true); };
 function restart() {
   faced = false;
