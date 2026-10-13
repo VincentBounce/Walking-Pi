@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.486';
+const VERSION = '0.1.487';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5908,7 +5908,7 @@ function planeHuntWorker() {
 const planeHunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
 // the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
-const PLANE_ZONES = { d10: ['zoneAll', 'Whole 10 %'], d20: ['zoneAll', 'Whole 20 %'], d30: ['zoneAll', 'Whole 30 %'], d50: ['zoneAll', 'Whole 50 %'],
+const PLANE_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
                       radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'] };
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 const PLANE_PARTS = { 2: '2 halves', 4: '4 quarters', 6: '6 sixths' };
@@ -8666,6 +8666,7 @@ $('planeZones').replaceChildren(...Object.entries(PLANE_ZONES).map(([zone, [pic,
   b.type = 'button';
   b.dataset.zone = zone;
   b.innerHTML = `${icon(pic)}<span>${name}</span>`;
+  b.title = zoneRadius(zone) ? `Random starts within radius ${zoneRadius(zone)}` : `The whole grid, ${name} alive`;
   b.addEventListener('click', () => pickPlaneZone(zone));
   return b;
 }));
