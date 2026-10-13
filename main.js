@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.495';
+const VERSION = '0.1.496';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1109,7 +1109,7 @@ function describe(base, available) {
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
   const lead = walk.plane ? planeLead(number) : start?.zone ? `${zoneWords(start.zone)} on ${mode.where}, the others dead`
-    : start === 'duel' ? duelWords() : start ? `${{ hunt: 'A start found by the hunt', battle: 'A battle found by the hunt', saved: 'A saved start' }[start]} on ${mode.where}`
+    : start ? `${{ hunt: 'A start found by the hunt', battle: 'A battle found by the hunt', saved: 'A saved start' }[start]} on ${mode.where}`
     : plane.start === 'digits' ? `${number} ${seeded} of ${mode.where}` : `A random soup, ${plane.density} % alive (seed ${plane.seed}), on ${mode.where}`;
   // the title: the rule (its name, or the rule itself), not the number that may have seeded it
   const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
@@ -4682,10 +4682,9 @@ function lifeReseed() {
   setLifeSeed(L.seed.slice(), null);
 }
 // A start as the Start says, once the grid is built: in Hunt, a soup's colours each in its part of the
-// grid (see huntParts); a Duel, its patterns
+// grid (see huntParts)
 function startColours(seed) {
   const K = walk.life.colours;
-  if (plane.start === 'duel') { seed.set(duelSeed()); return; }
   if (plane.start !== 'random' || K === 1) return;
   huntParts(0, K).forEach((part, i) => { for (const t of part) if (seed[t]) seed[t] = i + 1; });
 }
@@ -4703,7 +4702,7 @@ function buildLife(seq, mode) {
     $('lifePreset').value = rule.text;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
-  if (plane.start === 'draw' || (plane.start === 'duel' && !duelOn(mode))) plane.start = 'random';  // no drawing on the surfaces; duels on some
+  if (plane.start === 'draw') plane.start = 'random';  // no drawing on the surfaces
   const seed = surfaceSeed(seq, g.n, rule.C, rule.colours);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
@@ -4722,16 +4721,14 @@ function buildLife(seq, mode) {
   setPerspective();
   project();
   updateHint();
-  startColours(walk.life.seed);  // in colours, each in its part; a duel's patterns
+  startColours(walk.life.seed);  // in colours, each in its part
   countSeed(walk.life);
-  if (plane.start === 'duel') lifeStart = 'duel';
   restart();
   if (walk.shape) applyShape();
   hunt.top = [];  // a new surface, rule or colours: the starts found were another game's
   hunt.status = '';
   stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
-  renderDuel();
   autoplay();
 }
 
@@ -4959,16 +4956,14 @@ function buildLifePlane(seq) {
                         maxDist: null, base: rule.base, counts: null, lattice: 'square', skipZeros: false, points: false,
                         keys: seq, labels: null, sphere: false, geo: { n }, plane: { kind, W, row, torus: plane.torus }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
-  startColours(walk.life.seed);  // in colours, each in its part; a duel's patterns
+  startColours(walk.life.seed);  // in colours, each in its part
   countSeed(walk.life);
-  if (plane.start === 'duel') lifeStart = 'duel';
   updateHint();
   restart();
   hunt.top = [];  // a new grid, rule or colours: the starts found were another game's
   hunt.status = '';
   stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
-  renderDuel();
   autoplay();
 }
 // the grid's frame: the corners of its four corner cells
@@ -4993,46 +4988,18 @@ function planeReseed() {
   syncLink();
 }
 const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons' };
-// the Duel panel: the rule's patterns as cards, the turn from one colour to the next
-function renderDuel() {
-  const mode = MODES[$('mode').value];
-  $('startDuel').hidden = plane.start !== 'duel' || !mode.life;
-  if ($('startDuel').hidden || !walk.life) return;
-  const kind = mode.plane ?? 'square', rule = walk.life.ruleText, mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const K = walk.life.colours;
-  $('duelTitle').textContent = `Duel · ${K} colour${K > 1 ? 's' : ''} ${duelWhere(K)}`;
-  const fits = DRAW_PATTERNS.filter((p) => p[1] === kind && (mine || p[2].includes(rule)));
-  if (fits.length && !fits.some((p) => p[0] === duel.id)) duel.id = fits[0][0];
-  const reseed = () => { setLifeSeed(duelSeed(), 'duel'); renderDuel(); };
-  $('duelCards').replaceChildren(...fits.map(([id, k, rules, name, rle, what, art]) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = `<span class="mode-icon">${art ? pixelIcon(art) : cellsIcon(k, rle)}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${what}</span></span>`;
-    b.classList.toggle('active', id === duel.id);
-    b.addEventListener('click', () => { duel.id = id; reseed(); });
-    return b;
-  }));
-  $('duelNone').hidden = fits.length > 0;
-  $('duelTurns').replaceChildren(...Object.entries(DUEL_TURNS).map(([t, [name]]) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = name;
-    b.classList.toggle('active', t === duel.turn);
-    b.addEventListener('click', () => { duel.turn = t; reseed(); });
-    return b;
-  }));
-}
 // the description's lead: how the cells start, on which grid
 // a zone of the hunt, a random start in it, in words
 function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = Number(zone.slice(1));
+  if (zone === 'patterns') return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour at its spot'}, turned or mirrored at random`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
 function planeLead(number) {
   const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
   const sym = SYMMETRIES[symmetryOf(kind)][2];
-  const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt', duel: duelWords() }[lifeStart];
+  const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
   if (lifeStart?.zone) return `${zoneWords(lifeStart.zone)}${sym ? `, ${sym},` : ''} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
@@ -5049,8 +5016,7 @@ function planeFromSetup(s) {
     plane.density = Math.min(60, Math.max(5, Number(a) || 30));
     hunt.zone = `d${plane.density}`;  // its tile, when one of them
     plane.seed = Number(b) || 1;
-  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' || kind === 'duel' ? kind : 'random';
-  if (kind === 'duel') Object.assign(duel, { id: DRAW_BY_ID.has(a) ? a : duel.id, turn: DUEL_TURNS[b] ? b : duel.turn });
+  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
   if (plane.start === 'pattern') {  // an old link's pattern: drawn in the middle
     plane.start = 'draw';
@@ -5063,9 +5029,8 @@ function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on the plane only)
     b.classList.toggle('active', b.dataset.start === plane.start);
-    b.disabled = (b.dataset.start === 'draw' && !kind) || (b.dataset.start === 'duel' && !duelOn(MODES[$('mode').value]));
+    b.disabled = b.dataset.start === 'draw' && !kind;
   }
-  renderDuel();
   if (!kind) { $('symmetryRow').hidden = $('startDraw').hidden = true; return; }
   const sides = PLANE_SIDES[kind];
   $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)}`;  // the shape is the tile above; its cells on hover
@@ -5570,7 +5535,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks, all } = e.data;
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks, all, choices } = e.data;
     const around = new Int32Array(K + 1), last = K * (C - 1);
     // one generation (as lifeStep); in colours, the births of each into born, and whether two colours touch
     const step = (a, b, gen, born) => {
@@ -5643,6 +5608,16 @@ function huntWorker() {
       for (const [t] of cells) { s[t] = k % C; k = Math.floor(k / C); }
       return copy(s);
     };
+    // Patterns: for each colour, its choices (a pattern, turned or mirrored, at its spot: [cell, state…]);
+    // a start, one choice a colour (pick)
+    const fromPick = (pick) => {
+      const s = new Uint8Array(n);
+      pick.forEach((c, i) => { const f = choices[i][c]; for (let q = 0; q < f.length; q += 2) s[f[q]] = f[q + 1]; });
+      s.pick = pick;
+      return s;
+    };
+    const randomPick = () => fromPick(choices.map((c) => Math.floor(Math.random() * c.length)));
+    const nthPick = (k) => fromPick(choices.map((c) => { const d = k % c.length; k = Math.floor(k / c.length); return d; }));
     const top = [];  // the 5 best: { ...run, seed }
     const keep = (r, seed) => {
       if (top.length === 5 && r.score <= top[4].score) return false;
@@ -5651,7 +5626,7 @@ function huntWorker() {
       const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end));
       if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
       if (same >= 0) top.splice(same, 1);
-      top.push({ ...r, seed });
+      top.push({ ...r, seed, pick: seed.pick });
       top.sort((x, y) => y.score - x.score);
       top.length = Math.min(top.length, 5);
       return true;
@@ -5660,8 +5635,18 @@ function huntWorker() {
       if (changed || i % 10 === 0 || i === total) self.postMessage({ type: 'progress', phase, i, total, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
     };
     const total = all || runs;
-    for (let i = 1; i <= total; i++) { const seed = all ? nthSeed(i - 1) : randomSeed(); report(1, i, total, keep(run(seed), seed)); }
-    for (let i = 1; i <= (all ? 0 : tweaks) && top.length; i++) {  // change 1 to 3 cells of the best
+    for (let i = 1; i <= total; i++) {
+      const seed = choices ? (all ? nthPick(i - 1) : randomPick()) : all ? nthSeed(i - 1) : randomSeed();
+      report(1, i, total, keep(run(seed), seed));
+    }
+    for (let i = 1; i <= (all ? 0 : tweaks) && top.length; i++) {  // change 1 to 3 cells of the best (patterns: one colour's choice)
+      if (choices) {
+        const pick = top[0].pick.slice(), c = Math.floor(Math.random() * K);
+        pick[c] = Math.floor(Math.random() * choices[c].length);
+        const seed = fromPick(pick);
+        report(2, i, tweaks, keep(run(seed), seed));
+        continue;
+      }
       const seed = top[0].seed.slice();
       for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
         const [t, k] = cells[Math.floor(Math.random() * cells.length)];
@@ -5677,7 +5662,8 @@ const hunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  
 const huntId = (r) => `${r.T}|${r.end}`;
 // the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
 const HUNT_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
-                      radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'] };
+                      radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'],
+                      patterns: [null, 'Patterns'] };  // the rule's patterns, mixed (see patternChoices)
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
 const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;  // one colour: random starts, then tweaks of the best
@@ -5737,6 +5723,10 @@ function huntParts(r, K) {
 // are, and how many starts when few enough to try them all.
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
+  if (hunt.zone === 'patterns') {
+    const choices = patternChoices(), count = choices.reduce((m, c) => m * c.length, 1);
+    return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
+  }
   huntParts(r, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
   const cells = [], copies = [];
   if (walk.plane) {
@@ -5762,11 +5752,12 @@ function renderHunt() {
   if ($('huntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   $('huntTitle').textContent = K === 1 ? 'Hunt · the longest life' : walk.plane ? `Hunt · a battle in ${COLOUR_PARTS[K]}` : `Hunt · a battle of ${K} colours`;
-  const key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}`;
+  const key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}`;
   if (hunt.fitKey !== key) {  // a radius whose patches do not fit the grid (overlap): greyed
     hunt.fitKey = key;
     hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
       const r = zoneRadius(zone);
+      if (zone === 'patterns') return [zone, patternsOn() && patternChoices()[0].length > 0];
       if (!r) return [zone, true];
       if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
       const parts = huntParts(r, K);
@@ -5777,7 +5768,8 @@ function renderHunt() {
     b.classList.toggle('active', b.dataset.zone === hunt.zone);
     b.disabled = busy || !hunt.fits[b.dataset.zone];
   }
-  $('zoneCells').textContent = `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`
+  $('zoneCells').textContent = (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
+    : `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
     + (all ? ` · all ${fmt(all)} starts tried` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt`;
   $('huntStatus').textContent = hunt.status;
@@ -5809,7 +5801,14 @@ function pickZone(zone) {
   hunt.zone = zone;
   hunt.top = [];
   hunt.status = '';
-  const L = walk.life, { cells, copies, density } = huntPlan();
+  const L = walk.life, { cells, copies, density, choices } = huntPlan();
+  if (choices) {  // patterns: one of each colour's, at random
+    const seed = new Uint8Array(L.seed.length);
+    for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
+    setLifeSeed(seed, { zone });
+    renderHunt();
+    return;
+  }
   if (!zoneRadius(zone)) {  // the whole grid: a new soup each time, as dense as said
     plane.density = Number(zone.slice(1));
     plane.seed = 1 + Math.floor(Math.random() * 999999999);
@@ -5830,7 +5829,7 @@ function huntClick() {
     if (r) { playHuntResult(r); play(true); }
     return;
   }
-  const L = walk.life, { cells, copies, density, all } = huntPlan(), K = L.colours;
+  const L = walk.life, { cells, copies, density, all, choices } = huntPlan(), K = L.colours;
   hunt.top = [];
   hunt.worker = new Worker(URL.createObjectURL(new Blob([`(${huntWorker.toString()})()`], { type: 'text/javascript' })));
   hunt.worker.onmessage = (e) => {
@@ -5841,25 +5840,21 @@ function huntClick() {
     renderHunt();
   };
   hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
-                                 cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all,
+                                 cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all, choices,
                                  cap: K === 1 ? 50000 : 4000, runs: K === 1 ? HUNT_STARTS : 200, tweaks: K === 1 ? HUNT_TWEAKS : 400 });
   hunt.status = 'Starting…';
   renderHunt();
 }
 
-/* ---- 9.1b Duel -------------------------------------------------------------------------------- */
-// A duel: one pattern for each colour at its fair spot, each turned a step from the last (or every
-// other one mirrored), so that no two are mirror images (two R-pentominoes alike stay mirror images:
-// a draw). On the plane, the cube's faces, the torus of squares.
-const duel = { id: 'rpentomino', turn: 'turn' };
-const DUEL_TURNS = { same: ['Same', 'all alike'], turn: ['↻ A step', 'each turned a step from the last'], half: ['↻ Half', 'each turned by half a turn from the last'],
-                     mirror: ['⇋ Mirror', 'every other one mirrored'] };
+/* ---- 9.1b Patterns ------------------------------------------------------------------------- */
+// The hunt's Patterns zone: at each colour's fair spot, one of the rule's patterns (Draw's), turned or
+// mirrored; the hunt mixes them, which pattern and which way for each colour. On the plane, the cube's
+// faces, the torus of squares.
 const CUBE_FACES = [1, 2, 3, 4, 6];  // the cube: its colours on faces
-const duelOn = (mode) => !!mode.plane || mode.sphere === 'torus' || (mode.sphere === 'cube' && CUBE_FACES.includes(lifeColours));
-const duelKind = () => walk.plane?.kind ?? 'square';
+const patternsOn = () => { const m = MODES[$('mode').value]; return !!walk.life && (!!m.plane || m.sphere === 'torus' || (m.sphere === 'cube' && CUBE_FACES.includes(walk.life.colours))); };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
 // plane or the torus (a lattice, see huntParts), the middle of its face of the cube
-function duelAt(i, K, cells) {
+function patternAt(i, K, cells) {
   const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [];
   const w = Math.max(...cells.map((c) => c[0])) + 1, h = Math.max(...cells.map((c) => c[1])) + 1;
   if (walk.plane) {
@@ -5879,17 +5874,22 @@ function duelAt(i, K, cells) {
   }
   return out;
 }
-function duelSeed() {
-  const L = walk.life, K = L.colours, kind = duelKind(), steps = PATTERN_TURNS[kind], seed = new Uint8Array(L.seed.length);
-  const p = DRAW_BY_ID.get(duel.id) ?? DRAW_PATTERNS[0];
-  for (let i = 0; i < K; i++) {
-    const turn = duel.turn === 'turn' ? i % steps : duel.turn === 'half' ? ((i * steps) / 2) % steps : 0;
-    for (const [t, v] of duelAt(i, K, orientPattern(kind, p[4], turn, duel.turn === 'mirror' && i % 2 === 1))) seed[t] = K > 1 ? i + 1 + K * (v - 1) : v;
+// each colour's choices: the rule's patterns (a rule of your own: all its grid's) that fit its block,
+// every way they turn and mirror (the same shape once), at its spot, as [cell, state…] in its colour
+function patternChoices() {
+  const L = walk.life, g = walk.geo, K = L.colours, kind = walk.plane?.kind ?? 'square', rule = L.ruleText, [cols, rows] = COLOUR_GRID[K];
+  const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
+  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu, g.nv) / Math.max(cols, rows) : g.size;
+  const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
+  for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
+    for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
+      const cells = orientPattern(kind, p[4], t, f), k = cells.map((c) => c.join(',')).sort().join(' ');
+      const span = Math.max(...cells.map((c) => (pairs ? c[0] >> 1 : c[0])), ...cells.map((c) => c[1])) + 1;
+      if (span <= room - 2 && !seen.has(k)) { seen.add(k); shapes.push(cells); }
+    }
   }
-  return seed;
+  return Array.from({ length: K }, (_, i) => shapes.map((cells) => Int32Array.from(patternAt(i, K, cells).flatMap(([t, v]) => [t, K > 1 ? i + 1 + K * (v - 1) : v]))));
 }
-const duelWhere = (K) => (walk.plane ? `in ${COLOUR_PARTS[K] ?? 'the middle'}` : walk.geo.torus ? `in ${K} blocks of the torus` : `on ${K === 1 ? 'a face' : `${K} faces`} of the cube`);
-const duelWords = () => `Duel: ${DRAW_BY_ID.get(duel.id)?.[3] ?? 'a pattern'} for each colour ${duelWhere(walk.life.colours)}, ${DUEL_TURNS[duel.turn][1]}`;
 
 /* ---- 9.2 Patches ----------------------------------------------------------------------------- */
 // The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
@@ -6020,11 +6020,11 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    s.sd = plane.start === 'random' ? `random.${plane.density}.${plane.seed}` : plane.start === 'duel' ? `duel.${duel.id}.${duel.turn}` : plane.start;
+    s.sd = plane.start === 'random' ? `random.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
-  if (mode.life && !mode.plane) s.sd = plane.start === 'digits' ? 'digits' : plane.start === 'duel' ? `duel.${duel.id}.${duel.turn}` : `random.${plane.density}.${plane.seed}`;  // a surface's start
+  if (mode.life && !mode.plane) s.sd = plane.start === 'digits' ? 'digits' : `random.${plane.density}.${plane.seed}`;  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
@@ -6056,8 +6056,7 @@ function applySetup(s) {
     if (MODES[s.w].plane) planeFromSetup(s);
     else {  // a surface's start: a soup, or its digits (an old link's, with no sd)
       const [kind, a, b] = String(s.sd ?? 'digits').split('.');
-      plane.start = kind === 'random' || kind === 'duel' ? kind : 'digits';
-      if (kind === 'duel') Object.assign(duel, { id: DRAW_BY_ID.has(a) ? a : duel.id, turn: DUEL_TURNS[b] ? b : duel.turn });
+      plane.start = kind === 'random' ? 'random' : 'digits';
       if (kind === 'random') { plane.density = Math.min(60, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = `d${plane.density}`; }
     }
     ruleFittedTo = s.w;  // a link's rule as it is
@@ -8529,7 +8528,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   const b = document.createElement('button');
   b.type = 'button';
   b.dataset.zone = zone;
-  b.innerHTML = `${icon(pic)}<span>${name}</span>`;
+  b.innerHTML = `${pic ? icon(pic) : pixelIcon('.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Patterns: a glider
   b.title = zoneRadius(zone) ? `Random starts within radius ${zoneRadius(zone)}` : `The whole grid, ${name} alive`;
   b.addEventListener('click', () => pickZone(zone));
   return b;
