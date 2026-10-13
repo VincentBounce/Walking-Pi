@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.507';
+const VERSION = '0.1.508';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4686,7 +4686,9 @@ function lifeReseed() {
 function startColours(seed) {
   const K = walk.life.colours;
   if (plane.start !== 'random') return;
-  if (hunt.zone === 'custom' || (hunt.zone === 'patterns' && !(patternsOn() && patternChoices()[0].length))) hunt.zone = `d${plane.density}`;  // the link's start, or no patterns here: the soup
+  // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
+  const fits = huntFits(), r = zoneRadius(hunt.zone);
+  if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? `d${plane.density}`;
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); lifeStart = { zone: hunt.zone }; return; }
   if (K === 1) return;
@@ -5760,27 +5762,29 @@ function huntPlan() {
 // another kind), else the start chosen
 const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
 const huntOn = () => !!walk.life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);
+// the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
+function huntFits() {
+  const K = walk.life.colours, key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}`;
+  if (hunt.fitKey === key) return hunt.fits;
+  hunt.fitKey = key;
+  return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
+    const r = zoneRadius(zone);
+    if (zone === 'patterns') return [zone, patternsOn() && patternChoices()[0].length > 0];
+    if (!r) return [zone, true];
+    if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
+    const parts = huntParts(r, K);
+    return [zone, new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
+  })));
+}
 function renderHunt() {
   $('huntRow').hidden = !huntOn();
   if ($('huntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K === 1 ? 'the longest life' : walk.plane ? `a battle in ${COLOUR_PARTS[K]}` : `a battle of ${K} colours`;
-  const key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}`;
-  if (hunt.fitKey !== key) {  // a radius whose patches do not fit the grid (overlap): greyed
-    hunt.fitKey = key;
-    hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
-      const r = zoneRadius(zone);
-      if (zone === 'patterns') return [zone, patternsOn() && patternChoices()[0].length > 0];
-      if (zone === 'custom') return [zone, true];
-      if (!r) return [zone, true];
-      if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
-      const parts = huntParts(r, K);
-      return [zone, new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
-    }));
-  }
+  const fits = huntFits();
   for (const b of $('huntZones').children) {
     b.classList.toggle('active', b.dataset.zone === hunt.zone);
-    b.disabled = busy || !hunt.fits[b.dataset.zone];
+    b.disabled = busy || !fits[b.dataset.zone];
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
   $('zoneCells').textContent = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link` : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
