@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.496';
+const VERSION = '0.1.497';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4685,7 +4685,11 @@ function lifeReseed() {
 // grid (see huntParts)
 function startColours(seed) {
   const K = walk.life.colours;
-  if (plane.start !== 'random' || K === 1) return;
+  if (plane.start !== 'random') return;
+  if (hunt.zone === 'patterns' && !(patternsOn() && patternChoices()[0].length)) hunt.zone = `d${plane.density}`;  // none here: the soup
+  const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
+  if (z) { seed.set(z); lifeStart = { zone: hunt.zone }; return; }
+  if (K === 1) return;
   huntParts(0, K).forEach((part, i) => { for (const t of part) if (seed[t]) seed[t] = i + 1; });
 }
 function buildLife(seq, mode) {
@@ -5797,29 +5801,27 @@ function stopHunt() {
   renderHunt();
 }
 // a zone picked: one random start in it at once (the whole grid alone: the soup)
+// a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
+// alive; null for the whole grid (its soup, see startColours)
+function zoneSeed() {
+  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns') return null;
+  const { cells, copies, density, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length);
+  if (choices) for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
+  else {
+    for (const [t, k] of cells) if (Math.random() < density) seed[t] = k;
+    for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
+  }
+  return seed;
+}
 function pickZone(zone) {
   hunt.zone = zone;
   hunt.top = [];
   hunt.status = '';
-  const L = walk.life, { cells, copies, density, choices } = huntPlan();
-  if (choices) {  // patterns: one of each colour's, at random
-    const seed = new Uint8Array(L.seed.length);
-    for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
-    setLifeSeed(seed, { zone });
-    renderHunt();
-    return;
-  }
-  if (!zoneRadius(zone)) {  // the whole grid: a new soup each time, as dense as said
+  if (!zoneRadius(zone) && zone !== 'patterns') {  // the whole grid: a new soup each time, as dense as said
     plane.density = Number(zone.slice(1));
     plane.seed = 1 + Math.floor(Math.random() * 999999999);
     lifeReseed();  // in colours, each in its part
-    renderHunt();
-    return;
-  }
-  const seed = new Uint8Array(L.seed.length);
-  for (const [t, k] of cells) if (Math.random() < density) seed[t] = k;
-  for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
-  setLifeSeed(seed, { zone });
+  } else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
 }
 function huntClick() {
