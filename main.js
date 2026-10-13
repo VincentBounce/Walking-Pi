@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.505';
+const VERSION = '0.1.506';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4700,6 +4700,7 @@ function buildLife(seq, mode) {
   const size = sphereSize();
   const g = mesh(size);
   const nbr = cornerNeighbours(g);
+  fitColours(g);  // as many colours as the surface has fair spots for
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && !nbr.ring) {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
@@ -4943,6 +4944,7 @@ function buildLifePlane(seq) {
     renderPlaneRow();
   }
   const W = plane.side, row = planeRow(kind, W), n = row * W;
+  fitColours();  // as many colours as the grid has fair blocks for
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && kind !== 'hex') {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
@@ -5302,7 +5304,7 @@ const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: 
 // its halves or quarters
 const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
                         icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
-function coloursFit(k) {
+function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value], [a, b] = COLOUR_GRID[k];
   if (k === 1) return true;
   if (mode.plane) {
@@ -5311,8 +5313,11 @@ function coloursFit(k) {
     return W % (a * even) === 0 && W % (b * even) === 0;
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
-  const g = walk.geo;  // a torus of the surfaces
   return !!g?.nu && ((g.nu % a === 0 && g.nv % b === 0) || (g.nu % b === 0 && g.nv % a === 0));
+}
+// a new figure that cannot place as many colours: the most it can, fewer
+function fitColours(g) {
+  if (!coloursFit(lifeColours, g)) lifeColours = COLOUR_STEPS.findLast((k) => k < lifeColours && coloursFit(k, g));
 }
 const colourBlock = (k) => {
   const [cols, rows] = COLOUR_GRID[k], cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
