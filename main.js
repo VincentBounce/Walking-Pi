@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.489';
+const VERSION = '0.1.490';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4994,7 +4994,8 @@ function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   if (!kind) return;
   const sides = PLANE_SIDES[kind];
-  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)} ${{ tri: 'rhombi of 2 triangles', cairo: 'squares of 2 pentagons' }[kind] ?? PLANE_CELLS[kind]}`;
+  $('planeLabel').textContent = `${fmt(plane.side)} × ${fmt(plane.side)}`;  // the shape is the tile above; its cells on hover
+  $('planeLabel').title = `${fmt(planeRow(kind, plane.side) * plane.side)} ${PLANE_CELLS[kind]}${{ tri: ', two a rhombus', cairo: ', two a square' }[kind] ?? ''}`;
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', plane.torus);
