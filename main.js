@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.497';
+const VERSION = '0.1.498';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5528,8 +5528,9 @@ function lifeStep() {
  *   A patch with at most 20,000 starts has them all tried (the true record), no tweaks.
  * - Colours, a battle: it lasts and every colour keeps spreading, as much as the others.
  *   S_c = Σ g × (cells born of colour c at generation g), the later the more it counts; the balance,
- *   1 / (1 + CV), CV the standard deviation of the S_c over their mean (0: all even); score = the
- *   generations with two colours side by side, before the run repeats (or the cap), × the balance.
+ *   1 − CV / √(K − 1), CV the standard deviation of the S_c over their mean (1: all even, 0: one colour
+ *   spreading alone); score = the generations with two colours side by side, before the run repeats
+ *   (or the cap), × the balance.
  * In a worker with its own copy of the step (as lifeStep's). */
 function huntWorker() {
   const cellRandom = (seed, i) => {  // as the page's
@@ -5599,7 +5600,8 @@ function huntWorker() {
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
       // (no contact at all: the longer first)
-      return { score: contacts[T] / (1 + cv) + T / 1e6, contacts: contacts[T], T, P, end, balance: 1 / (1 + cv) };
+      const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1));  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
+      return { score: contacts[T] * balance + T / 1e6, contacts: contacts[T], T, P, end, balance };
     };
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
     const randomSeed = () => {
