@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.514';
+const VERSION = '0.1.515';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -930,6 +930,8 @@ const MODES = {
                   where: 'a torus of hexagons' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true, perspective: true,
                 where: 'the surface of a cube' },
+  lifePits:   { base: 2, lattice: 'sphere', sphere: 'pits', life: true, perspective: true,
+                where: 'the surface of a cube with a pit in each face' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
                 where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
@@ -2017,7 +2019,7 @@ const NAV = {
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2d: ['Life', '2D', 'Squares', 'Life', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
-  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
@@ -2027,7 +2029,7 @@ const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
-  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron' };
+  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls' };
 const SHAPE_SHORT = { 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 // the section's title
 const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Grid' };
@@ -3211,6 +3213,49 @@ function cubeFlat(n) {
   return (meshCache[key] = mesh);
 }
 
+/* Cube with pits: each face of the cube (n × n squares, n a multiple of 6) with a pit in its middle,
+ * a third of the face wide and a sixth deep (as deep as wide, two pits would meet inside the cube,
+ * along the edges of its core): the face's 8 outer ninths, the pit's 4 walls and its floor, 11
+ * ninths a face. Still a sphere, but with 5 squares round each corner of a pit's rim (a saddle: 9
+ * neighbours) and 3 round each corner of its floor. Concave: drawn tile by tile. */
+function cubePits(n) {
+  const key = `pits${n}`;
+  if (meshCache[key]) return meshCache[key];
+  const faces = [
+    [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    [[0, 1, 0], [1, 0, 0], [0, 0, 1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+    [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [1, 0, 0], [0, 1, 0]]];
+  const { verts, add } = vertexStore(), quads = [], a = n / 3, c = (i) => (2 * i) / n - 1;  // c: a grid line as a coordinate
+  for (const [N, U, W] of faces) {
+    const at = (h, i, j) => add(...[0, 1, 2].map((d) => N[d] * h + U[d] * c(i) + W[d] * c(j)));  // h: the height, 1 on the face
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (i >= a && i < 2 * a && j >= a && j < 2 * a) continue;  // the pit's mouth
+      quads.push([at(1, i, j), at(1, i + 1, j), at(1, i + 1, j + 1), at(1, i, j + 1)]);
+    }
+    const h = (k) => 1 - (2 * k) / n;  // k squares deep
+    const deep = a / 2, floor = h(deep);
+    for (let i = a; i < 2 * a; i++) for (let j = a; j < 2 * a; j++) quads.push([at(floor, i, j), at(floor, i + 1, j), at(floor, i + 1, j + 1), at(floor, i, j + 1)]);  // the floor
+    for (let k = 0; k < deep; k++) for (let m = a; m < 2 * a; m++) {  // the 4 walls
+      quads.push([at(h(k), a, m), at(h(k), a, m + 1), at(h(k + 1), a, m + 1), at(h(k + 1), a, m)]);
+      quads.push([at(h(k), 2 * a, m), at(h(k), 2 * a, m + 1), at(h(k + 1), 2 * a, m + 1), at(h(k + 1), 2 * a, m)]);
+      quads.push([at(h(k), m, a), at(h(k), m + 1, a), at(h(k + 1), m + 1, a), at(h(k + 1), m, a)]);
+      quads.push([at(h(k), m, 2 * a), at(h(k), m + 1, 2 * a), at(h(k + 1), m + 1, 2 * a), at(h(k + 1), m, 2 * a)]);
+    }
+  }
+  // outwards: off the solid. On the cube's faces, from its middle; in a pit, from the floor up (its axis:
+  // the largest coordinate, at two thirds), from a wall towards the pit's middle (the coordinate at a third)
+  const out = (m) => {
+    const ax = [0, 1, 2].sort((p, q) => Math.abs(m[q]) - Math.abs(m[p]))[0];
+    if (Math.abs(m[ax]) > 1 - 1e-6) return m;
+    if (Math.abs(Math.abs(m[ax]) - 2 / 3) < 1e-6 && [0, 1, 2].every((d) => d === ax || Math.abs(m[d]) < 1 / 3 - 1e-6)) return m.map((v, d) => (d === ax ? v : 0));
+    const b = [0, 1, 2].find((d) => d !== ax && Math.abs(Math.abs(m[d]) - 1 / 3) < 1e-6);
+    return m.map((v, d) => (d === b ? -v : 0));
+  };
+  const mesh = finishMesh(verts, quads, 4, n, out);
+  mesh.concave = true;
+  return (meshCache[key] = mesh);
+}
+
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
  * tetrahedron (4 faces, corners shared by 3 triangles instead of 6), octahedron (8 faces,
@@ -3614,7 +3659,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
+const MORPHABLE = ['cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -3772,6 +3817,7 @@ const STEPS_128 = [8, 12, 16, 24, 32, 48, 64, 96, 128];
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
+  pits: { mesh: cubePits, radius: (n) => n / 2, sizes: [12, 24, 48, 96], initial: 24, tiles: (n) => (66 * n * n) / 9, unit: 'squares' },  // the cube with pits
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
@@ -5286,7 +5332,7 @@ function drawLifePlane() {
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane]
-  : ['cube', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : '▲');
+  : ['cube', 'pits', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -5310,7 +5356,7 @@ const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: 
 // middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
 // edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
 // its halves or quarters
-const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
+const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3, 4, 6], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
                         icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value], [a, b] = COLOUR_GRID[k];
@@ -5673,7 +5719,7 @@ function huntWorker() {
       if (top.length === 5 && r.score <= top[4].score) return false;
       // the same run: ending alike at the same T; one colour, as long with the same period (a turned copy,
       // or cells that change nothing), the fewer cells kept; colours, as long in contact as evenly (turned)
-      const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-9)));
+      const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
       if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
       if (same >= 0) top.splice(same, 1);
       top.push({ ...r, seed, pick: seed.pick });
@@ -5735,6 +5781,7 @@ const ICO = () => POLYHEDRA.icosa.P, nearest3 = (d) => [...ICO()].sort((p, q) =>
 const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: [ICO()[0], ICO()[11], ICO()[5]], 4: TETRA4, 8: CORNERS8, 12: ICO() });
 const SOLID_SPOTS = {
   cube: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),
+  pits: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
   octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: TETRA4, 6: AXES, 8: CORNERS8, 12: EDGES12 }),
   tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
   stella: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 6: AXES, 8: CORNERS8 }),
@@ -5865,7 +5912,7 @@ function playHuntResult(r) {
 function mergeTops(all, K) {
   const top = [];
   for (const r of all.sort((x, y) => y.score - x.score)) {
-    const same = top.some((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-9)));
+    const same = top.some((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
     if (!same && top.length < 5) top.push(r);
   }
   return top;
@@ -6012,7 +6059,7 @@ function patchCentre() {
   if (walk.plane) { const { W, row } = walk.plane; return (W >> 1) * row + (row >> 1); }  // the plane: its middle cell
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
-  if (g.sides === 4) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);
+  if (g.sides === 4 && g.perFace) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);  // the cube (not the one with pits)
   const dir = CAM0.v;
   let best = 0, bestDot = -Infinity;
   for (let t = 0; t < g.n; t++) {
