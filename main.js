@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.501';
+const VERSION = '0.1.502';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5796,9 +5796,9 @@ function renderHunt() {
     b.type = 'button';
     const [name, detail] = K === 1
       ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
-      : [`${fmt(r.contacts)} generations in contact`, `${r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'} · balance ${r.balance.toFixed(2)}`];
+      : [`${fmt(r.contacts)} generations in contact`, r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'];  // its balance: on its light
     const [colour, word] = light(r);
-    b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
+    b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ''}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
     b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
     b.addEventListener('click', () => playHuntResult(r));
     return b;
