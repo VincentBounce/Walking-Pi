@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.508';
+const VERSION = '0.1.509';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4747,7 +4747,7 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-const PLANE_SIDES = { square: [8, 16, 24, 32, 64, 128, 256, 512, 1024, 2048], hex: [8, 16, 24, 32, 64, 128, 256, 512], tri: [8, 16, 24, 32, 64, 128, 256], cairo: [8, 16, 24, 32, 64, 128, 256] };
+const PLANE_SIDES = { square: [8, 16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [8, 16, 24, 32, 48, 64, 128, 256, 512], tri: [8, 16, 24, 32, 48, 64, 128, 256], cairo: [8, 16, 24, 32, 48, 64, 128, 256] };  // 24 and 48: 3, 6 and 12 colours too
 const plane = { side: 256, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
