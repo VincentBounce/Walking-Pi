@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.511';
+const VERSION = '0.1.512';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5553,68 +5553,99 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks, all, choices } = e.data;
-    const around = new Int32Array(K + 1), last = K * (C - 1);
-    // one generation (as lifeStep); in colours, the births of each into born, and whether two colours touch
-    const step = (a, b, gen, born) => {
-      let contact = false;
-      for (let t = 0; t < n; t++) {
-        const was = a[t];
-        if (start[t] === start[t + 1]) { b[t] = 0; continue; }  // a wall (a pentagon of the hexagon sphere)
-        if (was > K) { b[t] = was + K <= last ? was + K : 0; continue; }  // one more dying stage, or dead
-        let c = 0;
-        around.fill(0);
-        if (ring) {
-          for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; if (was && a[v] !== was) contact = true; } }
-          c += 16;
-        } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; if (was && v !== was) contact = true; } }
-        let now = 0;
-        if (was) now = S[c] ? was : C > 2 ? was + K : 0;
-        else if (B[c] && K === 1) now = 1;
-        else if (B[c]) {
-          let most = 0, tied = 0;
-          for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; } else if (around[k] === most) tied++; }
-          let pick = tied > 1 ? Math.floor(cellRandom(gen, t) * tied) : 0;
-          for (let k = 1; k <= K; k++) if (around[k] === most && pick-- === 0) { now = k; break; }
-          born[now]++;
-        }
-        b[t] = now;
-      }
-      return contact;
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks: allTweaks, all, choices, part, parts } = e.data;
+    const tweaks = Math.ceil(allTweaks / parts);  // this worker's share (see huntClick)
+    const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K;
+    // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
+    const next = (a, t, gen, born) => {
+      const was = a[t];
+      if (start[t] === start[t + 1]) return 0;  // a wall (a pentagon of the hexagon sphere)
+      if (was > K) return was + K <= last ? was + K : 0;  // one more dying stage, or dead
+      let c = 0;
+      around.fill(0);
+      if (ring) {
+        for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; } }
+        c += 16;
+      } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (live(v)) { c++; around[v]++; } }
+      if (was) return S[c] ? was : C > 2 ? was + K : 0;
+      if (!B[c]) return 0;
+      if (K === 1) return 1;
+      let most = 0, tied = 0, now = 0;
+      for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; } else if (around[k] === most) tied++; }
+      let pick = tied > 1 ? Math.floor(cellRandom(gen, t) * tied) : 0;
+      for (let k = 1; k <= K; k++) if (around[k] === most && pick-- === 0) { now = k; break; }
+      born[now]++;
+      return now;
     };
-    const fingerprint = (s) => {
-      let h1 = 0x811c9dc5, h2 = 0x01000193;
-      for (let t = 0; t < n; t++) { h1 = Math.imul(h1 ^ s[t], 0x01000193); h2 = Math.imul(h2 ^ (s[t] + t), 0x5bd1e995); }
-      return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
-    };
+    // A cell whose own state and whose neighbours' did not change keeps its state: each generation only
+    // the cells changed and their neighbours are worked out (all of them where a cell with no live
+    // neighbour is born: B0). The fingerprint of a state (two Zobrist hashes, a value per cell and state)
+    // and the pairs of neighbours alive in two colours are kept up to date from the changes alone.
+    const everyCell = B[0] || (ring && B[16]), all_ = Int32Array.from({ length: n }, (_, t) => t);
+    const zob = (t, v, seed) => { let h = Math.imul((t * 64 + v) ^ seed, 0x9e3779b1); h = Math.imul(h ^ (h >>> 15), 0x85ebca6b); return (h ^ (h >>> 13)) >>> 0; };
+    const odd = (x, y) => live(x) && live(y) && x !== y;  // two colours side by side
+    const mark = new Uint32Array(n);
+    let stamp = 0;
     // the cells a start chooses, with their colour; then, with a symmetry, the copies of these (cell, the
     // cell copied, the copy's colour: the colour of its part)
     const cells = Array.from({ length: flat.length / 2 }, (_, i) => [flat[2 * i], flat[2 * i + 1]]);
     const copy = (s) => { for (let i = 0; i < copies.length; i += 3) s[copies[i]] = s[copies[i + 1]] ? (K > 1 ? copies[i + 2] : s[copies[i + 1]]) : 0; return s; };
     // a run: its lifetime T (the generation it starts repeating from, P later), its end state, and its score
     const run = (seed) => {
-      let a = Uint8Array.from(seed), b = new Uint8Array(n), T = cap, P = 0, end = 0;
-      const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), seen = new Map([[fingerprint(a), 0]]);
-      const contacts = [0];  // the generations in contact up to each one (counted up to T)
+      let a = Uint8Array.from(seed), b = new Uint8Array(n), T = cap, P = 0, h1 = 0, h2 = 0, pairs = 0, contacts = 0, active = all_, nActive = n;
+      const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), changed = new Int32Array(n), list2 = new Int32Array(n);
+      for (let t = 0; t < n; t++) if (a[t]) {
+        h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965);
+        if (K > 1) for (let q = start[t]; q < start[t + 1]; q++) pairs += odd(a[t], a[list[q]]);
+      }
+      const key = () => h1 * 2097152 + (h2 & 0x1fffff), seen = new Map([[key(), 0]]), inContact = [0];  // contacts up to each generation
+      let end = key();
       for (let g = 1; g <= cap; g++) {
         born.fill(0);
-        contacts.push(contacts[g - 1] + step(a, b, g, born));
+        b.set(a);
+        let nc = 0;
+        for (let i = 0; i < nActive; i++) { const t = active[i], v = next(a, t, g, born); if (v !== a[t]) { b[t] = v; changed[nc++] = t; } }
+        if (K > 1) {  // the generation was in contact if its state (a) was; then the pairs of the new one
+          contacts += pairs > 0;
+          inContact.push(contacts);
+          stamp++;
+          for (let i = 0; i < nc; i++) mark[changed[i]] = stamp;
+          for (let i = 0; i < nc; i++) {
+            const t = changed[i];
+            for (let q = start[t]; q < start[t + 1]; q++) { const u = list[q]; pairs += (odd(b[t], b[u]) - odd(a[t], a[u])) * (mark[u] === stamp ? 1 : 2); }
+          }
+        }
         for (let k = 1; k <= K; k++) spread[k] += g * born[k];
+        for (let i = 0; i < nc; i++) {
+          const t = changed[i];
+          if (a[t]) { h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965); }
+          if (b[t]) { h1 ^= zob(t, b[t], 0x2545f491); h2 ^= zob(t, b[t], 0x6c078965); }
+        }
         [a, b] = [b, a];
-        end = fingerprint(a);
+        end = key();
         if (seen.has(end)) { T = seen.get(end); P = g - T; break; }
         seen.set(end, g);
+        if (everyCell) continue;
+        stamp++;  // next: the cells changed and their neighbours
+        nActive = 0;
+        for (let i = 0; i < nc; i++) {
+          const t = changed[i];
+          if (mark[t] !== stamp) { mark[t] = stamp; list2[nActive++] = t; }
+          for (let q = start[t]; q < start[t + 1]; q++) { const u = list[q]; if (mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
+          if (ring) for (let q = 0; q < 6; q++) { const u = ring[6 * t + q]; if (u >= 0 && mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
+        }
+        active = list2;
       }
       if (K === 1) {
-        let live = 0;
-        for (let t = 0; t < n; t++) live += seed[t] > 0;
-        return { score: T - live / 1e6, T, P, end, live, extinct: !a.some((v) => v) };  // (live: the start's cells)
+        let alive = 0;
+        for (let t = 0; t < n; t++) alive += seed[t] > 0;
+        return { score: T - alive / 1e6, T, P, end, live: alive, extinct: !a.some((v) => v) };  // (live: the start's cells)
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
       // (no contact at all: the longer first)
-      const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1));  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
-      return { score: contacts[T] * balance + T / 1e6, contacts: contacts[T], T, P, end, balance };
+      const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1)), touching = inContact[Math.min(T, inContact.length - 1)];  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
+      return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance };
     };
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
     const randomSeed = () => {
@@ -5650,12 +5681,14 @@ function huntWorker() {
       top.length = Math.min(top.length, 5);
       return true;
     };
+    let done = 0;  // this worker's starts so far
     const report = (phase, i, total, changed) => {
-      if (changed || i % 10 === 0 || i === total) self.postMessage({ type: 'progress', phase, i, total, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
+      if (changed || i % 10 === 0 || i === total) self.postMessage({ type: 'progress', phase, i: done, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
     };
     const total = all || runs;
-    for (let i = 1; i <= total; i++) {
+    for (let i = 1 + part; i <= total; i += parts) {  // every parts-th start, from this worker's
       const seed = choices ? (all ? nthPick(i - 1) : randomPick()) : all ? nthSeed(i - 1) : randomSeed();
+      done++;
       report(1, i, total, keep(run(seed), seed));
     }
     for (let i = 1; i <= (all ? 0 : tweaks) && top.length; i++) {  // change 1 to 3 cells of the best (patterns: one colour's choice)
@@ -5663,6 +5696,7 @@ function huntWorker() {
         const pick = top[0].pick.slice(), c = Math.floor(Math.random() * K);
         pick[c] = Math.floor(Math.random() * choices[c].length);
         const seed = fromPick(pick);
+        done++;
         report(2, i, tweaks, keep(run(seed), seed));
         continue;
       }
@@ -5672,6 +5706,7 @@ function huntWorker() {
         seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C);
       }
       copy(seed);
+      done++;
       report(2, i, tweaks, keep(run(seed), seed));
     }
     self.postMessage({ type: 'done' });
@@ -5826,8 +5861,17 @@ function playHuntResult(r) {
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
 }
+// the best of several workers: the same run once (as the worker's keep), the 5 best
+function mergeTops(all, K) {
+  const top = [];
+  for (const r of all.sort((x, y) => y.score - x.score)) {
+    const same = top.some((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-9)));
+    if (!same && top.length < 5) top.push(r);
+  }
+  return top;
+}
 function stopHunt() {
-  hunt.worker?.terminate();
+  hunt.worker?.forEach((w) => w.terminate());
   hunt.worker = null;
   renderHunt();
 }
@@ -5862,19 +5906,33 @@ function huntClick() {
     if (r) { playHuntResult(r); play(true); }
     return;
   }
-  const L = walk.life, { cells, copies, density, all, choices } = huntPlan(), K = L.colours;
+  // as many workers as the computer has cores (one left for the page), each with every parts-th start and
+  // its share of the tweaks (of its own best); their best merged
+  const L = walk.life, { cells, copies, density, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  const runs = all || (K === 1 ? HUNT_STARTS : 200), tweaks = all ? 0 : K === 1 ? HUNT_TWEAKS : 400, tops = [], done = new Int32Array(parts);
+  let finished = 0;
   hunt.top = [];
-  hunt.worker = new Worker(URL.createObjectURL(new Blob([`(${huntWorker.toString()})()`], { type: 'text/javascript' })));
-  hunt.worker.onmessage = (e) => {
-    const d = e.data;
-    if (d.type === 'done') { hunt.status = `Done · ${fmt(hunt.top.length)} best kept, a click plays one`; stopHunt(); return; }
-    if (d.top) hunt.top = d.top;
-    hunt.status = `${d.phase === 1 ? (all ? 'Starts' : 'Random starts') : 'Tweaks of the best'} ${fmt(d.i)} / ${fmt(d.total)}`;
-    renderHunt();
-  };
-  hunt.worker.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
-                                 cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all, choices,
-                                 cap: K === 1 ? 50000 : 4000, runs: K === 1 ? HUNT_STARTS : 200, tweaks: K === 1 ? HUNT_TWEAKS : 400 });
+  hunt.worker = Array.from({ length: parts }, (_, part) => {
+    const w = new Worker(URL.createObjectURL(new Blob([`(${huntWorker.toString()})()`], { type: 'text/javascript' })));
+    w.onmessage = (e) => {
+      const d = e.data;
+      if (d.type === 'done') {
+        if (++finished < parts) return;
+        hunt.status = `Done · ${fmt(hunt.top.length)} best kept, a click plays one`;
+        stopHunt();
+        return;
+      }
+      if (d.top) { tops[part] = d.top; hunt.top = mergeTops(tops.flat(), K); }
+      done[part] = d.i;
+      const n = done.reduce((x, y) => x + y, 0);
+      hunt.status = n <= runs ? `${all ? 'Starts' : 'Random starts'} ${fmt(n)} / ${fmt(runs)}` : `Tweaks of the best ${fmt(n - runs)} / ${fmt(parts * Math.ceil(tweaks / parts))}`;
+      renderHunt();
+    };
+    w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
+                    cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all, choices,
+                    cap: K === 1 ? 50000 : 4000, runs, tweaks, part, parts });
+    return w;
+  });
   hunt.status = 'Starting…';
   renderHunt();
 }
