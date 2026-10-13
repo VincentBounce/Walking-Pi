@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.498';
+const VERSION = '0.1.499';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4686,7 +4686,7 @@ function lifeReseed() {
 function startColours(seed) {
   const K = walk.life.colours;
   if (plane.start !== 'random') return;
-  if (hunt.zone === 'patterns' && !(patternsOn() && patternChoices()[0].length)) hunt.zone = `d${plane.density}`;  // none here: the soup
+  if (hunt.zone === 'custom' || (hunt.zone === 'patterns' && !(patternsOn() && patternChoices()[0].length))) hunt.zone = `d${plane.density}`;  // the link's start, or no patterns here: the soup
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); lifeStart = { zone: hunt.zone }; return; }
   if (K === 1) return;
@@ -5669,7 +5669,8 @@ const huntId = (r) => `${r.T}|${r.end}`;
 // the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
 const HUNT_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
                       radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'],
-                      patterns: [null, 'Patterns'] };  // the rule's patterns, mixed (see patternChoices)
+                      patterns: [null, 'Patterns'],  // the rule's patterns, mixed (see patternChoices)
+                      custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
 const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;  // one colour: random starts, then tweaks of the best
@@ -5729,6 +5730,7 @@ function huntParts(r, K) {
 // are, and how many starts when few enough to try them all.
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
+  if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
   if (hunt.zone === 'patterns') {
     const choices = patternChoices(), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
@@ -5757,13 +5759,14 @@ function renderHunt() {
   $('huntRow').hidden = !huntOn();
   if ($('huntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
-  $('huntTitle').textContent = K === 1 ? 'Hunt · the longest life' : walk.plane ? `Hunt · a battle in ${COLOUR_PARTS[K]}` : `Hunt · a battle of ${K} colours`;
+  const what = K === 1 ? 'the longest life' : walk.plane ? `a battle in ${COLOUR_PARTS[K]}` : `a battle of ${K} colours`;
   const key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}`;
   if (hunt.fitKey !== key) {  // a radius whose patches do not fit the grid (overlap): greyed
     hunt.fitKey = key;
     hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
       const r = zoneRadius(zone);
       if (zone === 'patterns') return [zone, patternsOn() && patternChoices()[0].length > 0];
+      if (zone === 'custom') return [zone, true];
       if (!r) return [zone, true];
       if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
       const parts = huntParts(r, K);
@@ -5773,11 +5776,14 @@ function renderHunt() {
   for (const b of $('huntZones').children) {
     b.classList.toggle('active', b.dataset.zone === hunt.zone);
     b.disabled = busy || !hunt.fits[b.dataset.zone];
+    if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
-  $('zoneCells').textContent = (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
+  $('zoneCells').textContent = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link` : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
     : `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
     + (all ? ` · all ${fmt(all)} starts tried` : '');
-  $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt`;
+  $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
+  $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
+  $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'Random starts, then tweaks of the best: the 5 best kept, a click plays one';
   $('huntStatus').textContent = hunt.status;
   $('huntTop').replaceChildren(...hunt.top.map((r, i) => {
     const b = document.createElement('button');
@@ -5793,6 +5799,7 @@ function renderHunt() {
 }
 // a result played: its start, kept picked (lit) until another one is
 function playHuntResult(r) {
+  if (hunt.worker) stopHunt();  // a result played: the hunt stops there
   hunt.picked = huntId(r);
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
@@ -5806,7 +5813,7 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
-  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns') return null;
+  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns') return null;  // (Custom: the link's, once)
   const { cells, copies, density, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length);
   if (choices) for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
@@ -6103,7 +6110,11 @@ function applyPendingView() {
     faced = true;
     needsFull = true;
   }
-  if (ch && walk.life) setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
+  if (ch && walk.life) {  // a start from a link: Custom in the hunt's zones
+    setLifeSeed(decodeCells(ch, walk.life.seed.length), 'saved');
+    hunt.zone = 'custom';
+    renderHunt();
+  }
   syncLink();  // with the start a setup's champion or hunt zone gave
 }
 
@@ -8533,7 +8544,9 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   b.type = 'button';
   b.dataset.zone = zone;
   b.innerHTML = `${pic ? icon(pic) : pixelIcon('.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Patterns: a glider
-  b.title = zoneRadius(zone) ? `Random starts within radius ${zoneRadius(zone)}` : `The whole grid, ${name} alive`;
+  b.title = zone === 'custom' ? 'A start from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour at its spot, turned or mirrored"
+    : zoneRadius(zone) ? `Random starts within radius ${zoneRadius(zone)}` : `The whole grid, ${name} alive`;
+  if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
   return b;
 }));
