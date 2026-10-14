@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.538';
+const VERSION = '0.1.539';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8466,7 +8466,8 @@ const STAT_LABELS = {
 
 // The activity, under the stats: a walk's distance from its start, step by step; a Game of Life's live
 // cells and its changes (births and deaths, grey), generation by generation: chaos, then calm. A column of
-// pixels shows the highest value in it; a walk's steps still to come faint, the step shown marked
+// pixels shows the highest value in it; up to the step shown filled under it (the light gold of a choice
+// picked), a walk's steps still to come faint
 let curveOf = null;  // a walk's columns, once per walk and width
 function drawActivity() {
   const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
@@ -8495,6 +8496,14 @@ function drawActivity() {
   const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;  // one scale: the changes against the live cells
   for (const [c, colour] of series) {
     const y = (x) => H - 1 - (c[x] / top) * (H - 3);
+    if (colour === accent) {  // filled up to the step shown
+      ctx.fillStyle = 'rgba(240, 180, 41, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (let x = 0; x <= at; x++) ctx.lineTo(x + 0.5, y(x));
+      ctx.lineTo(at + 1, H);
+      ctx.fill();
+    }
     ctx.strokeStyle = colour;
     ctx.lineWidth = 1.5;
     for (const [from, to, alpha] of [[0, at, 1], [at, W - 1, 0.3]]) {
@@ -8505,8 +8514,6 @@ function drawActivity() {
     }
   }
   ctx.globalAlpha = 1;
-  ctx.fillStyle = muted;
-  ctx.fillRect(at, 0, 1, H);
 }
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
