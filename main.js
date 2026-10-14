@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.523';
+const VERSION = '0.1.524';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8292,14 +8292,6 @@ const STAT_LABELS = {
   life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
 };
 
-// Lifetime of the current Life run: when it settles (frozen or looping), or not yet
-// Short enough for one line of the stats: "gen 898, period-2 loop"
-function lifetimeText(L) {
-  const s = L.stable;
-  if (!s) return L.seen.size >= LIFE_TRACK ? `not settled · ${fmt(LIFE_TRACK)}` : 'not settled yet';
-  return s.extinct ? `dies at ${fmt(s.T)}` : s.P === 1 ? `still from ${fmt(s.T)}` : `period ${fmt(s.P)} from ${fmt(s.T)}`;  // short: the title's middle
-}
-
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
@@ -8328,11 +8320,12 @@ function updateStats() {
     const L = walk.life, n = walk.geo.n, pc = (v) => `${fmt(v)} (${((100 * v) / n).toFixed(1)} %)`;
     // as bubbles: the run (lifetime, generation, alive, born, died, ever alive), then a row per colour
     const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back};--on:${back === LIFE_ALIVE ? UNLIT : '#fff'}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
-    // the title: the generation, and how the run ends (or not yet)
-    const s = L.stable;  // ended: ✝ died out, ■ frozen; a loop: its phase
-    $('barNum').textContent = `Gen ${fmt(cur)}${!s ? '' : s.extinct ? ' ✝' : s.P === 1 ? ' ■' : ` ↻ ${cur - s.T + 1}/${s.P}`}`;
-    $('barLoop').hidden = false;
-    $('barLoop').textContent = lifetimeText(L);
+    // the title, in fixed widths so that it stays still: the generation, then how the run ended (✝ died
+    // out, ■ frozen), or its loop: its phase, its period, from which generation
+    const s = L.stable, pad = (v, like) => fmt(v).padStart(fmt(like).length);
+    $('barNum').textContent = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
+      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)} from ${fmt(s.T)}`;
+    $('barLoop').hidden = true;
     // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the live cells', as the theme draws them)
     const row = (c, alive, born, died, ever) => [bubble(c, icon('aliveDot'), 'Alive', pc(alive)), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
