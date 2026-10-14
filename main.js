@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.517';
+const VERSION = '0.1.518';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3226,6 +3226,7 @@ function cubePits(n) {
     [[0, 1, 0], [1, 0, 0], [0, 0, 1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
     [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [1, 0, 0], [0, 1, 0]]];
   const { verts, add } = vertexStore(), quads = [], a = n / 3, c = (i) => (2 * i) / n - 1;  // c: a grid line as a coordinate
+  const floors = [];  // each face's pit floor, row by row: its tiles (Patterns go there)
   for (const [N, U, W] of faces) {
     const at = (h, i, j) => add(...[0, 1, 2].map((d) => N[d] * h + U[d] * c(i) + W[d] * c(j)));  // h: the height, 1 on the face
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
@@ -3234,7 +3235,7 @@ function cubePits(n) {
     }
     const h = (k) => 1 - (2 * k) / n;  // k squares deep
     const deep = a / 2, floor = h(deep);
-    for (let i = a; i < 2 * a; i++) for (let j = a; j < 2 * a; j++) quads.push([at(floor, i, j), at(floor, i + 1, j), at(floor, i + 1, j + 1), at(floor, i, j + 1)]);  // the floor
+    for (let i = a; i < 2 * a; i++) for (let j = a; j < 2 * a; j++) { floors.push(quads.length); quads.push([at(floor, i, j), at(floor, i + 1, j), at(floor, i + 1, j + 1), at(floor, i, j + 1)]); }  // the floor
     for (let k = 0; k < deep; k++) for (let m = a; m < 2 * a; m++) {  // the 4 walls
       quads.push([at(h(k), a, m), at(h(k), a, m + 1), at(h(k + 1), a, m + 1), at(h(k + 1), a, m)]);
       quads.push([at(h(k), 2 * a, m), at(h(k), 2 * a, m + 1), at(h(k + 1), 2 * a, m + 1), at(h(k + 1), 2 * a, m)]);
@@ -3253,6 +3254,8 @@ function cubePits(n) {
   };
   const mesh = finishMesh(verts, quads, 4, n, out);
   mesh.concave = true;
+  mesh.floors = Int32Array.from(floors);  // face f's floor tile (r, c): floors[f a² + r a + c]
+  mesh.floorSize = a;
   return (meshCache[key] = mesh);
 }
 
@@ -6007,7 +6010,7 @@ TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 12: ICO
 TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
-  return !!walk.life && (!!m.plane || m.sphere === 'torus' || (m.sphere === 'cube' && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
+  return !!walk.life && (!!m.plane || m.sphere === 'torus' || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
 };
 // the grid the patterns are of: the plane's, squares on the cube and the torus, triangles on the others
 const patternKind = () => walk.plane?.kind ?? (walk.geo.sides === 3 ? 'tri' : 'square');
@@ -6036,7 +6039,16 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) { const k = at.get(`${x + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + k, v]); }
     return out;
   }
-  const dir = K === 1 ? AXES[3] : SOLID_SPOTS.cube()[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k])), m = g.size >> 1;  // the cube: its face
+  const dir = K === 1 ? AXES[3] : SOLID_SPOTS.cube()[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k]));  // the cube: its face
+  if (g.floors) {  // the cube with pits: its pit's floor
+    const a = g.floorSize, m = a >> 1;
+    for (const [x, y, v] of cells) {
+      const r = m + y - (h >> 1), c = m + x - (w >> 1);
+      if (r >= 0 && c >= 0 && r < a && c < a) out.push([g.floors[f * a * a + r * a + c], v]);
+    }
+    return out;
+  }
+  const m = g.size >> 1;
   for (const [x, y, v] of cells) {
     const r = m + y - (h >> 1), c = m + x - (w >> 1);
     if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([f * g.perFace + r * g.size + c, v]);
@@ -6048,7 +6060,8 @@ function patternAt(i, K, cells) {
 function patternChoices() {
   const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K];
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu, g.nv) / Math.max(cols, rows) : g.sides === 3 ? g.size / 2 : g.size;
+  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu, g.nv) / Math.max(cols, rows)
+    : g.floors ? g.floorSize : g.sides === 3 ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
