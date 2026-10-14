@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.515';
+const VERSION = '0.1.516';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5572,19 +5572,20 @@ function lifeStep() {
  * PART 9 — THE HUNT
  * ==============================================================================================
  *
- * On any grid, in the Hunt start: random starts in a zone, then tweaks of the best, the 5 best kept.
+ * On any grid, in the Hunt start: random starts in a zone and tweaks of the best, on and on until
+ * stopped, the 5 best kept.
  * One colour: the start that lasts longest (a methuselah); colours: the longest, most even battle.
  * The zone: the whole grid, as dense as said, or patches of a radius; in colours, a patch (or a part
  * of the grid) for each colour, at fair spots of the figure (see huntPatches).
  */
 
 /* ---- 9.1 The hunt worker, its zones, its results --------------------------------------------- */
-/* Life on the plane in 1, 2, 4 or 6 colours, one hunt: random starts in a zone, then tweaks of the
- * best (1 to 3 cells changed); the 5 best kept. The zone: the whole grid (a soup as dense as the
- * slider says) or a patch of radius 1, 2 or 3 in the middle; in colours, one for each colour: the
- * whole of its half, quarter or sixth (3 columns, 2 rows), or patches side by side round the middle.
+/* Life in 1 to 12 colours, on any grid, one hunt: on and on until stopped, one start in 3 at random in
+ * the zone, the others a tweak of one of the 5 best (1 to 3 cells changed; patterns: one colour's);
+ * the 5 best kept. The zone: see huntPlan (the whole grid as dense as said, patches of a radius,
+ * patterns), each colour in its part. A zone with at most 20,000 starts has them all tried (the true
+ * record), then the hunt is done.
  * - One colour, the longest life: the generation the run starts repeating at (fewer cells first).
- *   A patch with at most 20,000 starts has them all tried (the true record), no tweaks.
  * - Colours, a battle: it lasts and every colour keeps spreading, as much as the others.
  *   S_c = Σ g × (cells born of colour c at generation g), the later the more it counts; the balance,
  *   1 − CV / √(K − 1), CV the standard deviation of the S_c over their mean (1: all even, 0: one colour
@@ -5599,8 +5600,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, runs, tweaks: allTweaks, all, choices, part, parts } = e.data;
-    const tweaks = Math.ceil(allTweaks / parts);  // this worker's share (see huntClick)
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, all, choices, part, parts } = e.data;
     const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
@@ -5728,34 +5728,38 @@ function huntWorker() {
       return true;
     };
     let done = 0;  // this worker's starts so far
-    const report = (phase, i, total, changed) => {
-      if (changed || i % 10 === 0 || i === total) self.postMessage({ type: 'progress', phase, i: done, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
+    const report = (changed) => {
+      if (changed || done % 10 === 0) self.postMessage({ type: 'progress', i: done, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
     };
-    const total = all || runs;
-    for (let i = 1 + part; i <= total; i += parts) {  // every parts-th start, from this worker's
-      const seed = choices ? (all ? nthPick(i - 1) : randomPick()) : all ? nthSeed(i - 1) : randomSeed();
-      done++;
-      report(1, i, total, keep(run(seed), seed));
+    // few enough starts: all of them, every parts-th from this worker's, then done
+    if (all) {
+      for (let i = 1 + part; i <= all; i += parts) { const seed = choices ? nthPick(i - 1) : nthSeed(i - 1); done++; report(keep(run(seed), seed)); }
+      self.postMessage({ type: 'done' });
+      return;
     }
-    for (let i = 1; i <= (all ? 0 : tweaks) && top.length; i++) {  // change 1 to 3 cells of the best (patterns: one colour's choice)
-      if (choices) {
-        const pick = top[0].pick.slice(), c = Math.floor(Math.random() * K);
-        pick[c] = Math.floor(Math.random() * choices[c].length);
-        const seed = fromPick(pick);
-        done++;
-        report(2, i, tweaks, keep(run(seed), seed));
-        continue;
+    // else on and on, until stopped: one start in 3 at random, to look elsewhere; the others a tweak of one
+    // of the best (patterns: one colour's choice changed; else 1 to 3 cells), to make it better
+    for (;;) {
+      let seed;
+      if (!top.length || done % 3 === 0) seed = choices ? randomPick() : randomSeed();
+      else {
+        const base = top[Math.floor(Math.random() * top.length)];
+        if (choices) {
+          const pick = base.pick.slice(), c = Math.floor(Math.random() * K);
+          pick[c] = Math.floor(Math.random() * choices[c].length);
+          seed = fromPick(pick);
+        } else {
+          seed = base.seed.slice();
+          for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
+            const [t, k] = cells[Math.floor(Math.random() * cells.length)];
+            seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C);
+          }
+          copy(seed);
+        }
       }
-      const seed = top[0].seed.slice();
-      for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
-        const [t, k] = cells[Math.floor(Math.random() * cells.length)];
-        seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C);
-      }
-      copy(seed);
       done++;
-      report(2, i, tweaks, keep(run(seed), seed));
+      report(keep(run(seed), seed));
     }
-    self.postMessage({ type: 'done' });
   };
 }
 const hunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  // picked: the result played (its T and end)
@@ -5767,7 +5771,6 @@ const HUNT_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['
                       custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
-const HUNT_STARTS = 1000, HUNT_TWEAKS = 2000;  // one colour: random starts, then tweaks of the best
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
 // cells apart): on the plane, their patches touch round the middle; the others' sit at fair spots
 const NEAR_RULES = ['B3678/S34678', 'B34/S123/C3', 'B2/S34', 'B24/S35', 'B2o/S2m34', 'B34/S23', 'B2/S24/C3', 'B23/S6/C3'];
@@ -5880,7 +5883,7 @@ function renderHunt() {
     + (all ? ` · all ${fmt(all)} starts tried` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
-  $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'Random starts, then tweaks of the best: the 5 best kept, a click plays one';
+  $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 5 best kept; a click on one plays it';
   $('huntStatus').textContent = hunt.status;
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
@@ -5953,10 +5956,10 @@ function huntClick() {
     if (r) { playHuntResult(r); play(true); }
     return;
   }
-  // as many workers as the computer has cores (one left for the page), each with every parts-th start and
-  // its share of the tweaks (of its own best); their best merged
+  // as many workers as the computer has cores (one left for the page), on and on until stopped (or, few
+  // enough starts, each with every parts-th of them); their best merged
   const L = walk.life, { cells, copies, density, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
-  const runs = all || (K === 1 ? HUNT_STARTS : 200), tweaks = all ? 0 : K === 1 ? HUNT_TWEAKS : 400, tops = [], done = new Int32Array(parts);
+  const tops = [], done = new Int32Array(parts);
   let finished = 0;
   hunt.top = [];
   hunt.worker = Array.from({ length: parts }, (_, part) => {
@@ -5972,12 +5975,12 @@ function huntClick() {
       if (d.top) { tops[part] = d.top; hunt.top = mergeTops(tops.flat(), K); }
       done[part] = d.i;
       const n = done.reduce((x, y) => x + y, 0);
-      hunt.status = n <= runs ? `${all ? 'Starts' : 'Random starts'} ${fmt(n)} / ${fmt(runs)}` : `Tweaks of the best ${fmt(n - runs)} / ${fmt(parts * Math.ceil(tweaks / parts))}`;
+      hunt.status = all ? `Starts ${fmt(n)} / ${fmt(all)}` : `${fmt(n)} starts tried · ${fmt(hunt.top.length)} best kept`;
       renderHunt();
     };
     w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
                     cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all, choices,
-                    cap: K === 1 ? 50000 : 4000, runs, tweaks, part, parts });
+                    cap: K === 1 ? 50000 : 4000, part, parts });
     return w;
   });
   hunt.status = 'Starting…';
