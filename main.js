@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.534';
+const VERSION = '0.1.535';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2501,7 +2501,7 @@ function buildWalkOf() {
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
   // a fraction's walk repeats (see walkRepeat), walked 8 rounds; not an ant's, whose state is all its
   // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
-  let loop = current.ratio && !ant && !MODES[current.mode].skipZeros && !MODES[current.mode].pivot ? walkRepeat() : null;
+  let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0, nextLook = 2000;
   // an ant on a highway goes on along it for ever: stopped as far as its cloud is wide (driftRounds;
   // looked for every 2,000 steps, then every 5 % of them so far, and at the end). Its last stretch on
@@ -3059,11 +3059,12 @@ function hexStepper(kind) {
   };
 }
 
-// A pivot walk in 2D: its heading one of the fixed walk's directions, clockwise; 1 turns it, in place
+// A pivot walk in 2D: its heading one of the fixed walk's directions, clockwise; 1 turns it, in place.
+// The heading comes last (as a cube's roll): a fraction's loop is found by it too (see walkRepeat)
 function pivotStepper(w) {
   const { steps, pivot } = MODES[w], step = STEPPERS[steps]();
   let h = 0, at = [key(0, 0), 0, 0, 0];
-  return (g) => { if (g) { h = (h + 1) % pivot; return at; } return (at = step(h)); };
+  return (g) => { if (g) h = (h + 1) % pivot; else at = step(h); return [...at.slice(0, 4), h]; };
 }
 
 /* ---- 6.4 Triangles --------------------------------------------------------------------------- */
