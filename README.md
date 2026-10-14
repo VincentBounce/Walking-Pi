@@ -155,10 +155,6 @@ A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons
 | Ulam square spiral | 2 | Follow the Ulam square spiral; `1` draw the step, `0` move without drawing |
 | Ulam triangle spiral | 2 | Same, along a spiral of triangles |
 | Ulam hexagon spiral | 2 | Same, along a spiral of hexagons |
-| Ulam spiral jumps | 10 or 64 | Jump ahead digit + 1 cells along the spiral and mark the landing cell |
-| Ulam spiral search | 10 or 64 | Mark cell n when the digits of n appear somewhere in the number's digits |
-
-The search mode shows where a number stops containing every sequence of digits: all short numbers are found, then the coverage drops at each new digit length.
 
 ## Regular patterns
 

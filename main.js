@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.539';
+const VERSION = '0.1.540';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -852,14 +852,6 @@ const MODES = {
               fill: false, antOf: 'icosaLR', get rule() { return antRuleText('antIcosa'); } },
   spiral:   { base: 2, arrows: '□■', lattice: 'square', skipZeros: true,
               rule: 'along a square spiral (Ulam): <b>1</b> draw the step, <b>0</b> move without drawing' },
-  jump10:   { base: 10, lattice: 'square', points: 'jump',
-              rule: 'on the Ulam spiral: jump ahead <b>digit + 1</b> cells and mark the landing cell' },
-  jump64:   { base: 64, lattice: 'square', points: 'jump',
-              rule: 'on the Ulam spiral: jump ahead <b>digit + 1</b> cells and mark the landing cell' },
-  search10: { base: 10, lattice: 'square', points: 'search',
-              rule: 'on the Ulam spiral: cell <b>n</b> is marked when the digits of n appear among them' },
-  search64: { base: 64, lattice: 'square', points: 'search',
-              rule: 'on the Ulam spiral: cell <b>n</b> is marked when the base-64 digits of n appear among them' },
   triSpiral: { base: 2, arrows: '□■', lattice: 'tri', skipZeros: true,
               rule: 'along a spiral of triangles: <b>1</b> draw the step, <b>0</b> move without drawing' },
   cairoSpiral: { base: 2, arrows: '□■', lattice: 'cairo', skipZeros: true, fill: false,
@@ -1465,7 +1457,6 @@ const ICONS = (() => {
     spiral: pathEl(pathOf(spiralOf(4, 11), false)),
     triSpiral: pathEl(pathOf(spiralOf(3, 7), false)),
     hexSpiral: pathEl(pathOf(spiralOf(6, 15), false)),
-    jump: pathEl('M3 17Q7.5 8 12 17Q16.5 8 21 17') + pathEl('M17.5 14.5L21 17L17 18.5'),
     search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + pathEl('M15.5 15.5L21 21'),
     // a turtle (the walks turning relative to their heading) and an ant (Langton's, a tab), seen from
     // above, heading up: their head, body and flippers filled, the ant's legs bent and bold, under its body
@@ -2021,7 +2012,7 @@ const MODE_ICONS = {
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
-  spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons', jump10: 'jump', jump64: 'jump', search10: 'search', search64: 'search',
+  spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
 
 // "Cubes — base 5 (5 relative turns)" → name "Cubes", base "base 5", detail "5 relative turns"
@@ -2040,8 +2031,6 @@ const NAV = {
   turtle: ['Walk', '2D', 'Squares', 'Turtle', 'grid'], turtleCells: ['Walk', '2D', 'Squares', 'Turtle', 'cells'],
   cardinal: ['Walk', '2D', 'Squares', 'Cardinal', 'grid'], cardinalCells: ['Walk', '2D', 'Squares', 'Cardinal', 'cells'],
   king: ['Walk', '2D', 'Squares', 'King', 'cells'], spiral: ['Walk', '2D', 'Squares', 'Spiral', ''],
-  jump10: ['Walk', '2D', 'Squares', 'Spiral jumps, base 10', ''], jump64: ['Walk', '2D', 'Squares', 'Spiral jumps, base 64', ''],
-  search10: ['Walk', '2D', 'Squares', 'Spiral search, base 10', ''], search64: ['Walk', '2D', 'Squares', 'Spiral search, base 64', ''],
   triTurtle: ['Walk', '2D', 'Triangles', 'Turtle', 'grid'], triTurtleCells: ['Walk', '2D', 'Triangles', 'Turtle', 'cells'],
   triFixed: ['Walk', '2D', 'Triangles', 'Fixed', 'grid'], triFixedCells: ['Walk', '2D', 'Triangles', 'Fixed', 'cells'],
   triSpiral: ['Walk', '2D', 'Triangles', 'Spiral', ''],
@@ -2486,10 +2475,6 @@ function buildWalkOf() {
   const seq = new Uint8Array(head.length + frac.length);
   seq.set(head);
   seq.set(frac, head.length);
-  if (MODES[current.mode].points) {
-    buildPointWalk(seq, MODES[current.mode]);
-    return;
-  }
   if (MODES[current.mode].life) {
     buildLife(seq, MODES[current.mode]);
     return;
@@ -2586,7 +2571,7 @@ function buildWalkOf() {
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
                         skipZeros: !!MODES[current.mode].skipZeros, ant: ant ? step.colours : 0, turns, antStates, antTurns,
                         highway: ant ? highwayOf(wx, wy, steps) : null, bridges,
-                        points: false, keys, labels: null, sphere: false, life: null,
+                        keys, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
   if (is3d) { setPerspective(); project(); } else walk.persp = null;
@@ -3148,68 +3133,6 @@ function triStepper(kind) {
     const upNow = ((c + r) & 1) === 0;
     return [key(c, r), c / 2, r * H + (upNow ? 2 * H / 3 : H / 3) + TRI_Y0, 0];
   };
-}
-
-/* ---- 6.5 Ulam spiral: jumps and searches ----------------------------------------------------- */
-/* Ulam-spiral point modes: the walk is the list of marked cells, in order, and
- * point i + 1 is the i-th mark (point 0 is cell 1, the centre).
- * jump:   read the digits one by one; jump ahead digit + 1 cells and mark the landing cell.
- * search: mark cell n when the base-b digits of n occur somewhere in the digit sequence. */
-function buildPointWalk(seq, { base, points: kind }) {
-  let cellsOf;  // ascending cell numbers to mark
-  let keys;     // colour key of each mark: the digit (jump) or the length of n (search)
-  if (kind === 'jump') {
-    cellsOf = new Float64Array(seq.length);
-    let c = 1;
-    for (let i = 0; i < seq.length; i++) cellsOf[i] = c += seq[i] + 1;
-    keys = seq;
-    walk.keyCount = base;
-  } else {
-    // Mark every number whose digits appear, for lengths L with b^L ≤ 20·(digit count)
-    // (above that, less than ~5 % of L-digit numbers can appear), and b^L ≤ 2^27 cells.
-    let maxLen = 1;
-    while (base ** (maxLen + 1) <= Math.min(20 * seq.length, 2 ** 27)) maxLen++;
-    const size = base ** maxLen;
-    const found = new Uint8Array(size);
-    for (let i = 0; i < seq.length; i++) {
-      if (seq[i] === 0) continue;  // n is written without leading zeros
-      let v = 0;
-      for (let L = 0; L < maxLen && i + L < seq.length; L++) {
-        v = v * base + seq[i + L];
-        found[v] = 1;
-      }
-    }
-    walk.keyCount = maxLen;
-    let count = 0;
-    for (let v = 1; v < size; v++) count += found[v];
-    cellsOf = new Float64Array(count);
-    keys = new Uint8Array(count);
-    for (let v = 1, j = 0, len = 1, next = base; v < size; v++) {
-      if (v === next) { len++; next *= base; }
-      if (found[v]) { cellsOf[j] = v; keys[j++] = len; }
-    }
-  }
-  // walk the spiral once, recording the position of every marked cell
-  const len = cellsOf.length;
-  const xs = new Float64Array(len + 1), ys = new Float64Array(len + 1);
-  const cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
-  const step = STEPPERS.spiral();
-  let cell = 1, x = 0, y = 0, m = 0;
-  cells[0] = 1;
-  for (let i = 0; i < len; i++) {
-    while (cell < cellsOf[i]) { [, x, y] = step(); cell++; }
-    xs[i + 1] = x; ys[i + 1] = y;
-    cells[i + 1] = i + 1;
-    m = Math.max(m, Math.hypot(x, y));
-    maxDist[i + 1] = m;
-  }
-  walk.persp = null;
-  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: len, digits: seq, wx: xs, wy: ys, wz: null, is3d: false, cells, maxDist, base,
-                        counts: null, lattice: 'square', lines: false, skipZeros: false, points: true, keys, labels: cellsOf,
-                        sphere: false, life: null,
-                        xs, ys });
-  updateHint();
-  restart();
 }
 
 /* ==============================================================================================
@@ -4650,7 +4573,7 @@ function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
     if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
   Object.assign(walk, { n: steps, loop, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
-                        lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
+                        lattice: 'sphere', skipZeros: false, keys: seq,
                         sphere: true, geo: g, R, tile, vert, stepTiles, nodes: G.nv, coverStep,
                         visits: new Int32Array(g.n), maxVisits: 0, life: null,
                         xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
@@ -4701,7 +4624,7 @@ function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
     if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
   }
   Object.assign(walk, { n: steps, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts, ant: ant ? antStep.colours : 0, turns,
-                        lattice: 'sphere', skipZeros: false, points: false, keys: seq, labels: null,
+                        lattice: 'sphere', skipZeros: false, keys: seq,
                         sphere: true, geo: g, R, tile, vert: null, stepTiles: null, loop, nodes: g.n, coverStep,
                         visits: new Int32Array(g.n), maxVisits: 0,
                         life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
@@ -4886,7 +4809,7 @@ function buildLife(seq, mode) {
   const one = new Float64Array(1);
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
                         maxDist: null, base: rule.base, counts: null, lattice: 'sphere', skipZeros: false, points: false,
-                        keys: seq, labels: null, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
+                        keys: seq, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
                         xs: new Float64Array(1), ys: new Float64Array(1) });
   initShape(kind);
@@ -5127,7 +5050,7 @@ function buildLifePlane(seq) {
   const one = new Float64Array(1);
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: null, is3d: false, cells: null,
                         maxDist: null, base: rule.base, counts: null, lattice: 'square', skipZeros: false, points: false,
-                        keys: seq, labels: null, sphere: false, geo: { n }, plane: { kind, W, row, torus: plane.torus }, tile: null,
+                        keys: seq, sphere: false, geo: { n }, plane: { kind, W, row, torus: plane.torus }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
   startColours(walk.life.seed);  // in colours, each in its part
   countSeed(walk.life);
@@ -6966,7 +6889,7 @@ const antChipColour = (k) => antByDigits ? DIRECTION_COLOURS[arrowsOf(current.mo
 const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : DIRECTION_COLOURS[arrowsOf(current.mode)[k]] ?? GREY)
   : walk.skipZeros ? (k ? DIGIT_COLORS[0] : GREY)  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
   : arrowsOf(current.mode)[k] ? DIRECTION_COLOURS[arrowsOf(current.mode)[k]]
-  : walk.base <= DIGIT_COLORS.length ? DIGIT_COLORS[k] : `hsl(${(k * 360) / (walk.points ? walk.keyCount : walk.base)}, 80%, 62%)`;
+  : walk.base <= DIGIT_COLORS.length ? DIGIT_COLORS[k] : `hsl(${(k * 360) / walk.base}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
     case 'digit': return digitColour(k);
@@ -7855,7 +7778,7 @@ function glSurface(palette, levelOf, path) {
 const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'))
   || ($('colorMode').value === 'digit' && shows('cells') && !!MODES[current.mode]?.cells);
 const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n)
-  && !($('colorMode').value === 'digit' && (walk.points ? walk.keyCount : walk.base) > 255);
+  && !($('colorMode').value === 'digit' && walk.base > 255);
 // the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
 const CELL_TEMPLATES = {
   square: [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]],
@@ -7894,14 +7817,14 @@ function glFlat(to) {
     upload(S.flatKeys, keys);
     S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
   }
-  if (S.keys.pal !== `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`) {  // the digits' colours (an ant's)
+  if (S.keys.pal !== `${walk.base}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`) {  // the digits' colours (an ant's)
     const pal = new Uint8Array(4 * 256);
-    for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(walk.ant ? k : Math.min(k, (walk.points ? walk.keyCount : walk.base) - 1))), 255], 4 * k);
+    for (let k = 0; k < 256; k++) pal.set([...rgbCached(digitColour(walk.ant ? k : Math.min(k, walk.base - 1))), 255], 4 * k);
     gl.bindTexture(gl.TEXTURE_2D, S.pal);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    S.keys.pal = `${walk.base}|${walk.points}|${walk.keyCount}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`;
+    S.keys.pal = `${walk.base}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`;
   }
   // the fill's vertices, with their colour band, once per fill
   let fillCount = 0;
@@ -7924,10 +7847,10 @@ function glFlat(to) {
   if (cells) {
     const cellsKey = `${mode}|${walk.keys === walk.antStates}`;
     if (S.keys.flatCells !== walk.xs || S.keys.flatCellsMode !== cellsKey) {
-      const lat = walk.lattice, first = walk.points ? 1 : 0, inst = new Float32Array(4 * (walk.n + 1)), at = new Int32Array(walk.n + 1);
+      const lat = walk.lattice, inst = new Float32Array(4 * (walk.n + 1)), at = new Int32Array(walk.n + 1);
       let m = 0, V = null, scale = 0;
       if (mode === 'visits') { V = visitCells(); V.seen.fill(0); scale = (BANDS - 1) / Math.log(Math.max(2, V.max)); }
-      for (let p = first; p <= walk.n; p++) {
+      for (let p = 0; p <= walk.n; p++) {
         if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
         const band = mode === 'digit' ? walk.keys[Math.max(0, p - 1)]  // an ant's colour, a spiral's digit
           : V ? Math.round(Math.log(++V.seen[V.cell[p]]) * scale) : Math.floor((roundStep(Math.max(0, p - 1)) * BANDS) / rainbowLength());
@@ -8195,8 +8118,8 @@ function drawSegments(from, to) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
     }
-    // a point mode's point 0 is the spiral's centre, not a mark; a spiral's 0 draws nothing
-    for (let p = from === 0 && !walk.points ? 0 : from + 1; p <= to; p++) {
+    // a spiral's 0 draws nothing
+    for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
       if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
       const c = colourOf(p);
       if (c !== batch) { flush(); ctx.beginPath(); batch = c; }
@@ -8430,14 +8353,6 @@ function drawOverlay() {
   // current position + heading
   const x = ox + walk.xs[cur] * s;
   const y = oy + walk.ys[cur] * s;
-  if (walk.points) {  // point modes have no heading: ring around the last mark
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, r * 1.4, 0, Math.PI * 2);
-    ctx.stroke();
-    return;
-  }
   // heading = direction of the last step (up at the start)
   let dx = 0, dy = -1;
   if (cur > 0) {
@@ -8596,13 +8511,6 @@ function updateStats() {
   strip.classList.remove('line', 'turns');  // one line of digits; the other texts may wrap
   if (!walk.n) { strip.textContent = ''; return; }
   if (walk.ant && !antByDigits) { strip.textContent = `Rule ${antRules[current.mode]} · the number's digits are not used`; return; }  // an ant by its rule
-  if (walk.points) {  // point modes: list the most recent marked cell numbers
-    const a = Math.max(0, cur - 8);
-    const list = Array.from(walk.labels.subarray(a, cur), (v, i) =>
-      a + i === cur - 1 ? `<span class="cur">${fmt(v)}</span>` : fmt(v));
-    strip.innerHTML = `Marked cells: ${a > 0 ? '… ' : ''}${list.join(', ')}`;
-    return;
-  }
   // One line of digits, exactly as many as fit (the strip is monospace, so it is a column count).
   // The head sits at 60 % of the line; at the start the line begins with the first digit, at the
   // end it finishes with the last one. The window then shrinks until "…", "0." and "." fit too.
