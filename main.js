@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.532';
+const VERSION = '0.1.533';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1456,12 +1456,8 @@ const ICONS = (() => {
     symRotate: flags([0, 1, 2, 3].map((k) => [(k * Math.PI) / 2, false])),
     symKaleido: flags([0, 1, 2, 3].flatMap((k) => [[(k * Math.PI) / 2, false], [(k * Math.PI) / 2, true]])),
     symHalf: flags([[0, false], [Math.PI, false]]),
-    zone1: dots([[12, 12]], 2.5),
-    zone2: dots([[12, 12]], 4),
-    zone3: dots([[12, 12]], 6),
-    zone4: dots([[12, 12]], 8),
-    zone5: dots([[12, 12]], 9.5),
-    zone6: dots([[12, 12]], 11),
+    ...Object.fromEntries([2.2, 3.5, 4.8, 6, 7.2, 8.4, 9.6, 11].map((r, i) => [`zone${i + 1}`, dots([[12, 12]], r)])),
+    zoneFace: '<rect class="f" x="4" y="4" width="16" height="16" rx="2"/>',  // a whole face
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
@@ -4755,8 +4751,8 @@ function startColours(seed) {
   const K = walk.life.colours;
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
-  const fits = huntFits(), r = zoneRadius(hunt.zone);
-  if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? 'full';
+  const fits = huntFits(), r = hunt.zone === 'face' ? Infinity : zoneRadius(hunt.zone);
+  if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [8, 7, 6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? 'full';
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); lifeStart = { zone: hunt.zone }; return; }
   if (K === 1) return;
@@ -5069,6 +5065,7 @@ const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cair
 function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (zone === 'patterns') return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour at its spot'}, turned or mirrored at random`;
+  if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
@@ -5806,7 +5803,9 @@ const huntId = (r) => `${r.T}|${r.end}`;
 // patterns (Classics); their random starts each as dense as drawn between 10 and 70 % (the records often
 // come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
 const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
-                     radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], full: ['zoneAll', 'Wild'],
+                     radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
+                     face: ['zoneFace', 'Realm'],  // a whole face of a solid (see faceParts)
+                     full: ['zoneAll', 'Wild'],
                      patterns: [null, 'Classics'],  // the rule's patterns, mixed (see patternChoices)
                      custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
@@ -5862,6 +5861,26 @@ function huntParts(r, K) {
   if (K === 1) return [lifePatch(r)];
   return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
 }
+// A solid's face of cell t (a cube with pits: the face its pit is in, by the largest of its coordinates);
+// null without faces (the plane, a torus, the sphere of hexagons). Without t: whether there are faces
+function faceOf(t = 0) {
+  const g = walk.geo;
+  if (walk.plane || !g || g.torus) return null;
+  if (g.perFace) return Math.floor(t / g.perFace);
+  if (!g.floors) return null;
+  const c = g.cen.subarray(3 * t, 3 * t + 3), ax = [0, 1, 2].reduce((m, d) => (Math.abs(c[d]) > Math.abs(c[m]) ? d : m), 0);
+  return 2 * ax + (c[ax] < 0 ? 1 : 0);
+}
+// Each colour's face: the one in front (one colour), else the face at its spot
+function faceParts(K) {
+  const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K];
+  return spots.map((d) => {
+    const f = faceOf(centreCells(d ?? undefined)[0]), part = [];
+    for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && faceOf(t) === f) part.push(t);
+    return part;
+  });
+}
+const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneRadius(zone), K));
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
 // zone and all its copies, of which only the first of each cell's copies is chosen, the others copied
 // from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
@@ -5874,7 +5893,7 @@ function huntPlan() {
     const choices = patternChoices(), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
   }
-  huntParts(r, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
+  zoneParts(hunt.zone, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
   const cells = [], copies = [];
   if (walk.plane) {
     const { kind, W } = walk.plane;
@@ -5902,9 +5921,10 @@ function huntFits() {
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
     if (zone === 'patterns') return [zone, patternsOn() && patternChoices()[0].length > 0];
-    if (!r) return [zone, true];
+    if (zone === 'face' && faceOf() === null) return [zone, false];
+    if (!r && zone !== 'face') return [zone, true];
     if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
-    const parts = huntParts(r, K);
+    const parts = zoneParts(zone, K);
     return [zone, new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
 }
@@ -5982,7 +6002,7 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
-  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns') return null;  // (Custom: the link's, once)
+  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns' && hunt.zone !== 'face') return null;  // (Custom: the link's, once)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = density();
   if (choices) for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
@@ -8792,7 +8812,8 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   b.dataset.zone = zone;
   b.innerHTML = `${pic ? icon(pic) : pixelIcon('.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Patterns: a glider
   b.title = zone === 'custom' ? 'A start from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour at its spot, turned or mirrored"
-    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot` : 'The whole grid: random soups';
+    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
+    : zone === 'face' ? 'A whole face of the solid for each colour: random starts on it' : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
   return b;
