@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.518';
+const VERSION = '0.1.519';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5603,7 +5603,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, all, choices, part, parts } = e.data;
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, all, choices, part, parts, dies } = e.data;  // dies: only the runs dying out
     const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
@@ -5688,7 +5688,8 @@ function huntWorker() {
       if (K === 1) {
         let alive = 0;
         for (let t = 0; t < n; t++) alive += seed[t] > 0;
-        return { score: T - alive / 1e6, T, P, end, live: alive, extinct: !a.some((v) => v) };  // (live: the start's cells)
+        const extinct = !a.some((v) => v);
+        return { score: dies && !extinct ? -Infinity : T - alive / 1e6, T, P, end, live: alive, extinct };  // (live: the start's cells)
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
@@ -5719,7 +5720,7 @@ function huntWorker() {
     const nthPick = (k) => fromPick(choices.map((c) => { const d = k % c.length; k = Math.floor(k / c.length); return d; }));
     const top = [];  // the 8 best: { ...run, seed }
     const keep = (r, seed) => {
-      if (top.length === 8 && r.score <= top[7].score) return false;
+      if (r.score === -Infinity || (top.length === 8 && r.score <= top[7].score)) return false;
       // the same run: ending alike at the same T; one colour, as long with the same period (a turned copy,
       // or cells that change nothing), the fewer cells kept; colours, as long in contact as evenly (turned)
       const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
@@ -5765,7 +5766,23 @@ function huntWorker() {
     }
   };
 }
-const hunt = { worker: null, zone: 'd30', top: [], status: '', picked: null };  // picked: the result played (its T and end)
+const hunt = { worker: null, zone: 'd30', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest or dies (colours: a battle)
+// What the hunt looks for: the longest life, the longest till it dies out (one colour), or a battle,
+// which starts with the colours that suit the figure best: one for each of its natural spots
+const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out', battle: '⚔ Battle' };
+const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12 };  // else (the plane, a torus) 4
+const huntGoal = () => (walk.life?.colours > 1 ? 'battle' : hunt.goal);
+function pickGoal(goal) {
+  if (goal === 'battle') {
+    if (lifeColours > 1) return;
+    lifeColours = BATTLE_COLOURS[MODES[$('mode').value].sphere] ?? 4;  // fitted to the figure when built (see fitColours)
+  } else {
+    hunt.goal = goal;
+    if (lifeColours === 1) { hunt.top = []; hunt.status = ''; renderHunt(); syncLink(); return; }
+    lifeColours = 1;
+  }
+  compute();
+}  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
 // the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
 const HUNT_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
@@ -5874,7 +5891,8 @@ function renderHunt() {
   $('huntRow').hidden = !huntOn();
   if ($('huntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
-  const what = K === 1 ? 'the longest life' : walk.plane ? `a battle in ${COLOUR_PARTS[K]}` : `a battle of ${K} colours`;
+  const what = K > 1 ? (walk.plane ? `a battle in ${COLOUR_PARTS[K]}` : `a battle of ${K} colours`) : hunt.goal === 'dies' ? 'the longest death' : 'the longest life';
+  for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === huntGoal());
   const fits = huntFits();
   for (const b of $('huntZones').children) {
     b.classList.toggle('active', b.dataset.zone === hunt.zone);
@@ -5988,7 +6006,7 @@ function huntClick() {
     };
     w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
                     cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all, choices,
-                    cap: K === 1 ? 50000 : 4000, part, parts });
+                    cap: K === 1 ? 50000 : 4000, part, parts, dies: K === 1 && hunt.goal === 'dies' });
     return w;
   });
   hunt.status = 'Starting…';
@@ -6199,6 +6217,7 @@ function getSetup() {
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && lifeColours > 1) s.k = lifeColours;
+  if (mode.life && lifeColours === 1 && hunt.goal === 'dies') s.hg = 'dies';  // the hunt: the longest death
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
@@ -6243,6 +6262,7 @@ function applySetup(s) {
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
+    hunt.goal = s.hg === 'dies' ? 'dies' : 'longest';
     setRuleText(ruleBody(s.r));
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
@@ -8708,6 +8728,16 @@ $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % PATTERN_TURNS[MODES[$('mode').value].plane]; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
 $('huntBtn').addEventListener('click', huntClick);
+$('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, name]) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = name;
+  b.dataset.goal = goal;
+  b.title = { longest: 'One colour: the start that lasts longest, however it ends', dies: 'One colour: the start that lasts longest and dies out, to the last cell',
+              battle: 'Colours: the longest, most even battle (as many as the figure has natural spots for)' }[goal];
+  b.addEventListener('click', () => pickGoal(goal));
+  return b;
+}));
 $('autoPlay').addEventListener('change', autoplay);  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
   const b = document.createElement('button');
