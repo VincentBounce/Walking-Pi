@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.537';
+const VERSION = '0.1.538';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -779,6 +779,8 @@ const PRESETS = {
   primeGaps: { group: 'Sequences', sym: 'gₙ', name: 'Prime gaps', detail: 'primegaps · gₙ = pₙ₊₁ − pₙ', f: 'primegaps' },
   dragon:  { group: 'Sequences', sym: '🐉', name: 'Dragon (paperfolding)',
              detail: 'dragon · a fractal on Triangles turtle, Squares turtle and Hexagons turtle', f: 'dragon' },
+  rudinshapiro: { group: 'Sequences', sym: 'RS', name: 'Rudin–Shapiro', detail: 'rudinshapiro · digit k: the parity of the blocks “11” in k written in base 2', f: 'rudinshapiro' },
+  kolakoski: { group: 'Sequences', sym: 'K', name: 'Kolakoski', detail: 'kolakoski · 1 2 2 1 1 2 1 2 2 …, its own run lengths, as 0s and 1s', f: 'kolakoski' },
 };
 const presetFormula = (id) => (typeof PRESETS[id].f === 'function' ? PRESETS[id].f() : PRESETS[id].f);
 
@@ -788,6 +790,8 @@ const FORMULA_NOTES = {
   rho: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
   primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
   thuemorse: () => 'the Thue–Morse sequence (0 and 1): digit k is the parity of the 1s of k in base 2',
+  rudinshapiro: () => 'the Rudin–Shapiro sequence (0 and 1): digit k is the parity of the blocks 11 in k written in base 2',
+  kolakoski: () => 'the Kolakoski sequence, its 1s as 0 and its 2s as 1: read as runs, 1 2 2 1 1 2 … gives its own run lengths',
   rabbit: () => 'the Fibonacci word (0 and 1): 1 becomes 10 and 0 becomes 1, again and again',
   dragon: () => 'the folds of a strip folded in two again and again (0 and 1): the dragon curve, as turns',
 };
@@ -972,6 +976,12 @@ const MODES = {
                       rule: 'from cell to cell of a square grid: <b>0</b> step forward, <b>1</b> turn right on the spot (90°)' },
   triPivot: { base: 2, arrows: '↑→', lattice: 'hex', lines: true, pivot: 6, steps: 'triFixed',
               rule: 'along the lines of a triangle grid: <b>0</b> step forward, <b>1</b> turn right on the spot (60°)' },
+  // Parity: a step forward at each digit, then after a 1 a quarter turn, right at an odd digit (the 1st, 3rd…),
+  // left at an even one: the rabbit constant (F) draws the Fibonacci word fractal
+  squareParity: { base: 2, arrows: '↑→', lattice: 'square', lines: true, twin: 'squareParityCells',
+                  rule: 'along the lines of a square grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one' },
+  squareParityCells: { base: 2, arrows: '↑→', lattice: 'square', cells: true, twin: 'squareParity',
+                       rule: 'from cell to cell of a square grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one' },
   cubesPivot: { base: 3, arrows: '↑→⊙', lattice: 'cube', twin: 'cubesPivotCells', perspective: true, pivot: 4,
                 rule: 'in 3D cubes: <b>0</b> step forward, <b>1</b> turn right on the spot, <b>2</b> turn up on the spot' },
   cubesPivotCells: { base: 3, arrows: '↑→⊙', lattice: 'cube', cells: true, twin: 'cubesPivot', perspective: true, pivot: 4,
@@ -1549,7 +1559,7 @@ const FORMULA_NAMES = {  // name: [kind, symbol shown]
   pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
   erdos: ['real', 'E'], rho: ['real', 'ρ'],
   champernowne: ['seq', 'C'], primes: ['seq', '▮ p'], primegaps: ['seq', 'gₙ'], dragon: ['seq', '🐉'],
-  thuemorse: ['seq', 'τ'], rabbit: ['seq', 'F'],
+  thuemorse: ['seq', 'τ'], rabbit: ['seq', 'F'], rudinshapiro: ['seq', 'RS'], kolakoski: ['seq', 'K'],
 };
 const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, exp: 1, log: 2, zeta: 1, primorial: 1, random: 1, randprime: 2 };
 const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
@@ -1899,6 +1909,12 @@ function seqDigits(ast, n, base) {
   } else if (name === 'rabbit') {  // the Fibonacci word: from 1, each 1 becomes 10 and each 0 becomes 1
     digits[0] = 1;
     for (let i = 0, j = 0; j < n; i++) { if (digits[i]) { digits[j++] = 1; if (j < n) digits[j++] = 0; } else digits[j++] = 1; }
+  } else if (name === 'rudinshapiro') {  // the blocks 11 of k (k & k >> 1: their last 1s), counted mod 2
+    for (let i = 0; i < n; i++) { let m = i & (i >> 1), p = 0; while (m) { p ^= 1; m &= m - 1; } digits[i] = p; }
+  } else if (name === 'kolakoski') {  // 1 2 2 1 1 2 …: run i is as long as term i, its terms 1 and 2 by turns
+    const k = [1, 2, 2];
+    for (let i = 2; k.length < n; i++) for (let r = 0; r < k[i] && k.length < n; r++) k.push(1 + (i % 2 === 0 ? 0 : 1));
+    for (let i = 0; i < n; i++) digits[i] = k[i] - 1;
   } else {  // primegaps
     // gaps between consecutive odd primes (3→5, 5→7, 7→11, …) are even: digit = (gap / 2) mod b.
     // The n-th prime is below n·(ln n + ln ln n) for n ≥ 6.
@@ -2060,6 +2076,7 @@ const NAV = {
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
+  squareParity: ['Walk', '2D', 'Squares', 'Parity', 'grid'], squareParityCells: ['Walk', '2D', 'Squares', 'Parity', 'cells'],
   squarePivot: ['Walk', '2D', 'Squares', 'Pivot', 'grid'], squarePivotCells: ['Walk', '2D', 'Squares', 'Pivot', 'cells'],
   cubesPivot: ['Walk', '3D', 'Cubes', 'Pivot', 'grid'], cubesPivotCells: ['Walk', '3D', 'Cubes', 'Pivot', 'cells'],
   triPivot: ['Walk', '2D', 'Triangles', 'Pivot', 'grid'], hexPivotCells: ['Walk', '2D', 'Hexagons', 'Pivot', 'cells'],
@@ -2070,6 +2087,7 @@ for (const w of Object.keys(MODES)) if (MODES[w].pivot && MODES[w].sphere) {
   NAV[w] = [...NAV[of].slice(0, 3), 'Pivot', NAV[of][4]];
 }
 for (const w of Object.keys(MODES)) if (MODES[w].pivot) MODE_ICONS[w] = 'pivot';
+MODE_ICONS.squareParity = MODE_ICONS.squareParityCells = 'walk2d';
 const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
@@ -2967,6 +2985,7 @@ const STEPPERS = {
   triFixedCells: () => triStepper('fixed'),
   hexTurtleCells: () => hexStepper('relative'),
   hexFixedCells: () => hexStepper('fixed'),
+  squareParity: () => parityStepper(), squareParityCells: () => parityStepper(),
   squarePivot: () => pivotStepper('squarePivot'), squarePivotCells: () => pivotStepper('squarePivotCells'),
   triPivot: () => pivotStepper('triPivot'), hexPivotCells: () => pivotStepper('hexPivotCells'),
   triSpiral: () => triStepper('spiral'),
@@ -3008,6 +3027,19 @@ function cubeStepper(relative) {
     }
     x += d[0]; y += d[1]; z += d[2];
     return [key3(x, y, z), x, y, z, relative ? u.join() : ''];  // and the roll, for walkRepeat
+  };
+}
+
+// A parity walk: north, east, south, west by its heading; the heading and the digit's parity come last
+// (as a cube's roll, see walkRepeat)
+function parityStepper() {
+  const step = STEPPERS.cardinal();
+  let h = 0, k = 0;
+  return (g) => {
+    const at = step(h);
+    k++;
+    if (g) h = (h + (k % 2 ? 1 : 3)) % 4;
+    return [...at, `${h} ${k % 2}`];
   };
 }
 
@@ -5559,6 +5591,7 @@ function lifeReset() {
   // lifetime: fingerprint of every generation's state; the first repeat gives the loop
   L.seen = new Map([[lifeFingerprint(L.alive), 0]]);
   L.stable = null;  // { T: first generation of the loop, P: its period, extinct }
+  L.trace = { alive: [L.seedAlive], change: [0] };  // each generation's live cells and births + deaths (see drawActivity)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -5592,6 +5625,7 @@ function lifeTrack(gen) {
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
+  const changes = L.born + L.dead;  // before this generation
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -5647,6 +5681,8 @@ function lifeStep() {
   L.dyingCount = dying;
   L.byColour = byColour;
   L.blueCount = byColour[2] ?? 0;
+  L.trace.alive[gen] = alive;
+  L.trace.change[gen] = L.born + L.dead - changes;
   lifeTrack(gen);
 }
 
@@ -8428,6 +8464,50 @@ const STAT_LABELS = {
   life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
 };
 
+// The activity, under the stats: a walk's distance from its start, step by step; a Game of Life's live
+// cells and its changes (births and deaths, grey), generation by generation: chaos, then calm. A column of
+// pixels shows the highest value in it; a walk's steps still to come faint, the step shown marked
+let curveOf = null;  // a walk's columns, once per walk and width
+function drawActivity() {
+  const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
+  if (!W) return;  // folded (drawn again when the card opens)
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const accent = css.getPropertyValue('--accent'), muted = css.getPropertyValue('--muted');
+  const columns = (n, value) => { const c = new Float64Array(W); for (let i = 0; i < n; i++) { const x = Math.floor((i * W) / n); c[x] = Math.max(c[x], value(i)); } return c; };
+  let series, n;
+  if (walk.life) {
+    const T = walk.life.trace;
+    n = T.alive.length;
+    series = [[columns(n, (i) => T.change[i]), muted], [columns(n, (i) => T.alive[i]), accent]];
+  } else {
+    if (!walk.n || !walk.wx) return;
+    n = walk.n + 1;
+    const { wx, wy, wz } = walk;
+    if (curveOf?.wx !== wx || curveOf.W !== W || curveOf.n !== n) {
+      curveOf = { wx, W, n, c: columns(n, (i) => Math.hypot(wx[i] - wx[0], wy[i] - wy[0], wz ? wz[i] - wz[0] : 0)) };
+    }
+    series = [[curveOf.c, accent]];
+  }
+  const at = Math.min(W - 1, Math.floor((Math.min(cur, n - 1) * W) / n));
+  const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;  // one scale: the changes against the live cells
+  for (const [c, colour] of series) {
+    const y = (x) => H - 1 - (c[x] / top) * (H - 3);
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.5;
+    for (const [from, to, alpha] of [[0, at, 1], [at, W - 1, 0.3]]) {
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      for (let x = from; x <= to; x++) (x === from ? ctx.moveTo : ctx.lineTo).call(ctx, x + 0.5, y(x));
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = muted;
+  ctx.fillRect(at, 0, 1, H);
+}
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
@@ -8470,8 +8550,10 @@ function updateStats() {
       : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
+    drawActivity();
     return;
   }
+  drawActivity();
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.wx[cur] : 0;
   const y = walk.n ? (walk.is3d ? walk.wy[cur] : -walk.wy[cur]) : 0;
@@ -8880,7 +8962,8 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, name]) 
   b.addEventListener('click', () => pickGoal(goal));
   return b;
 }));
-$('autoPlay').addEventListener('change', autoplay);  // turned on: it plays at once
+$('autoPlay').addEventListener('change', autoplay);
+$('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
   const b = document.createElement('button');
   b.type = 'button';
@@ -9163,6 +9246,8 @@ const BUILT_IN = [
   ['120/109', 'A belt', { x: '120/109', w: 'hexSphereGrid', d: 5760, s: 32 }],
   ['Dragon', 'Paperfolding', { x: 'dragon', w: 'turtle', d: 20000 }],
   ['Thue–Morse', 'Koch curve', { x: 'thuemorse', w: 'triPivot', d: 4096 }],
+  ['Rabbit', 'Fibonacci word fractal', { x: 'rabbit', w: 'squareParity', d: 4181 }],
+  ['Rudin–Shapiro', 'On hexagons', { x: 'rudinshapiro', w: 'hexTurtle', d: 16384 }],
   ['Primes', 'Their barcode', { x: 'primes', w: 'spiral', d: 20000 }],
   ['π', '20,000 digits', { x: 'pi', w: 'turtle', d: 20000 }],
 ];

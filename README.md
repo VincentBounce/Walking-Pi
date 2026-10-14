@@ -28,6 +28,8 @@ The cards fill in the formula field; you can also type your own.
 - **Prime barcode ρ (Ulam):** digit k is 0 if k is not prime, else k mod b. On the square spiral it draws the Ulam spiral of the primes.
 - **Prime gaps Δp:** one digit per gap between consecutive odd primes, (gap / 2) mod b.
 - **Dragon (paperfolding):** the folds of a strip folded in two again and again. As turns, it draws the dragon curve on Triangles turtle, Squares turtle and Hexagons turtle.
+- **Rudin–Shapiro:** digit k is the parity of the blocks 11 in k written in base 2; on Hexagons turtle, a branching fractal.
+- **Kolakoski:** 1 2 2 1 1 2 1 2 2 …, the sequence of its own run lengths, as 0s and 1s.
 
 ### How each number is computed
 
@@ -77,7 +79,7 @@ Operators: `+ − × ÷ ^ ( )`.
 
 Examples: `22/7`, `2^pi`, `8^(1/3)`, `2^127-1`, `primorial(11)+1`, `ln(3)`.
 
-Digit sequences, used alone: `random(seed)`, `champernowne`, `primes`, `primegaps`, `dragon`, `thuemorse`, `rabbit`.
+Digit sequences, used alone: `random(seed)`, `champernowne`, `primes`, `primegaps`, `dragon`, `thuemorse`, `rabbit`, `rudinshapiro`, `kolakoski`.
 
 Press Enter to compute.
 
@@ -96,8 +98,9 @@ The walker starts at the origin, heading north (up). Each mode sets the base of 
 | Hexagons | 5 | `0` sharp left · `1` left · `2` straight · `3` right · `4` sharp right |
 | Hexagons | 6 | `0` N · `1` NE · `2` SE · `3` S · `4` SW · `5` NW |
 | Pivot (squares, triangles, hexagons) | 2 | `0` step forward · `1` turn right on the spot by one notch (90° on squares, 60° on triangles and hexagons), with no step |
+| Parity (squares) | 2 | `0` step forward · `1` step forward, then turn right at an odd digit (1st, 3rd…), left at an even one |
 
-**Pivot** is the turtle of the L-systems: a turn costs no step, so turns pile up (two quarter turns: back the way you came). It exists where a step straight on does: along squares and triangles, on square and hexagon cells.
+The rabbit constant on **Parity** draws the Fibonacci word fractal. **Pivot** is the turtle of the L-systems: a turn costs no step, so turns pile up (two quarter turns: back the way you came). It exists where a step straight on does: along squares and triangles, on square and hexagon cells.
 
 ### Walks on surfaces
 
@@ -174,7 +177,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
   - **Curated**: striking setups found so far (rosettes, loops on surfaces, classics).
   - Hovering a setup shows it in the view, leaving the list brings back the one in use, a click keeps it and opens its parameters.
 - **Play card** (bottom left): the number, its loop (`↻`) and base, a step slider, ⏮ and ▶︎ play / pause.
-  - Hovering opens it: the walk and its rule, a chip per digit with its count, the stats (position, distance, cells or corners visited, or the automaton's lifetime), the digits being read, one step and ⏭ jump to the end, and the speed between a turtle and a rabbit (6 to 600,000 steps per second).
+  - Hovering opens it: the walk and its rule, a chip per digit with its count, the stats (position, distance, cells or corners visited, or the automaton's lifetime), an **activity curve** (a walk's distance from its start along the whole walk; Life's live cells and its births + deaths per generation: chaos, then calm), the digits being read, one step and ⏭ jump to the end, and the speed between a turtle and a rabbit (6 to 600,000 steps per second).
 - **Display box** (top right, hover to open), with what fits the current tab:
   - **Auto-fit:** the view follows the walk and ends framed on it.
   - **Colours:** rainbow along the walk, rainbow cells, heatmap of visits, one colour per digit, or one colour.

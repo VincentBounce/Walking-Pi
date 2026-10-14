@@ -74,6 +74,8 @@ There the period's moves add up to a fixed step: a fraction drifts away as a fri
 
 On a Pivot walk, 0 steps forward and 1 turns right on the spot by one notch. Read this way, the Thue–Morse constant draws Koch's curve along the lines of a triangle grid ([τ, Triangles pivot](https://vincentbounce.github.io/Walking-Pi/#x=thuemorse&w=triPivot&d=4096)); this is a known result, not one of ours. It is still Koch's curve on the triangle sphere ([icosahedron](https://vincentbounce.github.io/Walking-Pi/#x=thuemorse&w=icosaPivotGrid&d=10000&s=32)). With quarter turns (squares) it closes into a small square at once.
 
+The rabbit constant (the Fibonacci word) on Squares parity, where a 1 turns right at an odd digit and left at an even one, draws the Fibonacci word fractal of Monnerot-Dumaine ([F, Squares parity](https://vincentbounce.github.io/Walking-Pi/#x=rabbit&w=squareParity&d=4181)), known too. The Rudin–Shapiro sequence along the lines of a hexagon grid (Hexagons turtle, left or right) draws a branching fractal, a dragon of sorts ([RS, Hexagons turtle](https://vincentbounce.github.io/Walking-Pi/#x=rudinshapiro&w=hexTurtle&d=16384)); on the squares it only drifts along a diagonal.
+
 <br>
 
 <p align="center">⁂</p>

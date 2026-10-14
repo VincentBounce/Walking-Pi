@@ -269,6 +269,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 
+.activity { display: block; width: 100%; height: 36px; margin: 8px 0 4px; }  /* the activity curve (see drawActivity) */
 .strip {
   margin-top: 12px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -323,7 +324,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .soup-row span { min-width: 3.5em; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
 .soup-row button { flex: none; width: 34px; padding: 4px 0; }
 .stage.dragging { cursor: grabbing; }
-.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* The two boxes over the view (Play bottom left, Display top right): the same frame and
    translucency; hovering one opens the rest of it in the same frame (on touch screens, a tap) */
 .stage-box {
