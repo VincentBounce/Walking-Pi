@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.530';
+const VERSION = '0.1.531';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3822,7 +3822,7 @@ const STEPS_128 = [8, 12, 16, 24, 32, 48, 64, 96, 128];
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
-  pits: { mesh: cubePits, radius: (n) => n / 2, sizes: [12, 24, 48, 96], initial: 24, tiles: (n) => (66 * n * n) / 9, unit: 'squares' },  // the cube with pits
+  pits: { mesh: cubePits, radius: (n) => n / 2, sizes: [12, 18, 24, 30, 48, 96], initial: 24, tiles: (n) => (66 * n * n) / 9, unit: 'squares' },  // the cube with pits
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
@@ -5832,6 +5832,7 @@ function huntParts(r, K) {
   if (walk.plane) {
     const { W, row } = walk.plane, block = (t) => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row); };
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
+    if (K === 1) return [lifePatch(r)];
     const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
     return parts.map((_, i) => lifePatch(r, near
       ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
@@ -5843,14 +5844,12 @@ function huntParts(r, K) {
     return parts.map((_, i) => (K === 1 ? lifePatch(r) : lifePatch(r, Math.floor(((Math.floor(i / b) + 0.5) * g.nu) / a) * g.nv + Math.floor((((i % b) + 0.5) * g.nv) / b))));
   }
   const spots = K === 1 ? null : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K].map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
-  const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (dot3(d, c) > dot3(spots[best], c)) best = k; }); return best; };
+  // 3 colours on the cube: 2 opposite faces each (its face's axis, either way)
+  const pairs = K === 3 && g.sides === 4 && (g.perFace || g.floors), near = (d, c) => (pairs ? Math.abs(dot3(d, c)) : dot3(d, c));
+  const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
-  return spots.map((d) => {  // the open cell nearest each spot
-    let best = -1;
-    for (let t = 0; t < n; t++) if (open(t) && (best < 0 || dot3(up(t), d) > dot3(up(best), d))) best = t;
-    return lifePatch(r, best);
-  });
+  return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
 }
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
 // zone and all its copies, of which only the first of each cell's copies is chosen, the others copied
@@ -5913,8 +5912,8 @@ function renderHunt() {
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
   const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link · pick a zone to hunt in`
     : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
-      : `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
-      + (all ? ` · ${fmt(all)} starts, all to try` : ` · random starts, ${DENSITY[0] * 100}–${DENSITY[1] * 100} % alive`);
+      : `${all ? '' : `${fmt(Math.round(DENSITY[0] * perColour))}–${fmt(Math.round(DENSITY[1] * perColour))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
+      + (all ? ` · ${fmt(all)} starts, all to try` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
@@ -6126,12 +6125,26 @@ function patchCentre() {
   return best;
 }
 
-// The cells at most r Life-neighbour steps from the centre: a 3×3, 5×5 or 7×7 square on square
-// grids (r = 1, 2, 3), a small disc of triangles on the polyhedra
-function lifePatch(r, centre = patchCentre()) {
-  const { start, list } = walk.life.nbr, seen = new Set([centre]);
+// The cells at the middle: one, or the ones round it all as near when it is a corner (an even side:
+// 2 × 2 squares); on a solid, the open cells nearest a direction (the front, else a colour's spot)
+function centreCells(d) {
+  const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
+  if (walk.plane) { const { W, row, kind } = walk.plane; return kind === 'square' && W % 2 === 0 && row % 2 === 0 ? four(W / 2, row / 2, row) : [patchCentre()]; }
+  if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
+  if (!d && !(g.sides === 4 && (g.perFace || g.floors))) return [patchCentre()];
+  d = unit(d ?? AXES[3]);  // the cube's front face
+  const near = new Float64Array(g.n).fill(-Infinity);
+  for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1]) near[t] = dot3(unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), d);
+  const best = near.reduce((m, v) => Math.max(m, v), -Infinity);
+  return [...near.keys()].filter((t) => near[t] > best - 1e-9);
+}
+// The cells at most r Life-neighbour steps from the centre cell (r = 1, 2, 3: a 3×3, 5×5 or 7×7
+// square on square grids, a small disc of triangles on the polyhedra), or r − 1 steps from the cells
+// round a middle corner (on an even side: 2×2, 4×4, 6×6)
+function lifePatch(r, centre = centreCells()) {
+  const { start, list } = walk.life.nbr, seen = new Set([centre].flat());
   let ring = [...seen];
-  for (let k = 0; k < r; k++) {
+  for (let k = seen.size > 1 ? 1 : 0; k < r; k++) {
     const next = [];
     for (const t of ring) for (let q = start[t]; q < start[t + 1]; q++) if (!seen.has(list[q])) { seen.add(list[q]); next.push(list[q]); }
     ring = next;
