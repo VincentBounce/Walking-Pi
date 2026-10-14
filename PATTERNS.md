@@ -953,3 +953,35 @@ Found with the hunt's *Dies out* goal: a start that stays alive very long on a g
 | Cairo pentagons, 48 × 48, walls | Cairo Wars B24/S346/C4 | 33 cells (14 alive, 19 dying) | **28,079** | [play](https://vincentbounce.github.io/Walking-Pi/#x=random(99148459)&w=life2dCairo&r=B24/S346/C4&s=48&e=1&sd=random.30.828121311&ch=s4.1la_2-4_3-1-2e-0-3_3-0-1_3-2e-0-1_3-2_3-0_3-0_3-0-2_3-1_3-28-0-0_2-0_3-1-1_2-0_3-1_2-3_3-29-1-0-2_3-1_3-1_3-57) |
 
 Cairo Wars never settles from a soup on a torus (sparks and gliders forever); in a closed box its activity wanders for tens of thousands of generations (86 to 338 cells alive), then wears itself out. On an infinite plane its gliders would fly away, so this is a methuselah of the box, not of the rule alone.
+
+
+## 🎲 Densities: how full a start should be
+
+For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.
+
+| Grid | Rule | 10 % | 20 % | 30 % | 40 % | 50 % | 60 % | 70 % |
+|---|---|--:|--:|--:|--:|--:|--:|--:|
+| Squares | B2/S | 2,721 (4,000) | 3,920 (4,000) | 3,987 (4,000) | 3,987 (4,000) | 4,000 (4,000) | 3,987 (4,000) | 3,987 (4,000) |
+| Squares | B2/S/C3 | 106 (1,633) | 140 (2,532) | 207 (1,935) | 251 (2,718) | 220 (2,273) | 185 (2,131) | 143 (1,740) |
+| Squares | B2/S345/C4 | 83 (4,000) | 64 (1,402) | 113 (4,000) | 163 (4,000) | 164 (2,800) | 204 (2,578) | 209 (4,000) |
+| Squares | B3/S1234 | 29 (151) | 108 (152) | 132 (156) | 131 (150) | 130 (150) | 129 (144) | 129 (147) |
+| Squares | B3/S12345 | 43 (296) | 137 (312) | 163 (338) | 164 (277) | 158 (302) | 157 (326) | 160 (307) |
+| Squares | B3/S23 | 3 (324) | 78 (2,791) | 163 (3,348) | 228 (4,000) | 213 (2,533) | 218 (2,900) | 178 (3,153) |
+| Squares | B36/S23 | 4 (529) | 62 (1,133) | 112 (1,774) | 128 (1,513) | 147 (2,123) | 150 (1,621) | 162 (1,936) |
+| Squares | B3678/S34678 | 2 (8) | 4 (60) | 8 (62) | 14 (78) | 20 (136) | 25 (216) | 32 (123) |
+| Triangles | B3/S23 | 134 (4,000) | 299 (4,000) | 350 (4,000) | 410 (4,000) | 392 (4,000) | 251 (3,776) | 196 (3,657) |
+| Triangles | B34/S2/C4 | 56 (3,226) | 157 (3,600) | 225 (4,000) | 206 (4,000) | 245 (4,000) | 279 (4,000) | 182 (4,000) |
+| Triangles | B45/S345/C4 | 30 (1,947) | 126 (4,000) | 450 (4,000) | 645 (4,000) | 690 (4,000) | 630 (4,000) | 507 (4,000) |
+| Hexagons | B1/S0123456 | 39 (63) | 37 (63) | 35 (63) | 33 (63) | 33 (63) | 32 (63) | 31 (56) |
+| Hexagons | B2/S24/C3 | 102 (4,000) | 202 (4,000) | 446 (4,000) | 272 (4,000) | 440 (4,000) | 406 (4,000) | 532 (4,000) |
+| Hexagons | B2/S34 | 3 (27) | 9 (98) | 14 (62) | 18 (76) | 23 (209) | 26 (75) | 32 (88) |
+| Hexagons | B234/S1234 | 541 (1,549) | 821 (4,000) | 841 (1,235) | 846 (1,309) | 846 (1,326) | 846 (1,248) | 835 (1,187) |
+| Hexagons | B234/S234 | 345 (2,336) | 960 (2,051) | 1,073 (1,749) | 1,092 (1,947) | 1,103 (1,764) | 1,096 (1,819) | 1,080 (1,723) |
+| Hexagons | B24/S134/C4 | 17 (539) | 60 (1,362) | 135 (3,599) | 110 (1,942) | 146 (4,000) | 149 (2,344) | 195 (2,893) |
+| Hexagons | B24/S35 | 3 (24) | 8 (47) | 15 (79) | 18 (121) | 22 (80) | 26 (111) | 30 (102) |
+| Hexagons | B2o/S2m34 | 2 (7) | 3 (22) | 8 (101) | 12 (84) | 20 (152) | 24 (211) | 33 (207) |
+| Hexagons | B34/S123/C3 | 2 (31) | 7 (93) | 16 (84) | 28 (123) | 34 (175) | 36 (150) | 33 (131) |
+| Cairo | B23/S6/C3 | 9 (904) | 19 (526) | 55 (1,716) | 108 (2,301) | 142 (4,000) | 142 (4,000) | 141 (3,081) |
+| Cairo | B2347/S35/C3 | 164 (4,000) | 999 (4,000) | 2,106 (4,000) | 2,539 (4,000) | 2,686 (4,000) | 2,855 (4,000) | 2,768 (4,000) |
+| Cairo | B24/S346/C4 | 6 (70) | 208 (4,000) | 716 (4,000) | 1,276 (4,000) | 1,862 (4,000) | 2,395 (4,000) | 2,966 (4,000) |
+| Cairo | B34/S23 | 2 (12) | 5 (56) | 14 (87) | 24 (166) | 28 (148) | 33 (195) | 29 (216) |
