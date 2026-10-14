@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.536';
+const VERSION = '0.1.537';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5935,11 +5935,13 @@ function huntParts(r, K) {
 function faceOf(t = 0) {
   const g = walk.geo;
   if (walk.plane || !g || g.torus) return null;
-  if (g.perFace) return Math.floor(t / g.perFace);
+  if (g.perFace) return Math.floor(t / g.perFace / facesPer());
   if (!g.floors) return null;
   const c = g.cen.subarray(3 * t, 3 * t + 3), ax = [0, 1, 2].reduce((m, d) => (Math.abs(c[d]) > Math.abs(c[m]) ? d : m), 0);
   return 2 * ax + (c[ax] < 0 ? 1 : 0);
 }
+// the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
+const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
 // Each colour's face: the one in front (one colour), else the face at its spot
 function faceParts(K) {
   const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K];
@@ -6231,6 +6233,10 @@ function centreCells(d) {
   const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
   if (walk.plane) { const { W, row, kind } = walk.plane; return kind === 'square' && W % 2 === 0 && row % 2 === 0 ? four(W / 2, row / 2, row) : [patchCentre()]; }
   if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
+  if (!d && g.faces) {  // a solid of triangles: the middle of the face in front (a dodecahedron's pentagon)
+    const per = facesPer(), f0 = Math.floor(Math.floor(patchCentre() / g.perFace) / per) * per;
+    d = [0, 1, 2].map((a) => g.faces.slice(f0, f0 + per).reduce((sum, fc) => sum + fc.corners.reduce((s, c) => s + c[a], 0), 0));
+  }
   if (!d && !(g.sides === 4 && (g.perFace || g.floors))) return [patchCentre()];
   d = unit(d ?? AXES[3]);  // the cube's front face
   const near = new Float64Array(g.n).fill(-Infinity);
