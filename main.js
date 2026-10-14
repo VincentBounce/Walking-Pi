@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.522';
+const VERSION = '0.1.523';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6439,9 +6439,19 @@ function advanceTo(target) {
   target = Math.min(walk.n, target);
   if (target !== cur) faced = false;  // the walker moves: the camera follows it again (see faceWalk)
   if (walk.life) {  // Game of Life: one step = one generation
-    while (cur < target) { lifeStep(); cur++; }
+    const L = walk.life;
+    for (let k = target - cur; k > 0 && !lifeEnded(); k--) {
+      lifeStep();
+      cur++;
+      const s = L.stable;
+      if (!s) continue;
+      if (s.extinct || s.P === 1) { cur = s.T; play(false); break; }  // nothing moves any more: it ends there
+      if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
+        cur -= s.P;
+        for (let t = 0; t < L.died.length; t++) if (L.died[t] > s.T) L.died[t] -= s.P;
+      }
+    }
     statsDirty = true;
-    if (cur >= walk.n) play(false);
     return;
   }
   const { xs, ys, wx, wy, wz, is3d } = walk;
@@ -6472,8 +6482,10 @@ function advanceTo(target) {
   }
 }
 
+// a Game of Life that died out or froze: shown at the generation it ended
+const lifeEnded = () => { const s = walk.life?.stable; return !!s && (s.extinct || s.P === 1) && cur === s.T; };
 function play(on) {
-  playing = on && walk.n > 0 && cur < walk.n;
+  playing = on && walk.n > 0 && cur < walk.n && !lifeEnded();
   $('play').innerHTML = playing ? `${icon('pause')} Pause` : `${icon('play')} Play`;
   $('play').classList.toggle('on', playing);
 }
@@ -8292,7 +8304,8 @@ function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
   $('back').disabled = cur === 0 || !!walk.life;
-  $('step').disabled = $('end').disabled = cur >= walk.n;
+  $('step').disabled = cur >= walk.n || lifeEnded();
+  $('end').disabled = cur >= walk.n || !!walk.life?.stable;  // a Game of Life's end known: there already (or in its loop)
   // the progress: a slider to go to any step (none for the Game of Life, which has no end)
   const finite = Number.isFinite(walk.n) && !walk.life;
   $('seek').parentElement.hidden = $('seekCountOpen').hidden = !finite;  // its whole line
@@ -8316,7 +8329,8 @@ function updateStats() {
     // as bubbles: the run (lifetime, generation, alive, born, died, ever alive), then a row per colour
     const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back};--on:${back === LIFE_ALIVE ? UNLIT : '#fff'}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
     // the title: the generation, and how the run ends (or not yet)
-    $('barNum').textContent = `Gen ${fmt(cur)}`;
+    const s = L.stable;  // ended: ✝ died out, ■ frozen; a loop: its phase
+    $('barNum').textContent = `Gen ${fmt(cur)}${!s ? '' : s.extinct ? ' ✝' : s.P === 1 ? ' ■' : ` ↻ ${cur - s.T + 1}/${s.P}`}`;
     $('barLoop').hidden = false;
     $('barLoop').textContent = lifetimeText(L);
     // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the live cells', as the theme draws them)
@@ -8589,7 +8603,7 @@ $('digitsLabel').addEventListener('change', () => {
   compute(true);
 });
 $('play').addEventListener('click', () => {
-  if (cur >= walk.n) restart();
+  if (cur >= walk.n || lifeEnded()) restart();  // at the end: from the start again
   play(!playing);
 });
 $('step').addEventListener('click', () => { play(false); advanceTo(cur + 1); });
@@ -8599,7 +8613,7 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
   play(wasPlaying);
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
-$('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });
+$('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });  // (a Game of Life stops at its end, or loops)
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
 $('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
 $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
