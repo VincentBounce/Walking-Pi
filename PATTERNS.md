@@ -941,3 +941,14 @@ For each rule offered (Life's own patterns on squares come from LifeWiki), 3,000
 | B2347/S35/C3 | Spaceship | flies, period 4 · 19 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:7.A$2.3A2B2A2.B$A.2B2.B2A2.B$6.B.B2.A!) |
 | B2347/S35/C3 | Oscillator | period 3 · 8 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:B.2A$A.BA$B.A!) |
 | B2347/S35/C3 | Methuselah | loops from generation 3,997 · 13 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B2347/S35/C3&s=64&sd=draw&p=64,32:.3A3.A$.2A2.2A$A.4A!) |
+
+
+## ⏳ Long deaths in a box
+
+Found with the hunt's *Dies out* goal: a start that stays alive very long on a grid with dead edges (Walls), then dies out to the last cell.
+
+| Grid | Rule | Start | Dies out at | Try it |
+|---|---|---|--:|---|
+| Cairo pentagons, 48 × 48, walls | Cairo Wars B24/S346/C4 | 33 cells (14 alive, 19 dying) | **28,079** | [play](https://vincentbounce.github.io/Walking-Pi/#x=random(99148459)&w=life2dCairo&r=B24/S346/C4&s=48&e=1&sd=random.30.828121311&ch=s4.1la_2-4_3-1-2e-0-3_3-0-1_3-2e-0-1_3-2_3-0_3-0_3-0-2_3-1_3-28-0-0_2-0_3-1-1_2-0_3-1_2-3_3-29-1-0-2_3-1_3-1_3-57) |
+
+Cairo Wars never settles from a soup on a torus (sparks and gliders forever); in a closed box its activity wanders for tens of thousands of generations (86 to 338 cells alive), then wears itself out. On an infinite plane its gliders would fly away, so this is a methuselah of the box, not of the rule alone.
