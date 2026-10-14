@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.540';
+const VERSION = '0.1.541';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -968,12 +968,17 @@ const MODES = {
                       rule: 'from cell to cell of a square grid: <b>0</b> step forward, <b>1</b> turn right on the spot (90°)' },
   triPivot: { base: 2, arrows: '↑→', lattice: 'hex', lines: true, pivot: 6, steps: 'triFixed',
               rule: 'along the lines of a triangle grid: <b>0</b> step forward, <b>1</b> turn right on the spot (60°)' },
-  // Parity: a step forward at each digit, then after a 1 a quarter turn, right at an odd digit (the 1st, 3rd…),
-  // left at an even one: the rabbit constant (F) draws the Fibonacci word fractal
-  squareParity: { base: 2, arrows: '↑→', lattice: 'square', lines: true, twin: 'squareParityCells',
-                  rule: 'along the lines of a square grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one' },
-  squareParityCells: { base: 2, arrows: '↑→', lattice: 'square', cells: true, twin: 'squareParity',
-                       rule: 'from cell to cell of a square grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one' },
+  // Parity: a step forward at each digit, then after a 1 a turn by a notch (parity: the notches of a whole
+  // turn), right at an odd digit (the 1st, 3rd…), left at an even one: on squares, the rabbit constant (F)
+  // draws the Fibonacci word fractal. Along the fixed directions of a walk (steps), as Pivot
+  squareParity: { base: 2, arrows: '↑→', lattice: 'square', lines: true, twin: 'squareParityCells', parity: 4, steps: 'cardinal',
+                  rule: 'along the lines of a square grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (90°)' },
+  squareParityCells: { base: 2, arrows: '↑→', lattice: 'square', cells: true, twin: 'squareParity', parity: 4, steps: 'cardinal',
+                       rule: 'from cell to cell of a square grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (90°)' },
+  triParity: { base: 2, arrows: '↑→', lattice: 'hex', lines: true, parity: 6, steps: 'triFixed',
+               rule: 'along the lines of a triangle grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (60°)' },
+  hexParityCells: { base: 2, arrows: '↑→', lattice: 'hex', cells: true, parity: 6, steps: 'hexFixedCells',
+                    rule: 'from cell to cell of a hexagon grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (60°)' },
   cubesPivot: { base: 3, arrows: '↑→⊙', lattice: 'cube', twin: 'cubesPivotCells', perspective: true, pivot: 4,
                 rule: 'in 3D cubes: <b>0</b> step forward, <b>1</b> turn right on the spot, <b>2</b> turn up on the spot' },
   cubesPivotCells: { base: 3, arrows: '↑→⊙', lattice: 'cube', cells: true, twin: 'cubesPivot', perspective: true, pivot: 4,
@@ -991,6 +996,8 @@ for (const [w, of, n, twin] of [['cubePivot', 'cubeFlat', 4, 'cubePivotGrid'], [
   const M = MODES[of], where = M.rule.split(': ')[0], after = M.rule.match(/ \([^)]*\)$/)?.[0] ?? '';  // "(at a corner of the cube, …)"
   MODES[w] = { ...M, base: 2, arrows: '↑→', twin, ant: undefined, pivot: n,
                rule: `${where}: <b>0</b> step forward, <b>1</b> turn right on the spot (${360 / n}°)${after}` };
+  MODES[w.replace('Pivot', 'Parity')] = { ...MODES[w], twin: twin?.replace('Pivot', 'Parity'), pivot: undefined, parity: n,  // and its Parity walk
+    rule: `${where}: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (${360 / n}°)${after}` };
 }
 
 
@@ -2066,17 +2073,25 @@ const NAV = {
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   squareParity: ['Walk', '2D', 'Squares', 'Parity', 'grid'], squareParityCells: ['Walk', '2D', 'Squares', 'Parity', 'cells'],
+  triParity: ['Walk', '2D', 'Triangles', 'Parity', 'grid'], hexParityCells: ['Walk', '2D', 'Hexagons', 'Parity', 'cells'],
   squarePivot: ['Walk', '2D', 'Squares', 'Pivot', 'grid'], squarePivotCells: ['Walk', '2D', 'Squares', 'Pivot', 'cells'],
   cubesPivot: ['Walk', '3D', 'Cubes', 'Pivot', 'grid'], cubesPivotCells: ['Walk', '3D', 'Cubes', 'Pivot', 'cells'],
   triPivot: ['Walk', '2D', 'Triangles', 'Pivot', 'grid'], hexPivotCells: ['Walk', '2D', 'Hexagons', 'Pivot', 'cells'],
 };
-// the pivot walks on the surfaces: where their turtle walks are (see MODES)
-for (const w of Object.keys(MODES)) if (MODES[w].pivot && MODES[w].sphere) {
+// the pivot and parity walks on the surfaces: where their turtle walks are (see MODES)
+for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
-  NAV[w] = [...NAV[of].slice(0, 3), 'Pivot', NAV[of][4]];
+  NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
 }
-for (const w of Object.keys(MODES)) if (MODES[w].pivot) MODE_ICONS[w] = 'pivot';
-MODE_ICONS.squareParity = MODE_ICONS.squareParityCells = 'walk2d';
+for (const w of Object.keys(MODES)) if (MODES[w].pivot || MODES[w].parity) MODE_ICONS[w] = MODES[w].pivot ? 'pivot' : 'walk2d';
+// in each shape's rules: Turtle, then Pivot and Parity, then the others as they come
+{
+  const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
+  const sorted = Object.entries(NAV).map((e, i) => [...e, i])
+    .sort(([, a, i], [, b, j]) => first.indexOf(group(a)) - first.indexOf(group(b)) || (rank[a[3]] ?? 3) - (rank[b[3]] ?? 3) || i - j);
+  for (const [w] of sorted) delete NAV[w];
+  for (const [w, n] of sorted) NAV[w] = n;
+}
 const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
 const NAV_SPACES = ['2D', '3D', 'Surfaces'];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
@@ -2133,6 +2148,7 @@ const FAMILIES = [
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid']], tab: 0,
     tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
 ];
+for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
 function familyOf(w) {
   for (const F of FAMILIES) {
@@ -2232,7 +2248,7 @@ function renderModePicker() {
   $('navRules').replaceChildren(...rules.map((r) => {
     const v = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
-    return button(`<span class="mode-icon">${icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`  // a turtle for the walks turning relative to their heading
+    return button(`<span class="mode-icon">${icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`  // a turtle for the walks turning relative to their heading
       + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => navGo(3, r));
   }));
   // Grid | Cells (Cube in 3D): each with its base and its digits, or what it is not on (that side off)
@@ -2970,7 +2986,8 @@ const STEPPERS = {
   triFixedCells: () => triStepper('fixed'),
   hexTurtleCells: () => hexStepper('relative'),
   hexFixedCells: () => hexStepper('fixed'),
-  squareParity: () => parityStepper(), squareParityCells: () => parityStepper(),
+  squareParity: () => parityStepper('squareParity'), squareParityCells: () => parityStepper('squareParityCells'),
+  triParity: () => parityStepper('triParity'), hexParityCells: () => parityStepper('hexParityCells'),
   squarePivot: () => pivotStepper('squarePivot'), squarePivotCells: () => pivotStepper('squarePivotCells'),
   triPivot: () => pivotStepper('triPivot'), hexPivotCells: () => pivotStepper('hexPivotCells'),
   triSpiral: () => triStepper('spiral'),
@@ -3015,15 +3032,15 @@ function cubeStepper(relative) {
   };
 }
 
-// A parity walk: north, east, south, west by its heading; the heading and the digit's parity come last
-// (as a cube's roll, see walkRepeat)
-function parityStepper() {
-  const step = STEPPERS.cardinal();
+// A parity walk in 2D: its heading one of the fixed walk's directions, clockwise; the heading and the
+// digit's parity come last (as a cube's roll, see walkRepeat)
+function parityStepper(w) {
+  const { steps, parity: n } = MODES[w], step = STEPPERS[steps]();
   let h = 0, k = 0;
   return (g) => {
     const at = step(h);
     k++;
-    if (g) h = (h + (k % 2 ? 1 : 3)) % 4;
+    if (g) h = (h + (k % 2 ? 1 : n - 1)) % n;
     return [...at, `${h} ${k % 2}`];
   };
 }
@@ -4511,16 +4528,18 @@ function surfaceSteps(g, mode) {
     for (let q = 0; q < k; q++) { u += g.uv[2 * (k * t + q)]; v += g.uv[2 * (k * t + q) + 1]; }
     return [u / k, v / k];
   };
-  // a pivot walk: the turns on the spot since its last step (p), and a step k/2 − p edges on from its entry
+  // a pivot walk: the turns on the spot since its last step (p), and a step k/2 − p edges on from its entry;
+  // a parity walk: the turn its last digit asked (p: 1 right, −1 left, 0) and the parity of the digits read (q)
+  const own = mode.pivot || mode.parity;
   return {
-    start: (i) => (mode.pivot ? [...cellStart(g, starts[i]), 0] : cellStart(g, starts[i])),
-    step: ([t, entry, p], d) => {
-      if (mode.pivot && d) return [t, entry, (p + 1) % k];
+    start: (i) => (own ? [...cellStart(g, starts[i]), 0, 0] : cellStart(g, starts[i])),
+    step: ([t, entry, p, q], d) => {
+      if (mode.pivot && d) return [t, entry, (p + 1) % k, 0];
       const ks = live[t], n = ks ? ks.length : k, at = ks ? ks.indexOf(entry) : entry;
-      const j = (((at + (mode.pivot ? k / 2 - p : mode.turns[d])) % n) + n) % n, edge = ks ? ks[j] : j;
-      return mode.pivot ? [g.nbr[k * t + edge], g.nbrEdge[k * t + edge], 0] : [g.nbr[k * t + edge], g.nbrEdge[k * t + edge]];
+      const j = (((at + (own ? k / 2 - p : mode.turns[d])) % n) + n) % n, edge = ks ? ks[j] : j, next = [g.nbr[k * t + edge], g.nbrEdge[k * t + edge]];
+      return !own ? next : mode.pivot ? [...next, 0, 0] : [...next, d ? (q ? -1 : 1) : 0, 1 - q];
     },
-    key: ([t, entry, p = 0]) => (t * k + entry) * k + p,
+    key: ([t, entry, p = 0, q = 0]) => ((t * k + entry) * k + ((p + k) % k)) * 2 + q,
     sheet: ([a], [b]) => {
       if (g.mobius) return mobiusDelta(g, mobiusAt(g, a, centre(a)), mobiusAt(g, b, centre(b)));
       const p = centre(a), q = centre(b), du = q[0] - p[0], dv = q[1] - p[1];
@@ -4540,8 +4559,11 @@ function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
   const maxDist = new Float64Array(len + 1), counts = new Int32Array(base * (len + 1)), stepTiles = new Int32Array(2 * len);
   const seen = new Uint8Array(G.nv), angles = turns.map((a) => (a * Math.PI) / 180);
   let [v, from] = STARTS_ON.includes(kind) ? startList(g)[startNo() - 1] : firstStart(g, G);
-  let distinct = 1, m = 0, coverStep = -1, p = 0;  // p: a pivot walk's turns on the spot since its last step
-  const key = () => (v * G.nv + from) * (mode.pivot ?? 1) + p;
+  // p: a pivot walk's turns on the spot since its last step, a parity walk's turn asked by its last digit
+  // (1 right, −1 left), in notches (N a whole turn); q: the parity of the digits a parity walk has read
+  const N = mode.pivot ?? mode.parity ?? 1;
+  let distinct = 1, m = 0, coverStep = -1, p = 0, q = 0;
+  const key = () => ((v * G.nv + from) * N + ((p + N) % N)) * 2 + q;
   seen[v] = 1;
   const start = at(v);
   const put = (i) => {
@@ -4560,10 +4582,11 @@ function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
       p = (p + 1) % mode.pivot;
       stepTiles[2 * i] = stepTiles[2 * i + 1] = i ? stepTiles[2 * i - 1] : G.tileOf[v];
     } else {
-      const next = nextCorner(g, G, v, from, mode.pivot ? (-2 * Math.PI * p) / mode.pivot : angles[seq[i]]);
+      const next = nextCorner(g, G, v, from, N > 1 ? (-2 * Math.PI * p) / N : angles[seq[i]]);
       const sides = G.edgeTiles.get(G.key(v, next));
       stepTiles[2 * i] = sides[0]; stepTiles[2 * i + 1] = sides[1] ?? sides[0];
       from = v; v = next; p = 0;
+      if (mode.parity) { q ^= 1; p = seq[i] ? (q ? 1 : -1) : 0; }
     }
     if (!seen[v]) { seen[v] = 1; distinct++; if (distinct === G.nv) coverStep = i + 1; }
     put(i + 1);

@@ -98,9 +98,9 @@ The walker starts at the origin, heading north (up). Each mode sets the base of 
 | Hexagons | 5 | `0` sharp left · `1` left · `2` straight · `3` right · `4` sharp right |
 | Hexagons | 6 | `0` N · `1` NE · `2` SE · `3` S · `4` SW · `5` NW |
 | Pivot (squares, triangles, hexagons) | 2 | `0` step forward · `1` turn right on the spot by one notch (90° on squares, 60° on triangles and hexagons), with no step |
-| Parity (squares) | 2 | `0` step forward · `1` step forward, then turn right at an odd digit (1st, 3rd…), left at an even one |
+| Parity (squares, triangles, hexagons) | 2 | `0` step forward · `1` step forward, then turn by one notch: right at an odd digit (1st, 3rd…), left at an even one |
 
-The rabbit constant on **Parity** draws the Fibonacci word fractal. **Pivot** is the turtle of the L-systems: a turn costs no step, so turns pile up (two quarter turns: back the way you came). It exists where a step straight on does: along squares and triangles, on square and hexagon cells.
+The rabbit constant on **Parity** (squares) draws the Fibonacci word fractal. **Pivot** is the turtle of the L-systems: a turn costs no step, so turns pile up (two quarter turns: back the way you came). It exists where a step straight on does: along squares and triangles, on square and hexagon cells.
 
 ### Walks on surfaces
 
@@ -116,7 +116,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 | Tetrahedron, octahedron, triangle sphere | base 5: `0` sharp left … `4` sharp right (at a corner of the solid, the nearest edge) | base 2: exit through the `0` left or `1` right edge |
 | Hexagon sphere | base 2: `0` left · `1` right | base 2: the `0` front left or `1` front right edge |
 
-Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn right on the spot by one notch): along the grid on squares and triangles, on cells on squares and hexagons.
+Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn right on the spot by one notch) and the **Parity** rule (`1` a step, then a notch right at an odd digit, left at an even one): along the grid on squares and triangles, on cells on squares and hexagons.
 
 - **Torus**, **Möbius strip** and **Sphere** are one entry each in the list, their tiles picked by the tabs under it: for the torus squares on a long sheet (the default, square once rolled up), squares on a square sheet (as many round the ring as round the tube: square when unrolled, stretched along the ring rolled up), hexagons, hexagons **turned by 30°**, triangles, triangles turned by 30° (turned, their rows go round the tube instead of round the ring); for the Möbius strip the same five (hexagons and turned triangles make its edges zigzag along them); for the sphere hexagons (the default) or triangles (the icosahedron, inflated).
 - The − / + under the list set the surface's size.
