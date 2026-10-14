@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.529';
+const VERSION = '0.1.530';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1456,6 +1456,8 @@ const ICONS = (() => {
     zone2: dots([[12, 12]], 4),
     zone3: dots([[12, 12]], 6),
     zone4: dots([[12, 12]], 8),
+    zone5: dots([[12, 12]], 9.5),
+    zone6: dots([[12, 12]], 11),
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
@@ -4743,7 +4745,7 @@ function startColours(seed) {
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
   const fits = huntFits(), r = zoneRadius(hunt.zone);
-  if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? `d${plane.density}`;
+  if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? 'full';
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); lifeStart = { zone: hunt.zone }; return; }
   if (K === 1) return;
@@ -5054,7 +5056,7 @@ const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cair
 // the description's lead: how the cells start, on which grid
 // a zone of the hunt, a random start in it, in words
 function zoneWords(zone) {
-  const K = walk.life.colours, r = zoneRadius(zone), d = Number(zone.slice(1));
+  const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (zone === 'patterns') return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour at its spot'}, turned or mirrored at random`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
@@ -5077,7 +5079,7 @@ function planeFromSetup(s) {
   if (kind === 'random' || SYMMETRIES[kind]) {
     plane.start = 'random';
     plane.density = Math.min(60, Math.max(5, Number(a) || 30));
-    hunt.zone = `d${plane.density}`;  // its tile, when one of them
+    hunt.zone = 'full';
     plane.seed = Number(b) || 1;
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -5603,7 +5605,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, density, cap, all, choices, part, parts, dies } = e.data;  // dies: only the runs dying out
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, dies } = e.data;  // dies: only the runs dying out; dense: a start's density, drawn between these
     const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
@@ -5702,9 +5704,9 @@ function huntWorker() {
       const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1)), touching = inContact[Math.min(T, inContact.length - 1)];  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
       return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance };
     };
-    // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as asked
+    // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as drawn
     const randomSeed = () => {
-      const s = new Uint8Array(n);
+      const s = new Uint8Array(n), density = dense[0] + Math.random() * (dense[1] - dense[0]);
       for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));  // colours: live cells only
       return copy(s);
     };
@@ -5771,7 +5773,7 @@ function huntWorker() {
     }
   };
 }
-const hunt = { worker: null, zone: 'd30', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest or dies (colours: a battle)
+const hunt = { worker: null, zone: 'full', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest or dies (colours: a battle)
 // What the hunt looks for: the longest life, the longest till it dies out (one colour), or a battle,
 // which starts with the colours that suit the figure best: one for each of its natural spots
 const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out', battle: '⚔ Battle' };
@@ -5789,11 +5791,15 @@ function pickGoal(goal) {
   compute();
 }  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
-// the zones: the whole grid as dense as said (d30: 30 % alive), or a radius
-const HUNT_ZONES = { d10: ['zoneAll', '10 %'], d20: ['zoneAll', '20 %'], d30: ['zoneAll', '30 %'], d50: ['zoneAll', '50 %'],
-                      radius1: ['zone1', 'Radius 1'], radius2: ['zone2', 'Radius 2'], radius3: ['zone3', 'Radius 3'], radius4: ['zone4', 'Radius 4'],
-                      patterns: [null, 'Patterns'],  // the rule's patterns, mixed (see patternChoices)
-                      custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
+// The zones: patches of radius 1 to 6 round each spot (Spark … Meadow), the whole grid (Wild), the rule's
+// patterns (Classics); their random starts each as dense as drawn between 10 and 70 % (the records often
+// come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
+const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
+                     radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], full: ['zoneAll', 'Wild'],
+                     patterns: [null, 'Classics'],  // the rule's patterns, mixed (see patternChoices)
+                     custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
+const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
+const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
@@ -5872,7 +5878,7 @@ function huntPlan() {
     }
   } else for (const t of zone) cells.push([t, mine.get(t)]);
   const count = K === 1 && r ? C ** cells.length : Infinity;
-  return { cells, copies, perColour: Math.round(zone.size / K), density: r ? 0.5 : Number(hunt.zone.slice(1)) / 100, all: count <= 20000 ? count : 0 };
+  return { cells, copies, perColour: Math.round(zone.size / K), all: count <= 20000 ? count : 0 };
 }
 // the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
 // another kind), else the start chosen
@@ -5908,7 +5914,7 @@ function renderHunt() {
   const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link · pick a zone to hunt in`
     : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
       : `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
-      + (all ? ` · ${fmt(all)} starts, all to try` : ' · random starts');
+      + (all ? ` · ${fmt(all)} starts, all to try` : ` · random starts, ${DENSITY[0] * 100}–${DENSITY[1] * 100} % alive`);
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
@@ -5967,10 +5973,10 @@ function stopHunt() {
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
   if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns') return null;  // (Custom: the link's, once)
-  const { cells, copies, density, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length);
+  const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = density();
   if (choices) for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
-    for (const [t, k] of cells) if (Math.random() < density) seed[t] = k;
+    for (const [t, k] of cells) if (Math.random() < d) seed[t] = k;
     for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
   }
   return seed;
@@ -5979,8 +5985,8 @@ function pickZone(zone) {
   hunt.zone = zone;
   hunt.top = [];
   hunt.status = '';
-  if (!zoneRadius(zone) && zone !== 'patterns') {  // the whole grid: a new soup each time, as dense as said
-    plane.density = Number(zone.slice(1));
+  if (zone === 'full') {  // the whole grid: a new soup each time, as dense as drawn (in whole percents)
+    plane.density = Math.round(100 * density());
     plane.seed = 1 + Math.floor(Math.random() * 999999999);
     lifeReseed();  // in colours, each in its part
   } else setLifeSeed(zoneSeed(), { zone });
@@ -5995,7 +6001,7 @@ function huntClick() {
   }
   // as many workers as the computer has cores (one left for the page), on and on until stopped (or, few
   // enough starts, each with every parts-th of them); their best merged
-  const L = walk.life, { cells, copies, density, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  const L = walk.life, { cells, copies, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
   const tops = [], done = new Int32Array(parts);
   let finished = 0;
   hunt.top = [];
@@ -6016,7 +6022,7 @@ function huntClick() {
       renderHunt();
     };
     w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
-                    cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), density, all, choices,
+                    cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), dense: DENSITY, all, choices,
                     cap: K === 1 ? 50000 : 4000, part, parts, dies: K === 1 && hunt.goal === 'dies' });
     return w;
   });
@@ -6269,7 +6275,7 @@ function applySetup(s) {
     else {  // a surface's start: a soup, or its digits (an old link's, with no sd)
       const [kind, a, b] = String(s.sd ?? 'digits').split('.');
       plane.start = kind === 'random' ? 'random' : 'digits';
-      if (kind === 'random') { plane.density = Math.min(60, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = `d${plane.density}`; }
+      if (kind === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = 'full'; }
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
@@ -8762,7 +8768,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   b.dataset.zone = zone;
   b.innerHTML = `${pic ? icon(pic) : pixelIcon('.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Patterns: a glider
   b.title = zone === 'custom' ? 'A start from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour at its spot, turned or mirrored"
-    : zoneRadius(zone) ? `Random starts within radius ${zoneRadius(zone)}` : `The whole grid, ${name} alive`;
+    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot` : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
   return b;
