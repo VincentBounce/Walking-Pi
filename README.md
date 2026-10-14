@@ -12,7 +12,7 @@ Every number is a **formula**, computed in the browser with `BigInt` in a Web Wo
 
 The cards fill in the formula field; you can also type your own.
 
-**Constants:** π, e, φ (golden ratio), γ (Euler–Mascheroni), G (Catalan), E (Erdős–Borwein).
+**Constants:** π, e, φ (golden ratio), γ (Euler–Mascheroni), G (Catalan), E (Erdős–Borwein), τ (Prouhet–Thue–Morse) and F (the rabbit constant, the Fibonacci word). τ and F are made of 0s and 1s in every base; read by a Pivot walk on triangles, τ draws Koch's curve.
 
 **𝑓 (formulas):** √2, ∛2, π², e^π, ln 2, ζ(3), 4/3, 16/9.
 
@@ -77,7 +77,7 @@ Operators: `+ − × ÷ ^ ( )`.
 
 Examples: `22/7`, `2^pi`, `8^(1/3)`, `2^127-1`, `primorial(11)+1`, `ln(3)`.
 
-Digit sequences, used alone: `random(seed)`, `champernowne`, `primes`, `primegaps`, `dragon`.
+Digit sequences, used alone: `random(seed)`, `champernowne`, `primes`, `primegaps`, `dragon`, `thuemorse`, `rabbit`.
 
 Press Enter to compute.
 
@@ -95,6 +95,9 @@ The walker starts at the origin, heading north (up). Each mode sets the base of 
 | Triangles | 3 | Cross the `0` horizontal · `1` “/” · `2` “\” edge |
 | Hexagons | 5 | `0` sharp left · `1` left · `2` straight · `3` right · `4` sharp right |
 | Hexagons | 6 | `0` N · `1` NE · `2` SE · `3` S · `4` SW · `5` NW |
+| Pivot (squares, triangles, hexagons) | 2 | `0` step forward · `1` turn right on the spot by one notch (90° on squares, 60° on triangles and hexagons), with no step |
+
+**Pivot** is the turtle of the L-systems: a turn costs no step, so turns pile up (two quarter turns: back the way you came). It exists where a step straight on does: along squares and triangles, on square and hexagon cells.
 
 ### Walks on surfaces
 
@@ -110,6 +113,8 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 | Tetrahedron, octahedron, triangle sphere | base 5: `0` sharp left … `4` sharp right (at a corner of the solid, the nearest edge) | base 2: exit through the `0` left or `1` right edge |
 | Hexagon sphere | base 2: `0` left · `1` right | base 2: the `0` front left or `1` front right edge |
 
+Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn right on the spot by one notch): along the grid on squares and triangles, on cells on squares and hexagons.
+
 - **Torus**, **Möbius strip** and **Sphere** are one entry each in the list, their tiles picked by the tabs under it: for the torus squares on a long sheet (the default, square once rolled up), squares on a square sheet (as many round the ring as round the tube: square when unrolled, stretched along the ring rolled up), hexagons, hexagons **turned by 30°**, triangles, triangles turned by 30° (turned, their rows go round the tube instead of round the ring); for the Möbius strip the same five (hexagons and turned triangles make its edges zigzag along them); for the sphere hexagons (the default) or triangles (the icosahedron, inflated).
 - The − / + under the list set the surface's size.
 - **Starts:** the different walks a surface allows (its rotations turn a start into another one that draws the same walk, turned), numbered alike at every size; hovering the number shows them all.
@@ -124,21 +129,21 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 |---|:-:|---|
 | Cubes | 5 | Relative to the heading: `0` turn left · `1` up · `2` straight · `3` down · `4` turn right |
 | Cubes | 6 | `0` north · `1` east · `2` up · `3` south · `4` west · `5` down |
+| Cubes pivot | 3 | `0` step forward · `1` quarter turn right · `2` quarter turn up, both on the spot |
 
-### Automata on surfaces
+### Game of Life
 
-The digits seed a cellular automaton on a torus (squares or hexagons), a cube, a tetrahedron, an octahedron or an icosahedron. In base C, each cell starts `0` dead, `1` alive, or `2`… dying. Neighbours share an edge or a corner.
+A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus, a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
 
-- **Rules** in `B…/S…/C…` notation.
-  - Conway's Life, HighLife, Seeds, Brian's Brain, Star Wars, Maze, Day & Night…
-  - Rules found by scans that last long on hexagons and triangles.
-  - Any custom rule.
-- **Methuselah hunt:** it looks for a start that lives as long as possible before it settles or loops.
-  - The start covers the whole surface, or a small patch (radius 1, 2 or 3) with the rest dead.
-  - 🔍 Hunt tries 1,000 random starts, then 2,000 tweaks of the best one, then plays the champion.
-  - Clicking again skips to the tweaks, then plays the best so far.
-  - When a patch has at most 20,000 possible starts, all of them are tried.
-- The champion's start is kept in the link, so a found pattern can be shared.
+- **Rules** in `B…/S…/C…` notation: Conway's Life, HighLife, Seeds, Brian's Brain, Star Wars, Maze, Day & Night…, rules found by scans that last long on hexagons, triangles and Cairo pentagons, or any rule typed. With C states a cell is `0` dead, `1` alive or `2`… dying.
+- **Populations:** 1 to 12 colours that fight by the same rule (a newborn takes the colour of most of its live neighbours), each starting in its part of the grid: its block of the plane, its face or corner of the solid.
+- **Start:**
+  - **Hunt:** looks for the longest life, the longest death (a start that ends empty) or, in colours, the fairest battle (the longest contact between colours, by their balance). It runs on all the computer's cores until stopped, 1 run in 3 a random start and the others tweaks of the best; the 8 best are listed, a click plays one. Each has a light: in colours how even the battle is, in one colour how far it spreads (its most live cells at once against its cells at the start).
+  - **Zones** where the hunt draws its starts: radius 1 to 8 round the middle (Spark, Seed, Sprout, Bloom, Grove, Meadow, Forest, Jungle; on an even side, round the middle corner), a whole face of a solid (Realm), the whole grid (Wild), or the rule's known patterns, turned and mirrored (Classics). Each random start is as dense as drawn between 10 and 70 %; a zone with at most 20,000 possible starts has them all tried.
+  - **Draw:** cells drawn by hand, or the rule's patterns.
+  - On the plane, a start can have a **symmetry** (mirrors, turns).
+  - **Digits:** the number's digits, one per cell, in base C.
+- The start is kept in the link, so a found pattern can be shared.
 
 ### 2D spirals
 
