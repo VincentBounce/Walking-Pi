@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.541';
+const VERSION = '0.1.542';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8410,6 +8410,7 @@ let curveOf = null;  // a walk's columns, once per walk and width
 function drawActivity() {
   const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
   if (!W) return;  // folded (drawn again when the card opens)
+  cv.classList.toggle('seek', !walk.life);
   if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
   const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -8778,6 +8779,14 @@ function seekTo(v) {
   statsDirty = true;
 }
 $('seek').addEventListener('input', () => seekTo(Number($('seek').value)));
+// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's; Life's runs on)
+const seekCurve = (e) => {
+  if (walk.life || !Number.isFinite(walk.n) || !walk.n) return;
+  const r = $('activity').getBoundingClientRect();
+  seekTo(Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * walk.n));
+};
+$('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
+$('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
 $('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });

@@ -269,7 +269,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 
-.activity { display: block; width: 100%; height: 36px; margin: 8px 0 4px; }  /* the activity curve (see drawActivity) */
+.activity { display: block; width: 100%; height: 36px; margin: 8px 0 4px; touch-action: none; }
+.activity.seek { cursor: pointer; }  /* a walk's: a click or a drag goes to that step */  /* the activity curve (see drawActivity) */
 .strip {
   margin-top: 12px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -435,8 +436,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
 .player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
 .player-side .seek-count { margin-top: -4px; }  /* the step, just under the slider */
-.stage-bar:hover .seek-row .seek-count { display: none; }
-@media (hover: none) { .stage-bar:focus-within .seek-row .seek-count { display: none; } }  /* as wide as "5,000,000 steps/s" needs */
+.stage-bar:hover .seek-row { display: none; }  /* open, the activity curve is the slider (see drawActivity) */
+@media (hover: none) { .stage-bar:focus-within .seek-row { display: none; } }
 .stage-bar:not(:hover) .player-side { display: none; }
 @media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }
