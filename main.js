@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.527';
+const VERSION = '0.1.528';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5899,13 +5899,15 @@ function renderHunt() {
     b.disabled = busy || !fits[b.dataset.zone];
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
-  $('zoneCells').textContent = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link` : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
-    : `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
-    + (all ? ` · all ${fmt(all)} starts tried` : '');
+  // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
+  const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link · pick a zone to hunt in`
+    : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
+      : `${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
+      + (all ? ` · ${fmt(all)} starts, all to try` : ' · random starts');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
-  $('huntStatus').textContent = hunt.status;
+  $('huntStatus').textContent = hunt.status || zone;
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
   // and up, orange from 50 %)
@@ -5994,14 +5996,14 @@ function huntClick() {
       const d = e.data;
       if (d.type === 'done') {
         if (++finished < parts) return;
-        hunt.status = `Done · ${fmt(hunt.top.length)} best kept, a click plays one`;
+        hunt.status = `All ${fmt(all)} tried · ${hunt.top.length ? `${fmt(hunt.top.length)} kept` : K > 1 ? 'no battle' : hunt.goal === 'dies' ? 'none dies out' : 'nothing lasts'}`;
         stopHunt();
         return;
       }
       if (d.top) { tops[part] = d.top; hunt.top = mergeTops(tops.flat(), K); }
       done[part] = d.i;
       const n = done.reduce((x, y) => x + y, 0);
-      hunt.status = all ? `Starts ${fmt(n)} / ${fmt(all)}` : `${fmt(n)} starts tried · ${fmt(hunt.top.length)} best kept`;
+      hunt.status = `${all ? `${fmt(n)} / ${fmt(all)}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
       renderHunt();
     };
     w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,

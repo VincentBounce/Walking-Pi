@@ -293,7 +293,6 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .draw-row button { width: auto; padding: 4px 12px; }
 .start-panel { margin: 0 0 10px; }
 .light { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }  /* a hunt result's light: green, orange, red */
-.zone-cells { margin: -4px 0 8px; font-size: 12px; }  /* the hunt's zone: its cells */
 .colour-blocks button svg { border-radius: 3px; }  /* 1 to 12 colours: a block each, as the shapes' tiles */
 .colour-blocks button:disabled { opacity: 0.3; }
 .colour-swatches { display: flex; gap: 6px; justify-content: flex-start; align-items: center; padding-left: 4px; }  /* Life's colours: a square each, from the left */
