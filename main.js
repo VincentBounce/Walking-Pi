@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.528';
+const VERSION = '0.1.529';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5642,7 +5642,10 @@ function huntWorker() {
     // a run: its lifetime T (the generation it starts repeating from, P later), its end state, and its score
     const run = (seed) => {
       let a = Uint8Array.from(seed), b = new Uint8Array(n), T = cap, P = 0, h1 = 0, h2 = 0, pairs = 0, contacts = 0, active = all_, nActive = n;
+      let alive = 0, peak = 0;  // the live cells, the most at once
       const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), changed = new Int32Array(n), list2 = new Int32Array(n);
+      for (let t = 0; t < n; t++) alive += live(a[t]);
+      peak = alive;
       for (let t = 0; t < n; t++) if (a[t]) {
         h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965);
         if (K > 1) for (let q = start[t]; q < start[t + 1]; q++) pairs += odd(a[t], a[list[q]]);
@@ -5665,8 +5668,10 @@ function huntWorker() {
           }
         }
         for (let k = 1; k <= K; k++) spread[k] += g * born[k];
+        if (alive > peak) peak = alive;
         for (let i = 0; i < nc; i++) {
           const t = changed[i];
+          alive += live(b[t]) - live(a[t]);
           if (a[t]) { h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965); }
           if (b[t]) { h1 ^= zob(t, b[t], 0x2545f491); h2 ^= zob(t, b[t], 0x6c078965); }
         }
@@ -5686,10 +5691,10 @@ function huntWorker() {
         active = list2;
       }
       if (K === 1) {
-        let alive = 0;
-        for (let t = 0; t < n; t++) alive += seed[t] > 0;
+        let first = 0;  // the start's cells
+        for (let t = 0; t < n; t++) first += seed[t] > 0;
         const extinct = !a.some((v) => v);
-        return { score: dies && !extinct ? -Infinity : T - alive / 1e6, T, P, end, live: alive, extinct };  // (live: the start's cells)
+        return { score: dies && !extinct ? -Infinity : T - first / 1e6, T, P, end, live: first, extinct, peak };  // peak: the most alive at once
       }
       const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
@@ -5911,9 +5916,13 @@ function renderHunt() {
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
   // and up, orange from 50 %)
+  // a life by how far it spreads: its most live cells at once, as a share of the grid, by its cells at the
+  // start (green 0.01 and up, orange from 0.002: a soup half full is red)
+  const n = walk.life.seed.length;
   const light = (r) => {
-    if (K > 1 && !r.contacts) return ['#8b949e', 'no contact']; const q = K === 1 ? r.T / Math.max(...hunt.top.map((x) => x.T)) : r.balance, [hi, lo] = K === 1 ? [0.8, 0.5] : [0.6, 0.3];
-    return q >= hi ? ['#30a46c', 'even'] : q >= lo ? ['#f0a020', 'uneven'] : ['#e5484d', K === 1 ? 'much shorter' : 'one-sided']; };
+    if (K > 1 && !r.contacts) return ['#8b949e', 'no contact'];
+    const q = K === 1 ? r.peak / n / r.live : r.balance, [hi, lo] = K === 1 ? [0.01, 0.002] : [0.6, 0.3];
+    return q >= hi ? ['#30a46c', K === 1 ? 'spreads far' : 'even'] : q >= lo ? ['#f0a020', K === 1 ? 'spreads some' : 'uneven'] : ['#e5484d', K === 1 ? 'spreads little' : 'one-sided']; };
   // built again only when the best or the one picked change, not at each count: a click lands on what was pressed
   const listKey = `${hunt.top.map(huntId).join()}|${hunt.picked}|${K}`;
   if (listKey === hunt.listKey) return;
@@ -5925,7 +5934,7 @@ function renderHunt() {
       ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
       : [`${fmt(r.contacts)} generations in contact`, r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'];  // its balance: on its light
     const [colour, word] = light(r);
-    b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ''}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
+    b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ` · at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}`}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
     b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) playHuntResult(r); });  // at once, even while the hunt goes on
     b.addEventListener('click', (e) => { if (!e.detail) playHuntResult(r); });  // from the keyboard
