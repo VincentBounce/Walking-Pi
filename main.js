@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.524';
+const VERSION = '0.1.525';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8322,7 +8322,7 @@ function updateStats() {
     const bubble = (back, inner, name, value) => `<span class="rule-chip"><b style="background:${back};--on:${back === LIFE_ALIVE ? UNLIT : '#fff'}">${inner}</b><span>${name}<small>${value}</small></span></span>`;
     // the title, in fixed widths so that it stays still: the generation, then how the run ended (✝ died
     // out, ■ frozen), or its loop: its phase, its period, from which generation
-    const s = L.stable, pad = (v, like) => fmt(v).padStart(fmt(like).length);
+    const s = L.stable, pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
     $('barNum').textContent = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
       : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)} from ${fmt(s.T)}`;
     $('barLoop').hidden = true;
