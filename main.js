@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.519';
+const VERSION = '0.1.520';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6099,6 +6099,7 @@ function patchCentre() {
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
   if (g.sides === 4 && g.perFace) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);  // the cube (not the one with pits)
+  if (g.floors) { const a = g.floorSize; return g.floors[3 * a * a + (a >> 1) * a + (a >> 1)]; }  // the cube with pits: the front pit's floor
   const dir = CAM0.v;
   let best = 0, bestDot = -Infinity;
   for (let t = 0; t < g.n; t++) {
