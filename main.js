@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.531';
+const VERSION = '0.1.532';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -730,6 +730,8 @@ const PRESETS = {
   gamma:   { group: 'Constants', sym: 'γ',    name: 'Euler–Mascheroni constant', f: 'gamma' },
   catalan: { group: 'Constants', sym: 'G',    name: "Catalan's constant", f: 'catalan' },
   erdos:   { group: 'Constants', sym: 'E',    name: 'Erdős–Borwein constant', f: 'erdos' },
+  thuemorse: { group: 'Constants', sym: 'τ',  name: 'Prouhet–Thue–Morse constant', detail: 'thuemorse · 0.0110100110010110…₂, digit k the parity of the 1s of k in base 2', f: 'thuemorse' },
+  rabbit:  { group: 'Constants', sym: 'F',    name: 'Rabbit constant', detail: 'rabbit · 0.1011010110110…₂, the Fibonacci word (1 → 10, 0 → 1)', f: 'rabbit' },
   sqrt2:   { group: '𝑓', sym: '√2', name: 'Square root of 2', f: 'sqrt(2)' },
   cbrt2:   { group: '𝑓', sym: '∛2', name: 'Cube root of 2', f: 'cbrt(2)' },
   pi2:     { group: '𝑓', sym: 'π²', name: 'Pi squared', f: 'pi^2' },
@@ -785,6 +787,8 @@ const FORMULA_NOTES = {
   primes: (b) => `digit k = 0 if k is not prime, else k mod ${b} (1 for k = ${b})`,
   rho: (b) => `ρ = Σ 2^(−p) = 0.0110101000101…₂, the binary barcode read as one number, written in base ${b}`,
   primegaps: (b) => `one digit per gap between odd primes: (gap / 2) mod ${b}`,
+  thuemorse: () => 'the Thue–Morse sequence (0 and 1): digit k is the parity of the 1s of k in base 2',
+  rabbit: () => 'the Fibonacci word (0 and 1): 1 becomes 10 and 0 becomes 1, again and again',
   dragon: () => 'the folds of a strip folded in two again and again (0 and 1): the dragon curve, as turns',
 };
 
@@ -1510,7 +1514,8 @@ const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g,
  *   'int'   an exact integer             2^127-1, primorial(11)+1, sqrt(16)
  *   'rat'   an exact fraction            22/7, 2^-1, (16/81)^(3/4)
  *   'real'  computed with guard digits   pi, sqrt(2), 2^pi, ln(3)
- *   'seq'   a sequence of digits defined base by base (random, champernowne, primes, primegaps).
+ *   'seq'   a sequence of digits defined base by base (random, champernowne, primes, primegaps,
+ *           and the 0s and 1s of dragon, thuemorse, rabbit).
  *           It is not a number, so it only stands alone: random(5)+1 is refused.
  * The kind decides where digits come from: sequences on the page (seqDigits), everything else in
  * the worker. An integer is walked through its own digits only (no digits after the point).
@@ -1521,6 +1526,7 @@ const FORMULA_NAMES = {  // name: [kind, symbol shown]
   pi: ['real', 'π'], e: ['real', 'e'], phi: ['real', 'φ'], gamma: ['real', 'γ'], catalan: ['real', 'G'],
   erdos: ['real', 'E'], rho: ['real', 'ρ'],
   champernowne: ['seq', 'C'], primes: ['seq', '▮ p'], primegaps: ['seq', 'gₙ'], dragon: ['seq', '🐉'],
+  thuemorse: ['seq', 'τ'], rabbit: ['seq', 'F'],
 };
 const FORMULA_FUNCTIONS = { sqrt: 1, cbrt: 1, root: 2, ln: 1, exp: 1, log: 2, zeta: 1, primorial: 1, random: 1, randprime: 2 };
 const APPROX = { pi: Math.PI, e: Math.E, phi: (1 + Math.sqrt(5)) / 2, gamma: 0.5772156649, catalan: 0.9159655942,
@@ -1865,6 +1871,11 @@ function seqDigits(ast, n, base) {
       while (k % 2 === 0) k /= 2;
       digits[i] = k % 4 === 1 ? 0 : 1;
     }
+  } else if (name === 'thuemorse') {  // digit k: the parity of the 1s of k in base 2; 0 and 1 in every base
+    for (let i = 1; i < n; i++) digits[i] = digits[i >> 1] ^ (i & 1);
+  } else if (name === 'rabbit') {  // the Fibonacci word: from 1, each 1 becomes 10 and each 0 becomes 1
+    digits[0] = 1;
+    for (let i = 0, j = 0; j < n; i++) { if (digits[i]) { digits[j++] = 1; if (j < n) digits[j++] = 0; } else digits[j++] = 1; }
   } else {  // primegaps
     // gaps between consecutive odd primes (3→5, 5→7, 7→11, …) are even: digit = (gap / 2) mod b.
     // The n-th prime is below n·(ln n + ln ln n) for n ≥ 6.
