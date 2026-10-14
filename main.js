@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.525';
+const VERSION = '0.1.526';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2221,6 +2221,7 @@ function compute(keepDigits = false) {
   fitRuleToShape();
   $('colourSection').hidden = !mode.life;
   $('autoPlayRow').hidden = !mode.life;
+  $('lightingRow').hidden = !(mode.plane || mode.lattice === 'sphere');  // Life on the plane, and the surfaces
   renderColours();
   renderRuleSection();
   if (!mode.life) { stopHunt(); $('huntRow').hidden = true; }
@@ -5307,6 +5308,7 @@ function drawLifePlane() {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+    if (lightingOn()) lightPlane(ctx);
     drawGhost();
     return;
   }
@@ -5329,8 +5331,42 @@ function drawLifePlane() {
     }
     ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
     ctx.fill();
+    if (lightingOn() && !small) {  // each cell outlined a little darker, as tiles in relief
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.lineWidth = Math.max(1, s * 0.08);
+      ctx.stroke();
+    }
   }
+  if (lightingOn()) lightPlane(ctx);
   drawGhost();
+}
+// Lighting on the plane: each square cell in relief (lit on its top and left edges, in shade on the others),
+// then all the cells darker towards the grid's sides, as under a spotlight in its middle
+const lightingOn = () => $('lighting').checked;
+function lightPlane(ctx) {
+  const { kind, W, row } = walk.plane, { scale: s, ox, oy } = view, a = walk.life.alive;
+  if (kind === 'square' && s >= 4) {
+    const e = Math.max(1, s * 0.14), lit = new Path2D(), shade = new Path2D();
+    for (let t = 0; t < a.length; t++) {
+      if (!a[t]) continue;
+      const x = ox + ((t % row) - 0.5) * s, y = oy + (Math.floor(t / row) - 0.5) * s;
+      lit.rect(x, y, s, e); lit.rect(x, y + e, e, s - e);
+      shade.rect(x, y + s - e, s, e); shade.rect(x + s - e, y, e, s - e);
+    }
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fill(lit);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fill(shade);
+  }
+  const [cx, cy] = kind === 'square' ? [ox + (W / 2 - 0.5) * s, oy + (W / 2 - 0.5) * s] : cellMiddle(kind, row / 2, W / 2).map((v, k) => (k ? oy : ox) + v * s);
+  const reach = 0.75 * W * s * (kind === 'square' ? 1 : 1.3), g = ctx.createRadialGradient(cx, cy, reach * 0.25, cx, cy, reach);
+  g.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  g.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';  // on the cells only
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.restore();
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
@@ -7310,14 +7346,21 @@ vec4 clipOf(vec3 s, float bias) {
   return vec4(s.x / uScreen.x * 2.0 - 1.0, 1.0 - s.y / uScreen.y * 2.0, clamp(-s.z / uDepth - bias, -1.0, 1.0), 1.0);
 }`;
 const GL_SHADERS = {
+  // Lighting (uLight): a light from above left, in front of the solid, a tile lit as it faces it, with a
+  // little shine; the screen darker towards its sides, as under a spotlight (uSpot: its middle, its reach)
   tile: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float uShade; uniform vec4 uPlain; out vec3 vCol;${GL_PROJECT}
+in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float uShade, uLight; uniform vec4 uPlain; out vec3 vCol;${GL_PROJECT}
 void main() {
   float toward = dot(aNrm, uV); if (uTwoSided) toward = abs(toward);
-  vCol = (uPlain.a > 0.0 ? uPlain.rgb : aCol) * (1.0 - uShade * (1.0 - max(0.0, toward)));  // uPlain: the back of an open sheet
+  vec3 c = uPlain.a > 0.0 ? uPlain.rgb : aCol;  // uPlain: the back of an open sheet
+  if (uLight > 0.5) {
+    vec3 n = dot(aNrm, uV) < 0.0 ? -aNrm : aNrm, l = normalize(-0.45 * uR + 0.7 * uU + 0.55 * uV), h = normalize(l + uV);
+    vCol = c * (0.35 + 0.75 * max(dot(n, l), 0.0)) + vec3(0.22 * pow(max(dot(n, h), 0.0), 48.0));
+  } else vCol = c * (1.0 - uShade * (1.0 - max(0.0, toward)));
   gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, `#version 300 es
-precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+precision mediump float; in vec3 vCol; uniform highp float uLight; uniform vec3 uSpot; out vec4 o;
+void main() { o = vec4(vCol * (uLight > 0.5 ? 1.0 - 0.32 * smoothstep(0.25, 1.0, length(gl_FragCoord.xy - uSpot.xy) / uSpot.z) : 1.0), 1.0); }`],
   edge: [`#version 300 es
 in vec3 aPos; in vec3 aNrm; uniform float uBias;${GL_PROJECT}
 void main() {  // the edges of a tile turned away are not drawn (the back of an open sheet, or of a strip's face)
@@ -7589,6 +7632,8 @@ function glSurface(palette, levelOf, path) {
   const open = g.torus && !g.mobius && sh.m < 1, front = shapeSign(g) < 0 ? gl.FRONT : gl.BACK, back = front === gl.BACK ? gl.FRONT : gl.BACK;
   gl.uniform1i(u('uTwoSided'), open ? 1 : 0);
   gl.uniform1f(u('uShade'), SHADE);
+  gl.uniform1f(u('uLight'), lightingOn() ? 1 : 0);
+  gl.uniform3f(u('uSpot'), glCanvas.width / 2, glCanvas.height / 2, 0.75 * Math.max(glCanvas.width, glCanvas.height));
   gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
   attrib(prog.tile, 'aPos', S.pos, 3);
   attrib(prog.tile, 'aNrm', S.nrm, 3);
@@ -7618,6 +7663,7 @@ function glSurface(palette, levelOf, path) {
     u = uniforms(prog.tile);
     gl.uniform1i(u('uTwoSided'), 1);
     gl.uniform1f(u('uShade'), SHADE);
+    gl.uniform1f(u('uLight'), 0);  // the arrows as they are
     gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
     attrib(prog.tile, 'aPos', S.arrPos, 3);
     attrib(prog.tile, 'aNrm', S.arrNrm, 3);
@@ -8745,6 +8791,7 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, name]) 
   return b;
 }));
 $('autoPlay').addEventListener('change', autoplay);  // turned on: it plays at once
+$('lighting').addEventListener('change', () => { needsFull = statsDirty = true; });
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
   const b = document.createElement('button');
   b.type = 'button';
