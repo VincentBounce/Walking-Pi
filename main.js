@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.520';
+const VERSION = '0.1.521';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9026,7 +9026,9 @@ const BUILT_IN = [
 // the walk's name, as in the walk list ("Squares turtle"; a surface's own name)
 const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${w}"]`)?.text ?? w).name;
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
-const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
+// the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
+// edges, cells drawn or found, and what its hunt looks for
+const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'k', 'sd', 'y', 'e', 'p', 'ch', 'hg'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
