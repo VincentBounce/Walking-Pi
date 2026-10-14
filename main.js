@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.535';
+const VERSION = '0.1.536';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -972,6 +972,10 @@ const MODES = {
                       rule: 'from cell to cell of a square grid: <b>0</b> step forward, <b>1</b> turn right on the spot (90°)' },
   triPivot: { base: 2, arrows: '↑→', lattice: 'hex', lines: true, pivot: 6, steps: 'triFixed',
               rule: 'along the lines of a triangle grid: <b>0</b> step forward, <b>1</b> turn right on the spot (60°)' },
+  cubesPivot: { base: 3, arrows: '↑→⊙', lattice: 'cube', twin: 'cubesPivotCells', perspective: true, pivot: 4,
+                rule: 'in 3D cubes: <b>0</b> step forward, <b>1</b> turn right on the spot, <b>2</b> turn up on the spot' },
+  cubesPivotCells: { base: 3, arrows: '↑→⊙', lattice: 'cube', cells: true, twin: 'cubesPivot', perspective: true, pivot: 4,
+                     rule: 'from cube to cube: <b>0</b> step forward, <b>1</b> turn right on the spot, <b>2</b> turn up on the spot' },
   hexPivotCells: { base: 2, arrows: '↑→', lattice: 'hex', cells: true, pivot: 6, steps: 'hexFixedCells',
                    rule: 'from cell to cell of a hexagon grid: <b>0</b> step forward, <b>1</b> turn right on the spot (60°)' },
 };
@@ -2057,6 +2061,7 @@ const NAV = {
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   squarePivot: ['Walk', '2D', 'Squares', 'Pivot', 'grid'], squarePivotCells: ['Walk', '2D', 'Squares', 'Pivot', 'cells'],
+  cubesPivot: ['Walk', '3D', 'Cubes', 'Pivot', 'grid'], cubesPivotCells: ['Walk', '3D', 'Cubes', 'Pivot', 'cells'],
   triPivot: ['Walk', '2D', 'Triangles', 'Pivot', 'grid'], hexPivotCells: ['Walk', '2D', 'Hexagons', 'Pivot', 'cells'],
 };
 // the pivot walks on the surfaces: where their turtle walks are (see MODES)
@@ -2970,6 +2975,7 @@ const STEPPERS = {
   cubeRel: () => cubeStepper(true),
   cubeFixed: () => cubeStepper(false),
   cubeRelCells: () => cubeStepper(true),
+  cubesPivot: () => cubePivotStepper(), cubesPivotCells: () => cubePivotStepper(),
   cubeFixedCells: () => cubeStepper(false),
   diag: () => diagStepper(),
   diagCells: () => diagStepper(),
@@ -3002,6 +3008,18 @@ function cubeStepper(relative) {
     }
     x += d[0]; y += d[1]; z += d[2];
     return [key3(x, y, z), x, y, z, relative ? u.join() : ''];  // and the roll, for walkRepeat
+  };
+}
+
+// A pivot walk in 3D cubes: 0 a step forward, 1 a quarter turn right, 2 a quarter turn up, both on the
+// spot; its heading and its head (for walkRepeat) come last
+function cubePivotStepper() {
+  let x = 0, y = 0, z = 0, f = [0, 1, 0], u = [0, 0, 1];  // facing north, head up
+  return (g) => {
+    if (g === 1) f = cross(f, u);  // right
+    else if (g === 2) [f, u] = [u, neg(f)];  // up
+    else { x += f[0]; y += f[1]; z += f[2]; }
+    return [key3(x, y, z), x, y, z, `${f} ${u}`];
   };
 }
 
