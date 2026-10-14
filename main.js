@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.516';
+const VERSION = '0.1.517';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5573,7 +5573,7 @@ function lifeStep() {
  * ==============================================================================================
  *
  * On any grid, in the Hunt start: random starts in a zone and tweaks of the best, on and on until
- * stopped, the 5 best kept.
+ * stopped, the 8 best kept.
  * One colour: the start that lasts longest (a methuselah); colours: the longest, most even battle.
  * The zone: the whole grid, as dense as said, or patches of a radius; in colours, a patch (or a part
  * of the grid) for each colour, at fair spots of the figure (see huntPatches).
@@ -5581,8 +5581,8 @@ function lifeStep() {
 
 /* ---- 9.1 The hunt worker, its zones, its results --------------------------------------------- */
 /* Life in 1 to 12 colours, on any grid, one hunt: on and on until stopped, one start in 3 at random in
- * the zone, the others a tweak of one of the 5 best (1 to 3 cells changed; patterns: one colour's);
- * the 5 best kept. The zone: see huntPlan (the whole grid as dense as said, patches of a radius,
+ * the zone, the others a tweak of one of the 8 best (1 to 3 cells changed; patterns: one colour's);
+ * the 8 best kept. The zone: see huntPlan (the whole grid as dense as said, patches of a radius,
  * patterns), each colour in its part. A zone with at most 20,000 starts has them all tried (the true
  * record), then the hunt is done.
  * - One colour, the longest life: the generation the run starts repeating at (fewer cells first).
@@ -5714,9 +5714,9 @@ function huntWorker() {
     };
     const randomPick = () => fromPick(choices.map((c) => Math.floor(Math.random() * c.length)));
     const nthPick = (k) => fromPick(choices.map((c) => { const d = k % c.length; k = Math.floor(k / c.length); return d; }));
-    const top = [];  // the 5 best: { ...run, seed }
+    const top = [];  // the 8 best: { ...run, seed }
     const keep = (r, seed) => {
-      if (top.length === 5 && r.score <= top[4].score) return false;
+      if (top.length === 8 && r.score <= top[7].score) return false;
       // the same run: ending alike at the same T; one colour, as long with the same period (a turned copy,
       // or cells that change nothing), the fewer cells kept; colours, as long in contact as evenly (turned)
       const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
@@ -5724,7 +5724,7 @@ function huntWorker() {
       if (same >= 0) top.splice(same, 1);
       top.push({ ...r, seed, pick: seed.pick });
       top.sort((x, y) => y.score - x.score);
-      top.length = Math.min(top.length, 5);
+      top.length = Math.min(top.length, 8);
       return true;
     };
     let done = 0;  // this worker's starts so far
@@ -5883,7 +5883,7 @@ function renderHunt() {
     + (all ? ` · all ${fmt(all)} starts tried` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
-  $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 5 best kept; a click on one plays it';
+  $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
   $('huntStatus').textContent = hunt.status;
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
@@ -5891,6 +5891,10 @@ function renderHunt() {
   const light = (r) => {
     if (K > 1 && !r.contacts) return ['#8b949e', 'no contact']; const q = K === 1 ? r.T / Math.max(...hunt.top.map((x) => x.T)) : r.balance, [hi, lo] = K === 1 ? [0.8, 0.5] : [0.6, 0.3];
     return q >= hi ? ['#30a46c', 'even'] : q >= lo ? ['#f0a020', 'uneven'] : ['#e5484d', K === 1 ? 'much shorter' : 'one-sided']; };
+  // built again only when the best or the one picked change, not at each count: a click lands on what was pressed
+  const listKey = `${hunt.top.map(huntId).join()}|${hunt.picked}|${K}`;
+  if (listKey === hunt.listKey) return;
+  hunt.listKey = listKey;
   $('huntTop').replaceChildren(...hunt.top.map((r) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -5900,7 +5904,8 @@ function renderHunt() {
     const [colour, word] = light(r);
     b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ''}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
     b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
-    b.addEventListener('click', () => playHuntResult(r));
+    b.addEventListener('pointerdown', (e) => { if (e.button === 0) playHuntResult(r); });  // at once, even while the hunt goes on
+    b.addEventListener('click', (e) => { if (!e.detail) playHuntResult(r); });  // from the keyboard
     return b;
   }));
 }
@@ -5911,12 +5916,12 @@ function playHuntResult(r) {
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
 }
-// the best of several workers: the same run once (as the worker's keep), the 5 best
+// the best of several workers: the same run once (as the worker's keep), the 8 best
 function mergeTops(all, K) {
   const top = [];
   for (const r of all.sort((x, y) => y.score - x.score)) {
     const same = top.some((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
-    if (!same && top.length < 5) top.push(r);
+    if (!same && top.length < 8) top.push(r);
   }
   return top;
 }
