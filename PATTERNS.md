@@ -949,6 +949,7 @@ Found with the hunt's *Dies out* goal: a start that stays alive very long on a g
 
 | Grid | Rule | Start | Dies out at | Try it |
 |---|---|---|--:|---|
+| Cairo pentagons, 48 × 48, walls | Cairo Wars B24/S346/C4 | **7 cells** (5 alive, 2 dying), up to 392 alive | **48,318** | [play](https://vincentbounce.github.io/Walking-Pi/#x=random(99148459)&w=life2dCairo&r=B24/S346/C4&s=48&e=1&sd=random.30.828121311&ch=s4.1qr-2i-1-0_2-0-0-2k_2) |
 | Cairo pentagons, 48 × 48, walls | Cairo Wars B24/S346/C4 | 33 cells (14 alive, 19 dying) | **28,079** | [play](https://vincentbounce.github.io/Walking-Pi/#x=random(99148459)&w=life2dCairo&r=B24/S346/C4&s=48&e=1&sd=random.30.828121311&ch=s4.1la_2-4_3-1-2e-0-3_3-0-1_3-2e-0-1_3-2_3-0_3-0_3-0-2_3-1_3-28-0-0_2-0_3-1-1_2-0_3-1_2-3_3-29-1-0-2_3-1_3-1_3-57) |
 
 Cairo Wars never settles from a soup on a torus (sparks and gliders forever); in a closed box its activity wanders for tens of thousands of generations (86 to 338 cells alive), then wears itself out. On an infinite plane its gliders would fly away, so this is a methuselah of the box, not of the rule alone.
