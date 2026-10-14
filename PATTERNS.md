@@ -70,6 +70,10 @@ The tables list every fraction p/q below 1 with q ≤ 999, one per denominator, 
 
 There the period's moves add up to a fixed step: a fraction drifts away as a frieze, unless that step is 0 and the period's figure closes on itself at once. Such closed figures are rare and look like closed scribbles, with no symmetry: on Triangles, 6 fixed directions, the biggest are [1/991](https://vincentbounce.github.io/Walking-Pi/#x=1/991&w=triFixed&d=991) and [1/823](https://vincentbounce.github.io/Walking-Pi/#x=1/823&w=triFixed&d=823).
 
+### Pivot walks: Koch's curve
+
+On a Pivot walk, 0 steps forward and 1 turns right on the spot by one notch. Read this way, the Thue–Morse constant draws Koch's curve along the lines of a triangle grid ([τ, Triangles pivot](https://vincentbounce.github.io/Walking-Pi/#x=thuemorse&w=triPivot&d=4096)); this is a known result, not one of ours. It is still Koch's curve on the triangle sphere ([icosahedron](https://vincentbounce.github.io/Walking-Pi/#x=thuemorse&w=icosaPivotGrid&d=10000&s=32)). With quarter turns (squares) it closes into a small square at once.
+
 <br>
 
 <p align="center">⁂</p>
