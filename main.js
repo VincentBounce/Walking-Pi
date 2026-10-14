@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.521';
+const VERSION = '0.1.522';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6218,7 +6218,6 @@ function getSetup() {
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && lifeColours > 1) s.k = lifeColours;
-  if (mode.life && lifeColours === 1 && hunt.goal === 'dies') s.hg = 'dies';  // the hunt: the longest death
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
@@ -6263,7 +6262,6 @@ function applySetup(s) {
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
-    hunt.goal = s.hg === 'dies' ? 'dies' : 'longest';
     setRuleText(ruleBody(s.r));
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
@@ -9027,8 +9025,8 @@ const BUILT_IN = [
 const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${w}"]`)?.text ?? w).name;
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 // the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
-// edges, cells drawn or found, and what its hunt looks for
-const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'k', 'sd', 'y', 'e', 'p', 'ch', 'hg'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
+// edges and cells drawn or found (what is seen; not the tools that found it: the hunt's buttons, Draw's brush)
+const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'k', 'sd', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
