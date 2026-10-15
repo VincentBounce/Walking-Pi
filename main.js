@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.594';
+const VERSION = '0.1.595';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6407,10 +6407,11 @@ TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 12: ICO
 TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
-  return !!walk.life && (!!m.plane || m.sphere === 'torus' || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
+  const turned = /Turned$/.test(surfaceOf(m));  // (tilings turned by 30°: not yet)
+  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
 };
-// the grid the patterns are of: the plane's, squares on the cube and the torus, triangles on the others
-const patternKind = () => walk.plane?.kind ?? (walk.geo.sides === 3 ? 'tri' : 'square');
+// the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
+const patternKind = () => walk.plane?.kind ?? ({ 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -6422,6 +6423,7 @@ function patternAt(i, K, cells) {
     const { W, row } = walk.plane, t = Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols);
     return brushAt([t % row, Math.floor(t / row)], cells).map(([x, y, v]) => [y * row + x, v]);
   }
+  if (g.torus && (g.mobius || g.klein || g.sides !== 4)) return sheetPatternAt(famousSpot(i, K), cells);  // any other sheet
   if (g.torus) {  // cells u × nv + v, the pattern's rows along u
     const [a, b] = torusBlocks(K);
     const u0 = Math.floor(((Math.floor(i / b) + 0.5) * g.nu) / a) - (h >> 1), v0 = Math.floor((((i % b) + 0.5) * g.nv) / b) - (w >> 1);
@@ -6452,6 +6454,62 @@ function patternAt(i, K, cells) {
   }
   return out;
 }
+// Famous on a sheet (a torus of hexagons, triangles or Cairo pentagons, a Möbius strip, a Klein bottle): the
+// pattern's cells from the plane's geometry brought to the sheet's units (hexagons: the plane's pointy ones
+// turned by 30°, as the sheets' flat ones), laid with the one nearest their middle on a tile near the spot
+// and every other one on a tile too (a tiling's cells of several kinds: the first tile that fits them all)
+function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
+  if (kind === 'square') return (p) => p;
+  if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
+  if (kind === 'tri') return g.mobius ? (p) => p : ([x, y]) => [x, y / ROOT3_2];  // (a Möbius strip's sheet: edges of 1)
+  const c = Math.cos(Math.PI / 6), sn = Math.sin(Math.PI / 6), r3 = Math.sqrt(3);
+  return ([x, y]) => { const X = r3 * (x * c - y * sn), Y = r3 * (x * sn + y * c); return g.mobius ? [X, Y] : [X / 1.5, Y / r3]; };
+}
+// a tile's place on the sheet (a Möbius strip: on its two sides as one strip, see mobiusLoop), and the
+// tile at a place, across the seams (a Klein bottle's turning over)
+const sheetPlace = (g, t) => (g.mobius ? mobiusLoop(g, t) : sheetMiddle(g, t));
+function sheetIndex(g) {
+  if (g.famousIndex) return g.famousIndex;
+  const key = ([u, v]) => {
+    if (g.mobius) u = ((u % (2 * g.L)) + 2 * g.L) % (2 * g.L);
+    else {
+      const k = Math.floor(u / g.nu);
+      u -= k * g.nu;
+      if (g.klein && k % 2) v = g.nv - v;
+      v = ((v % g.nv) + g.nv) % g.nv;
+    }
+    const r = (x, n) => { const q = Math.round(x * 1000); return n && q === Math.round(n * 1000) ? 0 : q; };
+    return `${r(u, g.mobius ? 2 * g.L : g.nu)},${r(v, g.mobius ? 0 : g.nv)}`;
+  };
+  const at = new Map();
+  for (let t = 0; t < g.n; t++) at.set(key(sheetPlace(g, t)), t);
+  return (g.famousIndex = { key, at });
+}
+// colour i's spot: the middle (one colour), else the middle of its block (a torus, a Klein bottle) or of its
+// stretch (a Möbius strip), as the zones' (see huntParts)
+function famousSpot(i, K) {
+  const g = walk.geo;
+  if (K === 1) return centreCells()[0];
+  if (g.mobius) return mobiusNearest(mobiusMiddle(g) + (i * 2 * g.L) / K, g.W / 2)[0];
+  const [a, b] = torusBlocks(K);
+  return sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0];
+}
+function sheetPatternAt(spot, cells) {
+  const g = walk.geo, kind = patternKind(), unitsOf = sheetUnits(g, kind), { key, at } = sheetIndex(g);
+  const pts = cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y)));
+  const mid = [0, 1].map((d) => pts.reduce((sum, p) => sum + p[d], 0) / pts.length);
+  const anchor = pts.reduce((best, p) => (Math.hypot(p[0] - mid[0], p[1] - mid[1]) < Math.hypot(best[0] - mid[0], best[1] - mid[1]) ? p : best));
+  for (const T of lifePatch(2, [spot])) {  // the spot, then the tiles round it
+    const [tu, tv] = sheetPlace(g, T), out = [];
+    for (let k = 0; k < pts.length; k++) {
+      const t = at.get(key([pts[k][0] - anchor[0] + tu, pts[k][1] - anchor[1] + tv]));
+      if (t === undefined) break;
+      out.push([t, cells[k][2]]);
+    }
+    if (out.length === pts.length) return out;
+  }
+  return [];
+}
 // each colour's choices: the rule's patterns (a rule of your own: all its grid's) that fit its block,
 // every way they turn and mirror (the same shape once), at its spot, as [cell, state…] in its colour
 function patternChoices() {
@@ -6467,7 +6525,9 @@ function patternChoices() {
       if (span <= room - 2 && !seen.has(k)) { seen.add(k); shapes.push(cells); }
     }
   }
-  return Array.from({ length: K }, (_, i) => shapes.map((cells) => Int32Array.from(patternAt(i, K, cells).flatMap(([t, v]) => [t, K > 1 ? i + 1 + K * (v - 1) : v]))));
+  // a shape kept where it lays whole for every colour (a sheet's: see sheetPatternAt)
+  const laid = shapes.map((cells) => Array.from({ length: K }, (_, i) => patternAt(i, K, cells))).filter((per) => per.every((cs) => cs.length));
+  return Array.from({ length: K }, (_, i) => laid.map((per) => Int32Array.from(per[i].flatMap(([t, v]) => [t, K > 1 ? i + 1 + K * (v - 1) : v]))));
 }
 
 /* ---- 9.2 Patches ----------------------------------------------------------------------------- */
