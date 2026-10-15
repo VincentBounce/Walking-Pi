@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.598';
+const VERSION = '0.1.599';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1360,7 +1360,7 @@ skyButton.title = 'The background: a sky in the page\'s tone, or plain';
 skyButton.addEventListener('click', () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); });
 const renderSkyButtons = () => {
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', on = $('sky').value === 'sky';
-  const name = theme === 'light' ? 'Dawn sky' : 'Twilight sky';
+  const name = theme === 'light' ? 'Dawn' : 'Twilight';
   $('sky').options[0].text = name;
   // the sky's picture, its colours deeper than the sky's own (pale behind a view, they would not read so small)
   const deep = { light: [[0, '#7fa7de'], [0.5, '#c6b8e6'], [0.8, '#eea3b6'], [1, '#f39a68']], dark: [[0, '#0a1a4a'], [0.45, '#2c3f8f'], [0.75, '#6b3f8e'], [1, '#c8644f']] }[theme];
