@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.597';
+const VERSION = '0.1.598';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5968,6 +5968,10 @@ function huntWorker() {
     const run = (seed) => {
       let a = Uint8Array.from(seed), b = new Uint8Array(n), T = cap, P = 0, h1 = 0, h2 = 0, pairs = 0, contacts = 0, active = all_, nActive = n;
       let alive = 0, peak = 0;  // the live cells, the most at once
+      // a battle: the live cells of each colour, how many colours have some, and from when only one has (its winner)
+      const byColour = new Int32Array(K + 1);
+      for (let t = 0; t < n; t++) if (live(a[t])) byColour[a[t]]++;
+      let colours = byColour.filter((c, k) => k && c).length, alone = 0;
       const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), changed = new Int32Array(n), list2 = new Int32Array(n);
       for (let t = 0; t < n; t++) alive += live(a[t]);
       peak = alive;
@@ -5997,10 +6001,13 @@ function huntWorker() {
         for (let i = 0; i < nc; i++) {
           const t = changed[i];
           alive += live(b[t]) - live(a[t]);
+          if (K > 1 && live(a[t]) && --byColour[a[t]] === 0) colours--;
+          if (K > 1 && live(b[t]) && byColour[b[t]]++ === 0) colours++;
           if (a[t]) { h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965); }
           if (b[t]) { h1 ^= zob(t, b[t], 0x2545f491); h2 ^= zob(t, b[t], 0x6c078965); }
         }
         [a, b] = [b, a];
+        if (K > 1) alone = colours <= 1 ? alone || g : 0;
         end = key();
         if (seen.has(end)) { T = seen.get(end); P = g - T; break; }
         seen.set(end, g);
@@ -6025,7 +6032,8 @@ function huntWorker() {
       const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
       // (no contact at all: the longer first)
       const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1)), touching = inContact[Math.min(T, inContact.length - 1)];  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
-      return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance };
+      const winner = colours === 1 ? byColour.findIndex((c, k) => k && c) : 0;
+      return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance, winner, alone };
     };
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as drawn
     const randomSeed = () => {
@@ -6301,7 +6309,8 @@ function renderHunt() {
     b.type = 'button';
     const [name, detail] = K === 1
       ? [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
-      : [`${fmt(r.contacts)} generations in contact`, r.P ? `of ${fmt(r.T)} before it settles` : 'still fighting at the cap'];  // its balance: on its light
+      : [`${fmt(r.contacts)} generations in contact`, r.winner ? `${LIFE_COLOUR_NAMES[r.winner - 1]} wins at gen ${fmt(r.alone)}`
+        : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r);
     b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ` · at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}`}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
     b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
