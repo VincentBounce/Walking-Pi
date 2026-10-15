@@ -213,7 +213,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .nav-shapes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px; font-size: 10px; background: var(--panel); color: var(--muted); min-width: 0; }
 .nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-shapes button svg { width: 20px; height: 20px; }
-.trail-row button.active:hover:not(:disabled) { border-color: var(--muted); }  /* a switch: on, it still answers the hover (a click turns it off) */
+.trail-row button:hover:not(:disabled) { background: rgba(240, 180, 41, 0.22); }  /* a switch answers the hover, on or off, in the gold of a choice picked (Dawn sky) */
 .gallery-group:not(:first-child) { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* Life, Ant, Walk: a section each */
 .cell-modes button svg { width: 22px; height: 22px; border-radius: 3px; }  /* the looks of a walk on cells: swatches */
 .nav-shapes button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); font-weight: 600; }
