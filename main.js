@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.580';
+const VERSION = '0.1.581';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1229,7 +1229,7 @@ function updateDisplayMenu() {
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
   $('cellsLabel').hidden = !shows('heatmap');
-  $('showPathRow').hidden = !shows('heatmap') || shows('cells');  // in 2D, Path among the cells' looks
+  $('showPathRow').hidden = !shows('heatmap') || shows('cells') || !!mode.antOf;  // in 2D and for an ant, Path among the cells' looks
   // 2D: the cells' colours, Directions (one colour per digit; an ant's, by its turns or its states), Rainbow or Heatmap; a surface: Heatmap or not
   $('heatmapRow').hidden = !shows('heatmap') || shows('cells') || !!mode.antOf;  // an ant on a surface: its cells' colours
   renderCellModes(mode);
@@ -1245,12 +1245,12 @@ function updateDisplayMenu() {
   $('viewSection').prepend(spin ? $('autoFitRow') : $('autoRotateRow'));
   $('centeredRow').hidden = !spin;
   $('centeredName').textContent = centersPattern() ? 'Centered pattern' : 'Default orientation';
-  $('fillAreasRow').hidden = !shows('fill');
+  $('fillAreasRow').hidden = !shows('fill') || !!mode.antOf;  // an ant fills no areas
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
   $('fillName').textContent = walk.vert && current?.fraction ? 'Fill 2 cells max on ↻' : 'Fill areas';  // a fraction along a grid (see areaSteps)
   // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
-  $('fillTranslucentRow').hidden = !shows('translucent');
+  $('fillTranslucentRow').hidden = !shows('translucent') || !!mode.antOf;
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   renderTrailButton();
@@ -1275,6 +1275,7 @@ function relabelColours(mode) {
     sel.value = mode.antOf ? 'digit' : mode.twin && !mode.cells ? 'gradient' : mode.cells && sel.value === 'visits' ? 'visits' : 'cells';
     return;
   }
+  if (shows('heatmap') && mode.antOf) { if (!['digit', 'cells', 'visits'].includes(sel.value)) sel.value = 'digit'; return; }  // an ant on a surface: its looks as in 2D
   if (shows('heatmap')) {  // on a surface: the rainbow line (over the tiles walked, on cells), or the heatmap on cells
     sel.value = mode.cells && sel.value === 'visits' ? 'visits' : 'gradient';
     return;
@@ -7387,10 +7388,10 @@ function drawSphere() {
   // palette[0] is the unlit background; levelOf(t) picks each tile's palette entry
   let palette = [null, ...grad];
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
-  const L = walk.life, line = !L && $('colorMode').value === 'gradient';
+  const L = walk.life, line = !L && ($('colorMode').value === 'gradient' || (walk.ant && $('colorMode').value === 'cells'));  // (an ant's Rainbow)
   const path = !L && (MODES[$('mode').value].cells ? $('showPath').checked : line);  // on cells, with Show path only
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
-    const cells = MODES[$('mode').value].cells && firstVisits(), areas = $('fillAreas').checked && areaSteps();
+    const cells = MODES[$('mode').value].cells && firstVisits(), areas = !walk.ant && $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
     palette = [null, ...grad, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
@@ -7420,9 +7421,19 @@ function drawSphere() {
       };
     }
   }
-  if (walk.ant) {  // an ant's cells by their colour: the times it was on each (its turns there), the one under it as it will be
-    palette = [null, ...Array.from({ length: walk.ant }, (_, k) => rampColour(k, walk.ant))];
+  // an ant's cells, as in 2D (see CELL_MODES): by their colour in Ink or Amber (the times it was on each, the
+  // one under it as it will be), Path's faded under its line, Directions by the turn it took there last;
+  // Rainbow and Heatmap as a walk's
+  const look = $('colorMode').value;
+  if (walk.ant && look === 'digit' && antRamp) {
+    const ramp = Array.from({ length: walk.ant }, (_, k) => rampColour(k, walk.ant));
+    palette = [null, ...(path ? ramp.map((c) => faded(c, 0.3)) : ramp)];
     levelOf = (t) => (visits[t] ? 1 + (visits[t] % walk.ant) : 0);
+  } else if (walk.ant && look === 'digit') {
+    const arrows = arrowsOf(current.mode), last = new Int16Array(g.n).fill(-1);
+    for (let p = 1; p <= Math.min(cur, walk.n - 1); p++) last[walk.tile[p]] = walk.turns[p];  // the turn it took on leaving it
+    palette = [null, ...arrows.map(antTurnColour)];
+    levelOf = (t) => (visits[t] && last[t] >= 0 ? 1 + last[t] : 0);
   }
   if (L && g.walls) {  // the pentagons of the hexagon sphere: walls, in stone grey
     const inner = levelOf, wall = new Set(g.walls);
@@ -9441,7 +9452,7 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
   return heatRings(g);
 }
 function renderCellModes(mode) {
-  $('cellModes').hidden = !shows('cells');
+  $('cellModes').hidden = !shows('cells') && !mode.antOf;  // a 2D walk on cells, an ant anywhere
   if ($('cellModes').hidden) return;
   const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber')), now = cellModeOf(mode);
   $('cellModes').replaceChildren(...looks.map(([look, name, title]) => {
