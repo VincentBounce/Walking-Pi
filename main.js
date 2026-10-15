@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.561';
+const VERSION = '0.1.562';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1259,7 +1259,7 @@ function relabelColours(mode) {
   const names = !life ? { gradient: 'Rainbow along the walk', cells: 'Rainbow cells along the walk', visits: 'Rainbow by number of visits',
                       digit: 'One colour per digit', mono: 'One colour' }
     : { mono: two ? `Civilisations: ${LIFE_COLOUR_NAMES.slice(0, K).join(' · ')} · dead` : `States: alive${dying} · dead`,
-        gradient: C > 2 ? 'Age of live cells + dying stages' : 'Age of live cells + fading trail',
+        gradient: C > 2 ? 'Age of live cells, warm newborns to cold old ones + dying stages' : 'Age of live cells, warm newborns to cold old ones + fading trail',
         digit: 'Activity (state changes)', cells: '', visits: '' };
   const sel = $('colorMode');
   if (mode.antOf && !shows('cells')) antRamp ??= 'ink';  // an ant on a surface: its cells by their state
@@ -1320,13 +1320,13 @@ function renderColorButtons() {
     return b;
   }));
 }
-// States: alive and dead cells (Colours: the civilisations' and dead); Age: young to old, then the fading
+// States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
 function lifeLookPicture(look) {
   const g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
   const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
   if (look === 'mono') return swatch(lifeColours > 1 ? [LIFE_COLOURS[0], UNLIT, LIFE_COLOURS[2], LIFE_COLOURS[1]] : [LIFE_ALIVE, UNLIT, UNLIT, LIFE_ALIVE]);
-  if (look === 'gradient') return swatch([g(0), g(0.5), g(1), LIFE_TRAIL[Math.floor(LIFE_TRAIL.length / 3)]]);
+  if (look === 'gradient') return swatch([g(1), g(0.5), g(0), LIFE_TRAIL[Math.floor(LIFE_TRAIL.length / 3)]]);  // warm newborns to cold old cells
   return heatRings(g);
 }
 // square rings, hot inside (a heatmap, Life's activity)
@@ -5550,7 +5550,7 @@ function drawLifePlane() {
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
-  const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[level(a + 1, 65)]);
+  const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[31 - level(a + 1, 65)]);  // the rainbow backwards: warm newborns, cold old cells
   const byActivity = colour === 'digit' ? Uint32Array.from({ length: Math.min(L.maxActivity, 65535) + 1 }, (_, v) => (v ? grad[level(v + 1, L.maxActivity + 1)] : 0)) : null;
   const byDying = Uint32Array.from({ length: L.C }, (_, st) => (st < 2 ? 0 : trail[Math.min(trail.length - 1, Math.round(((st - 1) / (L.C - 1)) * trail.length))]));
   const { alive: a, age, activity, died } = L, fade = L.C === 2 ? trail.length : 0;
@@ -7309,8 +7309,8 @@ function drawSphere() {
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t]) : 0);
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
-    } else {  // age of live cells (cyan = newborn … orange = old); dying stages, or a trail fading after death
-      palette = [null, ...grad, ...LIFE_TRAIL];
+    } else {  // age of live cells, the rainbow backwards (orange = newborn … cyan = old); dying stages, or a trail fading after death
+      palette = [null, ...[...grad].reverse(), ...LIFE_TRAIL];
       levelOf = (t) => {
         const st = L.alive[t];
         if (st === 1) return Math.min(LEVELS, logLevel(L.age[t], 64));
