@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.569';
+const VERSION = '0.1.570';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2164,6 +2164,7 @@ for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && M
   NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
 }
 for (const w of Object.keys(MODES)) if (MODES[w].pivot || MODES[w].parity) MODE_ICONS[w] = MODES[w].pivot ? 'pivot' : 'walk2d';
+MODE_ICONS.lifePits = 'walls';
 // in each shape's rules: Turtle, then Pivot and Parity, then the others as they come; Cairo right after
 // Squares among the shapes
 {
@@ -6726,12 +6727,25 @@ function writeSetups(list) {
   try { localStorage.setItem(SETUPS_KEY, JSON.stringify(list)); return true; } catch { return false; }
 }
 // What tells a saved setup apart: its walk, then its surface's size, start, turn and rule
-const setupDetail = (s) => [walkName(s.w), s.s && `size ${String(s.s).replace('x', ' × ')}`, s.st > 1 && `start ${s.st}`,
-  Number(s.o) === 1 && 'turned 30°', s.r && `rule ${s.r}`].filter(Boolean).join(' · ');
+// a setup's row: 2D, 3D or Space, the walk, size, start, turn and rule (Life's rule is its title)
+const setupDetail = (s) => [SPACE_NAMES[NAV[s.w]?.[1]], walkName(s.w), s.s && `size ${String(s.s).replace('x', ' × ')}`, s.st > 1 && `start ${s.st}`,
+  Number(s.o) === 1 && 'turned 30°', Number(s.q) === 1 && 'square sheet', s.r && !MODES[s.w]?.life && `rule ${s.r}`].filter(Boolean).join(' · ');
+// its title: a walk's number; a Game of Life's rule (its name) and colours, its number being only its start
+const setupTitle = (x) => {
+  if (!MODES[x.setup.w]?.life) return x.name;
+  const r = String(x.setup.r ?? ''), named = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === r)?.dataset.name;
+  return [named ? `${named} ${r}` : r || 'Life', Number(x.setup.k) > 1 && `${x.setup.k} colours`].filter(Boolean).join(' · ');
+};
 // Your setups, as rows like the built-in ones (see setupRow), each with × to delete it
 function fillSetupList() {
   const list = readSetups();
-  $('yourList').replaceChildren(...list.map((x) => setupRow(x.name, setupDetail(x.setup), x.setup, () => deleteSetup(x.name))));
+  // by their titles, two rows alike numbered (2), (3)…
+  const rows = list.map((x) => [setupTitle(x), setupDetail(x.setup), x]).sort((a, b) => a[0].localeCompare(b[0])), seen = new Map();
+  $('yourList').replaceChildren(...rows.map(([title, detail, x]) => {
+    const k = (seen.get(title + detail) ?? 0) + 1;
+    seen.set(title + detail, k);
+    return setupRow(k > 1 ? `${title} (${k})` : title, detail, x.setup, () => deleteSetup(x.name));
+  }));
   syncSaveButton();
 }
 
@@ -9542,7 +9556,7 @@ function setupRow(name, detail, setup, onDelete) {
   return b;
 }
 function renderGallery() {
-  $('builtInList').replaceChildren(...BUILT_IN.map(([name, note, setup]) => setupRow(name, `${note} · ${walkName(setup.w)}`, setup)));
+  $('builtInList').replaceChildren(...BUILT_IN.map(([name, note, setup]) => setupRow(name, `${note} · ${SPACE_NAMES[NAV[setup.w][1]]} · ${walkName(setup.w)}`, setup)));
   fillSetupList();
 }
 for (const list of ['builtInList', 'yourList']) {
