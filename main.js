@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.546';
+const VERSION = '0.1.545';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7496,12 +7496,6 @@ vec3 toScreen(vec3 p) {  // pixels on the stage, and the depth towards the viewe
 }
 vec4 clipOf(vec3 s, float bias) {
   return vec4(s.x / uScreen.x * 2.0 - 1.0, 1.0 - s.y / uScreen.y * 2.0, clamp(-s.z / uDepth - bias, -1.0, 1.0), 1.0);
-}
-// a world point's clip position, in perspective with w = 1 / k: the graphics card cuts what lies behind
-// the camera (a strip turned close to it), instead of throwing it across the screen as long wires
-vec4 clipAt(vec3 p, float bias) {
-  float w = uPersp.w > 0.0 ? (uPersp.w - dot(p - uPersp.xyz, uV)) / uPersp.w : 1.0;
-  return clipOf(toScreen(p), bias) * w;
 }`;
 const GL_SHADERS = {
   tile: [`#version 300 es
@@ -7509,14 +7503,14 @@ in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float 
 void main() {
   float toward = dot(aNrm, uV); if (uTwoSided) toward = abs(toward);
   vCol = (uPlain.a > 0.0 ? uPlain.rgb : aCol) * (1.0 - uShade * (1.0 - max(0.0, toward)));  // uPlain: the back of an open sheet
-  gl_Position = clipAt(aPos, 0.0);
+  gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   edge: [`#version 300 es
 in vec3 aPos; in vec3 aNrm; uniform float uBias;${GL_PROJECT}
 void main() {  // the edges of a tile turned away are not drawn (the back of an open sheet, or of a strip's face)
   vec3 eye = uPersp.w > 0.0 ? uPersp.xyz + uV * uPersp.w - aPos : uV;
-  gl_Position = dot(aNrm, eye) < 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : clipAt(aPos, uBias);
+  gl_Position = dot(aNrm, eye) < 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : clipOf(toScreen(aPos), uBias);
 }`, `#version 300 es
 precision mediump float; uniform float uEdge; uniform vec3 uEdgeRgb; out vec4 o; void main() { o = vec4(uEdgeRgb, uEdge); }`],
   // the path printed on a surface's tiles (see pathSegments): one flat ribbon per segment, in its
@@ -7530,7 +7524,7 @@ void main() {
   vec3 side = normalize(cross(d, aN)) * uHalf;  // counterclockwise seen from the face, as its tile
   float on = aQuad.x < 0.5 ? mod(aE, 2.0) : floor(aE / 2.0);  // this end goes on past its point
   vec3 p = mix(aA, aB, aQuad.x) + side * aQuad.y + d * (aQuad.x * 2.0 - 1.0) * uHalf * on;
-  gl_Position = clipAt(p, uBias);  // over the grid lines, as the other paths
+  gl_Position = clipOf(toScreen(p), uBias);  // over the grid lines, as the other paths
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // the cubes of a 3D walk on cells (see glCubes): a unit cube around each point, shaded as the tiles
@@ -7538,7 +7532,7 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
 in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol; uniform float uShade; out vec3 vCol;${GL_PROJECT}
 void main() {
   vCol = aCol * (1.0 - uShade * (1.0 - abs(dot(aNrm, uV))));
-  gl_Position = clipAt(aAt + aCorner, 0.0);
+  gl_Position = clipOf(toScreen(aAt + aCorner), 0.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
