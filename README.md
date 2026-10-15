@@ -179,8 +179,8 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 - **Display box** (top right, hover to open), with what fits the current tab:
   - **Auto-fit:** the view follows the walk and ends framed on it.
   - **Colours:** rainbow along the walk, rainbow cells, heatmap of visits, one colour per digit, or one colour.
-  - **Walk on cells** (2D): square buttons for the cells' look: an ant's states in **Ink** or **Amber**, **Path** (the rainbow line over the cells, faded), **Rainbow** along the walk, **Directions** (a colour per digit: a turn by its family on every tiling, for an ant and for the walks turning relative to their heading: left blue, right pink, a sharp one deeper, straight on gold; the fixed directions by the compass), **Heatmap** of visits.
-  - **Fill areas:** each area the walk closes off is filled when it closes (squares, triangles or hexagons, up to a box of 12 million tile corners: 2 million digits of π fill in 1 to 2 seconds).
+  - **Cells** (2D and on surfaces): square buttons for the cells' look: an ant's states in **Ink** or **Amber**, **Path** (the rainbow line over the cells, faded), **Rainbow** along the walk, **Directions** (a colour per digit: a turn by its family on every tiling, for an ant and for the walks turning relative to their heading: left blue, right pink, a sharp one deeper, straight on gold; the fixed directions by the compass), **Heatmap** of visits.
+  - **Area:** Empty, Light (translucent, the default) or Plain: each area the walk closes off is filled when it closes (squares, triangles or hexagons, up to a box of 12 million tile corners: 2 million digits of π fill in 1 to 2 seconds).
   - **Theme:** Light ☀, Dark ☾ or System ◐ (the default, following the system), kept in this browser; the surfaces keep their sky.
   - Grid, sky, auto-rotate (the solid tumbles on three axes), flat / round and perspective.
 - **Navigation:** mouse wheel to zoom, drag to pan, double-click (or `F`) to fit.

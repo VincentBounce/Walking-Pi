@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261023u">
+  <link rel="stylesheet" href="style.css?v=20261023v">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -417,9 +417,12 @@
               <option value="digit">One colour per digit</option>
               <option value="mono">One colour</option>
             </select>
-            <label class="check" id="fillAreasRow" hidden><input id="fillAreas" type="checkbox"> <span id="fillName">Fill areas</span> <span id="fillTooBig" class="fill-note" hidden title="Beyond 12 million tile corners in the walk's box, the areas are not filled">walk too big</span></label>
-            <label class="check" id="fillTranslucentRow" hidden><input id="fillTranslucent" type="checkbox"> Translucent fill</label>
-            <div id="cellsLabel" class="field-label" hidden>Walk on cells</div>
+            <div id="fillAreasRow" hidden>  <!-- the areas the walk closes: Empty, Light (translucent) or Plain -->
+              <div class="field-label"><span id="fillName">Area</span> <span id="fillTooBig" class="fill-note" hidden title="Beyond 12 million tile corners in the walk's box, the areas are not filled">walk too big</span></div>
+              <div id="areaModes" class="nav-shapes cell-modes"></div>
+              <input id="fillAreas" type="checkbox" hidden><input id="fillTranslucent" type="checkbox" hidden>
+            </div>
+            <div id="cellsLabel" class="field-label" hidden>Cells</div>
             <div id="cellModes" class="nav-shapes cell-modes" hidden></div>  <!-- a 2D walk on cells: Ink, Amber (an ant), Path, Directions, Rainbow, Heatmap -->
             <label class="check" id="showPathRow" hidden title="The walk's line over the cells it colours"><input id="showPath" type="checkbox"> Show path</label>
             <label class="check" id="heatmapRow" hidden title="The cells coloured by how often the walk comes back to them"><input id="heatmap" type="checkbox"> Heatmap of visits</label>
@@ -446,6 +449,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261023u"></script>
+  <script src="main.js?v=20261023v"></script>
 </body>
 </html>

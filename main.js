@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.582';
+const VERSION = '0.1.583';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1247,10 +1247,10 @@ function updateDisplayMenu() {
   $('fillAreasRow').hidden = !shows('fill') || !!mode.antOf;  // an ant fills no areas
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
-  $('fillName').textContent = walk.vert && current?.fraction ? 'Fill 2 cells max on ↻' : 'Fill areas';  // a fraction along a grid (see areaSteps)
-  // Translucent fill: only over a line, which then shows through the areas it closed in its own colour
-  $('fillTranslucentRow').hidden = !shows('translucent') || !!mode.antOf;
-  $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
+  $('fillName').textContent = walk.vert && current?.fraction ? 'Area · 2 cells max on ↻' : 'Area';  // a fraction along a grid (see areaSteps)
+  // Light (translucent): only over a line, which then shows through the areas it closed in its own colour
+  $('fillTranslucent').disabled = !(shows('translucent') && $('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
+  renderAreaModes();
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   renderTrailButton();
   updateMorphButton();  // Shape: only for a surface that can change shape
@@ -9429,6 +9429,29 @@ function setAntRamp(ramp) {
   if (walk.ant) walk.keys = ramp ? walk.antStates : walk.antTurns;
   document.querySelectorAll('#ruleChips b').forEach((b, k) => { if (walk.ant) b.style.background = antChipColour(k); });
 }
+// The areas a walk closes, as tiles: Empty (none), Light (translucent, the line showing through), Plain
+const AREA_MODES = [['empty', 'Empty', 'No area filled'], ['light', 'Light', 'The areas the walk closes, translucent: its line shows through'],
+  ['plain', 'Plain', 'The areas the walk closes, in the colour of the step that closed them']];
+function renderAreaModes() {
+  const off = !fillAreasApply(), light = shows('translucent') && $('colorMode').value !== 'cells';
+  const now = !$('fillAreas').checked ? 'empty' : $('fillTranslucent').checked && light ? 'light' : 'plain', c = GRADIENT[Math.round(0.55 * (BANDS - 1))];
+  const picture = (look) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7L11 3L20 6L19 17L9 21L3 15Z" fill="${look === 'empty' ? 'none' : c}"`
+    + `${look === 'light' ? ' fill-opacity="0.35"' : ''} stroke="${GRADIENT[Math.round(0.2 * (BANDS - 1))]}" stroke-width="2" stroke-linejoin="round"/></svg>`;  // a closed loop
+  $('areaModes').replaceChildren(...AREA_MODES.map(([look, name, title]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = title;
+    b.innerHTML = `${picture(look)}<span>${name}</span>`;
+    b.classList.toggle('active', look === now);
+    b.disabled = off || (look === 'light' && !light);
+    b.addEventListener('click', () => {
+      $('fillAreas').checked = look !== 'empty';
+      $('fillTranslucent').checked = look === 'light';
+      $('fillAreas').dispatchEvent(new Event('change'));
+    });
+    return b;
+  }));
+}
 // The looks of a 2D walk on cells, as square buttons: an ant's states in Ink or Amber; Path, the rainbow
 // line over its cells faded (an ant's in Amber); Directions, a colour per digit (an ant's, its turns);
 // Rainbow along the walk; Heatmap of visits. [look, name, its picture's colours or null, title]
@@ -9526,7 +9549,7 @@ function displayDefaults() {
   $('centered').checked = true;  // on a solid, the walker in front
   $('fillAreas').checked = true;
   $('showPath').checked = false;  // on cells, the cells alone
-  $('fillTranslucent').checked = !surface;  // translucent areas in 2D, solid ones on a surface
+  $('fillTranslucent').checked = true;  // Light areas
   $('autoRotate').checked = false;  // the grid stays as chosen, on every tab
   $('sky').value = 'sky';  // Dawn or Twilight, after the theme
   renderSkyButtons();
