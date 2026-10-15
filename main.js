@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.558';
+const VERSION = '0.1.559';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1287,10 +1287,11 @@ function relabelColours(mode) {
 }
 
 // Choices as buttons clicked directly (colours, sky); the (hidden) menu stays the source of truth
-function renderChoiceButtons(sel, box) {
+function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon per value, above its name
   box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
     const b = document.createElement('button');
-    b.textContent = o.text;
+    if (pictures) b.innerHTML = `${icon(pictures[o.value])}<span>${o.text}</span>`;
+    else b.textContent = o.text;
     b.classList.toggle('active', o.value === sel.value);
     b.disabled = o.disabled;
     b.addEventListener('click', () => {
@@ -1511,6 +1512,10 @@ const ICONS = (() => {
     aliveDot: '<circle class="f" cx="12" cy="12" r="5"/>',
     born: pathEl('M12 6V18M6 12H18'),
     died: pathEl('M7.5 7.5L16.5 16.5M16.5 7.5L7.5 16.5'),
+    // the themes: Light, Dark, System (half and half)
+    sun: '<circle class="f" cx="12" cy="12" r="4.2"/>' + pathEl('M12 2.5V5M12 19V21.5M2.5 12H5M19 12H21.5M5.3 5.3L7.1 7.1M16.9 16.9L18.7 18.7M5.3 18.7L7.1 16.9M16.9 7.1L18.7 5.3'),
+    moon: '<path class="f" d="M19.5 14.6A8 8 0 1 1 9.4 4.5A6.3 6.3 0 0 0 19.5 14.6Z"/>',
+    halfDisc: '<circle cx="12" cy="12" r="8.5"/>' + '<path class="f" d="M12 3.5A8.5 8.5 0 0 0 12 20.5Z"/>',
     pivot: pathEl('M18.4 13A6.5 6.5 0 1 1 16.6 7.4') + pathEl('M17.5 3.5V7.8H13.2'),  // a turn on the spot, clockwise
     ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
@@ -7109,8 +7114,8 @@ function rampColour(k, n) {
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), A = hex(stops[a]), B = hex(stops[Math.min(a + 1, stops.length - 1)]);
   return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(', ')})`;
 }
-// an ant's turn by its family, the same on every tiling: left blue, right pink (a sharp one deeper),
-// straight on gold (its arrow on hexagons and triangles, ↖ ↗, is a plain left or right there)
+// a turn by its family, the same on every tiling (an ant's, a walk's relative to its heading): left blue,
+// right pink (a sharp one deeper), straight on gold (↖ ↗ on hexagons and triangles are a plain left or right)
 const deeper = (c) => `rgb(${rgbOf(c).map((v) => Math.round(v * 0.62)).join(', ')})`;
 const antTurnColour = (a) => ({ '↖': DIRECTION_COLOURS['←'], '↗': DIRECTION_COLOURS['→'], '↙': deeper(DIRECTION_COLOURS['←']), '↘': deeper(DIRECTION_COLOURS['→']) }[a]
   ?? DIRECTION_COLOURS[a] ?? GREY);
@@ -7120,7 +7125,7 @@ const antChipColour = (k) => antByDigits ? antTurnColour(arrowsOf(current.mode)[
 // a digit's colour: its direction's (an ant's: the turn it took, or its state), else in the digits' order
 const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : antTurnColour(arrowsOf(current.mode)[k]))
   : walk.skipZeros ? (k ? DIGIT_COLORS[0] : GREY)  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
-  : arrowsOf(current.mode)[k] ? DIRECTION_COLOURS[arrowsOf(current.mode)[k]]
+  : arrowsOf(current.mode)[k] ? (['Turtle', 'Pivot', 'Parity'].includes(NAV[current.mode]?.[3]) ? antTurnColour : (a) => DIRECTION_COLOURS[a])(arrowsOf(current.mode)[k])  // fixed directions: by the compass
   : walk.base <= DIGIT_COLORS.length ? DIGIT_COLORS[k] : `hsl(${(k * 360) / walk.base}, 80%, 62%)`;
 function styleColor(k) {
   switch ($('colorMode').value) {
@@ -9171,7 +9176,7 @@ const systemLight = matchMedia('(prefers-color-scheme: light)');
 function applyTheme() {
   const t = $('theme').value, theme = t === 'system' ? (systemLight.matches ? 'light' : 'dark') : t;
   try { localStorage.setItem('walkingTheme', t); } catch { /* not kept */ }
-  renderChoiceButtons($('theme'), $('themeButtons'));
+  renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
   if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
   document.documentElement.dataset.theme = theme;
   setPalette(theme);
