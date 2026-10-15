@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.542';
+const VERSION = '0.1.543';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -928,6 +928,13 @@ const MODES = {
                 where: 'a torus of squares (a grid that wraps around both ways)' },
   lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
                   where: 'a torus of hexagons' },
+  // a Möbius strip: its two faces one surface, over its edge onto the face behind (2 colours: a face each)
+  lifeMobius: { base: 2, lattice: 'sphere', sphere: 'mobius', life: true, perspective: true, round: true,
+                where: 'a Möbius strip of squares (both faces, over its edge onto the one behind)' },
+  lifeMobiusHex: { base: 2, lattice: 'sphere', sphere: 'mobiusHex', life: true, perspective: true, round: true,
+                   where: 'a Möbius strip of hexagons (both faces, over its edge onto the one behind)' },
+  lifeMobiusTri: { base: 2, lattice: 'sphere', sphere: 'mobiusTri', life: true, perspective: true, round: true,
+                   where: 'a Möbius strip of triangles (both faces, over its edge onto the one behind)' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true, perspective: true,
                 where: 'the surface of a cube' },
   lifePits:   { base: 2, lattice: 'sphere', sphere: 'pits', life: true, perspective: true,
@@ -2018,7 +2025,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
+  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
 
@@ -2068,7 +2075,9 @@ const NAV = {
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2d: ['Life', '2D', 'Squares', 'Life', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
-  lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeMobius: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeMobiusHex: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''],
+  lifeMobiusTri: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
@@ -2141,8 +2150,8 @@ const FAMILIES = [
            [0, true, 'tilesSq', 'Squares on a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
            [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'], [1, false, 'tilesHex', 'Hexagons'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
-  { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot'],
-                                 ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid']], tab: 0,
+  { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
+                                 ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'], [1, false, 'tilesHex', 'Hexagons'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)']] },
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid']], tab: 0,
@@ -5427,6 +5436,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
     return W % (a * even) === 0 && W % (b * even) === 0;
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
+  if (g?.mobius) return k === 2;  // a Möbius strip: a face each
   return !!g?.nu && ((g.nu % a === 0 && g.nv % b === 0) || (g.nu % b === 0 && g.nv % a === 0));
 }
 // a new figure that cannot place as many colours: the most it can, fewer
@@ -5836,7 +5846,7 @@ const hunt = { worker: null, zone: 'full', top: [], status: '', picked: null, go
 // What the hunt looks for: the longest life, the longest till it dies out (one colour), or a battle,
 // which starts with the colours that suit the figure best: one for each of its natural spots
 const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out', battle: '⚔ Battle' };
-const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12 };  // else (the plane, a torus) 4
+const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12, mobius: 2, mobiusHex: 2, mobiusTri: 2 };  // else (the plane, a torus) 4
 const huntGoal = () => (walk.life?.colours > 1 ? 'battle' : hunt.goal);
 function pickGoal(goal) {
   if (goal === 'battle') {
@@ -5898,6 +5908,11 @@ function huntParts(r, K) {
     return parts.map((_, i) => lifePatch(r, near
       ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
       : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
+  }
+  if (g.mobius) {  // a Möbius strip: one colour all of it; two, a face each (its front, its back), or a patch each, back to back
+    if (!r) { for (let t = 0; t < n; t++) parts[K === 1 ? 0 : +(t >= g.front)].push(t); return parts; }
+    const c = centreCells();
+    return K === 1 ? [lifePatch(r, c)] : [lifePatch(r, c), lifePatch(r, c.map((t) => t + g.front))];
   }
   if (g.torus) {  // cells u × nv + v; the blocks along whichever way they divide
     const [a, b] = g.nu % cols === 0 && g.nv % rows === 0 ? [cols, rows] : [rows, cols], block = (t) => Math.floor(((t / g.nv | 0) * a) / g.nu) * b + Math.floor(((t % g.nv) * b) / g.nv);
@@ -6197,6 +6212,7 @@ function patternChoices() {
 function patchCentre() {
   if (walk.plane) { const { W, row } = walk.plane; return (W >> 1) * row + (row >> 1); }  // the plane: its middle cell
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
+  if (g.mobius) return centreCells()[0];
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
   if (g.sides === 4 && g.perFace) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);  // the cube (not the one with pits)
   if (g.floors) { const a = g.floorSize; return g.floors[3 * a * a + (a >> 1) * a + (a >> 1)]; }  // the cube with pits: the front pit's floor
@@ -6214,6 +6230,16 @@ function patchCentre() {
 function centreCells(d) {
   const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
   if (walk.plane) { const { W, row, kind } = walk.plane; return kind === 'square' && W % 2 === 0 && row % 2 === 0 ? four(W / 2, row / 2, row) : [patchCentre()]; }
+  if (g.mobius) {  // the front tiles nearest the middle of the sheet
+    const k = g.sides, far = new Float64Array(g.front);
+    for (let t = 0; t < g.front; t++) {
+      let u = 0, v = 0;
+      for (let q = 0; q < k; q++) { u += g.uv[2 * (k * t + q)] / k; v += g.uv[2 * (k * t + q) + 1] / k; }
+      far[t] = Math.hypot(u - g.L / 2, v - g.W / 2);
+    }
+    const best = far.reduce((m, d) => Math.min(m, d), Infinity);
+    return [...far.keys()].filter((t) => far[t] < best + 1e-9);
+  }
   if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
   if (!d && g.faces) {  // a solid of triangles: the middle of the face in front (a dodecahedron's pentagon)
     const per = facesPer(), f0 = Math.floor(Math.floor(patchCentre() / g.perFace) / per) * per;
@@ -8460,6 +8486,12 @@ function updateStats() {
   $('back').disabled = cur === 0 || !!walk.life;
   $('step').disabled = cur >= walk.n || lifeEnded();
   $('end').disabled = cur >= walk.n || !!walk.life?.stable;  // a Game of Life's end known: there already (or in its loop)
+  // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so
+  const jump = walk.life ? `+${LIFE_JUMP / 1000}k` : icon('end');
+  if ($('end').dataset.shown !== jump) {
+    $('end').innerHTML = $('end').dataset.shown = jump;
+    $('end').title = walk.life ? `${fmt(LIFE_JUMP)} generations ahead (E)` : 'Jump to end (E)';
+  }
   // the progress: a slider to go to any step (none for the Game of Life, which has no end)
   const finite = Number.isFinite(walk.n) && !walk.life;
   $('seek').parentElement.hidden = $('seekCountOpen').hidden = !finite;  // its whole line
