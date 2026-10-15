@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261024s">
+  <link rel="stylesheet" href="style.css?v=20261024t">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -231,12 +231,12 @@
       </section>
 
       <section id="colourSection" hidden>  <!-- Life: alive or dead, or 2 to 12 civilisations -->
-        <h2>Populations</h2>
+        <h2 data-icon="duel">Populations</h2>
         <div id="colourBlocks" class="nav-shapes colour-blocks" title="Civilisations: a newborn takes the colour most of its live neighbours have; greyed: no fair spots for that many on this figure"></div>
       </section>
 
       <section id="startSection" hidden>  <!-- Life: how the cells start (the plane), or the hunt for a lasting start (the surfaces) -->
-        <h2>Start</h2>
+        <h2 data-icon="play">Start</h2>
         <div id="lifeStartRow" hidden>  <!-- Life on the plane: how the cells start -->
           <div id="lifeStartTabs" class="choice-row"><button type="button" data-start="random">Hunt</button><button type="button" data-start="draw">Draw</button><button type="button" data-start="digits">Digits</button></div>
           <div id="startDraw" class="start-panel">  <!-- Draw: a brush (a cell, or a pattern turned as chosen), in a colour or the eraser -->
@@ -259,7 +259,7 @@
       </section>
 
       <section id="digitsSection">  <!-- the number walked; not for an ant by colour, which reads no digit -->
-        <h2>Digits</h2>
+        <h2 data-icon="barcode">Digits</h2>
         <div class="field-label">Custom formula, in base 10</div>  <!-- not a label: a click on ↵ would focus the field again -->
         <div class="field formula-field"><input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off" aria-label="Custom formula, in base 10"
                  title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, rho, sqrt(3), cbrt(2), root(x, k), ln(x), exp(x), log(x, b), zeta(k), 22/7, 2^pi, 8^(1/3), 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps, dragon. Press Enter to compute"><button class="enter" type="button" tabindex="-1" title="Compute (Enter)">↵</button></div>
@@ -274,7 +274,7 @@
       </section>
 
       <section id="automataSection" hidden>  <!-- Life: its rule -->
-        <h2>Rule</h2>
+        <h2 data-icon="glider">Rule</h2>
         <div id="ruleCards" class="mode-list rule-cards" role="listbox"></div>  <!-- the rules for the grid's shape, as cards -->
         <div class="field-label" id="ruleName">Rule</div>  <!-- the rule in use: its name, or your own -->
         <div class="rule-build">  <!-- your own: how many live neighbours give birth, let survive; the states (dying stages past 2) -->
@@ -321,7 +321,7 @@
       <div id="galleryPane" hidden>
       <section>
         <div class="finds-head">
-          <div><h2>Treasures</h2><p class="caption">Kept in this browser only</p></div>
+          <p class="caption">Kept in this browser only</p>
           <span class="finds-tools">  <!-- Treasures as a JSON file: to keep, or to bring to another browser -->
             <button id="setupSave" type="button" class="icon-btn save-btn" data-icon="star" title="Save the setup in view in Treasures, in this browser" aria-label="Save"></button>
             <button id="setupImport" type="button" class="icon-btn" title="Import setups from a JSON file into Treasures" aria-label="Import into Treasures"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg></button>
@@ -452,6 +452,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261024s"></script>
+  <script src="main.js?v=20261024t"></script>
 </body>
 </html>

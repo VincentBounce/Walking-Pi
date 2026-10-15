@@ -63,24 +63,14 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel::-webkit-scrollbar-track { background: transparent; }
 .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .panel::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-.panel section { padding: 10px 0; }
-#paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; }  /* the first, always there: no gap under the header */
+.panel section { padding: 12px 0; border-top: 1px solid var(--border); }  /* a grey hairline between sections */
+#paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; border-top: 0; }  /* the first, always there: no line, no gap under the header */
 .row-delete { padding: 0 6px; font-size: 16px; color: var(--muted); border-radius: 4px; }  /* × on a saved setup */
 .row-delete:hover { color: var(--text); background: var(--border); }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
-/* a section's title: gold small capitals, a gold hairline on to the edge; a sub-section's (field-label): grey */
-h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 0 10px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent);
-}
-h2::after { content: ''; flex: 1; height: 1px; background: var(--accent); opacity: 0.45; }
+/* a section's title: its gold picture, then its name; a sub-section's (field-label): semibold */
+h2 { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; font-size: 14px; font-weight: 600; color: var(--text); }
+h2 .icon { width: 16px; height: 16px; flex: none; color: var(--accent); vertical-align: 0; }
 
 /* Walk: Grid or Cells, beside the heading */
 .walk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -221,7 +211,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .nav-shapes button svg { width: 20px; height: 20px; }
 .theme-buttons > button:nth-last-child(3) { grid-column: 2; }  /* Light, Dark, System on the right, the sky's place on the left kept */
 .trail-row button:hover:not(:disabled), #lifeTrailButton:hover:not(:disabled), .nav-shapes button.switch:hover:not(:disabled) { background: rgba(240, 180, 41, 0.22); }  /* a switch answers the hover, on or off, in the gold of a choice picked (Dawn sky) */
-.gallery-group:not(:first-child) { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* Life, Ant, Walk: a section each */
+.gallery-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }  /* Life, Ant, Walk: a section each */
 .cell-modes button svg { width: 22px; height: 22px; border-radius: 3px; }  /* the looks of a walk on cells: swatches */
 .nav-shapes button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
@@ -378,7 +368,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .open-only { display: flex; }
 @media (hover: none) { .stage-box:focus-within .open-only { display: flex; } }
 .display-menu .stage-more { margin: 10px 0 -10px; }  /* below Grid and Auto-fit; each row's 10px under the last one taken back, so the bottom matches the top */
-.form-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }  /* shape and perspective */
+.form-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
@@ -499,8 +489,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .save-btn.saved .icon path { fill: currentColor; }
 .icon-btn .icon { width: 17px; height: 17px; }
 /* Treasures: Export and Import as two small icons at the right of its heading */
-.finds-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 10px; }  /* as an h2 */
-.finds-head h2 { margin: 0; }
+.finds-head { display: flex; align-items: center; justify-content: space-between; }  /* where they are kept, the tools */
 .finds-tools { display: flex; gap: 4px; }
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; background: transparent; border-color: transparent; color: var(--muted); }
 .icon-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--border); background: var(--bg); }

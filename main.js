@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.603';
+const VERSION = '0.1.604';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2329,7 +2329,7 @@ function renderModePicker() {
     b.setAttribute('role', 'tab');
     return b;
   }));
-  $('walkHeading').textContent = WALK_HEADINGS[kind];
+  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'ant', Life: 'grid' }[kind]) + WALK_HEADINGS[kind];
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
@@ -6903,9 +6903,9 @@ function fillSetupList() {
   $('yourList').replaceChildren(...NAV_KINDS.flatMap(([kind]) => {
     const mine = rows.filter(([, , x]) => kindOf(x) === kind).sort((a, b) => a[0].localeCompare(b[0]));
     if (!mine.length) return [];
-    const head = document.createElement('div');
-    head.className = 'field-label gallery-group';  // a section's line above it (but the first's)
-    head.textContent = kind;
+    const head = document.createElement('h2');
+    head.className = 'gallery-group';  // a section each, its picture as the tab's
+    head.innerHTML = icon(NAV_KINDS.find(([k]) => k === kind)[1]) + kind;
     return [head, ...mine.map(([title, detail, x]) => {
       const k = (seen.get(title + detail) ?? 0) + 1;
       seen.set(title + detail, k);
