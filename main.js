@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.586';
+const VERSION = '0.1.587';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5780,6 +5780,7 @@ function lifeReset() {
   }
   L.died.fill(-1e9);
   L.gen = 0;  // generations computed, never wound back by a loop (the trail fades on, see died)
+  L.extinctAt = Array.from({ length: L.colours + 1 }, (_, k) => (k && (L.colours === 1 ? L.seedAlive : L.seedByColour[k]) === 0 ? 0 : null));  // each colour's last generation alive, once all died out
   L.activity.fill(0);
   L.maxActivity = 0;
   L.aliveCount = L.everAlive = L.seedAlive;
@@ -5885,6 +5886,7 @@ function lifeStep() {
   L.aliveCount = alive;
   L.dyingCount = dying;
   L.byColour = byColour;
+  for (let k = 1; k <= K; k++) if ((K === 1 ? alive : byColour[k]) === 0 && L.extinctAt[k] === null) L.extinctAt[k] = gen;  // a colour all died out (for good: none left to be born of it)
   L.blueCount = byColour[2] ?? 0;
   L.trace.alive[gen] = alive;
   L.trace.change[gen] = L.born + L.dead - changes;
@@ -6158,11 +6160,12 @@ function huntParts(r, K) {
       ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
       : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
   }
-  // a Möbius strip: the colours' parts in turn round it, each its stretch on both faces (a place of the
-  // strip is one colour, from either side), a patch at its middle; the first (red) at the middle of the
-  // face in view, the next ones on from it (see mobiusLoop: s and s + L are one place, its two sides)
+  // a Möbius strip: the colours' parts in turn along it twice round (its two sides one strip, 2L, see
+  // mobiusLoop: s and s + L are one place, its two sides), each its stretch, a patch at its middle; the
+  // first (red) at the middle of the face in view
   if (g.mobius) {
-    const s0 = mobiusMiddle(g), stretch = g.L / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % g.L) + g.L) % g.L;
+    // the whole strip (Wild): each its stretch of it twice round, 2L / K long, round its patch's middle
+    const s0 = mobiusMiddle(g), stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     // the patches evenly along it twice round (both sides, 2L): each side's evenly spread over its whole
@@ -8825,11 +8828,14 @@ function updateStats() {
       : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)} from ${fmt(s.T)}`;
     $('barLoop').hidden = true;
     // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the live cells', as the theme draws them)
-    const row = (c, alive, born, died, ever) => [bubble(c, icon('aliveDot'), 'Alive', pc(alive)), bubble(c, icon('born'), 'Born', fmt(born)),
+    // a colour's live cells, or, once none is left, when it all died out
+    const aliveBubble = (c, k, name, alive) => (L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined
+      ? bubble(c, '✝', 'All died out', `gen ${fmt(L.extinctAt[k])}`) : bubble(c, icon('aliveDot'), name, pc(alive)));
+    const row = (c, k, alive, born, died, ever) => [aliveBubble(c, k, 'Alive', alive), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
-    $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, L.aliveCount, L.born, L.dead, L.everAlive)
-      : L.colours > 6 ? LIFE_COLOURS.slice(0, L.colours).map((c, k) => bubble(c, icon('aliveDot'), LIFE_COLOUR_NAMES[k], pc(L.byColour[k + 1]))).join('')  // many: the live cells only
-      : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
+    $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, 1, L.aliveCount, L.born, L.dead, L.everAlive)
+      : L.colours > 6 ? LIFE_COLOURS.slice(0, L.colours).map((c, k) => aliveBubble(c, k + 1, LIFE_COLOUR_NAMES[k], L.byColour[k + 1])).join('')  // many: the live cells only
+      : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, k + 1, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
     drawActivity();
