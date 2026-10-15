@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.595';
+const VERSION = '0.1.596';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6515,7 +6515,8 @@ function sheetPatternAt(spot, cells) {
 function patternChoices() {
   const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K];
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
+  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.mobius ? Math.min((2 * g.L) / K, g.nv)  // (a Möbius strip: a stretch of its loop)
+    : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
     : g.floors ? g.floorSize : g.sides === 3 ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
