@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.589';
+const VERSION = '0.1.590';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8746,7 +8746,13 @@ function drawActivity() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
   const accent = css.getPropertyValue('--accent'), muted = css.getPropertyValue('--muted');
-  const columns = (n, value) => { const c = new Float64Array(W); for (let i = 0; i < n; i++) { const x = Math.floor((i * W) / n); c[x] = Math.max(c[x], value(i)); } return c; };
+  // a column's highest value; fewer steps than columns: each column the step under it (no gaps, a comb)
+  const columns = (n, value) => {
+    const c = new Float64Array(W);
+    if (n < W) { for (let x = 0; x < W; x++) c[x] = value(Math.min(n - 1, Math.floor((x * n) / W))); return c; }
+    for (let i = 0; i < n; i++) { const x = Math.floor((i * W) / n); c[x] = Math.max(c[x], value(i)); }
+    return c;
+  };
   let series, n;
   if (walk.life) {
     const T = walk.life.trace;
