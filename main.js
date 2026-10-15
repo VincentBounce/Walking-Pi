@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.572';
+const VERSION = '0.1.573';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6736,20 +6736,21 @@ const SETUPS_KEY = 'walkingPi.setups', CURATED_KEY = 'walkingPi.curated';
 function readSetups() {
   try { return JSON.parse(localStorage.getItem(SETUPS_KEY)) || []; } catch { return []; }
 }
-// The curated setups (BUILT_IN) come into Treasures once, on the first visit in this browser: deleted
-// afterwards, they stay deleted
+// The curated setups (BUILT_IN) come into Treasures once, on the first visit in this browser, and the ones
+// added later (a batch number past the last one taken) once too: deleted afterwards, they stay deleted
 function seedCurated() {
   try {
-    if (localStorage.getItem(CURATED_KEY)) return;
+    const taken = Number(localStorage.getItem(CURATED_KEY)) || 0, last = Math.max(...BUILT_IN.map((b) => b[3] ?? 1));
+    if (taken >= last) return;
     const list = readSetups(), same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-    for (const [name, note, setup] of BUILT_IN) {
-      if (list.some((x) => same(x.setup, setup))) continue;
+    for (const [name, note, setup, batch = 1] of BUILT_IN) {
+      if (batch <= taken || list.some((x) => same(x.setup, setup))) continue;
       let key = name;  // a name of its own (a row is deleted by its name)
       for (let k = 2; list.some((x) => x.name === key); k++) key = `${name} (${k})`;
       list.push({ name: key, note, setup, saved: new Date().toISOString() });
     }
     writeSetups(list);
-    localStorage.setItem(CURATED_KEY, '1');
+    localStorage.setItem(CURATED_KEY, String(last));
   } catch { /* not kept: the next visit tries again */ }
 }
 function writeSetups(list) {
@@ -8721,19 +8722,24 @@ function drawActivity() {
     if (curveOf?.wx !== wx || curveOf.W !== W || curveOf.n !== n) {
       curveOf = { wx, W, n, c: columns(n, (i) => Math.hypot(wx[i] - wx[0], wy[i] - wy[0], wz ? wz[i] - wz[0] : 0)) };
     }
-    series = [[curveOf.c, accent]];
+    // a walk's: in its rainbow, from its first step to its last (as its path)
+    const rainbow = ctx.createLinearGradient(0, 0, W, 0);
+    for (let f = 0; f <= 1; f += 0.125) rainbow.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]);
+    series = [[curveOf.c, rainbow]];
   }
   const at = Math.min(W - 1, Math.floor((Math.min(cur, n - 1) * W) / n));
   const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;  // one scale: the changes against the live cells
   for (const [c, colour] of series) {
     const y = (x) => H - 1 - (c[x] / top) * (H - 3);
-    if (colour === accent) {  // filled up to the step shown
-      ctx.fillStyle = 'rgba(240, 180, 41, 0.22)';
+    if (colour !== muted) {  // filled up to the step shown (Life's live cells in gold, a walk in its rainbow, faint)
+      ctx.fillStyle = colour === accent ? 'rgba(240, 180, 41, 0.22)' : colour;
+      ctx.globalAlpha = colour === accent ? 1 : 0.22;
       ctx.beginPath();
       ctx.moveTo(0, H);
       for (let x = 0; x <= at; x++) ctx.lineTo(x + 0.5, y(x));
       ctx.lineTo(at + 1, H);
       ctx.fill();
+      ctx.globalAlpha = 1;
     }
     ctx.strokeStyle = colour;
     ctx.lineWidth = 1.5;
@@ -9532,6 +9538,10 @@ const BUILT_IN = [
   ['120/109', 'A belt', { x: '120/109', w: 'hexSphereGrid', d: 5760, s: 32 }],
   ['Dragon', 'Paperfolding', { x: 'dragon', w: 'turtle', d: 20000 }],
   ['Thue–Morse', 'Koch curve', { x: 'thuemorse', w: 'triPivot', d: 4096 }],
+  // added later: their batch number, so that a browser that took the first ones gets these once too (see seedCurated)
+  ['Möbius battle', 'A battle of 2 colours round the strip', { x: 'random(801457958)', w: 'lifeMobius', s: 8, r: 'B3/S23', k: 2, sd: 'random.69.711421864',
+    ch: 's3.74-0-0-0-1-1-2-1-0-1-0-0-0-1-0-1-2-0-1-4-0-0-0-0-0-2-0-0-1-1-0-1-1-1-0-0-0-0-0-0-0-0-e8_2-2_2-0_2-1_2-1_2-0_2-1_2-0_2-1_2-1_2-2_2-0_2-0_2-0_2-2_2-0_2-0_2-1_2-1_2-0_2-0_2-1_2-1_2-0_2-2_2-1_2-2_2-0_2-0_2-1_2-1_2-1_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2' }, 2],
+  ['1/438', 'A highway from step 534,473', { x: '1/438', w: 'antSquare', d: 540989, r: 'digits LR' }, 2],
   ['Rabbit', 'Fibonacci word fractal', { x: 'rabbit', w: 'squareParity', d: 4181 }],
   ['Rudin–Shapiro', 'On hexagons', { x: 'rudinshapiro', w: 'hexTurtle', d: 16384 }],
   ['Primes', 'Their barcode', { x: 'primes', w: 'spiral', d: 20000 }],
