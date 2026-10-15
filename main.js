@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.593';
+const VERSION = '0.1.594';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6114,13 +6114,13 @@ function pickGoal(goal) {
 }  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
 // The zones: patches of radius 1 to 6 round each spot (Spark … Meadow), the whole grid (Wild), the rule's
-// patterns (Classics); their random starts each as dense as drawn between 10 and 70 % (the records often
+// patterns (Famous); their random starts each as dense as drawn between 10 and 70 % (the records often
 // come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
 const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      face: ['zoneFace', 'Realm'],  // a whole face of a solid (see faceParts)
                      full: ['zoneAll', 'Wild'],
-                     patterns: [null, 'Classics'],  // the rule's patterns, mixed (see patternChoices)
+                     patterns: [null, 'Famous'],  // the rule's patterns, mixed (see patternChoices)
                      custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);

@@ -961,6 +961,22 @@ Found with the hunt's *Dies out* goal: a start that stays alive very long on a g
 Cairo Wars never settles from a soup on a torus (sparks and gliders forever); in a closed box its activity wanders for tens of thousands of generations (86 to 338 cells alive), then wears itself out. On an infinite plane its gliders would fly away, so this is a methuselah of the box, not of the rule alone.
 
 
+## 🧭 A glider along the edge of the Möbius strip
+
+On the Möbius strip of Cairo pentagons, Cairo Wars (B24/S346/C4) has a glider that lives only **on the strip's edge**, a fold where each pentagon of the edge meets its own other face ([play](https://vincentbounce.github.io/Walking-Pi/#x=random(582644567)&w=lifeMobiusCairo&s=12&r=B24/S346/C4&k=3&sd=random.33.496705661&ch=s4.7h_2-m_2-1_2-0_2-j_2-0_2-0_2-0_2-0_2-1_2-f_2-0_2-1_2-2_2-2_2-a_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-1_2-0_2-0_2-1_2-1_2-7_2-0_2-0_2-0_2-0_2-2_2-0_2-0_2-5_2-2_2-0_2-0_2-2_2-0_2-1_2-3_2-0_2-3_2-0_2-0_2-2_2-1_2-1_2-0_2-3_2-1_2-0_2-0_2-0_2-0_2-0_2-1_2-2_2-1_2-1_2-0_2-0_2-2_2-2_2-0_2-1_2-0_2-1_2-0_2-0_2-0_2-2_2-0_2-0_2-0_2-0_2-0_2-2_2-1_2-1_2-0_2-0_2-0_2-2_2-4_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-4_2-0_2-1_2-2_2-0_2-2_2-0_2-2_2-2_2-9_2-0_2-0_2-0_2-0_2-2_2-0_2-0_2-0_2-0_2-0_2-c_2-0_2-3_2-0_2-0_2-1_2-h_2-1_2-0_2-0_2-0_2-j_2-0_2-ib-n-m-m-0-1-ix_3-0_3-1_3-g_3-0_3-0_3-0_3-0_3-0_3-0_3-0_3-0_3-e_3-0_3-0_3-0_3-1_3-0_3-1_3-0_3-0_3-0_3-0_3-8_3-0_3-0_3-0_3-0_3-2_3-2_3-0_3-b_3-0_3-0_3-0_3-0_3-0_3-2_3-1_3-0_3-0_3-0_3-1_3-3_3-0_3-1_3-1_3-0_3-1_3-0_3-0_3-2_3-0_3-0_3-0_3-4_3-1_3-5_3-0_3-0_3-0_3-0_3-1_3-0_3-0_3-1_3-0_3-1_3-0_3-0_3-0_3-2_3-1_3-0_3-0_3-1_3-2_3-0_3-0_3-1_3-0_3-0_3-0_3-2_3-0_3-0_3-1_3-1_3-0_3-1_3-0_3-0_3-0_3-0_3-0_3-0_3-1_3-0_3-0_3-0_3-1_3-4_3-0_3-0_3-0_3-3_3-1_3-0_3-1_3-0_3-1_3-0_3-0_3-1_3-1_3-0_3-0_3-0_3-0_3-8_3-0_3-0_3-1_3-0_3-0_3-0_3-3_3-0_3-0_3-b_3-2_3-0_3-1_3-0_3-0_3-i_3-1_3-0_3-1_3-0_3-i_3-0_3-0_3-iz_2-m_2-0_2-m_2-m_2-2_2-iw-0-0-0-i-0-1-0-0-0-0-f-1-1-0-0-1-0-0-9-0-0-0-2-2-0-1-0-1-7-1-0-0-0-2-0-0-1-0-0-0-0-1-0-0-3-0-0-0-0-0-1-0-0-0-0-0-2-0-0-0-2-1-0-0-0-2-0-0-2-1-1-2-0-1-1-0-0-1-1-0-0-0-0-3-0-0-1-2-0-0-1-0-1-0-1-0-0-0-0-0-0-0-0-0-2-2-0-3-0-1-0-0-0-0-0-0-0-1-1-0-0-0-8-0-2-0-0-1-0-0-2-0-a-0-0-0-1-0-0-1-0-g-0-0-0-0-0-0-i-1-ib_3-n_3-0_3-l_3-0_3-o_3): a battle of 3 colours whose red ends as this glider, from generation 171).
+
+- **3 cells on each face** (1 alive, 2 dying), the two faces of the same 3 pentagons, mirror images across the fold: 6 cells in all.
+- **Period 3**, moving **2 squares of the Cairo grid** along the edge each period (speed 2/3).
+- It runs round the edge, a single closed curve twice the strip's length (2 × 109 = 218), so the whole loops with period **327** = 218 × 3 / 2.
+
+The plane's Cairo Wars glider has 9 cells and period 2; this one exists only because a cell of the edge has its twin on the other face as a neighbour, as a mirror would: it is half of a symmetric glider, flying along the mirror. On a plane or a torus it has no edge to run along.
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
 ## 🎲 Densities: how full a start should be
 
 For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.
