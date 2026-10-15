@@ -111,6 +111,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 | Square torus | base 3: `0` left · `1` straight · `2` right | base 3: `0` left · `1` straight · `2` right |
 | Triangle torus | base 5: `0` sharp left … `4` sharp right | base 2: exit through the `0` left or `1` right edge |
 | Hex torus | base 2: `0` left · `1` right | base 5: `0` sharp left … `4` sharp right |
+| Cairo torus | — | base 4: out through the `0` sharp left · `1` left · `2` right · `3` sharp right edge |
 | Möbius strip | squares as the torus; hexagons base 2: `0` left · `1` right; triangles base 5: `0` sharp left … `4` sharp right | squares as the torus; hexagons base 5: `0` sharp left … `4` sharp right; triangles base 2: the `0` left or `1` right edge |
 | Cube | base 3: `0` left · `1` straight · `2` right | base 3: `0` left · `1` straight · `2` right |
 | Tetrahedron, octahedron, triangle sphere | base 5: `0` sharp left … `4` sharp right (at a corner of the solid, the nearest edge) | base 2: exit through the `0` left or `1` right edge |
@@ -118,8 +119,8 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 
 Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn right on the spot by one notch) and the **Parity** rule (`1` a step, then a notch right at an odd digit, left at an even one): along the grid on squares and triangles, on cells on squares and hexagons.
 
-- **Torus**, **Möbius strip** and **Sphere** are one entry each in the list, their tiles picked by the tabs under it: for the torus squares on a long sheet (the default, square once rolled up), squares on a square sheet (as many round the ring as round the tube: square when unrolled, stretched along the ring rolled up), hexagons, hexagons **turned by 30°**, triangles, triangles turned by 30° (turned, their rows go round the tube instead of round the ring); for the Möbius strip the same five (hexagons and turned triangles make its edges zigzag along them); for the sphere hexagons (the default) or triangles (the icosahedron, inflated).
-- The − / + under the list set the surface's size.
+- **Torus**, **Möbius strip** and **Sphere** are one entry each in the list, their tiles picked by the tabs under it: for the torus squares on a long sheet (the default, square once rolled up), squares on a square sheet (as many round the ring as round the tube: square when unrolled, stretched along the ring rolled up), hexagons, hexagons **turned by 30°**, triangles, triangles turned by 30° (turned, their rows go round the tube instead of round the ring), Cairo pentagons; for the Möbius strip the same five (hexagons and turned triangles make its edges zigzag along them); for the sphere hexagons (the default) or triangles (the icosahedron, inflated).
+- The − / + under the list set the surface's size. Round a torus and along a Möbius strip the length follows from the width (the shape's proportions), rounded to a multiple of 12 so that the blocks of 2, 3, 4, 6 and 12 colours divide it.
 - **Starts:** the different walks a surface allows (its rotations turn a start into another one that draws the same walk, turned), numbered alike at every size; hovering the number shows them all.
 - A walk that comes back onto itself stops after its first round (`↻`, see [Regular patterns](#regular-patterns)); on a torus, a fraction's **loops** button finds the sizes where it closes in fewest laps.
 - A surface can be shown **flat or round**: the torus and the Möbius strip unroll into their sheet and the polyhedra flatten, and the walk goes on during the morph.
@@ -136,7 +137,7 @@ Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn r
 
 ### Game of Life
 
-A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus, a Möbius strip (its two faces one surface, over its edge onto the face behind; in 2 colours, a face each), a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
+A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus (squares, hexagons or Cairo pentagons), a Möbius strip (its two faces one surface, over its edge onto the face behind; in 2 colours, a face each), a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
 
 - **Rules** in `B…/S…/C…` notation: Conway's Life, HighLife, Seeds, Brian's Brain, Star Wars, Maze, Day & Night…, rules found by scans that last long on hexagons, triangles and Cairo pentagons, or any rule typed. With C states a cell is `0` dead, `1` alive or `2`… dying.
 - **Populations:** 1 to 12 colours that fight by the same rule (a newborn takes the colour of most of its live neighbours), each starting in its part of the grid: its block of the plane, its face or corner of the solid.
@@ -161,7 +162,7 @@ A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons
 A fraction's digits repeat, so its walk makes the same moves again and again: it draws regular patterns, and many of them close on themselves, which the app sees (`… digits max ↻`). A few of them:
 
 - **Rosettes** in 2D: [11/604](https://vincentbounce.github.io/Walking-Pi/#x=11/604&w=triTurtle&d=451) on Triangles turtle, [3/497](https://vincentbounce.github.io/Walking-Pi/#x=3/497&w=hexTurtle&d=631) on Hexagons turtle, [2/541](https://vincentbounce.github.io/Walking-Pi/#x=2/541&w=turtle&d=541) on Squares turtle.
-- **Loops on surfaces**: [96/95](https://vincentbounce.github.io/Walking-Pi/#x=96/95&w=torusGrid&d=5760&s=64) on the square torus, [189/188](https://vincentbounce.github.io/Walking-Pi/#x=189/188&w=cubeGrid&d=6625&s=48) round the cube, [149/148](https://vincentbounce.github.io/Walking-Pi/#x=149/148&w=icosaGrid&d=8641&s=48) round the triangle sphere.
+- **Loops on surfaces**: [96/95](https://vincentbounce.github.io/Walking-Pi/#x=96/95&w=torusGrid&d=5760&s=64x160) on the square torus, [189/188](https://vincentbounce.github.io/Walking-Pi/#x=189/188&w=cubeGrid&d=6625&s=48) round the cube, [149/148](https://vincentbounce.github.io/Walking-Pi/#x=149/148&w=icosaGrid&d=8641&s=48) round the triangle sphere.
 - **Braids on the sphere of hexagons**: [318/305](https://vincentbounce.github.io/Walking-Pi/#x=318/305&w=hexSphereGrid&d=10000&s=32&st=3).
 
 **[PATTERNS.md](PATTERNS.md)** lists the most striking ones walk by walk, with how they were found; the **Gallery** tab holds a curated choice.
