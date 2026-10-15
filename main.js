@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.584';
+const VERSION = '0.1.585';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5660,6 +5660,13 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
 // a cols × rows grid; a block greyed when the figure has no fair spots for that many (see coloursFit)
 const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
 const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 12: [4, 3] };
+// a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
+// ring 1 / TORUS_TUBE times as long as its tube, whatever its sheet): 12 colours 6 × 2 rather than 4 × 3
+function torusBlocks(K) {
+  let best = [K, 1], err = Infinity;
+  for (let b = 1; b <= K; b++) if (K % b === 0) { const e = Math.abs(Math.log(b / ((K / b) * TORUS_TUBE))); if (e < err) { err = e; best = [K / b, b]; } }
+  return best;
+}
 // Fair spots for k colours, that the figure's symmetries swap: a solid's faces, corners or edges'
 // middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
 // edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
@@ -5676,7 +5683,8 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
   if (g?.mobius) return true;  // a Möbius strip: in turn along it (see huntParts)
-  return !!g?.nu && ((g.nu % a === 0 && g.nv % b === 0) || (g.nu % b === 0 && g.nv % a === 0));
+  if (g?.nu) { const [u, v] = torusBlocks(k); return u <= g.nu && v <= g.nv; }  // a torus: its blocks (see torusBlocks)
+  return false;
 }
 // a new figure that cannot place as many colours: the most it can, fewer
 function fitColours(g) {
@@ -6157,10 +6165,10 @@ function huntParts(r, K) {
     const s0 = mobiusMiddle(g), stretch = g.L / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % g.L) + g.L) % g.L;
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
-    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + k * stretch, g.W / 2)));
+    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + k * stretch + (k % 2) * g.L, g.W / 2)));  // one side, then the other
   }
   if (g.torus) {  // cells u × nv + v (Cairo pentagons, triangles: by their middles); the blocks along whichever way they divide
-    const [a, b] = g.nu % cols === 0 && g.nv % rows === 0 ? [cols, rows] : [rows, cols], middles = g.cairo || g.sides === 3;
+    const [a, b] = torusBlocks(K), middles = g.cairo || g.sides === 3;
     const block = middles ? (t) => { const [u, v] = sheetMiddle(g, t); return Math.floor((u * a) / g.nu) * b + Math.floor((v * b) / g.nv); }
       : (t) => Math.floor(((t / g.nv | 0) * a) / g.nu) * b + Math.floor(((t % g.nv) * b) / g.nv);
     if (middles && r) return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)));
@@ -6407,7 +6415,7 @@ function patternAt(i, K, cells) {
     return brushAt([t % row, Math.floor(t / row)], cells).map(([x, y, v]) => [y * row + x, v]);
   }
   if (g.torus) {  // cells u × nv + v, the pattern's rows along u
-    const [a, b] = g.nu % cols === 0 && g.nv % rows === 0 ? [cols, rows] : [rows, cols];
+    const [a, b] = torusBlocks(K);
     const u0 = Math.floor(((Math.floor(i / b) + 0.5) * g.nu) / a) - (h >> 1), v0 = Math.floor((((i % b) + 0.5) * g.nv) / b) - (w >> 1);
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
@@ -6441,7 +6449,7 @@ function patternAt(i, K, cells) {
 function patternChoices() {
   const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K];
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu, g.nv) / Math.max(cols, rows)
+  const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
     : g.floors ? g.floorSize : g.sides === 3 ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
