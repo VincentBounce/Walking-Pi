@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.585';
+const VERSION = '0.1.586';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6165,7 +6165,10 @@ function huntParts(r, K) {
     const s0 = mobiusMiddle(g), stretch = g.L / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % g.L) + g.L) % g.L;
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
-    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + k * stretch + (k % 2) * g.L, g.W / 2)));  // one side, then the other
+    // the patches evenly along it twice round (both sides, 2L): each side's evenly spread over its whole
+    // length, the next one 2L / K further (by turns on either side, or, past half of them, behind the first
+    // ones); a side by turns would not close up, the strip turning it over once round
+    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k * 2 * g.L) / K, g.W / 2)));
   }
   if (g.torus) {  // cells u × nv + v (Cairo pentagons, triangles: by their middles); the blocks along whichever way they divide
     const [a, b] = torusBlocks(K), middles = g.cairo || g.sides === 3;
