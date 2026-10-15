@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.553';
+const VERSION = '0.1.554';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5604,7 +5604,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
     return W % (a * even) === 0 && W % (b * even) === 0;
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
-  if (g?.mobius) return k === 2;  // a Möbius strip: a face each
+  if (g?.mobius) return true;  // a Möbius strip: in turn along it (see huntParts)
   return !!g?.nu && ((g.nu % a === 0 && g.nv % b === 0) || (g.nu % b === 0 && g.nv % a === 0));
 }
 // a new figure that cannot place as many colours: the most it can, fewer
@@ -6077,10 +6077,17 @@ function huntParts(r, K) {
       ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
       : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
   }
-  if (g.mobius) {  // a Möbius strip: one colour all of it; two, a face each (its front, its back), or a patch each, back to back
-    if (!r) { for (let t = 0; t < n; t++) parts[K === 1 ? 0 : +(t >= g.front)].push(t); return parts; }
-    const c = centreCells();
-    return K === 1 ? [lifePatch(r, c)] : [lifePatch(r, c), lifePatch(r, c.map((t) => t + g.front))];
+  // a Möbius strip: along it twice round (its front, then its back: one surface), 2L long, the colours'
+  // parts in turn, each its stretch, a patch at its middle (two colours: a face each, back to back); an odd
+  // count shifted by a quarter of a stretch, so that no middle falls on the glued ends
+  if (g.mobius) {
+    const o = K % 2 ? g.L / (2 * K) : 0, along = (t) => ((t < g.front ? 0 : g.L) + sheetMiddle(g, t % g.front)[0] - o + 2 * g.L) % (2 * g.L);
+    if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor((along(t) * K) / (2 * g.L)))].push(t); return parts; }
+    if (K === 1) return [lifePatch(r)];
+    return parts.map((_, k) => {
+      const s = o + ((k + 0.5) * 2 * g.L) / K, back = s >= g.L;
+      return lifePatch(r, sheetNearest(back ? s - g.L : s, g.W / 2, g.front).map((t) => (back ? t + g.front : t)));
+    });
   }
   if (g.torus) {  // cells u × nv + v (Cairo pentagons, triangles: by their middles); the blocks along whichever way they divide
     const [a, b] = g.nu % cols === 0 && g.nv % rows === 0 ? [cols, rows] : [rows, cols], middles = g.cairo || g.sides === 3;
