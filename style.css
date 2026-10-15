@@ -307,9 +307,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-icon rect, .rule-icon polygon { fill: currentColor; stroke: none; }
 .rule-icon rect.dim, .rule-icon polygon.dim { opacity: 0.4; }
 .rule-build { margin: 0 0 10px; }
-.build-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.build-row > span { width: 52px; font-size: 12px; color: var(--muted); flex: none; }
-.build-row .stepper { flex: 1; margin: 0; }
+.build-row { margin-bottom: 8px; }  /* its name above its chips */
+.build-row > span { display: block; margin-bottom: 3px; font-size: 12px; color: var(--muted); }
+.build-row .stepper { margin: 0; }
 .nchips { display: flex; flex-wrap: wrap; gap: 3px; }
 .nchips button { width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 11px; }
 .nchips button.birth { background: #1d9e75; border-color: #1d9e75; color: #fff; }
