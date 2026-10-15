@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.565';
+const VERSION = '0.1.566';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6109,11 +6109,11 @@ function huntParts(r, K) {
       ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
       : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
   }
-  // a Möbius strip: along it twice round (its front, then its back: one surface, see mobiusLoop), the
-  // colours' parts in turn, each its stretch, a patch at its middle; the first (red) at the middle of the
-  // face in view (two colours: a face each, back to back)
+  // a Möbius strip: the colours' parts in turn round it, each its stretch on both faces (a place of the
+  // strip is one colour, from either side), a patch at its middle; the first (red) at the middle of the
+  // face in view, the next ones on from it (see mobiusLoop: s and s + L are one place, its two sides)
   if (g.mobius) {
-    const s0 = mobiusMiddle(g), stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
+    const s0 = mobiusMiddle(g), stretch = g.L / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % g.L) + g.L) % g.L;
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + k * stretch, g.W / 2)));
