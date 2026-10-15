@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.574';
+const VERSION = '0.1.575';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1326,7 +1326,7 @@ function renderColorButtons() {
   if (!L) { renderChoiceButtons(sel, box); return; }
   const names = { mono: 'States', gradient: 'Age', digit: 'Activity' };
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
-  box.style.gridTemplateColumns = `repeat(${looks.length}, minmax(0, 1fr))`;
+  box.style.gridTemplateColumns = '';  // 4 a row, as the shapes
   box.replaceChildren(...looks.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -6784,7 +6784,7 @@ function fillSetupList() {
     const mine = rows.filter(([, , x]) => kindOf(x) === kind).sort((a, b) => a[0].localeCompare(b[0]));
     if (!mine.length) return [];
     const head = document.createElement('div');
-    head.className = 'field-label';
+    head.className = 'field-label gallery-group';  // a section's line above it (but the first's)
     head.textContent = kind;
     return [head, ...mine.map(([title, detail, x]) => {
       const k = (seen.get(title + detail) ?? 0) + 1;
@@ -9432,7 +9432,6 @@ function renderCellModes(mode) {
   $('cellModes').hidden = !shows('cells');
   if ($('cellModes').hidden) return;
   const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber')), now = cellModeOf(mode);
-  $('cellModes').style.gridTemplateColumns = `repeat(${looks.length === 6 ? 3 : 4}, minmax(0, 1fr))`;
   $('cellModes').replaceChildren(...looks.map(([look, name, title]) => {
     const b = document.createElement('button');
     b.type = 'button';
