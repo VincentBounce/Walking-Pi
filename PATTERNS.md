@@ -971,6 +971,22 @@ On the Möbius strip of Cairo pentagons, Cairo Wars (B24/S346/C4) has a glider t
 
 The plane's Cairo Wars glider has 9 cells and period 2; this one exists only because a cell of the edge has its twin on the other face as a neighbour, as a mirror would: it is half of a symmetric glider, flying along the mirror. On a plane or a torus it has no edge to run along.
 
+
+## 🐝 Hexagonal rules that behave like Life
+
+Life (B3/S23 on squares) has two marks: a soup thins out slowly, over hundreds of generations, before it settles into still lifes and blinkers; and a small random start mostly dies, but now and then grows into a cloud many times its size before it calms down. The hexagonal rules offered lack the first: Callahan's Life (B2o/S2m34) settles within ~50 generations where Life takes ~600, and its small starts never grow.
+
+All the 2-state rules B ⊂ {2…6}, S ⊂ {0…6} (3,328), then 2,229 random ones with Callahan's letters (o side by side, m one apart, p opposite), were run on 35 % soups (48 × 48 and 64 × 64 tori, 3 seeds, up to 3,000 generations) and on 40 random 6 × 6 starts (50 %, a 64 torus, 800 generations), then searched for spaceships (3,000 small random starts each). None of the plain ones grows from a small start as Life does; two with letters do:
+
+| Rule | Soup (% alive at gen 10 / 50 / 100 / 300 / 1,000) | Settles | 6 × 6 starts: median life · ≥ 300 gens · ≥ 5× bigger · biggest | Spaceships | Try it |
+|---|---|---|---|---|---|
+| B3/S23 on squares (Life) | 22 / 11 / 9 / 6 / 6 → 3 % | gen 460–1,530 | 48 · 8/40 · 11/40 · ×23 | glider, period 4 | |
+| B2o/S2m34 (Callahan) | 14 / 4 / 4 / 3 / 3 % | gen ~50 | 23 · 6/40 · 0/40 · ×3 | period 4, 6 cells | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2o/S2m34&s=64&sd=random.35.7) |
+| **B2om5/S2om4o** | 23 / 15 / 14 / 11 / 5 → 3 % | gen 1,900–3,000 | **72 · 6/40 · 9/40 · ×22** | none found | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2om5/S2om4o&s=64&sd=random.35.7) |
+| **B2op3m/S12mp3p4p5** | 28 / 17 / 13 / 14 / 4 % | never (ships fly on) | 31 · 13/40 · 12/40 · ×41 | period 8, 9 to 16 cells | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2op3m/S12mp3p4p5&s=64&sd=random.35.7) |
+
+B2om5/S2om4o is the closest to Life in its figures: a soup that thins out the same way and settles as late, small starts that live as long and blow up as often and as far. B2op3m/S12mp3p4p5 is wilder: its starts last longer and grow more, and it has period-8 spaceships, so a soup on a torus never quite settles.
+
 <br>
 
 <p align="center">⁂</p>
