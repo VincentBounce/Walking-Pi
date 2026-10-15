@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.550';
+const VERSION = '0.1.551';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -874,6 +874,8 @@ const MODES = {
                 rule: 'on a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
   mobiusHexWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'mobiusHexGrid', sphere: 'mobiusHex', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
+  mobiusCairoWalk: { base: 4, arrows: '↙↖↗↘', lattice: 'sphere', cells: true, sphere: 'mobiusCairo', turns: [4, 3, 2, 1], perspective: true, round: true,
+                     rule: 'on a Möbius strip of Cairo pentagons: out through one of its 4 other edges, <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right (over its edge, onto the face behind)' },
   mobiusTriWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of triangles: exit through the <b>0</b> left or <b>1</b> right edge (over its edge, onto the face behind)' },
   cubeFlat: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'cubeGrid', ant: 'antCube', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
@@ -940,6 +942,8 @@ const MODES = {
                 where: 'a Möbius strip of squares (both faces, over its edge onto the one behind)' },
   lifeMobiusHex: { base: 2, lattice: 'sphere', sphere: 'mobiusHex', life: true, perspective: true, round: true,
                    where: 'a Möbius strip of hexagons (both faces, over its edge onto the one behind)' },
+  lifeMobiusCairo: { base: 2, lattice: 'sphere', sphere: 'mobiusCairo', life: true, perspective: true, round: true,
+                     where: 'a Möbius strip of Cairo pentagons (both faces, over its edge onto the one behind)' },
   lifeMobiusTri: { base: 2, lattice: 'sphere', sphere: 'mobiusTri', life: true, perspective: true, round: true,
                    where: 'a Möbius strip of triangles (both faces, over its edge onto the one behind)' },
   lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true, perspective: true,
@@ -2032,7 +2036,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
+  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
 
@@ -2085,7 +2089,8 @@ const NAV = {
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
   lifeMobius: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeMobiusHex: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''],
-  lifeMobiusTri: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeMobiusTri: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeMobiusCairo: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''],
+  mobiusCairoWalk: ['Walk', 'Surfaces', 'Möbius strip', 'Turtle', 'cells'], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
@@ -2163,8 +2168,8 @@ const FAMILIES = [
            [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
-                                 ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
+                                 ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri'], ['mobiusCairoWalk', 'lifeMobiusCairo']], tab: 0,
+    tabs: [[0, false, 'tilesSq', 'Squares'], [3, false, 'pentagons', 'Cairo pentagons'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)']] },
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid']], tab: 0,
     tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
@@ -3490,7 +3495,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned'];
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo'];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
  * for them), or rows "x" that count, a length of its own (s=16x240: 16 rows of triangles 120 long). */
@@ -3500,6 +3505,7 @@ const MOBIUS_ALONG = {
   mobiusHex: { step: 1.5, ok: (n) => n % 2 === 1 },
   mobiusHexTurned: { step: Math.sqrt(3) / 2, ok: (n, nv) => n % 2 === (nv % 2 ? 0 : 1) },
   mobiusTriTurned: { step: Math.sqrt(3) / 2, ok: (n) => n % 2 === 0 },
+  mobiusCairo: { step: 1, ok: (n, nv) => (n + nv) % 2 === 1 },
 };
 const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.split('x').map(Number));  // [rows, count along or null]
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
@@ -3551,6 +3557,16 @@ function mobiusSheet(kind, size) {
         const left = [[x1, y], [x1, y + 1], [x0, y + 0.5]], cl = [(x0 + 2 * x1) / 3, y + 0.5];  // ◀
         if (cl[0] >= 0 && cl[0] < L && cl[1] > 0.25 && cl[1] < W - 0.25) tiles.push(left);
       }
+    }
+    return { L, W, tiles };
+  }
+  if (kind === 'mobiusCairo') {  // nv squares of the Cairo grid across, L along with L + nv odd: the ends glued turned over keep
+    // the tiling (see cairoCorners); the pentagons whose middles lie on the strip, its edges zigzag along them
+    const W = nv, L0 = own ?? twelve(len(W)), L = (L0 + W) % 2 ? L0 : L0 + 1;
+    for (let i = -1; i <= L; i++) for (let j = -1; j <= W; j++) for (const o of [0, 1]) {
+      const c = cairoCorners(i, j, o), [cx, cy] = cairoMiddle(i, j, o);
+      if (cx < 0 || cx >= L || cy <= 0 || cy >= W) continue;
+      tiles.push(c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0 ? c.reverse() : c);
     }
     return { L, W, tiles };
   }
@@ -3981,6 +3997,8 @@ const SPHERES = {
                      sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length, unit: 'triangles' },
   mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusSheet('mobiusTri', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / mobiusSize(s)[0],
                sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
+  mobiusCairo: { mesh: (s) => mobiusMesh('mobiusCairo', s), radius: (s) => mobiusSheet('mobiusCairo', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length / mobiusSize(s)[0],
+                 sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length, unit: 'pentagons' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
@@ -5468,7 +5486,7 @@ function drawLifePlane() {
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane]
-  : ['cube', 'pits', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : mode.sphere === 'cairotorus' ? '⬠' : '▲');
+  : ['cube', 'pits', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : ['cairotorus', 'mobiusCairo'].includes(mode.sphere) ? '⬠' : '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -5913,7 +5931,7 @@ const hunt = { worker: null, zone: 'full', top: [], status: '', picked: null, go
 // What the hunt looks for: the longest life, the longest till it dies out (one colour), or a battle,
 // which starts with the colours that suit the figure best: one for each of its natural spots
 const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out', battle: '⚔ Battle' };
-const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12, mobius: 2, mobiusHex: 2, mobiusTri: 2 };  // else (the plane, a torus) 4
+const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12, mobius: 2, mobiusHex: 2, mobiusTri: 2, mobiusCairo: 2 };  // else (the plane, a torus) 4
 const huntGoal = () => (walk.life?.colours > 1 ? 'battle' : hunt.goal);
 function pickGoal(goal) {
   if (goal === 'battle') {
