@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.547';
+const VERSION = '0.1.548';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2262,17 +2262,20 @@ function renderModePicker() {
       $('mode').dispatchEvent(new Event('change'));
     }, name)])));
   }
-  // the rules, where there are several, each with its picture
+  // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
+  const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
   const rules = navValues(3, [kind, space, shape]), optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
   $('navRules').hidden = rules.length < 2;
   $('navRules').replaceChildren(...rules.map((r) => {
     const v = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
-    return button(`<span class="mode-icon">${icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`  // a turtle for the walks turning relative to their heading
+    const b = button(`<span class="mode-icon">${icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`  // a turtle for the walks turning relative to their heading
       + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => navGo(3, r));
+    b.disabled = !has(kind, r);
+    return b;
   }));
   // Grid | Cells (Cube in 3D): each with its base and its digits, or what it is not on (that side off)
-  const sides = navValues(4, [kind, space, shape, rule]);
+  const sides = navValues(4, [kind, space, shape, rule]).filter((s) => has(kind, rule, s));  // (Cairo pentagons: no grid)
   $('walkOn').hidden = sides.includes('');
   const side = (b, s, word, none) => {
     const v = sides.includes(s) ? navPick(4, s) : null, here = NAV[w][4] === s;
