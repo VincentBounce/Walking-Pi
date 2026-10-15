@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.552';
+const VERSION = '0.1.553';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -694,6 +694,9 @@ const PALETTES = {
            unlit: '#eef1f5', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
 };
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], DIRECTION_COLOURS = {};
+// Life's colours (civilisations), as bright as the walks' rainbow in each theme (its saturation and
+// lightness): red, blue, gold, green, violet, orange, cyan, pink, lime, teal, indigo, magenta
+const LIFE_HUES = [2, 214, 45, 130, 270, 25, 188, 335, 85, 165, 240, 300], LIFE_COLOURS = [];
 let GREY;
 let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_RGB, EDGE_ALPHA, SHADE, FADE_EDGES, TILE_LIFT;  // TILE_LIFT: the tiles' rainbow mixed with white  // EDGE: the surfaces' tile edges; SHADE: how dark a tile turned away gets
 function setPalette(theme) {
@@ -707,6 +710,7 @@ function setPalette(theme) {
     LIFE_TRAIL[i] = `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
   }
   for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
+  LIFE_HUES.forEach((h, k) => { LIFE_COLOURS[k] = `hsl(${h}, 85%, ${P.light}%)`; });
   DIGIT_COLORS.splice(0, DIGIT_COLORS.length, ...P.digits);
   Object.assign(DIRECTION_COLOURS, P.directions);
   GREY = P.grey;
@@ -4849,7 +4853,6 @@ function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
  */
 
 const LIFE_JUMP = 2000;
-const LIFE_RED = '#ff7b72', LIFE_BLUE = '#4ea1ff';  // the two civilisations  // the Game of Life has no end: ⏭ jumps this many generations ahead
 // fading trail after a cell dies: from a light slate grey down to the background
 const LIFE_WALL = '#c4934e';  // the walls of a Life run (the hexagon sphere's pentagons)
 
@@ -4941,8 +4944,7 @@ function countSeed(L) {
   L.seedBlue = L.seedByColour[2] ?? 0;
 }
 // the civilisations' colours (1, 2… : red, blue, gold, green, violet, orange) and their names
-const LIFE_COLOURS = [LIFE_RED, LIFE_BLUE, '#f2b630', '#3fb950', '#a371f7', '#ffa657', '#22b8cf', '#e64980', '#9bd02f', '#a5713d', '#3b4cc0', '#7d8a2e'];
-const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange', 'cyan', 'pink', 'lime', 'brown', 'navy', 'olive'];
+const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'orange', 'cyan', 'pink', 'lime', 'teal', 'indigo', 'magenta'];  // (see LIFE_HUES)
 // in colours, the colour of each state from 1: alive in its colour, then fainter at each dying stage
 const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ length: K * (C - 2) }, (_, i) => faded(LIFE_COLOURS[i % K], 1 - (Math.floor(i / K) + 1) / (C - 1)))];
 
@@ -9209,6 +9211,7 @@ function applyTheme() {
   glPalette();
   renderColorButtons();
   renderSkyButtons();
+  renderColours();  // Life's colour blocks, in the theme's colours
   needsFull = statsDirty = true;  // Life's bubbles in the theme's colours too
 }
 try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
