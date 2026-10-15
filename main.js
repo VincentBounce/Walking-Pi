@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.559';
+const VERSION = '0.1.560';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9293,7 +9293,10 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
   if (look === 'path') return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2" fill="${ANT_RAMPS.amber[theme][1]}" opacity="0.2"/>`
     + [[4, 18, 9, 18], [9, 18, 9, 11], [9, 11, 15, 11], [15, 11, 15, 6], [15, 6, 20, 6]].map(([a, b, c, d], i) => `<path d="M${a} ${b}L${c} ${d}" stroke="${g(i / 4)}" stroke-width="2.4" stroke-linecap="round"/>`).join('') + '</svg>';
   if (look === 'ink' || look === 'amber') return swatch(ANT_RAMPS[look][theme]);
-  if (look === 'digit') return swatch(['↑', '→', '←', '↓'].map((d) => DIRECTION_COLOURS[d]));
+  if (look === 'digit') {  // a square cut along its diagonals: north, east, south, west, each in its colour
+    const tri = [['↑', 'M12 12L2 2H22Z'], ['→', 'M12 12L22 2V22Z'], ['↓', 'M12 12L22 22H2Z'], ['←', 'M12 12L2 22V2Z']];
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">${tri.map(([d, p]) => `<path d="${p}" fill="${DIRECTION_COLOURS[d]}"/>`).join('')}</svg>`;
+  }
   // Rainbow: the app's rainbow from left to right; Heatmap: a hot core, cooling outwards
   const stops = (fs) => fs.map((f) => `<stop offset="${f}" stop-color="${g(f)}"/>`).join('');
   if (look === 'cells') return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="cellRainbow">${stops([0, 0.25, 0.5, 0.75, 1])}</linearGradient></defs>`
