@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.567';
+const VERSION = '0.1.568';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1283,7 +1283,7 @@ function relabelColours(mode) {
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   for (const v of ['cells', 'visits', 'digit', 'mono']) byValue[v].hidden = !shows(v);
-  byValue.gradient.disabled = greyed('line') || two;  // Rainbow along the walk: no use on a spiral; Age greyed in colours (a cell's colour is its civilisation)
+  byValue.gradient.disabled = greyed('line');  // Rainbow along the walk: no use on a spiral
   byValue.visits.disabled = !useful('visits');
   if (sel.selectedOptions[0]?.hidden || sel.selectedOptions[0]?.disabled) {
     sel.value = Array.from(sel.options).find((o) => !o.hidden && !o.disabled).value;  // the first one left
@@ -5567,11 +5567,11 @@ function drawLifePlane() {
   const { alive: a, age, activity, died } = L, fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
   for (let t = 0; t < n; t++) {
     const st = a[t];
-    px[t] = L.colours > 1 && colour !== 'digit' ? civ[st] || (cur - died[t] < fade ? inked[cur - died[t]] : 0)
+    px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : cur - died[t] < fade ? inked[cur - died[t]] : 0)
-      : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
-      : cur - died[t] < fade ? inked[cur - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
+      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+      : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
+      : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
   if (kind === 'square') {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
@@ -5738,6 +5738,7 @@ function lifeReset() {
     L.age[t] = L.ever[t] = live ? 1 : 0;
   }
   L.died.fill(-1e9);
+  L.gen = 0;  // generations computed, never wound back by a loop (the trail fades on, see died)
   L.activity.fill(0);
   L.maxActivity = 0;
   L.aliveCount = L.everAlive = L.seedAlive;
@@ -5788,6 +5789,7 @@ function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const changes = L.born + L.dead;  // before this generation
+  L.gen++;
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -5834,7 +5836,7 @@ function lifeStep() {
     } else if (wasLive) {
       L.dead++;
       L.age[t] = 0;
-      L.died[t] = gen;
+      L.died[t] = L.gen;
     }
   }
   L.alive = b;
@@ -6833,8 +6835,7 @@ function advanceTo(target) {
       if (!s) continue;
       if (s.extinct || s.P === 1) { cur = s.T; play(false); break; }  // nothing moves any more: it ends there
       if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
-        cur -= s.P;
-        for (let t = 0; t < L.died.length; t++) if (L.died[t] > s.T) L.died[t] -= s.P;
+        cur -= s.P;  // (a trail goes on fading: its time is L.gen's)
       }
     }
     statsDirty = true;
@@ -7330,23 +7331,23 @@ function drawSphere() {
     const colour = $('colorMode').value;
     // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
     const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
-    if (L.colours > 1 && colour !== 'digit') {  // each civilisation in its colour, then the trail of the dead (Trail)
+    if (L.colours > 1 && colour === 'mono') {  // each civilisation in its colour, then the trail of the dead (Trail)
       const civ = civColours(L.colours, L.C);
       palette = [null, ...civ, ...LIFE_FADE];
-      levelOf = (t) => L.alive[t] || (trailOn() && cur - L.died[t] <= LIFE_TRAIL.length ? civ.length + cur - L.died[t] : 0);
+      levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
-        : trailOn() && L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? 1 + cur - L.died[t] : 0);  // the trail after death (Trail)
+        : trailOn() && L.C === 2 && L.gen - L.died[t] <= LIFE_TRAIL.length ? 1 + L.gen - L.died[t] : 0);  // the trail after death (Trail)
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
     } else {  // age of live cells, the rainbow backwards (orange = newborn … cyan = old); dying stages, or a trail fading after death
       palette = [null, ...[...grad].reverse(), ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];
       levelOf = (t) => {
         const st = L.alive[t];
-        if (st === 1) return Math.min(LEVELS, logLevel(L.age[t], 64));
-        if (st >= 2) return LEVELS + dyingShade(st);
-        return trailOn() && L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
+        if (st && st <= L.colours) return Math.min(LEVELS, logLevel(L.age[t], 64));  // (in colours too)
+        if (st) return LEVELS + dyingShade(1 + Math.floor((st - 1) / L.colours));
+        return trailOn() && L.C === 2 && L.gen - L.died[t] <= LIFE_TRAIL.length ? LEVELS + L.gen - L.died[t] : 0;
       };
     }
   }
