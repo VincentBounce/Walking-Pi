@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.596';
+const VERSION = '0.1.597';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5718,6 +5718,7 @@ const RULE_ICONS = {
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
+  'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
   'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.', 'B2/S34': '.....,.o.o.,..o..,.o.o.,.....',
   'B24/S346/C4': '+o...,.+o..,..+o.,.....,...+o', 'B23/S6/C3': '.....,.o+..,o+o+.,.+o..,.....', 'B2347/S35/C3': 'o.o.o,.+.+.,o.o.o,.+.+.,o.o.o',
