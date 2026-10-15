@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.563';
+const VERSION = '0.1.564';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4292,7 +4292,8 @@ function torusStarts(g) {
 function mobiusStarts(g) {
   const G = gridGraph(g), k = g.sides, N = G.nv;
   let v0 = g.poly[0], best = Infinity;
-  for (let q = 0; q < k * g.front; q++) {  // the front's corners
+  const face = mobiusMiddle(g) < g.L ? 0 : g.front;  // the face in view
+  for (let q = k * face; q < k * (face + g.front); q++) {  // its corners
     const d = Math.hypot(g.uv[2 * q] - g.L / 2, g.uv[2 * q + 1] - g.W / 2);
     if (d < best) { best = d; v0 = g.poly[q]; }
   }
@@ -6109,17 +6110,14 @@ function huntParts(r, K) {
       ? ((W >> 1) + Math.floor(((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2)) * row + (row >> 1) + Math.floor(((2 * (i % cols) - (cols - 1)) * side) / 2)
       : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
   }
-  // a Möbius strip: along it twice round (its front, then its back: one surface), 2L long, the colours'
-  // parts in turn, each its stretch, a patch at its middle (two colours: a face each, back to back); an odd
-  // count shifted by a quarter of a stretch, so that no middle falls on the glued ends
+  // a Möbius strip: along it twice round (its front, then its back: one surface, see mobiusLoop), the
+  // colours' parts in turn, each its stretch, a patch at its middle; the first (red) at the middle of the
+  // face in view (two colours: a face each, back to back)
   if (g.mobius) {
-    const o = K % 2 ? g.L / (2 * K) : 0, along = (t) => ((t < g.front ? 0 : g.L) + sheetMiddle(g, t % g.front)[0] - o + 2 * g.L) % (2 * g.L);
-    if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor((along(t) * K) / (2 * g.L)))].push(t); return parts; }
+    const s0 = mobiusMiddle(g), stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
+    if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
-    return parts.map((_, k) => {
-      const s = o + ((k + 0.5) * 2 * g.L) / K, back = s >= g.L;
-      return lifePatch(r, sheetNearest(back ? s - g.L : s, g.W / 2, g.front).map((t) => (back ? t + g.front : t)));
-    });
+    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + k * stretch, g.W / 2)));
   }
   if (g.torus) {  // cells u × nv + v (Cairo pentagons, triangles: by their middles); the blocks along whichever way they divide
     const [a, b] = g.nu % cols === 0 && g.nv % rows === 0 ? [cols, rows] : [rows, cols], middles = g.cairo || g.sides === 3;
@@ -6443,6 +6441,25 @@ function sheetMiddle(g, t) {
   for (let q = 0; q < k; q++) { u += g.uv[2 * (k * t + q)] / k; v += g.uv[2 * (k * t + q) + 1] / k; }
   return g.mobius ? [u, v] : [((u % g.nu) + g.nu) % g.nu, ((v % g.nv) + g.nv) % g.nv];
 }
+// A Möbius strip's two faces as one strip twice as long, 2L, whose ends meet as they are (no turning over):
+// a tile's place on it, along (s) and across (y); the back's tiles after the front's, turned over
+function mobiusLoop(g, t) {
+  const [a, b] = sheetMiddle(g, t % g.front);
+  return t < g.front ? [a, b] : [g.L + a, g.W - b];
+}
+// the tiles nearest the point (s, y) of that loop, all as near (round it the shortest way)
+function mobiusNearest(s, y) {
+  const g = walk.geo, far = new Float64Array(g.n), round = (d) => d - 2 * g.L * Math.round(d / (2 * g.L));
+  for (let t = 0; t < g.n; t++) { const [a, b] = mobiusLoop(g, t); far[t] = Math.hypot(round(a - s), b - y); }
+  const best = far.reduce((m, d) => Math.min(m, d), Infinity);
+  return [...far.keys()].filter((t) => far[t] < best + 1e-9);
+}
+// the middle of the face the starting view shows, on that loop: the front's middle, or the back's
+function mobiusMiddle(g) {
+  let t = 0, best = Infinity;
+  for (let q = 0; q < g.front; q++) { const [a, b] = sheetMiddle(g, q), d = Math.hypot(a - g.L / 2, b - g.W / 2); if (d < best) { best = d; t = q; } }
+  return dot3(Array.from(g.nrm.subarray(3 * t, 3 * t + 3)), CAM0.v) * shapeSign(g) >= 0 ? g.L / 2 : (3 * g.L) / 2;
+}
 function sheetNearest(u, v, upto = walk.geo.n) {
   const g = walk.geo, far = new Float64Array(upto), round = (d, n) => (g.mobius ? d : d - n * Math.round(d / n));
   for (let t = 0; t < upto; t++) { const [a, b] = sheetMiddle(g, t); far[t] = Math.hypot(round(a - u, g.nu), round(b - v, g.nv)); }
@@ -6454,7 +6471,7 @@ function sheetNearest(u, v, upto = walk.geo.n) {
 function centreCells(d) {
   const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
   if (walk.plane) { const { W, row, kind } = walk.plane; return kind === 'square' && W % 2 === 0 && row % 2 === 0 ? four(W / 2, row / 2, row) : [patchCentre()]; }
-  if (g.mobius) return sheetNearest(g.L / 2, g.W / 2, g.front);  // the front tiles nearest the middle of the sheet
+  if (g.mobius) return mobiusNearest(mobiusMiddle(g), g.W / 2);  // the middle of the face in view
   if (g.cairo || (g.torus && g.sides === 3)) return sheetNearest(g.nu / 2, g.nv / 2);
   if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
   if (!d && g.faces) {  // a solid of triangles: the middle of the face in front (a dodecahedron's pentagon)
