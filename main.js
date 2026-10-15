@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.599';
+const VERSION = '0.1.600';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2189,17 +2189,17 @@ for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && M
 }
 for (const w of Object.keys(MODES)) if (MODES[w].pivot || MODES[w].parity) MODE_ICONS[w] = MODES[w].pivot ? 'pivot' : 'walk2d';
 MODE_ICONS.lifePits = 'walls';
-// in each shape's rules: Turtle, then Pivot and Parity, then the others as they come; Cairo right after
-// Squares among the shapes
+// in each shape's rules: Turtle, then Pivot and Parity, then the others as they come; among the shapes,
+// Cairo right after Squares, Hexagons before Triangles, the Klein bottle after the Möbius strip, the
+// Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  for (const g of first.filter((x) => x.endsWith(',Cairo'))) {
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron']];  // (1 after, 0 before)
+  for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
+    const o = g.slice(0, -shape.length) + other;
+    if (!first.includes(o)) continue;
     first.splice(first.indexOf(g), 1);
-    first.splice(first.indexOf(g.replace(/Cairo$/, 'Squares')) + 1, 0, g);
-  }
-  for (const g of first.filter((x) => x.endsWith(',Klein bottle'))) {  // the Klein bottle after the Möbius strip
-    first.splice(first.indexOf(g), 1);
-    first.splice(first.indexOf(g.replace(/Klein bottle$/, 'Möbius strip')) + 1, 0, g);
+    first.splice(first.indexOf(o) + after, 0, g);
   }
   const sorted = Object.entries(NAV).map((e, i) => [...e, i])
     .sort(([, a, i], [, b, j]) => first.indexOf(group(a)) - first.indexOf(group(b)) || (rank[a[3]] ?? 3) - (rank[b[3]] ?? 3) || i - j);
