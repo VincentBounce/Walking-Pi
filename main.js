@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.579';
+const VERSION = '0.1.580';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1349,7 +1349,7 @@ function lifeLookPicture(look) {
 }
 // square rings, hot inside (a heatmap, Life's activity)
 const heatRings = (g) => `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;
-// the sky, a switch after the themes: named after the theme (Dawn on a light page, Twilight on a dark one),
+// the sky, a switch before the themes: named after the theme (Dawn on a light page, Twilight on a dark one),
 // its picture the sky, or the page's plain colour; shown where there is a sky (see updateDisplayMenu)
 const skyButton = document.createElement('button');
 skyButton.type = 'button';
@@ -1363,7 +1363,7 @@ const renderSkyButtons = () => {
   skyButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="skyPicture" x1="0" y1="0" x2="0" y2="1">${SKIES[theme].map(([f, c]) => `<stop offset="${f}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`
     + `<rect x="2" y="2" width="20" height="20" rx="2" fill="${on ? 'url(#skyPicture)' : UNLIT}" stroke="var(--border)"/></svg><span>${name}</span>`;
   skyButton.classList.toggle('active', on);
-  $('themeButtons').append(skyButton);
+  $('themeButtons').prepend(skyButton);  // first, before the themes
 };
 
 function requestedDigits() {
