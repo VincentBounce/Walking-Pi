@@ -167,13 +167,12 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 - **Loops on surfaces**: [96/95](https://vincentbounce.github.io/Walking-Pi/#x=96/95&w=torusGrid&d=5760&s=64x160) on the square torus, [189/188](https://vincentbounce.github.io/Walking-Pi/#x=189/188&w=cubeGrid&d=6625&s=48) round the cube, [149/148](https://vincentbounce.github.io/Walking-Pi/#x=149/148&w=icosaGrid&d=8641&s=48) round the triangle sphere.
 - **Braids on the sphere of hexagons**: [318/305](https://vincentbounce.github.io/Walking-Pi/#x=318/305&w=hexSphereGrid&d=10000&s=32&st=3).
 
-**[PATTERNS.md](PATTERNS.md)** lists the most striking ones walk by walk, with how they were found; the **Gallery** tab holds a curated choice.
+**[PATTERNS.md](PATTERNS.md)** lists the most striking ones walk by walk, with how they were found; the **Gallery**'s Treasures start with a curated choice.
 
 ## Features
 
-- **Tabs** (top): the walk families, and first the **Gallery**: hover it to open it in the left pane, click it to keep it open.
-  - **Treasures**: your setups, kept in this browser only. ☆ saves the setup in view (yellow while it is one of them), × deletes one, and the two arrows import or export them as a JSON file.
-  - **Curated**: striking setups found so far (rosettes, loops on surfaces, classics).
+- **Tabs** (top): the **Gallery**, then **Life**, **Ant** and **Walk**; under them 2D, 3D (the surfaces) and Space (a 3D lattice). Hover the Gallery to open it in the left pane, click it to keep it open.
+  - **Treasures**: your setups, kept in this browser only, grouped as the tabs (Life, Ant, Walk). ☆ saves the setup in view (yellow while it is one of them), × deletes one, and the two arrows import or export them as a JSON file. On a first visit they hold a curated choice (rosettes, loops on surfaces, classics), yours to delete.
   - Hovering a setup shows it in the view, leaving the list brings back the one in use, a click keeps it and opens its parameters.
 - **Play card** (bottom left): the number, its loop (`↻`) and base, a step slider, ⏮ and ▶︎ play / pause.
   - Hovering opens it: the walk and its rule, a chip per digit with its count, the stats (position, distance, cells or corners visited, or the automaton's lifetime), an **activity curve** (a walk's distance from its start along the whole walk; Life's live cells and its births + deaths per generation: chaos, then calm), the digits being read, one step and ⏭ jump to the end (in Life, +2k: 2,000 generations ahead), and the speed between a turtle and a rabbit (6 to 6,000,000 steps per second, 60 by default: steps evenly spread over the frames of a 60 or 120 Hz screen).

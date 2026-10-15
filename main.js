@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.570';
+const VERSION = '0.1.571';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2182,7 +2182,7 @@ MODE_ICONS.lifePits = 'walls';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
+const NAV_KINDS = [['Life', 'glider'], ['Ant', 'ant'], ['Walk', 'compass']];
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
 const NAV_SPACES = ['2D', 'Surfaces', '3D'], SPACE_NAMES = { '2D': '2D', Surfaces: '3D', '3D': 'Space' };
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
@@ -6719,9 +6719,25 @@ function syncLink() {
 
 /* ---- 10.4 Saved setups and JSON files -------------------------------------------------------- */
 // Saved setups in this browser (localStorage), as { name, setup, saved }
-const SETUPS_KEY = 'walkingPi.setups';
+const SETUPS_KEY = 'walkingPi.setups', CURATED_KEY = 'walkingPi.curated';
 function readSetups() {
   try { return JSON.parse(localStorage.getItem(SETUPS_KEY)) || []; } catch { return []; }
+}
+// The curated setups (BUILT_IN) come into Treasures once, on the first visit in this browser: deleted
+// afterwards, they stay deleted
+function seedCurated() {
+  try {
+    if (localStorage.getItem(CURATED_KEY)) return;
+    const list = readSetups(), same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    for (const [name, note, setup] of BUILT_IN) {
+      if (list.some((x) => same(x.setup, setup))) continue;
+      let key = name;  // a name of its own (a row is deleted by its name)
+      for (let k = 2; list.some((x) => x.name === key); k++) key = `${name} (${k})`;
+      list.push({ name: key, note, setup, saved: new Date().toISOString() });
+    }
+    writeSetups(list);
+    localStorage.setItem(CURATED_KEY, '1');
+  } catch { /* not kept: the next visit tries again */ }
 }
 function writeSetups(list) {
   try { localStorage.setItem(SETUPS_KEY, JSON.stringify(list)); return true; } catch { return false; }
@@ -6739,12 +6755,20 @@ const setupTitle = (x) => {
 // Your setups, as rows like the built-in ones (see setupRow), each with × to delete it
 function fillSetupList() {
   const list = readSetups();
-  // by their titles, two rows alike numbered (2), (3)…
-  const rows = list.map((x) => [setupTitle(x), setupDetail(x.setup), x]).sort((a, b) => a[0].localeCompare(b[0])), seen = new Map();
-  $('yourList').replaceChildren(...rows.map(([title, detail, x]) => {
-    const k = (seen.get(title + detail) ?? 0) + 1;
-    seen.set(title + detail, k);
-    return setupRow(k > 1 ? `${title} (${k})` : title, detail, x.setup, () => deleteSetup(x.name));
+  // in groups as the tabs, Life, Ant, Walk, each under its name; by their titles, two rows alike numbered (2), (3)…
+  const rows = list.filter((x) => NAV[x.setup.w]).map((x) => [setupTitle(x), [x.note, setupDetail(x.setup)].filter(Boolean).join(' · '), x]), seen = new Map();
+  const kindOf = (x) => NAV[x.setup.w][0];
+  $('yourList').replaceChildren(...NAV_KINDS.flatMap(([kind]) => {
+    const mine = rows.filter(([, , x]) => kindOf(x) === kind).sort((a, b) => a[0].localeCompare(b[0]));
+    if (!mine.length) return [];
+    const head = document.createElement('div');
+    head.className = 'field-label';
+    head.textContent = kind;
+    return [head, ...mine.map(([title, detail, x]) => {
+      const k = (seen.get(title + detail) ?? 0) + 1;
+      seen.set(title + detail, k);
+      return setupRow(k > 1 ? `${title} (${k})` : title, detail, x.setup, () => deleteSetup(x.name));
+    })];
   }));
   syncSaveButton();
 }
@@ -9556,10 +9580,9 @@ function setupRow(name, detail, setup, onDelete) {
   return b;
 }
 function renderGallery() {
-  $('builtInList').replaceChildren(...BUILT_IN.map(([name, note, setup]) => setupRow(name, `${note} · ${SPACE_NAMES[NAV[setup.w][1]]} · ${walkName(setup.w)}`, setup)));
   fillSetupList();
 }
-for (const list of ['builtInList', 'yourList']) {
+for (const list of ['yourList']) {
   $(list).addEventListener('mouseleave', () => {
     clearTimeout(galleryHover);
     if (!galleryBefore) return;
@@ -9635,6 +9658,7 @@ requestAnimationFrame(tick);
 $('version').textContent = `v${VERSION}`;
 for (const b of document.querySelectorAll('[data-icon]')) b.insertAdjacentHTML('afterbegin', icon(b.dataset.icon));
 play(false);  // the Play button with its icon
+seedCurated();
 fillSetupList();
 const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
 if (!linked || !applySetup(linked)) compute();
