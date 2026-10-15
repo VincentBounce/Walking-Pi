@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.591';
+const VERSION = '0.1.593';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -716,7 +716,7 @@ function setPalette(theme) {
     LIFE_FADE[i] = `rgb(${inked(0)}, ${inked(1)}, ${inked(2)})`;
   }
   for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
-  LIFE_HUES.forEach((h, k) => { LIFE_COLOURS[k] = `hsl(${h}, 85%, ${P.light}%)`; });
+  LIFE_HUES.forEach((h, k) => { LIFE_COLOURS[k] = `hsl(${h}, 85%, ${PALETTES.light.light}%)`; });  // the light page's, on a dark one too (to compare)
   DIGIT_COLORS.splice(0, DIGIT_COLORS.length, ...P.digits);
   Object.assign(DIRECTION_COLOURS, P.directions);
   GREY = P.grey;
@@ -9340,6 +9340,7 @@ function applyTheme() {
   const t = $('theme').value, theme = t === 'system' ? (systemLight.matches ? 'light' : 'dark') : t;
   try { localStorage.setItem('walkingTheme', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
+  renderSkyButtons();  // the sky's switch back before them (the buttons were all made again)
   if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
   document.documentElement.dataset.theme = theme;
   setPalette(theme);
