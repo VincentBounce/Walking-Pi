@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.548';
+const VERSION = '0.1.549';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2154,8 +2154,7 @@ function navGo(level, value) {
 const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk', 'lifeTorus', 'torusPivotGrid', 'torusPivot'], ['hexTorusGrid', 'hexTorusWalk', 'lifeHexTorus', 'hexTorusPivot'],
                           ['triTorusGrid', 'triTorusWalk', 'triTorusPivotGrid', 'lifeTriTorus'], ['cairoTorusWalk', 'lifeCairoTorus']], tab: 0,
-    tabs: [[0, false, 'tilesSqStretched', 'Squares on a long sheet (more round the ring than round the tube), square once rolled'],
-           [0, true, 'tilesSq', 'Squares on a square sheet (as many round the ring as round the tube), stretched along the ring once rolled'],
+    tabs: [[0, false, 'tilesSq', 'Squares'],
            [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'], [1, false, 'tilesHex', 'Hexagons'],
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)'],
            [3, false, 'pentagons', 'Cairo pentagons']] },
@@ -2172,7 +2171,7 @@ function familyOf(w) {
   for (const F of FAMILIES) {
     const m = F.modes.findIndex((pair) => pair.includes(w));
     if (m < 0) continue;
-    const turnable = !!TURNED[MODES[w].sphere];
+    const turnable = !!TURNED[MODES[w].sphere] && !(squareSheet && SQUARE_SHEET[MODES[w].sphere]);
     return { F, m, tab: F.tabs.findIndex(([t, turned]) => t === m && turned === (turnable && torusTurned)) };
   }
   return null;
@@ -2252,16 +2251,27 @@ function renderModePicker() {
     // (else the same rule on the other side, else its first walk: Cairo pentagons have no grid walk)
     const same = (f) => F.modes[f].find((v) => [0, 3, 4].every((i) => NAV[v][i] === NAV[w][i]))
       ?? F.modes[f].find((v) => [0, 3].every((i) => NAV[v][i] === NAV[w][i])) ?? F.modes[f].find((v) => NAV[v][0] === NAV[w][0]);
-    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name], i) => (!same(f) ? [] : [button(icon(pic), i === tab, () => {
-      if (i === tab) return;
-      F.tab = i;
-      const v = same(f);
-      if (v === w) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
-      torusTurned = turned;
-      $('mode').value = v;
-      $('mode').dispatchEvent(new Event('change'));
-    }, name)])));
-  }
+    const sheets = F.name === 'Torus', square = sheets && squareSheet;
+    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name], i) => {
+      if (!same(f)) return [];
+      const b = button(icon(pic), i === tab, () => {
+        if (i === tab) return;
+        F.tab = i;
+        const v = same(f);
+        if (v === w) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
+        torusTurned = turned;
+        $('mode').value = v;
+        $('mode').dispatchEvent(new Event('change'));
+      }, name);
+      b.disabled = square && turned;  // a square sheet: not turned
+      return [b];
+    }));
+    // a torus: from a long sheet (Rectangle, more round the ring than round the tube, its tiles even once
+    // rolled up) or a square one (as many round the ring as round the tube, stretched along it)
+    $('torusSheet').hidden = !sheets;
+    if (sheets) $('torusSheet').replaceChildren(...[[false, 'Rectangle', 'A long sheet: its tiles even once rolled up'], [true, 'Square', 'A square sheet, its tiles stretched along the ring once rolled up (not turned)']]
+      .map(([sq, word, title]) => button(word, sq === squareSheet, () => { turnTorus(sq ? false : torusTurned, sq); renderModePicker(); }, title)));
+  } else $('torusSheet').hidden = true;
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
   const rules = navValues(3, [kind, space, shape]), optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
@@ -3747,7 +3757,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
+const MORPHABLE = ['cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -3922,6 +3932,19 @@ const SPHERES = {
   hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               columns: hexTorusColumns, perRow: 1, steps: [1, 2],  // an even count of columns
               sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
+  // on a square sheet (Square, under the tilings): as long round the ring as round the tube unrolled, its
+  // tiles stretched along the ring once rolled up (as torusSquare)
+  hextorusSquare: { mesh: (s) => Object.assign(hexTorusMesh(...torusDims('hextorusSquare', s)), { flatWidth: TORUS_TUBE }),
+                    radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
+                    columns: (nv) => 2 * Math.round((nv * Math.sqrt(3)) / 3), perRow: 1, steps: [1, 2],
+                    sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
+  tritorusSquare: { mesh: (s) => Object.assign(triTorusMesh(...torusDims('tritorusSquare', s)), { flatWidth: TORUS_TUBE }),
+                    radius: (s) => (torusDims('tritorusSquare', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
+                    columns: (nv) => Math.round((nv * Math.sqrt(3)) / 2), perRow: 2, steps: [2, 2],
+                    sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
+  cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE }),
+                      radius: (s) => torusDims('cairotorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [2, 2],
+                      sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('cairotorusSquare', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // Cairo pentagons: the tube nv squares of their grid around, two pentagons a square
   cairotorus: { mesh: (s) => cairoTorusMesh(...torusDims('cairotorus', s)), radius: (s) => torusDims('cairotorus', s)[0] / (2 * Math.PI * TORUS_TUBE),
                 columns: cairoTorusColumns, perRow: 1, steps: [2, 2],  // even counts both ways
@@ -4086,11 +4109,13 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere'];
-const TORI = ['torus', 'torusSquare', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
+const TORI = ['torus', 'torusSquare', 'tritorus', 'hextorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
-const TURNED = { torus: 'torusSquare', tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
-let torusTurned = false;
-const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
+const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
+// a torus from a square sheet (Rectangle | Square, under its tilings): not turned
+const SQUARE_SHEET = { torus: 'torusSquare', hextorus: 'hextorusSquare', tritorus: 'tritorusSquare', cairotorus: 'cairotorusSquare' };
+let torusTurned = false, squareSheet = false;
+const surfaceOf = (mode) => (squareSheet && SQUARE_SHEET[mode.sphere]) || (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
@@ -6405,7 +6430,8 @@ function getSetup() {
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (modeStarts() && startNo() > 1) s.st = startNo();
-  if (torusTurned && TURNED[mode.sphere]) s.o = 1;
+  if (squareSheet && SQUARE_SHEET[mode.sphere]) s.q = 1;  // a square sheet
+  else if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && lifeColours > 1) s.k = lifeColours;
@@ -6433,6 +6459,7 @@ function applySetup(s) {
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
   torusTurned = Number(s.o) === 1;
+  squareSheet = Number(s.q) === 1 || (torusTurned && MODES[s.w].sphere === 'torus');  // (o=1 on squares, before: their square sheet)
   if (MODES[s.w].sphere) {
     const kind = surfaceOf(MODES[s.w]);
     fillSphereSizes(kind, MODES[s.w].initial);
@@ -9187,11 +9214,13 @@ $('showPath').addEventListener('change', () => { needsFull = true; updateDisplay
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
-// Usual | Turned 30°: the triangle and hexagon tori turned or back, at the same size if it has one
-function turnTorus(turned) {
-  if (turned === torusTurned) return;
+// Usual | Turned 30°: the triangle and hexagon tori turned or back; Rectangle | Square: the sheet of a
+// torus; at the same size if it has one
+function turnTorus(turned, square = squareSheet) {
+  if (turned === torusTurned && square === squareSheet) return;
   const mode = MODES[$('mode').value], size = sphereSize();
   torusTurned = turned;
+  squareSheet = square;
   fillSphereSizes(surfaceOf(mode), mode.initial);
   const sel = $('sphereF');
   if (typeof size === 'number' && [...sel.options].some((o) => o.value === String(size))) sel.value = size;
@@ -9285,7 +9314,7 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 // the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
 // edges and cells drawn or found (what is seen; not the tools that found it: the hunt's buttons, Draw's brush)
-const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'k', 'sd', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
+const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'sd', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
