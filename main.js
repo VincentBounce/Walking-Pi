@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.557';
+const VERSION = '0.1.558';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1230,7 +1230,7 @@ function updateDisplayMenu() {
   renderCellModes(mode);
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
   // in 2D, Path fades the cells under the rainbow line (on a layer of its own), so that it shows all along
-  $('pathLayer').style.opacity = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 0.3 : '';
+  $('pathLayer').style.opacity = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 0.15 : '';
   $('heatmap').disabled = !mode.cells;
   $('heatmap').checked = $('colorMode').value === 'visits';
   // Grid stays in sight; Auto-fit (Auto-rotate in 3D) beside it while the box is open, the other one
@@ -7109,11 +7109,16 @@ function rampColour(k, n) {
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), A = hex(stops[a]), B = hex(stops[Math.min(a + 1, stops.length - 1)]);
   return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(', ')})`;
 }
-// an ant's chips: by the digits, its turns (left, right) in the walk's colours; by its rule, its states
-const antChipColour = (k) => antByDigits ? DIRECTION_COLOURS[arrowsOf(current.mode)[ANTS[current.mode].turns[turnWords(antDigitRules[current.mode])[k]]]]
+// an ant's turn by its family, the same on every tiling: left blue, right pink (a sharp one deeper),
+// straight on gold (its arrow on hexagons and triangles, ↖ ↗, is a plain left or right there)
+const deeper = (c) => `rgb(${rgbOf(c).map((v) => Math.round(v * 0.62)).join(', ')})`;
+const antTurnColour = (a) => ({ '↖': DIRECTION_COLOURS['←'], '↗': DIRECTION_COLOURS['→'], '↙': deeper(DIRECTION_COLOURS['←']), '↘': deeper(DIRECTION_COLOURS['→']) }[a]
+  ?? DIRECTION_COLOURS[a] ?? GREY);
+// an ant's chips: by the digits, its turns (left, right); by its rule, its states
+const antChipColour = (k) => antByDigits ? antTurnColour(arrowsOf(current.mode)[ANTS[current.mode].turns[turnWords(antDigitRules[current.mode])[k]]])
   : rampColour(k, antColours(current.mode));
 // a digit's colour: its direction's (an ant's: the turn it took, or its state), else in the digits' order
-const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : DIRECTION_COLOURS[arrowsOf(current.mode)[k]] ?? GREY)
+const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : antTurnColour(arrowsOf(current.mode)[k]))
   : walk.skipZeros ? (k ? DIGIT_COLORS[0] : GREY)  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
   : arrowsOf(current.mode)[k] ? DIRECTION_COLOURS[arrowsOf(current.mode)[k]]
   : walk.base <= DIGIT_COLORS.length ? DIGIT_COLORS[k] : `hsl(${(k * 360) / walk.base}, 80%, 62%)`;
@@ -8144,7 +8149,7 @@ function glFlat(to) {
   };
   if (fillCount) tiles(S.flatFill, S.fillTpl, fillCount, $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1, 1);
   // the cells, faded under Path (as the 2D layer, see updateDisplayMenu)
-  if (cellCount) tiles(S.flatCells, S.cellTpl, cellCount, shows('cells') && line ? 0.3 : 1, 1);
+  if (cellCount) tiles(S.flatCells, S.cellTpl, cellCount, shows('cells') && line ? 0.15 : 1, 1);
   if (line && to > 0) {
     const u = common(prog.flatPath);
     if (cells) gl.uniform1i(u('uColour'), 0);  // Path: the rainbow line over the cells, whatever colours them
@@ -9274,13 +9279,13 @@ function setAntRamp(ramp) {
 // line over its cells faded (an ant's in Amber); Directions, a colour per digit (an ant's, its turns);
 // Rainbow along the walk; Heatmap of visits. [look, name, its picture's colours or null, title]
 const CELL_MODES = [['ink', 'Ink', 'An ant’s cells by their state, pale to deep'], ['amber', 'Amber', 'An ant’s cells by their state, in amber'],
-  ['path', 'Path', 'The walk’s rainbow line over its cells, faded'], ['digit', 'Directions', 'A colour per digit: the direction of each step (an ant’s, the turn it took)'],
-  ['cells', 'Rainbow', 'The cells in the rainbow along the walk'], ['visits', 'Heatmap', 'The cells by how often the walk comes back to them']];
+  ['path', 'Path', 'The walk’s rainbow line over its cells, faded'], ['cells', 'Rainbow', 'The cells in the rainbow along the walk'],
+  ['digit', 'Directions', 'A colour per digit: the direction of each step (an ant’s, the turn it took: left blue, right pink, straight on gold)'], ['visits', 'Heatmap', 'The cells by how often the walk comes back to them']];
 const cellModeOf = (mode) => ($('showPath').checked ? 'path' : mode.antOf && $('colorMode').value === 'digit' && antRamp ? antRamp : $('colorMode').value);
 function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over faded cells
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
   const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
-  if (look === 'path') return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2" fill="${ANT_RAMPS.amber[theme][1]}" opacity="0.35"/>`
+  if (look === 'path') return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2" fill="${ANT_RAMPS.amber[theme][1]}" opacity="0.2"/>`
     + [[4, 18, 9, 18], [9, 18, 9, 11], [9, 11, 15, 11], [15, 11, 15, 6], [15, 6, 20, 6]].map(([a, b, c, d], i) => `<path d="M${a} ${b}L${c} ${d}" stroke="${g(i / 4)}" stroke-width="2.4" stroke-linecap="round"/>`).join('') + '</svg>';
   if (look === 'ink' || look === 'amber') return swatch(ANT_RAMPS[look][theme]);
   if (look === 'digit') return swatch(['↑', '→', '←', '↓'].map((d) => DIRECTION_COLOURS[d]));
@@ -9288,8 +9293,7 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
   const stops = (fs) => fs.map((f) => `<stop offset="${f}" stop-color="${g(f)}"/>`).join('');
   if (look === 'cells') return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="cellRainbow">${stops([0, 0.25, 0.5, 0.75, 1])}</linearGradient></defs>`
     + '<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#cellRainbow)"/></svg>';
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="cellHeat">${[1, 0.75, 0.5, 0.25, 0].map((f, i) => `<stop offset="${i / 4}" stop-color="${g(f)}"/>`).join('')}</radialGradient></defs>`
-    + '<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#cellHeat)"/></svg>';
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;  // square rings, hot inside
 }
 function renderCellModes(mode) {
   $('cellModes').hidden = !shows('cells');
