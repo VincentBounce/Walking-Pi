@@ -137,7 +137,7 @@ Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn r
 
 ### Game of Life
 
-A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus (squares, hexagons or Cairo pentagons), a Möbius strip (its two faces one surface, over its edge onto the face behind; in 2 colours, a face each), a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
+A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus (squares, hexagons, triangles or Cairo pentagons), a Möbius strip (its two faces one surface, over its edge onto the face behind; in 2 colours, a face each), a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
 
 - **Rules** in `B…/S…/C…` notation: Conway's Life, HighLife, Seeds, Brian's Brain, Star Wars, Maze, Day & Night…, rules found by scans that last long on hexagons, triangles and Cairo pentagons, or any rule typed. With C states a cell is `0` dead, `1` alive or `2`… dying.
 - **Populations:** 1 to 12 colours that fight by the same rule (a newborn takes the colour of most of its live neighbours), each starting in its part of the grid: its block of the plane, its face or corner of the solid.
