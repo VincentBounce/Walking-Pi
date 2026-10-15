@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.566';
+const VERSION = '0.1.567';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -688,12 +688,12 @@ const PALETTES = {
   // digits: for the walks whose digits are no direction, in the same colours; grey: a spiral's 0
   dark: { light: 60, digits: ['#4f7bff', '#f0609f', '#f2b630', '#2fbdb7', '#9270f5', '#7fc244', '#f28042', '#d466f0'], grey: '#e6edf3', mono: '#f0b429',
           directions: { '←': '#4f7bff', '↑': '#f2b630', '→': '#f0609f', '↓': '#2fbdb7', '↖': '#7fc244', '↗': '#d466f0', '↘': '#f28042', '↙': '#9270f5', '⊙': '#f06b6b', '⊗': '#45c8f0' },
-          unlit: '#1f2630', trail: '#6b7f99', alive: '#e6edf3', edge: 'rgba(255, 255, 255, 0.25)', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
+          unlit: '#1f2630', trail: '#6b7f99', fade: '#8c7a5c', alive: '#e6edf3', edge: 'rgba(255, 255, 255, 0.25)', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
   light: { light: 48, digits: ['#2f5bea', '#e8438a', '#e0a100', '#13a8a2', '#7c4dff', '#5fa82a', '#f0702a', '#c03fe0'], grey: '#6e7781', mono: '#bf8700',
            directions: { '←': '#2f5bea', '↑': '#e0a100', '→': '#e8438a', '↓': '#13a8a2', '↖': '#5fa82a', '↗': '#c03fe0', '↘': '#f0702a', '↙': '#7c4dff', '⊙': '#e5484d', '⊗': '#1aa3d6' },
-           unlit: '#eef1f5', trail: '#7d8896', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
+           unlit: '#eef1f5', trail: '#7d8896', fade: '#a08a62', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
 };
-const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], DIRECTION_COLOURS = {};
+const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], LIFE_FADE = [], DIRECTION_COLOURS = {};
 // Life's colours (civilisations), as bright as the walks' rainbow in each theme (its saturation and
 // lightness): red, blue, gold, green, violet, orange, cyan, pink, lime, teal, indigo, magenta
 const LIFE_HUES = [2, 214, 45, 130, 270, 25, 188, 335, 85, 165, 240, 300], LIFE_COLOURS = [];
@@ -705,9 +705,13 @@ function setPalette(theme) {
   UNLIT = P.unlit; LIFE_ALIVE = P.alive; EDGE = P.edge; EDGE_RGB = P.edgeRgb; EDGE_ALPHA = P.edgeAlpha;
   SHADE = P.shade; FADE_EDGES = !!P.fadeEdges; TILE_LIFT = P.tileLift ?? 0;
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), [a, b] = [hex(P.trail), hex(P.unlit)];
-  for (let i = 0; i < 8; i++) {  // the 8 shades of a dead Life cell, from the trail colour to unlit
-    const f = 1 - i / 8, mix = (k) => Math.round(b[k] + (a[k] - b[k]) * f);
+  // the 8 shades of a dying Life cell (a Generations rule's stages), from the trail colour to unlit; and of
+  // its trail once dead (Trail), in Ink, warm, not to be taken for a state
+  const ink = hex(P.fade);
+  for (let i = 0; i < 8; i++) {
+    const f = 1 - i / 8, mix = (k) => Math.round(b[k] + (a[k] - b[k]) * f), inked = (k) => Math.round(b[k] + (ink[k] - b[k]) * f);
     LIFE_TRAIL[i] = `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
+    LIFE_FADE[i] = `rgb(${inked(0)}, ${inked(1)}, ${inked(2)})`;
   }
   for (let i = 0; i < BANDS; i++) GRADIENT[i] = `hsl(${190 + (200 * i) / (BANDS - 1)}, 85%, ${P.light}%)`;
   LIFE_HUES.forEach((h, k) => { LIFE_COLOURS[k] = `hsl(${h}, 85%, ${P.light}%)`; });
@@ -1332,7 +1336,7 @@ function lifeLookPicture(look) {
   const g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
   const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
   if (look === 'mono') return swatch(lifeColours > 1 ? [LIFE_COLOURS[0], UNLIT, UNLIT, LIFE_COLOURS[1]] : [LIFE_ALIVE, UNLIT, UNLIT, LIFE_ALIVE]);  // in colours: a red, a blue
-  if (look === 'gradient') return swatch([g(1), g(0.5), g(0), LIFE_TRAIL[Math.floor(LIFE_TRAIL.length / 3)]]);  // warm newborns to cold old cells
+  if (look === 'gradient') return swatch([g(1), g(0.5), g(0), LIFE_FADE[Math.floor(LIFE_FADE.length / 3)]]);  // warm newborns to cold old cells
   return heatRings(g);
 }
 // square rings, hot inside (a heatmap, Life's activity)
@@ -5553,7 +5557,7 @@ function drawLifePlane() {
     planeColours = new Uint32Array(planeImage.data.buffer);
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
-  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
+  const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
@@ -5563,11 +5567,11 @@ function drawLifePlane() {
   const { alive: a, age, activity, died } = L, fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
   for (let t = 0; t < n; t++) {
     const st = a[t];
-    px[t] = L.colours > 1 && colour !== 'digit' ? civ[st] || (cur - died[t] < fade ? trail[cur - died[t]] : 0)
+    px[t] = L.colours > 1 && colour !== 'digit' ? civ[st] || (cur - died[t] < fade ? inked[cur - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : cur - died[t] < fade ? trail[cur - died[t]] : 0)
+      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : cur - died[t] < fade ? inked[cur - died[t]] : 0)
       : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
-      : cur - died[t] < fade ? trail[cur - died[t]] : 0;  // age of live cells, a trail fading after death
+      : cur - died[t] < fade ? inked[cur - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
   if (kind === 'square') {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
@@ -5600,8 +5604,10 @@ function drawLifePlane() {
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
-const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane]
-  : ['cube', 'pits', 'torus'].includes(mode.sphere) ? '■' : ['hextorus', 'hexsphere'].includes(mode.sphere) ? '⬡' : ['cairotorus', 'mobiusCairo', 'kleinCairo'].includes(mode.sphere) ? '⬠' : mode.sphere === 'klein' ? '■' : mode.sphere === 'kleinHex' ? '⬡' : '▲');
+// the cells of each surface (else triangles): one table for every surface, whatever its shape
+const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
+                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠' };
+const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠' }[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -7326,16 +7332,16 @@ function drawSphere() {
     const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
     if (L.colours > 1 && colour !== 'digit') {  // each civilisation in its colour, then the trail of the dead (Trail)
       const civ = civColours(L.colours, L.C);
-      palette = [null, ...civ, ...LIFE_TRAIL];
+      palette = [null, ...civ, ...LIFE_FADE];
       levelOf = (t) => L.alive[t] || (trailOn() && cur - L.died[t] <= LIFE_TRAIL.length ? civ.length + cur - L.died[t] : 0);
     } else if (colour === 'mono') {
-      palette = [null, LIFE_ALIVE, ...LIFE_TRAIL];
+      palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
         : trailOn() && L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? 1 + cur - L.died[t] : 0);  // the trail after death (Trail)
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
     } else {  // age of live cells, the rainbow backwards (orange = newborn … cyan = old); dying stages, or a trail fading after death
-      palette = [null, ...[...grad].reverse(), ...LIFE_TRAIL];
+      palette = [null, ...[...grad].reverse(), ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];
       levelOf = (t) => {
         const st = L.alive[t];
         if (st === 1) return Math.min(LEVELS, logLevel(L.age[t], 64));
