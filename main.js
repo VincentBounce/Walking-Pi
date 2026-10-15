@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.573';
+const VERSION = '0.1.574';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1253,7 +1253,7 @@ function updateDisplayMenu() {
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   $('lifeTrailRow').hidden = !mode.life;
-  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, dying stages
+  renderTrailButton();
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 
@@ -1309,12 +1309,20 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
 const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
 const trailOn = () => $('lifeTrail').checked && trailApplies();
+// Trail as a tile: lit (gold) when on; its picture a live cell with its comet of fading Ink behind, or alone;
+// greyed for Activity and dying stages
+function renderTrailButton() {
+  const b = $('lifeTrailButton'), on = $('lifeTrail').checked, sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
+  b.disabled = !trailApplies();
+  b.classList.toggle('active', on && !b.disabled);
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${on ? sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1]) : ''}${sq(3, LIFE_ALIVE)}</svg><span>Trail</span>`;  // up the diagonal
+}
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
   box.className = L ? 'nav-shapes cell-modes' : 'choice-list';
   $('lifeTrailRow').hidden = !L;
-  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, dying stages
+  renderTrailButton();
   if (!L) { renderChoiceButtons(sel, box); return; }
   const names = { mono: 'States', gradient: 'Age', digit: 'Activity' };
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
@@ -9093,7 +9101,8 @@ $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerC
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
 $('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
-$('lifeTrail').addEventListener('change', () => { needsFull = true; });
+$('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
+$('lifeTrailButton').addEventListener('click', () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
