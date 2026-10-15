@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.581';
+const VERSION = '0.1.582';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1228,10 +1228,9 @@ function updateDisplayMenu() {
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
-  $('cellsLabel').hidden = !shows('heatmap');
-  $('showPathRow').hidden = !shows('heatmap') || shows('cells') || !!mode.antOf;  // in 2D and for an ant, Path among the cells' looks
-  // 2D: the cells' colours, Directions (one colour per digit; an ant's, by its turns or its states), Rainbow or Heatmap; a surface: Heatmap or not
-  $('heatmapRow').hidden = !shows('heatmap') || shows('cells') || !!mode.antOf;  // an ant on a surface: its cells' colours
+  $('cellsLabel').hidden = !shows('heatmap') || !!mode.antOf;  // (an ant: its cells' looks need no title)
+  // the cells' looks as tiles (see renderCellModes), in 2D and on a surface: no boxes for Path and Heatmap
+  $('showPathRow').hidden = $('heatmapRow').hidden = true;
   renderCellModes(mode);
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
   // in 2D, Path fades the cells under the rainbow line (on a layer of its own), so that it shows all along
@@ -1322,22 +1321,23 @@ function renderTrailButton() {
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
-  box.className = L ? 'nav-shapes cell-modes' : 'choice-list';
+  box.className = 'nav-shapes cell-modes';
   renderTrailButton();
-  if (!L) { renderChoiceButtons(sel, box); return; }
-  const names = { mono: 'States', gradient: 'Age', digit: 'Activity' };
+  // a walk's (Space): Rainbow, Directions, One colour, as the looks of its cells
+  const names = L ? { mono: 'States', gradient: 'Age', digit: 'Activity' } : { gradient: 'Rainbow', cells: 'Rainbow', visits: 'Heatmap', digit: 'Directions', mono: 'One colour' };
+  const picture = (v) => (L ? lifeLookPicture(v) : v === 'mono' ? `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2" fill="${MONO}"/></svg>`
+    : cellModePicture(v === 'gradient' ? 'cells' : v));
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
-  box.style.gridTemplateColumns = '';  // 4 a row, as the shapes
   box.replaceChildren(...looks.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.title = o.text;
-    b.innerHTML = `${lifeLookPicture(o.value)}<span>${names[o.value]}</span>`;
+    b.innerHTML = `${picture(o.value)}<span>${names[o.value]}</span>`;
     b.classList.toggle('active', o.value === sel.value);
     b.disabled = o.disabled;
     b.addEventListener('click', () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); });
     return b;
-  }), trailButton);  // then Trail, a switch
+  }), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
@@ -7388,12 +7388,13 @@ function drawSphere() {
   // palette[0] is the unlit background; levelOf(t) picks each tile's palette entry
   let palette = [null, ...grad];
   let levelOf = (t) => (visits[t] ? logLevel(visits[t], maxVisits) : 0);  // walk: visits, log scale
-  const L = walk.life, line = !L && ($('colorMode').value === 'gradient' || (walk.ant && $('colorMode').value === 'cells'));  // (an ant's Rainbow)
+  const L = walk.life, line = !L && ['gradient', 'cells'].includes($('colorMode').value);  // Rainbow (the tiles Rainbow picks: cells)
   const path = !L && (MODES[$('mode').value].cells ? $('showPath').checked : line);  // on cells, with Show path only
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
     const cells = MODES[$('mode').value].cells && firstVisits(), areas = !walk.ant && $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
-    palette = [null, ...grad, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
+    const tiles = path && MODES[$('mode').value].cells ? grad.map((c) => faded(c, 0.3)) : grad;  // Path: the tiles faded under the line
+    palette = [null, ...tiles, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
       : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
@@ -9434,7 +9435,8 @@ function setAntRamp(ramp) {
 const CELL_MODES = [['ink', 'Ink', 'An ant’s cells by their state, pale to deep'], ['amber', 'Amber', 'An ant’s cells by their state, in amber'],
   ['path', 'Path', 'The walk’s rainbow line over its cells, faded'], ['cells', 'Rainbow', 'The cells in the rainbow along the walk'],
   ['digit', 'Directions', 'A colour per digit: the direction of each step (an ant’s, the turn it took: left blue, right pink, straight on gold)'], ['visits', 'Heatmap', 'The cells by how often the walk comes back to them']];
-const cellModeOf = (mode) => ($('showPath').checked ? 'path' : mode.antOf && $('colorMode').value === 'digit' && antRamp ? antRamp : $('colorMode').value);
+const cellModeOf = (mode) => ($('showPath').checked ? 'path' : mode.antOf && $('colorMode').value === 'digit' && antRamp ? antRamp
+  : $('colorMode').value === 'gradient' ? 'cells' : $('colorMode').value);  // (a surface's Rainbow: gradient)
 function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over faded cells
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
   const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
@@ -9452,9 +9454,10 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
   return heatRings(g);
 }
 function renderCellModes(mode) {
-  $('cellModes').hidden = !shows('cells') && !mode.antOf;  // a 2D walk on cells, an ant anywhere
+  $('cellModes').hidden = !shows('cells') && !shows('heatmap') && !mode.antOf;  // a walk in 2D or on a surface, an ant anywhere
   if ($('cellModes').hidden) return;
-  const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber')), now = cellModeOf(mode);
+  // an ant: all six; a walk in 2D: Path, Rainbow, Directions, Heatmap; on a surface: Path, Rainbow, Heatmap
+  const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber' && (shows('cells') || look !== 'digit'))), now = cellModeOf(mode);
   $('cellModes').replaceChildren(...looks.map(([look, name, title]) => {
     const b = document.createElement('button');
     b.type = 'button';
