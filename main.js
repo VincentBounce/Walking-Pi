@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.555';
+const VERSION = '0.1.556';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1223,24 +1223,15 @@ function updateDisplayMenu() {
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
-  $('cellsLabel').hidden = $('showPathRow').hidden = $('cellDigitsRow').hidden = !shows('heatmap');
+  $('cellsLabel').hidden = !shows('heatmap');
+  $('showPathRow').hidden = !shows('heatmap') || shows('cells');  // in 2D, Path among the cells' looks
   // 2D: the cells' colours, Directions (one colour per digit; an ant's, by its turns or its states), Rainbow or Heatmap; a surface: Heatmap or not
   $('heatmapRow').hidden = !shows('heatmap') || shows('cells') || !!mode.antOf;  // an ant on a surface: its cells' colours
-  $('cellColours').hidden = !shows('cells');
-  // an ant: Directions, or its states in Ink (the default), Amber or Teal
-  const byState = !!mode.antOf && (!shows('cells') || $('colorMode').value === 'digit') && !!antRamp;  // on a surface, always by state
-  for (const b of $('cellColours').children) {
-    b.classList.toggle('active', $('colorMode').value === b.dataset.colour && !byState);
-    b.disabled = !mode.cells || (b.dataset.colour === 'visits' && !useful('visits'));
-  }
-  $('antRamps').hidden = !mode.antOf;
-  for (const b of $('antRamps').children) b.classList.toggle('active', byState && antRamp === b.dataset.ramp);
+  renderCellModes(mode);
   $('showPath').disabled = !mode.cells;  // along the grid, the walk is the path
-  // in 2D, Show path dims the cells under it, as the shading does on a surface, so that the rainbow
-  // line (on a layer of its own) shows all along, over cells of its own colour too
-  $('pathLayer').style.filter = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 'brightness(0.85)' : '';
+  // in 2D, Path fades the cells under the rainbow line (on a layer of its own), so that it shows all along
+  $('pathLayer').style.opacity = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 0.3 : '';
   $('heatmap').disabled = !mode.cells;
-  $('cellDigits').disabled = !mode.cells || mode.lattice === 'sphere';
   $('heatmap').checked = $('colorMode').value === 'visits';
   // Grid stays in sight; Auto-fit (Auto-rotate in 3D) beside it while the box is open, the other one
   // at the top of the view's settings, above Centered pattern (Default orientation), Perspective and the shape
@@ -7103,13 +7094,12 @@ function styleKey(i) {
 }
 
 // An ant's cells by their state: a ramp from pale to deep in the order of its colours (the cells it
-// never walked are the background), per theme: Ink (Langton's black on white, softened), Amber, Teal.
+// never walked are the background), per theme: Ink (Langton's black on white, softened), Amber.
 // On a dark page the ramp goes the other way, from dark to bright. With Directions (antRamp null): by
 // the turn each one took, in the walk's colours (left blue as the turtle's, right red)
 const ANT_RAMPS = {
   ink: { light: ['#e7e0d0', '#b9ae98', '#6f6a60', '#2b2f3a'], dark: ['#3a4150', '#6b7486', '#a9b0bd', '#e8e2d4'] },
   amber: { light: ['#f7e6bd', '#f0c35a', '#c98a10', '#8a5200'], dark: ['#4a3a1a', '#8a6418', '#c98f1f', '#f0b429'] },
-  teal: { light: ['#cfeee6', '#5dcaa5', '#1d9e75', '#085041'], dark: ['#0f3b33', '#1d6e5c', '#3fae8c', '#9fe1cb'] },
 };
 let antRamp = 'ink';
 // state k of n along the ramp (Ink when Directions is on: an ant's rule chips are its states)
@@ -8153,10 +8143,11 @@ function glFlat(to) {
     off(locs);
   };
   if (fillCount) tiles(S.flatFill, S.fillTpl, fillCount, $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1, 1);
-  // the cells, dimmed under Show path (as the 2D layer's filter, see updateDisplayMenu)
-  if (cellCount) tiles(S.flatCells, S.cellTpl, cellCount, 1, shows('cells') && line ? 0.85 : 1);
+  // the cells, faded under Path (as the 2D layer, see updateDisplayMenu)
+  if (cellCount) tiles(S.flatCells, S.cellTpl, cellCount, shows('cells') && line ? 0.3 : 1, 1);
   if (line && to > 0) {
     const u = common(prog.flatPath);
+    if (cells) gl.uniform1i(u('uColour'), 0);  // Path: the rainbow line over the cells, whatever colours them
     gl.uniform1f(u('uN'), Math.max(1, rainbowLength()));
     gl.uniform1f(u('uFrom'), walk.loop?.from ?? 0);
     gl.uniform1f(u('uPeriod'), closedLoop() ? walk.loop.period : 0);
@@ -8175,27 +8166,7 @@ function glFlat(to) {
   gl.disable(gl.BLEND);
   gl.activeTexture(gl.TEXTURE0);
   S.drawn = true;
-  // Digits: each cell in view with the digit that led there last, in 2D over the cells
   layers.path.clearRect(0, 0, cw, ch);
-  const size = s * DIGIT_SIZE[walk.lattice];
-  if (cells && $('cellDigits').checked && !$('cellDigits').disabled && size >= 8) {
-    const ctx = layers.path, V = visitCells(), last = new Map(), m = size;
-    for (let p = 1; p <= to; p++) {
-      const X = ox + walk.xs[p] * s, Y = oy + walk.ys[p] * s;
-      if (X < -m || Y < -m || X > cw + m || Y > ch + m || (walk.skipZeros && walk.digits[p - 1] === 0)) continue;
-      last.set(V.cell[p], p);
-    }
-    ctx.font = `${Math.round(size)}px ui-monospace, Menlo, monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillStyle = '#fff';
-    for (const p of last.values()) {
-      ctx.strokeText(walk.digits[p - 1], ox + walk.xs[p] * s, oy + walk.ys[p] * s);
-      ctx.fillText(walk.digits[p - 1], ox + walk.xs[p] * s, oy + walk.ys[p] * s);
-    }
-  }
   return true;
 }
 
@@ -8328,9 +8299,6 @@ function visitCells() {
   return (visitData = { cell, max, seen: new Int32Array(total.length) });
 }
 
-// Digits: the size of a cell's digit, for a cell of side 1 (a triangle's centre has less room);
-// shown from 8 pixels
-const DIGIT_SIZE = { square: 0.6, hex: 0.5, tri: 0.35, cairo: 0.45 };
 // Draw segments [from, to): segment i joins point i to point i+1.
 function drawSegments(from, to) {
   if (to <= from) return;
@@ -8352,28 +8320,12 @@ function drawSegments(from, to) {
     // by a pixel: no seam of the background along an edge two runs share
     let batch = null;
     const flush = () => { if (batch) { ctx.fillStyle = ctx.strokeStyle = batch; ctx.lineWidth = 1; ctx.fill(); ctx.stroke(); } };
-    // Digits: each cell then writes the digit that led there, once big enough to read (a cell
-    // walked again is painted over, so it shows its last digit)
-    const size = s * DIGIT_SIZE[walk.lattice], digits = $('cellDigits').checked && !$('cellDigits').disabled && size >= 8;
-    if (digits) {
-      ctx.font = `${Math.round(size)}px ui-monospace, Menlo, monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-    }
     // a spiral's 0 draws nothing
     for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
       if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
       const c = colourOf(p);
       if (c !== batch) { flush(); ctx.beginPath(); batch = c; }
       tilePath(ctx, xs[p], ys[p]);
-      if (!digits || p === 0) continue;
-      flush();
-      batch = null;
-      ctx.fillStyle = '#fff';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-      ctx.strokeText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
-      ctx.fillText(walk.digits[p - 1], ox + xs[p] * s, oy + ys[p] * s);
     }
     flush();
     if (!$('showPath').checked || $('showPath').disabled) return;
@@ -8383,13 +8335,15 @@ function drawSegments(from, to) {
   ctx.lineWidth = overCells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6));
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  // over cells (Path): the rainbow along the walk, whatever colours the cells
+  const keyOf = overCells ? (j) => Math.floor((roundStep(j) * BANDS) / rainbowLength()) : styleKey, colourOfKey = overCells ? (k) => GRADIENT[k] : styleColor;
   let i = from;
   while (i < to) {
-    const k = styleKey(i);
-    ctx.strokeStyle = styleColor(k);
+    const k = keyOf(i);
+    ctx.strokeStyle = colourOfKey(k);
     ctx.beginPath();
     ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
-    while (i < to && styleKey(i) === k) {
+    while (i < to && keyOf(i) === k) {
       const x = ox + xs[i + 1] * s, y = oy + ys[i + 1] * s;
       if (walk.skipZeros && walk.digits[i] === 0) ctx.moveTo(x, y);  // spiral: 0 = no line
       else ctx.lineTo(x, y);
@@ -9310,23 +9264,54 @@ $('heatmap').addEventListener('change', () => {
   $('colorMode').value = $('heatmap').checked ? 'visits' : 'gradient';
   $('colorMode').dispatchEvent(new Event('change'));
 });
-// in 2D: Directions (a colour per digit), Rainbow or Heatmap; an ant's states below
-// an ant's cells: by their turn (Directions) or their state (Ink, Amber, Teal)
+// an ant's cells: by their turn (Directions) or their state (Ink, Amber)
 function setAntRamp(ramp) {
   antRamp = ramp;
   if (walk.ant) walk.keys = ramp ? walk.antStates : walk.antTurns;
   document.querySelectorAll('#ruleChips b').forEach((b, k) => { if (walk.ant) b.style.background = antChipColour(k); });
 }
-for (const b of $('cellColours').children) {
-  b.addEventListener('click', () => {
-    if (b.dataset.colour === 'digit') setAntRamp(null);
-    $('colorMode').value = b.dataset.colour; $('colorMode').dispatchEvent(new Event('change'));
-  });
+// The looks of a 2D walk on cells, as square buttons: an ant's states in Ink or Amber; Path, the rainbow
+// line over its cells faded (an ant's in Amber); Directions, a colour per digit (an ant's, its turns);
+// Rainbow along the walk; Heatmap of visits. [look, name, its picture's colours or null, title]
+const CELL_MODES = [['ink', 'Ink', 'An ant’s cells by their state, pale to deep'], ['amber', 'Amber', 'An ant’s cells by their state, in amber'],
+  ['path', 'Path', 'The walk’s rainbow line over its cells, faded'], ['digit', 'Directions', 'A colour per digit: the direction of each step (an ant’s, the turn it took)'],
+  ['cells', 'Rainbow', 'The cells in the rainbow along the walk'], ['visits', 'Heatmap', 'The cells by how often the walk comes back to them']];
+const cellModeOf = (mode) => ($('showPath').checked ? 'path' : mode.antOf && $('colorMode').value === 'digit' && antRamp ? antRamp : $('colorMode').value);
+function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over faded cells
+  const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
+  const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
+  if (look === 'path') return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2" fill="${ANT_RAMPS.amber[theme][1]}" opacity="0.35"/>`
+    + [[4, 18, 9, 18], [9, 18, 9, 11], [9, 11, 15, 11], [15, 11, 15, 6], [15, 6, 20, 6]].map(([a, b, c, d], i) => `<path d="M${a} ${b}L${c} ${d}" stroke="${g(i / 4)}" stroke-width="2.4" stroke-linecap="round"/>`).join('') + '</svg>';
+  if (look === 'ink' || look === 'amber') return swatch(ANT_RAMPS[look][theme]);
+  if (look === 'digit') return swatch(['↑', '→', '←', '↓'].map((d) => DIRECTION_COLOURS[d]));
+  if (look === 'cells') return swatch([0, 1 / 3, 2 / 3, 1].map(g));
+  return swatch([g(0), g(0.15), g(0.15), g(1)]);  // Heatmap: mostly visited once, a few often
 }
-for (const b of $('antRamps').children) {
-  b.addEventListener('click', () => { setAntRamp(b.dataset.ramp); $('colorMode').value = 'digit'; $('colorMode').dispatchEvent(new Event('change')); });
+function renderCellModes(mode) {
+  $('cellModes').hidden = !shows('cells');
+  if ($('cellModes').hidden) return;
+  const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber')), now = cellModeOf(mode);
+  $('cellModes').style.gridTemplateColumns = `repeat(${looks.length === 6 ? 3 : 4}, minmax(0, 1fr))`;
+  $('cellModes').replaceChildren(...looks.map(([look, name, title]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = title;
+    b.innerHTML = `${cellModePicture(look)}<span>${name}</span>`;
+    b.classList.toggle('active', look === now);
+    b.disabled = !mode.cells || (look === 'visits' && !useful('visits'));
+    b.addEventListener('click', () => pickCellMode(look));
+    return b;
+  }));
 }
-$('cellDigits').addEventListener('change', () => { needsFull = true; });
+function pickCellMode(look) {
+  const ant = !!MODES[$('mode').value].antOf;
+  $('showPath').checked = look === 'path';
+  if (ant) setAntRamp(look === 'ink' ? 'ink' : look === 'amber' || look === 'path' ? 'amber' : null);
+  $('colorMode').value = look === 'ink' || look === 'amber' || (look === 'path' && ant) ? 'digit' : look === 'path' ? 'cells' : look;
+  $('colorMode').dispatchEvent(new Event('change'));
+  needsFull = true;
+  updateDisplayMenu();
+}
 $('showPath').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
