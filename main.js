@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.583';
+const VERSION = '0.1.584';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1207,12 +1207,12 @@ function describe(base, available) {
 // filled in the colour of their first visit, those it encloses (Fill areas) in the colour of the
 // step that closed them; or the tiles coloured by their visits (Heatmap, on cells only).
 const DISPLAY_BY_TAB = {
-  '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],
-  '3D walks': ['colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
+  '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],
+  '3D walks': ['colors', 'digit', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
   'Automata on the plane': ['colors', 'digit', 'mono', 'grid', 'sky'],
   'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
-  '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'mono', 'grid'],  // the 2D walks' menu, some of it greyed out
+  '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
@@ -1249,7 +1249,7 @@ function updateDisplayMenu() {
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
   $('fillName').textContent = walk.vert && current?.fraction ? 'Area · 2 cells max on ↻' : 'Area';  // a fraction along a grid (see areaSteps)
   // Light (translucent): only over a line, which then shows through the areas it closed in its own colour
-  $('fillTranslucent').disabled = !(shows('translucent') && $('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
+  $('fillTranslucent').disabled = !(shows('translucent') && $('fillAreas').checked && fillAreasApply());
   renderAreaModes();
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   renderTrailButton();
@@ -1323,10 +1323,9 @@ function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
   box.className = 'nav-shapes cell-modes';
   renderTrailButton();
-  // a walk's (Space): Rainbow, Directions, One colour, as the looks of its cells
-  const names = L ? { mono: 'States', gradient: 'Age', digit: 'Activity' } : { gradient: 'Rainbow', cells: 'Rainbow', visits: 'Heatmap', digit: 'Directions', mono: 'One colour' };
-  const picture = (v) => (L ? lifeLookPicture(v) : v === 'mono' ? `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2" fill="${MONO}"/></svg>`
-    : cellModePicture(v === 'gradient' ? 'cells' : v));
+  // a walk's (Space): Rainbow, Directions, as the looks of its cells
+  const names = L ? { mono: 'States', gradient: 'Age', digit: 'Activity' } : { gradient: 'Rainbow', cells: 'Rainbow', visits: 'Heatmap', digit: 'Directions' };
+  const picture = (v) => (L ? lifeLookPicture(v) : cellModePicture(v === 'gradient' ? 'cells' : v));
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
   box.replaceChildren(...looks.map((o) => {
     const b = document.createElement('button');
@@ -1361,7 +1360,9 @@ const renderSkyButtons = () => {
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', on = $('sky').value === 'sky';
   const name = theme === 'light' ? 'Dawn sky' : 'Twilight sky';
   $('sky').options[0].text = name;
-  skyButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="skyPicture" x1="0" y1="0" x2="0" y2="1">${SKIES[theme].map(([f, c]) => `<stop offset="${f}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`
+  // the sky's picture, its colours deeper than the sky's own (pale behind a view, they would not read so small)
+  const deep = { light: [[0, '#7fa7de'], [0.5, '#c6b8e6'], [0.8, '#eea3b6'], [1, '#f39a68']], dark: [[0, '#0a1a4a'], [0.45, '#2c3f8f'], [0.75, '#6b3f8e'], [1, '#c8644f']] }[theme];
+  skyButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="skyPicture" x1="0" y1="0" x2="0" y2="1">${deep.map(([f, c]) => `<stop offset="${f}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`
     + `<rect x="2" y="2" width="20" height="20" rx="2" fill="${on ? 'url(#skyPicture)' : UNLIT}" stroke="var(--border)"/></svg><span>${name}</span>`;
   skyButton.classList.toggle('active', on);
   $('themeButtons').prepend(skyButton);  // first, before the themes
@@ -7222,7 +7223,6 @@ function drawHexGrid(ctx, pointy) {
 function styleKey(i) {
   switch ($('colorMode').value) {
     case 'digit': return walk.keys[i];
-    case 'mono': return 0;
     default: return Math.floor((roundStep(i) * BANDS) / rainbowLength());
   }
 }
@@ -7259,7 +7259,6 @@ const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : antTu
 function styleColor(k) {
   switch ($('colorMode').value) {
     case 'digit': return digitColour(k);
-    case 'mono': return MONO;
     default: return GRADIENT[k];
   }
 }
@@ -7831,8 +7830,7 @@ void main() {
   if (aKey > 254.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }  // a step that draws nothing (a spiral's 0)
   float i = float(gl_InstanceID);
   if (uPeriod > 0.0 && i >= uFrom + uPeriod) i = uFrom + mod(i - uFrom, uPeriod);  // each round of a loop as the first (see roundStep)
-  vCol = uColour == 2 ? texture(uPal, vec2((aKey + 0.5) / 256.0, 0.5)).rgb
-       : texture(uGrad, vec2(uColour == 1 ? 0.0 : (i + 0.5) / uN, 0.5)).rgb;
+  vCol = uColour == 2 ? texture(uPal, vec2((aKey + 0.5) / 256.0, 0.5)).rgb : texture(uGrad, vec2((i + 0.5) / uN, 0.5)).rgb;
   vec2 a = uView.yz + aA * uView.x, b = uView.yz + aB * uView.x, p = mix(a, b, aQuad.x);
   vec2 d = b - a; d = length(d) > 1e-4 ? normalize(d) : vec2(1.0, 0.0);
   p += (vec2(-d.y, d.x) * aQuad.y + d * (aQuad.x * 2.0 - 1.0)) * uWidth * 0.5;
@@ -7844,7 +7842,7 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
   flatTiles: [`#version 300 es
 in vec4 aC; uniform vec2 uTpl[24]; uniform float uAlpha, uBright; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec4 vCol;
 void main() {  // aC.z: the band of the rainbow, or the key of the digits' colours (uColour 2)
-  vec3 c = (uColour == 2 ? texture(uPal, vec2((aC.z + 0.5) / 256.0, 0.5)) : texture(uGrad, vec2(uColour == 1 ? 0.0 : (aC.z + 0.5) / 256.0, 0.5))).rgb * uBright;
+  vec3 c = (uColour == 2 ? texture(uPal, vec2((aC.z + 0.5) / 256.0, 0.5)) : texture(uGrad, vec2((aC.z + 0.5) / 256.0, 0.5))).rgb * uBright;
   vCol = vec4(c * uAlpha, uAlpha);  // premultiplied
   vec2 p = uView.yz + (aC.xy + uTpl[int(aC.w) * 6 + gl_VertexID]) * uView.x;
   gl_Position = vec4(p.x / uScreen.x * 2.0 - 1.0, 1.0 - p.y / uScreen.y * 2.0, 0.0, 1.0);
@@ -7893,7 +7891,6 @@ function glPalette() {
   const { gl } = GLS;
   gl.bindTexture(gl.TEXTURE_2D, GLS.grad);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, BANDS, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from(GRADIENT.flatMap((c) => [...rgbOf(c), 255])));
-  if (GLS.mono) { gl.deleteTexture(GLS.mono); GLS.mono = null; }
   GLS.keys.cubes = null;
   GLS.keys.pal = null;
 }
@@ -8258,21 +8255,13 @@ function glFlat(to) {
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, S.grad);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.pal);
-  if (!S.mono) {  // one colour: a texture of one texel
-    S.mono = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, S.mono);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from([...rgbOf(MONO), 255]));
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  }
-  const mono = mode === 'mono';
   const common = (p) => {
     gl.useProgram(p);
     const u = (name) => gl.getUniformLocation(p, name);
     gl.uniform3f(u('uView'), s, ox, oy);
     gl.uniform2f(u('uScreen'), cw, ch);
-    gl.uniform1i(u('uGrad'), mono ? 2 : 0);
-    gl.uniform1i(u('uColour'), mono ? 1 : mode === 'digit' ? 2 : 0);
+    gl.uniform1i(u('uGrad'), 0);
+    gl.uniform1i(u('uColour'), mode === 'digit' ? 2 : 0);
     return u;
   };
   const attrib = (p, name, buffer, size, type, stride, offset, divisor) => {
@@ -8361,11 +8350,11 @@ function glCubes(to) {
   }
   if (S.keys.cubes !== walk.wx || S.keys.cubesMode !== mode) {  // once per walk and colouring
     const at = new Float32Array(3 * (n + 1)), col = new Uint8Array(3 * (n + 1));
-    const rgb = mode === 'digit' ? Array.from({ length: walk.base }, (_, d) => rgbOf(digitColour(d))) : mode === 'mono' ? [rgbOf(MONO)] : GRADIENT.map(rgbOf);
+    const rgb = mode === 'digit' ? Array.from({ length: walk.base }, (_, d) => rgbOf(digitColour(d))) : GRADIENT.map(rgbOf);
     for (let p = 0; p <= n; p++) {
       const q = Math.max(1, p);  // the start, as its first step
       at.set([walk.wx[p], walk.wy[p], walk.wz[p]], 3 * p);
-      col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : mode === 'mono' ? rgb[0] : rgb[Math.floor((roundStep(q - 1) * BANDS) / rainbowLength())], 3 * p);
+      col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : rgb[Math.floor((roundStep(q - 1) * BANDS) / rainbowLength())], 3 * p);
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeAt); gl.bufferData(gl.ARRAY_BUFFER, at, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeCol); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
@@ -9433,7 +9422,7 @@ function setAntRamp(ramp) {
 const AREA_MODES = [['empty', 'Empty', 'No area filled'], ['light', 'Light', 'The areas the walk closes, translucent: its line shows through'],
   ['plain', 'Plain', 'The areas the walk closes, in the colour of the step that closed them']];
 function renderAreaModes() {
-  const off = !fillAreasApply(), light = shows('translucent') && $('colorMode').value !== 'cells';
+  const off = !fillAreasApply(), light = shows('translucent');
   const now = !$('fillAreas').checked ? 'empty' : $('fillTranslucent').checked && light ? 'light' : 'plain', c = GRADIENT[Math.round(0.55 * (BANDS - 1))];
   const picture = (look) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7L11 3L20 6L19 17L9 21L3 15Z" fill="${look === 'empty' ? 'none' : c}"`
     + `${look === 'light' ? ' fill-opacity="0.35"' : ''} stroke="${GRADIENT[Math.round(0.2 * (BANDS - 1))]}" stroke-width="2" stroke-linejoin="round"/></svg>`;  // a closed loop
@@ -9460,6 +9449,7 @@ const CELL_MODES = [['ink', 'Ink', 'An ant’s cells by their state, pale to dee
   ['digit', 'Directions', 'A colour per digit: the direction of each step (an ant’s, the turn it took: left blue, right pink, straight on gold)'], ['visits', 'Heatmap', 'The cells by how often the walk comes back to them']];
 const cellModeOf = (mode) => ($('showPath').checked ? 'path' : mode.antOf && $('colorMode').value === 'digit' && antRamp ? antRamp
   : $('colorMode').value === 'gradient' ? 'cells' : $('colorMode').value);  // (a surface's Rainbow: gradient)
+let pictureIds = 0;  // the gradients of the pictures, each its own id
 function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over faded cells
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
   const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
@@ -9472,8 +9462,9 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
   }
   // Rainbow: the app's rainbow from left to right; Heatmap: a hot core, cooling outwards
   const stops = (fs) => fs.map((f) => `<stop offset="${f}" stop-color="${g(f)}"/>`).join('');
-  if (look === 'cells') return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="cellRainbow">${stops([0, 0.25, 0.5, 0.75, 1])}</linearGradient></defs>`
-    + '<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#cellRainbow)"/></svg>';
+  const id = `rainbow${++pictureIds}`;  // its own: another picture's, replaced, would take it away
+  if (look === 'cells') return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="${id}">${stops([0, 0.25, 0.5, 0.75, 1])}</linearGradient></defs>`
+    + `<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#${id})"/></svg>`;
   return heatRings(g);
 }
 function renderCellModes(mode) {
