@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.556';
+const VERSION = '0.1.557';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9284,8 +9284,12 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
     + [[4, 18, 9, 18], [9, 18, 9, 11], [9, 11, 15, 11], [15, 11, 15, 6], [15, 6, 20, 6]].map(([a, b, c, d], i) => `<path d="M${a} ${b}L${c} ${d}" stroke="${g(i / 4)}" stroke-width="2.4" stroke-linecap="round"/>`).join('') + '</svg>';
   if (look === 'ink' || look === 'amber') return swatch(ANT_RAMPS[look][theme]);
   if (look === 'digit') return swatch(['↑', '→', '←', '↓'].map((d) => DIRECTION_COLOURS[d]));
-  if (look === 'cells') return swatch([0, 1 / 3, 2 / 3, 1].map(g));
-  return swatch([g(0), g(0.15), g(0.15), g(1)]);  // Heatmap: mostly visited once, a few often
+  // Rainbow: the app's rainbow from left to right; Heatmap: a hot core, cooling outwards
+  const stops = (fs) => fs.map((f) => `<stop offset="${f}" stop-color="${g(f)}"/>`).join('');
+  if (look === 'cells') return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="cellRainbow">${stops([0, 0.25, 0.5, 0.75, 1])}</linearGradient></defs>`
+    + '<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#cellRainbow)"/></svg>';
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="cellHeat">${[1, 0.75, 0.5, 0.25, 0].map((f, i) => `<stop offset="${i / 4}" stop-color="${g(f)}"/>`).join('')}</radialGradient></defs>`
+    + '<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#cellHeat)"/></svg>';
 }
 function renderCellModes(mode) {
   $('cellModes').hidden = !shows('cells');
