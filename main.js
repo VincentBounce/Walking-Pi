@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.600';
+const VERSION = '0.1.601';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5739,21 +5739,40 @@ function renderRuleSection() {
     b.addEventListener('click', () => { setRuleText(o.value); compute(); });
     return b;
   }));
-  // your own: the chips of the rule in use (Callahan's letters read as their counts)
-  const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark];
-  const counts = (table) => Array.from({ length: N + 1 }, (_, c) => (rule.iso ? Array.from({ length: 64 }, (_, m) => m).some((m) => table[16 + m] && m.toString(2).replace(/0/g, '').length === c) : table[c] === 1));
-  const write = (B, S, C) => `B${B.map((on, c) => (on ? c : '')).join('')}/S${S.map((on, c) => (on ? c : '')).join('')}${C > 2 ? `/C${C}` : ''}`;
-  const B = counts(rule.B), S = counts(rule.S);
+  // your own: the chips of the rule in use; on hexagons, for 2, 3 and 4 live neighbours, Callahan's letters
+  // too (where they sit: o side by side, m one cell apart, p opposite), a count partly on when only some are
+  const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡', LETTERS = ['o', 'm', 'p'];
+  const ofCount = (m) => m.toString(2).replace(/0/g, '').length;
+  const letters = (table) => Array.from({ length: N + 1 }, (_, c) => new Set(LETTERS.filter((x) => (rule.iso
+    ? Array.from({ length: 64 }, (_, m) => m).some((m) => table[16 + m] && ofCount(m) === c && (!hex || c < 2 || c > 4 || hexClass(m) === x.toUpperCase()))
+    : table[c] === 1))));
+  const write = (B, S, C) => {
+    const part = (set) => set.map((on, c) => (!on.size ? '' : !hex || c < 2 || c > 4 || on.size === 3 ? c : c + LETTERS.filter((x) => on.has(x)).join(''))).join('');
+    return `B${part(B)}/S${part(S)}${C > 2 ? `/C${C}` : ''}`;
+  };
+  const B = letters(rule.B), S = letters(rule.S);
+  const WHERE = { o: 'side by side', m: 'one cell apart', p: 'opposite' };
   for (const [id, set, cls] of [['ruleBirth', B, 'birth'], ['ruleSurvive', S, 'survive']]) {
-    $(id).replaceChildren(...set.map((on, c) => {
+    const chip = (text, on, title, click) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = c;
-      b.className = on ? cls : '';
-      b.title = `${c} live neighbour${c === 1 ? '' : 's'}`;
-      b.addEventListener('click', () => { set[c] = !set[c]; setRuleText(write(B, S, rule.C)); compute(); });
+      b.textContent = text;
+      b.className = on;
+      b.title = title;
+      b.addEventListener('click', () => { click(); setRuleText(write(B, S, rule.C)); compute(); });
       return b;
-    }));
+    };
+    const counts = set.map((on, c) => chip(c, on.size === 3 ? cls : on.size ? `${cls} partly` : '', `${c} live neighbour${c === 1 ? '' : 's'}`,
+      () => { set[c] = new Set(on.size ? [] : LETTERS); }));
+    const where = !hex ? [] : [2, 3, 4].map((c) => {
+      const g = document.createElement('span');
+      g.className = 'where';
+      g.append(c, ...LETTERS.map((x) => chip(x, set[c].has(x) ? cls : '', `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`,
+        () => { set[c].has(x) ? set[c].delete(x) : set[c].add(x); })));
+      return g;
+    });
+    $(id).replaceChildren(...counts, ...(where.length ? [Object.assign(document.createElement('div'), { className: 'wheres' })] : []));
+    $(id).querySelector('.wheres')?.append(...where);
   }
   $('statesLabel').textContent = rule.C === 2 ? '2 states' : `${rule.C} · ${rule.C - 2} dying`;
   $('statesDown').disabled = rule.C === 2;
