@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.576';
+const VERSION = '0.1.577';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1224,6 +1224,7 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Grid heads the box
                  autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
+  skyButton.hidden = $('skyRow').hidden;  // the sky's switch, among the themes
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
@@ -1252,7 +1253,6 @@ function updateDisplayMenu() {
   $('fillTranslucentRow').hidden = !shows('translucent');
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
-  $('lifeTrailRow').hidden = !mode.life;
   renderTrailButton();
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
@@ -1311,8 +1311,9 @@ const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').va
 const trailOn = () => $('lifeTrail').checked && trailApplies();
 // Trail as a tile: lit (gold) when on; its picture a live cell with its comet of fading Ink behind, or alone;
 // greyed for Activity and dying stages
+const trailButton = $('lifeTrailButton');  // kept: it goes after Life's looks, in their row (see renderColorButtons)
 function renderTrailButton() {
-  const b = $('lifeTrailButton'), on = $('lifeTrail').checked, sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
+  const b = trailButton, on = $('lifeTrail').checked, sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
   b.disabled = !trailApplies();
   b.classList.toggle('active', on && !b.disabled);
   b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${on ? sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1]) : ''}${sq(3, LIFE_ALIVE)}</svg><span>Trail</span>`;  // up the diagonal
@@ -1321,7 +1322,6 @@ function renderTrailButton() {
 function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
   box.className = L ? 'nav-shapes cell-modes' : 'choice-list';
-  $('lifeTrailRow').hidden = !L;
   renderTrailButton();
   if (!L) { renderChoiceButtons(sel, box); return; }
   const names = { mono: 'States', gradient: 'Age', digit: 'Activity' };
@@ -1336,7 +1336,7 @@ function renderColorButtons() {
     b.disabled = o.disabled;
     b.addEventListener('click', () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); });
     return b;
-  }));
+  }), trailButton);  // then Trail, a switch
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
@@ -1349,9 +1349,21 @@ function lifeLookPicture(look) {
 }
 // square rings, hot inside (a heatmap, Life's activity)
 const heatRings = (g) => `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;
-const renderSkyButtons = () => {  // the sky named after the theme: Dawn on a light page, Twilight on a dark one
-  $('sky').options[0].text = document.documentElement.dataset.theme === 'light' ? 'Dawn sky' : 'Twilight sky';
-  renderChoiceButtons($('sky'), $('skyButtons'));
+// the sky, a switch after the themes: named after the theme (Dawn on a light page, Twilight on a dark one),
+// its picture the sky, or the page's plain colour; shown where there is a sky (see updateDisplayMenu)
+const skyButton = document.createElement('button');
+skyButton.type = 'button';
+skyButton.className = 'switch';
+skyButton.title = 'The background: a sky in the page\'s tone, or plain';
+skyButton.addEventListener('click', () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); });
+const renderSkyButtons = () => {
+  const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', on = $('sky').value === 'sky';
+  const name = theme === 'light' ? 'Dawn sky' : 'Twilight sky';
+  $('sky').options[0].text = name;
+  skyButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="skyPicture" x1="0" y1="0" x2="0" y2="1">${SKIES[theme].map(([f, c]) => `<stop offset="${f}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`
+    + `<rect x="2" y="2" width="20" height="20" rx="2" fill="${on ? 'url(#skyPicture)' : UNLIT}" stroke="var(--border)"/></svg><span>${name}</span>`;
+  skyButton.classList.toggle('active', on);
+  $('themeButtons').append(skyButton);
 };
 
 function requestedDigits() {
@@ -9102,7 +9114,7 @@ $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPoin
 $('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
-$('lifeTrailButton').addEventListener('click', () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); });
+trailButton.addEventListener('click', () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
