@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.568';
+const VERSION = '0.1.569';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2182,7 +2182,8 @@ for (const w of Object.keys(MODES)) if (MODES[w].pivot || MODES[w].parity) MODE_
   for (const [w, n] of sorted) NAV[w] = n;
 }
 const NAV_KINDS = [['Walk', 'compass'], ['Ant', 'ant'], ['Life', 'glider']];
-const NAV_SPACES = ['2D', '3D', 'Surfaces'];
+// in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
+const NAV_SPACES = ['2D', 'Surfaces', '3D'], SPACE_NAMES = { '2D': '2D', Surfaces: '3D', '3D': 'Space' };
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
   Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', 'Klein bottle': 'klein' };
@@ -2304,12 +2305,8 @@ function renderModePicker() {
     return b;
   }));
   $('walkHeading').textContent = WALK_HEADINGS[kind];
-  // 2D, 3D, Surfaces (no 3D automata), those with nothing yet greyed
-  $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => kind !== 'Life' || sp !== '3D').map((sp) => {
-    const b = button(sp, sp === space, () => navGo(1, sp));
-    b.disabled = !navValues(1, [kind]).includes(sp);
-    return b;
-  }));
+  // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
+  $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
   $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) =>
     button(`${icon(SHAPE_ICONS[sh])}<span>${SHAPE_SHORT[sh] ?? sh}</span>`, sh === shape, () => navGo(2, sh), sh)));

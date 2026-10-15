@@ -102,7 +102,7 @@ The walker starts at the origin, heading north (up). Each mode sets the base of 
 
 The rabbit constant on **Parity** (squares) draws the Fibonacci word fractal. **Pivot** is the turtle of the L-systems: a turn costs no step, so turns pile up (two quarter turns: back the way you came). It exists where a step straight on does: along squares and triangles, on square and hexagon cells.
 
-### Walks on surfaces
+### Walks on surfaces (the 3D tab)
 
 Each surface is walked **along the grid** (from corner to corner, turning at each corner) or **on cells** (from tile to tile): Grid | Cells, beside the list.
 
@@ -129,7 +129,7 @@ Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn r
 - The unrolled torus, with the grid on, shows how its sheet closes up: a green double arrow (north) folding round its long edges and under it (they are glued, round the tube), and a red one (east) round its ends (glued, round the ring).
 - The **Möbius strip** is walked as a strip of paper: each square has two faces, each with its own cells, and a walker keeps to its face; at the strip's edge it goes round onto the face just behind. Both faces make one surface with no edge (2 starts on squares, 3 on hexagons and triangles); at a hexagon strip's zigzag edge a corner is not flat, and turns there are measured as a share of the way round it.
 
-### 3D walks
+### Walks in space (the Space tab: a 3D lattice)
 
 | Mode | Base | Rule |
 |---|:-:|---|
