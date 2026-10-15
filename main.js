@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.554';
+const VERSION = '0.1.555';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6750,9 +6750,11 @@ async function importSetups(file) {
 
 /* ---- 11.1 Animation -------------------------------------------------------------------------- */
 // The speed, in steps per second: typed (1 to 5,000,000), or the turtle and the rabbit step through
-// SPEEDS (50 by default; at 10 or less the next step's chip lights, as step by step)
-const SPEEDS = [5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000];
-let speed = 50;
+// SPEEDS (60 by default; at 12 or less the next step's chip lights, as step by step): divisors and
+// multiples of 60, so that a screen at 60 or 120 frames a second shows as many steps at every frame
+// (50 a second at 60 Hz: one frame in 6 without a step, a stutter)
+const SPEEDS = [6, 12, 60, 120, 600, 1200, 6000, 12000, 60000, 120000, 600000, 1200000, 6000000];
+let speed = 60;
 const stepsPerSecond = () => speed;
 function updateSpeedLabel() {
   if (document.activeElement !== $('speedLabel')) $('speedLabel').value = `${fmt(speed)} steps/s`;
@@ -8743,7 +8745,7 @@ function updateStats() {
   // it counts in (an ant's: the turn it takes, or by its rule the colour of its cell); an ant by the digits
   // turned the other way by a dark cell, the chip of the digit it reads dashed too; by its rule, on a cell
   // walked before, the chip of a fresh one (colour 0) dashed, as the turn it would take there
-  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speed <= 10);
+  const slow = walk.n && cur < walk.n && walk.counts && (!playing || speed <= 12);
   let next = -1;
   if (slow) for (let c = 0; c < walk.base; c++) if (walk.counts[walk.base * (cur + 1) + c] !== walk.counts[walk.base * cur + c]) next = c;
   const read = !slow || !walk.ant ? -1 : antByDigits ? walk.digits[cur] : 0;

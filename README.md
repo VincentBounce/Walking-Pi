@@ -176,7 +176,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
   - **Curated**: striking setups found so far (rosettes, loops on surfaces, classics).
   - Hovering a setup shows it in the view, leaving the list brings back the one in use, a click keeps it and opens its parameters.
 - **Play card** (bottom left): the number, its loop (`↻`) and base, a step slider, ⏮ and ▶︎ play / pause.
-  - Hovering opens it: the walk and its rule, a chip per digit with its count, the stats (position, distance, cells or corners visited, or the automaton's lifetime), an **activity curve** (a walk's distance from its start along the whole walk; Life's live cells and its births + deaths per generation: chaos, then calm), the digits being read, one step and ⏭ jump to the end (in Life, +2k: 2,000 generations ahead), and the speed between a turtle and a rabbit (6 to 600,000 steps per second).
+  - Hovering opens it: the walk and its rule, a chip per digit with its count, the stats (position, distance, cells or corners visited, or the automaton's lifetime), an **activity curve** (a walk's distance from its start along the whole walk; Life's live cells and its births + deaths per generation: chaos, then calm), the digits being read, one step and ⏭ jump to the end (in Life, +2k: 2,000 generations ahead), and the speed between a turtle and a rabbit (6 to 6,000,000 steps per second, 60 by default: steps evenly spread over the frames of a 60 or 120 Hz screen).
 - **Display box** (top right, hover to open), with what fits the current tab:
   - **Auto-fit:** the view follows the walk and ends framed on it.
   - **Colours:** rainbow along the walk, rainbow cells, heatmap of visits, one colour per digit, or one colour.
