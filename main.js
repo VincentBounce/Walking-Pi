@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.562';
+const VERSION = '0.1.563';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1248,6 +1248,8 @@ function updateDisplayMenu() {
   $('fillTranslucentRow').hidden = !shows('translucent');
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
+  $('lifeTrailRow').hidden = !mode.life;
+  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, colours, dying stages
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 
@@ -1301,10 +1303,15 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
     return b;
   }));
 }
+// Trail: a dead cell fades through greys for a few generations (States and Age, two states, one colour)
+const trailApplies = () => !!walk.life && walk.life.colours === 1 && walk.life.C === 2 && $('colorMode').value !== 'digit';
+const trailOn = () => $('lifeTrail').checked && trailApplies();
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
   box.className = L ? 'nav-shapes cell-modes' : 'choice-list';
+  $('lifeTrailRow').hidden = !L;
+  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, colours, dying stages
   if (!L) { renderChoiceButtons(sel, box); return; }
   const names = { mono: lifeColours > 1 ? 'Colours' : 'States', gradient: 'Age', digit: 'Activity' };
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
@@ -5553,12 +5560,12 @@ function drawLifePlane() {
   const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[31 - level(a + 1, 65)]);  // the rainbow backwards: warm newborns, cold old cells
   const byActivity = colour === 'digit' ? Uint32Array.from({ length: Math.min(L.maxActivity, 65535) + 1 }, (_, v) => (v ? grad[level(v + 1, L.maxActivity + 1)] : 0)) : null;
   const byDying = Uint32Array.from({ length: L.C }, (_, st) => (st < 2 ? 0 : trail[Math.min(trail.length - 1, Math.round(((st - 1) / (L.C - 1)) * trail.length))]));
-  const { alive: a, age, activity, died } = L, fade = L.C === 2 ? trail.length : 0;
+  const { alive: a, age, activity, died } = L, fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
   for (let t = 0; t < n; t++) {
     const st = a[t];
     px[t] = L.colours > 1 && colour !== 'digit' ? civ[st]
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? alive : byDying[st])
+      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : cur - died[t] < fade ? trail[cur - died[t]] : 0)
       : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
       : cur - died[t] < fade ? trail[cur - died[t]] : 0;  // age of live cells, a trail fading after death
   }
@@ -7306,7 +7313,8 @@ function drawSphere() {
       levelOf = (t) => L.alive[t];
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...LIFE_TRAIL];
-      levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t]) : 0);
+      levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
+        : trailOn() && L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? 1 + cur - L.died[t] : 0);  // the trail after death (Trail)
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
     } else {  // age of live cells, the rainbow backwards (orange = newborn … cyan = old); dying stages, or a trail fading after death
@@ -7315,7 +7323,7 @@ function drawSphere() {
         const st = L.alive[t];
         if (st === 1) return Math.min(LEVELS, logLevel(L.age[t], 64));
         if (st >= 2) return LEVELS + dyingShade(st);
-        return L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
+        return trailOn() && L.C === 2 && cur - L.died[t] <= LIFE_TRAIL.length ? LEVELS + cur - L.died[t] : 0;
       };
     }
   }
@@ -9007,6 +9015,7 @@ $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerC
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
 $('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
+$('lifeTrail').addEventListener('change', () => { needsFull = true; });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
