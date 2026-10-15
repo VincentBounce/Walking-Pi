@@ -63,22 +63,28 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel::-webkit-scrollbar-track { background: transparent; }
 .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .panel::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-.panel section { padding: 10px 0; border-top: 2px solid var(--accent); }  /* its line above it: hidden with it */
-#paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; border-top: 0; }  /* the first, always there: no line, no gap under the header */
+.panel section { padding: 10px 0; }
+#paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; }  /* the first, always there: no gap under the header */
 .row-delete { padding: 0 6px; font-size: 16px; color: var(--muted); border-radius: 4px; }  /* × on a saved setup */
 .row-delete:hover { color: var(--text); background: var(--border); }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
+/* a section's title: gold small capitals, a gold hairline on to the edge; a sub-section's (field-label): grey */
 h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 4px 0 10px;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
+  letter-spacing: 0.12em;
+  color: var(--accent);
 }
+h2::after { content: ''; flex: 1; height: 1px; background: var(--accent); opacity: 0.45; }
 
 /* Walk: Grid or Cells, beside the heading */
 .walk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.walk-head h2 { margin: 0; }
+.walk-head h2 { flex: 1; margin: 0; }
 
 label { display: block; margin-bottom: 10px; }
 label.check { display: flex; align-items: center; gap: 8px; }
@@ -154,7 +160,7 @@ button.primary {
   font-weight: 600;
 }
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
-.field-label { margin-bottom: 4px; }
+.field-label { margin-bottom: 4px; font-size: 12px; font-weight: 600; }  /* a sub-section's title; under it, grey labels (Birth, Survive…) */
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .stepper span small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.2; }  /* a size: what to picture, then its tiles */
 .stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; white-space: nowrap; }  /* the setup at a glance */
@@ -372,7 +378,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .open-only { display: flex; }
 @media (hover: none) { .stage-box:focus-within .open-only { display: flex; } }
 .display-menu .stage-more { margin: 10px 0 -10px; }  /* below Grid and Auto-fit; each row's 10px under the last one taken back, so the bottom matches the top */
-.form-section { margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--accent); }  /* shape and perspective */
+.form-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .choice-list button { text-align: left; padding: 5px 8px; font-size: 13px; background: var(--panel); }
