@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.560';
+const VERSION = '0.1.561';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1301,7 +1301,36 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
     return b;
   }));
 }
-const renderColorButtons = () => renderChoiceButtons($('colorMode'), $('colorButtons'));
+// Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
+function renderColorButtons() {
+  const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
+  box.className = L ? 'nav-shapes cell-modes' : 'choice-list';
+  if (!L) { renderChoiceButtons(sel, box); return; }
+  const names = { mono: lifeColours > 1 ? 'Colours' : 'States', gradient: 'Age', digit: 'Activity' };
+  const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
+  box.style.gridTemplateColumns = `repeat(${looks.length}, minmax(0, 1fr))`;
+  box.replaceChildren(...looks.map((o) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = o.text;
+    b.innerHTML = `${lifeLookPicture(o.value)}<span>${names[o.value]}</span>`;
+    b.classList.toggle('active', o.value === sel.value);
+    b.disabled = o.disabled;
+    b.addEventListener('click', () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); });
+    return b;
+  }));
+}
+// States: alive and dead cells (Colours: the civilisations' and dead); Age: young to old, then the fading
+// trail of the dead; Activity: the cells that change most, hot in the middle
+function lifeLookPicture(look) {
+  const g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
+  const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
+  if (look === 'mono') return swatch(lifeColours > 1 ? [LIFE_COLOURS[0], UNLIT, LIFE_COLOURS[2], LIFE_COLOURS[1]] : [LIFE_ALIVE, UNLIT, UNLIT, LIFE_ALIVE]);
+  if (look === 'gradient') return swatch([g(0), g(0.5), g(1), LIFE_TRAIL[Math.floor(LIFE_TRAIL.length / 3)]]);
+  return heatRings(g);
+}
+// square rings, hot inside (a heatmap, Life's activity)
+const heatRings = (g) => `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;
 const renderSkyButtons = () => {  // the sky named after the theme: Dawn on a light page, Twilight on a dark one
   $('sky').options[0].text = document.documentElement.dataset.theme === 'light' ? 'Dawn sky' : 'Twilight sky';
   renderChoiceButtons($('sky'), $('skyButtons'));
@@ -9301,7 +9330,7 @@ function cellModePicture(look) {  // a 2 × 2 swatch, or the rainbow line over f
   const stops = (fs) => fs.map((f) => `<stop offset="${f}" stop-color="${g(f)}"/>`).join('');
   if (look === 'cells') return `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="cellRainbow">${stops([0, 0.25, 0.5, 0.75, 1])}</linearGradient></defs>`
     + '<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#cellRainbow)"/></svg>';
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;  // square rings, hot inside
+  return heatRings(g);
 }
 function renderCellModes(mode) {
   $('cellModes').hidden = !shows('cells');
