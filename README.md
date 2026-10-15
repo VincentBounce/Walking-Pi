@@ -112,6 +112,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 | Triangle torus | base 5: `0` sharp left … `4` sharp right | base 2: exit through the `0` left or `1` right edge |
 | Hex torus | base 2: `0` left · `1` right | base 5: `0` sharp left … `4` sharp right |
 | Cairo torus | — | base 4: out through the `0` sharp left · `1` left · `2` right · `3` sharp right edge |
+| Klein bottle (squares, Cairo pentagons, hexagons, triangles) | — | as the torus's walks on cells |
 | Möbius strip | squares as the torus; hexagons base 2: `0` left · `1` right; triangles base 5: `0` sharp left … `4` sharp right | squares as the torus; hexagons base 5: `0` sharp left … `4` sharp right; triangles base 2: the `0` left or `1` right edge |
 | Cube | base 3: `0` left · `1` straight · `2` right | base 3: `0` left · `1` straight · `2` right |
 | Tetrahedron, octahedron, triangle sphere | base 5: `0` sharp left … `4` sharp right (at a corner of the solid, the nearest edge) | base 2: exit through the `0` left or `1` right edge |
@@ -120,6 +121,7 @@ Each surface is walked **along the grid** (from corner to corner, turning at eac
 Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn right on the spot by one notch) and the **Parity** rule (`1` a step, then a notch right at an odd digit, left at an even one): along the grid on squares and triangles, on cells on squares and hexagons.
 
 - **Torus**, **Möbius strip** and **Sphere** are one entry each in the list, their tiles picked by the tabs under it: for the torus squares, Cairo pentagons, hexagons, hexagons **turned by 30°**, triangles and triangles turned by 30° (turned, their rows go round the tube instead of round the ring), and under them **Rectangle | Square**: a torus rolled from a long sheet (the default, its tiles even once rolled up) or from a square one (as many tiles round the ring as round the tube, stretched along the ring once rolled up; not turned); for the Möbius strip squares, Cairo pentagons, hexagons, turned hexagons, triangles and turned triangles (hexagons and turned triangles make its edges zigzag along them); for the sphere hexagons (the default) or triangles (the icosahedron, inflated).
+- The **Klein bottle** is a torus whose sheet is glued with its ends turned over, as the Möbius strip's: one-sided and closed. In space it has to cross itself: it is shown as the figure-8 bottle (its tube's cross-section a figure 8 turning half a turn round the ring), crossing itself along a circle, both sides of its tiles drawn.
 - The − / + under the list set the surface's size. Round a torus and along a Möbius strip the length follows from the width (the shape's proportions), rounded to a multiple of 12 so that the blocks of 2, 3, 4, 6 and 12 colours divide it.
 - **Starts:** the different walks a surface allows (its rotations turn a start into another one that draws the same walk, turned), numbered alike at every size; hovering the number shows them all.
 - A walk that comes back onto itself stops after its first round (`↻`, see [Regular patterns](#regular-patterns)); on a torus, a fraction's **loops** button finds the sizes where it closes in fewest laps.
@@ -137,7 +139,7 @@ Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn r
 
 ### Game of Life
 
-A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus (squares, hexagons, triangles or Cairo pentagons), a Möbius strip (its two faces one surface, over its edge onto the face behind; in 2 colours, a face each), a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
+A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons; walls or a torus at its edges) or on a surface: a torus (squares, hexagons, triangles or Cairo pentagons), a Klein bottle, a Möbius strip (its two faces one surface, over its edge onto the face behind; in 2 colours, a face each), a cube, a cube with pits, a tetrahedron, an octahedron, a stella octangula, a dodecahedron, the triangle or hexagon sphere. Neighbours share an edge or a corner.
 
 - **Rules** in `B…/S…/C…` notation: Conway's Life, HighLife, Seeds, Brian's Brain, Star Wars, Maze, Day & Night…, rules found by scans that last long on hexagons, triangles and Cairo pentagons, or any rule typed. With C states a cell is `0` dead, `1` alive or `2`… dying.
 - **Populations:** 1 to 12 colours that fight by the same rule (a newborn takes the colour of most of its live neighbours), each starting in its part of the grid: its block of the plane, its face or corner of the solid.

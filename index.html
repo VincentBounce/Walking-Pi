@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261022o">
+  <link rel="stylesheet" href="style.css?v=20261022p">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -110,6 +110,14 @@
               <option value="mobiusWalk">Möbius strip — base 3 (left / forward / right)</option>
               <option value="mobiusHexGrid">Möbius strip of hexagons — base 2 (left / right)</option>
               <option value="mobiusHexWalk">Möbius strip of hexagons — base 5 (5 relative turns)</option>
+              <option value="kleinWalk">Klein bottle — base 3 (left / forward / right)</option>
+              <option value="kleinHexWalk">Klein bottle of hexagons — base 5 (5 relative turns)</option>
+              <option value="kleinTriWalk">Klein bottle of triangles — base 2 (left / right)</option>
+              <option value="kleinCairoWalk">Klein bottle of Cairo pentagons — base 4 (4 edges out)</option>
+              <option value="kleinPivot">Klein bottle — base 2 (forward / turn right on the spot)</option>
+              <option value="kleinHexPivot">Klein bottle of hexagons — base 2 (forward / turn right on the spot)</option>
+              <option value="kleinParity">Klein bottle — base 2 (forward / forward then turn, right or left by the digit's place)</option>
+              <option value="kleinHexParity">Klein bottle of hexagons — base 2 (forward / forward then turn, right or left by the digit's place)</option>
               <option value="mobiusCairoWalk">Möbius strip of Cairo pentagons — base 4 (4 edges out)</option>
               <option value="mobiusTriGrid">Möbius strip of triangles — base 5 (5 relative turns)</option>
               <option value="mobiusTriWalk">Möbius strip of triangles — base 2 (left / right)</option>
@@ -188,6 +196,10 @@
               <option value="lifeMobiusHex">Life — Möbius strip</option>
               <option value="lifeMobiusTri">Life — Möbius strip</option>
               <option value="lifeMobiusCairo">Life — Möbius strip</option>
+              <option value="lifeKlein">Life — Klein bottle</option>
+              <option value="lifeKleinHex">Life — Klein bottle</option>
+              <option value="lifeKleinTri">Life — Klein bottle</option>
+              <option value="lifeKleinCairo">Life — Klein bottle</option>
               <option value="lifeTetra">Life — tetrahedron</option>
               <option value="lifeOcta">Life — octahedron</option>
               <option value="lifeStella">Life — stella octangula</option>
@@ -441,6 +453,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261022o"></script>
+  <script src="main.js?v=20261022p"></script>
 </body>
 </html>
