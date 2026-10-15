@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.564';
+const VERSION = '0.1.565';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1249,7 +1249,7 @@ function updateDisplayMenu() {
   $('fillTranslucent').disabled = !($('fillAreas').checked && fillAreasApply() && $('colorMode').value !== 'cells');
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   $('lifeTrailRow').hidden = !mode.life;
-  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, colours, dying stages
+  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, dying stages
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 
@@ -1279,9 +1279,8 @@ function relabelColours(mode) {
   const byValue = Object.fromEntries(Array.from(sel.options, (o) => [o.value, o]));
   order.forEach((v) => { byValue[v].text = names[v]; sel.append(byValue[v]); });
   for (const v of ['cells', 'visits', 'digit', 'mono']) byValue[v].hidden = !shows(v);
-  byValue.gradient.disabled = greyed('line');  // Rainbow along the walk: no use on a spiral
+  byValue.gradient.disabled = greyed('line') || two;  // Rainbow along the walk: no use on a spiral; Age greyed in colours (a cell's colour is its civilisation)
   byValue.visits.disabled = !useful('visits');
-  byValue.gradient.hidden = two;  // two civilisations: a cell's colour is its civilisation
   if (sel.selectedOptions[0]?.hidden || sel.selectedOptions[0]?.disabled) {
     sel.value = Array.from(sel.options).find((o) => !o.hidden && !o.disabled).value;  // the first one left
   }
@@ -1303,17 +1302,17 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
     return b;
   }));
 }
-// Trail: a dead cell fades through greys for a few generations (States and Age, two states, one colour)
-const trailApplies = () => !!walk.life && walk.life.colours === 1 && walk.life.C === 2 && $('colorMode').value !== 'digit';
+// Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
+const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
 const trailOn = () => $('lifeTrail').checked && trailApplies();
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
   box.className = L ? 'nav-shapes cell-modes' : 'choice-list';
   $('lifeTrailRow').hidden = !L;
-  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, colours, dying stages
+  $('lifeTrail').disabled = !trailApplies();  // greyed: Activity, dying stages
   if (!L) { renderChoiceButtons(sel, box); return; }
-  const names = { mono: lifeColours > 1 ? 'Colours' : 'States', gradient: 'Age', digit: 'Activity' };
+  const names = { mono: 'States', gradient: 'Age', digit: 'Activity' };
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
   box.style.gridTemplateColumns = `repeat(${looks.length}, minmax(0, 1fr))`;
   box.replaceChildren(...looks.map((o) => {
@@ -1332,7 +1331,7 @@ function renderColorButtons() {
 function lifeLookPicture(look) {
   const g = (f) => GRADIENT[Math.round(f * (BANDS - 1))];
   const swatch = (cs) => `<svg viewBox="0 0 2 2" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % 2}" y="${i >> 1}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
-  if (look === 'mono') return swatch(lifeColours > 1 ? [LIFE_COLOURS[0], UNLIT, LIFE_COLOURS[2], LIFE_COLOURS[1]] : [LIFE_ALIVE, UNLIT, UNLIT, LIFE_ALIVE]);
+  if (look === 'mono') return swatch(lifeColours > 1 ? [LIFE_COLOURS[0], UNLIT, UNLIT, LIFE_COLOURS[1]] : [LIFE_ALIVE, UNLIT, UNLIT, LIFE_ALIVE]);  // in colours: a red, a blue
   if (look === 'gradient') return swatch([g(1), g(0.5), g(0), LIFE_TRAIL[Math.floor(LIFE_TRAIL.length / 3)]]);  // warm newborns to cold old cells
   return heatRings(g);
 }
@@ -5564,7 +5563,7 @@ function drawLifePlane() {
   const { alive: a, age, activity, died } = L, fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
   for (let t = 0; t < n; t++) {
     const st = a[t];
-    px[t] = L.colours > 1 && colour !== 'digit' ? civ[st]
+    px[t] = L.colours > 1 && colour !== 'digit' ? civ[st] || (cur - died[t] < fade ? trail[cur - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
       : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : cur - died[t] < fade ? trail[cur - died[t]] : 0)
       : st === 1 ? byAge[Math.min(age[t], 64)] : st ? byDying[st]
@@ -7325,9 +7324,10 @@ function drawSphere() {
     const colour = $('colorMode').value;
     // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
     const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
-    if (L.colours > 1 && colour !== 'digit') {  // each civilisation in its colour
-      palette = [null, ...civColours(L.colours, L.C)];
-      levelOf = (t) => L.alive[t];
+    if (L.colours > 1 && colour !== 'digit') {  // each civilisation in its colour, then the trail of the dead (Trail)
+      const civ = civColours(L.colours, L.C);
+      palette = [null, ...civ, ...LIFE_TRAIL];
+      levelOf = (t) => L.alive[t] || (trailOn() && cur - L.died[t] <= LIFE_TRAIL.length ? civ.length + cur - L.died[t] : 0);
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...LIFE_TRAIL];
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
