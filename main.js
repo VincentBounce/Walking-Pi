@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.545';
+const VERSION = '0.1.547';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7507,12 +7507,15 @@ void main() {
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   edge: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; uniform float uBias;${GL_PROJECT}
-void main() {  // the edges of a tile turned away are not drawn (the back of an open sheet, or of a strip's face)
+in vec3 aPos; in vec3 aNrm; uniform float uBias; out float vFacing;${GL_PROJECT}
+void main() {  // the edges of a tile turned away are not drawn (the back of an open sheet, or of a strip's face): cut
+  // pixel by pixel, as its two ends may face apart (a strip's twist); an end sent off the screen drew a wire to it
   vec3 eye = uPersp.w > 0.0 ? uPersp.xyz + uV * uPersp.w - aPos : uV;
-  gl_Position = dot(aNrm, eye) < 0.0 ? vec4(2.0, 2.0, 2.0, 1.0) : clipOf(toScreen(aPos), uBias);
+  vFacing = dot(aNrm, eye);
+  gl_Position = clipOf(toScreen(aPos), uBias);
 }`, `#version 300 es
-precision mediump float; uniform float uEdge; uniform vec3 uEdgeRgb; out vec4 o; void main() { o = vec4(uEdgeRgb, uEdge); }`],
+precision mediump float; uniform float uEdge; uniform vec3 uEdgeRgb; in float vFacing; out vec4 o;
+void main() { if (vFacing < 0.0) discard; o = vec4(uEdgeRgb, uEdge); }`],
   // the path printed on a surface's tiles (see pathSegments): one flat ribbon per segment, in its
   // tile's plane (aN its normal), as wide as the path on screen, its ends going on half that width
   // where aE says; seen from its tile's face only (see glSurface)
