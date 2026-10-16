@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.612';
+const VERSION = '0.1.613';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3661,10 +3661,12 @@ const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.spl
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
  * unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends round the circle (keeping
  * lengths, as torusPoint does) and twists along it, up to half a turn at m = 1, so the ends meet
- * upside down: the point (x + L, y) is then the point (x, W − y). */
-function mobiusPoint(x, y, L, W, m, Lp = L) {  // Lp: the length the strip is shaped by (a square sheet: the usual one, its tiles stretched)
-  // along, across (same unit); a square sheet flat as it is, stretched to the usual length as it bends round
-  const X0 = (x / L - 0.5) * 2 * Math.PI, X = X0 * (L / Lp + (1 - L / Lp) * m), S = ((y - W / 2) * 2 * Math.PI) / Lp;
+ * upside down: the point (x + L, y) is then the point (x, W − y). Its width is always MOBIUS_WIDTH times
+ * the circle's radius; flat, its length is in proportion (flat: its share of the circle), stretched to
+ * the circle as it bends round (a square sheet's tiles, much; the usual length's, hardly), as a torus's. */
+function mobiusPoint(x, y, L, W, m) {
+  const flat = (L * MOBIUS_WIDTH) / (2 * Math.PI * W), X0 = (x / L - 0.5) * 2 * Math.PI;
+  const X = X0 * (flat + (1 - flat) * m), S = (y / W - 0.5) * MOBIUS_WIDTH;  // along, across (the circle's radius 1)
   const tw = (m * X0) / 2, w = S * Math.cos(tw), h = S * Math.sin(tw);  // across: outwards and up
   if (m < 1e-6) return [X, -w, h];
   const rr = 1 / m, ph = X / rr;
@@ -3683,11 +3685,11 @@ function mobiusPoint(x, y, L, W, m, Lp = L) {  // Lp: the length the strip is sh
  *   wide, an even number of columns; the edges zigzag along them. */
 function mobiusSheet(kind0, size) {
   // a square sheet (Square, kind …Square): as long as wide, its tiles stretched along the strip once
-  // shaped (Lp, the usual length); else the usual length, a multiple of 12
+  // rolled up (see mobiusPoint); else the usual length, a multiple of 12
   const square = kind0.endsWith('Square'), kind = square ? kind0.slice(0, -6) : kind0;
   const [nv, own] = mobiusSize(size), step = MOBIUS_ALONG[kind].step, fit = (x) => (square ? Math.max(1, Math.round(x)) : twelve(x));
   const len = (W) => (own ? own * step : square ? W : (2 * Math.PI * W) / MOBIUS_WIDTH), tiles = [], H = Math.sqrt(3) / 2;  // its length, or the usual one
-  const done = (L, W) => ({ L, W, tiles, Lp: square ? (2 * Math.PI * W) / MOBIUS_WIDTH : L });
+  const done = (L, W) => ({ L, W, tiles });
   if (kind === 'mobiusHexTurned') {
     const W = 1.5 * (nv - 1) + 2, S3 = Math.sqrt(3), a = Math.round(len(W) / S3 - (own && !(nv % 2) ? 0.5 : 0)), L = S3 * (nv % 2 ? a : a + 0.5);
     for (let r = 0; r < nv; r++) {
@@ -3754,9 +3756,9 @@ function mobiusSheet(kind0, size) {
 function mobiusMesh(kind, size) {
   const key = `${kind}${size}`, nv = mobiusSize(size)[0];
   if (meshCache[key]) return meshCache[key];
-  const { L, W, tiles: sheet, Lp } = mobiusSheet(kind, size), k = sheet[0].length;
+  const { L, W, tiles: sheet } = mobiusSheet(kind, size), k = sheet[0].length;
   const { verts, add } = vertexStore();
-  const ids = sheet.map((t) => t.map(([x, y]) => add(...mobiusPoint(x, y, L, W, 1, Lp))));  // the glued ends share corners
+  const ids = sheet.map((t) => t.map(([x, y]) => add(...mobiusPoint(x, y, L, W, 1))));  // the glued ends share corners
   const n0 = verts.length / 3, uses = new Map(), onEdge = new Uint8Array(n0), home = new Float64Array(n0).fill(NaN);
   for (const t of ids) for (let q = 0; q < k; q++) {  // edges with one tile: the strip's edge
     const a = t[q], b = t[(q + 1) % k], e = Math.min(a, b) * n0 + Math.max(a, b);
@@ -3789,12 +3791,12 @@ function mobiusMesh(kind, size) {
       delta.set(a * N + b, [dx, dy]); delta.set(b * N + a, [-dx, -dy]);
     }
   });
-  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, L, W, Lp, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
 }
 // The sheet point of a surface: a torus, or a Möbius strip
 // (a rhombus sheared into the torus's rectangle: unsheared while flat, sheared as it bends round the ring)
 const sheetPoint = (g, i, j, m) => {
-  if (g.mobius) return mobiusPoint(i, j, g.L, g.W, m, g.Lp);
+  if (g.mobius) return mobiusPoint(i, j, g.L, g.W, m);
   if (g.klein) return kleinPoint(i, j, g.nu, g.nv, m);
   if (g.shear) { const k = 1 - Math.max(0, 2 * m - 1); [i, j] = [i + (k * g.shear[0] * j) / g.nv, j + (k * g.shear[1] * i) / g.nu]; }
   return torusPoint(i, j, g.nu, g.nv, m, g.flatWidth ?? 1);
@@ -4128,6 +4130,7 @@ function morphStep(dt) {
 // not by 4 as doubling would
 const STEPS_128 = [8, 12, 16, 24, 32, 48, 64, 96, 128];
 const SPHERES_MOBIUS_SIZES = { mobius: [6, 8, 12, 16, 24], mobiusHex: [4, 6, 8, 12, 16], mobiusTri: [8, 12, 16, 24, 32], mobiusCairo: [6, 8, 12, 16, 24] };  // rows across
+const mobiusRadius = (kind, s) => mobiusSheet(kind, s).W / MOBIUS_WIDTH;  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
@@ -4184,27 +4187,27 @@ const SPHERES = {
   // Möbius strip: its size is its rows across; square edge = 1 unit (the middle circle is nu long)
   // Möbius strips: their size is their rows across; tile edge = 1 unit (the middle circle is L long);
   // tiles: on both faces
-  mobius: { mesh: (s) => mobiusMesh('mobius', s), radius: (s) => mobiusSheet('mobius', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobius', s).L,
+  mobius: { mesh: (s) => mobiusMesh('mobius', s), radius: (s) => mobiusRadius('mobius', s), columns: (s) => 2 * mobiusSheet('mobius', s).L,
             sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobius', s).tiles.length, unit: 'squares' },
-  mobiusHex: { mesh: (s) => mobiusMesh('mobiusHex', s), radius: (s) => mobiusSheet('mobiusHex', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length / mobiusSize(s)[0],
+  mobiusHex: { mesh: (s) => mobiusMesh('mobiusHex', s), radius: (s) => mobiusRadius('mobiusHex', s), columns: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length / mobiusSize(s)[0],
                sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length, unit: 'hexagons' },
-  mobiusHexTurned: { mesh: (s) => mobiusMesh('mobiusHexTurned', s), radius: (s) => mobiusSheet('mobiusHexTurned', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length / mobiusSize(s)[0],
+  mobiusHexTurned: { mesh: (s) => mobiusMesh('mobiusHexTurned', s), radius: (s) => mobiusRadius('mobiusHexTurned', s), columns: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length / mobiusSize(s)[0],
                      sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length, unit: 'hexagons' },
-  mobiusTriTurned: { mesh: (s) => mobiusMesh('mobiusTriTurned', s), radius: (s) => mobiusSheet('mobiusTriTurned', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length / mobiusSize(s)[0],
+  mobiusTriTurned: { mesh: (s) => mobiusMesh('mobiusTriTurned', s), radius: (s) => mobiusRadius('mobiusTriTurned', s), columns: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length / mobiusSize(s)[0],
                      sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length, unit: 'triangles' },
-  mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusSheet('mobiusTri', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / mobiusSize(s)[0],
+  mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusRadius('mobiusTri', s), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / mobiusSize(s)[0],
                sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
-  // Möbius strips from a square sheet (Square): shaped as the usual ones (radius by Lp), their tiles stretched
+  // Möbius strips from a square sheet (Square): shaped as the usual ones, their tiles stretched along
   ...Object.fromEntries([['mobius', 'squares'], ['mobiusHex', 'hexagons'], ['mobiusTri', 'triangles'], ['mobiusCairo', 'pentagons']].map(([base, unit]) => {
     const kind = `${base}Square`;
-    return [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusSheet(kind, s).Lp / (2 * Math.PI), columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0],
+    return [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s), columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0],
                     sizes: SPHERES_MOBIUS_SIZES[base], initial: SPHERES_MOBIUS_SIZES[base][2], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit }];
   })),
   // Klein bottles: their size is their rows round the tube, as a torus's
   ...Object.fromEntries([['klein', 'squares', 1], ['kleinHex', 'hexagons', 1], ['kleinTri', 'triangles', 2], ['kleinCairo', 'pentagons', 2]].map(([kind, unit, per]) => [kind, {
     mesh: (s) => kleinMesh(kind, ...torusDims(kind, s)), radius: (s) => torusDims(kind, s)[0] / (2 * Math.PI * TORUS_TUBE), columns: kleinColumns[kind], perRow: 1,
     steps: [2, 2], sizes: [16, 24, 32, 48], initial: 24, tiles: (s) => per * torusDims(kind, s).reduce((a, b) => a * b), unit }])),
-  mobiusCairo: { mesh: (s) => mobiusMesh('mobiusCairo', s), radius: (s) => mobiusSheet('mobiusCairo', s).L / (2 * Math.PI), columns: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length / mobiusSize(s)[0],
+  mobiusCairo: { mesh: (s) => mobiusMesh('mobiusCairo', s), radius: (s) => mobiusRadius('mobiusCairo', s), columns: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length / mobiusSize(s)[0],
                  sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length, unit: 'pentagons' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
           sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
