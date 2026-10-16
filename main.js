@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.620';
+const VERSION = '0.1.621';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -696,9 +696,10 @@ const PALETTES = {
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], LIFE_FADE = [], DIRECTION_COLOURS = {};
 // Life's colours (civilisations), as bright as the walks' rainbow in each theme (its saturation and
 // lightness), in an order that keeps them apart: up to 8, about 45° of hue between any two (red, blue,
-// gold, green, violet, cyan, magenta, lime); the 12 bring close ones (orange, teal, pink, indigo), the
-// last two so that, side by side round a strip or a ring, pink is not next to red (the first)
-const LIFE_HUES = [2, 222, 48, 135, 275, 185, 318, 90, 25, 160, 340, 245], LIFE_COLOURS = [];
+// gold, green, violet, cyan, magenta, lime); the 12 bring close ones (orange, pink, indigo, teal), in the
+// order that keeps the fewest close ones side by side in all the ways 12 are laid: in turn round a Möbius
+// strip, 6 × 2 round a torus (the last pair next to the first), 3 × 4 on a square torus, 4 × 3 on the plane
+const LIFE_HUES = [2, 222, 48, 135, 275, 185, 318, 90, 25, 340, 245, 160], LIFE_COLOURS = [];
 let GREY;
 let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_RGB, EDGE_ALPHA, SHADE, FADE_EDGES, TILE_LIFT;  // TILE_LIFT: the tiles' rainbow mixed with white  // EDGE: the surfaces' tile edges; SHADE: how dark a tile turned away gets
 function setPalette(theme) {
@@ -5073,7 +5074,7 @@ function countSeed(L) {
   L.seedBlue = L.seedByColour[2] ?? 0;
 }
 // the civilisations' colours (1, 2… : red, blue, gold, green, violet, orange) and their names
-const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'cyan', 'magenta', 'lime', 'orange', 'teal', 'pink', 'indigo'];  // (see LIFE_HUES)
+const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'cyan', 'magenta', 'lime', 'orange', 'pink', 'indigo', 'teal'];  // (see LIFE_HUES)
 // in colours, the colour of each state from 1: alive in its colour, then fainter at each dying stage
 const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ length: K * (C - 2) }, (_, i) => faded(LIFE_COLOURS[i % K], 1 - (Math.floor(i / K) + 1) / (C - 1)))];
 
