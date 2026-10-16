@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.625';
+const VERSION = '0.1.626';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5834,12 +5834,12 @@ function renderRuleSection() {
     $(id).replaceChildren(...counts, ...(where.length ? [Object.assign(document.createElement('div'), { className: 'wheres' })] : []));
     $(id).querySelector('.wheres')?.append(...where);
   }
-  // the states as cells: alive, its dying stages fading (✝: it will die; white on the cells nearer the
-  // live colour on a light page, the dead one on a dark page), dead; past the room between − and +, in words
+  // the states as cells: alive, its dying stages fading, dead (✝ on each but the live one; white on the cells nearer the
+  // live colour on a light page, the dead one on a dark page); past the room between − and +, in words
   const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), UNLIT];
   const room = $('statesLabel').clientWidth || 110, words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
   $('statesLabel').innerHTML = cells.length * 19 > room ? words
-    : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i && i < cells.length - 1 ? `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>` : ''}</i>`).join('')}</span>`;
+    : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i ? `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>` : ''}</i>`).join('')}</span>`;
   $('statesLabel').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead`;
   // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
   // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
