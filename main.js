@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.610';
+const VERSION = '0.1.611';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4153,11 +4153,11 @@ const SPHERES = {
   // hexagons and triangles: the plane's rhombus (see rhombHexTorusMesh), as many tiles round the ring as round the tube
   hextorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('hextorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2 }),
                     radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => nv, perRow: 1, steps: [1, 1],
+                    columns: (nv) => nv, perRow: 1, steps: [1, 1], rhombus: true,
                     sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
   tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2 }),
                     radius: (s) => torusDims('tritorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => nv, perRow: 2, steps: [1, 1],
+                    columns: (nv) => nv, perRow: 2, steps: [1, 1], rhombus: true,
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
   cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE }),
                       radius: (s) => torusDims('cairotorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [2, 2],
@@ -4268,6 +4268,7 @@ const sizeLabel = (kind, f) => {
     const nv = mobiusSize(f)[0];
     return `${fmt(nv)} × ${fmt(Math.round(mobiusSheet(kind, f).tiles.length / nv))} ${unit}`;
   }
+  if (SPHERES[kind].rhombus) return `${fmt(torusDims(kind, f)[0])} × ${fmt(torusDims(kind, f)[0])} ${unit}`;  // the plane's rhombus: its sides, as in 2D
   const rows = torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);  // a torus as its tiles towards the north (around the tube) × east (around the ring)
   return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
 };
