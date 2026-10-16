@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.647';
+const VERSION = '0.1.648';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5866,7 +5866,8 @@ function renderRuleSection() {
   const say = (p) => p.filter((x) => x).join(' + '), gone = (p) => p.filter((x) => !x).length;
   $('determinedRow').hidden = K === 1;
   $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour${!ties.length ? '<small>never a tie</small>'
-    : ties.map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}</span>`;  // a tie a line, what it gives first
+    : [...ties.filter((p) => gone(p) !== 1), ...ties.filter((p) => gone(p) === 1)]  // a tie a line, what it gives first: no birth, then the colour missing
+      .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}</span>`;
   $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
   $('ruleName').textContent = mine ? `Rule · ${mine.dataset.name}` : 'Rule · your own';
 }
