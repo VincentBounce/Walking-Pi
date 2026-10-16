@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.613';
+const VERSION = '0.1.614';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6254,7 +6254,8 @@ function huntParts(r, K) {
   if (g.mobius) {
     // the whole strip (Wild): each its stretch of it twice round, 2L / K long, round its patch's middle
     const s0 = mobiusMiddle(g), stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
-    if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch))].push(t); return parts; }
+    // (a tile whose middle is on a stretch's end, the sheet's end for one: in the stretch it starts, whatever the rounding)
+    if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch + 1e-9))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     // the patches evenly along it twice round (both sides, 2L): each side's evenly spread over its whole
     // length, the next one 2L / K further (by turns on either side, or, past half of them, behind the first
