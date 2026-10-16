@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.616';
+const VERSION = '0.1.617';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6114,9 +6114,14 @@ function huntWorker() {
       return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance, winner, alone };
     };
     // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as drawn
+    // (each colour at least one cell alive: a colour of few cells would else often start with none)
     const randomSeed = () => {
       const s = new Uint8Array(n), density = dense[0] + Math.random() * (dense[1] - dense[0]);
       for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));  // colours: live cells only
+      for (let k = 1; k <= K; k++) {
+        const mine = cells.filter((c) => (K > 1 ? c[1] === k : true));
+        if (mine.length && !mine.some(([t]) => s[t] === (K > 1 ? k : 1))) s[mine[Math.floor(Math.random() * mine.length)][0]] = K > 1 ? k : 1;
+      }
       return copy(s);
     };
     const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
@@ -6359,7 +6364,7 @@ function renderHunt() {
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
   const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link · pick a zone to hunt in`
     : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
-      : `${all ? '' : `${fmt(Math.round(DENSITY[0] * perColour))}–${fmt(Math.round(DENSITY[1] * perColour))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
+      : `${all ? '' : `${fmt(Math.max(1, Math.round(DENSITY[0] * perColour)))}–${fmt(Math.max(1, Math.round(DENSITY[1] * perColour)))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
       + (all ? ` · ${fmt(all)} starts, all to try` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
@@ -6424,6 +6429,10 @@ function zoneSeed() {
   if (choices) for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
     for (const [t, k] of cells) if (Math.random() < d) seed[t] = k;
+    for (const k of new Set(cells.map((c) => c[1]))) {  // each colour at least one cell alive (as the hunt's starts)
+      const mine = cells.filter((c) => c[1] === k);
+      if (!mine.some(([t]) => seed[t])) seed[mine[Math.floor(Math.random() * mine.length)][0]] = k;
+    }
     for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
   }
   return seed;
