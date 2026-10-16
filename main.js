@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.632';
+const VERSION = '0.1.633';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5827,13 +5827,21 @@ function renderRuleSection() {
       `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`,
       () => { set[c].has(x) ? set[c].delete(x) : set[c].add(x); })))]))));
   }
-  // the states as cells: alive, its dying stages fading, dead (✝ on each but the live one; white on the cells nearer the
-  // live colour on a light page, the dead one on a dark page), from the top; past the room between − and +, in words
-  const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), UNLIT];
-  const room = $('statesLabel').clientHeight || 160, words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
-  $('statesLabel').innerHTML = cells.length * 23 > room ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
-    : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i ? `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>` : ''}</i>`).join('')}</span>`;
+  // the states as cells, from the top: alive, its dying stages fading, dead on the panel's white (✝ on each but the
+  // live one; white on the cells nearer the live colour on a light page, the dead one on a dark page); the live
+  // cell a button, one more state a click, back to 2 when one more would not fit; past the room (a rule typed), in
+  // words, a click back to 2
+  const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), 'var(--panel)'];
+  const room = $('statesLabel').clientHeight || 160, fit = Math.min(10, Math.floor((room + 3) / 23)), words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
+  const cross = (i) => `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>`;
+  $('statesLabel').innerHTML = rule.C > fit ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
+    : `<span class="states-cells">${cells.map((c, i) => (i ? `<i style="background:${c}">${cross(i)}</i>` : `<button type="button" style="background:${c}" title="One more state (back to 2 past ${fit})"></button>`)).join('')}</span>`;
   $('statesLabel').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead`;
+  $('statesLabel').onclick = (e) => {
+    if (rule.C <= fit && !e.target.closest('button')) return;
+    setRuleText(write(B, S, rule.C + 1 > fit ? 2 : rule.C + 1));
+    compute();
+  };
   // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
   // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
   // (a birth's count split among the K colours, the two most equal), the first of each said
@@ -5846,10 +5854,6 @@ function renderRuleSection() {
   $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour${!ties.length ? '<small>never a tie</small>'
     : [missing && `${say(missing)}: the colour missing`, none && `${say(none)}: no birth`].filter(Boolean).map((t) => `<small>${t}</small>`).join('')}</span>`;  // a tie a line
   $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
-  $('statesDown').disabled = rule.C === 2;
-  $('statesUp').disabled = rule.C === 10;
-  $('statesDown').onclick = () => { setRuleText(write(B, S, rule.C - 1)); compute(); };
-  $('statesUp').onclick = () => { setRuleText(write(B, S, rule.C + 1)); compute(); };
   $('ruleName').textContent = mine ? `Rule · ${mine.dataset.name}` : 'Rule · your own';
 }
 let ruleFittedTo = null;

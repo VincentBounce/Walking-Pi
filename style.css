@@ -309,11 +309,13 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .build-box { min-width: 0; padding: 6px 4px; border: 1px solid var(--border); border-radius: 8px; }
 .build-box h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
 .states-box { contain: size; display: flex; flex-direction: column; align-items: center; gap: 4px; }  /* as high as the others (its own cells never make it higher) */
-.states-box button { width: 30px; height: 24px; padding: 0; flex: none; }
 #statesLabel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--accent); text-align: center; line-height: 1.1; }
+#statesLabel:not(:has(.states-cells)) { cursor: pointer; }  /* in words (a rule typed past the room): a click back to 2 */
 #statesLabel small { display: block; font-size: 9px; font-weight: 400; color: var(--muted); }
 .states-cells { display: flex; flex-direction: column; gap: 3px; }  /* a cell's states, from the top: alive, its dying stages, dead (✝) */
-.states-cells i { width: 20px; height: 20px; flex: none; border: 1px solid var(--border); border-radius: 3px; display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; }
+.states-cells i, .states-cells button { width: 20px; height: 20px; flex: none; padding: 0; border: 1px solid var(--border); border-radius: 3px; display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; }
+.states-cells button { cursor: pointer; }
+.states-cells button:hover { outline: 2px solid var(--accent); outline-offset: 1px; }  /* the live cell: one more state */
 .states-cells i b { font-weight: 600; }
 .determined { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 12px; font-weight: 600; }  /* Births by majority colour, the colours' picture before it */
 .determined > svg { width: 24px; height: 24px; flex: none; border-radius: 3px; }  /* as the Populations' blocks */
