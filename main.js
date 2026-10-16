@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.634';
+const VERSION = '0.1.635';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5828,20 +5828,16 @@ function renderRuleSection() {
       () => { set[c].has(x) ? set[c].delete(x) : set[c].add(x); })))]))));
   }
   // the states as cells, from the top: alive, its dying stages fading, dead on the panel's white (✝ on each but the
-  // live one; white on the cells nearer the live colour on a light page, the dead one on a dark page); the live
-  // cell a button, one more state a click, back to 2 when one more would not fit; past the room (a rule typed), in
-  // words, a click back to 2
+  // live one; white on the cells nearer the live colour on a light page, the dead one on a dark page); past the room
+  // (a rule typed), in words. A click on the frame: one more state, back to 2 when one more would not fit
   const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), 'var(--panel)'];
   const room = $('statesLabel').clientHeight || 160, fit = Math.min(10, Math.floor((room + 2) / 24)), words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
   const cross = (i) => `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>`;
   $('statesLabel').innerHTML = rule.C > fit ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
-    : `<span class="states-cells">${cells.map((c, i) => (i ? `<i style="background:${c}">${cross(i)}</i>` : `<button type="button" style="background:${c}" title="One more state (back to 2 past ${fit})"></button>`)).join('')}</span>`;
-  $('statesLabel').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead`;
-  $('statesLabel').onclick = (e) => {
-    if (rule.C <= fit && !e.target.closest('button')) return;
-    setRuleText(write(B, S, rule.C + 1 > fit ? 2 : rule.C + 1));
-    compute();
-  };
+    : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i ? cross(i) : ''}</i>`).join('')}</span>`;
+  $('statesBox').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead · a click: ${rule.C + 1 > fit ? 'back to 2' : 'one more'}`;
+  $('statesBox').onclick = () => { setRuleText(write(B, S, rule.C + 1 > fit ? 2 : rule.C + 1)); compute(); };
+  $('statesBox').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('statesBox').onclick(); } };
   // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
   // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
   // (a birth's count split among the K colours, the two most equal), the first of each said
