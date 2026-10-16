@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.641';
+const VERSION = '0.1.642';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5198,6 +5198,9 @@ const DRAW_PATTERNS = [
   ['swarm-ship', 'hex', ['B2op3m/S12mp3p4p5'], 'Glider', '2.3A$5.A$A$A3.A$.2A!', 'flies, period 8 · 9 cells'],
   ['comets-ship0', 'hex', ['B2345/S134/C5'], 'Glider', '.AC$2ABA$AC!', 'flies, period 4 · 8 cells'],
   ['comets-ship1', 'hex', ['B2345/S134/C5'], 'Spaceship', '.DCD$.BAB$C3A$2A!', 'flies, period 2 · 12 cells'],
+  ['comets-ship2', 'hex', ['B2345/S134/C5'], 'Spaceship', '3.D$.CB2D$2A2B$3AC$.2A!', 'flies, period 2 · 15 cells'],
+  ['comets-ship3', 'hex', ['B2345/S134/C5'], 'Spaceship', '3.BA$D.2C2A$.B.CBA$3.DB$2.D2A$2.2B$2.A!', 'flies, period 6 · 19 cells'],
+  ['comets-ship4', 'hex', ['B2345/S134/C5'], 'Spaceship', '8.2AC$6.2AB2D$4.2A2C.C$2.A2BCD.D$3AD3.2B$BA4.ABA$2C$B!', 'flies, period 8 · 33 cells'],
   ['callahan-ship0', 'hex', ['B2o/S2m34'], 'Glider', '.A$A$A2.A$A$A!', 'flies, period 4 · 6 cells'],
   ['callahan-ship1', 'hex', ['B2o/S2m34'], 'Spaceship', '3.A$2.A$$2.3A$4A$.2A$A!', 'flies, period 48 · 12 cells'],
   ['callahan-osc', 'hex', ['B2o/S2m34'], 'Oscillator', '4.A$3.2A$7A$.A2.A$.A2.A!', 'period 30 · 14 cells'],
