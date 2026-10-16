@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.623';
+const VERSION = '0.1.624';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1199,7 +1199,7 @@ function describe(base, available) {
   $('barBase').textContent = walk.life.ruleText;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
   $('barBase').title = known ? known.dataset.name : '';
   $('barBase').parentElement.classList.add('life');
-  $('description').innerHTML = `${walk.life.colours > 1 ? 'A dead cell is born only if one colour has more live neighbours than any other; on a tie it stays dead · ' : ''}Neighbours share an edge or a corner · ${lead}`;
+  $('description').innerHTML = `${walk.life.colours > 1 ? 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead · ' : ''}Neighbours share an edge or a corner · ${lead}`;
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
@@ -5835,13 +5835,18 @@ function renderRuleSection() {
     $(id).querySelector('.wheres')?.append(...where);
   }
   $('statesLabel').textContent = rule.C === 2 ? '2 states' : `${rule.C} · ${rule.C - 2} dying`;
-  // in a battle, a newborn takes the colour most of its live neighbours have, none on a tie: whether a
-  // birth's count can split as one (with 2 colours, an even count: 1 + 1, 2 + 2…; with more, any but 1)
+  // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
+  // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
+  // (a birth's count split among the K colours, the two most equal), the first of each said
   const K = lifeColours, counts = Array.from({ length: N + 1 }, (_, c) => c).filter((c) => B[c].size);
-  const tie = counts.find((c) => c > 1 && (K > 2 || c % 2 === 0));
+  const splits = (c, k, top) => (k === 0 ? (c ? [] : [[]]) : Array.from({ length: Math.min(c, top) + 1 }, (_, x) => x).flatMap((x) => splits(c - x, k - 1, x).map((r) => [x, ...r])));
+  const ties = counts.flatMap((c) => splits(c, K, c).filter((p) => p[0] > 0 && p[0] === p[1]));
+  const missing = ties.find((p) => p.filter((x) => !x).length === 1), none = ties.find((p) => p.filter((x) => !x).length !== 1);
+  const say = (p) => p.filter((x) => x).join(' + ');
   $('determinedRow').hidden = K === 1;
-  $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour<small>${tie ? `none on a tie (${K} colours: ${K > 2 && tie % 2 ? `${(tie - 1) / 2} + ${(tie - 1) / 2} + 1` : `${tie / 2} + ${tie / 2}`})` : 'never a tie'}</small></span>`;
-  $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie it stays dead';
+  $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour<small>${!ties.length ? 'never a tie'
+    : [missing && `${say(missing)}: the colour missing`, none && `${say(none)}: no birth`].filter(Boolean).join(' · ')}</small></span>`;
+  $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
   $('statesDown').disabled = rule.C === 2;
   $('statesUp').disabled = rule.C === 10;
   $('statesDown').onclick = () => { setRuleText(write(B, S, rule.C - 1)); compute(); };
@@ -5913,7 +5918,8 @@ function lifeTrack(gen) {
 
 // One generation. A cell: 0 dead, k alive of colour k (1 … K, one colour: 1), k + K × s dying of colour
 // k at stage s (1 … C − 2, see parseRule). Only live cells count as neighbours (on hexagons maybe where
-// they sit, Callahan's letters); a newborn takes the colour most of them have, none on a tie (it stays dead). With C > 2 states a cell
+// they sit, Callahan's letters); a newborn takes the colour most of them have; on a tie, the one colour missing
+// around it if just one is (QuadLife's way: 4 colours, 1 + 1 + 1), else none (it stays dead). With C > 2 states a cell
 // that fails to survive goes through the dying stages, keeping its colour, and cannot be born again until
 // it is dead. A cell dying at generation g records died = g (fading trail).
 function lifeStep() {
@@ -5939,10 +5945,13 @@ function lifeStep() {
       if (was) now = L.S[c] ? was : C > 2 ? was + K : 0;
       else if (!L.B[c]) now = 0;
       else if (!two) now = 1;
-      else {  // the colour most of its live neighbours have; on a tie, no birth
-        let most = 0, tied = 0;
-        for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] === most) tied++; }
-        if (tied > 1) now = 0;
+      else {  // the colour most of its live neighbours have; on a tie, the one missing, else no birth
+        let most = 0, tied = 0, missing = 0, gone = 0;
+        for (let k = 1; k <= K; k++) {
+          if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] === most) tied++;
+          if (!around[k]) { gone++; missing = k; }
+        }
+        if (tied > 1) now = gone === 1 ? missing : 0;
       }
     }
     b[t] = now;
@@ -6029,10 +6038,13 @@ function huntWorker() {
       if (was) return S[c] ? was : C > 2 ? was + K : 0;
       if (!B[c]) return 0;
       if (K === 1) return 1;
-      let most = 0, tied = 0, now = 0;  // the colour most of its live neighbours have; on a tie, no birth
-      for (let k = 1; k <= K; k++) { if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] === most) tied++; }
-      if (tied > 1) return 0;
-      born[now]++;
+      let most = 0, tied = 0, now = 0, missing = 0, gone = 0;  // the colour most of its live neighbours have; on a tie, the one missing, else no birth
+      for (let k = 1; k <= K; k++) {
+        if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] === most) tied++;
+        if (!around[k]) { gone++; missing = k; }
+      }
+      if (tied > 1) now = gone === 1 ? missing : 0;
+      if (now) born[now]++;
       return now;
     };
     // A cell whose own state and whose neighbours' did not change keeps its state: each generation only
