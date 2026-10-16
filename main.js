@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.643';
+const VERSION = '0.1.644';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5231,6 +5231,18 @@ const DRAW_PATTERNS = [
   ['longcairo-ship1', 'cairo', ['B2347/S35/C3'], 'Spaceship', '7.A$2.3A2B2A2.B$A.2B2.B2A2.B$6.B.B2.A!', 'flies, period 4 · 19 cells'],
   ['longcairo-osc', 'cairo', ['B2347/S35/C3'], 'Oscillator', 'B.2A$A.BA$B.A!', 'period 3 · 8 cells'],
   ['longcairo-meth', 'cairo', ['B2347/S35/C3'], 'Methuselah', '.3A3.A$.2A2.2A$A.4A!', 'loops from generation 3,997 · 13 cells'],
+  // found by a search of small random starts for each rule that lacked them (checked in the app: periods, lifetimes)
+  ['starwars-osc', 'square', ['B2/S345/C4'], 'Oscillator', 'ABC$.A$3A$.A!', 'period 12 · 8 cells'],
+  ['seeds-osc', 'square', ['B2/S'], 'Oscillator', '2.A$A$.A!', 'period 2 · 3 cells'],
+  ['mazectric-seed', 'square', ['B3/S1234'], 'Seed', '.A$A$.A!', 'grows corridors for ever · 3 cells'],
+  ['swarm-osc', 'hex', ['B2op3m/S12mp3p4p5'], 'Oscillator', '4.A.A$A.A$4.A$2A$A!', 'period 2 · 8 cells'],
+  ['swarm-meth', 'hex', ['B2op3m/S12mp3p4p5'], 'Methuselah', '.3A$.A.A$2A$2A.A!', 'dies out at generation 874 · 10 cells'],
+  ['comets-meth', 'hex', ['B2345/S134/C5'], 'Methuselah', '3A$3A!', 'dies out at generation 400 · 6 cells'],
+  ['twin-osc', 'hex', ['B2om5/S2om4o'], 'Oscillator', 'A$A$A$A!', 'period 6 · 4 cells'],
+  ['twin-meth', 'hex', ['B2om5/S2om4o'], 'Methuselah', '2A.A$4A$2A.A$.3A!', 'loops from generation 1,217 · 13 cells'],
+  ['loops-osc2', 'hex', ['B34/S123/C3'], 'Oscillator', '.2A.A$2A2.A$A3.A$A3.A$4A!', 'period 22 · 14 cells'],
+  ['hexmeth-osc', 'hex', ['B234/S234'], 'Oscillator', '2.A$2A$.A!', 'period 2 · 4 cells'],
+  ['snowflakes-seed', 'hex', ['B1/S0123456'], 'Seed', 'A!', 'grows a snowflake · 1 cell'],
 ];
 const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]));
 // the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
