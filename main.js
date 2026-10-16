@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.615';
+const VERSION = '0.1.616';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6250,18 +6250,14 @@ function huntParts(r, K) {
       : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols)));
   }
   // a Möbius strip: the colours' parts in turn along it twice round (its two sides one strip, 2L, see
-  // mobiusLoop: s and s + L are one place, its two sides), each its stretch, a patch at its middle; the
-  // first (red) at the middle of the face in view
+  // mobiusLoop: s and s + L are one place, its two sides), each its stretch, 2L / K long, a patch at its
+  // middle; from the start of the face in view (red first), so that a face holds whole stretches when it can
   if (g.mobius) {
-    // the whole strip (Wild): each its stretch of it twice round, 2L / K long, round its patch's middle
-    const s0 = mobiusMiddle(g), stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0 + stretch / 2) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
+    const s0 = mobiusMiddle(g) - g.L / 2, stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
     // (a tile whose middle is on a stretch's end, the sheet's end for one: in the stretch it starts, whatever the rounding)
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch + 1e-9))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
-    // the patches evenly along it twice round (both sides, 2L): each side's evenly spread over its whole
-    // length, the next one 2L / K further (by turns on either side, or, past half of them, behind the first
-    // ones); a side by turns would not close up, the strip turning it over once round
-    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k * 2 * g.L) / K, g.W / 2)));
+    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k + 0.5) * stretch, g.W / 2)));  // at their stretches' middles
   }
   if (g.torus) {  // cells u × nv + v (Cairo pentagons, triangles: by their middles); the blocks along whichever way they divide
     const [a, b] = torusBlocks(K), middles = g.cairo || g.sides === 3;
@@ -6580,7 +6576,7 @@ function sheetIndex(g) {
 function famousSpot(i, K) {
   const g = walk.geo;
   if (K === 1) return centreCells()[0];
-  if (g.mobius) return mobiusNearest(mobiusMiddle(g) + (i * 2 * g.L) / K, g.W / 2)[0];
+  if (g.mobius) return mobiusNearest(mobiusMiddle(g) - g.L / 2 + ((i + 0.5) * 2 * g.L) / K, g.W / 2)[0];  // (as huntParts)
   const [a, b] = torusBlocks(K);
   return sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0];
 }
