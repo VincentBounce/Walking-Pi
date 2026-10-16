@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.639';
+const VERSION = '0.1.640';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6706,10 +6706,18 @@ function centreCells(d) {
   }
   if (!d && !(g.sides === 4 && (g.perFace || g.floors))) return [patchCentre()];
   d = unit(d ?? AXES[3]);  // the cube's front face
-  const near = new Float64Array(g.n).fill(-Infinity);
-  for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1]) near[t] = dot3(unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), d);
-  const best = near.reduce((m, v) => Math.max(m, v), -Infinity);
-  return [...near.keys()].filter((t) => near[t] > best - 1e-9);
+  // (each direction once a grid: a hunt asks for the same few, at every radius; plain numbers, as it runs over every cell)
+  const key = d.join(), known = (g.centres ??= new Map()).get(key);
+  if (known) return known;
+  const near = new Float64Array(g.n).fill(-Infinity), { start } = walk.life.nbr, c = g.cen;
+  for (let t = 0; t < g.n; t++) {
+    if (start[t] === start[t + 1]) continue;
+    const x = c[3 * t], y = c[3 * t + 1], z = c[3 * t + 2];
+    near[t] = (x * d[0] + y * d[1] + z * d[2]) / (Math.hypot(x, y, z) || 1);
+  }
+  const best = near.reduce((m, v) => Math.max(m, v), -Infinity), found = [...near.keys()].filter((t) => near[t] > best - 1e-9);
+  g.centres.set(key, found);
+  return found;
 }
 // The cells at most r Life-neighbour steps from the centre cell (r = 1, 2, 3: a 3×3, 5×5 or 7×7
 // square on square grids, a small disc of triangles on the polyhedra), or r − 1 steps from the cells
