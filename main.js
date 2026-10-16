@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.617';
+const VERSION = '0.1.618';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4139,12 +4139,12 @@ const SPHERES = {
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
   // (torus: a size of its own may share torusSquare's mesh, hence its flatWidth)
-  torus: { mesh: (s) => Object.assign(torusMesh(...torusDims('torus', s)), { flatWidth: 1 }), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+  torus: { mesh: (s) => Object.assign(torusMesh(...torusDims('torus', s)), { flatWidth: 1, square: false }), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => twelve(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
           sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // the square torus (Squares, stretched): as many squares round the ring as round the tube, a square
   // sheet unrolled, its squares stretched along the ring rolled up (see torusPoint's flatWidth)
-  torusSquare: { mesh: (s) => Object.assign(torusMesh(...torusDims('torusSquare', s)), { flatWidth: TORUS_TUBE }),
+  torusSquare: { mesh: (s) => Object.assign(torusMesh(...torusDims('torusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
                  radius: (s) => torusDims('torusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [1, 1],
                  sizes: [16, 24, 32, 48, 64], initial: 32, least: 4, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
@@ -4154,19 +4154,19 @@ const SPHERES = {
   // on a square sheet (Square, under the tilings): as long round the ring as round the tube unrolled, its
   // tiles stretched along the ring once rolled up (as torusSquare)
   // hexagons and triangles: the plane's rhombus (see rhombHexTorusMesh), as many tiles round the ring as round the tube
-  hextorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('hextorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2 }),
+  hextorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('hextorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
                     radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 1, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
-  tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2 }),
+  tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
                     radius: (s) => torusDims('tritorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 2, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
-  cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE }),
+  cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
                       radius: (s) => torusDims('cairotorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [2, 2],
                       sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('cairotorusSquare', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // Cairo pentagons: the tube nv squares of their grid around, two pentagons a square
-  cairotorus: { mesh: (s) => cairoTorusMesh(...torusDims('cairotorus', s)), radius: (s) => torusDims('cairotorus', s)[0] / (2 * Math.PI * TORUS_TUBE),
+  cairotorus: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorus', s)), { flatWidth: 1, square: false }), radius: (s) => torusDims('cairotorus', s)[0] / (2 * Math.PI * TORUS_TUBE),
                 columns: cairoTorusColumns, perRow: 1, steps: [2, 2],  // even counts both ways
                 sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('cairotorus', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
@@ -5720,10 +5720,10 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
 const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
 const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
-// ring 1 / TORUS_TUBE times as long as its tube, whatever its sheet): 12 colours 6 × 2 rather than 4 × 3; on the
-// plane's rhombus (Square, hexagons and triangles), as on the plane: its rows round the ring (see COLOUR_GRID)
+// ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3; on a square sheet (Square:
+// the plane's grid, glued), as on the plane (see COLOUR_GRID)
 function torusBlocks(K, g = walk.geo) {
-  if (g?.shear) { const [cols, rows] = COLOUR_GRID[K]; return [rows, cols]; }
+  if (g?.square) { const [cols, rows] = COLOUR_GRID[K]; return [rows, cols]; }
   let best = [K, 1], err = Infinity;
   for (let b = 1; b <= K; b++) if (K % b === 0) { const e = Math.abs(Math.log(b / ((K / b) * TORUS_TUBE))); if (e < err) { err = e; best = [K / b, b]; } }
   return best;
