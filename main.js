@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.609';
+const VERSION = '0.1.610';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3621,6 +3621,17 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
   // outwards = away from the circle running through the middle of the tube
   const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
   const mesh = finishMesh(verts, tiles, sides, nv, fromTubeAxis);
+  // on the sheet, each tile on the side of a seam its middle is on (a triangle across the end, its middle past
+  // it, drawn at the start once unrolled, with the tiles it belongs with)
+  for (let t = 0; t < uv.length / (2 * sides); t++) {
+    const o = 2 * sides * t;
+    for (const [d, n] of [[0, nu], [1, nv]]) {
+      let mid = 0;
+      for (let q = 0; q < sides; q++) mid += uv[o + 2 * q + d] / sides;
+      const shift = n * Math.floor(mid / n);
+      if (shift) for (let q = 0; q < sides; q++) uv[o + 2 * q + d] -= shift;
+    }
+  }
   Object.assign(mesh, { torus: true, nu, nv, uv: new Float64Array(uv) });
   return mesh;
 }
@@ -3652,8 +3663,9 @@ const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.spl
  * lengths, as torusPoint does) and twists along it, up to half a turn at m = 1, so the ends meet
  * upside down: the point (x + L, y) is then the point (x, W − y). */
 function mobiusPoint(x, y, L, W, m, Lp = L) {  // Lp: the length the strip is shaped by (a square sheet: the usual one, its tiles stretched)
-  const X = (x / L - 0.5) * 2 * Math.PI, S = ((y - W / 2) * 2 * Math.PI) / Lp;  // along, across (same unit)
-  const tw = (m * X) / 2, w = S * Math.cos(tw), h = S * Math.sin(tw);  // across: outwards and up
+  // along, across (same unit); a square sheet flat as it is, stretched to the usual length as it bends round
+  const X0 = (x / L - 0.5) * 2 * Math.PI, X = X0 * (L / Lp + (1 - L / Lp) * m), S = ((y - W / 2) * 2 * Math.PI) / Lp;
+  const tw = (m * X0) / 2, w = S * Math.cos(tw), h = S * Math.sin(tw);  // across: outwards and up
   if (m < 1e-6) return [X, -w, h];
   const rr = 1 / m, ph = X / rr;
   return [(rr + w) * Math.sin(ph), rr - m - (rr + w) * Math.cos(ph), h];
