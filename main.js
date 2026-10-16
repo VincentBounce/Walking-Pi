@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.649';
+const VERSION = '0.1.650';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5468,13 +5468,32 @@ function planeFromSetup(s) {
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
+let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was)
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
-  for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on the plane only)
-    b.classList.toggle('active', b.dataset.start === plane.start);
-    b.disabled = b.dataset.start === 'draw' && !kind;
+  if (kind) surfaceDraw = false;
+  for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on a surface: its patterns, to see)
+    b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
+    b.disabled = false;
   }
-  if (!kind) { $('symmetryRow').hidden = $('startDraw').hidden = true; return; }
+  for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
+  if (!kind) {
+    $('symmetryRow').hidden = true;
+    $('startDraw').hidden = !surfaceDraw;
+    if (!surfaceDraw) return;
+    // a surface: the rule's patterns on its grid, greyed (they cannot be drawn here: Famous lays them)
+    const cells = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo' }[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
+    for (const b of $('brushCards').children) {
+      const p = DRAW_BY_ID.get(b.dataset.brush);
+      b.hidden = !(p[1] === cells && p[2].includes(rule));
+      b.disabled = true;
+      b.classList.remove('active');
+    }
+    $('drawNote').hidden = [...$('brushCards').children].some((b) => !b.hidden);
+    return;
+  }
+  $('drawNote').hidden = true;
+  for (const b of $('brushCards').children) b.disabled = false;
   const sides = PLANE_SIDES[kind];
   $('planeLabel').innerHTML = `${sizeShape(kind, plane.side)}<small>${sizeCells(kind, plane.side)}</small>`;  // the size (see gridSize)
   $('planeDown').disabled = plane.side <= sides[0];
@@ -5865,15 +5884,12 @@ function renderRuleSection() {
   const ties = counts.flatMap((c) => splits(c, K, c).filter((p) => p[0] > 0 && p[0] === p[1]));
   const say = (p) => p.filter((x) => x).join(' + '), gone = (p) => p.filter((x) => !x).length;
   $('determinedRow').hidden = K === 1;
-  $('determinedRow').innerHTML = `<div class="field-label">Births by majority colour</div>${!ties.length ? '<small>never a tie</small>'
+  $('determinedRow').innerHTML = `<div class="field-label">Births by majority colour</div><div class="births">${colourBlock(K)}<span>${!ties.length ? '<small>never a tie</small>'
     : [...ties.filter((p) => gone(p) !== 1), ...ties.filter((p) => gone(p) === 1)]  // a tie a line, what it gives first: no birth, then the colour missing
-      .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}`;
+      .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}</span></div>`;
   $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
   $('ruleName').textContent = mine ? mine.dataset.name : 'Custom rule';
-  // last, for information: the rule's patterns on this grid (Draw's, those Famous lays)
-  const kind = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo' }[mark], famous = DRAW_PATTERNS.filter((p) => p[1] === kind && p[2].includes(now));
-  $('famousList').hidden = !famous.length;
-  $('famousList').innerHTML = `<div class="field-label">Famous</div>${famous.map((p) => `<small><b>${p[3]}</b> · ${p[5]}</small>`).join('')}`;
+
 }
 let ruleFittedTo = null;
 function fitRuleToShape() {
@@ -6387,7 +6403,7 @@ function huntFits() {
   })));
 }
 function renderHunt() {
-  $('huntRow').hidden = !huntOn();
+  $('huntRow').hidden = !huntOn() || surfaceDraw;
   if ($('huntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? (walk.plane ? `a battle in ${COLOUR_PARTS[K]}` : `a battle of ${K} colours`) : hunt.goal === 'dies' ? 'the longest death' : 'the longest life';
@@ -9375,7 +9391,14 @@ for (const [id, torus, pic] of [['edgeTorus', true, 'torus'], ['edgeWalls', fals
   $(id).addEventListener('click', () => { if (plane.torus === torus) return; plane.torus = torus; compute(true); });
 }
 for (const b of $('lifeStartTabs').children) {
-  b.addEventListener('click', () => { if (plane.start === b.dataset.start) return; plane.start = b.dataset.start; cleared = null; compute(true); });
+  b.addEventListener('click', () => {
+    if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
+      surfaceDraw = b.dataset.start === 'draw';
+      if (surfaceDraw || plane.start === b.dataset.start) { renderPlaneRow(); renderHunt(); return; }
+    }
+    if (plane.start === b.dataset.start) return;
+    plane.start = b.dataset.start; cleared = null; compute(true);
+  });
 }
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
