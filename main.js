@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.661';
+const VERSION = '0.1.662';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4357,11 +4357,15 @@ const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
+// (each family's last size kept, see SIZE_LADDERS: on another tiling or surface of it, the size with about as many cells)
+const familyCells = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
-  const sel = $('sphereF'), key = `${kind} ${initial}`;
+  const sel = $('sphereF'), key = `${kind} ${initial}`, [was] = (sel.dataset.kind ?? '').split(' ');
   if (sel.dataset.kind === key) return;
+  if (SPHERES[was] && sel.value) familyCells[ladderOf(was)] = SPHERES[was].tiles(sphereSize());
+  const kept = familyCells[ladderOf(kind)];
   sel.replaceChildren(...SPHERES[kind].sizes.map((f) => new Option(sizeLabel(kind, f), f)));
-  sel.value = SPHERES[kind].nearest(initial);
+  sel.value = kept ? SPHERES[kind].near(kept) : SPHERES[kind].nearest(initial);
   sel.dataset.kind = key;
 }
 
@@ -4414,7 +4418,8 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   let list;
   Object.defineProperty(S, 'sizes', { get: () => (list ??= [...new Set(counts.map(nearest()))]) });
   Object.defineProperty(S, 'initial', { get: () => nearest()(start) });
-  S.nearest = (f) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / S.tiles(f))) < Math.abs(Math.log(S.tiles(a) / S.tiles(f))) ? b : a));  // a mode's own size: the usual one with about as many cells
+  S.near = (n) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / n)) < Math.abs(Math.log(S.tiles(a) / n)) ? b : a));  // the usual size with about n cells
+  S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
 }
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
@@ -9782,14 +9787,12 @@ $('sizeUp').addEventListener('click', () => stepSize(1));
 // torus; at the same size if it has one
 function turnTorus(turned, square = squareSheet) {
   if (turned === torusTurned && square === squareSheet) return;
-  const mode = MODES[$('mode').value], size = sphereSize();
+  const mode = MODES[$('mode').value];
   torusTurned = turned;
   squareSheet = square;
-  fillSphereSizes(surfaceOf(mode), mode.initial);
-  const sel = $('sphereF');
-  if (typeof size === 'number' && [...sel.options].some((o) => o.value === String(size))) sel.value = size;
+  fillSphereSizes(surfaceOf(mode), mode.initial);  // as many cells
   $('startNo').value = 1;  // the starts are not the same
-  sel.dispatchEvent(new Event('change'));
+  $('sphereF').dispatchEvent(new Event('change'));
 }
 $('sphereF').addEventListener('change', () => {
   syncSizeStepper();
