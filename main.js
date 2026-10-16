@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.621';
+const VERSION = '0.1.622';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5835,6 +5835,14 @@ function renderRuleSection() {
     $(id).querySelector('.wheres')?.append(...where);
   }
   $('statesLabel').textContent = rule.C === 2 ? '2 states' : `${rule.C} · ${rule.C - 2} dying`;
+  // in a battle, a newborn takes the colour most of its live neighbours have; determined unless a birth's
+  // count can split as a tie (drawn then): with 2 colours, an even count (1 + 1, 2 + 2…); with more, any but 1
+  const K = lifeColours, counts = Array.from({ length: N + 1 }, (_, c) => c).filter((c) => B[c].size);
+  const tie = counts.find((c) => c > 1 && (K > 2 || c % 2 === 0));
+  $('determinedRow').hidden = K === 1;
+  $('determinedRow').innerHTML = `<b class="${tie ? 'no' : 'yes'}">${tie ? '✕' : '✓'}</b>Determined births`;
+  $('determinedRow').title = tie ? `With ${K} colours, ${tie} live neighbours can be a tie (${K > 2 && tie % 2 ? `${(tie - 1) / 2} + ${(tie - 1) / 2} + 1` : `${tie / 2} + ${tie / 2}`}): the newborn's colour is then drawn`
+    : `With ${K} colours, a newborn always has one colour most around it: no draw`;
   $('statesDown').disabled = rule.C === 2;
   $('statesUp').disabled = rule.C === 10;
   $('statesDown').onclick = () => { setRuleText(write(B, S, rule.C - 1)); compute(); };
