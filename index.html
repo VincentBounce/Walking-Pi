@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261026q">
+  <link rel="stylesheet" href="style.css?v=20261027b">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -184,6 +184,7 @@
               <option value="life2dTri">Life — triangle grid</option>
               <option value="life2dHex">Life — hexagon grid</option>
               <option value="life2dCairo">Life — Cairo pentagon grid</option>
+              <option value="life2dKite">Life — kite grid</option>
             </optgroup>
             <optgroup label="Automata on surfaces">
               <option value="lifeCube">Life — cube</option>
@@ -192,14 +193,17 @@
               <option value="lifeHexTorus">Life — torus</option>
               <option value="lifeCairoTorus">Life — torus</option>
               <option value="lifeTriTorus">Life — torus</option>
+              <option value="lifeKiteTorus">Life — torus</option>
               <option value="lifeMobius">Life — Möbius strip</option>
               <option value="lifeMobiusHex">Life — Möbius strip</option>
               <option value="lifeMobiusTri">Life — Möbius strip</option>
               <option value="lifeMobiusCairo">Life — Möbius strip</option>
+              <option value="lifeMobiusKite">Life — Möbius strip</option>
               <option value="lifeKlein">Life — Klein bottle</option>
               <option value="lifeKleinHex">Life — Klein bottle</option>
               <option value="lifeKleinTri">Life — Klein bottle</option>
               <option value="lifeKleinCairo">Life — Klein bottle</option>
+              <option value="lifeKleinKite">Life — Klein bottle</option>
               <option value="lifeTetra">Life — tetrahedron</option>
               <option value="lifeOcta">Life — octahedron</option>
               <option value="lifeStella">Life — stella octangula</option>
@@ -287,7 +291,7 @@
         </div>
         <label id="lifeRuleRow" hidden>  <!-- the rules known, each marked for its shapes (■ ▲ ⬡ ⬠), with its name: shown as cards (ruleCards) -->
           <select id="lifePreset">
-            <option value="B3/S23" data-name="Life">■▲ B3/S23 — Life (2 states)</option>
+            <option value="B3/S23" data-name="Life">■▲◆ B3/S23 — Life (2 states)</option>
             <option value="B45/S345/C4" data-name="Sparse">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
             <option value="B34/S2/C4" data-name="Brink">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
             <option value="B2/S345/C4" data-name="Star Wars">■ B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
@@ -457,6 +461,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261026q"></script>
+  <script src="main.js?v=20261027b"></script>
 </body>
 </html>
