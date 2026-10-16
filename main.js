@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.642';
+const VERSION = '0.1.643';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6896,6 +6896,7 @@ function applySetup(s) {
 
 // Called when a walk has just been built: restore a loaded setup's champion, or place the chosen
 // hunt zone's start, then write the link
+let huntBack = null;  // the hunt to bring back with a setup left in the Gallery (see viewNow)
 function applyPendingView() {
   const ch = pendingChampion;
   pendingChampion = null;
@@ -6904,6 +6905,7 @@ function applyPendingView() {
   if (pendingRestore) {  // back from the Gallery without a click: the view as it was (see galleryView)
     const g = pendingRestore;
     pendingRestore = null;
+    huntBack = g.hunt;
     $('autoFit').checked = g.autoFit;
     $('autoRotate').checked = g.autoRotate;
     Object.assign(cam, g.cam);
@@ -6924,6 +6926,12 @@ function applyPendingView() {
     hunt.zone = 'custom';
     renderHunt();
   }
+  if (huntBack && walk.life) {  // back from the Gallery: the hunt as it was (its zone, goal, results), last
+    Object.assign(hunt, huntBack);
+    hunt.listKey = null;
+    renderHunt();
+  }
+  huntBack = null;
   syncLink();  // with the start a setup's champion or hunt zone gave
 }
 
@@ -9746,7 +9754,9 @@ let galleryBefore = null, galleryHover = 0;  // the setup in use while others ar
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
 // the setup in use as it was seen
 let galleryView = null;
-const viewNow = () => ({ autoFit: $('autoFit').checked, autoRotate: $('autoRotate').checked, cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] }, view: { ...view } });
+// and what is not in a link: the hunt's zone, goal and results (all of it, kept in one place)
+const viewNow = () => ({ autoFit: $('autoFit').checked, autoRotate: $('autoRotate').checked, cam: { r: [...cam.r], u: [...cam.u], v: [...cam.v] }, view: { ...view },
+  hunt: { zone: hunt.zone, goal: hunt.goal, top: hunt.top, picked: hunt.picked, status: hunt.status } });
 // A setup's row, built-in or saved: the walk's icon, a name and a detail; hovering shows it, a click
 // keeps it (see the lists' mouseleave); with onDelete, a × at its end
 // A setup of the Gallery is shown framed and facing its walk: Auto-fit on (a hand rotation or zoom
