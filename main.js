@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.654';
+const VERSION = '0.1.655';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -949,7 +949,7 @@ const MODES = {
   life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
   life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
   life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons' },
-  life2dKite: { base: 2, lattice: 'kite', life: true, plane: 'kite', where: 'a grid of kites (each hexagon cut in 6)' },
+  life2dKite: { base: 2, lattice: 'kite', life: true, plane: 'kite', where: 'a grid of kites (each triangle cut in 3)' },
   lifeKiteTorus: { base: 2, lattice: 'sphere', sphere: 'kitetorus', life: true, perspective: true, round: true, where: 'a torus of kites' },
   lifeMobiusKite: { base: 2, lattice: 'sphere', sphere: 'mobiusKite', life: true, perspective: true, round: true,
                     where: 'a Möbius strip of kites (both faces, over its edge onto the one behind)' },
@@ -983,6 +983,9 @@ const MODES = {
                 where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
                 where: 'an octahedron of triangles' },
+  lifeTetraKite: { base: 2, lattice: 'sphere', sphere: 'tetraKite', life: true, where: 'a tetrahedron of kites (each triangle cut in 3)' },
+  lifeOctaKite: { base: 2, lattice: 'sphere', sphere: 'octaKite', initial: 16, perspective: true, life: true, where: 'an octahedron of kites (each triangle cut in 3)' },
+  lifeIcosaKite: { base: 2, lattice: 'sphere', sphere: 'icosaKite', life: true, round: true, where: 'an icosahedron of kites (each triangle cut in 3)' },
   lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true,
                 where: 'a stella octangula (two tetrahedra) of triangles' },
   lifeDodeca: { base: 2, lattice: 'sphere', sphere: 'dodeca', life: true,
@@ -2122,7 +2125,7 @@ const MODE_ICONS = {
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   life2dKite: 'kites', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
   life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
-  lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeHexSphere: 'hexagon',
+  lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
 
@@ -2185,7 +2188,8 @@ const NAV = {
   lifeKleinTri: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeKleinCairo: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
-  lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
+  lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''], lifeTetraKite: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeOctaKite: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeIcosaKite: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   squareParity: ['Walk', '2D', 'Squares', 'Parity', 'grid'], squareParityCells: ['Walk', '2D', 'Squares', 'Parity', 'cells'],
   triParity: ['Walk', '2D', 'Triangles', 'Parity', 'grid'], hexParityCells: ['Walk', '2D', 'Hexagons', 'Parity', 'cells'],
   squarePivot: ['Walk', '2D', 'Squares', 'Pivot', 'grid'], squarePivotCells: ['Walk', '2D', 'Squares', 'Pivot', 'cells'],
@@ -2264,15 +2268,19 @@ const FAMILIES = [
                           ['triTorusGrid', 'triTorusWalk', 'triTorusPivotGrid', 'lifeTriTorus'], ['cairoTorusWalk', 'lifeCairoTorus'], ['lifeKiteTorus']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [3, false, 'pentagons', 'Cairo pentagons'],
            [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
-           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites (each hexagon cut in 6)']] },
+           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
                                  ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri'], ['mobiusCairoWalk', 'lifeMobiusCairo'], ['lifeMobiusKite']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [3, false, 'pentagons', 'Cairo pentagons'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
-           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites (each hexagon cut in 6)']] },
+           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Klein bottle', modes: [['kleinWalk', 'lifeKlein', 'kleinPivot'], ['kleinCairoWalk', 'lifeKleinCairo'], ['kleinHexWalk', 'lifeKleinHex', 'kleinHexPivot'], ['kleinTriWalk', 'lifeKleinTri'], ['lifeKleinKite']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'pentagons', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons'], [3, false, 'tilesTri', 'Triangles'], [4, false, 'kites', 'Kites (each hexagon cut in 6)']] },
-  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid']], tab: 0,
-    tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)']] },
+    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'pentagons', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons'], [3, false, 'tilesTri', 'Triangles'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
+  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid'], ['lifeIcosaKite']], tab: 0,
+    tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)'], [2, false, 'kites', 'Kites (each triangle cut in 3)']] },
+  { name: 'Tetrahedron', modes: [['tetraGrid', 'tetraLR', 'tetraPivotGrid', 'lifeTetra'], ['lifeTetraKite']], tab: 0,
+    tabs: [[0, false, 'tilesTri', 'Triangles'], [1, false, 'kites', 'Kites (each triangle cut in 3)']] },
+  { name: 'Octahedron', modes: [['octaGrid', 'octaLR', 'octaPivotGrid', 'lifeOcta'], ['lifeOctaKite']], tab: 0,
+    tabs: [[0, false, 'tilesTri', 'Triangles'], [1, false, 'kites', 'Kites (each triangle cut in 3)']] },
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
@@ -3489,22 +3497,24 @@ POLYHEDRA.stella = (() => {
   return { P, faces, corners: 6, concave: true };
 })();
 
-function flatPolyhedron(name, f) {
-  const key = `${name}${f}`;
+// kites: each triangle cut in 3 (see kitesOf); round a corner of the solid, a flower of 3, 4 or 5 kites (not 6)
+function flatPolyhedron(name, f, kites = false) {
+  const key = `${kites ? 'kite' : ''}${name}${f}`;
   if (meshCache[key]) return meshCache[key];
   const { P, faces } = POLYHEDRA[name];
   const { verts, add } = vertexStore();
   const tris = [];
   for (const [A, B, C] of faces.map((face) => face.map((v) => P[v]))) {
-    const at = (i, j) => add(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
+    const at = ([i, j]) => add(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
+    const put = (c) => { for (const t of kites ? kitesOf(c) : [c]) tris.push(t.map(at)); };  // (i, j): the face's own grid
     for (let i = 0; i < f; i++) {
       for (let j = 0; i + j < f; j++) {
-        tris.push([at(i, j), at(i + 1, j), at(i, j + 1)]);
-        if (i + j < f - 1) tris.push([at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
+        put([[i, j], [i + 1, j], [i, j + 1]]);
+        if (i + j < f - 1) put([[i + 1, j], [i + 1, j + 1], [i, j + 1]]);
       }
     }
   }
-  const mesh = finishMesh(verts, tris, 3, f);
+  const mesh = finishMesh(verts, tris, kites ? 4 : 3, f);
   // each face as one big triangle, with its three families of grid lines, for cheap drawing
   mesh.faces = faces.map((face) => {
     const [A, B, C] = face.map((v) => P[v]);
@@ -3514,13 +3524,22 @@ function flatPolyhedron(name, f) {
       const t = i / f;
       lines.push([mix(A, B, t), mix(A, C, t)], [mix(B, A, t), mix(B, C, t)], [mix(C, A, t), mix(C, B, t)]);
     }
+    if (kites) {  // and in each triangle, from its middle to its sides' middles
+      const at = (i, j) => [0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f);
+      const spokes = (c) => { const m = [0, 1].map((d) => (c[0][d] + c[1][d] + c[2][d]) / 3); for (let k = 0; k < 3; k++) lines.push([at(...m), at((c[k][0] + c[(k + 1) % 3][0]) / 2, (c[k][1] + c[(k + 1) % 3][1]) / 2)]); };
+      for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
+        spokes([[i, j], [i + 1, j], [i, j + 1]]);
+        if (i + j < f - 1) spokes([[i + 1, j], [i + 1, j + 1], [i, j + 1]]);
+      }
+    }
     const m = [0, 1, 2].map((d) => A[d] + B[d] + C[d]);
     let normal = cross(A.map((v, d) => B[d] - v), A.map((v, d) => C[d] - v));
     if (normal[0] * m[0] + normal[1] * m[1] + normal[2] * m[2] < 0) normal = normal.map((v) => -v);
     const l = Math.hypot(...normal);
     return { corners: [A, B, C], normal: normal.map((v) => v / l), lines };
   });
-  mesh.perFace = f * f;
+  mesh.perFace = (kites ? 3 : 1) * f * f;
+  mesh.kite = kites;
   // faces cut from the solid's own (the dodecahedron's pentagons): its corners and its faces' centres
   const n = POLYHEDRA[name].corners;
   if (n) mesh.solid = { corners: P.slice(0, n).map(unit), centres: P.slice(n).map(unit) };
@@ -3574,24 +3593,24 @@ function kleinPoint(x, y, nu, nv, m) {
 // itself, and the points where it does are two)
 const kleinColumns = { klein: (nv) => twelve(nv / TORUS_TUBE), kleinHex: (nv) => hexTorusColumns(nv), kleinTri: (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE)),
   kleinCairo: (nv) => twelve(nv / TORUS_TUBE) + 1 };  // Cairo: an odd length, so that the ends turned over keep the tiling
-kleinColumns.kleinKite = kleinColumns.kleinHex;  // kites: the hexagons', each cut in 6
+kleinColumns.kleinKite = kleinColumns.kleinTri;  // kites: the triangles', each cut in 3
 function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   const key = `${kind}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const tiles = [], H = Math.sqrt(3) / 2;
   if (kind === 'klein') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) tiles.push([[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]);
-  if (kind === 'kleinHex' || kind === 'kleinKite') for (let c = 0; c < nu; c++) for (let r = 0; r < nv; r++) {
+  if (kind === 'kleinHex') for (let c = 0; c < nu; c++) for (let r = 0; r < nv; r++) {
     const cj = r + (c % 2) / 2;
     tiles.push([0, 1, 2, 3, 4, 5].map((k) => [c + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]));
   }
-  if (kind === 'kleinTri') {
+  if (kind === 'kleinTri' || kind === 'kleinKite') {
     const P = (i, j) => [i + (j % 2) / 2, j];
     for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
       if (j % 2 === 0) tiles.push([P(i, j), P(i + 1, j), P(i, j + 1)], [P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]);
       else tiles.push([P(i, j), P(i + 1, j), P(i + 1, j + 1)], [P(i, j), P(i + 1, j + 1), P(i, j + 1)]);
     }
   }
-  if (kind === 'kleinKite') tiles.splice(0, tiles.length, ...tiles.flatMap(kitesOfHex));
+  if (kind === 'kleinKite') tiles.splice(0, tiles.length, ...tiles.flatMap(kitesOf));
   if (kind === 'kleinCairo') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
     const c = cairoCorners(i, j, o);
     tiles.push(c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0 ? c.reverse() : c);
@@ -3668,7 +3687,7 @@ const MOBIUS_ALONG = {
   mobiusTriTurned: { step: Math.sqrt(3) / 2, ok: (n) => n % 2 === 0 },
   mobiusCairo: { step: 1, ok: (n, nv) => (n + nv) % 2 === 1 },
 };
-MOBIUS_ALONG.mobiusKite = MOBIUS_ALONG.mobiusHex;  // kites: the hexagons', each cut in 6
+MOBIUS_ALONG.mobiusKite = MOBIUS_ALONG.mobiusTri;  // kites: the triangles', each cut in 3
 for (const k of ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusCairo', 'mobiusKite']) MOBIUS_ALONG[`${k}Square`] = MOBIUS_ALONG[k];  // a square sheet, as its tiling
 const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.split('x').map(Number));  // [rows, count along or null]
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
@@ -3697,7 +3716,7 @@ function mobiusPoint(x, y, L, W, m) {
  * - triangles pointing along the strip, in columns √3/2 wide (vertical edges), the strip nv edges
  *   wide, an even number of columns; the edges zigzag along them. */
 function mobiusSheet(kind0, size) {
-  if (kind0.startsWith('mobiusKite')) { const t = mobiusSheet(kind0.replace('Kite', 'Hex'), size); return { ...t, tiles: t.tiles.flatMap(kitesOfHex) }; }  // the hexagons', cut in 6
+  if (kind0.startsWith('mobiusKite')) { const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf) }; }  // the triangles', cut in 3
   // a square sheet (Square, kind …Square): as long as wide, its tiles stretched along the strip once
   // rolled up (see mobiusPoint); else the usual length, a multiple of 12
   const square = kind0.endsWith('Square'), kind = square ? kind0.slice(0, -6) : kind0;
@@ -3821,16 +3840,8 @@ const sheetPoint = (g, i, j, m) => {
  * units a column is 1.5·R wide and a row √3·R high; the sheet is 2π by 2π·TUBE, so the hexagons
  * are regular when nu / nv = √3 / (1.5·TUBE). Every hexagon has 6 neighbours, all across an edge. */
 const hexTorusColumns = (nv) => twelve((2 * nv * Math.sqrt(3)) / (3 * TORUS_TUBE));
-/* Kites (the deltoidal trihexagonal tiling, the grid of the hat monotile): each hexagon cut in 6 from its
- * middle to its sides' middles, a kite at each corner (the middle, the side's middle before it, the corner,
- * the side's middle after it): a flower of 6. A kite touches 4 others by an edge and 5 more by a corner: 9
- * neighbours. The corners in the hexagon's turn, its middle the average of its corners. */
-const kitesOfHex = (c) => {
-  const m = [0, 1].map((d) => c.reduce((sum, p) => sum + p[d], 0) / 6), half = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-  return c.map((p, k) => [m, half(c[(k + 5) % 6], p), p, half(p, c[(k + 1) % 6])]);
-};
-function hexTorusMesh(nv, nu = hexTorusColumns(nv), kites = false) {  // kites: each hexagon cut in 6 (see kitesOfHex)
-  const key = `${kites ? 'kite' : 'hex'}torus${nv}x${nu}`;
+function hexTorusMesh(nv, nu = hexTorusColumns(nv)) {
+  const key = `hextorus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
   const hexes = [], uv = [];
@@ -3838,10 +3849,11 @@ function hexTorusMesh(nv, nu = hexTorusColumns(nv), kites = false) {  // kites: 
     for (let r = 0; r < nv; r++) {  // tile c·nv + r, like the square torus
       const ci = c, cj = r + (c % 2) / 2;
       const corners = [0, 1, 2, 3, 4, 5].map((k) => [ci + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]);
-      for (const t of kites ? kitesOfHex(corners) : [corners]) { hexes.push(t.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1)))); uv.push(...t.flat()); }
+      hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+      uv.push(...corners.flat());
     }
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, hexes, kites ? 4 : 6, nu, nv, uv), { kite: kites }));
+  return (meshCache[key] = finishTorus(verts, hexes, 6, nu, nv, uv));
 }
 
 // A torus of Cairo pentagons: nv squares of the Cairo grid round the tube, nu round the ring (both even:
@@ -3896,13 +3908,21 @@ function hexSphereMesh(f) {
  * the sheet is 2π by 2π·TUBE, so the triangles are equilateral when nu / nv = √3 / (2·TUBE).
  * Every corner has 6 edges: the triangular grid that wraps around both ways. */
 const triTorusColumns = (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
-function triTorusMesh(nv, nu = triTorusColumns(nv)) {
-  const key = `tritorus${nv}x${nu}`;
+/* Kites (the deltoidal trihexagonal tiling, the grid of the hat monotile): each triangle of the triangles'
+ * grid cut in 3 from its middle to its sides' middles, a kite at each corner (that corner, the middles of
+ * its two sides, the triangle's middle); 6 kites round a corner of the triangles make a hexagon. A kite
+ * touches 4 others by an edge and 5 more by a corner: 9 neighbours. Its corners in the triangle's turn. */
+const kitesOf = (c) => {
+  const m = [0, 1].map((d) => (c[0][d] + c[1][d] + c[2][d]) / 3), half = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  return [0, 1, 2].map((k) => [c[k], half(c[k], c[(k + 1) % 3]), m, half(c[(k + 2) % 3], c[k])]);
+};
+function triTorusMesh(nv, nu = triTorusColumns(nv), kites = false) {  // kites: each triangle cut in 3 (see kitesOf)
+  const key = `${kites ? 'kite' : 'tri'}torus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
   const tris = [], uv = [];
   const P = (i, j) => [i + (j % 2) / 2, j];  // sheet coordinates of corner i of row j
-  const put = (c) => { tris.push(c.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1)))); uv.push(...c.flat()); };
+  const put = (c) => { for (const t of kites ? kitesOf(c) : [c]) { tris.push(t.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1)))); uv.push(...t.flat()); } };
   for (let j = 0; j < nv; j++) {
     for (let i = 0; i < nu; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
       if (j % 2 === 0) {
@@ -3914,7 +3934,7 @@ function triTorusMesh(nv, nu = triTorusColumns(nv)) {
       }
     }
   }
-  return (meshCache[key] = finishTorus(verts, tris, 3, nu, nv, uv));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tris, kites ? 4 : 3, nu, nv, uv), { kite: kites }));
 }
 
 /* The tori of hexagons and of triangles on a square sheet (Square): the plane's rhombus of W × W tiles,
@@ -3923,28 +3943,32 @@ function triTorusMesh(nv, nu = triTorusColumns(nv)) {
  * rows, each half a tile further than the last. Rolled up, it is sheared into the torus's rectangle (shear:
  * how far a side's end is moved along the other, see sheetPoint), so that each tile's sheet coordinates
  * (uv) are those of the sheared sheet, whose sides are glued straight as the usual torus's are. */
-function rhombHexTorusMesh(W, kites = false) {
-  const key = `${kites ? 'kite' : 'hex'}rhomb${W}`;
+function rhombHexTorusMesh(W) {
+  const key = `hexrhomb${W}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore(), hexes = [], uv = [];
   for (let c = 0; c < W; c++) for (let r = 0; r < W; r++) {  // tile c·W + r: column c, its rows half a row higher than the last's
     const corners = [0, 1, 2, 3, 4, 5].map((k) => { const i = c + Math.cos((k * Math.PI) / 3) / 1.5, j = r + c / 2 + Math.sin((k * Math.PI) / 3) / Math.sqrt(3); return [i, j - i / 2]; });
-    for (const t of kites ? kitesOfHex(corners) : [corners]) { hexes.push(t.map(([i, j]) => add(...torusPoint(i, j, W, W, 1)))); uv.push(...t.flat()); }
+    hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, W, W, 1))));
+    uv.push(...corners.flat());
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, hexes, kites ? 4 : 6, W, W, uv), { shear: [0, W / 2], kite: kites }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, hexes, 6, W, W, uv), { shear: [0, W / 2] }));
 }
-function rhombTriTorusMesh(W) {  // its rows across the ring, each round the tube (so that the tube closes on the rhombus's slanted sides, as the hexagons')
-  const key = `trirhomb${W}`;
+function rhombTriTorusMesh(W, kites = false) {  // its rows across the ring, each round the tube (so that the tube closes on the rhombus's slanted sides, as the hexagons')
+  const key = `${kites ? 'kite' : 'tri'}rhomb${W}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore(), tris = [], uv = [];
   // corner i of row j: on the sheet, row j round the ring, i + j / 2 round the tube (each row half a triangle
   // further than the last), sheared back: (j, i); the corners listed the other way round (a swap is a mirror)
-  const put = (c) => { const t = [c[0], c[2], c[1]].map(([i, j]) => [j, i]); tris.push(t.map(([u, v]) => add(...torusPoint(u, v, W, W, 1)))); uv.push(...t.flat()); };
+  const put = (c) => {
+    const t0 = [c[0], c[2], c[1]].map(([i, j]) => [j, i]);
+    for (const t of kites ? kitesOf(t0) : [t0]) { tris.push(t.map(([u, v]) => add(...torusPoint(u, v, W, W, 1)))); uv.push(...t.flat()); }
+  };
   for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
     put([[i, j], [i + 1, j], [i, j + 1]]);
     put([[i + 1, j], [i + 1, j + 1], [i, j + 1]]);
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tris, 3, W, W, uv), { shear: [0, W / 2], swap: true }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tris, kites ? 4 : 3, W, W, uv), { shear: [0, W / 2], swap: true, kite: kites }));
 }
 
 /* The same tori turned by 30° (or 90°: the same grid) on the sheet: the triangles' rows, or the
@@ -3991,7 +4015,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'kitetorusSquare', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
+const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'kitetorusSquare', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -4146,7 +4170,7 @@ function morphStep(dt) {
 // Sizes (cuts per edge): each step multiplies the number of tiles by about 2 (×2.25, then ×1.78),
 // not by 4 as doubling would
 const STEPS_128 = [8, 12, 16, 24, 32, 48, 64, 96, 128];
-const SPHERES_MOBIUS_SIZES = { mobius: [6, 8, 12, 16, 24], mobiusHex: [4, 6, 8, 12, 16], mobiusTri: [8, 12, 16, 24, 32], mobiusCairo: [6, 8, 12, 16, 24], mobiusKite: [4, 6, 8, 12, 16] };  // rows across
+const SPHERES_MOBIUS_SIZES = { mobius: [6, 8, 12, 16, 24], mobiusHex: [4, 6, 8, 12, 16], mobiusTri: [8, 12, 16, 24, 32], mobiusCairo: [6, 8, 12, 16, 24], mobiusKite: [8, 12, 16, 24, 32] };  // rows across
 const mobiusRadius = (kind, s) => mobiusSheet(kind, s).W / MOBIUS_WIDTH;  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -4179,8 +4203,8 @@ const SPHERES = {
                     radius: (s) => torusDims('tritorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 2, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
-  kitetorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('kitetorusSquare', s)[0], true), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
-                     radius: (s) => (torusDims('kitetorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
+  kitetorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('kitetorusSquare', s)[0], true), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
+                     radius: (s) => torusDims('kitetorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
                      columns: (nv) => nv, perRow: 6, steps: [1, 1],
                      sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 6 * torusDims('kitetorusSquare', s).reduce((a, b) => a * b), unit: 'kites' },
   cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
@@ -4197,9 +4221,9 @@ const SPHERES = {
   tritorus: { mesh: (s) => triTorusMesh(...torusDims('tritorus', s)), radius: (s) => (torusDims('tritorus', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
               columns: triTorusColumns, perRow: 2, steps: [2, 2],  // an even count of rows, two triangles per column
               sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorus', s).reduce((a, b) => a * b), unit: 'triangles' },
-  // kites: the hexagons', each cut in 6 (see kitesOfHex)
-  kitetorus: { mesh: (s) => hexTorusMesh(...torusDims('kitetorus', s), true), radius: (s) => (torusDims('kitetorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
-               columns: hexTorusColumns, perRow: 6, steps: [1, 2],  // an even count of columns, six kites a hexagon
+  // kites: the triangles', each cut in 3 (see kitesOf)
+  kitetorus: { mesh: (s) => triTorusMesh(...torusDims('kitetorus', s), true), radius: (s) => (torusDims('kitetorus', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
+               columns: triTorusColumns, perRow: 6, steps: [2, 2],  // an even count of rows, six kites per column
                sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 6 * torusDims('kitetorus', s).reduce((a, b) => a * b), unit: 'kites' },
   // turned by 30° (see turnedTorus): rows around the ring. perColumn: tiles across a corner (a
   // column) around the tube, for the size's label
@@ -4223,7 +4247,7 @@ const SPHERES = {
   mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusRadius('mobiusTri', s), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / mobiusSize(s)[0],
                sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
   mobiusKite: { mesh: (s) => mobiusMesh('mobiusKite', s), radius: (s) => mobiusRadius('mobiusKite', s), columns: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length / mobiusSize(s)[0],
-                sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
+                sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
   // Möbius strips from a square sheet (Square): shaped as the usual ones, their tiles stretched along
   ...Object.fromEntries([['mobius', 'squares'], ['mobiusHex', 'hexagons'], ['mobiusTri', 'triangles'], ['mobiusCairo', 'pentagons'], ['mobiusKite', 'kites']].map(([base, unit]) => {
     const kind = `${base}Square`;
@@ -4242,6 +4266,10 @@ const SPHERES = {
           sizes: STEPS_128, initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
   icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
           sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 20 * f * f, unit: 'triangles' },  // 20,480 triangles
+  // kites: the triangles', each cut in 3
+  tetraKite: { mesh: (f) => flatPolyhedron('tetra', f, true), radius: (f) => f / (2 * Math.SQRT2), sizes: STEPS_128.slice(0, -2), initial: 24, tiles: (f) => 12 * f * f, unit: 'kites' },
+  octaKite: { mesh: (f) => flatPolyhedron('octa', f, true), radius: (f) => f / Math.SQRT2, sizes: STEPS_128.slice(0, -3), initial: 16, tiles: (f) => 24 * f * f, unit: 'kites' },
+  icosaKite: { mesh: (f) => flatPolyhedron('icosa', f, true), radius: (f) => f / 2, sizes: STEPS_128.slice(0, -4), initial: 16, tiles: (f) => 60 * f * f, unit: 'kites' },  // 15,360 kites
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
             sizes: STEPS_128.slice(0, -2), initial: 16, tiles: (f) => 24 * f * f, unit: 'triangles' },  // 6,144 triangles
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
@@ -4369,7 +4397,7 @@ function gridGraph(g) {
  * along the grid starts on a corner, arriving by one of its edges. The rotations that map the solid
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
-const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere'];
+const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'kitetorusSquare', 'torus', 'torusSquare', 'tritorus', 'hextorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
@@ -5293,11 +5321,9 @@ function cellCopies(kind, W, t) {
   return (sym === 'mirror' ? mirrors : [...mirrors, ...mirrors.map(([u, v]) => [v, u])]).map(at);
 }
 const ROOT3_2 = Math.sqrt(3) / 2;
-const planeRow = (kind, W) => (kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a hexagon)
-// kite x of row y: kite x % 6 of hexagon ⌊x / 6⌋ (as the hexagons' x), its corners on their lattice (the hexagon's
-// corners: the middles of the triangles round its centre, in turn from 30°)
-const HEX_CORNERS = [[1, 1], [-1, 2], [-2, 1], [-1, -1], [1, -2], [2, -1]].map(([a, b]) => [a / 3, b / 3]);
-const kiteCorners = (x, y) => { const h = Math.floor(x / 6); return kitesOfHex(HEX_CORNERS.map(([a, b]) => [h + a, y + b]))[((x % 6) + 6) % 6]; };
+const planeRow = (kind, W) => (kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
+// kite x of row y: kite x % 3 of triangle ⌊x / 3⌋ (as the triangles' x), its corners on the triangles' lattice
+const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
@@ -5329,11 +5355,11 @@ function planeCellAt(kind, W, wx, wy) {
     }
     return null;
   }
-  if (kind === 'kite') {  // its hexagon's, then the kite by the angle from its middle (kite k round the corner at 30° + 60° k)
-    const h = planeCellAt('hex', W, wx, wy);
-    if (!h) return null;
-    const [cx, cy] = latticeAt(h[0], h[1]), k = Math.round((Math.atan2(wy - cy, wx - cx) * 180) / Math.PI / 60 - 0.5);
-    return [6 * h[0] + ((k % 6) + 6) % 6, h[1]];
+  if (kind === 'kite') {  // its triangle's, then the kite round the corner nearest
+    const t = planeCellAt('tri', W, wx, wy);
+    if (!t) return null;
+    for (let k = 0; k < 3; k++) if (insidePolygon(planeCorners('kite', 3 * t[0] + k, t[1]), wx, wy)) return [3 * t[0] + k, t[1]];
+    return [3 * t[0], t[1]];
   }
   if (kind === 'square') { x = Math.round(wx); y = Math.round(wy); }
   else {
@@ -5487,7 +5513,7 @@ function planeLead(number) {
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
-  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a hexagon)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
+  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
@@ -5774,7 +5800,7 @@ function drawLifePlane() {
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
-                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆' };
+                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
 const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆' }[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
@@ -5810,6 +5836,7 @@ function torusBlocks(K, g = walk.geo) {
 // its halves or quarters
 const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3, 4, 6], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
                         icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
+for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_COLOURS[k];  // kites: the triangles' solids
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value], [a, b] = COLOUR_GRID[k];
   if (k === 1) return true;
@@ -6288,7 +6315,7 @@ const hunt = { worker: null, zone: 'full', top: [], status: '', picked: null, go
 // What the hunt looks for: the longest life, the longest till it dies out (one colour), or a battle,
 // which starts with the colours that suit the figure best: one for each of its natural spots
 const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out', battle: '⚔ Battle' };
-const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12, mobius: 2, mobiusHex: 2, mobiusTri: 2, mobiusCairo: 2, mobiusKite: 2 };  // else (the plane, a torus) 4
+const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12, tetraKite: 4, octaKite: 8, icosaKite: 12, mobius: 2, mobiusHex: 2, mobiusTri: 2, mobiusCairo: 2, mobiusKite: 2 };  // else (the plane, a torus) 4
 const huntGoal = () => (walk.life?.colours > 1 ? 'battle' : hunt.goal);
 function pickGoal(goal) {
   if (goal === 'battle') {
@@ -6335,6 +6362,7 @@ const SOLID_SPOTS = {
   dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
+for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
 // Each colour's part of the grid: radius r, a patch round each spot; else (r = 0) the whole grid,
 // each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
 // a rule whose colours must start side by side, touching patches round the middle); on a torus, a
@@ -6368,7 +6396,7 @@ function huntParts(r, K) {
   }
   const spots = K === 1 ? null : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K].map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   // 3 colours on the cube: 2 opposite faces each (its face's axis, either way)
-  const pairs = K === 3 && g.sides === 4 && (g.perFace || g.floors), near = (d, c) => (pairs ? Math.abs(dot3(d, c)) : dot3(d, c));
+  const pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors), near = (d, c) => (pairs ? Math.abs(dot3(d, c)) : dot3(d, c));
   const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
@@ -6589,6 +6617,7 @@ function huntClick() {
 const CUBE_FACES = [1, 2, 3, 4, 6];  // the cube: its colours on faces
 const TRI_FACES = { tetra: () => ({ 4: TETRA4.map((p) => p.map((v) => -v)) }), octa: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 }) };
 TRI_FACES.icosa = TRI_FACES.octa;  // the icosahedron's faces include the octahedron's directions
+for (const k of ['tetra', 'octa', 'icosa']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]();
 // the dodecahedron: a pentagon's 5 triangles (cut from its middle, as the plane's), the pattern in its
 // first; the stella: a tip's 3 triangles, the pattern in the one most facing it
 TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 12: ICO() });
@@ -6618,12 +6647,12 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
   }
-  if (g.sides === 3) {  // a triangle face: its own rows and triangles, the pattern round its middle
+  if (g.sides === 3 || g.kite) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle
     const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(TRI_FACES[sphere]()[K][i]);
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = d ? g.faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(g.faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
-    const at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((w >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
-    for (const [x, y, v] of cells) { const k = at.get(`${x + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + k, v]); }
+    const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
+    for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
     return out;
   }
   const dir = K === 1 ? AXES[3] : SOLID_SPOTS.cube()[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k]));  // the cube: its face
@@ -6706,7 +6735,7 @@ function patternChoices() {
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
   const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.mobius ? Math.min((2 * g.L) / K, g.nv)  // (a Möbius strip: a stretch of its loop)
     : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
-    : g.floors ? g.floorSize : g.sides === 3 ? g.size / 2 : g.size;
+    : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
@@ -6726,9 +6755,9 @@ function patternChoices() {
 function patchCentre() {
   if (walk.plane) { const { W, row } = walk.plane; return (W >> 1) * row + (row >> 1); }  // the plane: its middle cell
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
-  if (g.mobius || g.cairo || g.kite || (g.torus && g.sides === 3)) return centreCells()[0];
+  if (g.mobius || g.cairo || (g.torus && (g.kite || g.sides === 3))) return centreCells()[0];
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
-  if (g.sides === 4 && g.perFace) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);  // the cube (not the one with pits)
+  if (g.sides === 4 && g.perFace && !g.kite) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);  // the cube (not the one with pits)
   if (g.floors) { const a = g.floorSize; return g.floors[3 * a * a + (a >> 1) * a + (a >> 1)]; }  // the cube with pits: the front pit's floor
   const dir = CAM0.v;
   let best = 0, bestDot = -Infinity;
@@ -6778,13 +6807,13 @@ function centreCells(d) {
   const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
   if (walk.plane) { const { W, row, kind } = walk.plane; return kind === 'square' && W % 2 === 0 && row % 2 === 0 ? four(W / 2, row / 2, row) : [patchCentre()]; }
   if (g.mobius) return mobiusNearest(mobiusMiddle(g), g.W / 2);  // the middle of the face in view
-  if (g.cairo || g.kite || (g.torus && g.sides === 3)) return sheetNearest(g.nu / 2, g.nv / 2);
+  if (g.cairo || (g.torus && (g.kite || g.sides === 3))) return sheetNearest(g.nu / 2, g.nv / 2);
   if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
   if (!d && g.faces) {  // a solid of triangles: the middle of the face in front (a dodecahedron's pentagon)
     const per = facesPer(), f0 = Math.floor(Math.floor(patchCentre() / g.perFace) / per) * per;
     d = [0, 1, 2].map((a) => g.faces.slice(f0, f0 + per).reduce((sum, fc) => sum + fc.corners.reduce((s, c) => s + c[a], 0), 0));
   }
-  if (!d && !(g.sides === 4 && (g.perFace || g.floors))) return [patchCentre()];
+  if (!d && !(g.sides === 4 && !g.kite && (g.perFace || g.floors))) return [patchCentre()];
   d = unit(d ?? AXES[3]);  // the cube's front face
   // (each direction once a grid: a hunt asks for the same few, at every radius; plain numbers, as it runs over every cell)
   const key = d.join(), known = (g.centres ??= new Map()).get(key);
