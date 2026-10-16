@@ -306,10 +306,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .build-row { margin-bottom: 8px; }  /* its name above its chips */
 .build-row > span { display: block; margin-bottom: 3px; font-size: 12px; color: var(--muted); }
 .build-row .stepper { margin: 0; }
-.determined { display: flex; align-items: center; gap: 6px; margin: 2px 0 10px; font-size: 12px; }  /* Determined births: a green check or a red cross */
-.determined b { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; }
-.determined b.yes { background: #30a46c; }
-.determined b.no { background: #e5484d; }
+.determined { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: 12px; font-weight: 600; }  /* Births by majority colour, the colours' picture before it */
+.determined > svg { width: 20px; height: 20px; flex: none; }
+.determined small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .nchips { display: flex; flex-wrap: wrap; gap: 3px; }
 .nchips button { width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 11px; }
 .nchips button.birth { background: #1d9e75; border-color: #1d9e75; color: #fff; }
