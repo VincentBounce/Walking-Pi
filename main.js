@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.633';
+const VERSION = '0.1.634';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5832,7 +5832,7 @@ function renderRuleSection() {
   // cell a button, one more state a click, back to 2 when one more would not fit; past the room (a rule typed), in
   // words, a click back to 2
   const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), 'var(--panel)'];
-  const room = $('statesLabel').clientHeight || 160, fit = Math.min(10, Math.floor((room + 3) / 23)), words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
+  const room = $('statesLabel').clientHeight || 160, fit = Math.min(10, Math.floor((room + 2) / 24)), words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
   const cross = (i) => `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>`;
   $('statesLabel').innerHTML = rule.C > fit ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
     : `<span class="states-cells">${cells.map((c, i) => (i ? `<i style="background:${c}">${cross(i)}</i>` : `<button type="button" style="background:${c}" title="One more state (back to 2 past ${fit})"></button>`)).join('')}</span>`;
