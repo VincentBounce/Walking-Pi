@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.660';
+const VERSION = '0.1.661';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5236,7 +5236,8 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-const PLANE_SIDES = { square: [8, 16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [8, 16, 24, 32, 48, 64, 128, 256, 512], tri: [8, 16, 24, 32, 48, 64, 128, 256], cairo: [8, 16, 24, 32, 48, 64, 128, 256], kite: [8, 16, 24, 32, 48, 64, 128] };  // 24 and 48: 3, 6 and 12 colours too
+// the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
+const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128] };
 const plane = { side: 48, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -5338,7 +5339,11 @@ function cellCopies(kind, W, t) {
   return (sym === 'mirror' ? mirrors : [...mirrors, ...mirrors.map(([u, v]) => [v, u])]).map(at);
 }
 const ROOT3_2 = Math.sqrt(3) / 2;
-const planeW = (kind, side) => (kind === 'kite' ? side / 2 : side);  // rows: kites on triangles twice as big (3/4 of the triangles' cells)
+// The rows of a grid of side `side` (the squares' side): about as many cells as side × side squares (as the surfaces'
+// sizes, see SIZE_LADDERS), its cells regular: triangles 2 a rhombus, Cairo pentagons 2 a square (an even side, so
+// that it wraps round), kites 6 a rhombus (on triangles twice as big)
+const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6 };
+const planeW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
 const planeRow = (kind, W) => (kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
 // kite x of row y: kite x % 3 of triangle ⌊x / 3⌋ (as the triangles' x), its corners on the triangles' lattice
 const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
@@ -5524,14 +5529,14 @@ function zoneWords(zone) {
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
 function planeLead(number) {
-  const kind = walk.plane.kind, soup = `${plane.density} % alive (seed ${plane.seed})`;
+  const kind = walk.plane.kind, side = fmt(walk.plane.W), soup = `${plane.density} % alive (seed ${plane.seed})`;
   const sym = SYMMETRIES[symmetryOf(kind)][2];
   const found = { hunt: 'A start found by the hunt', saved: 'A saved start', battle: 'A battle found by the hunt' }[lifeStart];
-  if (lifeStart?.zone) return `${zoneWords(lifeStart.zone)}${sym ? `, ${sym},` : ''} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
-  if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}, the others dead`;
-  if (found) return `${found} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}`;
+  if (lifeStart?.zone) return `${zoneWords(lifeStart.zone)}${sym ? `, ${sym},` : ''} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
+  if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
+  if (found) return `${found} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
-  return `${how} on a ${fmt(plane.side)} × ${fmt(plane.side)} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
+  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)' }[kind] ?? ''} ${plane.torus ? 'wrapping around (a torus)' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
@@ -5856,12 +5861,10 @@ const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3
                         icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_COLOURS[k];  // kites: the triangles' solids
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
-  const mode = MODES[$('mode').value], [a, b] = COLOUR_GRID[k];
+  const mode = MODES[$('mode').value];
   if (k === 1) return true;
   if (mode.plane) {
-    if (!plane.torus) return k === 2 || k === 4;
-    const W = planeW(mode.plane, plane.side), even = mode.plane === 'cairo' ? 2 : 1;  // Cairo: blocks of whole tiles (2 squares)
-    return W % (a * even) === 0 && W % (b * even) === 0;
+    return plane.torus || k === 2 || k === 4;  // its blocks (rounded down when they do not divide it, as on a torus); with dead edges, its halves or quarters
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
   if (g?.mobius) return true;  // a Möbius strip: in turn along it (see huntParts)
