@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.662';
+const VERSION = '0.1.663';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5324,6 +5324,20 @@ const DRAW_PATTERNS = [
   ['loops-osc2', 'hex', ['B34/S123/C3'], 'Oscillator', '.2A.A$2A2.A$A3.A$A3.A$4A!', 'period 22 · 14 cells'],
   ['hexmeth-osc', 'hex', ['B234/S234'], 'Oscillator', '2.A$2A$.A!', 'period 2 · 4 cells'],
   ['snowflakes-seed', 'hex', ['B1/S0123456'], 'Seed', 'A!', 'grows a snowflake · 1 cell'],
+  // kites: found by a search of small starts on a kite torus (PATTERNS.md); x along a row, 6 kites a rhombus
+  ['kitelife-osc', 'kite', ['B3/S235/C3'], 'Oscillator', '14.A2.A$3.A2.A.B4A.A$6.A!', 'period 12 · 11 cells'],
+  ['kitelife-osc3', 'kite', ['B3/S235/C3'], 'Oscillator', '10.2A$6.A2.B$.A.A2.A!', 'period 3 · 7 cells'],
+  ['kitelife-meth', 'kite', ['B3/S235/C3'], 'Methuselah', '.A2.A.A3.2A$.2A2.2A4.A!', 'loops from generation 771 · 10 cells'],
+  ['kitegliders-ship', 'kite', ['B36/S1258'], 'Glider', '11.A$4.A2.A3.A!', 'flies, period 16 · 4 cells'],
+  ['kitegliders-osc', 'kite', ['B36/S1258'], 'Oscillator', '3.A.2A$A.A2.A!', 'period 6 · 6 cells'],
+  ['kitegliders-meth', 'kite', ['B36/S1258'], 'Methuselah', 'A.A2.A.A2.2A$2.A3.A2.2A!', 'loops from generation 744 · 10 cells'],
+  ['kiteswarm-ship', 'kite', ['B35/S123/C5'], 'Glider', '4.B3.B2.B$.B.BA.B2A!', 'flies, period 6 · 9 cells'],
+  ['kiteswarm-osc', 'kite', ['B35/S123/C5'], 'Oscillator', '4.A3.A$4.A$6.A!', 'period 5 · 4 cells'],
+  ['kitedrift-ship', 'kite', ['B35/S2356/C4'], 'Spaceship', '10.C3.B2.C$3.A2.A.2A3.BA!', 'flies, period 26 · 9 cells'],
+  ['kitedrift-osc', 'kite', ['B35/S2356/C4'], 'Oscillator', '10.A3.A2.A$4.2A4.2A.2A$A6.A!', 'period 4 · 11 cells'],
+  ['kitedrift-meth', 'kite', ['B35/S2356/C4'], 'Methuselah', 'A10.A$.5A.A3.A!', 'loops from generation 1,681 · 9 cells'],
+  ['longkites-osc', 'kite', ['B3/S1247'], 'Oscillator', '10.A$6.A.A2.2A$A.A.A!', 'period 5 · 8 cells'],
+  ['longkites-meth', 'kite', ['B3/S1247'], 'Methuselah', '7.A.2A$4.3A!', 'loops from generation 157 · 6 cells'],
 ];
 const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]));
 // the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
@@ -5699,29 +5713,30 @@ function drawPlaneGrid() {
 let planeCanvas = null, planeImage = null, planeColours = null;
 // A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
 const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6 };
+const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
 const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
 // the grid turns about (the middle of a square or a hexagon, a corner of triangles or of 4 pentagons),
 // then the cells found there, on a grid big enough
 function orientPattern(kind, rle, turn, flip) {
-  const V = 256, T = 128, pairs = kind === 'tri' || kind === 'cairo', grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
+  const V = 256, T = 128, per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
   const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : latticeAt(T, T);
   const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] : pivot[0];
   const a = (2 * Math.PI * turn) / PATTERN_TURNS[kind], cos = Math.cos(a), sin = Math.sin(a), cells = [];
   for (const [k, v] of populationOf(`0,0:${rle}`)) {
     const [x, y] = cellXY(k);
-    let [u, w] = cellMiddle(kind, x + (pairs ? 2 * T : T), y + T);
+    let [u, w] = cellMiddle(kind, x + per * T, y + T);
     if (flip) u = 2 * axis - u;
     u -= pivot[0];
     w -= pivot[1];
     const c = planeCellAt(kind, V, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos);
     if (c) cells.push([...c, v]);
   }
-  const square = (x) => (pairs ? x >> 1 : x), i0 = Math.min(...cells.map((c) => square(c[0])));
+  const square = (x) => Math.floor(x / per), i0 = Math.min(...cells.map((c) => square(c[0])));
   let j0 = Math.min(...cells.map((c) => c[1]));
   if (kind === 'cairo' && (i0 + j0) & 1) j0--;  // the tiling repeats every other square
-  return cells.map(([x, y, v]) => [x - (pairs ? 2 * i0 : i0), y - j0, v]);
+  return cells.map(([x, y, v]) => [x - per * i0, y - j0, v]);
 }
 let brushMemo = null;
 function brushCells() {
@@ -5732,12 +5747,12 @@ function brushCells() {
 // where the brush's cells go, round the cell pointed at (Cairo: from an even square): wrapping round the
 // grid, or the ones inside it; [x, y, state]
 function brushAt([cx, cy], cells = brush.id === 'cell' ? [[0, 0, 1]] : brushCells()) {
-  const { kind, W, torus } = walk.plane, row = planeRow(kind, W), pairs = kind === 'tri' || kind === 'cairo', out = [];
-  const square = (x) => (pairs ? x >> 1 : x);
+  const { kind, W, torus } = walk.plane, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
+  const square = (x) => Math.floor(x / per);
   let i = square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1), j = cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1);
   if (kind === 'cairo' && (i + j) & 1) j--;
   for (const [dx, dy, v] of cells) {
-    let x = (pairs ? 2 * i : i) + dx, y = j + dy;
+    let x = per * i + dx, y = j + dy;
     if (torus) { x = ((x % row) + row) % row; y = ((y % W) + W) % W; }
     if (x >= 0 && y >= 0 && x < row && y < W) out.push([x, y, v]);
   }
@@ -5907,6 +5922,7 @@ const RULE_ICONS = {
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
   'B3/S235/C3': '..o..,.o+o.,o+.+o,.o+o.,..o..', 'B3/S1247': 'o...o,.o.o.,..o..,.o.o.,o...o',
+  'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
   'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.', 'B2/S34': '.....,.o.o.,..o..,.o.o.,.....',
@@ -6762,11 +6778,11 @@ function patternChoices() {
   const room = walk.plane ? Math.min(walk.plane.W / cols, walk.plane.W / rows) : g.mobius ? Math.min((2 * g.L) / K, g.nv)  // (a Möbius strip: a stretch of its loop)
     : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
     : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
-  const shapes = [], seen = new Set(), pairs = kind === 'tri' || kind === 'cairo';
+  const shapes = [], seen = new Set(), per = PER_RHOMBUS[kind] ?? 1;
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
       const cells = orientPattern(kind, p[4], t, f), k = cells.map((c) => c.join(',')).sort().join(' ');
-      const span = Math.max(...cells.map((c) => (pairs ? c[0] >> 1 : c[0])), ...cells.map((c) => c[1])) + 1;
+      const span = Math.max(...cells.map((c) => Math.floor(c[0] / per)), ...cells.map((c) => c[1])) + 1;
       if (span <= room - 2 && !seen.has(k)) { seen.add(k); shapes.push(cells); }
     }
   }

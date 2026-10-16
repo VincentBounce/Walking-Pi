@@ -1007,6 +1007,45 @@ They send out gliders as often as Life, or more, and their small starts grow as 
 
 <br>
 
+## 🪁 Life on kites: a search with dying states
+
+Kites (each triangle cut in 3, 9 neighbours: 4 by an edge, 5 by a corner). 27,648 rules were tried: B starting with 2 or 3 and up to 3 digits up to 7, S up to 4 digits, 2 to 5 states (C). Each from a soup at 35 % on a torus of 1,536 kites, up to 1,500 generations; 190 kept, those that left 0.5 to 8 % alive after 250 generations or more. Then 36 small starts each (3 rows × 3 rhombi at 50 %) on a torus of 3,456 kites: what they leave was run alone, a ship if it came back moved, an oscillator if in place. 7 rules sent out ships without exploding; the best checked again with 180 starts on a torus of 6,144 kites.
+
+| Rule | States | Soup (torus of 9,600 kites) | Ships | Notes | Links |
+|---|--:|---|---|---|---|
+| **B35/S123/C5** (Kite swarm) | 5 | never settles, ~7 % alive at 4,000 | a glider of 9 cells, period 6, the most frequent by far (371 seen) | gliders everywhere, in the 6 directions | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S123/C5&s=64&sd=random.30.7) · [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S123/C5&s=48&sd=draw&p=54,8:4.B3.B2.B$.B.BA.B2A!) |
+| **B35/S2356/C4** (Kite drifters) | 4 | settles at 1,000, 1.7 % alive | 9 cells, period 26 (13 seen) | the most Life-like; a methuselah of 9 cells loops from 1,681 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=64&sd=random.30.7) · [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:10.C3.B2.C$3.A2.A.2A3.BA!) |
+| **B36/S1258** (Kite gliders) | 2 | settles at 336, 2.1 % alive | 4 cells, period 16 (22 seen) | the smallest glider | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B36/S1258&s=64&sd=random.30.7) · [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B36/S1258&s=48&sd=draw&p=54,8:11.A$4.A2.A3.A!) |
+| B36/S125 | 2 | settles at 425, 1.4 % | 4 to 6 cells, period 16 | as B36/S1258 | |
+| B367/S127 | 2 | settles at 227, 1.1 % | 4 cells, period 16 (rare) | | |
+| B35/S2368/C4 | 4 | settles at 185, 2.3 % | 13 cells, period 22 | | |
+| B247/S578/C4 | 4 | never settles, ~11 % alive | 16 cells, period 4 | too dense | |
+| B3/S235/C3 (Kite Life) | 3 | settles at 962, 2.4 % | none in 900 starts | | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S235/C3&s=64&sd=random.30.7) |
+
+Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: up to 10 cells, its loop on a torus of 13,824 kites); every one checked in the 12 ways it turns and mirrors:
+
+| Rule | Pattern | RLE (6 kites a rhombus) | Does | Link |
+|---|---|---|---|---|
+| Kite Life B3/S235/C3 | Oscillator | `14.A2.A$3.A2.A.B4A.A$6.A!` | period 12 · 11 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S235/C3&s=48&sd=draw&p=54,8:14.A2.A$3.A2.A.B4A.A$6.A!) |
+| | Oscillator | `10.2A$6.A2.B$.A.A2.A!` | period 3 · 7 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S235/C3&s=48&sd=draw&p=54,8:10.2A$6.A2.B$.A.A2.A!) |
+| | Methuselah | `.A2.A.A3.2A$.2A2.2A4.A!` | loops from generation 771 · 10 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S235/C3&s=48&sd=draw&p=54,8:.A2.A.A3.2A$.2A2.2A4.A!) |
+| Kite gliders B36/S1258 | Glider | `11.A$4.A2.A3.A!` | flies, period 16 · 4 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B36/S1258&s=48&sd=draw&p=54,8:11.A$4.A2.A3.A!) |
+| | Oscillator | `3.A.2A$A.A2.A!` | period 6 · 6 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B36/S1258&s=48&sd=draw&p=54,8:3.A.2A$A.A2.A!) |
+| | Methuselah | `A.A2.A.A2.2A$2.A3.A2.2A!` | loops from generation 744 · 10 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B36/S1258&s=48&sd=draw&p=54,8:A.A2.A.A2.2A$2.A3.A2.2A!) |
+| Kite swarm B35/S123/C5 | Glider | `4.B3.B2.B$.B.BA.B2A!` | flies, period 6 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S123/C5&s=48&sd=draw&p=54,8:4.B3.B2.B$.B.BA.B2A!) |
+| | Oscillator | `4.A3.A$4.A$6.A!` | period 5 · 4 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S123/C5&s=48&sd=draw&p=54,8:4.A3.A$4.A$6.A!) |
+| Kite drifters B35/S2356/C4 | Spaceship | `10.C3.B2.C$3.A2.A.2A3.BA!` | flies, period 26 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:10.C3.B2.C$3.A2.A.2A3.BA!) |
+| | Oscillator | `10.A3.A2.A$4.2A4.2A.2A$A6.A!` | period 4 · 11 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:10.A3.A2.A$4.2A4.2A.2A$A6.A!) |
+| | Methuselah | `A10.A$.5A.A3.A!` | loops from generation 1,681 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:A10.A$.5A.A3.A!) |
+| Long kites B3/S1247 | Oscillator | `10.A$6.A.A2.2A$A.A.A!` | period 5 · 8 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S1247&s=48&sd=draw&p=54,8:10.A$6.A.A2.2A$A.A.A!) |
+| | Methuselah | `7.A.2A$4.3A!` | loops from generation 157 · 6 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S1247&s=48&sd=draw&p=54,8:7.A.2A$4.3A!) |
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
 ## 🎲 Densities: how full a start should be
 
 For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.
