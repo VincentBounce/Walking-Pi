@@ -987,6 +987,18 @@ All the 2-state rules B ⊂ {2…6}, S ⊂ {0…6} (3,328), then 2,229 random on
 
 B2om5/S2om4o is the closest to Life in its figures: a soup that thins out the same way and settles as late, small starts that live as long and blow up as often and as far. B2op3m/S12mp3p4p5 is wilder: its starts last longer and grow more, and it has period-8 spaceships, so a soup on a torus never quite settles.
 
+**With dying states, for gliders.** Life sends gliders out of most messes; on hexagons, Swarm far less. All the rules B ⊂ {2…6}, S ⊂ {0…6} with 3, 4 or 5 states (11,904) were run on 35 % soups (a 32 torus, 600 generations); the 567 that neither filled up nor died fast were given 40 random 8 × 8 starts (40 %, a 64 torus), counting the spaceships (4 live cells or more, the same shape moved) among what is left at generation 200; the best checked again (120 starts, soups on a 64 torus, 3 seeds, 2,000 generations). A family stands out, **B2…/S134/C5** (3 dying stages): more gliders than Life.
+
+| Rule | Spaceships a start | Starts 5× bigger | Soup (% alive at gen 10 / 50 / 100 / 300 / 1,000) | Its spaceships (800 small starts) | Try it |
+|---|--:|--:|---|---|---|
+| B3/S23 on squares (Life) | 1.23 | 16 % | 22 / 13 / 12 / 6 / 4, settles at gen 470–1,540 | the glider | |
+| B2op3m/S12mp3p4p5 (Swarm) | 0.13 | 32 % | 29 / 18 / 17 / 10 / 14, never settles | period 8, 12 to 16 cells | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2op3m/S12mp3p4p5&s=64&sd=random.35.7) |
+| **B2345/S134/C5** | **2.53** | 27 % | 17 / 10 / 5 / 2 / 0.4, gliders fly on | period 2 (6 live + 6 dying) ×64, period 4 (8 to 10 cells) ×96 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2345/S134/C5&s=64&sd=random.35.7) |
+| **B23/S134/C5** | 1.92 | 12 % | 19 / 9 / 4 / 0.6 / 0.6 | the same ships | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B23/S134/C5&s=64&sd=random.35.7) |
+| B23456/S134/C5 | 2.77 | 27 % | 16 / 6 / 2.5 / 3 / 0.2 | the same ships | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B23456/S134/C5&s=64&sd=random.35.7) |
+
+They send out gliders as often as Life, or more, and their small starts grow as often; but their soups thin out faster (2 % alive at generation 300 where Life keeps 6 %), down to a few gliders flying on for ever.
+
 <br>
 
 <p align="center">⁂</p>
