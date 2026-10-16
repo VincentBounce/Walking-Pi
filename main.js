@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.630';
+const VERSION = '0.1.631';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5846,8 +5846,8 @@ function renderRuleSection() {
   const missing = ties.find((p) => p.filter((x) => !x).length === 1), none = ties.find((p) => p.filter((x) => !x).length !== 1);
   const say = (p) => p.filter((x) => x).join(' + ');
   $('determinedRow').hidden = K === 1;
-  $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour<small>${!ties.length ? 'never a tie'
-    : [missing && `${say(missing)}: the colour missing`, none && `${say(none)}: no birth`].filter(Boolean).join(' · ')}</small></span>`;
+  $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour${!ties.length ? '<small>never a tie</small>'
+    : [missing && `${say(missing)}: the colour missing`, none && `${say(none)}: no birth`].filter(Boolean).map((t) => `<small>${t}</small>`).join('')}</span>`;  // a tie a line
   $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
   $('statesDown').disabled = rule.C === 2;
   $('statesUp').disabled = rule.C === 10;
