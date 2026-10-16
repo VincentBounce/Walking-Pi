@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.628';
+const VERSION = '0.1.629';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5824,21 +5824,17 @@ function renderRuleSection() {
     };
     const counts = set.map((on, c) => chip(c, on.size === 3 ? cls : on.size ? `${cls} partly` : '', `${c} live neighbour${c === 1 ? '' : 's'}`,
       () => { set[c] = new Set(on.size ? [] : LETTERS); }));
-    const where = !hex ? [] : [2, 3, 4].map((c) => {
-      const g = document.createElement('span');
-      g.className = 'where';
-      g.append(c, ...LETTERS.map((x) => chip(x, set[c].has(x) ? cls : '', `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`,
-        () => { set[c].has(x) ? set[c].delete(x) : set[c].add(x); })));
-      return g;
-    });
-    $(id).replaceChildren(...counts, ...(where.length ? [Object.assign(document.createElement('div'), { className: 'wheres' })] : []));
-    $(id).querySelector('.wheres')?.append(...where);
+    const box = (className, items) => { const d = document.createElement('div'); d.className = className; d.append(...items); return d; };
+    // hexagons: a count a row, Callahan's letters beside 2, 3 and 4; the others: three counts a row
+    $(id).replaceChildren(...(!hex ? [box('g3', counts)] : counts.map((b, c) => box('r', [b, ...(c < 2 || c > 4 ? [] : LETTERS.map((x) => chip(x, set[c].has(x) ? cls : '',
+      `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`,
+      () => { set[c].has(x) ? set[c].delete(x) : set[c].add(x); })))]))));
   }
   // the states as cells: alive, its dying stages fading, dead (✝ on each but the live one; white on the cells nearer the
-  // live colour on a light page, the dead one on a dark page); past the room between − and +, in words
+  // live colour on a light page, the dead one on a dark page), from the top; past the room between − and +, in words
   const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), UNLIT];
-  const room = $('statesLabel').clientWidth || 110, words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
-  $('statesLabel').innerHTML = cells.length * 23 > room ? words
+  const room = $('statesLabel').clientHeight || 160, words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
+  $('statesLabel').innerHTML = cells.length * 23 > room ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
     : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i ? `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>` : ''}</i>`).join('')}</span>`;
   $('statesLabel').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead`;
   // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
