@@ -70,7 +70,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
 /* a section's title: its gold picture, then its name; a sub-section's (field-label): semibold */
 h2 { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; font-size: 14px; font-weight: 600; color: var(--text); }
-h2 .icon { width: 16px; height: 16px; flex: none; color: var(--accent); vertical-align: 0; }
+h2 .icon { width: 20px; height: 20px; flex: none; color: var(--accent); vertical-align: 0; }
 
 /* Walk: Grid or Cells, beside the heading */
 .walk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -208,11 +208,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .nav-shapes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }  /* the shapes, 4 a row */
 .nav-shapes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px; font-size: 10px; background: var(--panel); color: var(--muted); min-width: 0; }
 .nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nav-shapes button svg { width: 20px; height: 20px; }
+.nav-shapes button svg { width: 24px; height: 24px; }  /* icons: 24 px in a tile, 20 px by a title or on a card, 16 px in a line of text */
 .theme-buttons > button:nth-last-child(3) { grid-column: 2; }  /* Light, Dark, System on the right, the sky's place on the left kept */
 .trail-row button:hover:not(:disabled), #lifeTrailButton:hover:not(:disabled), .nav-shapes button.switch:hover:not(:disabled) { background: rgba(240, 180, 41, 0.22); }  /* a switch answers the hover, on or off, in the gold of a choice picked (Dawn sky) */
 .gallery-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }  /* Life, Ant, Walk: a section each */
-.cell-modes button svg { width: 22px; height: 22px; border-radius: 3px; }  /* the looks of a walk on cells: swatches */
+.cell-modes button svg { width: 24px; height: 24px; border-radius: 3px; }  /* the looks of a walk on cells: swatches */
 .nav-shapes button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .mode-list button {
@@ -227,6 +227,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 .mode-list button:hover { background: var(--bg); }
 .mode-icon { font-size: 15px; color: var(--muted); text-align: center; }
+.rule-cards .mode-icon svg { width: 20px; height: 20px; }  /* a rule's picture */
 .mode-name { display: block; font-size: 13px; font-weight: 600; }
 .mode-detail { display: block; font-size: 11px; color: var(--muted); }
 .mode-name, .mode-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* one line each, … when too long (in full on hover) */
@@ -307,10 +308,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .build-row > span { display: block; margin-bottom: 3px; font-size: 12px; color: var(--muted); }
 .build-row .stepper { margin: 0; }
 .states-cells { display: flex; justify-content: flex-start; gap: 3px; padding-left: 4px; }  /* a cell's states: alive, its dying stages, dead (✝), from the left */
-.states-cells i { width: 16px; height: 16px; flex: none; border: 1px solid var(--border); border-radius: 3px; display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; }
+.states-cells i { width: 20px; height: 20px; flex: none; border: 1px solid var(--border); border-radius: 3px; display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; }
 .states-cells i b { font-weight: 600; }
 .determined { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: 12px; font-weight: 600; }  /* Births by majority colour, the colours' picture before it */
-.determined > svg { width: 20px; height: 20px; flex: none; border-radius: 3px; }  /* as the Populations' blocks */
+.determined > svg { width: 24px; height: 24px; flex: none; border-radius: 3px; }  /* as the Populations' blocks */
 .determined small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .nchips { display: flex; flex-wrap: wrap; gap: 3px; }
 .nchips button { width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 11px; }
@@ -383,7 +384,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .choice-row button { flex: 1; padding: 5px 4px; font-size: 12px; background: var(--panel); color: var(--muted); white-space: nowrap; border: 0; border-radius: 0; }
 .choice-row button + button { border-left: 1px solid var(--border); }
 #torusTiles button { padding: 4px; line-height: 0; }  /* the torus's tilings, as pictures */
-#torusTiles .icon { width: 22px; height: 22px; stroke-width: 1.3; vertical-align: 0; }
+#torusTiles .icon { width: 24px; height: 24px; stroke-width: 1.3; vertical-align: 0; }
 .choice-row button:hover:not(:disabled) { border-color: var(--border); }  /* no outline on hover */
 .choice-row button:hover:not(:disabled):not(.active) { color: var(--text); }
 .choice-row button.active { background: rgba(240, 180, 41, 0.22); color: var(--accent); }
@@ -411,14 +412,14 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .bar-sub b { color: var(--text); }
 .rule-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-bottom: 9px; }
 .rule-chips:empty { display: none; }
-.life-chips .rule-chip b .icon { width: 13px; height: 13px; stroke: var(--on); stroke-width: 2; vertical-align: 0; }  /* white on the bubble's colour (one colour: the dead cells' on the live ones') */
+.life-chips .rule-chip b .icon { width: 16px; height: 16px; stroke: var(--on); stroke-width: 2; vertical-align: 0; }  /* white on the bubble's colour (one colour: the dead cells' on the live ones') */
 .life-chips .rule-chip b .icon .f { fill: var(--on); }
 .life-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }  /* a row a colour: alive, born, died, ever alive */
 .bar-title.life .bar-num { max-width: none; font-size: 18px; font-variant-numeric: tabular-nums; white-space: pre; }  /* Life: the generation's digits all as wide (see updateStats) */
 .bar-title.life { flex-wrap: wrap; row-gap: 4px; }  /* Life: the rule under the generation when too narrow for both */
 .bar-title.life #barBase { margin-left: auto; }  /* Life: its rule on the right of the title */
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
-.rule-chip b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; color: #0d1117; }
+.rule-chip b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }
 .rule-chip.next, .rule-chip.read { border: 2px solid color-mix(in srgb, var(--c) 75%, var(--text)); padding: 3px 6px 3px 3px; }  /* the next step's chip, step by step: its colour, a little toward the text so that a pale one shows */
 .rule-chip.next { background: color-mix(in srgb, var(--c) 12%, var(--bg)); }
@@ -493,7 +494,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 /* Save, the first of Treasures' icons: yellow, its star filled, while the setup in view is one of them */
 .icon-btn.save-btn.saved, .icon-btn.save-btn.saved:hover:not(:disabled) { color: var(--accent); }
 .save-btn.saved .icon path { fill: currentColor; }
-.icon-btn .icon { width: 17px; height: 17px; }
+.icon-btn .icon { width: 16px; height: 16px; }
 /* Treasures: Export and Import as two small icons at the right of its heading */
 .finds-head { display: flex; align-items: center; justify-content: space-between; }  /* where they are kept, the tools */
 .finds-tools { display: flex; gap: 4px; }
