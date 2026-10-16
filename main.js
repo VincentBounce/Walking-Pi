@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.614';
+const VERSION = '0.1.615';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4226,13 +4226,10 @@ const SPHERES = {
 function syncSizeStepper() {
   const sel = $('sphereF');
   syncLoopRow();
-  // the size: on top, the shape to picture (a solid's edge, in tiles; a torus's tiles round × along);
-  // under it, its tiles
-  const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize(), { tiles, unit } = SPHERES[kind] ?? {};
-  if (tiles && sel.selectedOptions[0]) {
-    const shape = TORI.includes(kind) ? sel.selectedOptions[0].text.replace(` ${unit}`, '') : `Edge ${fmt(f)}`;
-    $('sizeLabel').innerHTML = `${shape}<small>${fmt(tiles(f))} ${unit}</small>`;
-  } else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
+  // the size (see gridSize)
+  const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize();
+  if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}<small>${sizeCells(kind, f)}</small>`;
+  else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   const starts = modeStarts();
@@ -4264,16 +4261,21 @@ function torusDims(kind, size) {
   const [rows, perRow] = size.split('x').map(Number);
   return [rows, perRow / SPHERES[kind].perRow];
 }
-const sizeLabel = (kind, f) => {
-  const { tiles, unit } = SPHERES[kind];
-  if (!TORI.includes(kind)) return `${fmt(tiles(f))} ${unit}`;
-  if (MOBIUS_KINDS.includes(kind)) {  // a Möbius strip as its tiles across × along it, on one face
-    const nv = mobiusSize(f)[0];
-    return `${fmt(nv)} × ${fmt(Math.round(mobiusSheet(kind, f).tiles.length / nv))} ${unit}`;
-  }
-  const rows = torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);  // a torus as its tiles towards the north (around the tube) × east (around the ring)
-  return `${fmt(rows)} × ${fmt(tiles(f) / rows)} ${unit}`;
-};
+/* A grid's size, one way for all of them: its height × its width, their product its cells. On the plane
+ * (kind: its cells' shape), its rows × the cells of a row; on a torus or a Klein bottle, its cells round
+ * the tube × round the ring; on a Möbius strip, across × along it twice round (its two faces, one strip).
+ * A solid has none: its edge says its size. [height, width, cells, unit] */
+function gridSize(kind, f) {
+  if (PLANE_CELLS[kind]) { const w = planeRow(kind, f); return [f, w, f * w, kind === 'cairo' ? 'pentagons' : PLANE_CELLS[kind]]; }
+  if (!TORI.includes(kind)) return null;
+  const { tiles, unit } = SPHERES[kind], cells = tiles(f);
+  const h = MOBIUS_KINDS.includes(kind) ? mobiusSize(f)[0] : torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);
+  return [h, cells / h, cells, unit];
+}
+// on top, the grid as height × width (a solid: its edge); under it, its cells
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };
+const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
+const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
 // A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
 // a Möbius strip) or tiles across (a solid); a torus with the usual tiles per row is the usual size
 function selectSize(kind, size) {
@@ -5457,8 +5459,7 @@ function renderPlaneRow() {
   }
   if (!kind) { $('symmetryRow').hidden = $('startDraw').hidden = true; return; }
   const sides = PLANE_SIDES[kind];
-  // the size: the grid's side on top, its cells under it
-  $('planeLabel').innerHTML = `${fmt(plane.side)} × ${fmt(planeRow(kind, plane.side))}<small>${fmt(planeRow(kind, plane.side) * plane.side)} ${{ cairo: 'pentagons' }[kind] ?? PLANE_CELLS[kind]}</small>`;
+  $('planeLabel').innerHTML = `${sizeShape(kind, plane.side)}<small>${sizeCells(kind, plane.side)}</small>`;  // the size (see gridSize)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', plane.torus);
