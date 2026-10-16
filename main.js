@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.619';
+const VERSION = '0.1.620';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6264,13 +6264,10 @@ function huntParts(r, K) {
     if (K === 1) return [lifePatch(r)];
     return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k + 0.5) * stretch, g.W / 2)));  // at their stretches' middles
   }
-  if (g.torus) {  // cells u × nv + v (Cairo pentagons, triangles: by their middles); the blocks along whichever way they divide
-    const [a, b] = torusBlocks(K), middles = g.cairo || g.sides === 3;
-    const block = middles ? (t) => { const [u, v] = sheetMiddle(g, t); return Math.floor((u * a) / g.nu) * b + Math.floor((v * b) / g.nv); }
-      : (t) => Math.floor(((t / g.nv | 0) * a) / g.nu) * b + Math.floor(((t % g.nv) * b) / g.nv);
-    if (middles && r) return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)));
+  if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its middle is in
+    const [a, b] = torusBlocks(K), block = (t) => { const [u, v] = sheetMiddle(g, t); return Math.floor((u * a) / g.nu) * b + Math.floor((v * b) / g.nv); };
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
-    return parts.map((_, i) => (K === 1 ? lifePatch(r) : lifePatch(r, Math.floor(((Math.floor(i / b) + 0.5) * g.nu) / a) * g.nv + Math.floor((((i % b) + 0.5) * g.nv) / b))));
+    return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
   const spots = K === 1 ? null : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K].map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   // 3 colours on the cube: 2 opposite faces each (its face's axis, either way)
