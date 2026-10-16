@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.605';
+const VERSION = '0.1.606';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3899,17 +3899,18 @@ function rhombHexTorusMesh(W) {
   }
   return (meshCache[key] = Object.assign(finishTorus(verts, hexes, 6, W, W, uv), { shear: [0, W / 2] }));
 }
-function rhombTriTorusMesh(W) {
+function rhombTriTorusMesh(W) {  // its rows across the ring, each round the tube (so that the tube closes on the rhombus's slanted sides, as the hexagons')
   const key = `trirhomb${W}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore(), tris = [], uv = [];
-  // corner (i, j): corner i of row j, each row half a triangle further than the last (sheared back: i)
-  const put = (c) => { tris.push(c.map(([i, j]) => add(...torusPoint(i, j, W, W, 1)))); uv.push(...c.flat()); };
+  // corner i of row j: on the sheet, row j round the ring, i + j / 2 round the tube (each row half a triangle
+  // further than the last), sheared back: (j, i); the corners listed the other way round (a swap is a mirror)
+  const put = (c) => { const t = [c[0], c[2], c[1]].map(([i, j]) => [j, i]); tris.push(t.map(([u, v]) => add(...torusPoint(u, v, W, W, 1)))); uv.push(...t.flat()); };
   for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
     put([[i, j], [i + 1, j], [i, j + 1]]);
     put([[i + 1, j], [i + 1, j + 1], [i, j + 1]]);
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tris, 3, W, W, uv), { shear: [W / 2, 0] }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tris, 3, W, W, uv), { shear: [0, W / 2], swap: true }));
 }
 
 /* The same tori turned by 30° (or 90°: the same grid) on the sheet: the triangles' rows, or the
@@ -4139,8 +4140,8 @@ const SPHERES = {
                     radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 1, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
-  tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (2 * TORUS_TUBE) / Math.sqrt(3) }),
-                    radius: (s) => (torusDims('tritorusSquare', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
+  tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2 }),
+                    radius: (s) => torusDims('tritorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 2, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
   cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE }),
@@ -6527,7 +6528,7 @@ function patternAt(i, K, cells) {
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
   if (kind === 'square') return (p) => p;
   if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
-  if (g.shear) { const [su, sv] = g.shear, plain = sheetUnits({ ...g, shear: null }, kind); return (p) => { const [u, v] = plain(p); return [u - (su * v) / g.nv, v - (sv * u) / g.nu]; }; }  // (a rhombus: sheared as its sheet)
+  if (g.shear) { const [su, sv] = g.shear, plain = sheetUnits({ ...g, shear: null }, kind); return (p) => { const [a, b] = plain(p), [u, v] = g.swap ? [b, a] : [a, b]; return [u - (su * v) / g.nv, v - (sv * u) / g.nu]; }; }  // (a rhombus: as its sheet, see rhombHexTorusMesh)
   if (kind === 'tri') return g.mobius ? (p) => p : ([x, y]) => [x, y / ROOT3_2];  // (a Möbius strip's sheet: edges of 1)
   const c = Math.cos(Math.PI / 6), sn = Math.sin(Math.PI / 6), r3 = Math.sqrt(3);
   return ([x, y]) => { const X = r3 * (x * c - y * sn), Y = r3 * (x * sn + y * c); return g.mobius ? [X, Y] : [X / 1.5, Y / r3]; };
@@ -8022,7 +8023,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), ribbon: buf(), arrPos: buf(), arrNrm: buf(), arrCol: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -8081,55 +8082,6 @@ function pathSegments() {
   }
   at[n] = j;
   return { data: out.subarray(0, 11 * j), at };
-}
-
-/* The unrolled torus's glued edges, shown by two double arrows passing under the sheet (with the
- * grid on): one across its width (its long edges are glued, going round the tube), one along its
- * length (its ends are glued, going round the ring), in the colours of the axes north and east. Each
- * is a flat band in a vertical plane, folding round both edges it joins and running under the sheet.
- * They reach past the sphere round the sheet (the view's frame) by less than 1 %, inside the margin
- * the view keeps (see viewFor), so the view never cuts them; they change nothing to the framing. Triangles: positions, normals, colours (see glSurface). */
-function torusArrows(R, X, Y) {  // X, Y: half the sheet's length and width (its tiles' farthest corners)
-  const pos = [], nrm = [], col = [];
-  const unitV = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
-  const add = (p, n, c) => { pos.push(...p); nrm.push(...n); col.push(...c); };
-  const tri = (a, b, c, n, colour) => { add(a, n, colour); add(b, n, colour); add(c, n, colour); };
-  // a band along the points P (in a vertical plane), W its sideways direction, both ends a head
-  let headLen = 0;
-  const band = (P, W, hw, colour) => {
-    const T = (i) => unitV(P[Math.min(i + 1, P.length - 1)].map((x, d) => x - P[Math.max(i - 1, 0)][d]));
-    const at = (p, w, k) => p.map((x, d) => x + w[d] * k);
-    for (let i = 0; i + 1 < P.length; i++) {
-      const n = unitV(cross(T(i), W)), a = at(P[i], W, -hw), b = at(P[i], W, hw), c = at(P[i + 1], W, hw), e = at(P[i + 1], W, -hw);
-      tri(a, b, c, n, colour); tri(a, c, e, n, colour);
-    }
-    for (const [i, sign] of [[0, -1], [P.length - 1, 1]]) {  // heads: along the band, out of each end, as long as the gap to the edge
-      const t = T(i).map((x) => x * sign), n = unitV(cross(t, W)), tip = at(P[i], t, headLen);
-      tri(at(P[i], W, -2.6 * hw), at(P[i], W, 2.6 * hw), tip, n, colour);
-    }
-  };
-  // in profile, a fold round each edge: from the sheet's level just past one edge, half a circle
-  // down round it, flat under the sheet, half a circle up round the other edge, back to the sheet's
-  // level just past it; the heads (gap long) point at the edges (u: the axis, E: half the sheet)
-  const fold = (centre, u, E, rad, gap) => {
-    const P = [], at = (x, z) => [0, 1, 2].map((d) => centre[d] + u[d] * x + (d === 2 ? z : 0));
-    for (let i = 0; i <= 16; i++) { const th = Math.PI / 2 + (Math.PI * i) / 16; P.push(at(-(E + gap) + rad * Math.cos(th), -rad + rad * Math.sin(th))); }
-    // under the sheet in short pieces, as the tiles: the depth is interpolated linearly on the screen
-    // (the perspective is done in the shader), which a long piece would get wrong in its middle
-    const pieces = Math.ceil((2 * (E + gap)) / (2 * rad));
-    for (let i = 1; i < pieces; i++) P.push(at(-(E + gap) + (2 * (E + gap) * i) / pieces, -2 * rad));
-    for (let i = 0; i <= 16; i++) { const th = -Math.PI / 2 + (Math.PI * i) / 16; P.push(at(E + gap + rad * Math.cos(th), -rad + rad * Math.sin(th))); }
-    return P;
-  };
-  // the axes' colours (see draw3DFrame): along the length, east; across the width, north
-  // the heads stop short of the edges (margin), the folds go round them past the heads; the red one
-  // folds wider, so that it runs below the green ones where they cross
-  const hw = 0.045 * R, margin = 0.05 * R, east = rgbOf('#ff7b72'), north = rgbOf('#3fb950');
-  headLen = 0.08 * R;
-  const gap = margin + headLen;
-  band(fold([0, 0, 0], [0, 1, 0], Y, 0.1 * R, gap), [1, 0, 0], hw, north);  // one across, in the middle
-  band(fold([0, 0, 0], [1, 0, 0], X, 0.13 * R, gap), [0, 1, 0], hw, east);
-  return { pos: new Float32Array(pos), nrm: new Float32Array(nrm), col: new Uint8Array(col), count: pos.length / 3 };
 }
 
 // Draw the surface with its palette and levelOf (as drawSphere picks them); false if WebGL is missing
@@ -8223,27 +8175,6 @@ function glSurface(palette, levelOf, path) {
   }
   gl.disable(gl.CULL_FACE);
   off(prog.tile, ['aPos', 'aNrm', 'aCol']);
-  // the glued edges of an unrolled torus, under the sheet, with the grid on (see torusArrows)
-  if (g.torus && !g.mobius && !g.klein && sh.m < 0.02 && $('showGrid').checked) {
-    if (S.keys.arrows !== sh) {  // the sheet's half length and width, from its tiles' corners
-      let X = 0, Y = 0;
-      for (let q = 0; q < sh.corners.length; q += 3) { X = Math.max(X, Math.abs(sh.corners[q])); Y = Math.max(Y, Math.abs(sh.corners[q + 1])); }
-      const A = torusArrows(R, X * R, Y * R);
-      gl.bindBuffer(gl.ARRAY_BUFFER, S.arrPos); gl.bufferData(gl.ARRAY_BUFFER, A.pos, gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, S.arrNrm); gl.bufferData(gl.ARRAY_BUFFER, A.nrm, gl.STATIC_DRAW);
-      gl.bindBuffer(gl.ARRAY_BUFFER, S.arrCol); gl.bufferData(gl.ARRAY_BUFFER, A.col, gl.STATIC_DRAW);
-      S.arrCount = A.count; S.keys.arrows = sh;
-    }
-    u = uniforms(prog.tile);
-    gl.uniform1i(u('uTwoSided'), 1);
-    gl.uniform1f(u('uShade'), SHADE);
-    gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
-    attrib(prog.tile, 'aPos', S.arrPos, 3);
-    attrib(prog.tile, 'aNrm', S.arrNrm, 3);
-    attrib(prog.tile, 'aCol', S.arrCol, 3, gl.UNSIGNED_BYTE, true);
-    gl.drawArrays(gl.TRIANGLES, 0, S.arrCount);
-    off(prog.tile, ['aPos', 'aNrm', 'aCol']);
-  }
   // grid: the tile edges, when the tiles are big enough on screen
   if ($('showGrid').checked && view.scale > 6) {
     gl.enable(gl.BLEND);
