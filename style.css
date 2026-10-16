@@ -309,7 +309,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .build-box { min-width: 0; padding: 6px 4px; border: 1px solid var(--border); border-radius: 8px; }
 .build-box h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
 .states-box:hover { border-color: var(--muted); }  /* a click: one more state */
-.states-box { cursor: pointer; contain: size; display: flex; flex-direction: column; align-items: center; gap: 4px; }  /* as high as the others (its own cells never make it higher) */
+.states-box { cursor: pointer; contain: size; display: flex; flex-direction: column; align-items: center; }  /* as high as the others (its own cells never make it higher) */
 #statesLabel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--accent); text-align: center; line-height: 1.1; }
 #statesLabel small { display: block; font-size: 9px; font-weight: 400; color: var(--muted); }
 .states-cells { display: flex; flex-direction: column; gap: 2px; }  /* a cell's states, from the top: alive, its dying stages, dead (✝) */
