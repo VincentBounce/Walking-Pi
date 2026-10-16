@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.659';
+const VERSION = '0.1.660';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -981,10 +981,10 @@ const MODES = {
                 where: 'the surface of a cube with a pit in each face' },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
                 where: 'a tetrahedron of triangles' },
-  lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
+  lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', perspective: true, life: true,
                 where: 'an octahedron of triangles' },
   lifeTetraKite: { base: 2, lattice: 'sphere', sphere: 'tetraKite', life: true, where: 'a tetrahedron of kites (each triangle cut in 3)' },
-  lifeOctaKite: { base: 2, lattice: 'sphere', sphere: 'octaKite', initial: 24, perspective: true, life: true, where: 'an octahedron of kites (each triangle cut in 3)' },
+  lifeOctaKite: { base: 2, lattice: 'sphere', sphere: 'octaKite', perspective: true, life: true, where: 'an octahedron of kites (each triangle cut in 3)' },
   lifeIcosaKite: { base: 2, lattice: 'sphere', sphere: 'icosaKite', life: true, round: true, where: 'an icosahedron of kites (each triangle cut in 3)' },
   lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true,
                 where: 'a stella octangula (two tetrahedra) of triangles' },
@@ -4167,113 +4167,116 @@ function morphStep(dt) {
 
 
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
-// Sizes (cuts per edge): each step multiplies the number of tiles by about 2 (×2.25, then ×1.78),
-// not by 4 as doubling would
-const STEPS_128 = [8, 12, 16, 24, 32, 48, 64, 96, 128];
-const SPHERES_MOBIUS_SIZES = { mobius: [6, 8, 12, 16, 24], mobiusHex: [4, 6, 8, 12, 16], mobiusTri: [8, 12, 16, 24, 32], mobiusCairo: [6, 8, 12, 16, 24], mobiusKite: [4, 6, 8, 12, 16] };  // rows across
+/* Sizes, one way for every surface: a ladder of cell counts for each family (a torus, a Möbius strip or a Klein
+ * bottle: the square torus's; a solid: the cube's), and each surface's sizes the allowed ones (rows a multiple
+ * of steps[0], from least) whose cells are nearest them: a step of the size is about as many cells whatever
+ * the tiling (cells stay regular, so not exactly). Each step about doubles the cells (×2.25, then ×1.78). A
+ * new surface needs only its tiles(size) and its steps. */
+const SIZE_LADDERS = { surface: { counts: [576, 1440, 2688, 5760, 9984], start: 2688 },
+                       solid: { counts: [384, 864, 1536, 3456, 6144, 13824, 24576, 55296, 98304], start: 6144 } };
 const mobiusRadius = (kind, s) => mobiusSheet(kind, s).W / MOBIUS_WIDTH;  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
-          sizes: STEPS_128, initial: 32, tiles: (n) => 6 * n * n, unit: 'squares' },
-  pits: { mesh: cubePits, radius: (n) => n / 2, sizes: [12, 18, 24, 30, 48, 96], initial: 24, tiles: (n) => (66 * n * n) / 9, unit: 'squares' },  // the cube with pits
+          tiles: (n) => 6 * n * n, unit: 'squares' },
+  pits: { mesh: cubePits, radius: (n) => n / 2, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares' },  // the cube with pits (a sixth deep: n a multiple of 6)
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
   // (torus: a size of its own may share torusSquare's mesh, hence its flatWidth)
   torus: { mesh: (s) => Object.assign(torusMesh(...torusDims('torus', s)), { flatWidth: 1, square: false }), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => twelve(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
-          sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
+          least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // the square torus (Squares, stretched): as many squares round the ring as round the tube, a square
   // sheet unrolled, its squares stretched along the ring rolled up (see torusPoint's flatWidth)
   torusSquare: { mesh: (s) => Object.assign(torusMesh(...torusDims('torusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
                  radius: (s) => torusDims('torusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [1, 1],
-                 sizes: [16, 24, 32, 48, 64], initial: 32, least: 4, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
+                 least: 4, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               columns: hexTorusColumns, perRow: 1, steps: [1, 2],  // an even count of columns
-              sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
+              least: 3, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
   // on a square sheet (Square, under the tilings): as long round the ring as round the tube unrolled, its
   // tiles stretched along the ring once rolled up (as torusSquare)
   // hexagons and triangles: the plane's rhombus (see rhombHexTorusMesh), as many tiles round the ring as round the tube
   hextorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('hextorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
                     radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 1, steps: [1, 1],
-                    sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
+                    least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
   tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
                     radius: (s) => torusDims('tritorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: (nv) => nv, perRow: 2, steps: [1, 1],
-                    sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
+                    tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
   kitetorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('kitetorusSquare', s)[0], true), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
                      radius: (s) => torusDims('kitetorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
                      columns: (nv) => nv, perRow: 6, steps: [1, 1],
-                     sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 6 * torusDims('kitetorusSquare', s).reduce((a, b) => a * b), unit: 'kites' },
+                     tiles: (s) => 6 * torusDims('kitetorusSquare', s).reduce((a, b) => a * b), unit: 'kites' },
   cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
                       radius: (s) => torusDims('cairotorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [2, 2],
-                      sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('cairotorusSquare', s).reduce((a, b) => a * b), unit: 'pentagons' },
+                      tiles: (s) => 2 * torusDims('cairotorusSquare', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // Cairo pentagons: the tube nv squares of their grid around, two pentagons a square
   cairotorus: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorus', s)), { flatWidth: 1, square: false }), radius: (s) => torusDims('cairotorus', s)[0] / (2 * Math.PI * TORUS_TUBE),
                 columns: cairoTorusColumns, perRow: 1, steps: [2, 2],  // even counts both ways
-                sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('cairotorus', s).reduce((a, b) => a * b), unit: 'pentagons' },
+                tiles: (s) => 2 * torusDims('cairotorus', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
   hexsphere: { mesh: hexSphereMesh, radius: (f) => (f * Math.sqrt(3)) / 2,
-               sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 10 * f * f + 2, unit: 'hexagons' },
+               tiles: (f) => 10 * f * f + 2, unit: 'hexagons' },
   // triangle edge = 1 unit: the tube is nv rows of √3/2 around
   tritorus: { mesh: (s) => triTorusMesh(...torusDims('tritorus', s)), radius: (s) => (torusDims('tritorus', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
               columns: triTorusColumns, perRow: 2, steps: [2, 2],  // an even count of rows, two triangles per column
-              sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorus', s).reduce((a, b) => a * b), unit: 'triangles' },
+              tiles: (s) => 2 * torusDims('tritorus', s).reduce((a, b) => a * b), unit: 'triangles' },
   // kites: the triangles', each cut in 3 (see kitesOf), on triangles twice as big (half their sizes): 3/4 of their cells
   kitetorus: { mesh: (s) => triTorusMesh(...torusDims('kitetorus', s), true), radius: (s) => (torusDims('kitetorus', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
                columns: triTorusColumns, perRow: 6, steps: [2, 2],  // an even count of rows, six kites per column
-               sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 6 * torusDims('kitetorus', s).reduce((a, b) => a * b), unit: 'kites' },
+               tiles: (s) => 6 * torusDims('kitetorus', s).reduce((a, b) => a * b), unit: 'kites' },
   // turned by 30° (see turnedTorus): rows around the ring. perColumn: tiles across a corner (a
   // column) around the tube, for the size's label
   tritorusTurned: { mesh: (s) => turnedTriTorusMesh(...torusDims('tritorusTurned', s)), radius: (s) => torusDims('tritorusTurned', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: turnedTriColumns, perRow: 1, perColumn: 2, steps: [1, 2],  // an even count of rows
-                    sizes: [16, 24, 32, 48, 64], initial: 32, least: 2, tiles: (s) => 2 * torusDims('tritorusTurned', s).reduce((a, b) => a * b), unit: 'triangles' },
+                    least: 2, tiles: (s) => 2 * torusDims('tritorusTurned', s).reduce((a, b) => a * b), unit: 'triangles' },
   hextorusTurned: { mesh: (s) => turnedHexTorusMesh(...torusDims('hextorusTurned', s)), radius: (s) => (torusDims('hextorusTurned', s)[0] * 1.5) / (2 * Math.PI * TORUS_TUBE),
                     columns: turnedHexColumns, perRow: 1, steps: [2, 1],  // an even count of columns, around the tube
-                    sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => torusDims('hextorusTurned', s).reduce((a, b) => a * b), unit: 'hexagons' },
+                    tiles: (s) => torusDims('hextorusTurned', s).reduce((a, b) => a * b), unit: 'hexagons' },
   // Möbius strip: its size is its rows across; square edge = 1 unit (the middle circle is nu long)
   // Möbius strips: their size is their rows across; tile edge = 1 unit (the middle circle is L long);
   // tiles: on both faces
   mobius: { mesh: (s) => mobiusMesh('mobius', s), radius: (s) => mobiusRadius('mobius', s), columns: (s) => 2 * mobiusSheet('mobius', s).L,
-            sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobius', s).tiles.length, unit: 'squares' },
+            tiles: (s) => 2 * mobiusSheet('mobius', s).tiles.length, unit: 'squares' },
   mobiusHex: { mesh: (s) => mobiusMesh('mobiusHex', s), radius: (s) => mobiusRadius('mobiusHex', s), columns: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length / mobiusSize(s)[0],
-               sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length, unit: 'hexagons' },
+               tiles: (s) => 2 * mobiusSheet('mobiusHex', s).tiles.length, unit: 'hexagons' },
   mobiusHexTurned: { mesh: (s) => mobiusMesh('mobiusHexTurned', s), radius: (s) => mobiusRadius('mobiusHexTurned', s), columns: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length / mobiusSize(s)[0],
-                     sizes: [4, 6, 8, 12, 16], initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length, unit: 'hexagons' },
+                     tiles: (s) => 2 * mobiusSheet('mobiusHexTurned', s).tiles.length, unit: 'hexagons' },
   mobiusTriTurned: { mesh: (s) => mobiusMesh('mobiusTriTurned', s), radius: (s) => mobiusRadius('mobiusTriTurned', s), columns: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length / mobiusSize(s)[0],
-                     sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length, unit: 'triangles' },
+                     tiles: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length, unit: 'triangles' },
   mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusRadius('mobiusTri', s), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / mobiusSize(s)[0],
-               sizes: [8, 12, 16, 24, 32], initial: 16, tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
+               tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
   mobiusKite: { mesh: (s) => mobiusMesh('mobiusKite', s), radius: (s) => mobiusRadius('mobiusKite', s), columns: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length / mobiusSize(s)[0],
-                sizes: SPHERES_MOBIUS_SIZES.mobiusKite, initial: 8, tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
+                tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
   // Möbius strips from a square sheet (Square): shaped as the usual ones, their tiles stretched along
   ...Object.fromEntries([['mobius', 'squares'], ['mobiusHex', 'hexagons'], ['mobiusTri', 'triangles'], ['mobiusCairo', 'pentagons'], ['mobiusKite', 'kites']].map(([base, unit]) => {
     const kind = `${base}Square`;
     return [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s), columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0],
-                    sizes: SPHERES_MOBIUS_SIZES[base], initial: SPHERES_MOBIUS_SIZES[base][2], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit }];
+                    tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit }];
   })),
   // Klein bottles: their size is their rows round the tube, as a torus's
   ...Object.fromEntries([['klein', 'squares', 1], ['kleinHex', 'hexagons', 1], ['kleinTri', 'triangles', 2], ['kleinCairo', 'pentagons', 2], ['kleinKite', 'kites', 6]].map(([kind, unit, per]) => [kind, {
     mesh: (s) => kleinMesh(kind, ...torusDims(kind, s)), radius: (s) => torusDims(kind, s)[0] / (2 * Math.PI * TORUS_TUBE), columns: kleinColumns[kind], perRow: 1,
-    steps: [2, 2], sizes: per === 6 ? [8, 12, 16, 24] : [16, 24, 32, 48], initial: per === 6 ? 12 : 24, tiles: (s) => per * torusDims(kind, s).reduce((a, b) => a * b), unit }])),
+    steps: [2, 2], tiles: (s) => per * torusDims(kind, s).reduce((a, b) => a * b), unit }])),
   mobiusCairo: { mesh: (s) => mobiusMesh('mobiusCairo', s), radius: (s) => mobiusRadius('mobiusCairo', s), columns: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length / mobiusSize(s)[0],
-                 sizes: [6, 8, 12, 16, 24], initial: 12, tiles: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length, unit: 'pentagons' },
+                 tiles: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length, unit: 'pentagons' },
   tetra: { mesh: (f) => flatPolyhedron('tetra', f), radius: (f) => f / (2 * Math.SQRT2),  // edge 2√2
-          sizes: STEPS_128, initial: 32, tiles: (f) => 4 * f * f, unit: 'triangles' },
+          tiles: (f) => 4 * f * f, unit: 'triangles' },
   octa:  { mesh: (f) => flatPolyhedron('octa', f), radius: (f) => f / Math.SQRT2,          // edge √2
-          sizes: STEPS_128, initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
+          tiles: (f) => 8 * f * f, unit: 'triangles' },
   icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
-          sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 20 * f * f, unit: 'triangles' },  // 20,480 triangles
+          tiles: (f) => 20 * f * f, unit: 'triangles' },
   // kites: the triangles', each cut in 3, on triangles twice as big (half their sizes): 3/4 of their cells, as everywhere
-  tetraKite: { mesh: (f) => flatPolyhedron('tetra', f, true), radius: (f) => f / (2 * Math.SQRT2), sizes: [4, 6, 8, 12, 16, 24, 32], initial: 16, tiles: (f) => 12 * f * f, unit: 'kites' },
-  octaKite: { mesh: (f) => flatPolyhedron('octa', f, true), radius: (f) => f / Math.SQRT2, sizes: [4, 6, 8, 12, 16, 24, 32], initial: 8, tiles: (f) => 24 * f * f, unit: 'kites' },
-  icosaKite: { mesh: (f) => flatPolyhedron('icosa', f, true), radius: (f) => f / 2, sizes: [4, 6, 8, 12, 16, 24, 32], initial: 16, tiles: (f) => 60 * f * f, unit: 'kites' },  // 15,360 kites
+  tetraKite: { mesh: (f) => flatPolyhedron('tetra', f, true), radius: (f) => f / (2 * Math.SQRT2), tiles: (f) => 12 * f * f, unit: 'kites' },
+  octaKite: { mesh: (f) => flatPolyhedron('octa', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 24 * f * f, unit: 'kites' },
+  icosaKite: { mesh: (f) => flatPolyhedron('icosa', f, true), radius: (f) => f / 2, tiles: (f) => 60 * f * f, unit: 'kites' },
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
-            sizes: STEPS_128.slice(0, -2), initial: 16, tiles: (f) => 24 * f * f, unit: 'triangles' },  // 6,144 triangles
+            tiles: (f) => 24 * f * f, unit: 'triangles' },
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
-            sizes: STEPS_128.slice(0, -3), initial: 16, tiles: (f) => 60 * f * f, unit: 'triangles' },  // 15,360 triangles
+            tiles: (f) => 60 * f * f, unit: 'triangles' },
 };
 
 // The surface size as a stepper: [ − ] 6,144 squares [ + ] goes through the sizes of the (hidden)
@@ -4358,7 +4361,7 @@ function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial}`;
   if (sel.dataset.kind === key) return;
   sel.replaceChildren(...SPHERES[kind].sizes.map((f) => new Option(sizeLabel(kind, f), f)));
-  sel.value = initial;
+  sel.value = SPHERES[kind].nearest(initial);
   sel.dataset.kind = key;
 }
 
@@ -4399,6 +4402,20 @@ function gridGraph(g) {
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'kitetorusSquare', 'torus', 'torusSquare', 'tritorus', 'hextorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS];  // sized by rows × tiles per row
+// each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
+for (const [kind, S] of Object.entries(SPHERES)) {
+  const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
+  let near;
+  const nearest = () => near ??= (() => {
+    const step = S.steps?.[0] ?? 1, sizes = [];
+    for (let f = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step; ; f += step) { sizes.push([f, S.tiles(f)]); if (sizes.at(-1)[1] > 1.5 * counts.at(-1)) break; }
+    return (n) => sizes.reduce((a, b) => (Math.abs(Math.log(b[1] / n)) < Math.abs(Math.log(a[1] / n)) ? b : a))[0];
+  })();
+  let list;
+  Object.defineProperty(S, 'sizes', { get: () => (list ??= [...new Set(counts.map(nearest()))]) });
+  Object.defineProperty(S, 'initial', { get: () => nearest()(start) });
+  S.nearest = (f) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / S.tiles(f))) < Math.abs(Math.log(S.tiles(a) / S.tiles(f))) ? b : a));  // a mode's own size: the usual one with about as many cells
+}
 // The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
 // a torus from a square sheet (Rectangle | Square, under its tilings): not turned
