@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.657';
+const VERSION = '0.1.658';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -984,7 +984,7 @@ const MODES = {
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', initial: 48, perspective: true, life: true,
                 where: 'an octahedron of triangles' },
   lifeTetraKite: { base: 2, lattice: 'sphere', sphere: 'tetraKite', life: true, where: 'a tetrahedron of kites (each triangle cut in 3)' },
-  lifeOctaKite: { base: 2, lattice: 'sphere', sphere: 'octaKite', initial: 16, perspective: true, life: true, where: 'an octahedron of kites (each triangle cut in 3)' },
+  lifeOctaKite: { base: 2, lattice: 'sphere', sphere: 'octaKite', initial: 48, perspective: true, life: true, where: 'an octahedron of kites (each triangle cut in 3)' },
   lifeIcosaKite: { base: 2, lattice: 'sphere', sphere: 'icosaKite', life: true, round: true, where: 'an icosahedron of kites (each triangle cut in 3)' },
   lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true,
                 where: 'a stella octangula (two tetrahedra) of triangles' },
@@ -4266,10 +4266,10 @@ const SPHERES = {
           sizes: STEPS_128, initial: 16, tiles: (f) => 8 * f * f, unit: 'triangles' },
   icosa: { mesh: (f) => flatPolyhedron('icosa', f), radius: (f) => f / 2,                  // edge 2
           sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 20 * f * f, unit: 'triangles' },  // 20,480 triangles
-  // kites: the triangles', each cut in 3
-  tetraKite: { mesh: (f) => flatPolyhedron('tetra', f, true), radius: (f) => f / (2 * Math.SQRT2), sizes: STEPS_128.slice(0, -2), initial: 24, tiles: (f) => 12 * f * f, unit: 'kites' },
-  octaKite: { mesh: (f) => flatPolyhedron('octa', f, true), radius: (f) => f / Math.SQRT2, sizes: STEPS_128.slice(0, -3), initial: 16, tiles: (f) => 24 * f * f, unit: 'kites' },
-  icosaKite: { mesh: (f) => flatPolyhedron('icosa', f, true), radius: (f) => f / 2, sizes: STEPS_128.slice(0, -4), initial: 16, tiles: (f) => 60 * f * f, unit: 'kites' },  // 15,360 kites
+  // kites: the triangles', each cut in 3, at their sizes (3 times the cells, as on the tori)
+  tetraKite: { mesh: (f) => flatPolyhedron('tetra', f, true), radius: (f) => f / (2 * Math.SQRT2), sizes: STEPS_128.slice(0, -2), initial: 32, tiles: (f) => 12 * f * f, unit: 'kites' },
+  octaKite: { mesh: (f) => flatPolyhedron('octa', f, true), radius: (f) => f / Math.SQRT2, sizes: STEPS_128.slice(0, -2), initial: 16, tiles: (f) => 24 * f * f, unit: 'kites' },
+  icosaKite: { mesh: (f) => flatPolyhedron('icosa', f, true), radius: (f) => f / 2, sizes: STEPS_128.slice(0, -4), initial: 32, tiles: (f) => 60 * f * f, unit: 'kites' },  // 61,440 kites
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
             sizes: STEPS_128.slice(0, -2), initial: 16, tiles: (f) => 24 * f * f, unit: 'triangles' },  // 6,144 triangles
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
@@ -7321,7 +7321,8 @@ function viewFor(b) {
   const w = b.maxX - b.minX + (tight ? 0 : 2);
   const h = b.maxY - b.minY + (tight ? 0 : 2);
   // down to 10⁻⁶ pixel per cell: a walk of 10 million steps can drift millions of cells away
-  const scale = Math.min(40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * (tight ? 0.99 : 0.925)));  // else a 7.5 % margin
+  const fixed = walk.sphere || walk.plane;  // a surface or a grid fills the view at any size; a walk starts no closer than 40 px a cell
+  const scale = Math.min(fixed ? Infinity : 40, Math.max(MIN_SCALE, Math.min(cw / w, ch / h) * (tight ? 0.99 : 0.925)));  // else a 7.5 % margin
   return { scale, cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
 }
 function setView(v) {
