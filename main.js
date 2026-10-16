@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.637';
+const VERSION = '0.1.638';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9749,7 +9749,7 @@ function setupRow(name, detail, setup, onDelete) {
   const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
   const words = document.createElement('span'), pic = part('mode-icon', '');
   words.append(part('mode-name', name), part('mode-detail', detail));
-  pic.innerHTML = icon(MODE_ICONS[setup.w]);
+  pic.innerHTML = icon(SHAPE_ICONS[NAV[setup.w]?.[2]] ?? MODE_ICONS[setup.w]);  // its shape's picture, as the Grid's (the sphere, not its hexagons)
   b.append(pic, words);
   b.title = `${name}\n${detail}`;  // in full, as the row may cut them short
   if (onDelete) {
