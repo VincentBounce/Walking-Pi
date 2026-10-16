@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.640';
+const VERSION = '0.1.641';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5195,6 +5195,9 @@ const DRAW_PATTERNS = [
   ['brian-ship0', 'square', ['B2/S/C3'], 'Glider', '2A$2B!', 'flies, period 1 · 4 cells'],
   ['brian-ship1', 'square', ['B2/S/C3'], 'Spaceship', '.A$BAB$3.A$2.B!', 'flies, period 4 · 6 cells'],
   ['brian-meth', 'square', ['B2/S/C3'], 'Methuselah', '3.2A$A$.4A$4.A$3A.A!', 'loops from generation 2,595 · 12 cells'],
+  ['swarm-ship', 'hex', ['B2op3m/S12mp3p4p5'], 'Glider', '2.3A$5.A$A$A3.A$.2A!', 'flies, period 8 · 9 cells'],
+  ['comets-ship0', 'hex', ['B2345/S134/C5'], 'Glider', '.AC$2ABA$AC!', 'flies, period 4 · 8 cells'],
+  ['comets-ship1', 'hex', ['B2345/S134/C5'], 'Spaceship', '.DCD$.BAB$C3A$2A!', 'flies, period 2 · 12 cells'],
   ['callahan-ship0', 'hex', ['B2o/S2m34'], 'Glider', '.A$A$A2.A$A$A!', 'flies, period 4 · 6 cells'],
   ['callahan-ship1', 'hex', ['B2o/S2m34'], 'Spaceship', '3.A$2.A$$2.3A$4A$.2A$A!', 'flies, period 48 · 12 cells'],
   ['callahan-osc', 'hex', ['B2o/S2m34'], 'Oscillator', '4.A$3.2A$7A$.A2.A$.A2.A!', 'period 30 · 14 cells'],
@@ -5775,7 +5778,7 @@ const RULE_ICONS = {
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
-  'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
+  'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
   'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.', 'B2/S34': '.....,.o.o.,..o..,.o.o.,.....',
   'B24/S346/C4': '+o...,.+o..,..+o.,.....,...+o', 'B23/S6/C3': '.....,.o+..,o+o+.,.+o..,.....', 'B2347/S35/C3': 'o.o.o,.+.+.,o.o.o,.+.+.,o.o.o',
