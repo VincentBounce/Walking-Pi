@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.607';
+const VERSION = '0.1.608';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5704,8 +5704,10 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
 const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
 const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
-// ring 1 / TORUS_TUBE times as long as its tube, whatever its sheet): 12 colours 6 × 2 rather than 4 × 3
-function torusBlocks(K) {
+// ring 1 / TORUS_TUBE times as long as its tube, whatever its sheet): 12 colours 6 × 2 rather than 4 × 3; on the
+// plane's rhombus (Square, hexagons and triangles), as on the plane: its rows round the ring (see COLOUR_GRID)
+function torusBlocks(K, g = walk.geo) {
+  if (g?.shear) { const [cols, rows] = COLOUR_GRID[K]; return [rows, cols]; }
   let best = [K, 1], err = Infinity;
   for (let b = 1; b <= K; b++) if (K % b === 0) { const e = Math.abs(Math.log(b / ((K / b) * TORUS_TUBE))); if (e < err) { err = e; best = [K / b, b]; } }
   return best;
@@ -5726,7 +5728,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
   if (g?.mobius) return true;  // a Möbius strip: in turn along it (see huntParts)
-  if (g?.nu) { const [u, v] = torusBlocks(k); return u <= g.nu && v <= g.nv; }  // a torus: its blocks (see torusBlocks)
+  if (g?.nu) { const [u, v] = torusBlocks(k, g); return u <= g.nu && v <= g.nv; }  // a torus: its blocks (see torusBlocks)
   return false;
 }
 // a new figure that cannot place as many colours: the most it can, fewer
