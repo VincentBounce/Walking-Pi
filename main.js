@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.631';
+const VERSION = '0.1.632';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4114,13 +4114,10 @@ function updateMorphButton() {
 // inflated (a ball is seen whole without it)
 const perspectiveFor = (mode, m) => !!mode.perspective && !(m === 1 && SOLIDS.includes(mode.sphere));
 // One animation frame of the change of shape (about 0.7 s from flat to round)
-const CYLINDER_PAUSE = 0.2;  // a torus rolling up or unrolling: seconds it stays a cylinder (its tube closed, its ring not yet), a beat between the two bends (each 0.35 s)
 function morphStep(dt) {
-  const sh = walk.shape, g = walk.geo;
+  const sh = walk.shape;
   if (!sh || sh.m === sh.target) return;
-  if (sh.hold > 0) { sh.hold -= dt; return; }
-  let m = sh.target > sh.m ? Math.min(sh.target, sh.m + dt / 0.7) : Math.max(sh.target, sh.m - dt / 0.7);
-  if (g.torus && !g.mobius && !g.klein && sh.m !== 0.5 && (sh.m - 0.5) * (m - 0.5) <= 0) { m = 0.5; sh.hold = CYLINDER_PAUSE; }  // reached the cylinder
+  const m = sh.target > sh.m ? Math.min(sh.target, sh.m + dt / 0.7) : Math.max(sh.target, sh.m - dt / 0.7);
   Object.assign(sh, shapeAt(walk.geo, m));
   applyShape();
 }
