@@ -70,7 +70,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
 /* a section's title: its gold picture, then its name; a sub-section's (field-label): semibold */
 h2 { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; font-size: 14px; font-weight: 600; color: var(--text); }
-h2 .icon { width: 20px; height: 20px; flex: none; color: var(--accent); vertical-align: 0; }
+h2 .icon { width: 24px; height: 24px; flex: none; color: var(--accent); vertical-align: 0; }
 
 /* Walk: Grid or Cells, beside the heading */
 .walk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -205,10 +205,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
 }
 .tabs button:hover:not(.active) { color: var(--text); border-bottom-color: var(--border); }
 .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs button .icon { width: 24px; height: 24px; vertical-align: -0.35em; }  /* the tabs' pictures, as the sections' */
 .nav-shapes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }  /* the shapes, 4 a row */
 .nav-shapes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px; font-size: 10px; background: var(--panel); color: var(--muted); min-width: 0; }
 .nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nav-shapes button svg { width: 24px; height: 24px; }  /* icons: 24 px in a tile, 20 px by a title or on a card, 16 px in a line of text */
+.nav-shapes button svg { width: 24px; height: 24px; }  /* icons: 24 px in a tile, a tab or by a section's title, 20 px on a card, 16 px in a line of text */
 .theme-buttons > button:nth-last-child(3) { grid-column: 2; }  /* Light, Dark, System on the right, the sky's place on the left kept */
 .trail-row button:hover:not(:disabled), #lifeTrailButton:hover:not(:disabled), .nav-shapes button.switch:hover:not(:disabled) { background: rgba(240, 180, 41, 0.22); }  /* a switch answers the hover, on or off, in the gold of a choice picked (Dawn sky) */
 .gallery-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }  /* Life, Ant, Walk: a section each */
