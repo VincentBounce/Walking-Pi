@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.604';
+const VERSION = '0.1.605';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3780,7 +3780,13 @@ function mobiusMesh(kind, size) {
   return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, L, W, Lp, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
 }
 // The sheet point of a surface: a torus, or a Möbius strip
-const sheetPoint = (g, i, j, m) => (g.mobius ? mobiusPoint(i, j, g.L, g.W, m, g.Lp) : g.klein ? kleinPoint(i, j, g.nu, g.nv, m) : torusPoint(i, j, g.nu, g.nv, m, g.flatWidth ?? 1));
+// (a rhombus sheared into the torus's rectangle: unsheared while flat, sheared as it bends round the ring)
+const sheetPoint = (g, i, j, m) => {
+  if (g.mobius) return mobiusPoint(i, j, g.L, g.W, m, g.Lp);
+  if (g.klein) return kleinPoint(i, j, g.nu, g.nv, m);
+  if (g.shear) { const k = 1 - Math.max(0, 2 * m - 1); [i, j] = [i + (k * g.shear[0] * j) / g.nv, j + (k * g.shear[1] * i) / g.nu]; }
+  return torusPoint(i, j, g.nu, g.nv, m, g.flatWidth ?? 1);
+};
 
 /* Torus of regular hexagons (flat-topped): nu columns around the ring, nv rows around the tube;
  * odd columns sit half a row higher, so nu must be even for the columns to close up. In sheet
@@ -3874,6 +3880,36 @@ function triTorusMesh(nv, nu = triTorusColumns(nv)) {
     }
   }
   return (meshCache[key] = finishTorus(verts, tris, 3, nu, nv, uv));
+}
+
+/* The tori of hexagons and of triangles on a square sheet (Square): the plane's rhombus of W × W tiles,
+ * its sides glued as they are, as the 2D grid's torus (the same in its 3 ways: a straight line comes
+ * back after W tiles whichever way it goes). Flat, a rhombus: the hexagons' columns, or the triangles'
+ * rows, each half a tile further than the last. Rolled up, it is sheared into the torus's rectangle (shear:
+ * how far a side's end is moved along the other, see sheetPoint), so that each tile's sheet coordinates
+ * (uv) are those of the sheared sheet, whose sides are glued straight as the usual torus's are. */
+function rhombHexTorusMesh(W) {
+  const key = `hexrhomb${W}`;
+  if (meshCache[key]) return meshCache[key];
+  const { verts, add } = vertexStore(), hexes = [], uv = [];
+  for (let c = 0; c < W; c++) for (let r = 0; r < W; r++) {  // tile c·W + r: column c, its rows half a row higher than the last's
+    const corners = [0, 1, 2, 3, 4, 5].map((k) => { const i = c + Math.cos((k * Math.PI) / 3) / 1.5, j = r + c / 2 + Math.sin((k * Math.PI) / 3) / Math.sqrt(3); return [i, j - i / 2]; });
+    hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, W, W, 1))));
+    uv.push(...corners.flat());
+  }
+  return (meshCache[key] = Object.assign(finishTorus(verts, hexes, 6, W, W, uv), { shear: [0, W / 2] }));
+}
+function rhombTriTorusMesh(W) {
+  const key = `trirhomb${W}`;
+  if (meshCache[key]) return meshCache[key];
+  const { verts, add } = vertexStore(), tris = [], uv = [];
+  // corner (i, j): corner i of row j, each row half a triangle further than the last (sheared back: i)
+  const put = (c) => { tris.push(c.map(([i, j]) => add(...torusPoint(i, j, W, W, 1)))); uv.push(...c.flat()); };
+  for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
+    put([[i, j], [i + 1, j], [i, j + 1]]);
+    put([[i + 1, j], [i + 1, j + 1], [i, j + 1]]);
+  }
+  return (meshCache[key] = Object.assign(finishTorus(verts, tris, 3, W, W, uv), { shear: [W / 2, 0] }));
 }
 
 /* The same tori turned by 30° (or 90°: the same grid) on the sheet: the triangles' rows, or the
@@ -4098,13 +4134,14 @@ const SPHERES = {
               sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
   // on a square sheet (Square, under the tilings): as long round the ring as round the tube unrolled, its
   // tiles stretched along the ring once rolled up (as torusSquare)
-  hextorusSquare: { mesh: (s) => Object.assign(hexTorusMesh(...torusDims('hextorusSquare', s)), { flatWidth: TORUS_TUBE }),
+  // hexagons and triangles: the plane's rhombus (see rhombHexTorusMesh), as many tiles round the ring as round the tube
+  hextorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('hextorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2 }),
                     radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => 2 * Math.round((nv * Math.sqrt(3)) / 3), perRow: 1, steps: [1, 2],
+                    columns: (nv) => nv, perRow: 1, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
-  tritorusSquare: { mesh: (s) => Object.assign(triTorusMesh(...torusDims('tritorusSquare', s)), { flatWidth: TORUS_TUBE }),
+  tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (2 * TORUS_TUBE) / Math.sqrt(3) }),
                     radius: (s) => (torusDims('tritorusSquare', s)[0] * Math.sqrt(3)) / (4 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => Math.round((nv * Math.sqrt(3)) / 2), perRow: 2, steps: [2, 2],
+                    columns: (nv) => nv, perRow: 2, steps: [1, 1],
                     sizes: [16, 24, 32, 48, 64], initial: 32, tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
   cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE }),
                       radius: (s) => torusDims('cairotorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [2, 2],
@@ -6490,6 +6527,7 @@ function patternAt(i, K, cells) {
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
   if (kind === 'square') return (p) => p;
   if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
+  if (g.shear) { const [su, sv] = g.shear, plain = sheetUnits({ ...g, shear: null }, kind); return (p) => { const [u, v] = plain(p); return [u - (su * v) / g.nv, v - (sv * u) / g.nu]; }; }  // (a rhombus: sheared as its sheet)
   if (kind === 'tri') return g.mobius ? (p) => p : ([x, y]) => [x, y / ROOT3_2];  // (a Möbius strip's sheet: edges of 1)
   const c = Math.cos(Math.PI / 6), sn = Math.sin(Math.PI / 6), r3 = Math.sqrt(3);
   return ([x, y]) => { const X = r3 * (x * c - y * sn), Y = r3 * (x * sn + y * c); return g.mobius ? [X, Y] : [X / 1.5, Y / r3]; };
