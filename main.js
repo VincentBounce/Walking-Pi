@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.648';
+const VERSION = '0.1.649';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5865,11 +5865,15 @@ function renderRuleSection() {
   const ties = counts.flatMap((c) => splits(c, K, c).filter((p) => p[0] > 0 && p[0] === p[1]));
   const say = (p) => p.filter((x) => x).join(' + '), gone = (p) => p.filter((x) => !x).length;
   $('determinedRow').hidden = K === 1;
-  $('determinedRow').innerHTML = `${colourBlock(K)}<span>Births by majority colour${!ties.length ? '<small>never a tie</small>'
+  $('determinedRow').innerHTML = `<div class="field-label">Births by majority colour</div>${!ties.length ? '<small>never a tie</small>'
     : [...ties.filter((p) => gone(p) !== 1), ...ties.filter((p) => gone(p) === 1)]  // a tie a line, what it gives first: no birth, then the colour missing
-      .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}</span>`;
+      .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}`;
   $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
-  $('ruleName').textContent = mine ? `Rule · ${mine.dataset.name}` : 'Rule · your own';
+  $('ruleName').textContent = mine ? mine.dataset.name : 'Custom rule';
+  // last, for information: the rule's patterns on this grid (Draw's, those Famous lays)
+  const kind = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo' }[mark], famous = DRAW_PATTERNS.filter((p) => p[1] === kind && p[2].includes(now));
+  $('famousList').hidden = !famous.length;
+  $('famousList').innerHTML = `<div class="field-label">Famous</div>${famous.map((p) => `<small><b>${p[3]}</b> · ${p[5]}</small>`).join('')}`;
 }
 let ruleFittedTo = null;
 function fitRuleToShape() {
