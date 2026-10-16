@@ -999,6 +999,8 @@ B2om5/S2om4o is the closest to Life in its figures: a soup that thins out the sa
 
 They send out gliders as often as Life, or more, and their small starts grow as often; but their soups thin out faster (2 % alive at generation 300 where Life keeps 6 %), down to a few gliders flying on for ever.
 
+**A puffer in Comets.** Seen in a battle on the hexagon sphere, then found among 300 random starts: 16 cells, `A.A$A.2A$2.A.A$5A$3.2A$3.2A!`, that fly at half speed (50 cells every 100 generations) leaving a trail of debris behind, as Life's puffer trains do: 146, 320, 438, 576 cells at generations 100 to 400 on a 400 torus, before its front comes round ([play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2345/S134/C5&s=128&sd=draw&p=64,64:A.A$A.2A$2.A.A$5A$3.2A$3.2A!)).
+
 <br>
 
 <p align="center">⁂</p>

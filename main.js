@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.644';
+const VERSION = '0.1.645';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5238,6 +5238,7 @@ const DRAW_PATTERNS = [
   ['swarm-osc', 'hex', ['B2op3m/S12mp3p4p5'], 'Oscillator', '4.A.A$A.A$4.A$2A$A!', 'period 2 · 8 cells'],
   ['swarm-meth', 'hex', ['B2op3m/S12mp3p4p5'], 'Methuselah', '.3A$.A.A$2A$2A.A!', 'dies out at generation 874 · 10 cells'],
   ['comets-meth', 'hex', ['B2345/S134/C5'], 'Methuselah', '3A$3A!', 'dies out at generation 400 · 6 cells'],
+  ['comets-puffer', 'hex', ['B2345/S134/C5'], 'Puffer', 'A.A$A.2A$2.A.A$5A$3.2A$3.2A!', 'flies at half speed leaving a trail of debris · 16 cells'],
   ['twin-osc', 'hex', ['B2om5/S2om4o'], 'Oscillator', 'A$A$A$A!', 'period 6 · 4 cells'],
   ['twin-meth', 'hex', ['B2om5/S2om4o'], 'Methuselah', '2A.A$4A$2A.A$.3A!', 'loops from generation 1,217 · 13 cells'],
   ['loops-osc2', 'hex', ['B34/S123/C3'], 'Oscillator', '.2A.A$2A2.A$A3.A$A3.A$4A!', 'period 22 · 14 cells'],
