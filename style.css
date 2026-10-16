@@ -315,7 +315,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .states-cells { display: flex; flex-direction: column; gap: 3px; }  /* a cell's states, from the top: alive, its dying stages, dead (✝) */
 .states-cells i { width: 20px; height: 20px; flex: none; border: 1px solid var(--border); border-radius: 3px; display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; }
 .states-cells i b { font-weight: 600; }
-.determined { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: 12px; font-weight: 600; }  /* Births by majority colour, the colours' picture before it */
+.determined { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 12px; font-weight: 600; }  /* Births by majority colour, the colours' picture before it */
 .determined > svg { width: 24px; height: 24px; flex: none; border-radius: 3px; }  /* as the Populations' blocks */
 .determined small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
 .nchips .r { display: flex; align-items: center; gap: 2px; height: 24px; }  /* hexagons: a count a row, its letters beside it */
