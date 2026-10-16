@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.608';
+const VERSION = '0.1.609';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4099,7 +4099,7 @@ function updateMorphButton() {
 // inflated (a ball is seen whole without it)
 const perspectiveFor = (mode, m) => !!mode.perspective && !(m === 1 && SOLIDS.includes(mode.sphere));
 // One animation frame of the change of shape (about 0.7 s from flat to round)
-const CYLINDER_PAUSE = 10;  // a torus rolling up or unrolling: seconds it stays a cylinder (its tube closed, its ring not yet)
+const CYLINDER_PAUSE = 0.4;  // a torus rolling up or unrolling: seconds it stays a cylinder (its tube closed, its ring not yet), a beat between the two bends (each 0.35 s)
 function morphStep(dt) {
   const sh = walk.shape, g = walk.geo;
   if (!sh || sh.m === sh.target) return;
