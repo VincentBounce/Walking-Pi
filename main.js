@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.653';
+const VERSION = '0.1.654';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7350,7 +7350,9 @@ function resize() {
   needsFull = true;
 }
 
+// a walk's frame takes in the origin's neighbourhood; a grid or a surface is framed as it is (else a grid, from 0, sits off centre)
 function padBounds(b) {
+  if (walk.plane || walk.sphere) return b;
   return { minX: Math.min(b.minX, -3), maxX: Math.max(b.maxX, 3),
            minY: Math.min(b.minY, -3), maxY: Math.max(b.maxY, 3) };
 }
