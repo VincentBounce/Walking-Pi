@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.677';
+const VERSION = '0.1.678';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6231,6 +6231,8 @@ function lifeReset() {
   // a loop: the counters as it closed (each round starts from them again), and each colour's live cells over one round
   L.loopBase = null;
   L.loopSum = new Float64Array(L.colours + 1);
+  L.loopMin = new Float64Array(L.colours + 1).fill(Infinity);  // (a colour the same all round: its count exact, no ≈)
+  L.loopMax = new Float64Array(L.colours + 1);
   L.loopN = 0;
   L.loopAvg = null;
   L.trace = { alive: [L.seedAlive], change: [0] };  // each generation's live cells and births + deaths (see drawActivity)
@@ -7472,7 +7474,12 @@ function advanceTo(target) {
       if (!s) continue;
       if (s.extinct || s.P === 1) { cur = s.T; play(false); break; }  // nothing moves any more: it ends there
       if (L.loopBase && !L.loopAvg) {  // the first round: each colour's live cells, for their mean over the loop
-        for (let k = 1; k <= L.colours; k++) L.loopSum[k] += L.colours === 1 ? L.aliveCount : L.byColour[k];
+        for (let k = 1; k <= L.colours; k++) {
+          const v = L.colours === 1 ? L.aliveCount : L.byColour[k];
+          L.loopSum[k] += v;
+          L.loopMin[k] = Math.min(L.loopMin[k], v);
+          L.loopMax[k] = Math.max(L.loopMax[k], v);
+        }
         if (++L.loopN === s.P) L.loopAvg = Array.from(L.loopSum, (v) => v / s.P);
       }
       if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
@@ -9315,7 +9322,7 @@ function renderRanking(L) {
     r.style.transform = `translateY(${top + place * H}px)`;
     r.classList.toggle('dead', off);
     r.children[0].textContent = off ? '✝' : place + 1;
-    const num = (v) => (mean ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v)), pc = (v, m = false) => `${m ? num(v) : fmt(v)} (${((100 * v) / L.alive.length).toFixed(1)} %)`;
+    const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v)), pc = (v, m = false) => `${m ? num(v) : fmt(v)} (${((100 * v) / L.alive.length).toFixed(1)} %)`;
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
     r.children[3].textContent = off ? `gen ${fmt(L.extinctAt[k])}` : num(live(k));
     [off ? `✝ gen ${fmt(L.extinctAt[k])}` : pc(live(k), true), fmt(L.bornBy[k]), fmt(L.deadBy[k]), pc(L.everBy[k])].forEach((v, c) => { r.children[4 + c].textContent = v; });
@@ -9367,7 +9374,7 @@ function updateStats() {
     // a colour's live cells, or, once none is left, when it all died out
     const aliveBubble = (c, k, name, alive) => (L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined
       ? bubble(c, '✝', 'All died out', `gen ${fmt(L.extinctAt[k])}`)
-      : L.loopAvg ? bubble(c, icon('aliveDot'), `${name} (mean of the loop)`, `≈ ${fmt(Math.round(L.loopAvg[k] * 10) / 10)} (${((100 * L.loopAvg[k]) / n).toFixed(1)} %)`)
+      : L.loopAvg && L.loopMax[k] > L.loopMin[k] ? bubble(c, icon('aliveDot'), `${name} (mean of the loop)`, `≈ ${fmt(Math.round(L.loopAvg[k] * 10) / 10)} (${((100 * L.loopAvg[k]) / n).toFixed(1)} %)`)
       : bubble(c, icon('aliveDot'), name, pc(alive)));
     const row = (c, k, alive, born, died, ever) => [aliveBubble(c, k, 'Alive', alive), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
