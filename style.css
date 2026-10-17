@@ -411,6 +411,15 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-bar:hover { width: 680px; }
 @media (hover: none) { .stage-bar:focus-within { width: 680px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
+.ranking { position: relative; margin: 0 0 8px; font-size: 12px; font-variant-numeric: tabular-nums; }  /* a battle: a row a colour, re-sorted as it goes */
+.ranking .rank-row { position: absolute; left: 0; right: 0; height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
+.ranking .rank-row > span:first-child { color: var(--muted); text-align: right; }
+.ranking .rank-row > i { width: 12px; height: 12px; border-radius: 3px; }
+.ranking .rank-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ranking .rank-bar i { display: block; height: 100%; border-radius: 3px; transition: width 0.4s; }
+.ranking .rank-num { text-align: right; color: var(--muted); }
+.ranking .rank-row.dead > i { opacity: 0.35; }
+.ranking .all-dead { position: absolute; left: 0; top: 0; line-height: 18px; font-weight: 600; }
 .bar-title { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; }
 .bar-num { flex: none; max-width: 70%; font-size: 20px; font-weight: 700; color: var(--accent); overflow: hidden; text-overflow: ellipsis; }  /* the number first */
 .bar-chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
