@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.667';
+const VERSION = '0.1.668';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5517,7 +5517,9 @@ const HAT = (() => {
     // the walls: the hats beyond touching one of them (sharing a corner)
     const key = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, inside = new Set(rows.flatMap((h) => h.p.map(key)));
     const walls = hats.slice(W * W).filter((h) => h.p.some((q) => inside.has(key(q)))).map((h) => h.p);
-    return { polys: rows.map((h) => h.p), flips: rows.map((h) => h.flip), walls, key };
+    // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
+    const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
+    return { polys: rows.map((h) => at(h.p)), flips: rows.map((h) => h.flip), walls: walls.map(at), key };
   })();
 })();
 function planeCorners(kind, x, y) {  // a cell's corners, in world units

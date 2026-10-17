@@ -117,7 +117,9 @@ const HAT = (() => {
     // the walls: the hats beyond touching one of them (sharing a corner)
     const key = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, inside = new Set(rows.flatMap((h) => h.p.map(key)));
     const walls = hats.slice(W * W).filter((h) => h.p.some((q) => inside.has(key(q)))).map((h) => h.p);
-    return { polys: rows.map((h) => h.p), flips: rows.map((h) => h.flip), walls, key };
+    // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
+    const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
+    return { polys: rows.map((h) => at(h.p)), flips: rows.map((h) => h.flip), walls: walls.map(at), key };
   })();
 })();
 export function hatGrid(W) {
