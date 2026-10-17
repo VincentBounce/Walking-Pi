@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.673';
+const VERSION = '0.1.674';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6060,7 +6060,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
   if (mode.plane) {
-    return planeTorus(mode.plane) || k === 2 || k === 4;  // its blocks (rounded down when they do not divide it, as on a torus); with dead edges, its halves or quarters
+    return true;  // its blocks (rounded down when they do not divide it, as on a torus); with dead edges, its halves, quarters, or slices round the middle (see planeSlices)
   }
   if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
   if (g?.mobius) return true;  // a Möbius strip: in turn along it (see huntParts)
@@ -6599,11 +6599,30 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOT
 // each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
 // a rule whose colours must start side by side, touching patches round the middle); on a torus, a
 // lattice; on a solid, its fair spots (see SOLID_SPOTS); one colour, the middle or the front
+// With dead edges and 3, 6, 8 or 12 colours (not halves or quarters): slices round the middle, the cells by their
+// angle from it, as many in each (a colour from the middle out to the wall, as much wall as the others); a slice's
+// spot: its cell nearest halfway out along its middle angle. Kept per grid
+let sliceMemo = null;
+const wallSlices = (K) => walk.plane && !walk.plane.torus && K !== 2 && K !== 4 && K > 1;
+function planeSlices(K) {
+  const { kind, W, row } = walk.plane, n = W * row, key = `${kind}|${W}|${K}`;
+  if (sliceMemo?.key === key) return sliceMemo;
+  const b = planeBounds(), mid = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
+  const at = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row))), angle = at.map(([u, v]) => Math.atan2(v - mid[1], u - mid[0]));
+  const order = [...angle.keys()].sort((p, q) => angle[p] - angle[q]), part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
+  order.forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
+  const spots = Array.from({ length: K }, (_, i) => {
+    const ts = order.slice(Math.floor((i * n) / K), Math.floor(((i + 1) * n) / K)), a = angle[ts[ts.length >> 1]], p = [mid[0] + reach * Math.cos(a), mid[1] + reach * Math.sin(a)];
+    return ts.reduce((best, t) => (Math.hypot(at[t][0] - p[0], at[t][1] - p[1]) < Math.hypot(at[best][0] - p[0], at[best][1] - p[1]) ? t : best), ts[0]);
+  });
+  return (sliceMemo = { key, part, spots });
+}
 function huntParts(r, K) {
   const L = walk.life, g = walk.geo, n = L.alive.length, [cols, rows] = COLOUR_GRID[K], open = (t) => L.nbr.start[t] < L.nbr.start[t + 1];
   const parts = Array.from({ length: K }, () => []);
   if (walk.plane) {
     const { W, row } = walk.plane, block = (t) => { const x = t % row, y = (t - x) / row; return Math.floor((y * rows) / W) * cols + Math.floor((x * cols) / row); };
+    if (wallSlices(K)) { const { part, spots } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]].push(t); return parts; } return spots.map((t) => lifePatch(r, t)); }
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
@@ -6698,7 +6717,6 @@ function huntFits() {
     if (zone === 'patterns') return [zone, patternsOn() && patternChoices()[0].length > 0];
     if (zone === 'face' && faceOf() === null) return [zone, false];
     if (!r && zone !== 'face') return [zone, true];
-    if (walk.plane) { const { W } = walk.plane, [cols, rows] = COLOUR_GRID[K]; return [zone, cols * (2 * r + 1) <= W && rows * (2 * r + 1) <= W]; }
     const parts = zoneParts(zone, K);
     return [zone, new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
@@ -6869,7 +6887,7 @@ function patternAt(i, K, cells) {
   const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [];
   const w = Math.max(...cells.map((c) => c[0])) + 1, h = Math.max(...cells.map((c) => c[1])) + 1;
   if (walk.plane) {
-    const { W, row } = walk.plane, t = Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols);
+    const { W, row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : Math.floor(((Math.floor(i / cols) + 0.5) * W) / rows) * row + Math.floor((((i % cols) + 0.5) * row) / cols);
     return brushAt([t % row, Math.floor(t / row)], cells).map(([x, y, v]) => [y * row + x, v]);
   }
   if (g.torus && (g.mobius || g.klein || g.kite || g.sides !== 4)) return sheetPatternAt(famousSpot(i, K), cells);  // any other sheet
