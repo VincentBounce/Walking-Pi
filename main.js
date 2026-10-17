@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.682';
+const VERSION = '0.1.683';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9313,11 +9313,11 @@ function renderGauges(L) {
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
-// said. By each bar a table (alive, born, died, ever alive, in its colour): folded, its alive column only; the player
-// open, all of it, its titles on top
+// said. By each bar a table (alive, born, died, ever alive, in its colour), its titles on the rule's line: folded, its
+// alive column only; the player open, all of it
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
-  box.hidden = $('rankAlive').hidden = K < 2;
+  box.hidden = $('rankTitles').hidden = K < 2;
   if (K < 2) return;
   if (box.dataset.k !== String(K)) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
@@ -9327,8 +9327,7 @@ function renderRanking(L) {
         + `<span class="rank-cell" style="color:${LIFE_COLOURS[k]}"></span>`.repeat(4);
       r.title = LIFE_COLOUR_NAMES[k];
       return r;
-    }), Object.assign(document.createElement('span'), { className: 'all-dead' }),
-    Object.assign(document.createElement('div'), { className: 'rank-head', innerHTML: '<span>Alive</span><span>Born</span><span>Died</span><span>Ever alive</span>' }));
+    }), Object.assign(document.createElement('span'), { className: 'all-dead' }));
     box.dataset.k = K;
   }
   const dead = (k) => L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined, alive = [], gone = [];
@@ -9337,7 +9336,7 @@ function renderRanking(L) {
   alive.sort((a, b) => live(b) - live(a) || a - b);
   gone.sort((a, b) => L.extinctAt[b] - L.extinctAt[a] || a - b);
   const total = alive.reduce((sum, k) => sum + live(k), 0) || 1, top = alive.length ? 0 : H;  // (all dead: a line for it on top)
-  box.style.height = `calc(${K * H + top}px + var(--head, 0px))`;
+  box.style.height = `${K * H + top}px`;
   [...alive, ...gone].forEach((k, place) => {
     const r = box.children[k - 1], off = dead(k);
     r.style.transform = `translateY(${top + place * H}px)`;
@@ -9373,7 +9372,7 @@ function updateStats() {
     const digits = String(walk.n).length, commas = fmt(walk.n).length - digits;
     $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
   }
-  if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankAlive').hidden = true;
+  if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
   document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
   document.querySelector('.stage-bar .stats').hidden = !!walk.life;  // Life: bubbles instead (lifeChips)
   $('lifeChips').hidden = !walk.life;

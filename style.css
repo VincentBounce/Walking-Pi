@@ -412,24 +412,20 @@ button.wide { width: 100%; margin-bottom: 10px; }
 @media (hover: none) { .stage-bar:focus-within { width: 680px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
 .ranking { position: relative; margin: 0 0 8px; font-size: 12px; font-variant-numeric: tabular-nums; }  /* a battle: a row a colour, re-sorted as it goes */
-.ranking .rank-row { position: absolute; left: 0; right: 0; top: var(--head, 0px); height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
+.ranking .rank-row { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
 .gauges .gauge-row { height: 18px; display: grid; grid-template-columns: 64px minmax(0, 1fr) 110px; align-items: center; gap: 6px; }  /* one colour: fixed rows */
 .gauges .gauge-row > span:first-child { color: var(--muted); }
-.ranking .rank-cell, .ranking .rank-head { display: none; white-space: nowrap; }
-#ranking .rank-cell:nth-child(4) { display: block; text-align: right; }  /* folded: the table's alive column only */
-.stage-bar:hover #ranking { --head: 18px; }  /* the player open: by each bar, a table, its titles on top */
+.ranking .rank-cell { display: none; white-space: nowrap; text-align: right; }
+#ranking .rank-cell:nth-child(4) { display: block; }  /* folded: the table's alive column only */
 .stage-bar:hover #ranking .rank-row { grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; }
-.stage-bar:hover #ranking .rank-cell { display: block; text-align: center; }
-.stage-bar:hover #ranking .rank-head { display: grid; position: absolute; top: 0; left: 0; right: 0; height: 18px; grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; gap: 6px; align-items: center; color: var(--muted); font-size: 11px; }
-.stage-bar:hover #ranking .rank-head span { text-align: center; }
-.stage-bar:hover #ranking .rank-head span:first-child { grid-column: 4; }
+.stage-bar:hover #ranking .rank-cell { display: block; }  /* the player open: all of the table */
 .ranking .rank-row > span:first-child { color: var(--muted); text-align: right; }
 .ranking .rank-row > i { width: 12px; height: 12px; border-radius: 3px; }
 .ranking .rank-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
 .ranking .rank-bar i { display: block; height: 100%; border-radius: 3px; transition: width 0.4s; }
 .ranking .rank-num { text-align: right; color: var(--muted); }
 .ranking .rank-row.dead > i { opacity: 0.35; }
-.ranking .all-dead { position: absolute; left: 0; top: var(--head, 0px); line-height: 18px; font-weight: 600; }
+.ranking .all-dead { position: absolute; left: 0; top: 0; line-height: 18px; font-weight: 600; }
 .bar-title { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; }
 .bar-num { flex: none; max-width: 70%; font-size: 20px; font-weight: 700; color: var(--accent); overflow: hidden; text-overflow: ellipsis; }  /* the number first */
 .bar-chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
@@ -444,8 +440,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .bar-title.life .bar-num { max-width: none; font-size: 18px; font-variant-numeric: tabular-nums; white-space: pre; }  /* Life: the generation's digits all as wide (see updateStats) */
 .bar-title.life { flex-wrap: wrap; row-gap: 4px; }
 .bar-title.life .bar-num { flex-basis: 100%; }  /* Life: its rule under the generation, on the left */
-.bar-title .rank-alive { margin-left: auto; align-self: flex-end; font-size: 11px; color: var(--muted); }  /* folded: over the ranking's alive column (open: its own titles) */
-.stage-bar:hover .bar-title .rank-alive { display: none; }
+.bar-title .rank-titles { margin-left: auto; align-self: flex-end; display: grid; grid-template-columns: 76px; gap: 6px; font-size: 11px; color: var(--muted); text-align: right; }  /* over the ranking's columns, as wide */
+.bar-title .rank-titles span:not(:first-child) { display: none; }  /* folded: Alive */
+.stage-bar:hover .bar-title .rank-titles { grid-template-columns: 70px 56px 56px 70px; }
+.stage-bar:hover .bar-title .rank-titles span { display: block; }
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
 .rule-chip b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }
