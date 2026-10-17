@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.678';
+const VERSION = '0.1.679';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6219,7 +6219,9 @@ function lifeReset() {
   L.dyingCount = L.seedDying;
   L.blueCount = L.seedBlue;
   L.byColour = L.seedByColour.slice();
-  L.born = L.dead = 0;
+  L.born = L.dead = L.bornNow = L.deadNow = 0;
+  L.peak = L.seedAlive;
+  L.peakGen = 0;
   // civilisations: each colour's births, deaths, and cells ever of it (a bit per colour a cell had)
   L.bornBy = new Int32Array(L.colours + 1);
   L.deadBy = new Int32Array(L.colours + 1);
@@ -6270,7 +6272,7 @@ function lifeTrack(gen) {
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
-  const changes = L.born + L.dead;  // before this generation
+  const changes = L.born + L.dead, born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
@@ -6332,6 +6334,9 @@ function lifeStep() {
   L.blueCount = byColour[2] ?? 0;
   L.trace.alive[gen] = alive;
   L.trace.change[gen] = L.born + L.dead - changes;
+  L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
+  L.deadNow = L.dead - dead0;
+  if (alive > L.peak) { L.peak = alive; L.peakGen = gen; }  // the most alive at once, and when
   lifeTrack(gen);
 }
 
@@ -9291,6 +9296,21 @@ function drawActivity() {
   }
   ctx.globalAlpha = 1;
 }
+// One colour: five fixed gauges, each a share of the grid: alive, the births and deaths of this generation (how fast it
+// lays and dies; their counts so far by them), the cells ever alive, the most alive at once (and when)
+function renderGauges(L) {
+  const box = $('gauges'), n = L.alive.length;
+  box.hidden = L.colours !== 1;
+  if (box.hidden) return;
+  if (!box.childElementCount) box.innerHTML = ['Alive', 'Born', 'Died', 'Ever alive', 'Peak'].map((name) => `<div class="gauge-row"><span>${name}</span><span class="rank-bar"><i style="background:${LIFE_ALIVE}"></i></span><span class="rank-num"></span></div>`).join('');
+  const varies = L.loopAvg && L.loopMax[1] > L.loopMin[1];
+  [[varies ? L.loopAvg[1] : L.aliveCount, `<b>${varies ? `≈ ${fmt(Math.round(L.loopAvg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`], [L.bornNow, fmt(L.born)], [L.deadNow, fmt(L.dead)],
+    [L.everAlive, fmt(L.everAlive)], [L.peak, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`]].forEach(([v, text], i) => {
+    const r = box.children[i];
+    r.children[1].firstChild.style.width = `${Math.min(100, (100 * v) / n)}%`;
+    r.children[2].innerHTML = text;
+  });
+}
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝, when); a row a colour, sliding to its place; all dead, said.
 // The player open: by each bar, a table (alive, born, died, ever alive), its titles on top
@@ -9302,7 +9322,7 @@ function renderRanking(L) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
       const r = document.createElement('div');
       r.className = 'rank-row';
-      r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span><span class="rank-num"></span>`
+      r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-name">${LIFE_COLOUR_NAMES[k]}</span><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span><span class="rank-num"></span>`
         + '<span class="rank-cell"></span>'.repeat(4);
       r.title = LIFE_COLOUR_NAMES[k];
       return r;
@@ -9321,11 +9341,11 @@ function renderRanking(L) {
     const r = box.children[k - 1], off = dead(k);
     r.style.transform = `translateY(${top + place * H}px)`;
     r.classList.toggle('dead', off);
-    r.children[0].textContent = off ? '✝' : place + 1;
-    const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v)), pc = (v, m = false) => `${m ? num(v) : fmt(v)} (${((100 * v) / L.alive.length).toFixed(1)} %)`;
-    r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    r.children[3].textContent = off ? `gen ${fmt(L.extinctAt[k])}` : num(live(k));
-    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : pc(live(k), true), fmt(L.bornBy[k]), fmt(L.deadBy[k]), pc(L.everBy[k])].forEach((v, c) => { r.children[4 + c].textContent = v; });
+    r.children[0].textContent = off ? '✝' : place + 1;  // (then its colour, its name, its bar, its count; open, its table)
+    const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
+    r.children[3].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
+    r.children[4].innerHTML = off ? `gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`;
+    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[5 + c].innerHTML = v; });
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
@@ -9353,7 +9373,7 @@ function updateStats() {
     const digits = String(walk.n).length, commas = fmt(walk.n).length - digits;
     $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
   }
-  if (!walk.life) $('ranking').hidden = true;
+  if (!walk.life) $('ranking').hidden = $('gauges').hidden = true;
   document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
   document.querySelector('.stage-bar .stats').hidden = !!walk.life;  // Life: bubbles instead (lifeChips)
   $('lifeChips').hidden = !walk.life;
@@ -9378,9 +9398,10 @@ function updateStats() {
       : bubble(c, icon('aliveDot'), name, pc(alive)));
     const row = (c, k, alive, born, died, ever) => [aliveBubble(c, k, 'Alive', alive), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
-    $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, 1, L.aliveCount, L.born, L.dead, L.everAlive) : '';  // (a battle: the ranking's table)
-    $('lifeChips').hidden = L.colours > 1;
+    $('lifeChips').innerHTML = '';  // (one colour: its gauges; a battle: the ranking's table)
+    $('lifeChips').hidden = true;
     renderRanking(L);
+    renderGauges(L);
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
     drawActivity();

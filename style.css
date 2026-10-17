@@ -412,15 +412,18 @@ button.wide { width: 100%; margin-bottom: 10px; }
 @media (hover: none) { .stage-bar:focus-within { width: 680px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
 .ranking { position: relative; margin: 0 0 8px; font-size: 12px; font-variant-numeric: tabular-nums; }  /* a battle: a row a colour, re-sorted as it goes */
-.ranking .rank-row { position: absolute; left: 0; right: 0; top: var(--head, 0px); height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
+.ranking .rank-row { position: absolute; left: 0; right: 0; top: var(--head, 0px); height: 18px; display: grid; grid-template-columns: 16px 12px 50px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
+.ranking .rank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gauges .gauge-row { height: 18px; display: grid; grid-template-columns: 64px minmax(0, 1fr) 110px; align-items: center; gap: 6px; }  /* one colour: fixed rows */
+.gauges .gauge-row > span:first-child { color: var(--muted); }
 .ranking .rank-cell, .ranking .rank-head { display: none; }
-.stage-bar:hover .ranking { --head: 18px; }  /* the player open: by each bar, a table, its titles on top */
-.stage-bar:hover .ranking .rank-row { grid-template-columns: 16px 12px minmax(0, 1fr) 96px 56px 56px 96px; }
-.stage-bar:hover .ranking .rank-num { display: none; }
-.stage-bar:hover .ranking .rank-cell { display: block; text-align: center; white-space: nowrap; }
-.stage-bar:hover .ranking .rank-head { display: grid; position: absolute; top: 0; left: 0; right: 0; height: 18px; grid-template-columns: 16px 12px minmax(0, 1fr) 96px 56px 56px 96px; gap: 6px; align-items: center; color: var(--muted); font-size: 11px; }
-.stage-bar:hover .ranking .rank-head span { text-align: center; }
-.stage-bar:hover .ranking .rank-head span:first-child { grid-column: 4; }
+.stage-bar:hover #ranking { --head: 18px; }  /* the player open: by each bar, a table, its titles on top */
+.stage-bar:hover #ranking .rank-row { grid-template-columns: 16px 12px 50px minmax(0, 1fr) 70px 56px 56px 70px; }
+.stage-bar:hover #ranking .rank-num { display: none; }
+.stage-bar:hover #ranking .rank-cell { display: block; text-align: center; white-space: nowrap; }
+.stage-bar:hover #ranking .rank-head { display: grid; position: absolute; top: 0; left: 0; right: 0; height: 18px; grid-template-columns: 16px 12px 50px minmax(0, 1fr) 70px 56px 56px 70px; gap: 6px; align-items: center; color: var(--muted); font-size: 11px; }
+.stage-bar:hover #ranking .rank-head span { text-align: center; }
+.stage-bar:hover #ranking .rank-head span:first-child { grid-column: 5; }
 .ranking .rank-row > span:first-child { color: var(--muted); text-align: right; }
 .ranking .rank-row > i { width: 12px; height: 12px; border-radius: 3px; }
 .ranking .rank-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
