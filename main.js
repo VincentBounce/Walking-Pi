@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.691';
+const VERSION = '0.1.692';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -822,33 +822,35 @@ const FORMULA_NOTES = {
  * Laves duals (one shape each, from each vertex's faces), the Pythagorean and Capital I tilings from squares. Each: a
  * lattice (basis: two vectors) and the polygons of one cell of it, in the lattice's units ((u, v): u·a + v·b); its
  * cells a row: those polygons, cell after cell (x = m·i + k: polygon k of lattice cell i), as the kites; neighbours by a
- * shared corner (their corners include every point a neighbour's corner can be on); most: the most neighbours a cell has */
+ * shared corner (their corners include every point a neighbour's corner can be on); most: the most neighbours a cell has;
+ * a pattern's turns about pivot (lattice units, a centre of the tiling's turns: found by trying each corner, middle and
+ * edge's middle), and whether it mirrors across the upright line through it (Florets, Snub, Pythagoras, Capital I: never) */
 const TILINGS = {
-  rhombille: { name: 'Rhombille', mark: '◇', cells: 'rhombi', where: 'a grid of rhombi, 3 a hexagon (the rhombille tiling)', most: 10,
+  rhombille: { name: 'Rhombille', mark: '◇', cells: 'rhombi', where: 'a grid of rhombi, 3 a hexagon (the rhombille tiling)', most: 10, turns: 6, mirror: true, pivot: [0, 0],
     basis: [[2, 0], [1, 1.7320508075688772]],
     polys: [[[0.666667,-0.333333],[1,0],[0.333333,0.333333],[0,0]],[[0,0],[0.333333,0.333333],[0,1],[-0.333333,0.666667]],[[0.333333,0.333333],[1,0],[0.666667,0.666667],[0,1]]] },
-  rhombitri: { name: 'Rhombitri', mark: '✳', cells: 'tiles', where: 'a grid of hexagons, squares and triangles (the rhombitrihexagonal tiling)', most: 12,
+  rhombitri: { name: 'Rhombitri', mark: '✳', cells: 'tiles', where: 'a grid of hexagons, squares and triangles (the rhombitrihexagonal tiling)', most: 12, turns: 6, mirror: true, pivot: [0, 0],
     basis: [[2.366025403784439, 1.3660254037844384], [1.6728986382985834e-16, 2.732050807568877]],
     polys: [[[0.42265,-0.211325],[0.788675,-0.211325],[0.57735,0.211325],[0.211325,0.211325]],[[0.42265,-0.211325],[0.211325,0.211325],[-0.211325,0.42265],[-0.42265,0.211325],[-0.211325,-0.211325],[0.211325,-0.42265]],[[0.211325,0.211325],[0.57735,0.211325],[0.211325,0.57735]],[[0.211325,0.211325],[0.211325,0.57735],[-0.211325,0.788675],[-0.211325,0.42265]],[[0.42265,0.788675],[0.211325,0.57735],[0.57735,0.211325],[0.788675,0.42265]],[[0.42265,0.788675],[0.788675,0.42265],[0.788675,0.788675]]] },
-  floret: { name: 'Florets', mark: '✿', cells: 'pentagons', where: 'a grid of floret pentagons, 6 round each flower', most: 8,
+  floret: { name: 'Florets', mark: '✿', cells: 'pentagons', where: 'a grid of floret pentagons, 6 round each flower', most: 8, turns: 6, mirror: false, pivot: [0, 0],
     basis: [[2.5, 0.8660254037844386], [0.5, 2.598076211353316]],
     polys: [[[0,0],[0.380952,0.095238],[0.333333,0.333333],[0.095238,0.52381],[-0.095238,0.47619]],[[0,1],[0.47619,0.619048],[0.666667,0.666667],[0.619048,0.904762],[0.380952,1.095238]],[[0.095238,0.52381],[0.333333,0.333333],[0.52381,0.380952],[0.47619,0.619048],[0,1]],[[0.52381,0.380952],[1,0],[0.904762,0.47619],[0.666667,0.666667],[0.47619,0.619048]],[[0.380952,0.095238],[0.619048,-0.095238],[1,0],[0.52381,0.380952],[0.333333,0.333333]],[[0.666667,0.666667],[0.904762,0.47619],[1.095238,0.52381],[1,1],[0.619048,0.904762]]] },
-  snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18,
+  snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18, turns: 6, mirror: false, pivot: [0, 0],
     basis: [[2.5, 0.8660254037844386], [0.5, 2.598076211353316]],
     polys: [[[0.428571,-0.142857],[0.571429,0.142857],[0.142857,0.285714]],[[0.428571,-0.142857],[0.142857,0.285714],[-0.285714,0.428571],[-0.428571,0.142857],[-0.142857,-0.285714],[0.285714,-0.428571]],[[0.142857,0.285714],[0.571429,0.142857],[0.285714,0.571429]],[[0.142857,0.285714],[0.285714,0.571429],[-0.142857,0.714286]],[[0.428571,0.857143],[0.285714,0.571429],[0.714286,0.428571]],[[0.428571,0.857143],[0.714286,0.428571],[0.857143,0.714286]],[[0.428571,0.857143],[0.857143,0.714286],[0.571429,1.142857]],[[0.285714,0.571429],[0.571429,0.142857],[0.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
-  capitalI: { name: 'Capital I', mark: '⌶', cells: 'I tiles', where: 'a grid of capital I tiles (7 squares each)', most: 6,
+  capitalI: { name: 'Capital I', mark: '⌶', cells: 'I tiles', where: 'a grid of capital I tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
     basis: [[2, 1], [-1, 3]],
     polys: [[[0,0],[0.428571,-0.142857],[0.857143,-0.285714],[1.285714,-0.428571],[1.428571,-0.142857],[1,0],[1.142857,0.285714],[1.571429,0.142857],[1.714286,0.428571],[1.285714,0.571429],[0.857143,0.714286],[0.428571,0.857143],[0.285714,0.571429],[0.714286,0.428571],[0.571429,0.142857],[0.142857,0.285714]]] },
-  pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8,
+  pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.2],
     basis: [[2, 1], [-1, 2]],
     polys: [[[0,0],[0.4,-0.2],[0.8,-0.4],[1,0],[1.2,0.4],[0.8,0.6],[0.4,0.8],[0.2,0.4]],[[-0.2,0.6],[0.2,0.4],[0.4,0.8],[0,1]]] },
-  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7,
+  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492],
     basis: [[1, 0], [0.5, 1.8660254037844386]],
     polys: [[[-0.42265,0.845299],[0.154701,0.690599],[0.57735,0.845299],[0.366025,1.267949],[-0.633975,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
-  tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14,
+  tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14, turns: 4, mirror: true, pivot: [0, 0],
     basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
     polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
-  kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16,
+  kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16, turns: 6, mirror: true, pivot: [0, 0],
     basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
     polys: [[[0,0],[0.5,0],[0.333333,0.333333]],[[0,0],[0.333333,0.333333],[0,0.5]],[[0,0.5],[0.333333,0.333333],[0,1]],[[0.333333,0.333333],[0.5,0.5],[0,1]],[[0.5,0.5],[0.666667,0.666667],[0,1]],[[0.666667,0.666667],[0.5,1],[0,1]],[[1,0],[1,0.5],[0.666667,0.666667]],[[1,0],[0.666667,0.666667],[0.5,0.5]],[[0.333333,0.333333],[1,0],[0.5,0.5]],[[0.5,0],[1,0],[0.333333,0.333333]],[[0.666667,0.666667],[1,1],[0.5,1]],[[1,0.5],[1,1],[0.666667,0.666667]]] },
 };
@@ -6017,8 +6019,9 @@ function renderPlaneRow() {
   $('clearDrawn').textContent = cleared ? 'Undo' : 'Clear';
   $('clearDrawn').disabled = !cleared && !population.size;
   $('brushTurn').textContent = `↻ ${(brush.turn * 360) / PATTERN_TURNS[kind]}°`;
-  $('brushTurn').disabled = $('brushFlip').disabled = brush.id === 'cell';
-  $('brushFlip').classList.toggle('active', brush.flip);
+  $('brushTurn').disabled = brush.id === 'cell' || PATTERN_TURNS[kind] === 1;  // (a grid a pattern cannot turn or mirror on: greyed)
+  $('brushFlip').disabled = brush.id === 'cell' || !canMirror(kind);
+  $('brushFlip').classList.toggle('active', brush.flip && canMirror(kind));
 }
 // Behind the grid (grid layer, at each view): the sky or the page outside it, the page inside it, and,
 // zoomed in enough, its cells' outlines; dead edges, its border
@@ -6083,7 +6086,7 @@ function drawPlaneGrid() {
 let planeCanvas = null, planeImage = null, planeColours = null;
 // A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
 const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, penrose: 1, spectre: 1 };
-for (const kind of Object.keys(TILINGS)) PATTERN_TURNS[kind] = 1;  // (their patterns as found: neither turned nor mirrored)
+for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
 const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
 const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
@@ -6091,15 +6094,16 @@ const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return 
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
 // the grid turns about (the middle of a square or a hexagon, a corner of triangles or of 4 pentagons),
 // then the cells found there, on a grid big enough
+const canMirror = (kind) => (TILINGS[kind] ? TILINGS[kind].mirror : !APERIODIC[kind]);
 function orientPattern(kind, rle, turn, flip) {
   const V = 256, T = 128, per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
-  const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : latticeAt(T, T);
+  const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : TILINGS[kind] ? tilingWorld(kind, [T + TILINGS[kind].pivot[0], T + TILINGS[kind].pivot[1]]) : latticeAt(T, T);
   const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] : pivot[0];
   const a = (2 * Math.PI * turn) / PATTERN_TURNS[kind], cos = Math.cos(a), sin = Math.sin(a), cells = [];
   for (const [k, v] of populationOf(`0,0:${rle}`)) {
     const [x, y] = cellXY(k);
     let [u, w] = cellMiddle(kind, x + per * T, y + T);
-    if (flip && !TILINGS[kind]) u = 2 * axis - u;  // (the new tilings: not mirrored, see PATTERN_TURNS)
+    if (flip && canMirror(kind)) u = 2 * axis - u;
     u -= pivot[0];
     w -= pivot[1];
     const c = planeCellAt(kind, V, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos);
