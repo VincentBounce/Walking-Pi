@@ -3,6 +3,7 @@
 //   deno run --allow-read --allow-write filter.js                  the Life-like ones → good1.json
 //   deno run --allow-read --allow-write stage2.js good1.json 36 24 stage2.json   their small starts: ships, oscillators (ships.js stage2.json: the rules with ships)
 //   deno run --allow-read --allow-write famous.js rules.json famous.json && deno run --allow-read --allow-write pick.js
+//   deno run --allow-read --allow-write traces.js rules.json 24 12 traces.json && deno run --allow-read --allow-write rank.js traces.json   soups followed, scored against Life's
 // The engine: a soup until it repeats, small starts and what they leave, a pattern alone (a ship: back moved)
 const parse = (rule) => {
   const m = rule.match(/B(\d*)\/S(\d*)(?:\/C(\d+))?/), B = new Uint8Array(10), S = new Uint8Array(10);
@@ -134,4 +135,24 @@ function seeds(G, rule, trials = 40, from = 0, r = 3, w = 3, d = 0.5, gens = 600
   return { rule, explode: explode / trials, starts, found: [...found.values()].filter((f) => f.kind === 'ship' || f.kind === 'osc') };
 }
 
-export { parse, step, soup, seeds, behaviour, components, normal };
+// a soup's whole life: its live share at some generations, when it settles (repeats, any period ≤ 100), the period then
+function trace(G, rule, seedv, d = 0.3, gens = 6000, at = [100, 200, 300, 500, 800, 1200]) {
+  const { B, S, C } = parse(rule), n = G.n;
+  seed = seedv;
+  let a = new Uint8Array(n).map(() => (rnd() < d ? 1 : 0)), b = new Uint8Array(n);
+  const seen = new Map(), pops = {};
+  let T = gens, period = 0, end = 'running', rho = 0;
+  for (let g = 1; g <= gens; g++) {
+    const [pop, any] = step(a, b, G.start, G.list, B, S, C);
+    [a, b] = [b, a];
+    rho = pop / n;
+    if (at.includes(g)) pops[g] = rho;
+    if (!any) { T = g; end = 'dies'; break; }
+    if (rho > 0.5) { T = g; end = 'explodes'; break; }
+    const h = hash(a);
+    if (seen.has(h) && g - seen.get(h) <= 100) { T = seen.get(h); period = g - seen.get(h); end = 'settles'; break; }
+    seen.set(h, g);
+  }
+  return { T, period, end, rho, pops };
+}
+export { parse, step, soup, seeds, behaviour, components, normal, trace };

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.664';
+const VERSION = '0.1.665';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5359,6 +5359,12 @@ const DRAW_PATTERNS = [
   ['kitedrift-ship', 'kite', ['B35/S2356/C4'], 'Spaceship', '10.C3.B2.C$3.A2.A.2A3.BA!', 'flies, period 26 · 9 cells'],
   ['kitedrift-osc', 'kite', ['B35/S2356/C4'], 'Oscillator', '10.A3.A2.A$4.2A4.2A.2A$A6.A!', 'period 4 · 11 cells'],
   ['kitedrift-meth', 'kite', ['B35/S2356/C4'], 'Methuselah', 'A10.A$.5A.A3.A!', 'loops from generation 1,681 · 9 cells'],
+  ['kitesimmer-osc', 'kite', ['B346/S0127/C4'], 'Oscillator', '6.A$.A4.A!', 'period 16 · 3 cells'],
+  ['kitesimmer-osc8', 'kite', ['B346/S0127/C4'], 'Oscillator', '8.A2.A$4.A$6.A!', 'period 8 · 4 cells'],
+  ['kitesimmer-meth', 'kite', ['B346/S0127/C4'], 'Methuselah', '2.A4.A$3A.A5.A!', 'loops from generation 321 · 7 cells'],
+  ['kitemarathon-osc', 'kite', ['B34/S0126/C5'], 'Oscillator', '7.A$.A4.A!', 'period 20 · 3 cells'],
+  ['kitemarathon-osc10', 'kite', ['B34/S0126/C5'], 'Oscillator', '11.A$.A7.A2.A!', 'period 10 · 4 cells'],
+  ['kitemarathon-meth', 'kite', ['B34/S0126/C5'], 'Methuselah', '2A5.A$.A.3A3.A!', 'loops from generation 454 · 8 cells'],
   ['longkites-osc', 'kite', ['B3/S1247'], 'Oscillator', '10.A$6.A.A2.2A$A.A.A!', 'period 5 · 8 cells'],
   ['longkites-meth', 'kite', ['B3/S1247'], 'Methuselah', '7.A.2A$4.3A!', 'loops from generation 157 · 6 cells'],
 ];
@@ -5946,6 +5952,7 @@ const RULE_ICONS = {
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
   'B3/S235/C3': '..o..,.o+o.,o+.+o,.o+o.,..o..', 'B3/S1247': 'o...o,.o.o.,..o..,.o.o.,o...o',
   'B3/S2-i34q': '.....,.ooo.,..o..,.....,.....', 'B2i34c/S2-i3': 'o.o..,.o...,o.o.o,...o.,..o.o', 'B2-a/S12': 'ooooo,....o,ooo.o,o...o,o.ooo',
+  'B346/S0127/C4': 'o.+.o,.o.o.,+.o.+,.o.o.,o.+.o', 'B34/S0126/C5': 'ooooo,o+++o,o+.+o,o+++o,ooooo',
   'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',

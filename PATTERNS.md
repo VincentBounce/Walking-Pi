@@ -1022,6 +1022,16 @@ Kites (each triangle cut in 3, 9 neighbours: 4 by an edge, 5 by a corner). 27,64
 | B247/S578/C4 | 4 | never settles, ~11 % alive | 16 cells, period 4 | too dense | |
 | B3/S235/C3 (Kite Life) | 3 | settles at 962, 2.4 % | none in 900 starts | | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S235/C3&s=64&sd=random.30.7) |
 
+**A second search: a chaos that lasts, as Life's.** Kite drifters has Life's figures (settling time, ash) but not its life: its soups thin out steadily from the start, where Life's drop at once to ~7 % and stay there a long while (a plateau), then end at very different times, with oscillators in their ash. Each soup's live share was followed (tools/kitesearch, traces.js and rank.js): 12 soups of each of 1,870 rules (stage 1's that settle with a little ash) on a torus of 3,456 kites, up to 6,000 generations; scored against Life measured the same way on a 59 × 59 torus (HighLife scores 0.65; the kite rules above, 0 to 0.03). The plateau: the live share at generation 800 over the one at 200. None of the 60 best sends ships, but Kite gliders: on kites, a lasting chaos and ships do not seem to go together.
+
+| Rule (24 soups, a torus of 9,600 kites) | Settles | Spread (sd of log) | Plateau | Alive at 200 | Ash | Ends with oscillators | Links |
+|---|---|---|---|---|---|---|---|
+| Life (98 × 98 squares) | 417 to 4,974 | 0.62 | 0.59 | 7.2 % | 2.9 % | 100 % | |
+| **B346/S0127/C4** (Kite simmer) | 459 to 1,558 | 0.31 | 0.61 | 7.4 % | 4.2 % | 71 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B346/S0127/C4&s=64&sd=random.30.7) · [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B346/S0127/C4&s=48&sd=draw&p=54,8:6.A$.A4.A!) (a 3-cell oscillator, period 16) |
+| **B34/S0126/C5** (Kite marathon) | 1,398 to over 6,000 | 0.42 | 0.73 | 9.8 % | 4.5 % | 38 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B34/S0126/C5&s=64&sd=random.30.7) · [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B34/S0126/C5&s=48&sd=draw&p=54,8:7.A$.A4.A!) (3 cells, period 20) |
+| B367/S0128 | 1,042 to 3,701 | 0.34 | 0.53 | 13.3 % | 3.2 % | 8 % | |
+| B35/S2356/C4 (Kite drifters) | 667 to 4,304 | 0.35 | 0.21 | 15 % | 1.8 % | 4 % | |
+
 Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: up to 10 cells, its loop on a torus of 13,824 kites); every one checked in the 12 ways it turns and mirrors:
 
 | Rule | Pattern | RLE (6 kites a rhombus) | Does | Link |
@@ -1037,6 +1047,12 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 | Kite drifters B35/S2356/C4 | Spaceship | `10.C3.B2.C$3.A2.A.2A3.BA!` | flies, period 26 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:10.C3.B2.C$3.A2.A.2A3.BA!) |
 | | Oscillator | `10.A3.A2.A$4.2A4.2A.2A$A6.A!` | period 4 · 11 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:10.A3.A2.A$4.2A4.2A.2A$A6.A!) |
 | | Methuselah | `A10.A$.5A.A3.A!` | loops from generation 1,681 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B35/S2356/C4&s=48&sd=draw&p=54,8:A10.A$.5A.A3.A!) |
+| Kite simmer B346/S0127/C4 | Oscillator | `6.A$.A4.A!` | period 16 · 3 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B346/S0127/C4&s=48&sd=draw&p=54,8:6.A$.A4.A!) |
+| | Oscillator | `8.A2.A$4.A$6.A!` | period 8 · 4 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B346/S0127/C4&s=48&sd=draw&p=54,8:8.A2.A$4.A$6.A!) |
+| | Methuselah | `2.A4.A$3A.A5.A!` | loops from generation 321 · 7 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B346/S0127/C4&s=48&sd=draw&p=54,8:2.A4.A$3A.A5.A!) |
+| Kite marathon B34/S0126/C5 | Oscillator | `7.A$.A4.A!` | period 20 · 3 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B34/S0126/C5&s=48&sd=draw&p=54,8:7.A$.A4.A!) |
+| | Oscillator | `11.A$.A7.A2.A!` | period 10 · 4 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B34/S0126/C5&s=48&sd=draw&p=54,8:11.A$.A7.A2.A!) |
+| | Methuselah | `2A5.A$.A.3A3.A!` | loops from generation 454 · 8 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B34/S0126/C5&s=48&sd=draw&p=54,8:2A5.A$.A.3A3.A!) |
 | Long kites B3/S1247 | Oscillator | `10.A$6.A.A2.2A$A.A.A!` | period 5 · 8 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S1247&s=48&sd=draw&p=54,8:10.A$6.A.A2.2A$A.A.A!) |
 | | Methuselah | `7.A.2A$4.3A!` | loops from generation 157 · 6 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKite&r=B3/S1247&s=48&sd=draw&p=54,8:7.A.2A$4.3A!) |
 

@@ -21,3 +21,14 @@ export function grid(W) {
   start[n] = list.length;
   return { W, row, n, start, list: Int32Array.from(list) };
 }
+// Squares (8 neighbours) on an N × N torus, for Life as the reference
+export function squareGrid(N) {
+  const n = N * N, start = new Int32Array(n + 1), list = [];
+  for (let t = 0; t < n; t++) {
+    const x = t % N, y = Math.floor(t / N);
+    start[t] = list.length;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx || dy) list.push(((y + dy + N) % N) * N + ((x + dx + N) % N));
+  }
+  start[n] = list.length;
+  return { W: N, row: N, n, start, list: Int32Array.from(list) };
+}
