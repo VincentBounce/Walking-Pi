@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.669';
+const VERSION = '0.1.670';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5796,6 +5796,10 @@ function renderPlaneRow() {
     b.classList.toggle('active', p[0] === brush.id);
     b.hidden = !fits(p);
     b.querySelector('.mode-detail').textContent = p[5] + (mine && p[2].length ? ` · ${p[2][0]}` : '');  // your own rule: which rule it is for
+    if (p[0] === 'cell' && b.dataset.kind !== kind) {  // the cell: one of this grid's (a hat: its drawing), at the patterns' scale
+      b.querySelector('.mode-icon').innerHTML = kind === 'hat' ? icon('hat') : cellsIcon(kind, 'A!');
+      b.dataset.kind = kind;
+    }
   }
   const eraser = document.createElement('i');
   eraser.className = 'eraser';
