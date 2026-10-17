@@ -94,7 +94,10 @@ const HAT = (() => {
   return (W) => cache[W] ??= (() => {
     let shapes = { H: H0, T: T0, P: P0, F: F0 }, all;
     for (;;) { all = hatsOf(patchOf(shapes), ident, []); if (all.length >= 6 * W * W) break; shapes = metatilesOf(patchOf(shapes)); }
-    const hats = all.map((T) => { const p = corners.map((q) => transPt(T, q)).map((q) => [q.x * S, -q.y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / p.length), flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
+    // each hat: its middle (its corners' mean, moved), its corners only when wanted
+    const c0 = corners.reduce((s, q) => padd(s, q), pt(0, 0)), c = pt(c0.x / corners.length, c0.y / corners.length);
+    const hats = all.map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S], flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
+    const poly = (h) => (h.p ??= corners.map((q) => transPt(h.T, q)).map((q) => [q.x * S, -q.y * S]));
     // the middle: where a square of W² hats' room (a hat about 1 square unit) holds the most of them, the nearest the
     // patch's centre (its outline is ragged: round its centre, a corner may be bare)
     const box = (d) => hats.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
@@ -113,10 +116,13 @@ const HAT = (() => {
     const far = (h) => Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1]));
     hats.sort((a, b) => far(a) - far(b));
     const cells = hats.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
+    cells.forEach(poly);
     for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
     // the walls: the hats beyond touching one of them (sharing a corner)
     const key = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, inside = new Set(rows.flatMap((h) => h.p.map(key)));
-    const walls = hats.slice(W * W).filter((h) => h.p.some((q) => inside.has(key(q)))).map((h) => h.p);
+    const edge = far(hats[W * W - 1]) + 3, near = [];  // (the hats just beyond: the next ones by distance)
+    for (let k = W * W; k < hats.length && far(hats[k]) < edge; k++) near.push(hats[k]);
+    const walls = near.filter((h) => poly(h).some((q) => inside.has(key(q)))).map((h) => h.p);
     // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
     const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
     return { polys: rows.map((h) => at(h.p)), flips: rows.map((h) => h.flip), walls: walls.map(at), key };
