@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.683';
+const VERSION = '0.1.684';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5734,7 +5734,7 @@ function planeFromSetup(s) {
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
   if (kind === 'random' || SYMMETRIES[kind]) {
     plane.start = 'random';
-    plane.density = Math.min(60, Math.max(5, Number(a) || 30));
+    plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
     hunt.zone = 'full';
     plane.seed = Number(b) || 1;
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
@@ -6219,7 +6219,7 @@ function lifeReset() {
   L.dyingCount = L.seedDying;
   L.blueCount = L.seedBlue;
   L.byColour = L.seedByColour.slice();
-  L.born = L.dead = L.bornNow = L.deadNow = 0;
+  L.born = L.dead = L.bornNow = L.deadNow = L.bornMax = L.deadMax = 0;
   L.peak = L.seedAlive;
   L.peakGen = 0;
   // civilisations: each colour's births, deaths, and cells ever of it (a bit per colour a cell had)
@@ -6336,6 +6336,8 @@ function lifeStep() {
   L.trace.change[gen] = L.born + L.dead - changes;
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
+  L.bornMax = Math.max(L.bornMax, L.bornNow);  // the fastest so far (the gauges' scale)
+  L.deadMax = Math.max(L.deadMax, L.deadNow);
   if (alive > L.peak) { L.peak = alive; L.peakGen = gen; }  // the most alive at once, and when
   lifeTrack(gen);
 }
@@ -9296,18 +9298,19 @@ function drawActivity() {
   }
   ctx.globalAlpha = 1;
 }
-// One colour: five fixed gauges, each a share of the grid: alive, the births and deaths of this generation (how fast it
-// lays and dies; their counts so far by them), the cells ever alive, the most alive at once (and when)
+// One colour: five fixed gauges, each against its own most: alive against the peak, the births and deaths of this
+// generation (how fast it lays and dies; their counts so far by them) against the most in one generation so far; the
+// cells ever alive and the peak (and when) against the grid
 function renderGauges(L) {
   const box = $('gauges'), n = L.alive.length;
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
   if (!box.childElementCount) box.innerHTML = ['Alive', 'Born', 'Died', 'Ever alive', 'Peak'].map((name) => `<div class="gauge-row"><span>${name}</span><span class="rank-bar"><i style="background:${LIFE_ALIVE}"></i></span><span class="rank-num"></span></div>`).join('');
   const varies = L.loopAvg && L.loopMax[1] > L.loopMin[1];
-  [[varies ? L.loopAvg[1] : L.aliveCount, `<b>${varies ? `≈ ${fmt(Math.round(L.loopAvg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`], [L.bornNow, fmt(L.born)], [L.deadNow, fmt(L.dead)],
-    [L.everAlive, fmt(L.everAlive)], [L.peak, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`]].forEach(([v, text], i) => {
+  [[varies ? L.loopAvg[1] : L.aliveCount, L.peak, `<b>${varies ? `≈ ${fmt(Math.round(L.loopAvg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`], [L.bornNow, L.bornMax, fmt(L.born)],
+    [L.deadNow, L.deadMax, fmt(L.dead)], [L.everAlive, n, fmt(L.everAlive)], [L.peak, n, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`]].forEach(([v, most, text], i) => {
     const r = box.children[i];
-    r.children[1].firstChild.style.width = `${Math.min(100, (100 * v) / n)}%`;
+    r.children[1].firstChild.style.width = `${most ? Math.min(100, (100 * v) / most) : 0}%`;
     r.children[2].innerHTML = text;
   });
 }
