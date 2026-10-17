@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.693';
+const VERSION = '0.1.694';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6280,11 +6280,12 @@ const colourBlock = (k) => {
   const [cols, rows] = COLOUR_GRID[k], cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
   return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
 };
+const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 12: 'Dozen' };  // one colour, then battles
 function renderColours() {
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.innerHTML = `${colourBlock(k)}<span>${k === 1 ? 'One' : k}</span>`;
+    b.innerHTML = `${colourBlock(k)}<span>${COLOUR_STEP_NAMES[k]}</span>`;
     b.title = k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`;
     b.classList.toggle('active', k === lifeColours);
     b.disabled = !coloursFit(k);
@@ -6787,21 +6788,15 @@ function huntWorker() {
   };
 }
 const hunt = { worker: null, zone: 'full', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest or dies (colours: a battle)
-// What the hunt looks for: the longest life, the longest till it dies out (one colour), or a battle,
-// which starts with the colours that suit the figure best: one for each of its natural spots
-const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out', battle: '⚔ Battle' };
-const BATTLE_COLOURS = { cube: 6, pits: 6, tetra: 4, octa: 8, stella: 8, dodeca: 12, icosa: 12, hexsphere: 12, tetraKite: 4, octaKite: 8, icosaKite: 12, mobius: 2, mobiusHex: 2, mobiusTri: 2, mobiusCairo: 2, mobiusKite: 2 };  // else (the plane, a torus) 4
-const huntGoal = () => (walk.life?.colours > 1 ? 'battle' : hunt.goal);
+// What the hunt looks for in one colour: the longest life, or the longest till it dies out (colours: the longest battle,
+// the goals hidden)
+const HUNT_GOALS = { longest: '∞ Longest', dies: '✝ Dies out' };
 function pickGoal(goal) {
-  if (goal === 'battle') {
-    if (lifeColours > 1) return;
-    lifeColours = BATTLE_COLOURS[MODES[$('mode').value].sphere] ?? 4;  // fitted to the figure when built (see fitColours)
-  } else {
-    hunt.goal = goal;
-    if (lifeColours === 1) { hunt.top = []; hunt.status = ''; renderHunt(); syncLink(); return; }
-    lifeColours = 1;
-  }
-  compute();
+  hunt.goal = goal;
+  hunt.top = [];
+  hunt.status = '';
+  renderHunt();
+  syncLink();
 }  // picked: the result played (its T and end)
 const huntId = (r) => `${r.T}|${r.end}`;
 // The zones: patches of radius 1 to 6 round each spot (Spark … Meadow), the whole grid (Wild), the rule's
@@ -6968,8 +6963,9 @@ function renderHunt() {
   $('huntRow').hidden = !huntOn() || surfaceDraw;
   if ($('huntRow').hidden) return;
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
-  const what = K > 1 ? (walk.plane ? `a battle in ${COLOUR_PARTS[K]}` : `a battle of ${K} colours`) : hunt.goal === 'dies' ? 'the longest death' : 'the longest life';
-  for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === huntGoal());
+  const what = K > 1 ? 'the longest battle' : hunt.goal === 'dies' ? 'the longest death' : 'the longest life';
+  $('huntGoals').hidden = K > 1;
+  for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
   for (const b of $('huntZones').children) {
     b.classList.toggle('active', b.dataset.zone === hunt.zone);
@@ -10053,8 +10049,7 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, name]) 
   b.type = 'button';
   b.textContent = name;
   b.dataset.goal = goal;
-  b.title = { longest: 'One colour: the start that lasts longest, however it ends', dies: 'One colour: the start that lasts longest and dies out, to the last cell',
-              battle: 'Colours: the longest, most even battle (as many as the figure has natural spots for)' }[goal];
+  b.title = { longest: 'The start that lasts longest, however it ends', dies: 'The start that lasts longest and dies out, to the last cell' }[goal];
   b.addEventListener('click', () => pickGoal(goal));
   return b;
 }));
