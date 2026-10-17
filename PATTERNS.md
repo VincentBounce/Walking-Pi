@@ -1071,7 +1071,7 @@ The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023), 8 kites, tiles the pla
 | Rule | Settles | Spread (sd of log) | Plateau | Alive at 200 | Ash | Ends with oscillators | Link |
 |---|---|---|---|---|---|---|---|
 | Life (48 × 48 squares) | 301 to 2,265 | 0.57 | 0.63 | 8.6 % | 2.9 % | 100 % | |
-| **B257/S367** (Hat Life) | 900 to 3,549 | 0.42 | 0.62 | 13.7 % | 0.8 % | 100 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHat&r=B257/S367&s=48&sd=random.30.7) |
+| **B257/S367** (Hat bats) | 900 to 3,549 | 0.42 | 0.62 | 13.7 % | 0.8 % | 100 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHat&r=B257/S367&s=48&sd=random.30.7) |
 | **B245/S134/C5** (Hat comets) | 521 to 3,699 | 0.70 | 0.77 | 6.3 % | 0.4 % | 44 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHat&r=B245/S134/C5&s=48&sd=random.30.7) |
 | B256/S36 | 375 to 3,420 | 0.68 | 0.59 | 15.8 % | 0.8 % | 100 % | |
 

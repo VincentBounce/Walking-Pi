@@ -95,7 +95,22 @@ const HAT = (() => {
     let shapes = { H: H0, T: T0, P: P0, F: F0 }, all;
     for (;;) { all = hatsOf(patchOf(shapes), ident, []); if (all.length >= 6 * W * W) break; shapes = metatilesOf(patchOf(shapes)); }
     const hats = all.map((T) => { const p = corners.map((q) => transPt(T, q)).map((q) => [q.x * S, -q.y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / p.length), flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
-    const mid = [0, 1].map((d) => hats.reduce((s, h) => s + h.m[d], 0) / hats.length), far = (h) => Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1]));
+    // the middle: where a square of W² hats' room (a hat about 1 square unit) holds the most of them, the nearest the
+    // patch's centre (its outline is ragged: round its centre, a corner may be bare)
+    const box = (d) => hats.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
+    const half = (Math.sqrt(W * W) * 1.05) / 2, centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
+    // (the hats by unit cells of a grid over the patch, summed from a corner: a box's count at once)
+    const nx = Math.ceil(bx[1] - bx[0]) + 2, ny = Math.ceil(by[1] - by[0]) + 2, sum = new Int32Array((nx + 1) * (ny + 1));
+    for (const h of hats) sum[(Math.floor(h.m[1] - by[0]) + 1) * (nx + 1) + Math.floor(h.m[0] - bx[0]) + 1]++;
+    for (let y = 1; y <= ny; y++) for (let x = 1; x <= nx; x++) sum[y * (nx + 1) + x] += sum[(y - 1) * (nx + 1) + x] + sum[y * (nx + 1) + x - 1] - sum[(y - 1) * (nx + 1) + x - 1];
+    const count = (x0, y0, x1, y1) => sum[y1 * (nx + 1) + x1] - sum[y0 * (nx + 1) + x1] - sum[y1 * (nx + 1) + x0] + sum[y0 * (nx + 1) + x0];
+    const k = Math.ceil(2 * half) + 1;
+    let mid = centre, best = -1;
+    for (let y = 0; y + k <= ny; y++) for (let x = 0; x + k <= nx; x++) {
+      const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x, y, x + k, y + k) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
+      if (score > best) { best = score; mid = c; }
+    }
+    const far = (h) => Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1]));
     hats.sort((a, b) => far(a) - far(b));
     const cells = hats.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
     for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
