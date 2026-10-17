@@ -1,0 +1,10 @@
+spectre 22168 rules 195 candidates 17s
+spectre done 102s
+  B25/S357        0.115  T 833 (374–1746) spread 0.47 plateau 0.38 at200 13% ash 0.95% osc 100%
+  B23/S036/C4     0.045  T 523 (271–2241) spread 0.6 plateau 0.79 at200 5.3% ash 4.05% osc 0%
+  B27/S35         0.039  T 344 (188–747) spread 0.38 plateau 0.39 at200 3.8% ash 1.38% osc 100%
+  B25/S3567       0.039  T 1084 (502–2110) spread 0.41 plateau 0.39 at200 14.3% ash 0.86% osc 100%
+  B236/S035/C4    0.037  T 486 (180–1199) spread 0.56 plateau 0.79 at200 5.3% ash 4.17% osc 0%
+  B357/S2356      0.034  T 288 (223–6000) spread 0.86 plateau 0.5 at200 4.1% ash 2.33% osc 92%
+  B246/S5         0.027  T 1194 (570–1923) spread 0.35 plateau 0.35 at200 14.2% ash 1.15% osc 100%
+  B246/S57        0.027  T 1194 (570–1923) spread 0.35 plateau 0.35 at200 14.2% ash 1.15% osc 100%
