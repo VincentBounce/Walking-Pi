@@ -116,5 +116,64 @@
     const f = [...found.values()];
     return { ships: f.filter((x) => x.kind === 'ship'), oscs: f.filter((x) => x.kind === 'osc'), starts };
   }
-  window.FS = { run, grid, behaviour, normal, step, rle };
+  // A methuselah's lifetime as Life counts it: the generation its debris settle (repeat), the ships flying off left out.
+  // Every 10 generations, a small group with no other cell within 12 steps that, run alone, comes back moved (a ship) is
+  // taken off once it is out of the box of all the rest and flying away from it (it can meet nothing any more).
+  // Resumable: settleStart(...) then settleRun(job, ms) until job.done
+  function settleStart(kind, rule, rle, W) {
+    const G = grid(kind, W, rule), cells = [...populationOf(`0,0:${rle}`)].map(([k, v]) => [...cellXY(k), v]);
+    const a = new Uint8Array(G.n), i = Math.floor(G.row / G.per / 2), ox = G.per * i, oy = ((G.W >> 1) & ~1) + (kind === 'cairo' ? i & 1 : 0);
+    for (const [x, y, v] of cells) a[(oy + y) * G.row + ox + x] = v;
+    return { G, a, b: new Uint8Array(G.n), g: 0, seen: new Map(), ships: 0, known: new Map(), done: null };
+  }
+  function isolated(G, a, comp, k = 12) {
+    const mine = new Set(comp), dist = new Map(comp.map((t) => [t, 0])), queue = [...comp];
+    for (let q = 0; q < queue.length; q++) {
+      const t = queue[q], d = dist.get(t);
+      if (d >= k) continue;
+      for (let j = G.start[t]; j < G.start[t + 1]; j++) {
+        const u = G.list[j];
+        if (dist.has(u)) continue;
+        if (a[u] && !mine.has(u)) return false;
+        dist.set(u, d + 1);
+        queue.push(u);
+      }
+    }
+    return true;
+  }
+  // a ship's cells out of the box of the other live cells (world units, 2 cells' room) on a side it flies towards
+  const middle = (G, t) => cellMiddle(G.kind, t % G.row, Math.floor(t / G.row));
+  function flyingOff(G, a, comp, [di, dj]) {
+    const mine = new Set(comp), box = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let t = 0; t < G.n; t++) if (a[t] && !mine.has(t)) { const [u, v] = middle(G, t); box[0] = Math.min(box[0], u); box[1] = Math.min(box[1], v); box[2] = Math.max(box[2], u); box[3] = Math.max(box[3], v); }
+    const o = cellMiddle(G.kind, 0, 0), m = cellMiddle(G.kind, G.per * di, dj), vel = [m[0] - o[0], m[1] - o[1]];
+    const c = comp.map((t) => middle(G, t)), lo = [0, 1].map((d) => Math.min(...c.map((p) => p[d]))), hi = [0, 1].map((d) => Math.max(...c.map((p) => p[d])));
+    return [0, 1].some((d) => (lo[d] > box[2 + d] + 2 && vel[d] > 1e-9) || (hi[d] < box[d] - 2 && vel[d] < -1e-9));
+  }
+  const touchesEdge = (G, a) => { for (let t = 0; t < G.n; t++) { if (!a[t]) continue; const x = t % G.row, y = Math.floor(t / G.row); if (y < 3 || y >= G.W - 3 || x < 3 * G.per || x >= G.row - 3 * G.per) return true; } return false; };
+  function settleRun(job, ms = 20000) {
+    const { G } = job, t0 = performance.now();
+    while (!job.done && performance.now() - t0 < ms) {
+      if (!step(G, job.a, job.b)) { job.g++; job.done = `dies at generation ${job.g}`; break; }
+      [job.a, job.b] = [job.b, job.a];
+      job.g++;
+      if (job.g % 10 === 0) for (const comp of components(G, job.a)) {
+        if (comp.length > 40 || !isolated(G, job.a, comp)) continue;
+        const { cells, key } = normal(G, job.a, comp);
+        if (!job.known.has(key)) { const b = behaviour(G, cells, 120); job.known.set(key, b?.kind === 'ship' ? b.move : null); }
+        const move = job.known.get(key);
+        if (!move || !flyingOff(G, job.a, comp, move)) continue;
+        for (const t of comp) job.a[t] = 0;
+        job.ships++;
+        job.seen.clear();
+      }
+      if (job.g % 10 === 0 && touchesEdge(G, job.a)) { job.done = `reaches the grid's edges at generation ${job.g}`; break; }  // (else what comes round would count)
+      const h = hash(job.a);
+      if (job.seen.has(h)) { job.done = `settles at generation ${job.seen.get(h)} (period ${job.g - job.seen.get(h)}, ${job.ships} ships off)`; job.T = job.seen.get(h); break; }
+      job.seen.set(h, job.g);
+      if (job.g > 50000) job.done = 'still going at 50,000';
+    }
+    return { g: job.g, done: job.done, ships: job.ships };
+  }
+  window.FS = { run, grid, behaviour, normal, step, rle, settleStart, settleRun };
 })();

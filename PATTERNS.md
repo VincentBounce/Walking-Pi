@@ -1096,7 +1096,47 @@ A search in the app's own page (tools/famoussearch.js: its rules, Callahan's let
 | Hexagons | Long loops B34/S123/C3 | Oscillator | `.A.A$A2.A$3A$2A!` | period 7 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B34/S123/C3&s=64&sd=draw&p=32,32:.A.A$A2.A$3A$2A!) |
 | Cairo | Cairo Life B34/S23 | Oscillator | `3.A.A$A2.2A$3.3A!` | period 4 · 8 cells, the most frequent | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B34/S23&s=64&sd=draw&p=32,32:3.A.A$A2.2A$3.3A!) |
 
-A lesson for methuselahs: a torus too small lets their debris and ships come round and start the chaos again. A 4-cell start of Life on triangles loops from 3,656 on a torus of 48 but from 430 on tori of 96 and 128; Kite gliders' and Kite drifters' methuselahs (744 and 1,681 on a torus of 48) send out ships, and run to 1,512 and 2,929 on a torus of 96.
+A lesson for methuselahs: a torus too small lets their debris and ships come round and start the chaos again. A 4-cell start of Life on triangles loops from 3,656 on a torus of 48 but from 430 on tori of 96 and 128; Kite gliders' and Kite drifters' methuselahs (744 and 1,681 on a torus of 48) send out ships, and run to 1,512 and 2,929 on a torus of 96: see below, all the methuselahs measured again.
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
+## ⏱ Methuselahs measured again, as Life counts them
+
+A methuselah's lifetime, as Life's are given (the R-pentomino's 1,103, the Acorn's 5,206): the generation its debris settle, the gliders flying off left out. Measured in the app's page (tools/famoussearch.js, settleStart and settleRun) on large tori (squares 256, hexagons 192, triangles and Cairo 128, kites 64 rhombi), every 10 generations taking off a ship (a small group, run alone, that comes back moved) once it is out of the box of the rest and flying away; a start that reaches the grid's edges keeps spreading (it never settles there). It gives back the R-pentomino's 1,103 with 6 gliders and the Acorn's 5,206 with 13. The values before came from small tori, where ships and debris come round and start the chaos again: many changed, and those that keep spreading are now Seeds.
+
+| Grid | Rule | Pattern | Before | Now |
+|---|---|---|---|---|
+| Squares | Life | R-pentomino | 1,103 | settles at 1,103, 6 gliders off |
+| Squares | Life | Acorn | 5,206 | settles at 5,206, 13 gliders off |
+| Squares | Life | Diehard | dies at 130 | dies at 130 |
+| Squares | Day & Night | Methuselah | loops from 219 | settles at 219 |
+| Squares | HighLife | Methuselah | loops from 2,652 | keeps spreading (the edges of 256 × 256 at 990) |
+| Squares | Brian's Brain | Methuselah | loops from 2,595 | keeps spreading |
+| Squares | Star Wars | Methuselah | loops from 3,739 | keeps spreading |
+| Squares | Maze | Methuselah | settles at 430 | keeps spreading |
+| Hexagons | B2/S34 | Methuselah | loops from 254 | settles at 254 |
+| Hexagons | Brink | Methuselah | settles at 3,448 | settles at 1,810 |
+| Hexagons | Callahan | Methuselah | loops from 352 | keeps spreading |
+| Hexagons | Few | Methuselah | settles at 3,795 | keeps spreading |
+| Hexagons | B234/S1234 | Methuselah | loops from 2,193 | keeps spreading (fills the grid) |
+| Hexagons | B234/S234 | Methuselah | loops from 2,885 | keeps spreading (fills the grid) |
+| Hexagons | Swarm | Methuselah | dies at 874 | keeps spreading |
+| Hexagons | Comets | Methuselah | dies at 400 | breaks at once into 2 ships |
+| Hexagons | Life's twin | Methuselah | loops from 1,217 | keeps spreading |
+| Triangles | Life | Methuselah (19 cells) | loops from 1,166 | settles at 1,166 |
+| Triangles | Life | Methuselah (4 cells) | loops from 430 | settles at 430 |
+| Triangles | Brink | Methuselah | settles at 4,089 | keeps spreading |
+| Triangles | Sparse | Methuselah | settles at 1,847 | settles at 733 |
+| Cairo | Cairo gliders | Methuselah | loops from 2,901 | keeps spreading |
+| Cairo | Cairo Wars | Methuselah | settles at 1,338 | keeps spreading |
+| Cairo | Long Cairo | Methuselah | loops from 3,997 | keeps spreading (fills the grid) |
+| Kites | Kite gliders | Methuselah | loops from 744 | settles at 110, a glider off |
+| Kites | Kite drifters | Methuselah | loops from 1,681 | settles at 799, a ship off |
+| Kites | Kite Life, simmer, marathon, Long kites | Methuselahs | 771, 321, 454, 157 | the same |
 
 <br>
 
