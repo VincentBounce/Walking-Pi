@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.689';
+const VERSION = '0.1.690';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6528,7 +6528,10 @@ function lifeStep() {
   L.aliveCount = alive;
   L.dyingCount = dying;
   L.byColour = byColour;
-  for (let k = 1; k <= K; k++) if ((K === 1 ? alive : byColour[k]) === 0 && L.extinctAt[k] === null) L.extinctAt[k] = gen;  // a colour all died out (for good: none left to be born of it)
+  for (let k = 1; k <= K; k++) {  // a colour all died out, when; born again (a tie's missing colour), back in the race
+    if ((K === 1 ? alive : byColour[k]) > 0) L.extinctAt[k] = null;
+    else if (L.extinctAt[k] === null) L.extinctAt[k] = gen;
+  }
   L.blueCount = byColour[2] ?? 0;
   L.trace.alive[gen] = alive;
   L.trace.change[gen] = L.born + L.dead - changes;
