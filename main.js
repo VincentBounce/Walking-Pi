@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.690';
+const VERSION = '0.1.691';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5859,11 +5859,28 @@ function buildLifePlane(seq) {
   renderColours();  // the blocks a figure fits, now that it is built
   autoplay();
 }
-// the grid's frame: the corners of its four corner cells
-function planeBounds() {
+// A grid that is a rhombus (its lattice's two sides alike, 60° apart) lies along the view: sides across a view wider than
+// high, upright in a higher one. The angle the view turns its world by (drawn turned, see turnLayer; a frame or the
+// pointer in the turned world)
+function planeTurn() {
+  const kind = walk.plane?.kind, t = TILINGS[kind];
+  if (!t && kind !== 'hex' && kind !== 'tri' && kind !== 'kite') return 0;
+  const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], la = Math.hypot(...a), lb = Math.hypot(...b);
+  if (Math.abs(la - lb) > 1e-6 || Math.abs((a[0] * b[0] + a[1] * b[1]) / (la * lb) - 0.5) > 1e-6) return 0;
+  return (ch > cw ? Math.PI / 6 : 0) - Math.atan2(a[1], a[0]);
+}
+const turnPoint = ([u, v], a) => [u * Math.cos(a) - v * Math.sin(a), u * Math.sin(a) + v * Math.cos(a)];
+// a layer drawn turned by a (the grid's turn, 0: as it is), about the view's origin, at the screen's resolution
+function turnLayer(ctx, a = planeTurn()) {
+  const d = window.devicePixelRatio || 1, c = Math.cos(a), s = Math.sin(a), { ox, oy } = view;
+  ctx.setTransform(d * c, d * s, -d * s, d * c, d * (ox - c * ox + s * oy), d * (oy - s * ox - c * oy));
+}
+// the grid's frame: the corners of its four corner cells, turned as it is drawn (turn 0: as they are)
+function planeBounds(turn = planeTurn()) {
   const { kind, W, row } = walk.plane, b = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   const ends = APERIODIC[kind] ? [...APERIODIC[kind](W).polys.keys()].map((t) => [t % W, Math.floor(t / W)]) : [[0, 0], [row - 1, 0], [0, W - 1], [row - 1, W - 1]];  // (hats: all of them)
-  for (const [x, y] of ends) for (const [u, v] of planeCorners(kind, x, y)) {
+  for (const [x, y] of ends) for (const p of planeCorners(kind, x, y)) {
+    const [u, v] = turnPoint(p, turn);
     b.minX = Math.min(b.minX, u); b.maxX = Math.max(b.maxX, u); b.minY = Math.min(b.minY, v); b.maxY = Math.max(b.maxY, v);
   }
   return b;
@@ -6009,7 +6026,9 @@ function drawPlaneGrid() {
   const ctx = layers.grid, { kind, W, row } = walk.plane, { scale: s, ox, oy } = view;
   ctx.clearRect(0, 0, cw, ch);
   drawSky(ctx);
-  const X = (u) => ox + u * s, Y = (v) => oy + v * s, outline = $('showGrid').checked && s >= 6;
+  turnLayer(ctx);  // (back as it is at the end)
+  const X = (u) => ox + u * s, Y = (v) => oy + v * s, outline = $('showGrid').checked && s >= 6, turn = planeTurn();
+  const inSight = (p) => { const [u, v] = turnPoint(p, turn); return X(u) > -2 * s && Y(v) > -2 * s && X(u) < cw + 2 * s && Y(v) < ch + 2 * s; };
   const cell = (x, y) => {  // a cell's outline, added to the path
     const c = planeCorners(kind, x, y);
     ctx.moveTo(X(c[0][0]), Y(c[0][1]));
@@ -6023,8 +6042,7 @@ function drawPlaneGrid() {
   if (kind === 'square') ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
   else if (kind === 'cairo' || kind === 'kite' || APERIODIC[kind] || TILINGS[kind]) {  // ragged all round: the cells in sight
     for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
-      const [u, v] = planeCorners(kind, x, y)[0];
-      if (X(u) > -2 * s && Y(v) > -2 * s && X(u) < cw + 2 * s && Y(v) < ch + 2 * s) cell(x, y);
+      if (inSight(planeCorners(kind, x, y)[0])) cell(x, y);
     }
   } else {
     const e = kind === 'hex' ? W - 1 : W;
@@ -6045,19 +6063,20 @@ function drawPlaneGrid() {
     }
     ctx.fill('evenodd');
   }
-  if (!outline) return;
+  if (!outline) return turnLayer(ctx, 0);
   ctx.strokeStyle = `rgba(${EDGE_RGB.join(', ')}, ${EDGE_ALPHA})`;
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (kind === 'square') for (let k = 0; k <= W; k++) { ctx.moveTo(X(k - 0.5), Y(-0.5)); ctx.lineTo(X(k - 0.5), Y(W - 0.5)); ctx.moveTo(X(-0.5), Y(k - 0.5)); ctx.lineTo(X(W - 0.5), Y(k - 0.5)); }
   else for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {  // the cells in sight
-    const c = planeCorners(kind, x, y), px = X(c[0][0]), py = Y(c[0][1]);
-    if (px < -s || py < -s || px > cw + s || py > ch + s) continue;
-    ctx.moveTo(px, py);
+    const c = planeCorners(kind, x, y);
+    if (!inSight(c[0])) continue;
+    ctx.moveTo(X(c[0][0]), Y(c[0][1]));
     for (let k = 1; k < c.length; k++) ctx.lineTo(X(c[k][0]), Y(c[k][1]));
-    ctx.lineTo(px, py);
+    ctx.closePath();
   }
   ctx.stroke();
+  turnLayer(ctx, 0);
 }
 // the grid's cells in the Life colours (Display), each generation: squares as one picture, a pixel a
 // cell; hexagons and triangles as polygons, one path a colour
@@ -6118,6 +6137,7 @@ function drawGhost() {
   if (!drawing || !ghost || !walk.plane) return;
   ctx.globalAlpha = brush.colour ? 0.55 : 0.85;  // the eraser: the dead cells' colour
   ctx.fillStyle = !brush.colour ? UNLIT : walk.life.colours > 1 ? LIFE_COLOURS[brush.colour - 1] : LIFE_ALIVE;
+  turnLayer(ctx);
   ctx.beginPath();
   for (const [x, y] of brushAt(ghost)) {
     const pts = planeCorners(walk.plane.kind, x, y);
@@ -6126,6 +6146,7 @@ function drawGhost() {
   }
   ctx.fill();
   ctx.globalAlpha = 1;
+  turnLayer(ctx, 0);
 }
 // a pattern's picture: its own cells, fitted in the icon (dying ones fainter)
 function cellsIcon(kind, rle) {
@@ -6173,6 +6194,7 @@ function drawLifePlane() {
   const groups = new Map();
   for (let t = 0; t < n; t++) if (px[t]) (groups.get(px[t]) ?? groups.set(px[t], []).get(px[t])).push(t);
   const small = s < 3;  // a few pixels a cell: a square at its centre does as well, and faster
+  turnLayer(ctx);
   for (const [c, ts] of groups) {
     ctx.beginPath();
     for (const t of ts) {
@@ -6190,6 +6212,7 @@ function drawLifePlane() {
     ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
     ctx.fill();
   }
+  turnLayer(ctx, 0);
   drawGhost();
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
@@ -6822,7 +6845,7 @@ const wallSlices = (K) => walk.plane && !walk.plane.torus && K !== 2 && K !== 4 
 function planeSlices(K) {
   const { kind, W, row } = walk.plane, n = W * row, key = `${kind}|${W}|${K}`;
   if (sliceMemo?.key === key) return sliceMemo;
-  const b = planeBounds(), mid = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
+  const b = planeBounds(0), mid = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
   const at = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row))), angle = at.map(([u, v]) => Math.atan2(v - mid[1], u - mid[0]));
   const order = [...angle.keys()].sort((p, q) => angle[p] - angle[q]), part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
   order.forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
@@ -7852,6 +7875,7 @@ function resize() {
   }
   glCanvas.width = Math.round(cw * dpr);
   glCanvas.height = Math.round(ch * dpr);
+  if (walk.plane) bounds = planeBounds();  // (a rhombus turns as the view changes shape)
   if (first || $('autoFit').checked) fitToBounds(padBounds(bounds));
   needsFull = true;
 }
@@ -9936,7 +9960,7 @@ stage.addEventListener('pointerdown', (e) => {
 stage.addEventListener('pointermove', (e) => {
   if (drawing && walk.plane && !e.target.closest('.stage-box')) {  // Draw: the brush follows the pointer
     const r = stage.getBoundingClientRect();
-    const cell = planeCellAt(walk.plane.kind, walk.plane.W, (e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale);
+    const cell = planeCellAt(walk.plane.kind, walk.plane.W, ...turnPoint([(e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale], -planeTurn()));
     if (String(cell) !== String(ghost)) { ghost = cell; drawGhost(); }
   }
   if (!drag) return;
@@ -10047,7 +10071,7 @@ stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button ==
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
   const r = stage.getBoundingClientRect();
-  const wx = (e.clientX - r.left - view.ox) / view.scale, wy = (e.clientY - r.top - view.oy) / view.scale;
+  const [wx, wy] = turnPoint([(e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale], walk.plane ? -planeTurn() : 0);
   const x = Math.round(wx), y = Math.round(wy);
   if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
