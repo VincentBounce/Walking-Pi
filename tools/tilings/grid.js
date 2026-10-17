@@ -1,5 +1,5 @@
 // A tiling's torus of W × W lattice cells (see build.js, tilings.json), as the app builds it: cell x of row y polygon
-// x % m of lattice cell ⌊x / m⌋; neighbours: the cells sharing a corner (wrapping round)
+// x % m of lattice cell ⌊x / m⌋; neighbours: the cells sharing a corner (wrapping round); mid(t): its middle, world units
 const T = JSON.parse(Deno.readTextFileSync(new URL('./tilings.json', import.meta.url)));
 export function tilingGrid(name, W) {
   const P = T[name].polys, m = P.length, row = m * W, n = row * W, by = new Map();
@@ -14,6 +14,7 @@ export function tilingGrid(name, W) {
     list.push(...[...around].sort((a, b) => a - b));
   }
   start[n] = list.length;
-  return { W, row, n, start, list: Int32Array.from(list), per: m };
+  const [a, b] = T[name].basis, mid = (t) => { const c = corners(t), u = c.reduce((s, p) => s + p[0], 0) / c.length, v = c.reduce((s, p) => s + p[1], 0) / c.length; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
+  return { W, row, n, start, list: Int32Array.from(list), per: m, mid };
 }
 export const tilingCells = (name) => T[name].polys.length;

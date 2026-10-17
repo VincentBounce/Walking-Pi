@@ -68,13 +68,13 @@ function components(G, a) {
   }
   return out;
 }
-// a component's cells, unwrapped (the torus) and moved to its first rhombus and row: [x, y, s] and where it was
+// a component's cells, unwrapped (the torus) and moved to its first rhombus (a tiling: lattice cell, G.per cells) and row: [x, y, s] and where it was
 function normal(G, a, comp) {
   let cells = comp.map((t) => [...coords(G, t), a[t]]);
   const ys = cells.map((c) => c[1]), xs = cells.map((c) => c[0]);
   if (Math.max(...ys) - Math.min(...ys) > G.W / 2) cells = cells.map(([x, y, s]) => [x, y < G.W / 2 ? y + G.W : y, s]);
   if (Math.max(...xs) - Math.min(...xs) > G.row / 2) cells = cells.map(([x, y, s]) => [x < G.row / 2 ? x + G.row : x, y, s]);
-  const y0 = Math.min(...cells.map((c) => c[1])), x0 = 6 * Math.floor(Math.min(...cells.map((c) => c[0])) / 6);
+  const per = G.per ?? 6, y0 = Math.min(...cells.map((c) => c[1])), x0 = per * Math.floor(Math.min(...cells.map((c) => c[0])) / per);
   cells = cells.map(([x, y, s]) => [x - x0, y - y0, s]).sort((p, q) => p[1] - q[1] || p[0] - q[0]);
   return { cells, at: [x0, y0], key: cells.map((c) => c.join(',')).join(';') };
 }
@@ -82,7 +82,7 @@ function normal(G, a, comp) {
 function behaviour(G, rule, cells, gens = 120) {
   const { B, S, C } = parse(rule), n = G.n;
   let a = new Uint8Array(n), b = new Uint8Array(n);
-  const ox = 6 * Math.floor(G.row / 12), oy = G.W >> 1;
+  const per = G.per ?? 6, ox = per * Math.floor(G.row / per / 2), oy = G.W >> 1;
   for (const [x, y, s] of cells) a[((oy + y) % G.W) * G.row + ((ox + x) % G.row)] = s;
   const first = normal(G, a, [...a.keys()].filter((t) => a[t]));
   for (let g = 1; g <= gens; g++) {
@@ -108,8 +108,8 @@ function seeds(G, rule, trials = 40, from = 0, r = 3, w = 3, d = 0.5, gens = 600
   for (let i = 0; i < trials; i++) {
     seed = 1000 + 7919 * (from + i);
     let a = new Uint8Array(n), b = new Uint8Array(n);
-    const ox = 6 * Math.floor(G.row / 12), oy = G.W >> 1, init = [];
-    for (let y = 0; y < r; y++) for (let x = 0; x < 6 * w; x++) if (rnd() < d) { a[(oy + y) * G.row + ox + x] = 1; init.push([x, y, 1]); }
+    const per = G.per ?? 6, ox = per * Math.floor(G.row / per / 2), oy = G.W >> 1, init = [];
+    for (let y = 0; y < r; y++) for (let x = 0; x < per * w; x++) if (rnd() < d) { a[(oy + y) * G.row + ox + x] = 1; init.push([x, y, 1]); }
     if (!init.length) continue;
     const seen = new Map();
     let life = gens, big = false;
@@ -155,4 +155,55 @@ function trace(G, rule, seedv, d = 0.3, gens = 6000, at = [100, 200, 300, 500, 8
   }
   return { T, period, end, rho, pops };
 }
-export { parse, step, soup, seeds, behaviour, components, normal, trace };
+// A methuselah's lifetime as Life counts it (as ../famoussearch.js, settleRun): until its debris repeat, the ships flying
+// off taken away (every 10 generations, a group of 40 cells or fewer, no other live cell within 12 steps, that alone comes
+// back moved, once it is out of the box of all the rest, flying away from it); stopped if it reaches the grid's edges.
+// G.mid(t): a cell's middle in world units
+function settle(G, rule, cells, cap = 20000) {
+  const { B, S, C } = parse(rule), n = G.n, per = G.per ?? 6;
+  let a = new Uint8Array(n), b = new Uint8Array(n);
+  const ox = per * Math.floor(G.row / per / 2), oy = G.W >> 1;
+  for (const [x, y, s] of cells) a[(oy + y) * G.row + ox + x] = s;
+  const seen = new Map(), known = new Map();
+  let ships = 0;
+  const isolated = (comp) => {
+    const mine = new Set(comp), dist = new Map(comp.map((t) => [t, 0])), queue = [...comp];
+    for (let q = 0; q < queue.length; q++) {
+      const t = queue[q], d = dist.get(t);
+      if (d >= 12) continue;
+      for (let j = G.start[t]; j < G.start[t + 1]; j++) { const u = G.list[j]; if (dist.has(u)) continue; if (a[u] && !mine.has(u)) return false; dist.set(u, d + 1); queue.push(u); }
+    }
+    return true;
+  };
+  const vel = ([di, dj]) => { const o = G.mid(0), m = G.mid(((dj % G.W) + G.W) % G.W * G.row + ((per * di) % G.row + G.row) % G.row); return [m[0] - o[0], m[1] - o[1]]; };
+  const flyingOff = (comp, move) => {
+    const mine = new Set(comp), box = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let t = 0; t < n; t++) if (a[t] && !mine.has(t)) { const [u, v] = G.mid(t); box[0] = Math.min(box[0], u); box[1] = Math.min(box[1], v); box[2] = Math.max(box[2], u); box[3] = Math.max(box[3], v); }
+    const w = vel(move), c = comp.map((t) => G.mid(t)), lo = [0, 1].map((d) => Math.min(...c.map((p) => p[d]))), hi = [0, 1].map((d) => Math.max(...c.map((p) => p[d])));
+    return [0, 1].some((d) => (lo[d] > box[2 + d] + 2 && w[d] > 1e-9) || (hi[d] < box[d] - 2 && w[d] < -1e-9));
+  };
+  const edge = () => { for (let t = 0; t < n; t++) { if (!a[t]) continue; const x = t % G.row, y = Math.floor(t / G.row); if (y < 3 || y >= G.W - 3 || x < 3 * per || x >= G.row - 3 * per) return true; } return false; };
+  for (let g = 1; g <= cap; g++) {
+    const [, any] = step(a, b, G.start, G.list, B, S, C);
+    [a, b] = [b, a];
+    if (!any) return { end: 'dies', T: g, ships };
+    if (g % 10 === 0) {
+      for (const comp of components(G, a)) {
+        if (comp.length > 40 || !isolated(comp)) continue;
+        const { cells: cs, key } = normal(G, a, comp);
+        if (!known.has(key)) { const w = behaviour(G, rule, cs, 120); known.set(key, w?.kind === 'ship' ? w.move : null); }
+        const move = known.get(key);
+        if (!move || !flyingOff(comp, move)) continue;
+        for (const t of comp) a[t] = 0;
+        ships++;
+        seen.clear();
+      }
+      if (edge()) return { end: 'edge', T: g, ships };
+    }
+    const h = hash(a);
+    if (seen.has(h)) return { end: 'settles', T: seen.get(h), period: g - seen.get(h), ships };
+    seen.set(h, g);
+  }
+  return { end: 'running', T: cap, ships };
+}
+export { parse, step, soup, seeds, behaviour, components, normal, trace, settle };

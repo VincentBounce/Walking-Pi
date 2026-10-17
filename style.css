@@ -407,7 +407,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .ant-presets button { padding: 5px 4px; font: 12px ui-monospace, Menlo, monospace; background: var(--panel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ant-presets button.active { border-color: var(--accent); color: var(--accent); }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
-.stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; }  /* grows upwards: the Play row stays at the bottom */
+.stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; outline: none; }  /* grows upwards: the Play row stays at the bottom (no focus ring: a tap opens it, see index.html) */
 .stage-bar:hover { width: 680px; }
 @media (hover: none) { .stage-bar:focus-within { width: 680px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
@@ -419,6 +419,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #ranking .rank-cell:nth-child(4) { display: block; }  /* folded: the table's alive column only */
 .stage-bar:hover #ranking .rank-row { grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; }
 .stage-bar:hover #ranking .rank-cell { display: block; }  /* the player open: all of the table */
+@media (hover: none) { .stage-bar:focus-within #ranking .rank-row { grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; } .stage-bar:focus-within #ranking .rank-cell { display: block; } }  /* (touch: a tap opens it) */
 .ranking .rank-row > span:first-child { color: var(--muted); text-align: right; }
 .ranking .rank-row > i { width: 12px; height: 12px; border-radius: 3px; }
 .ranking .rank-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
@@ -444,6 +445,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .bar-title .rank-titles span:not(:first-child) { display: none; }  /* folded: Alive */
 .stage-bar:hover .bar-title .rank-titles { grid-template-columns: 70px 56px 56px 70px; }
 .stage-bar:hover .bar-title .rank-titles span { display: block; }
+@media (hover: none) { .stage-bar:focus-within .bar-title .rank-titles { grid-template-columns: 70px 56px 56px 70px; } .stage-bar:focus-within .bar-title .rank-titles span { display: block; } }
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
 .rule-chip b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }

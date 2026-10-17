@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261028u">
+  <link rel="stylesheet" href="style.css?v=20261028v">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -206,6 +206,14 @@
               <option value="lifeCairoTorus">Life — torus</option>
               <option value="lifeTriTorus">Life — torus</option>
               <option value="lifeKiteTorus">Life — torus</option>
+              <option value="lifeTorusRhombille">Life — torus</option>
+              <option value="lifeTorusRhombitri">Life — torus</option>
+              <option value="lifeTorusFloret">Life — torus</option>
+              <option value="lifeTorusSnubtri">Life — torus</option>
+              <option value="lifeTorusPythagorean">Life — torus</option>
+              <option value="lifeTorusPrismatic">Life — torus</option>
+              <option value="lifeTorusTetrakis">Life — torus</option>
+              <option value="lifeTorusKisrhombille">Life — torus</option>
               <option value="lifeMobius">Life — Möbius strip</option>
               <option value="lifeMobiusHex">Life — Möbius strip</option>
               <option value="lifeMobiusTri">Life — Möbius strip</option>
@@ -399,7 +407,7 @@
       <canvas id="lineLayer"></canvas>
       <canvas id="overlayLayer"></canvas>
       <div id="hint" class="hint"></div>
-      <div id="animBar" class="stage-box stage-bar" aria-label="What is walked, animation and stats">
+      <div id="animBar" class="stage-box stage-bar" tabindex="-1" aria-label="What is walked, animation and stats">  <!-- (tabindex: on a touch screen, a tap on it opens it) -->
         <div class="bar-title"><span id="barNum" class="bar-num"></span><span id="barLoop" class="bar-chip loop" hidden></span><span id="barBase" class="bar-chip"></span><span id="rankTitles" class="rank-titles" hidden><span>Alive</span><span>Born</span><span>Died</span><span>Ever alive</span></span></div>  <!-- a battle: the ranking's column titles, on the rule's line (folded: Alive) -->
         <div id="ranking" class="ranking" hidden></div>  <!-- a battle: the colours ranked by live cells, those died out last -->
         <div id="gauges" class="ranking gauges" hidden></div>  <!-- one colour: alive, born, died, ever alive, peak -->
@@ -511,6 +519,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261028u"></script>
+  <script src="main.js?v=20261028v"></script>
 </body>
 </html>
