@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.670';
+const VERSION = '0.1.671';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5947,9 +5947,9 @@ function drawGhost() {
 // a pattern's picture: its own cells, fitted in the icon (dying ones fainter)
 function cellsIcon(kind, rle) {
   const polys = orientPattern(kind, rle, 0, false).map(([x, y, v]) => [planeCorners(kind, x, y), v]), all = polys.flatMap((p) => p[0]);
-  const x0 = Math.min(...all.map((p) => p[0])), y0 = Math.min(...all.map((p) => p[1]));
-  const size = Math.max(Math.max(...all.map((p) => p[0])) - x0, Math.max(...all.map((p) => p[1])) - y0, 3);
-  return `<svg class="icon rule-icon" viewBox="${x0 - 0.2} ${y0 - 0.2} ${size + 0.4} ${size + 0.4}" aria-hidden="true">${polys
+  const x0 = Math.min(...all.map((p) => p[0])), y0 = Math.min(...all.map((p) => p[1])), w = Math.max(...all.map((p) => p[0])) - x0, h = Math.max(...all.map((p) => p[1])) - y0;
+  const size = Math.max(w, h, 3);  // (at least 3 cells: a small one as big as in the others), the cells in its middle
+  return `<svg class="icon rule-icon" viewBox="${x0 - (size - w) / 2 - 0.2} ${y0 - (size - h) / 2 - 0.2} ${size + 0.4} ${size + 0.4}" aria-hidden="true">${polys
     .map(([pts, v]) => `<polygon points="${pts.map((p) => p.map((c) => c.toFixed(2)).join(',')).join(' ')}"${v > 1 ? ' class="dim"' : ''}/>`).join('')}</svg>`;
 }
 function drawLifePlane() {
