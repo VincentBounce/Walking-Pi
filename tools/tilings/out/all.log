@@ -1,0 +1,96 @@
+rhombille 103448 rules 1215 candidates 163s
+rhombille done 451s
+  B358/S0237/C4   0.116  T 547 (166–1494) spread 0.52 plateau 0.47 at200 5.2% ash 1.59% osc 0%
+  B367/S015       0.11   T 526 (359–1048) spread 0.29 plateau 0.34 at200 11.6% ash 3.78% osc 100%
+  B357/S0134/C5   0.107  T 888 (402–2228) spread 0.41 plateau 0.52 at200 11.8% ash 3.75% osc 0%
+  B37/S3459/C5    0.099  T 550 (197–1143) spread 0.51 plateau 0.32 at200 8.6% ash 1.96% osc 0%
+  B359/S0134/C5   0.087  T 991 (572–2578) spread 0.41 plateau 0.64 at200 11.6% ash 3.6% osc 8%
+  B369/S015       0.078  T 408 (321–709) spread 0.23 plateau 0.47 at200 9.5% ash 3.84% osc 100%
+  B356/S0138/C3   0.07   T 470 (319–659) spread 0.22 plateau 0.34 at200 9.9% ash 3.34% osc 83%
+  B34/S0347/C5    0.069  T 576 (216–1985) spread 0.67 plateau 0.69 at200 5.1% ash 2.08% osc 0%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+rhombitri 103448 rules 1300 candidates 122s
+rhombitri done 323s
+  B279/S069/C4    0.565  T 930 (644–3676) spread 0.52 plateau 0.53 at200 6.5% ash 1.65% osc 100%
+  B29/S067/C4     0.494  T 1053 (492–6000) spread 0.69 plateau 0.53 at200 6.4% ash 1.88% osc 92%
+  B2/S069/C4      0.492  T 1044 (568–4396) spread 0.71 plateau 0.39 at200 6.5% ash 1.74% osc 100%
+  B278/S08/C4     0.478  T 814 (444–4155) spread 0.61 plateau 0.34 at200 6.4% ash 1.71% osc 100%
+  B24/S0457/C5    0.464  T 697 (386–1597) spread 0.45 plateau 0.53 at200 4.5% ash 2.05% osc 92%
+  B246/S048/C5    0.418  T 681 (232–1785) spread 0.54 plateau 0.56 at200 4.3% ash 2.03% osc 92%
+  B248/S0467/C5   0.41   T 660 (344–1706) spread 0.47 plateau 0.58 at200 4.3% ash 2.08% osc 100%
+  B279/S07/C4     0.401  T 1040 (584–3089) spread 0.47 plateau 0.59 at200 5.9% ash 1.74% osc 100%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+snubtri 103448 rules 1327 candidates 195s
+snubtri done 478s
+  B38/S1369       0.407  T 934 (546–1927) spread 0.37 plateau 0.4 at200 6.9% ash 1.61% osc 92%
+  B359/S0146/C3   0.38   T 645 (282–1241) spread 0.48 plateau 0.49 at200 10.4% ash 4.72% osc 83%
+  B389/S1269      0.337  T 1078 (390–2134) spread 0.5 plateau 0.51 at200 7.5% ash 1.75% osc 50%
+  B37/S3459/C4    0.259  T 505 (239–1402) spread 0.53 plateau 0.35 at200 6.4% ash 1.39% osc 100%
+  B38/S345/C4     0.232  T 812 (235–6000) spread 1.3 plateau 0.47 at200 3.5% ash 1.31% osc 67%
+  B369/S127/C3    0.226  T 795 (387–2287) spread 0.51 plateau 0.47 at200 6.5% ash 1.94% osc 0%
+  B39/S1369       0.22   T 561 (294–1223) spread 0.36 plateau 0.37 at200 5.3% ash 1.56% osc 83%
+  B367/S128/C3    0.211  T 761 (342–2485) spread 0.6 plateau 0.53 at200 6.1% ash 2.06% osc 0%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+capitalI 8712 rules 90 candidates 4s
+capitalI done 91s
+  B345/S0236      0.011  T 283 (182–414) spread 0.24 plateau 0.48 at200 10.1% ash 4.51% osc 92%
+  B23/S045/C4     0      T 223 (134–415) spread 0.35 plateau 0.99 at200 4.1% ash 4.02% osc 0%
+  B235/S056/C4    0      T 228 (128–332) spread 0.29 plateau 0.98 at200 4.1% ash 3.96% osc 0%
+  B23/S06/C4      0      T 210 (130–323) spread 0.29 plateau 0.99 at200 4.1% ash 4.02% osc 0%
+  B34/S0125       0      T 371 (286–427) spread 0.14 plateau 0.49 at200 17.9% ash 8.16% osc 67%
+  B246/S246/C3    0      T 6000 (429–6000) spread 0.79 plateau 0.97 at200 3% ash 0.89% osc 18%
+  B25/S15/C5      0      T 6000 (6000–6000) spread 0 plateau 0.63 at200 0.3% ash 0.14% osc 0%
+  B25/S156/C5     0      T 6000 (6000–6000) spread 0 plateau 0.63 at200 0.3% ash 0.14% osc 0%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+pythagorean 50176 rules 170 candidates 29s
+pythagorean done 108s
+  B267/S3457      0.133  T 509 (269–1747) spread 0.64 plateau 0.33 at200 9.4% ash 0.71% osc 100%
+  B28/S28         0.126  T 1160 (434–4440) spread 0.66 plateau 0.47 at200 11.3% ash 0.6% osc 100%
+  B2/S28          0.119  T 1071 (781–3092) spread 0.47 plateau 0.51 at200 11.4% ash 0.45% osc 100%
+  B27/S278        0.118  T 1211 (342–3944) spread 0.7 plateau 0.4 at200 10.4% ash 0.45% osc 100%
+  B28/S278        0.087  T 1380 (490–5448) spread 0.69 plateau 0.44 at200 11% ash 0.62% osc 100%
+  B278/S28        0.084  T 1113 (499–4794) spread 0.65 plateau 0.41 at200 12.6% ash 0.62% osc 100%
+  B237/S3456/C4   0.077  T 426 (149–1183) spread 0.66 plateau 0.76 at200 10.1% ash 4.56% osc 100%
+  B278/S27        0.076  T 1225 (740–3842) spread 0.49 plateau 0.45 at200 12.6% ash 0.71% osc 100%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+prismatic 22168 rules 522 candidates 14s
+prismatic done 120s
+  B245/S16/C5     0.334  T 874 (126–6000) spread 1.07 plateau 0.63 at200 4% ash 2.27% osc 92%
+  B25/S157/C5     0.304  T 881 (403–3182) spread 0.75 plateau 0.71 at200 5% ash 2.13% osc 100%
+  B2/S17/C5       0.291  T 899 (262–6000) spread 1.05 plateau 0.67 at200 4.8% ash 2.21% osc 75%
+  B27/S17/C5      0.291  T 899 (262–6000) spread 1.05 plateau 0.67 at200 4.8% ash 2.21% osc 75%
+  B257/S1/C5      0.266  T 760 (309–6000) spread 0.9 plateau 0.72 at200 4.3% ash 2.47% osc 92%
+  B25/S1/C5       0.266  T 760 (309–6000) spread 0.9 plateau 0.72 at200 4.3% ash 2.47% osc 92%
+  B25/S17/C5      0.249  T 836 (309–6000) spread 0.89 plateau 0.72 at200 4.1% ash 2.47% osc 92%
+  B257/S17/C5     0.249  T 836 (309–6000) spread 0.89 plateau 0.72 at200 4.1% ash 2.47% osc 92%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+tetrakis 103448 rules 1253 candidates 299s
+tetrakis done 662s
+  B37/S1          0.377  T 809 (468–6000) spread 0.64 plateau 0.54 at200 6.5% ash 1.28% osc 67%
+  B38/S17         0.318  T 894 (363–3366) spread 0.65 plateau 0.4 at200 8.2% ash 1.28% osc 50%
+  B3/S278         0.283  T 1074 (575–3830) spread 0.56 plateau 0.63 at200 5.8% ash 1.44% osc 100%
+  B358/S18/C3     0.177  T 1071 (406–5932) spread 0.65 plateau 0.56 at200 11.1% ash 1.14% osc 83%
+  B479/S2347/C4   0.172  T 545 (274–2430) spread 0.58 plateau 0.37 at200 7.4% ash 2.03% osc 8%
+  B47/S0123/C3    0.153  T 477 (254–1058) spread 0.4 plateau 0.56 at200 9.7% ash 4.25% osc 42%
+  B3/S16          0.152  T 1229 (418–3541) spread 0.72 plateau 0.65 at200 9.6% ash 1.33% osc 83%
+  B35/S03/C4      0.152  T 611 (140–1946) spread 0.79 plateau 0.55 at200 6.5% ash 1.67% osc 0%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded
+kisrhombille 103448 rules 1001 candidates 337s
+kisrhombille done 676s
+  B356/S6789/C5   0.282  T 424 (181–1429) spread 0.56 plateau 0.59 at200 7.5% ash 3.4% osc 100%
+  B38/S169/C3     0.245  T 1065 (171–6000) spread 1.12 plateau 0.62 at200 5.6% ash 1.36% osc 83%
+  B38/S128/C5     0.167  T 658 (331–5298) spread 0.85 plateau 0.53 at200 5.9% ash 1.73% osc 0%
+  B35/S0579/C4    0.153  T 1063 (253–3348) spread 0.73 plateau 0.56 at200 8.1% ash 1.07% osc 25%
+  B38/S179/C3     0.143  T 723 (225–2900) spread 0.78 plateau 0.76 at200 4.4% ash 1.27% osc 100%
+  B457/S0125      0.125  T 699 (323–1806) spread 0.47 plateau 0.32 at200 13.6% ash 3.69% osc 100%
+  B367/S0469/C4   0.102  T 1231 (283–4416) spread 1.01 plateau 0.53 at200 8.3% ash 1.04% osc 17%
+  B369/S14/C4     0.089  T 691 (226–2028) spread 0.59 plateau 0.32 at200 8% ash 0.87% osc 8%
+Note: No thermal warning level has been recorded
+Note: No performance warning level has been recorded

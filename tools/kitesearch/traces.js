@@ -1,7 +1,7 @@
 // Many soups of each rule, what they do over time: deno run --allow-read --allow-write traces.js rules.json W seeds out.json
 // (W < 0: squares, −W a side). Then the stats: settling (median, spread), plateau, the share ending with oscillators
 import { pool } from './pool.js';
-const rules = JSON.parse(Deno.readTextFileSync(Deno.args[0])), W = /^hat/.test(Deno.args[1] ?? '') ? Deno.args[1] : Number(Deno.args[1] ?? 24), K = Number(Deno.args[2] ?? 12);
+const rules = JSON.parse(Deno.readTextFileSync(Deno.args[0])), W = /^hat|:/.test(Deno.args[1] ?? '') ? Deno.args[1] : Number(Deno.args[1] ?? 24), K = Number(Deno.args[2] ?? 12);
 const seeds = Array.from({ length: K }, (_, i) => 101 + 7919 * i), P = pool(9), out = [], chunk = 4, t0 = Date.now();
 let i = 0, done = 0;
 await Promise.all(P.workers.map(async (w) => {

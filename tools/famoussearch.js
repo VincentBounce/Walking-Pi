@@ -3,7 +3,7 @@
 // Small random starts on a torus; what they leave, run alone: a ship if it comes back moved, an oscillator if in place;
 // the smallest starts that run longest before repeating, methuselahs.
 (() => {
-  const PER = { tri: 2, cairo: 2, kite: 6 };  // cells a step along a row (patterns move by whole rhombi, Cairo squares)
+  const PER = PER_RHOMBUS;  // the app's: cells a step along a row (patterns move by whole rhombi, Cairo squares, a tiling's lattice cells)
   let seed = 1;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
   const hash = (a) => { let h = 2166136261; for (let i = 0; i < a.length; i++) h = Math.imul(h ^ a[i], 16777619); return h >>> 0; };

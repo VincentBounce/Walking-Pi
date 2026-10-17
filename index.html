@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261028k">
+  <link rel="stylesheet" href="style.css?v=20261028l">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -341,6 +341,23 @@
             <option value="B3/S1247" data-name="Long kites">◆ B3/S1247 — soups last about 900 generations, down to a few still lifes (2 states)</option>
             <option value="B245/S134/C5" data-name="Hat comets">🎩 B245/S134/C5 — as Comets on hexagons: soups end anywhere from 500 to 3,700 generations (5 states)</option>
             <option value="B257/S367" data-name="Hat bats">🎩 B257/S367 — Life-like on hats, its patterns like bats: a plateau as Life's, soups settling after 900 to 3,500 generations, oscillators in every ash (2 states)</option>
+            <option value="B26/S3578/C3" data-name="Floret Life">✿ B26/S3578/C3 — Life-like on floret pentagons: a plateau as Life's, soups settling after 300 to 2,100 generations, oscillators in all their ash (3 states)</option>
+            <option value="B24/S456/C4" data-name="Long florets">✿ B24/S456/C4 — soups ending anywhere from 500 to over 6,000 generations (4 states)</option>
+            <option value="B367/S015" data-name="Rhombille Life">◇ B367/S015 — soups settling after 360 to 1,050 generations, oscillators in all their ash (2 states)</option>
+            <option value="B358/S0237/C4" data-name="Rhombille sparks">◇ B358/S0237/C4 — a plateau as Life's, soups settling after 170 to 1,500 generations (4 states)</option>
+            <option value="B279/S069/C4" data-name="Rhombitri Life">✳ B279/S069/C4 — the most Life-like of the new tilings: a plateau as Life's, soups settling after 640 to 3,700 generations, oscillators in all their ash (4 states)</option>
+            <option value="B29/S067/C4" data-name="Long rhombitri">✳ B29/S067/C4 — soups ending anywhere from 500 to over 6,000 generations (4 states)</option>
+            <option value="B38/S1369" data-name="Snub Life">✶ B38/S1369 — soups settling after 550 to 1,900 generations, oscillators in nearly all their ash (2 states)</option>
+            <option value="B359/S0146/C3" data-name="Snub embers">✶ B359/S0146/C3 — busier: about 10 % alive in the chaos, soups settling after 280 to 1,250 generations (3 states)</option>
+            <option value="B345/S0236" data-name="I Life">⌶ B345/S0236 — the best found with 6 neighbours: soups settling after 180 to 410 generations (2 states)</option>
+            <option value="B28/S28" data-name="Pythagoras Life">◰ B28/S28 — soups settling after 430 to 4,400 generations, oscillators in all their ash (2 states)</option>
+            <option value="B267/S3457" data-name="Pythagoras sparks">◰ B267/S3457 — soups settling after 270 to 1,750 generations (2 states)</option>
+            <option value="B25/S157/C5" data-name="Prismatic Life">⌂ B25/S157/C5 — soups settling after 400 to 3,200 generations, oscillators in all their ash (5 states)</option>
+            <option value="B245/S16/C5" data-name="Long prisms">⌂ B245/S16/C5 — soups ending anywhere from 130 to over 6,000 generations (5 states)</option>
+            <option value="B37/S1" data-name="Tetrakis Life">◩ B37/S1 — soups settling after 470 to over 6,000 generations (2 states)</option>
+            <option value="B3/S278" data-name="Tetrakis embers">◩ B3/S278 — soups settling after 580 to 3,800 generations, oscillators in all their ash (2 states)</option>
+            <option value="B356/S6789/C5" data-name="Kisrhombille Life">◬ B356/S6789/C5 — a plateau as Life's, soups settling after 180 to 1,430 generations, oscillators in all their ash (5 states)</option>
+            <option value="B38/S169/C3" data-name="Long kisrhombille">◬ B38/S169/C3 — soups ending anywhere from 170 to over 6,000 generations (3 states)</option>
             <option value="B34/S23" data-name="Cairo Life">⬠ B34/S23 — Life-like on Cairo pentagons (7 neighbours): settles after a few hundred generations</option>
             <option value="custom">Custom…</option>
           </select>
@@ -488,6 +505,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261028k"></script>
+  <script src="main.js?v=20261028l"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.685';
+const VERSION = '0.1.686';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6171,6 +6171,24 @@ const RULE_ICONS = {
   'B3/S2-i34q': '.....,.ooo.,..o..,.....,.....', 'B2i34c/S2-i3': 'o.o..,.o...,o.o.o,...o.,..o.o', 'B2-a/S12': 'ooooo,....o,ooo.o,o...o,o.ooo',
   'B346/S0127/C4': 'o.+.o,.o.o.,+.o.+,.o.o.,o.+.o', 'B34/S0126/C5': 'ooooo,o+++o,o+.+o,o+++o,ooooo',
   'B257/S367': '.oo..,ooo.o,..ooo,.o.o.,.....', 'B245/S134/C5': '.....,.oo+.,ooo+.,..o+.,.....',
+  // the new tilings' rules: a picture each from its text (mirrored; not drawn by hand)
+  'B26/S3578/C3': 'oo.oo,.o.o.,+.o.+,o+o+o,o...o',
+  'B24/S456/C4': '..o..,.....,.+o+.,.o.o.,o...o',
+  'B367/S015': 'oo.oo,.ooo.,o...o,.o.o.,o.o.o',
+  'B358/S0237/C4': 'oo.oo,o+o+o,+o.o+,.....,+o.o+',
+  'B279/S069/C4': '+.+.+,.+o+.,+...+,.o.o.,oo+oo',
+  'B29/S067/C4': '.ooo.,..+..,.....,..o..,.o.o.',
+  'B38/S1369': '.....,..o..,o.o.o,.o.o.,o...o',
+  'B359/S0146/C3': '+ooo+,o+.+o,..o..,+.o.+,o+o+o',
+  'B345/S0236': 'o...o,.o.o.,.....,o...o,..o..',
+  'B28/S28': '..o..,o...o,o.o.o,.....,oo.oo',
+  'B267/S3457': '..o..,o...o,o.o.o,..o..,oo.oo',
+  'B25/S157/C5': '.+++.,o.+.o,+o+o+,o.+.o,.....',
+  'B245/S16/C5': '.....,+o.o+,+.+.+,.....,oo.oo',
+  'B37/S1': 'oo.oo,oo.oo,.o.o.,o...o,..o..',
+  'B3/S278': 'oo.oo,.....,ooooo,.o.o.,.o.o.',
+  'B356/S6789/C5': '.o.o.,+...+,.+.+.,oo.oo,..o..',
+  'B38/S169/C3': 'ooooo,.....,o.o.o,..o..,..+..',
   'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
