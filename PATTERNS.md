@@ -1144,6 +1144,33 @@ A methuselah's lifetime, as Life's are given (the R-pentomino's 1,103, the Acorn
 
 <br>
 
+## 🧩 Nine more tilings: rules and patterns
+
+Nine 2D tilings built from their geometry (tools/tilings/build.js): Archimedean ones from a lattice and its points (edges between points 1 apart, faces by walking round them), the Laves ones as their duals (a cell a vertex, its corners the middles of the faces round it: the rhombille, floret and prismatic pentagons, tetrakis, kisrhombille; the rhombitrihexagonal's dual gives back the kites, 9 neighbours: the check), the Pythagorean and Capital I tilings from unit squares. Each checked: one lattice cell's polygons fill it, edge to edge. Neighbours (edge or corner): rhombille 10, rhombitrihexagonal 6 / 8 / 12 (triangles, squares, hexagons), floret 8, snub trihexagonal 9 / 18, Capital I 6, Pythagorean 4 / 8, prismatic 7, tetrakis 14, kisrhombille 16.
+
+On each, up to 103,448 rules (B: 2, 3 or 4 and up to 2 more digits; S: up to 4 digits; 2 to 5 states; counts up to 9) from one soup on ~1,500 cells; those settling with 0.5 to 8 % alive after 250 generations or more followed over 4, the best 40 over 12 soups on ~3,500 cells (tools/tilings/search.js), scored against Life (1 for Life; HighLife 0.65). Then each rule's patterns from 600 small starts in the app's page (tools/famoussearch.js), its methuselahs measured as Life counts them.
+
+| Tiling | Rule | Score | Settles | Plateau | Alive at 200 | Ash | Ends with oscillators | Patterns | Link |
+|---|---|--:|---|--:|--:|--:|--:|---|---|
+| Life (59 × 59 squares) | B3/S23 | 1 | 350 to 3,200 | 0.47 | 7.5 % | 3.2 % | 100 % | | |
+| Rhombitri | **B279/S069/C4** | 0.565 | 640 to 3,700 | 0.53 | 6.5 % | 1.7 % | 100 % | oscillator period 12 · 3 cells; methuselah 529 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dRhombitri&r=B279/S069/C4&s=48&sd=random.30.7) |
+| Snub | **B38/S1369** | 0.41 | 550 to 1,900 | 0.40 | 6.9 % | 1.6 % | 92 % | methuselah of 10 cells: 1,411 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dSnubtri&r=B38/S1369&s=48&sd=random.30.7) |
+| Tetrakis | **B37/S1** | 0.38 | 470 to 6,000+ | 0.54 | 6.5 % | 1.3 % | 67 % | methuselah of 8 cells: 1,527 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTetrakis&r=B37/S1&s=48&sd=random.30.7) |
+| Prismatic | **B25/S157/C5** | 0.30 | 400 to 3,200 | 0.71 | 5.0 % | 2.1 % | 100 % | a ship of 14 cells at light speed (a cell a generation), very common | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPrismatic&r=B25/S157/C5&s=48&sd=random.30.7) |
+| Florets | **B26/S3578/C3** | 0.30 | 320 to 2,100 | 0.48 | 6.7 % | 0.5 % | 100 % | oscillator period 3 · 4 cells | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dFloret&r=B26/S3578/C3&s=48&sd=random.30.7) |
+| Kisrhombille | **B356/S6789/C5** | 0.28 | 180 to 1,430 | 0.59 | 7.5 % | 3.4 % | 100 % | oscillator period 60 · 38 cells | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dKisrhombille&r=B356/S6789/C5&s=48&sd=random.30.7) |
+| Pythagoras | **B28/S28** | 0.13 | 430 to 4,400 | 0.47 | 11.3 % | 0.6 % | 100 % |  | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPythagorean&r=B28/S28&s=48&sd=random.30.7) |
+| Rhombille | **B367/S015** | 0.11 | 360 to 1,050 | 0.34 | 11.6 % | 3.8 % | 100 % |  | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dRhombille&r=B367/S015&s=48&sd=random.30.7) |
+| Capital I | **B345/S0236** | 0.01 | 180 to 410 | 0.48 | 10.1 % | 4.5 % | 92 % | nothing near Life with 6 neighbours | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCapitalI&r=B345/S0236&s=48&sd=random.30.7) |
+
+The second rule of each (Long florets B24/S456/C4 with a ship of 12 cells, period 5; Long prisms B245/S16/C5, the light-speed ship too; Long rhombitri, Snub embers, Pythagoras sparks, Rhombille sparks with a 5-cell methuselah of 856, Tetrakis embers, Long kisrhombille) and all their patterns are in Draw and Famous.
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
 ## 🎲 Densities: how full a start should be
 
 For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.
