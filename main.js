@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.692';
+const VERSION = '0.1.693';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6122,7 +6122,8 @@ function brushCells() {
 }
 // where the brush's cells go, round the cell pointed at (Cairo: from an even square): wrapping round the
 // grid, or the ones inside it; [x, y, state]
-function brushAt([cx, cy], cells = brush.id === 'cell' ? [[0, 0, 1]] : brushCells()) {
+function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells()) {
+  if (!cells) return [[cx, cy, 1]];  // one cell: the one pointed at, whichever way it lies
   const { kind, W, torus } = walk.plane, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
   const square = (x) => Math.floor(x / per);
   let i = square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1), j = cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1);
