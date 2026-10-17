@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.684';
+const VERSION = '0.1.685';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -818,6 +818,43 @@ const FORMULA_NOTES = {
 // hexagons. So a walk along triangles takes the steps of hexagon cells, and one along hexagons
 // those of triangle cells; only the grid drawn changes (lines: true). Their colours are the Display
 // toggles Walk on cells, Heatmap of visits and Digits instead of a list (see relabelColours).
+/* More 2D tilings (tools/tilings/build.js builds and checks them): Archimedean ones from a lattice and its points, their
+ * Laves duals (one shape each, from each vertex's faces), the Pythagorean and Capital I tilings from squares. Each: a
+ * lattice (basis: two vectors) and the polygons of one cell of it, in the lattice's units ((u, v): u·a + v·b); its
+ * cells a row: those polygons, cell after cell (x = m·i + k: polygon k of lattice cell i), as the kites; neighbours by a
+ * shared corner (their corners include every point a neighbour's corner can be on); most: the most neighbours a cell has */
+const TILINGS = {
+  rhombille: { name: 'Rhombille', mark: '◇', cells: 'rhombi', where: 'a grid of rhombi, 3 a hexagon (the rhombille tiling)', most: 10,
+    basis: [[2, 0], [1, 1.7320508075688772]],
+    polys: [[[0.666667,-0.333333],[1,0],[0.333333,0.333333],[0,0]],[[0,0],[0.333333,0.333333],[0,1],[-0.333333,0.666667]],[[0.333333,0.333333],[1,0],[0.666667,0.666667],[0,1]]] },
+  rhombitri: { name: 'Rhombitri', mark: '✳', cells: 'tiles', where: 'a grid of hexagons, squares and triangles (the rhombitrihexagonal tiling)', most: 12,
+    basis: [[2.366025403784439, 1.3660254037844384], [1.6728986382985834e-16, 2.732050807568877]],
+    polys: [[[0.42265,-0.211325],[0.788675,-0.211325],[0.57735,0.211325],[0.211325,0.211325]],[[0.42265,-0.211325],[0.211325,0.211325],[-0.211325,0.42265],[-0.42265,0.211325],[-0.211325,-0.211325],[0.211325,-0.42265]],[[0.211325,0.211325],[0.57735,0.211325],[0.211325,0.57735]],[[0.211325,0.211325],[0.211325,0.57735],[-0.211325,0.788675],[-0.211325,0.42265]],[[0.42265,0.788675],[0.211325,0.57735],[0.57735,0.211325],[0.788675,0.42265]],[[0.42265,0.788675],[0.788675,0.42265],[0.788675,0.788675]]] },
+  floret: { name: 'Florets', mark: '✿', cells: 'pentagons', where: 'a grid of floret pentagons, 6 round each flower', most: 8,
+    basis: [[2.5, 0.8660254037844386], [0.5, 2.598076211353316]],
+    polys: [[[0,0],[0.380952,0.095238],[0.333333,0.333333],[0.095238,0.52381],[-0.095238,0.47619]],[[0,1],[0.47619,0.619048],[0.666667,0.666667],[0.619048,0.904762],[0.380952,1.095238]],[[0.095238,0.52381],[0.333333,0.333333],[0.52381,0.380952],[0.47619,0.619048],[0,1]],[[0.52381,0.380952],[1,0],[0.904762,0.47619],[0.666667,0.666667],[0.47619,0.619048]],[[0.380952,0.095238],[0.619048,-0.095238],[1,0],[0.52381,0.380952],[0.333333,0.333333]],[[0.666667,0.666667],[0.904762,0.47619],[1.095238,0.52381],[1,1],[0.619048,0.904762]]] },
+  snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18,
+    basis: [[2.5, 0.8660254037844386], [0.5, 2.598076211353316]],
+    polys: [[[0.428571,-0.142857],[0.571429,0.142857],[0.142857,0.285714]],[[0.428571,-0.142857],[0.142857,0.285714],[-0.285714,0.428571],[-0.428571,0.142857],[-0.142857,-0.285714],[0.285714,-0.428571]],[[0.142857,0.285714],[0.571429,0.142857],[0.285714,0.571429]],[[0.142857,0.285714],[0.285714,0.571429],[-0.142857,0.714286]],[[0.428571,0.857143],[0.285714,0.571429],[0.714286,0.428571]],[[0.428571,0.857143],[0.714286,0.428571],[0.857143,0.714286]],[[0.428571,0.857143],[0.857143,0.714286],[0.571429,1.142857]],[[0.285714,0.571429],[0.571429,0.142857],[0.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
+  capitalI: { name: 'Capital I', mark: '⌶', cells: 'I tiles', where: 'a grid of capital I tiles (7 squares each)', most: 6,
+    basis: [[2, 1], [-1, 3]],
+    polys: [[[0,0],[0.428571,-0.142857],[0.857143,-0.285714],[1.285714,-0.428571],[1.428571,-0.142857],[1,0],[1.142857,0.285714],[1.571429,0.142857],[1.714286,0.428571],[1.285714,0.571429],[0.857143,0.714286],[0.428571,0.857143],[0.285714,0.571429],[0.714286,0.428571],[0.571429,0.142857],[0.142857,0.285714]]] },
+  pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8,
+    basis: [[2, 1], [-1, 2]],
+    polys: [[[0,0],[0.4,-0.2],[0.8,-0.4],[1,0],[1.2,0.4],[0.8,0.6],[0.4,0.8],[0.2,0.4]],[[-0.2,0.6],[0.2,0.4],[0.4,0.8],[0,1]]] },
+  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7,
+    basis: [[1, 0], [0.5, 1.8660254037844386]],
+    polys: [[[-0.42265,0.845299],[0.154701,0.690599],[0.57735,0.845299],[0.366025,1.267949],[-0.633975,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
+  tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14,
+    basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
+    polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
+  kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16,
+    basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
+    polys: [[[0,0],[0.5,0],[0.333333,0.333333]],[[0,0],[0.333333,0.333333],[0,0.5]],[[0,0.5],[0.333333,0.333333],[0,1]],[[0.333333,0.333333],[0.5,0.5],[0,1]],[[0.5,0.5],[0.666667,0.666667],[0,1]],[[0.666667,0.666667],[0.5,1],[0,1]],[[1,0],[1,0.5],[0.666667,0.666667]],[[1,0],[0.666667,0.666667],[0.5,0.5]],[[0.333333,0.333333],[1,0],[0.5,0.5]],[[0.5,0],[1,0],[0.333333,0.333333]],[[0.666667,0.666667],[1,1],[0.5,1]],[[1,0.5],[1,1],[0.666667,0.666667]]] },
+};
+const tilingAt = (kind, x, y) => { const P = TILINGS[kind].polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
+const tilingWorld = (kind, [u, v]) => { const [a, b] = TILINGS[kind].basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
+
 const MODES = {
   turtle:   { base: 3, arrows: '←↑→', lattice: 'square', lines: true, twin: 'turtleCells', ant: 'antSquare',
               rule: 'along the lines of a square grid: <b>0</b> turn left + step, <b>1</b> step forward, <b>2</b> turn right + step' },
@@ -2199,6 +2236,13 @@ const NAV = {
   triPivot: ['Walk', '2D', 'Triangles', 'Pivot', 'grid'], hexPivotCells: ['Walk', '2D', 'Hexagons', 'Pivot', 'cells'],
 };
 // the pivot and parity walks on the surfaces: where their turtle walks are (see MODES)
+// the tilings' Life on the plane (see TILINGS): their modes, after the hats
+const tilingMode = (kind) => `life2d${kind[0].toUpperCase()}${kind.slice(1)}`;
+for (const [kind, t] of Object.entries(TILINGS)) {
+  MODES[tilingMode(kind)] = { base: 2, lattice: kind, life: true, plane: kind, where: t.where };
+  MODE_ICONS[tilingMode(kind)] = `tiling-${kind}`;
+  NAV[tilingMode(kind)] = ['Life', '2D', t.name, 'Life', ''];
+}
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
   NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
@@ -2225,9 +2269,20 @@ MODE_ICONS.lifePits = 'walls';
 const NAV_KINDS = [['Life', 'glider'], ['Ant', 'ant'], ['Walk', 'compass']];
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
 const NAV_SPACES = ['2D', 'Surfaces', '3D'], SPACE_NAMES = { '2D': '2D', Surfaces: '3D', '3D': 'Space' };
+// a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
+function tilingIcon(kind) {
+  const m = TILINGS[kind].polys.length, polys = [];
+  for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) for (let k = 0; k < m; k++) polys.push(tilingAt(kind, i * m + k, j).map((p) => tilingWorld(kind, p)));
+  const c = tilingWorld(kind, [0.5, 0.5]), r = Math.sqrt(Math.abs(TILINGS[kind].basis[0][0] * TILINGS[kind].basis[1][1] - TILINGS[kind].basis[0][1] * TILINGS[kind].basis[1][0]) / m) * 1.6;
+  const near = polys.filter((P) => { const q = [0, 1].map((d) => P.reduce((sum, p) => sum + p[d], 0) / P.length); return Math.hypot(q[0] - c[0], q[1] - c[1]) < r; });
+  const s = 10 / Math.max(...near.flat().map(([x, y]) => Math.max(Math.abs(x - c[0]), Math.abs(y - c[1]))));
+  return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - c[0]) * s).toFixed(1)} ${(12 - (y - c[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');
+}
+for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(kind);
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
   Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', 'Klein bottle': 'klein' };
+for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 // the section's title
 const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Grid' };
@@ -5266,6 +5321,7 @@ function buildLife(seq, mode) {
  * two a rhombus (▲ then ▼), index y × row + x. */
 // the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
 const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128], hat: [16, 24, 32, 48, 64, 128] };
+for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 const plane = { side: 48, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -5382,6 +5438,7 @@ const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]))
 const SYMMETRIES = { none: ['symNone', 'None', ''], mirror: ['symMirror', 'Mirror', 'mirrored'], rotate: ['symRotate', 'Rotate', 'turning'],
                      kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic'], half: ['symHalf', 'Half turn', 'turned by half a turn'] };
 const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'], kite: ['none'], hat: ['none'] };
+for (const kind of Object.keys(TILINGS)) PLANE_SYMMETRIES[kind] = ['none'];
 const symmetryOf = (kind) => (PLANE_SYMMETRIES[kind].includes(plane.sym) ? plane.sym : 'none');
 // a cell and its copies under the grid's symmetry (index y × row + x)
 function cellCopies(kind, W, t) {
@@ -5400,8 +5457,9 @@ const ROOT3_2 = Math.sqrt(3) / 2;
 // that it wraps round), kites 6 a rhombus (on triangles twice as big)
 const planeTorus = (kind) => plane.torus && kind !== 'hat';  // hats never wrap round: they never repeat
 const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1 };
+for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 const planeW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
-const planeRow = (kind, W) => (kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
+const planeRow = (kind, W) => (TILINGS[kind] ? TILINGS[kind].polys.length * W : kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
 // kite x of row y: kite x % 3 of triangle ⌊x / 3⌋ (as the triangles' x), its corners on the triangles' lattice
 const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
@@ -5541,6 +5599,7 @@ function planeCorners(kind, x, y) {  // a cell's corners, in world units
     return [0, 1, 2, 3, 4, 5].map((k) => [cx + Math.cos(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3), cy + Math.sin(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3)]);
   }
   if (kind === 'kite') return kiteCorners(x, y).map(([a, b]) => latticeAt(a, b));
+  if (TILINGS[kind]) return tilingAt(kind, x, y).map((p) => tilingWorld(kind, p));
   if (kind === 'hat') return HAT(walk.plane.W).polys[y * walk.plane.W + x];
   const i = x >> 1;
   if (kind === 'cairo') return cairoCorners(i, y, x & 1).map(([u, v]) => [(u - CAIRO_0[0]) * CAIRO, (v - CAIRO_0[1]) * CAIRO]);  // the walks' pentagons
@@ -5558,6 +5617,13 @@ function insidePolygon(pts, u, v) {
 // the cell at a world point, or null outside the grid
 function planeCellAt(kind, W, wx, wy) {
   let x, y;
+  if (TILINGS[kind]) {  // its lattice cell's polygons, and those of the cells round it
+    const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = TILINGS[kind].polys.length;
+    for (let j = Math.floor(v) - 1; j <= Math.floor(v) + 1; j++) for (let i = Math.floor(u) - 1; i <= Math.floor(u) + 1; i++) {
+      if (i >= 0 && j >= 0 && i < W && j < W) for (let k = 0; k < m; k++) if (insidePolygon(planeCorners(kind, i * m + k, j), wx, wy)) return [i * m + k, j];
+    }
+    return null;
+  }
   if (kind === 'hat') { const t = HAT(W).polys.findIndex((p) => insidePolygon(p, wx, wy)); return t < 0 ? null : [t % W, Math.floor(t / W)]; }
   if (kind === 'cairo') {  // the pentagon holding the point, among those of the squares around
     const i0 = Math.round(wx / CAIRO), j0 = Math.round(wy / CAIRO);
@@ -5625,8 +5691,8 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
   // Cairo pentagons: the cells at each corner, its corners in grid units (cairoCorners), wrapping round
   // the grid every W units
   const cornerKey = (u, v) => { const r = (a) => { const k = Math.round(a * 1000); return torus ? ((k % (W * 1000)) + W * 1000) % (W * 1000) : k; }; return r(u) * 8388608 + r(v); };
-  const byCorner = new Map(), cornersOf = (x, y) => (kind === 'kite' ? kiteCorners(x, y) : kind === 'hat' ? HAT(W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
-  if (kind === 'cairo' || kind === 'kite' || kind === 'hat') for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) for (const [u, v] of cornersOf(x, y)) {
+  const byCorner = new Map(), cornersOf = (x, y) => (TILINGS[kind] ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : kind === 'hat' ? HAT(W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
+  if (kind === 'cairo' || kind === 'kite' || kind === 'hat' || TILINGS[kind]) for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) for (const [u, v] of cornersOf(x, y)) {
     const k = cornerKey(u, v);
     (byCorner.get(k) ?? byCorner.set(k, []).get(k)).push(y * row + x);
   }
@@ -5635,7 +5701,7 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
     start[t] = list.length;
     if (kind === 'square') HENSEL_RING.forEach((bit, q) => { const u = at(x + (bit % 3) - 1, y + Math.floor(bit / 3) - 1); if (ring) ring[8 * t + q] = u; around.add(u); });
     else if (kind === 'hex') HEX.forEach(([dx, dy], q) => { const u = at(x + dx, y + dy); ring[6 * t + q] = u; around.add(u); });
-    else if (kind === 'cairo' || kind === 'kite' || kind === 'hat') for (const [u, v] of cornersOf(x, y)) for (const c of byCorner.get(cornerKey(u, v))) around.add(c);
+    else if (kind === 'cairo' || kind === 'kite' || kind === 'hat' || TILINGS[kind]) for (const [u, v] of cornersOf(x, y)) for (const c of byCorner.get(cornerKey(u, v))) around.add(c);
     else {  // triangles: the 6 around each of its 3 corners (corner (a, b): ▲ of (a, b), (a−1, b), (a, b−1); ▼ of (a−1, b), (a−1, b−1), (a, b−1))
       const i = x >> 1, corners = x & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]];
       for (const [a, b] of corners) {
@@ -5708,6 +5774,7 @@ function planeReseed() {
   syncLink();
 }
 const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons', kite: 'kites', hat: 'hats' };
+for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 // the description's lead: how the cells start, on which grid
 // a zone of the hunt, a random start in it, in words
 function zoneWords(zone) {
@@ -5760,7 +5827,7 @@ function renderPlaneRow() {
     $('startDraw').hidden = !surfaceDraw;
     if (!surfaceDraw) return;
     // a surface: the rule's patterns on its grid, greyed (they cannot be drawn here: Famous lays them)
-    const cells = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat' }[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
+    const cells = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [t.mark, k])) }[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
     for (const b of $('brushCards').children) {
       const p = DRAW_BY_ID.get(b.dataset.brush);
       b.hidden = !(p[1] === cells && p[2].includes(rule));
@@ -5846,7 +5913,7 @@ function drawPlaneGrid() {
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff';
   ctx.beginPath();
   if (kind === 'square') ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
-  else if (kind === 'cairo' || kind === 'kite' || kind === 'hat') {  // ragged all round: the cells in sight
+  else if (kind === 'cairo' || kind === 'kite' || kind === 'hat' || TILINGS[kind]) {  // ragged all round: the cells in sight
     for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
       const [u, v] = planeCorners(kind, x, y)[0];
       if (X(u) > -2 * s && Y(v) > -2 * s && X(u) < cw + 2 * s && Y(v) < ch + 2 * s) cell(x, y);
@@ -5864,7 +5931,7 @@ function drawPlaneGrid() {
     if (kind === 'square') { ctx.rect(X(-1.5), Y(-1.5), (W + 2) * s, (W + 2) * s); ctx.rect(X(W - 0.5), Y(-0.5), -W * s, W * s); }
     else if (kind === 'hat') for (const p of HAT(W).walls) { ctx.moveTo(X(p[0][0]), Y(p[0][1])); for (const [u, v] of p) ctx.lineTo(X(u), Y(v)); ctx.closePath(); }  // the hats round them
     else {
-      const out = kind === 'hex' ? [-1, row] : kind === 'kite' ? [-6, -5, -4, -3, -2, -1, row, row + 1, row + 2, row + 3, row + 4, row + 5] : [-2, -1, row, row + 1];
+      const out = TILINGS[kind] ? [...Array(TILINGS[kind].polys.length).keys()].flatMap((k) => [-1 - k, row + k]).sort((p, q) => p - q) : kind === 'hex' ? [-1, row] : kind === 'kite' ? [-6, -5, -4, -3, -2, -1, row, row + 1, row + 2, row + 3, row + 4, row + 5] : [-2, -1, row, row + 1];
       for (let x = out[0]; x <= out.at(-1); x++) { cell(x, -1); cell(x, W); }
       for (let y = 0; y < W; y++) for (const x of out) cell(x, y);
     }
@@ -5889,7 +5956,9 @@ function drawPlaneGrid() {
 let planeCanvas = null, planeImage = null, planeColours = null;
 // A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
 const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1 };
-const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
+for (const kind of Object.keys(TILINGS)) PATTERN_TURNS[kind] = 1;  // (their patterns as found: neither turned nor mirrored)
+const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
+for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
 const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
@@ -5903,7 +5972,7 @@ function orientPattern(kind, rle, turn, flip) {
   for (const [k, v] of populationOf(`0,0:${rle}`)) {
     const [x, y] = cellXY(k);
     let [u, w] = cellMiddle(kind, x + per * T, y + T);
-    if (flip) u = 2 * axis - u;
+    if (flip && !TILINGS[kind]) u = 2 * axis - u;  // (the new tilings: not mirrored, see PATTERN_TURNS)
     u -= pivot[0];
     w -= pivot[1];
     const c = planeCellAt(kind, V, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos);
@@ -6020,7 +6089,7 @@ function drawLifePlane() {
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
-const lifeMark = (mode) => (mode.plane ? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩' }[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
+const lifeMark = (mode) => (mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -6091,6 +6160,7 @@ function renderColours() {
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
 // birth, let survive) and the states, and the rule as text
 const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7 };  // (hats: 6 or 7, a few 4 or 5)
+for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
   'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.',
