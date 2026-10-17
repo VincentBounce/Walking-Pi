@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.671';
+const VERSION = '0.1.672';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5315,6 +5315,12 @@ const DRAW_PATTERNS = [
   ['maze-meth', 'square', ['B3/S12345'], 'Methuselah', 'A3.A$2.A$2A$5A!', 'settles at generation 430 · 10 cells'],
   ['cairolife-osc', 'cairo', ['B34/S23'], 'Oscillator', '3.A.A$A2.2A$3.A.A!', 'period 6 · 7 cells'],
   ['tlife-osc', 'tri', ['B3/S23'], 'Oscillator', '4A!', 'period 8 · 4 cells'],
+  ['tlife-osc8', 'tri', ['B3/S23'], 'Oscillator', '.3A$.2A$3A!', 'period 8 · 8 cells'],
+  ['tlife-meth4', 'tri', ['B3/S23'], 'Methuselah', '3A$.A!', 'loops from generation 430 · 4 cells'],
+  ['tsparse-osc14', 'tri', ['B45/S345/C4'], 'Oscillator', '3.3A$2.A2B.A$.A.2BA$2.3A!', 'period 4 · 14 cells'],
+  ['twin-osc4', 'hex', ['B2om5/S2om4o'], 'Oscillator', '2.A$2.A$2A$.A$A!', 'period 4 · 6 cells'],
+  ['loops-osc7', 'hex', ['B34/S123/C3'], 'Oscillator', '.A.A$A2.A$3A$2A!', 'period 7 · 9 cells'],
+  ['cairolife-osc4', 'cairo', ['B34/S23'], 'Oscillator', '3.A.A$A2.2A$3.3A!', 'period 4 · 8 cells'],
   ['tlife-meth', 'tri', ['B3/S23'], 'Methuselah', '4.A2.2A$.A3.2A.A$3A.A.3A$2.2A.A$.A.A!', 'loops from generation 1,166 · 19 cells'],
   ['tbrink-meth', 'tri', ['B34/S2/C4'], 'Methuselah', '3.A2.2A$.3A3.3A$2.A.3A$3A3.A$2.3A!', 'settles at generation 4,089 · 20 cells'],
   ['cairogliders-ship0', 'cairo', ['B23/S6/C3'], 'Glider', '$3.A$B.AB.A$2.B!', 'flies, period 2 · 6 cells'],

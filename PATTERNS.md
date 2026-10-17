@@ -1083,6 +1083,27 @@ No pattern can be moved on hats (no two places alike), so Draw has only single c
 
 <br>
 
+## 🔭 More patterns for the first rules of each grid
+
+A search in the app's own page (tools/famoussearch.js: its rules, Callahan's letters, its neighbours), for the first rules of each grid that had no ship: 1,500 to 2,000 small starts each (3 × 3 at 50 %, 2 × 2 at 40 %) on a torus; what they leave run alone. No new ship turned up for Life, Sparse and Brink on triangles, Life's twin and Long loops on hexagons, Cairo Life. New oscillators and a methuselah, each checked in the ways it turns and mirrors:
+
+| Grid | Rule | Pattern | RLE | Does | Link |
+|---|---|---|---|---|---|
+| Triangles | Life B3/S23 | Oscillator | `.3A$.2A$3A!` | period 8 · 8 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B3/S23&s=64&sd=draw&p=32,32:.3A$.2A$3A!) |
+| Triangles | Life B3/S23 | Methuselah | `3A$.A!` | loops from generation 430 · 4 cells (the same on tori of 96 and 128) | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B3/S23&s=64&sd=draw&p=32,32:3A$.A!) |
+| Triangles | Sparse B45/S345/C4 | Oscillator | `3.3A$2.A2B.A$.A.2BA$2.3A!` | period 4 · 14 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTri&r=B45/S345/C4&s=64&sd=draw&p=32,32:3.3A$2.A2B.A$.A.2BA$2.3A!) |
+| Hexagons | Life's twin B2om5/S2om4o | Oscillator | `2.A$2.A$2A$.A$A!` | period 4 · 6 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B2om5/S2om4o&s=64&sd=draw&p=32,32:2.A$2.A$2A$.A$A!) |
+| Hexagons | Long loops B34/S123/C3 | Oscillator | `.A.A$A2.A$3A$2A!` | period 7 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHex&r=B34/S123/C3&s=64&sd=draw&p=32,32:.A.A$A2.A$3A$2A!) |
+| Cairo | Cairo Life B34/S23 | Oscillator | `3.A.A$A2.2A$3.3A!` | period 4 · 8 cells, the most frequent | [play](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCairo&r=B34/S23&s=64&sd=draw&p=32,32:3.A.A$A2.2A$3.3A!) |
+
+A lesson for methuselahs: a torus too small lets their debris and ships come round and start the chaos again. A 4-cell start of Life on triangles loops from 3,656 on a torus of 48 but from 430 on tori of 96 and 128; Kite gliders' and Kite drifters' methuselahs (744 and 1,681 on a torus of 48) send out ships, and run to 1,512 and 2,929 on a torus of 96.
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
 ## 🎲 Densities: how full a start should be
 
 For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.
