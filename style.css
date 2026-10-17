@@ -320,14 +320,15 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .determined .births > svg { width: 24px; height: 24px; flex: none; border-radius: 3px; }
 .determined small { display: block; font-size: 11px; color: var(--muted); }
 #brushCards button:disabled { opacity: 0.55; }  /* a surface's patterns: to see, not to draw */
-.nchips .r { display: flex; align-items: center; gap: 2px; height: 24px; }  /* hexagons: a count a row, its letters beside it */
-.nchips .g3 { display: grid; grid-template-columns: repeat(3, 22px); gap: 2px 4px; justify-content: center; }  /* the others: three counts a row */
+.nchips .r { display: flex; align-items: flex-start; gap: 2px; min-height: 24px; }  /* a count a row, its letters (if any) beside it */
+.nchips .r > button { flex: none; }
+.nchips .lt { display: flex; flex-wrap: wrap; gap: 2px; padding-top: 2.5px; }  /* the letters, wrapping: Hensel's are up to 13 */
 .nchips button { width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 11px; }
 .nchips button.birth { background: #1d9e75; border-color: #1d9e75; color: #fff; }
 .nchips button.survive { background: #378add; border-color: #378add; color: #fff; }
 .nchips button.birth.partly { background: color-mix(in srgb, #1d9e75 35%, transparent); color: inherit; }  /* a count on for some of Callahan's letters only */
 .nchips button.survive.partly { background: color-mix(in srgb, #378add 35%, transparent); color: inherit; }
-.nchips .r button + button { width: 17px; height: 17px; font-size: 10px; }  /* Callahan's letters, by their count */
+.nchips .lt button { width: 17px; height: 17px; font-size: 10px; }  /* Callahan's or Hensel's letters, by their count */
 .colour-swatches i { flex: 1 1 0; max-width: 34px; height: 34px; border-radius: 6px; }  /* as tall as the buttons beside */
 #brushColours { flex: 1; }  /* Draw: the brush's colour, a square to click */
 #brushColours i { cursor: pointer; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.663';
+const VERSION = '0.1.664';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5110,26 +5110,47 @@ function hexClass(mask) {
   return [0, 1, 2, 3, 4, 5].some((q) => ((0b111 << q | 0b111 >> (6 - q)) & 63) === mask) ? 'O' : 'M';
 }
 
+// Hensel's letters on squares (as Golly's liferules.cpp): where 1 to 7 live neighbours sit among the 8, up to the
+// square's turns and mirrors (51 ways with 0 and 8). Each letter's picture for 1 to 4, a 3 × 3 bit mask (bit 3·row +
+// column, the cell itself bit 4); for 5 to 7, the pictures of 3 to 1 the other way round (live ↔ dead)
+const HENSEL = [['ce', [1, 2]], ['ceaikn', [5, 10, 3, 40, 33, 68]], ['ceaiknjqry', [69, 42, 11, 7, 98, 13, 14, 70, 41, 97]],
+  ['ceaiknjqrytwz', [325, 170, 15, 45, 99, 71, 106, 102, 43, 101, 105, 78, 108]]];
+const HENSEL_RING = [0, 1, 2, 3, 5, 6, 7, 8];  // neighbour q of the ring (see planeNeighbours): its bit in the 3 × 3 mask
+const henselClass = (() => {
+  const flip = (x) => ((x & 7) << 6) | ((x & 0x1c0) >> 6) | (x & 0x38);
+  const turn = (x) => ((x & 4) << 6) | ((x & 32) << 2) | ((x & 256) >> 2) | ((x & 2) << 4) | (x & 16) | ((x & 128) >> 4) | ((x & 1) << 2) | ((x & 8) >> 2) | ((x & 64) >> 6);
+  const least = (x) => { let m = x; for (let f = 0; f < 2; f++, x = flip(x)) for (let r = 0; r < 4; r++, x = turn(x)) m = Math.min(m, x); return m; };
+  const of = new Map();
+  HENSEL.forEach(([letters, pics], i) => pics.forEach((p, k) => { of.set(least(p), letters[k]); if (i < 3) of.set(least(p ^ 0x1ef), letters[k]); }));
+  const table = Array.from({ length: 256 }, (_, m) => of.get(least(HENSEL_RING.reduce((x, b, q) => x | (((m >> q) & 1) << b), 0))) ?? '');
+  return (mask) => table[mask];  // the letter (lower case) of a mask of the ring's 8 neighbours; '' for 0 or 8
+})();
+const HENSEL_LETTERS = Array.from({ length: 9 }, (_, c) => (c === 0 || c === 8 ? [] : HENSEL[Math.min(c, 8 - c) - 1][0].split('')));  // each count's letters
+
 // "B3/S23", "B2/S/C3" or "B3/S23/Immigration" → birth and survival tables indexed by the number of
 // live neighbours, and C, the number of states: 2 for Life, more for "Generations" rules (dying
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 function parseRule(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMP]*)\/S([\dOMP]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
-  if (!m || /^[OMP]/.test(m[1]) || /^[OMP]/.test(m[2])) return null;
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZ-]*)\/S([\dOMPCEKAINYQJRTWZ-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
+  if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
+  // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these
+  const hex = /[OMP]/.test(m[1] + m[2]), hensel = /[A-Z-]/.test((m[1] + m[2]).replace(/[OMP]/g, ''));
+  if (hex && hensel) return null;
   // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration),
   // apart from the states C (alive, the dying stages, dead). A cell: 0 dead, k alive of colour k (1 … K),
   // k + K × s dying of colour k at stage s (1 … C − 2). A start has live cells only: one digit a cell in
   // base K + 1 (one colour: in base C, its dying stages too)
-  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = /[OMP]/.test(m[1] + m[2]);
+  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = hex ? 'hex' : hensel ? 'hensel' : false;
   if (C < 2 || C > 10 || colours > LIFE_COLOURS.length) return null;
+  const ring = hensel ? 8 : 6, classOf = hensel ? (mask) => henselClass(mask).toUpperCase() : hexClass;
   const table = (spec) => {
-    const a = new Uint8Array(80);
-    for (const [, d, letters] of spec.matchAll(/(\d)([OMP]*)/g)) {
+    const a = new Uint8Array(16 + (1 << ring));  // by the count, and by 16 + the mask of where they sit
+    for (const [, d, not, letters] of spec.matchAll(/(\d)(-?)([A-Z]*)/g)) {
       if (!letters) a[+d] = 1;
-      for (let mask = 0; mask < 64; mask++) {
+      for (let mask = 0; mask < 1 << ring; mask++) {
         const bits = mask.toString(2).replace(/0/g, '').length;
-        if (bits === +d && (!letters || letters.includes(hexClass(mask)))) a[16 + mask] = 1;
+        if (bits === +d && (!letters || letters.includes(classOf(mask)) !== !!not)) a[16 + mask] = 1;
       }
     }
     return a;
@@ -5198,7 +5219,7 @@ function buildLife(seq, mode) {
   const nbr = cornerNeighbours(g);
   fitColours(g);  // as many colours as the surface has fair spots for
   let rule = lifeRuleNow() || parseRule('B3/S23');
-  if (rule.iso && !nbr.ring) {  // Callahan's letters need hexagons
+  if (rule.iso && (rule.iso !== 'hex' || !nbr.ring)) {  // Callahan's letters need hexagons
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
@@ -5254,12 +5275,14 @@ let cleared = null;  // the cells Clear took away, back with Undo until somethin
 // on Cairo; o or A alive, B C… dying), what it does, its picture (5 × 5 pixels; else its cells)]
 const BRUSH_CELL = ['cell', '', [], 'Cell', 'o!', 'one cell, again to change its state', '.....,.....,..o..'];
 const DRAW_PATTERNS = [
-  ['glider', 'square', ['B3/S23', 'B36/S23'], 'Glider', 'bo$2bo$3o!', 'flies off diagonally', '.....,..o..,...o.,.ooo.'],
+  ['glider', 'square', ['B3/S23', 'B36/S23', 'B3/S2-i34q', 'B2i34c/S2-i3'], 'Glider', 'bo$2bo$3o!', 'flies off diagonally', '.....,..o..,...o.,.ooo.'],
   ['rpentomino', 'square', ['B3/S23'], 'R-pentomino', 'b2o$2o$bo!', 'settles at generation 1,103', '.....,..oo.,.oo..,..o..'],
   ['acorn', 'square', ['B3/S23'], 'Acorn', 'bo$3bo$2o2b3o!', 'settles at generation 5,206', '.....,.o...,...o.,oo.oo'],
   ['diehard', 'square', ['B3/S23'], 'Diehard', '6bo$2o$bo3b3o!', 'dies out at generation 130', '.....,....o,oo...,.o.oo'],
   ['pulsar', 'square', ['B3/S23'], 'Pulsar', '2b3o3b3o$$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o$$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo$$2b3o3b3o!', 'beats with period 3', 'oo.oo,o...o,.....,o...o,oo.oo'],
   ['gosper', 'square', ['B3/S23'], 'Gosper gun', '24bo$22bobo$12b2o6b2o12b2o$11bo3bo4b2o12b2o$2o8bo5bo3b2o$2o8bo3bob2o4bobo$10bo5bo7bo$11bo3bo$12b2o!', 'a glider every 30 generations', 'oo.oo,oo.oo,...+.,....+,..+++'],
+  ['tship', 'square', ['B3/S2-i34q', 'B2i34c/S2-i3'], 'T-ship', '3o$bo!', 'flies, period 5 · 4 cells (tlife\'s name)', '.....,.ooo.,..o..,.....,.....'],
+  ['justfriends-ship', 'square', ['B2-a/S12'], 'Ship', 'o$o$bo!', 'flies diagonally, period 6 · 3 cells', '.....,.o...,.o...,..o..,.....'],
   // found by a search of each rule's small starts (PATTERNS.md); their pictures are their cells
   ['daynight-osc', 'square', ['B3678/S34678'], 'Oscillator', '.A$.A$2A$A!', 'period 16 · 5 cells'],
   ['daynight-meth', 'square', ['B3678/S34678'], 'Methuselah', '2.A$2A2.A$2A2.A$A.2A$2A.2A!', 'loops from generation 219 · 14 cells'],
@@ -5445,9 +5468,9 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
 }
 // the cells sharing an edge or a corner with each one (wrapping around, or not past the edges), as the
 // surfaces' lists; on hexagons, also the 6 around in turn (ring: Callahan's letters)
-function planeNeighbours(kind, W, torus) {
+function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 8 neighbours in order too
   const row = planeRow(kind, W), n = row * W, start = new Int32Array(n + 1), list = [];
-  const ring = kind === 'hex' ? new Int32Array(6 * n).fill(-1) : null;
+  const ring = kind === 'hex' ? new Int32Array(6 * n).fill(-1) : hensel && kind === 'square' ? new Int32Array(8 * n).fill(-1) : null;
   const at = (x, y) => {  // a cell's index (triangles: by their rhombus), −1 past a dead edge
     if (torus) { const w = kind === 'tri' ? W : row; x = kind === 'tri' ? 2 * (((x >> 1) % w + w) % w) + (x & 1) : ((x % w) + w) % w; y = ((y % W) + W) % W; }
     return x < 0 || y < 0 || x >= row || y >= W ? -1 : y * row + x;
@@ -5464,7 +5487,7 @@ function planeNeighbours(kind, W, torus) {
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
     const t = y * row + x, around = new Set();
     start[t] = list.length;
-    if (kind === 'square') for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (dx || dy) around.add(at(x + dx, y + dy)); }
+    if (kind === 'square') HENSEL_RING.forEach((bit, q) => { const u = at(x + (bit % 3) - 1, y + Math.floor(bit / 3) - 1); if (ring) ring[8 * t + q] = u; around.add(u); });
     else if (kind === 'hex') HEX.forEach(([dx, dy], q) => { const u = at(x + dx, y + dy); ring[6 * t + q] = u; around.add(u); });
     else if (kind === 'cairo' || kind === 'kite') for (const [u, v] of cornersOf(x, y)) for (const c of byCorner.get(cornerKey(u, v))) around.add(c);
     else {  // triangles: the 6 around each of its 3 corners (corner (a, b): ▲ of (a, b), (a−1, b), (a, b−1); ▼ of (a−1, b), (a−1, b−1), (a, b−1))
@@ -5490,12 +5513,12 @@ function buildLifePlane(seq) {
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
   fitColours();  // as many colours as the grid has fair blocks for
   let rule = lifeRuleNow() || parseRule('B3/S23');
-  if (rule.iso && kind !== 'hex') {  // Callahan's letters need hexagons
+  if (rule.iso && kind !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
-  const nbr = planeNeighbours(kind, W, plane.torus);
+  const nbr = planeNeighbours(kind, W, plane.torus, rule.iso === 'hensel');
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
@@ -5922,6 +5945,7 @@ const RULE_ICONS = {
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
   'B3/S235/C3': '..o..,.o+o.,o+.+o,.o+o.,..o..', 'B3/S1247': 'o...o,.o.o.,..o..,.o.o.,o...o',
+  'B3/S2-i34q': '.....,.ooo.,..o..,.....,.....', 'B2i34c/S2-i3': 'o.o..,.o...,o.o.o,...o.,..o.o', 'B2-a/S12': 'ooooo,....o,ooo.o,o...o,o.ooo',
   'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
@@ -5930,6 +5954,7 @@ const RULE_ICONS = {
 };
 const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
   .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`;
+let henselShown = false;  // squares: Hensel's letters beside the counts, from a rule written with them until a rule card without
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
   if (!mode.life) return;
@@ -5941,22 +5966,34 @@ function renderRuleSection() {
     b.classList.toggle('active', o.value === now);
     b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}</span>`
       + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
-    b.addEventListener('click', () => { setRuleText(o.value); compute(); });
+    b.addEventListener('click', () => { henselShown = parseRule(o.value)?.iso === 'hensel'; setRuleText(o.value); compute(); });
     return b;
   }));
-  // your own: the chips of the rule in use; on hexagons, for 2, 3 and 4 live neighbours, Callahan's letters
-  // too (where they sit: o side by side, m one cell apart, p opposite), a count partly on when only some are
-  const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡', LETTERS = ['o', 'm', 'p'];
-  const ofCount = (m) => m.toString(2).replace(/0/g, '').length;
-  const letters = (table) => Array.from({ length: N + 1 }, (_, c) => new Set(LETTERS.filter((x) => (rule.iso
-    ? Array.from({ length: 64 }, (_, m) => m).some((m) => table[16 + m] && ofCount(m) === c && (!hex || c < 2 || c > 4 || hexClass(m) === x.toUpperCase()))
+  // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
+  // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
+  // (1 to 7, see henselClass); a count partly on when only some of its letters are
+  const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡';
+  if (rule.iso === 'hensel') henselShown = true;
+  const hensel = mark === '■' && henselShown;  // (kept while its letters are clicked, even all on or all off)
+  const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : []);
+  const all = (c) => (lettersOf(c).length ? lettersOf(c) : ['']);  // a count without letters: one, ''
+  const classOf = (m) => (hex ? hexClass(m).toLowerCase() : henselClass(m)), R = hex ? 6 : 8, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
+  const letters = (table) => Array.from({ length: N + 1 }, (_, c) => new Set(all(c).filter((x) => (rule.iso
+    ? Array.from({ length: 1 << R }, (_, m) => m).some((m) => table[16 + m] && ofCount(m) === c && (x === '' || classOf(m) === x))
     : table[c] === 1))));
   const write = (B, S, C) => {
-    const part = (set) => set.map((on, c) => (!on.size ? '' : !hex || c < 2 || c > 4 || on.size === 3 ? c : c + LETTERS.filter((x) => on.has(x)).join(''))).join('');
+    const part = (set) => set.map((on, c) => {
+      const ls = all(c), off = ls.filter((x) => !on.has(x));
+      if (!on.size) return '';
+      if (!off.length) return c;
+      return hensel && off.length < on.size ? `${c}-${off.join('')}` : c + ls.filter((x) => on.has(x)).join('');  // Hensel's "-": all but these
+    }).join('');
     return `B${part(B)}/S${part(S)}${C > 2 ? `/C${C}` : ''}`;
   };
   const B = letters(rule.B), S = letters(rule.S);
   const WHERE = { o: 'side by side', m: 'one cell apart', p: 'opposite' };
+  const said = (c, x) => (hensel ? `${c} live neighbours, Hensel's ${x}`
+    : `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`);
   for (const [id, set, cls] of [['ruleBirth', B, 'birth'], ['ruleSurvive', S, 'survive']]) {
     const chip = (text, on, title, click) => {
       const b = document.createElement('button');
@@ -5967,13 +6004,11 @@ function renderRuleSection() {
       b.addEventListener('click', () => { click(); setRuleText(write(B, S, rule.C)); compute(); });
       return b;
     };
-    const counts = set.map((on, c) => chip(c, on.size === 3 ? cls : on.size ? `${cls} partly` : '', `${c} live neighbour${c === 1 ? '' : 's'}`,
-      () => { set[c] = new Set(on.size ? [] : LETTERS); }));
     const box = (className, items) => { const d = document.createElement('div'); d.className = className; d.append(...items); return d; };
-    // hexagons: a count a row, Callahan's letters beside 2, 3 and 4; the others: three counts a row
-    $(id).replaceChildren(...(!hex ? [box('g3', counts)] : counts.map((b, c) => box('r', [b, ...(c < 2 || c > 4 ? [] : LETTERS.map((x) => chip(x, set[c].has(x) ? cls : '',
-      `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`,
-      () => { set[c].has(x) ? set[c].delete(x) : set[c].add(x); })))]))));
+    $(id).replaceChildren(...set.map((on, c) => box('r', [
+      chip(c, on.size === all(c).length ? cls : on.size ? `${cls} partly` : '', `${c} live neighbour${c === 1 ? '' : 's'}`, () => { set[c] = new Set(on.size ? [] : all(c)); }),
+      ...(lettersOf(c).length ? [box('lt', lettersOf(c).map((x) => chip(x, on.has(x) ? cls : '', said(c, x), () => { on.has(x) ? on.delete(x) : on.add(x); })))] : []),
+    ])));
   }
   // the states as cells, from the top: alive, its dying stages fading, dead on the panel's white (✝ on each but the
   // live one; white on the cells nearer the live colour on a light page, the dead one on a dark page); past the room
@@ -6071,7 +6106,7 @@ function lifeTrack(gen) {
 // that fails to survive goes through the dying stages, keeping its colour, and cannot be born again until
 // it is dead. A cell dying at generation g records died = g (fading trail).
 function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1;
+  const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const changes = L.born + L.dead;  // before this generation
   L.gen++;
@@ -6086,8 +6121,8 @@ function lifeStep() {
     } else {
       let c = 0;
       around.fill(0);
-      if (ring) {  // where the live neighbours sit around the hexagon
-        for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; } }
+      if (ring) {  // where the live neighbours sit around it (6 round a hexagon, 8 round a square)
+        for (let q = 0; q < R; q++) { const v = ring[R * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; } }
         c += 16;
       } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; } }
       if (was) now = L.S[c] ? was : C > 2 ? was + K : 0;
@@ -6171,7 +6206,7 @@ function huntWorker() {
   };
   self.onmessage = (e) => {
     const { n, start, list, ring, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, dies } = e.data;  // dies: only the runs dying out; dense: a start's density, drawn between these
-    const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K;
+    const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K, R = ring ? ring.length / n : 0;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
       const was = a[t];
@@ -6180,7 +6215,7 @@ function huntWorker() {
       let c = 0;
       around.fill(0);
       if (ring) {
-        for (let q = 0; q < 6; q++) { const v = ring[6 * t + q]; if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; } }
+        for (let q = 0; q < R; q++) { const v = ring[R * t + q]; if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; } }
         c += 16;
       } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (live(v)) { c++; around[v]++; } }
       if (was) return S[c] ? was : C > 2 ? was + K : 0;
@@ -6262,7 +6297,7 @@ function huntWorker() {
           const t = changed[i];
           if (mark[t] !== stamp) { mark[t] = stamp; list2[nActive++] = t; }
           for (let q = start[t]; q < start[t + 1]; q++) { const u = list[q]; if (mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
-          if (ring) for (let q = 0; q < 6; q++) { const u = ring[6 * t + q]; if (u >= 0 && mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
+          if (ring) for (let q = 0; q < R; q++) { const u = ring[R * t + q]; if (u >= 0 && mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
         }
         active = list2;
       }
