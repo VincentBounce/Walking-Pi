@@ -415,11 +415,11 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .ranking .rank-row { position: absolute; left: 0; right: 0; top: var(--head, 0px); height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
 .gauges .gauge-row { height: 18px; display: grid; grid-template-columns: 64px minmax(0, 1fr) 110px; align-items: center; gap: 6px; }  /* one colour: fixed rows */
 .gauges .gauge-row > span:first-child { color: var(--muted); }
-.ranking .rank-cell, .ranking .rank-head { display: none; }
+.ranking .rank-cell, .ranking .rank-head { display: none; white-space: nowrap; }
+#ranking .rank-cell:nth-child(4) { display: block; text-align: right; }  /* folded: the table's alive column only */
 .stage-bar:hover #ranking { --head: 18px; }  /* the player open: by each bar, a table, its titles on top */
 .stage-bar:hover #ranking .rank-row { grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; }
-.stage-bar:hover #ranking .rank-num { display: none; }
-.stage-bar:hover #ranking .rank-cell { display: block; text-align: center; white-space: nowrap; }
+.stage-bar:hover #ranking .rank-cell { display: block; text-align: center; }
 .stage-bar:hover #ranking .rank-head { display: grid; position: absolute; top: 0; left: 0; right: 0; height: 18px; grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; gap: 6px; align-items: center; color: var(--muted); font-size: 11px; }
 .stage-bar:hover #ranking .rank-head span { text-align: center; }
 .stage-bar:hover #ranking .rank-head span:first-child { grid-column: 4; }
@@ -442,8 +442,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .life-chips .rule-chip b .icon .f { fill: var(--on); }
 .life-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }  /* a row a colour: alive, born, died, ever alive */
 .bar-title.life .bar-num { max-width: none; font-size: 18px; font-variant-numeric: tabular-nums; white-space: pre; }  /* Life: the generation's digits all as wide (see updateStats) */
-.bar-title.life { flex-wrap: wrap; row-gap: 4px; }  /* Life: the rule under the generation when too narrow for both */
-.bar-title.life #barBase { margin-left: auto; }  /* Life: its rule on the right of the title */
+.bar-title.life { flex-wrap: wrap; row-gap: 4px; }
+.bar-title.life .bar-num { flex-basis: 100%; }  /* Life: its rule under the generation, on the left */
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
 .rule-chip b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.680';
+const VERSION = '0.1.681';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9312,8 +9312,9 @@ function renderGauges(L) {
   });
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
-// the live ones), then those died out, the last first (✝, when); a row a colour, sliding to its place; all dead, said.
-// The player open: by each bar, a table (alive, born, died, ever alive), its titles on top
+// the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
+// said. By each bar a table (alive, born, died, ever alive, in its colour): folded, its alive column only; the player
+// open, all of it, its titles on top
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
   box.hidden = K < 2;
@@ -9322,9 +9323,8 @@ function renderRanking(L) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
       const r = document.createElement('div');
       r.className = 'rank-row';
-      r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span><span class="rank-num"></span>`
+      r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span>`
         + `<span class="rank-cell" style="color:${LIFE_COLOURS[k]}"></span>`.repeat(4);
-      r.children[3].style.color = LIFE_COLOURS[k];  // its numbers in its colour
       r.title = LIFE_COLOUR_NAMES[k];
       return r;
     }), Object.assign(document.createElement('span'), { className: 'all-dead' }),
@@ -9342,11 +9342,10 @@ function renderRanking(L) {
     const r = box.children[k - 1], off = dead(k);
     r.style.transform = `translateY(${top + place * H}px)`;
     r.classList.toggle('dead', off);
-    r.children[0].textContent = off ? '✝' : place + 1;  // (then its colour, its bar, its count; open, its table)
+    r.children[0].textContent = place + 1;  // (then its colour, its bar, its table)
     const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    r.children[3].innerHTML = off ? `gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`;
-    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[4 + c].innerHTML = v; });
+    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
