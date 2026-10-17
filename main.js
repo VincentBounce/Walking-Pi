@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.675';
+const VERSION = '0.1.676';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9274,7 +9274,8 @@ function drawActivity() {
   ctx.globalAlpha = 1;
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
-// the live ones), then those died out, the last first (✝, when); a row a colour, sliding to its place; all dead, said
+// the live ones), then those died out, the last first (✝, when); a row a colour, sliding to its place; all dead, said.
+// The player open: by each bar, a table (alive, born, died, ever alive), its titles on top
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
   box.hidden = K < 2;
@@ -9283,10 +9284,12 @@ function renderRanking(L) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
       const r = document.createElement('div');
       r.className = 'rank-row';
-      r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span><span class="rank-num"></span>`;
+      r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span><span class="rank-num"></span>`
+        + '<span class="rank-cell"></span>'.repeat(4);
       r.title = LIFE_COLOUR_NAMES[k];
       return r;
-    }), Object.assign(document.createElement('span'), { className: 'all-dead' }));
+    }), Object.assign(document.createElement('span'), { className: 'all-dead' }),
+    Object.assign(document.createElement('div'), { className: 'rank-head', innerHTML: '<span>Alive</span><span>Born</span><span>Died</span><span>Ever alive</span>' }));
     box.dataset.k = K;
   }
   const dead = (k) => L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined, alive = [], gone = [];
@@ -9294,7 +9297,7 @@ function renderRanking(L) {
   alive.sort((a, b) => L.byColour[b] - L.byColour[a] || a - b);
   gone.sort((a, b) => L.extinctAt[b] - L.extinctAt[a] || a - b);
   const total = alive.reduce((sum, k) => sum + L.byColour[k], 0) || 1, top = alive.length ? 0 : H;  // (all dead: a line for it on top)
-  box.style.height = `${K * H + top}px`;
+  box.style.height = `calc(${K * H + top}px + var(--head, 0px))`;
   [...alive, ...gone].forEach((k, place) => {
     const r = box.children[k - 1], off = dead(k);
     r.style.transform = `translateY(${top + place * H}px)`;
@@ -9302,8 +9305,10 @@ function renderRanking(L) {
     r.children[0].textContent = off ? '✝' : place + 1;
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * L.byColour[k]) / total}%`;
     r.children[3].textContent = off ? `gen ${fmt(L.extinctAt[k])}` : fmt(L.byColour[k]);
+    const pc = (v) => `${fmt(v)} (${((100 * v) / L.alive.length).toFixed(1)} %)`;
+    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : pc(L.byColour[k]), fmt(L.bornBy[k]), fmt(L.deadBy[k]), pc(L.everBy[k])].forEach((v, c) => { r.children[4 + c].textContent = v; });
   });
-  box.lastChild.textContent = alive.length ? '' : 'All dead';
+  box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
@@ -9352,9 +9357,8 @@ function updateStats() {
       ? bubble(c, '✝', 'All died out', `gen ${fmt(L.extinctAt[k])}`) : bubble(c, icon('aliveDot'), name, pc(alive)));
     const row = (c, k, alive, born, died, ever) => [aliveBubble(c, k, 'Alive', alive), bubble(c, icon('born'), 'Born', fmt(born)),
       bubble(c, icon('died'), 'Died', fmt(died)), bubble(c, icon('ever'), 'Ever alive', pc(ever))].join('');
-    $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, 1, L.aliveCount, L.born, L.dead, L.everAlive)
-      : L.colours > 6 ? LIFE_COLOURS.slice(0, L.colours).map((c, k) => aliveBubble(c, k + 1, LIFE_COLOUR_NAMES[k], L.byColour[k + 1])).join('')  // many: the live cells only
-      : LIFE_COLOURS.slice(0, L.colours).map((c, k) => row(c, k + 1, L.byColour[k + 1], L.bornBy[k + 1], L.deadBy[k + 1], L.everBy[k + 1])).join('');
+    $('lifeChips').innerHTML = L.colours === 1 ? row(LIFE_ALIVE, 1, L.aliveCount, L.born, L.dead, L.everAlive) : '';  // (a battle: the ranking's table)
+    $('lifeChips').hidden = L.colours > 1;
     renderRanking(L);
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
