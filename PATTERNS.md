@@ -1062,6 +1062,27 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 
 <br>
 
+## 🎩 Life on hats: the tile that never repeats
+
+The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023), 8 kites, tiles the plane only without ever repeating; built here by substitution as Craig S. Kaplan's hatviz. A grid of side W is the W² hats nearest the middle (a square), the hats round them its walls; it cannot wrap round. Nearly all corners join 3 hats, so a hat has 6 neighbours on average (Euler): 6 or 7 inside, a few 4 or 5. Life B3/S23 dies at once.
+
+17,604 rules (B: 2 or 3 and up to 2 more digits of 2…7; S: up to 4 of 0…7; 2 to 5 states) from one soup on 1,024 hats; 719 that settle with a little ash followed over 12 soups on 2,304 hats (tools/kitesearch hatsearch.js, traces.js, rank.js), scored against Life on 48 × 48 squares. The ash on hats is thin (under 1 %), but two rules have Life's lasting chaos:
+
+| Rule | Settles | Spread (sd of log) | Plateau | Alive at 200 | Ash | Ends with oscillators | Link |
+|---|---|---|---|---|---|---|---|
+| Life (48 × 48 squares) | 301 to 2,265 | 0.57 | 0.63 | 8.6 % | 2.9 % | 100 % | |
+| **B257/S367** (Hat Life) | 900 to 3,549 | 0.42 | 0.62 | 13.7 % | 0.8 % | 100 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHat&r=B257/S367&s=48&sd=random.30.7) |
+| **B245/S134/C5** (Hat comets) | 521 to 3,699 | 0.70 | 0.77 | 6.3 % | 0.4 % | 44 % | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dHat&r=B245/S134/C5&s=48&sd=random.30.7) |
+| B256/S36 | 375 to 3,420 | 0.68 | 0.59 | 15.8 % | 0.8 % | 100 % | |
+
+No pattern can be moved on hats (no two places alike), so Draw has only single cells there, and Famous none.
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
 ## 🎲 Densities: how full a start should be
 
 For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.
