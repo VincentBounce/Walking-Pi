@@ -1163,6 +1163,8 @@ On each, up to 103,448 rules (B: 2, 3 or 4 and up to 2 more digits; S: up to 4 d
 | Rhombille | **B367/S015** | 0.11 | 360 to 1,050 | 0.34 | 11.6 % | 3.8 % | 100 % |  | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dRhombille&r=B367/S015&s=48&sd=random.30.7) |
 | Capital I | **B345/S0236** | 0.01 | 180 to 410 | 0.48 | 10.1 % | 4.5 % | 92 % | nothing near Life with 6 neighbours | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCapitalI&r=B345/S0236&s=48&sd=random.30.7) |
 
+**Penrose's rhombi** (P3, aperiodic: walls only, as the hats; built by cutting Robinson triangles, 7 to 11 neighbours inside), the same search: **B39/S0239** scores 0.50 (settles 250 to 2,200, plateau 0.37, 8.7 % alive at 200, ash 2.4 %), and **B3/S023**, Life with lone cells surviving, 0.44 (settles 170 to 1,460, ash 2.2 %, oscillators in 75 % of the ends) ([soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPenrose&r=B3/S023&s=48&sd=random.30.7)). No pattern moves on them: no Famous.
+
 The second rule of each (Long florets B24/S456/C4 with a ship of 12 cells, period 5; Long prisms B245/S16/C5, the light-speed ship too; Long rhombitri, Snub embers, Pythagoras sparks, Rhombille sparks with a 5-cell methuselah of 856, Tetrakis embers, Long kisrhombille) and all their patterns are in Draw and Famous.
 
 <br>

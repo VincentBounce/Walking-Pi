@@ -11,7 +11,7 @@ const digits = [...Array(most + 1).keys()], Bs = new Set();
 for (const lo of [2, 3, 4]) for (const rest of subsets(digits.filter((d) => d > lo), 2)) Bs.add([lo, ...rest].join(''));
 const rules = [];
 for (const b of Bs) for (const s of subsets(digits, 4)) for (const c of [2, 3, 4, 5]) rules.push(`B${b}/S${s.join('')}${c > 2 ? '/C' + c : ''}`);
-const m = tilingCells(name), W1 = Math.round(Math.sqrt(1500 / m)), W2 = Math.round(Math.sqrt(3500 / m)), dir = new URL('./out/', import.meta.url), t0 = Date.now();
+const m = name === 'penrose' ? 1 : tilingCells(name), W1 = Math.round(Math.sqrt(1500 / m)), W2 = Math.round(Math.sqrt(3500 / m)), dir = new URL('./out/', import.meta.url), t0 = Date.now();
 Deno.mkdirSync(dir, { recursive: true });
 const cool = () => new Promise((r) => setTimeout(r, 30000));  // a rest between stages
 const P = pool(N);
