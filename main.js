@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.681';
+const VERSION = '0.1.682';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9317,7 +9317,7 @@ function renderGauges(L) {
 // open, all of it, its titles on top
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
-  box.hidden = K < 2;
+  box.hidden = $('rankAlive').hidden = K < 2;
   if (K < 2) return;
   if (box.dataset.k !== String(K)) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
@@ -9373,7 +9373,7 @@ function updateStats() {
     const digits = String(walk.n).length, commas = fmt(walk.n).length - digits;
     $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
   }
-  if (!walk.life) $('ranking').hidden = $('gauges').hidden = true;
+  if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankAlive').hidden = true;
   document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
   document.querySelector('.stage-bar .stats').hidden = !!walk.life;  // Life: bubbles instead (lifeChips)
   $('lifeChips').hidden = !walk.life;

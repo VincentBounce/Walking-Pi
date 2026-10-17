@@ -444,6 +444,8 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .bar-title.life .bar-num { max-width: none; font-size: 18px; font-variant-numeric: tabular-nums; white-space: pre; }  /* Life: the generation's digits all as wide (see updateStats) */
 .bar-title.life { flex-wrap: wrap; row-gap: 4px; }
 .bar-title.life .bar-num { flex-basis: 100%; }  /* Life: its rule under the generation, on the left */
+.bar-title .rank-alive { margin-left: auto; align-self: flex-end; font-size: 11px; color: var(--muted); }  /* folded: over the ranking's alive column (open: its own titles) */
+.stage-bar:hover .bar-title .rank-alive { display: none; }
 .rule-chip { display: flex; align-items: center; gap: 6px; padding: 4px 7px 4px 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); font-size: 12px; min-width: 0; }
 .rule-chip b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; color: #0d1117; }
 .rule-chip span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; white-space: nowrap; }
