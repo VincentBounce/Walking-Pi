@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.746';
+const VERSION = '0.1.747';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7122,7 +7122,9 @@ function huntParts(r, K) {
     return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k + 0.5) * stretch, g.W / 2)));  // at their stretches' middles
   }
   if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its middle is in
-    const [a, b] = torusBlocks(K), block = (t) => { const [u, v] = sheetMiddle(g, t); return Math.min(a - 1, Math.floor((u * a) / g.nu)) * b + Math.min(b - 1, Math.floor((v * b) / g.nv)); };
+    // (a Klein bottle's tile across the seam, its middle past the sheet's end: in the block at that end)
+    const [a, b] = torusBlocks(K), at = (x, m, k) => Math.max(0, Math.min(k - 1, Math.floor((x * k) / m)));
+    const block = (t) => { const [u, v] = sheetMiddle(g, t); return at(u, g.nu, a) * b + at(v, g.nv, b); };
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
