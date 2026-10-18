@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.725';
+const VERSION = '0.1.726';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6468,8 +6468,9 @@ function ruleTutorial(option) {
   let ids = 0;
   const cell = (centre, k, after) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
     const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
-    return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"${i === 0 ? ' class="tut-centre"' : ''}/>`; }).join('')}`
-    + `${after === 'born' ? shine(`tut${ids++}`) : after === 'dies' ? fade : ''}</svg>`;
+    return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}`
+    + `${after === 'born' ? shine(`tut${ids++}`) : after === 'dies' ? fade : ''}`
+    + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
   // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
   const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
   const share = (table, k) => { if (!rule.iso) return table[k] ? 1 : 0; const ms = Array.from({ length: 1 << R }, (_, m) => m).filter((m) => ofCount(m) === k); return ms.filter((m) => table[16 + m]).length / (ms.length || 1); };
