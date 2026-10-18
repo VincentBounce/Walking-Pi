@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.712';
+const VERSION = '0.1.713';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1036,6 +1036,7 @@ const MODES = {
   lifeTetraKite: { base: 2, lattice: 'sphere', sphere: 'tetraKite', life: true, where: 'a tetrahedron of kites (each triangle cut in 3)' },
   lifeOctaKite: { base: 2, lattice: 'sphere', sphere: 'octaKite', perspective: true, life: true, where: 'an octahedron of kites (each triangle cut in 3)' },
   lifeIcosaKite: { base: 2, lattice: 'sphere', sphere: 'icosaKite', life: true, round: true, where: 'an icosahedron of kites (each triangle cut in 3)' },
+  lifeHatSphere: { base: 2, lattice: 'sphere', sphere: 'hatsphere', life: true, round: true, where: "a sphere of hats (on the icosahedron's kites, cut along its net's seams)" },
   lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true,
                 where: 'a stella octangula (two tetrahedra) of triangles' },
   lifeDodeca: { base: 2, lattice: 'sphere', sphere: 'dodeca', life: true,
@@ -2176,7 +2177,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dSpectre: 'spectre', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
+  life2dKite: 'kites', life2dHat: 'hat', lifeHatSphere: 'icosahedron', life2dPenrose: 'penrose', life2dSpectre: 'spectre', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
   life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
@@ -2240,7 +2241,7 @@ const NAV = {
   lifeKleinTri: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeKleinCairo: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
-  lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''], lifeKiteTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''], lifeHatSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''], lifeKiteTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeMobiusKite: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeKleinKite: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeTetraKite: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOctaKite: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeIcosaKite: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   squareParity: ['Walk', '2D', 'Squares', 'Parity', 'grid'], squareParityCells: ['Walk', '2D', 'Squares', 'Parity', 'cells'],
@@ -2351,8 +2352,8 @@ const FAMILIES = [
            [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Klein bottle', modes: [['kleinWalk', 'lifeKlein', 'kleinPivot'], ['kleinCairoWalk', 'lifeKleinCairo'], ['kleinHexWalk', 'lifeKleinHex', 'kleinHexPivot'], ['kleinTriWalk', 'lifeKleinTri'], ['lifeKleinKite']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'pentagons', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons'], [3, false, 'tilesTri', 'Triangles'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
-  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid'], ['lifeIcosaKite']], tab: 0,
-    tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)'], [2, false, 'kites', 'Kites (each triangle cut in 3)']] },
+  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid'], ['lifeIcosaKite'], ['lifeHatSphere']], tab: 0,
+    tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)'], [2, false, 'kites', 'Kites (each triangle cut in 3)'], [3, false, 'hat', "Hats (on the kites, cut along the net's seams)"]] },
   { name: 'Tetrahedron', modes: [['tetraGrid', 'tetraLR', 'tetraPivotGrid', 'lifeTetra'], ['lifeTetraKite']], tab: 0,
     tabs: [[0, false, 'tilesTri', 'Triangles'], [1, false, 'kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Octahedron', modes: [['octaGrid', 'octaLR', 'octaPivotGrid', 'lifeOcta'], ['lifeOctaKite']], tab: 0,
@@ -4094,7 +4095,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
+const MORPHABLE = ['hatsphere', 'klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
   ...Object.keys(TILINGS).filter((k) => TILINGS[k].sheet).flatMap((k) => (TILINGS[k].turns === 6 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
 
 function shapeAt(g, m) {
@@ -4132,6 +4133,7 @@ function shapeAt(g, m) {
     const ax = C[i2] - C[i0], ay = C[i2 + 1] - C[i0 + 1], az = C[i2 + 2] - C[i0 + 2];
     const bx = C[il] - C[i1], by = C[il + 1] - C[i1 + 1], bz = C[il + 2] - C[i1 + 2];
     let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    if (g.newell) [nx, ny, nz] = newell(Array.from({ length: k }, (_, q) => [C[o + 3 * q], C[o + 3 * q + 1], C[o + 3 * q + 2]]));  // (tiles not convex: the diagonals' cross may point in)
     const l = (Math.hypot(nx, ny, nz) || 1) * sign;
     nx /= l; ny /= l; nz /= l;
     cen[3 * t] = cx; cen[3 * t + 1] = cy; cen[3 * t + 2] = cz;
@@ -4333,6 +4335,8 @@ const SPHERES = {
   tetraKite: { mesh: (f) => flatPolyhedron('tetra', f, true), radius: (f) => f / (2 * Math.SQRT2), tiles: (f) => 12 * f * f, unit: 'kites' },
   octaKite: { mesh: (f) => flatPolyhedron('octa', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 24 * f * f, unit: 'kites' },
   icosaKite: { mesh: (f) => flatPolyhedron('icosa', f, true), radius: (f) => f / 2, tiles: (f) => 60 * f * f, unit: 'kites' },
+  // hats on the icosahedron of kites (see hatSphereMesh): about 7.5 f² + 10.5 f (built, its own count)
+  hatsphere: { mesh: (f) => hatSphereMesh(f), radius: (f) => f / 2, tiles: (f) => meshCache[`hatsphere${f}`]?.n ?? Math.round(7.5 * f * f + 10.5 * f), unit: 'hats' },
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
             tiles: (f) => 24 * f * f, unit: 'triangles' },
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
@@ -4475,7 +4479,7 @@ function gridGraph(g) {
  * along the grid starts on a corner, arriving by one of its edges. The rotations that map the solid
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
-const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite'];
+const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite', 'hatsphere'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
   ...Object.keys(TILINGS).filter((k) => TILINGS[k].sheet).flatMap((k) => (TILINGS[k].turns === 6 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
@@ -5723,6 +5727,127 @@ const SPECTRE = (() => {
   })();
 })();
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE };  // the grids that never repeat: a square patch, walls round it, never a torus
+
+/* Hats on the sphere (an experiment): the icosahedron of kites unfolded into a net (its faces laid flat from the first,
+ * across their edges, breadth first), a patch of hats laid on it so that each hat covers 8 of its kites (their grid's
+ * triangles 0.935 a side in HAT's units: the net's scaled to it, turned and moved until every kite of the first face lies
+ * in one hat), folded back: a cell a hat's kites that touch, not across the net's cuts (there, hats are cut: pieces of
+ * 1 to 7 kites along its 11 cut edges). Its cells not convex: their triangles given (tris), their normals Newell's */
+function hatSphereMesh(f) {
+  const key = `hatsphere${f}`;
+  if (meshCache[key]) return meshCache[key];
+  const g = flatPolyhedron('icosa', f, true), Fc = g.faces, V = g.verts, k = g.sides, per = g.perFace;
+  const k3 = (p) => p.map((v) => Math.round(v * 1e5)).join(','), fk = Fc.map((fc) => fc.corners.map(k3));
+  const side = Math.hypot(...[0, 1, 2].map((d) => Fc[0].corners[0][d] - Fc[0].corners[1][d])), s = side / f;
+  // the net: each face's corners in the plane
+  const pos = Fc.map(() => null), queue = [0];
+  pos[0] = [[0, 0], [side, 0], [side / 2, (side * Math.sqrt(3)) / 2]];
+  while (queue.length) {
+    const a = queue.shift();
+    for (let b = 0; b < Fc.length; b++) {
+      if (pos[b]) continue;
+      const sh = fk[a].map((x, i) => [i, fk[b].indexOf(x)]).filter(([, j]) => j >= 0);
+      if (sh.length !== 2) continue;
+      const [[i1, j1], [i2, j2]] = sh, P1 = pos[a][i1], P2 = pos[a][i2], P3 = pos[a][3 - i1 - i2], dx = P2[0] - P1[0], dy = P2[1] - P1[1];
+      const t = ((P3[0] - P1[0]) * dx + (P3[1] - P1[1]) * dy) / (dx * dx + dy * dy), fx = P1[0] + t * dx, fy = P1[1] + t * dy, np = [];
+      np[j1] = P1; np[j2] = P2; np[3 - j1 - j2] = [2 * fx - P3[0], 2 * fy - P3[1]];
+      pos[b] = np;
+      queue.push(b);
+    }
+  }
+  const flat = (i, p) => {  // a point of face i, in the net (by its shares of the face's sides)
+    const [A, B, C] = Fc[i].corners, v0 = [0, 1, 2].map((d) => B[d] - A[d]), v1 = [0, 1, 2].map((d) => C[d] - A[d]), v2 = [0, 1, 2].map((d) => p[d] - A[d]);
+    const dot = (x, y) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2], d00 = dot(v0, v0), d01 = dot(v0, v1), d11 = dot(v1, v1), d20 = dot(v2, v0), d21 = dot(v2, v1), den = d00 * d11 - d01 * d01;
+    const b1 = (d11 * d20 - d01 * d21) / den, b2 = (d00 * d21 - d01 * d20) / den, [P, Q, R] = pos[i];
+    return [P[0] + b1 * (Q[0] - P[0]) + b2 * (R[0] - P[0]), P[1] + b1 * (Q[1] - P[1]) + b2 * (R[1] - P[1])];
+  };
+  const kite2 = Array.from({ length: g.n }, (_, t) => Array.from({ length: k }, (_, q) => { const v = g.poly[k * t + q]; return flat(Math.floor(t / per), [V[3 * v], V[3 * v + 1], V[3 * v + 2]]); }));
+  const mid2 = kite2.map((K) => [0, 1].map((d) => K.reduce((a, p) => a + p[d], 0) / k));
+  // the hats, by cells of a grid for lookup
+  const H = HAT(Math.max(40, Math.ceil(12 * f))).polys, sc = 0.9353 / s, B = 2, buckets = new Map();
+  H.forEach((Q, h) => {
+    const xs = Q.map((p) => p[0]), ys = Q.map((p) => p[1]);
+    for (let x = Math.floor(Math.min(...xs) / B); x <= Math.floor(Math.max(...xs) / B); x++) for (let y = Math.floor(Math.min(...ys) / B); y <= Math.floor(Math.max(...ys) / B); y++) (buckets.get(`${x},${y}`) ?? buckets.set(`${x},${y}`, []).get(`${x},${y}`)).push(h);
+  });
+  const hatAt = ([x, y]) => (buckets.get(`${Math.floor(x / B)},${Math.floor(y / B)}`) ?? []).find((h) => insidePolygon(H[h], x, y)) ?? -1;
+  // the fit: a hat corner near the patch's middle for the net's first corner, a turn of 30° steps
+  const centre = [0, 1].map((d) => H.reduce((a, Q) => a + Q[0][d], 0) / H.length);
+  const cands = [...new Map(H.flat().filter((p) => Math.hypot(p[0] - centre[0], p[1] - centre[1]) < 2).map((p) => [k3([...p, 0]), p])).values()];
+  let fit = null;
+  for (const T of cands) {
+    for (let r = 0; r < 12 && !fit; r++) {
+      const c = Math.cos((r * Math.PI) / 6), sn = Math.sin((r * Math.PI) / 6), map = ([x, y]) => [T[0] + sc * (c * x - sn * y), T[1] + sc * (sn * x + c * y)];
+      let ok = true;
+      for (let t = 0; t < per && ok; t++) {
+        const m = map(mid2[t]), h = hatAt(m);
+        ok = h >= 0 && kite2[t].every((p) => { const q = map(p); return insidePolygon(H[h], m[0] + 0.9 * (q[0] - m[0]), m[1] + 0.9 * (q[1] - m[1])); });
+      }
+      if (ok) fit = map;
+    }
+    if (fit) break;
+  }
+  const hatOf = mid2.map((m) => hatAt(fit(m)));
+  // the cells: a hat's kites through their shared edges, near in the net
+  const cellOf = new Int32Array(g.n).fill(-1), cells = [];
+  for (let t0 = 0; t0 < g.n; t0++) {
+    if (cellOf[t0] >= 0) continue;
+    const ks = [t0];
+    cellOf[t0] = cells.length;
+    for (let i = 0; i < ks.length; i++) for (let e = 0; e < k; e++) {
+      const t = ks[i], u = g.nbr[k * t + e];
+      if (u < 0 || cellOf[u] >= 0 || hatOf[u] !== hatOf[t] || Math.hypot(mid2[u][0] - mid2[t][0], mid2[u][1] - mid2[t][1]) > s) continue;
+      cellOf[u] = cells.length;
+      ks.push(u);
+    }
+    cells.push(ks);
+  }
+  // each cell's outline (its kites' edges not shared within it), counterclockwise as seen from outside, and its triangles
+  const outward = (() => { const [A, B2, C] = Fc[0].corners, n = cross([0, 1, 2].map((d) => B2[d] - A[d]), [0, 1, 2].map((d) => C[d] - A[d])); return dot3(n, A) > 0 ? 1 : -1; })();
+  const nvx = V.length / 3, place = new Map(), loops = [], trisOf = [];
+  for (const ks of cells) {
+    const next = new Map();
+    for (const t of ks) for (let q = 0; q < k; q++) {
+      const a = g.poly[k * t + q], b = g.poly[k * t + ((q + 1) % k)];
+      if (!place.has(a)) place.set(a, kite2[t][q]);
+      const inner = ks.some((u) => u !== t && Array.from({ length: k }, (_, w) => w).some((w) => g.poly[k * u + w] === b && g.poly[k * u + ((w + 1) % k)] === a));
+      if (!inner) next.set(a, b);
+    }
+    const start = next.keys().next().value, loop = [start];
+    for (let v = next.get(start); v !== start && loop.length < 200; v = next.get(v)) loop.push(v);
+    // the kites listed counterclockwise in the net when outward is 1 (the net keeps the faces' turning)
+    const area = loop.reduce((a2, v, i) => { const p = place.get(v), q2 = place.get(loop[(i + 1) % loop.length]); return a2 + p[0] * q2[1] - q2[0] * p[1]; }, 0);
+    if (area * outward < 0) loop.reverse();
+    loops.push(loop);
+    trisOf.push(earClip(loop.map((v) => place.get(v))));
+  }
+  const sides = Math.max(...loops.map((l) => l.length)), padded = loops.map((l) => [...l, ...Array(sides - l.length).fill(l.at(-1))]);
+  const mesh = finishMesh(Array.from(V), padded, sides, f, null);
+  for (let t = 0; t < mesh.n; t++) mesh.nrm.set(newell(padded[t].map((v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]])), 3 * t);
+  return (meshCache[key] = Object.assign(mesh, { tris: trisOf, newell: true, hats: true, kitesOf: cells }));
+}
+// a simple polygon's triangles (corners in the plane, in turn): ears cut off one by one (a corner on a straight line,
+// never an ear, dropped when nothing else is left), as indices of its corners
+function earClip(P) {
+  const idx = [...Array(P.length).keys()], out = [], sgn = P.reduce((a, p, i) => a + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) >= 0 ? 1 : -1;
+  const turn = (a, b, c) => ((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0])) * sgn;
+  const at = (i) => [idx[(i + idx.length - 1) % idx.length], idx[i], idx[(i + 1) % idx.length]];
+  while (idx.length > 3) {
+    let i = idx.findIndex((_, j) => { const [a, b, c] = at(j); return turn(a, b, c) > 1e-12 && !idx.some((p) => p !== a && p !== b && p !== c && turn(a, b, p) > 1e-12 && turn(b, c, p) > 1e-12 && turn(c, a, p) > 1e-12); });
+    if (i >= 0) out.push(at(i));
+    else i = idx.findIndex((_, j) => Math.abs(turn(...at(j))) <= 1e-12);  // only straight corners left
+    if (i < 0) break;
+    idx.splice(i, 1);
+  }
+  if (idx.length === 3 && turn(...idx) > 1e-12) out.push([...idx]);
+  return out;
+}
+// a polygon's normal (Newell's: right for any simple one, convex or not), unit
+function newell(P) {
+  let x = 0, y = 0, z = 0;
+  P.forEach((p, i) => { const q = P[(i + 1) % P.length]; x += (p[1] - q[1]) * (p[2] + q[2]); y += (p[2] - q[2]) * (p[0] + q[0]); z += (p[0] - q[0]) * (p[1] + q[1]); });
+  const l = Math.hypot(x, y, z) || 1;
+  return [x / l, y / l, z / l];
+}
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
@@ -6258,6 +6383,7 @@ function drawLifePlane() {
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
 for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = t.mark;
+SURFACE_CELLS.hatsphere = '🎩';
 const lifeMark = (mode) => (mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
@@ -6292,6 +6418,7 @@ function torusBlocks(K, g = walk.geo) {
 const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3, 4, 6], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
                         icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_COLOURS[k];  // kites: the triangles' solids
+SOLID_COLOURS.hatsphere = SOLID_COLOURS.icosa;
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
@@ -6868,6 +6995,7 @@ const SOLID_SPOTS = {
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
+SOLID_SPOTS.hatsphere = SOLID_SPOTS.icosa;  // (hats: on the icosahedron's kites)
 // Each colour's part of the grid: radius r, a patch round each spot; else (r = 0) the whole grid,
 // each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
 // a rule whose colours must start side by side, touching patches round the middle); on a torus, a
@@ -8890,9 +9018,10 @@ function glSurface(palette, levelOf, path) {
     });
     for (const [name, data] of [['ePos', ends], ['eN1', n1], ['eN2', n2]]) { gl.bindBuffer(gl.ARRAY_BUFFER, S[name]); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); }
     S.eCount = 2 * S.edgeList.length;
-    if (S.keys.topo !== `${n}|${k}`) {  // the fans only change with the tiling
-      const fan = new Uint32Array(3 * (k - 2) * n);
-      for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
+    if (S.keys.topo !== `${n}|${k}` || S.keys.fanOf !== g) {  // the fans only change with the tiling (tiles not convex: their own triangles)
+      const fan = g.tris ? Uint32Array.from(g.tris.flatMap((tr, t) => tr.flatMap((abc) => abc.map((q) => k * t + q)))) : new Uint32Array(3 * (k - 2) * n);
+      if (!g.tris) for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
+      S.keys.fanOf = g;
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, fan, gl.STATIC_DRAW);
       S.fanCount = fan.length;
       S.keys.topo = `${n}|${k}`;
