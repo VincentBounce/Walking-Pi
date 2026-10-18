@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.719';
+const VERSION = '0.1.720';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5519,6 +5519,7 @@ const DRAW_PATTERNS = [
   ['snubembers-meth', 'snubtri', ['B359/S0146/C3'], 'Methuselah', '4.A.A2.A.A3.A$2.2A3.A6.A2.A!', 'settles at generation 390 · 10 cells'],
   ['ilife-osc', 'capitalI', ['B345/S0236'], 'Oscillator', '.A$.2A$A!', 'period 2 · 4 cells'],
   ['pythagoraslife-osc', 'pythagorean', ['B28/S28'], 'Oscillator', 'A$A!', 'period 2 · 2 cells'],
+  ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', '2.A$3.A$A.2A!', 'flies, period 2 · 5 cells'],
   ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', '3.A$A.2A!', 'period 3 · 4 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', '2.A.BAB.D.DC$.A.B.BADCD!', 'flies, period 4 · 14 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', '2.A.BAB.D.DC$.A.BAB.D.DC!', 'flies, period 4 · 14 cells'],
