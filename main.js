@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.712';
+const VERSION = '0.1.714';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5882,16 +5882,23 @@ function buildLifePlane(seq) {
   renderColours();  // the blocks a figure fits, now that it is built
   autoplay();
 }
-// A grid that is a rhombus (its lattice's two sides alike, 60° apart) lies along the view: sides across a view wider than
-// high, upright in a higher one; a rectangle, upright. The angle the view turns its world by (drawn turned, see turnLayer; a frame or the
-// pointer in the turned world)
+// A grid of a lattice (W of its cells along each side: a parallelogram) lies along the view: one of its sides across or
+// upright, whichever shows it biggest in the view (on a tie, the least turn): a rhombus's sides across a view wider than
+// high, upright in a higher one; a rectangle upright, its long side along the view's. The angle the view turns its world
+// by (drawn turned, see turnLayer; a frame or the pointer in the turned world)
 function planeTurn() {
   const kind = walk.plane?.kind, t = TILINGS[kind];
   if (!t && kind !== 'hex' && kind !== 'tri' && kind !== 'kite') return 0;
-  const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], la = Math.hypot(...a), lb = Math.hypot(...b), cos = (a[0] * b[0] + a[1] * b[1]) / (la * lb);
-  if (Math.abs(cos) < 1e-6) { const q = Math.PI / 2, t0 = -Math.atan2(a[1], a[0]); return t0 - q * Math.round(t0 / q); }  // a rectangle (the Pythagorean squares, the 15th pentagon): upright, by the least turn
-  if (Math.abs(la - lb) > 1e-6 || Math.abs(cos - 0.5) > 1e-6) return 0;
-  return (ch > cw ? Math.PI / 6 : 0) - Math.atan2(a[1], a[0]);
+  const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], ends = [[0, 0], a, b, [a[0] + b[0], a[1] + b[1]]], half = Math.PI / 2;
+  let best = 0, big = -Infinity;
+  for (const v of [a, b]) for (const up of [0, half]) {
+    let turn = up - Math.atan2(v[1], v[0]);
+    turn -= Math.PI * Math.round(turn / Math.PI);  // (a half turn shows the same)
+    const pts = ends.map((p) => turnPoint(p, turn)), w = Math.max(...pts.map((p) => p[0])) - Math.min(...pts.map((p) => p[0])), h = Math.max(...pts.map((p) => p[1])) - Math.min(...pts.map((p) => p[1]));
+    const size = Math.min(cw / w, ch / h);
+    if (size > big * (1 + 1e-9) || (size > big * (1 - 1e-9) && Math.abs(turn) < Math.abs(best))) { best = turn; big = size; }
+  }
+  return best;
 }
 const turnPoint = ([u, v], a) => [u * Math.cos(a) - v * Math.sin(a), u * Math.sin(a) + v * Math.cos(a)];
 // a layer drawn turned by a (the grid's turn, 0: as it is), about the view's origin, at the screen's resolution
