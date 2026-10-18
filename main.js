@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.761';
+const VERSION = '0.1.762';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1260,7 +1260,7 @@ function describe(base, available) {
   $('barBase').textContent = walk.life.ruleText;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
   $('barBase').title = known ? known.dataset.name : '';
   $('barBase').parentElement.classList.add('life');
-  $('description').innerHTML = `Neighbours share an edge or a corner · ${lead}`;  // (the rule, a newborn's colour too: Watch rule panel)
+  $('description').innerHTML = `Neighbours share an edge or a corner · ${lead}`;  // (the rule, a newborn's colour too: How it works)
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
