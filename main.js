@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.778';
+const VERSION = '0.1.779';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -865,8 +865,13 @@ const TILINGS = {
 };
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip)
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
-const tilingAt = (kind, x, y) => { const P = TILINGS[kind].polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
-const tilingWorld = (kind, [u, v]) => { const [a, b] = TILINGS[kind].basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
+const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after cellMiddle)
+const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
+const tilingOf = (kind) => TILINGS[kind] ?? RECTS[kind];
+const baseOf = (kind) => RECTS[kind]?.base ?? kind;
+const planeKind = (kind) => (plane.rect && RECTS[`${kind}Rect`] ? `${kind}Rect` : kind);  // the grid as it is built: a rectangle's, if so
+const tilingAt = (kind, x, y) => { const P = tilingOf(kind).polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
+const tilingWorld = (kind, [u, v]) => { const [a, b] = tilingOf(kind).basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
 
 const MODES = {
   turtle:   { base: 3, arrows: '←↑→', lattice: 'square', lines: true, twin: 'turtleCells', ant: 'antSquare',
@@ -1187,7 +1192,7 @@ function updateRuleText() {}  // the rule is shown by describe (the Play card)
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
-  if (mode.plane) return plane.start === 'digits' ? gridSize(mode.plane, plane.side)[2] : 256;  // all the digits for a start by the digits; else a hunt's patch
+  if (mode.plane) return plane.start === 'digits' ? gridSize(planeKind(mode.plane), plane.side)[2] : 256;  // all the digits for a start by the digits; else a hunt's patch
   if (mode.life) return SPHERES[surfaceOf(mode)].tiles(sphereSize());
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
@@ -2449,8 +2454,16 @@ function renderModePicker() {
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
-  $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) =>
-    button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => navGo(2, sh), sh)));
+  // (a slanted grid of Life picked: a switch, a click shows it as a rectangle or back, see RECTS)
+  $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) => {
+    const again = sh === shape && !!RECTS[`${MODES[w].plane}Rect`], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
+      if (!again) { navGo(2, sh); return; }
+      plane.rect = !plane.rect;
+      compute();
+    }, sh);
+    if (again) { b.classList.add('switch'); b.title = plane.rect ? 'Shown as a rectangle (a click: as it is, slanted)' : 'A click: shown as a rectangle'; }
+    return b;
+  }));
   // a family picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
   const inFamily = familyOf(w);
   if (inFamily) inFamily.F.tab = inFamily.tab;
@@ -5421,7 +5434,7 @@ function buildLife(seq, mode) {
 // the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
 const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128], hat: [16, 24, 32, 48, 64, 128], penrose: [16, 24, 32, 48, 64, 128], spectre: [16, 24, 32, 48, 64, 128] };
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
-const plane = { side: 48, torus: true, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 48, torus: true, rect: false, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -5603,7 +5616,7 @@ const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penro
 const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, spectre: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 const planeW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
-const planeRow = (kind, W) => (TILINGS[kind] ? TILINGS[kind].polys.length * W : kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
+const planeRow = (kind, W) => (tilingOf(kind) ? tilingOf(kind).polys.length * W : kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
 // kite x of row y: kite x % 3 of triangle ⌊x / 3⌋ (as the triangles' x), its corners on the triangles' lattice
 const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
@@ -5823,7 +5836,7 @@ function planeCorners(kind, x, y) {  // a cell's corners, in world units
     return [0, 1, 2, 3, 4, 5].map((k) => [cx + Math.cos(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3), cy + Math.sin(Math.PI / 6 + (k * Math.PI) / 3) / Math.sqrt(3)]);
   }
   if (kind === 'kite') return kiteCorners(x, y).map(([a, b]) => latticeAt(a, b));
-  if (TILINGS[kind]) return tilingAt(kind, x, y).map((p) => tilingWorld(kind, p));
+  if (tilingOf(kind)) return tilingAt(kind, x, y).map((p) => tilingWorld(kind, p));
   if (APERIODIC[kind]) return APERIODIC[kind](walk.plane.W).polys[y * walk.plane.W + x];
   const i = x >> 1;
   if (kind === 'cairo') return cairoCorners(i, y, x & 1).map(([u, v]) => [(u - CAIRO_0[0]) * CAIRO, (v - CAIRO_0[1]) * CAIRO]);  // the walks' pentagons
@@ -5841,8 +5854,8 @@ function insidePolygon(pts, u, v) {
 // the cell at a world point, or null outside the grid
 function planeCellAt(kind, W, wx, wy) {
   let x, y;
-  if (TILINGS[kind]) {  // its lattice cell's polygons, and those of the cells round it
-    const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = TILINGS[kind].polys.length;
+  if (tilingOf(kind)) {  // its lattice cell's polygons, and those of the cells round it
+    const [a, b] = tilingOf(kind).basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = tilingOf(kind).polys.length;
     for (let j = Math.floor(v) - 1; j <= Math.floor(v) + 1; j++) for (let i = Math.floor(u) - 1; i <= Math.floor(u) + 1; i++) {
       if (i >= 0 && j >= 0 && i < W && j < W) for (let k = 0; k < m; k++) if (insidePolygon(planeCorners(kind, i * m + k, j), wx, wy)) return [i * m + k, j];
     }
@@ -5911,7 +5924,7 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
   const cornersOf = (x, y) => (kind === 'square' ? [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]
     : kind === 'hex' ? HEX.map(([a, b], q) => [x + (a + HEX[(q + 1) % 6][0]) / 3, y + (b + HEX[(q + 1) % 6][1]) / 3])
       : kind === 'tri' ? (x & 1 ? [[(x >> 1) + 1, y], [(x >> 1) + 1, y + 1], [x >> 1, y + 1]] : [[x >> 1, y], [(x >> 1) + 1, y], [x >> 1, y + 1]])
-        : TILINGS[kind] ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : APERIODIC[kind] ? APERIODIC[kind](W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
+        : tilingOf(kind) ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : APERIODIC[kind] ? APERIODIC[kind](W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
   // a corner's id: squares, triangles and hexagons have theirs on a grid of 1/q units, numbered in an array; the others
   // by a map (their corners to 1/1000)
   const q = { square: 1, tri: 1, hex: 3 }[kind] ?? 1000, P = W * q, S = P + 4 * q;
@@ -5927,10 +5940,10 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
     }
     cStart[y * row + x + 1] = cList.length;
   }
-  return cellNeighbours(cStart, Int32Array.from(cList), nv, kind === 'hex' ? 6 : hensel && kind === 'square' ? 8 : 0);
+  return cellNeighbours(cStart, Int32Array.from(cList), nv, baseOf(kind) === 'hex' ? 6 : hensel && kind === 'square' ? 8 : 0);  // (a rectangle of hexagons: theirs too)
 }
 function buildLifePlane(seq) {
-  const kind = MODES[current.mode].plane, sides = PLANE_SIDES[kind];
+  const kind = planeKind(MODES[current.mode].plane), sides = PLANE_SIDES[kind];  // (a rectangle's, if so)
   if (!sides.includes(plane.side)) {  // a link's size not offered: the nearest one, said at once
     plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
     renderPlaneRow();
@@ -5938,7 +5951,7 @@ function buildLifePlane(seq) {
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
   fitColours();  // as many colours as the grid has fair blocks for
   let rule = lifeRuleNow() || parseRule('B3/S23');
-  if (rule.iso && kind !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares
+  if (rule.iso && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
@@ -5970,7 +5983,7 @@ function buildLifePlane(seq) {
 // higher one; a rectangle upright, its long side along the view's. The angle the view turns its world
 // by (drawn turned, see turnLayer; a frame or the pointer in the turned world)
 function planeTurn(kind = walk.plane?.kind) {
-  const t = TILINGS[kind];
+  const t = tilingOf(kind);
   if (!t && kind !== 'hex' && kind !== 'tri' && kind !== 'kite') return 0;
   const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], ends = [[0, 0], a, b, [a[0] + b[0], a[1] + b[1]]], half = Math.PI / 2;
   let best = 0, big = -Infinity;
@@ -6039,6 +6052,7 @@ function planeLead(number) {
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
+  plane.rect = Number(s.o) === 1;
   const [kind, a, b] = String(s.sd ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
   if (kind === 'random' || SYMMETRIES[kind] || zoneOfWord(kind)) {
@@ -6082,7 +6096,7 @@ function renderPlaneRow() {
   $('drawNote').hidden = true;
   for (const b of $('brushCards').children) b.disabled = false;
   const sides = PLANE_SIDES[kind];
-  $('planeLabel').innerHTML = `${sizeShape(kind, plane.side)}<small>${sizeCells(kind, plane.side)}</small>`;  // the size (see gridSize)
+  $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
@@ -6101,7 +6115,7 @@ function renderPlaneRow() {
   $('startDraw').hidden = plane.start !== 'draw';
   // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
   const rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? ''), mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const fits = (p) => p[0] === 'cell' || (p[1] === kind && (mine || p[2].includes(rule)));  // the rule's patterns; your own rule: all the grid's
+  const fits = (p) => p[0] === 'cell' || (p[1] === baseOf(kind) && (mine || p[2].includes(rule)));  // the rule's patterns; your own rule: all the grid's
   if (!fits(DRAW_BY_ID.get(brush.id))) brush.id = 'cell';
   brush.turn %= PATTERN_TURNS[kind];
   const K = ruleColours();
@@ -6171,7 +6185,7 @@ function drawPlaneGrid() {
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff';
   ctx.beginPath();
   if (kind === 'square') ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
-  else if (kind === 'cairo' || kind === 'kite' || APERIODIC[kind] || TILINGS[kind]) {  // ragged all round: the cells in sight
+  else if (kind === 'cairo' || kind === 'kite' || APERIODIC[kind] || tilingOf(kind)) {  // ragged all round: the cells in sight
     for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
       if (inSight(planeCorners(kind, x, y)[0])) cell(x, y);
     }
@@ -6214,12 +6228,58 @@ for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
 const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
 const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
+// A slanted grid shown as a rectangle (o=1: its button clicked again): a tiling of its own, its lattice cell a rectangle
+// of its lattice cells (two sides of whole steps at right angles, or within 3°, the nearest a square), its cells the ones
+// whose middles are in it: a torus that wraps straight across and down, and straight walls (as a 3D torus's sheet).
+// Each its grid's cells (nat: which, from its row's first lattice cell), its patterns its grid's, laid where they are
+// (see orientPattern); its RLE its grid's again (see lifeRle)
+for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
+  const per = PER_RHOMBUS[base] ?? 1, o = cellMiddle(base, 0, 0), d = (x, y) => { const m = cellMiddle(base, x, y); return [m[0] - o[0], m[1] - o[1]]; }, a = d(per, 0), b = d(0, 1);
+  if (Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b)) continue;  // (at right angles already)
+  let best = null;
+  for (let p = -6; p <= 6; p++) for (let q = -6; q <= 6; q++) for (let r = -6; r <= 6; r++) for (let t = -6; t <= 6; t++) {
+    const det = p * t - q * r;
+    if (det < 1 || det > 12) continue;
+    const U = [p * a[0] + q * b[0], p * a[1] + q * b[1]], V = [r * a[0] + t * b[0], r * a[1] + t * b[1]], lu = Math.hypot(...U), lv = Math.hypot(...V);
+    const off = Math.abs(90 - (Math.acos(Math.max(-1, Math.min(1, (U[0] * V[0] + U[1] * V[1]) / lu / lv))) * 180) / Math.PI), ratio = Math.abs(Math.log(lu / lv));
+    if (off > 3 || ratio > Math.log(1.6) || U[0] < 0 || Math.abs(U[1]) > Math.abs(U[0])) continue;  // (U across, to the right)
+    const score = [off > 1e-6 ? off : 0, det, ratio];
+    if (!best || score[0] < best.score[0] - 1e-9 || (score[0] < best.score[0] + 1e-9 && (det < best.det || (det === best.det && ratio < best.score[2] - 1e-9)))) best = { U, V, det, score, step: [[p, q], [r, t]] };
+  }
+  if (!best) continue;
+  const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
+  // its cells: each of its grid's, moved into it by whole sides of it (a translation of its grid's lattice), once
+  const tiles = [], seen = new Set(), [[sp, sq], [sr, st]] = step;
+  for (let j = -8; j <= 8; j++) for (let i = -8; i <= 8; i++) for (let k = 0; k < per; k++) {
+    const x0 = i * per + k, [al, be] = inRect(cellMiddle(base, x0, j)), fa = Math.floor(al + 1e-6), fb = Math.floor(be + 1e-6);  // (a middle on its side: in on the near one)
+    const key = `${k}|${Math.round((al - fa) * 4096)}|${Math.round((be - fb) * 4096)}`;  // (to 1/4096: a binary fraction exact, a third or a sixth far from a half)
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const x = x0 - per * (fa * sp + fb * sr), y = j - (fa * sq + fb * st);  // (its grid's cell there)
+    tiles.push({ x, y, al: al - fa, be: be - fb, polys: planeCorners(base, x0, j).map(inRect).map(([u, v]) => [u - fa, v - fb]) });
+  }
+  tiles.sort((p, q) => p.be - q.be || p.al - q.al);
+  if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
+  const kind = `${base}Rect`, t = TILINGS[base];
+  RECTS[kind] = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
+  PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
+  PLANE_SIDES[kind] = PLANE_SIDES[base];
+  PATTERN_TURNS[kind] = PATTERN_TURNS[base];
+  PLANE_CELLS[kind] = PLANE_CELLS[base];
+  PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
+}
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
 // the grid turns about (the middle of a square or a hexagon, a corner of triangles or of 4 pentagons),
 // then the cells found there, on a grid big enough
-const canMirror = (kind) => (TILINGS[kind] ? TILINGS[kind].mirror : !APERIODIC[kind]);
+const canMirror = (kind) => (RECTS[kind] ? canMirror(RECTS[kind].base) : TILINGS[kind] ? TILINGS[kind].mirror : !APERIODIC[kind]);
 function orientPattern(kind, rle, turn, flip) {
+  if (RECTS[kind]) {  // a rectangle's: turned on its grid, then laid cell by cell where it is (whole lattice cells along)
+    const { base, basis: [U, B] } = RECTS[kind], out = [], per = PER_RHOMBUS[kind], far = [64 * (U[0] + B[0]), 64 * (U[1] + B[1])];  // (64 of its lattice cells in, both ways)
+    for (const [x, y, v] of orientPattern(base, rle, turn, flip)) { const m = cellMiddle(base, x, y), c = planeCellAt(kind, 256, m[0] + far[0], m[1] + far[1]); if (c) out.push([...c, v]); }
+    const i0 = Math.min(...out.map((c) => Math.floor(c[0] / per))), j0 = Math.min(...out.map((c) => c[1]));
+    return out.map(([x, y, v]) => [x - per * i0, y - j0, v]);
+  }
   const V = 256, T = 128, per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
   const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : TILINGS[kind] ? tilingWorld(kind, [T + TILINGS[kind].pivot[0], T + TILINGS[kind].pivot[1]]) : latticeAt(T, T);
   const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] : pivot[0];
@@ -7108,7 +7168,8 @@ function planeFrame() {
       for (let t = 0; t < n; t++) { const d = ((A[t] - across) * lc) ** 2 + ((D[t] - down) * lr) ** 2; if (d < far) { far = d; best = t; } }
       return best;
     },
-    across: xAcross ? row / per : W, down: xAcross ? W : row / per,  // (the cells, or lattice cells, along each: a share's step)
+    // (a rectangle's: its grid's lattice cells along each, as its patches are counted; its ends' middles W − 1 lattice cells apart)
+    across: RECTS[kind] ? (lc * W) / (W - 1) / Math.hypot(...latticeStep(RECTS[kind].base)) : xAcross ? row / per : W, down: RECTS[kind] ? (lr * W) / (W - 1) / Math.hypot(...latticeStep(RECTS[kind].base)) : xAcross ? W : row / per,  // (the cells, or lattice cells, along each: a share's step)
   });
 }
 function huntParts(r, K) {
@@ -7500,7 +7561,7 @@ function patternChoices() {
     : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
     : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), per = PER_RHOMBUS[kind] ?? 1;
-  for (const p of DRAW_PATTERNS.filter((q) => q[1] === kind && (mine || q[2].includes(rule)))) {
+  for (const p of DRAW_PATTERNS.filter((q) => q[1] === baseOf(kind) && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
       const cells = orientPattern(kind, p[4], t, f), k = cells.map((c) => c.join(',')).sort().join(' ');
       const span = Math.max(...cells.map((c) => Math.floor(c[0] / per)), ...cells.map((c) => c[1])) + 1;
@@ -7710,6 +7771,7 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
+    if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     s.sd = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
@@ -10495,17 +10557,22 @@ $('lifeRule').addEventListener('change', () => {
 });
 // Copy RLE: the generation shown as an RLE file, Golly's and LifeWiki's (its size and rule on top, rows of runs, 70
 // characters a line): two states as b and o; more as . A B … (alive, then each dying stage; in colours, all alive as
-// A). Squares are Golly's grid; another grid's cells as this one numbers them, said in a comment
+// A). Squares are Golly's grid; another grid's cells as this one numbers them, said in a comment; a rectangle's (see
+// RECTS) as its slanted grid numbers them; from a whole lattice cell (its cells' kinds kept, as the Famous are)
 function lifeRle() {
-  const L = walk.life, { kind, row } = walk.plane, K = L.colours, pop = new Map();
-  L.alive.forEach((v, t) => { if (v) pop.set(key(t % row, Math.floor(t / row)), v <= K ? 1 : 1 + Math.floor((v - 1) / K)); });
-  if (!pop.size) return null;
+  const L = walk.life, { kind, row } = walk.plane, K = L.colours, base = baseOf(kind), per = PER_RHOMBUS[base] ?? 1, cells = [];
+  const R = RECTS[kind], m = R?.polys.length, [[sp, sq], [sr, st]] = R?.step ?? [[0, 0], [0, 0]];
+  const at = (t) => { const x = t % row, y = Math.floor(t / row); if (!R) return [x, y]; const s = x % m, I = Math.floor(x / m); return [R.nat[s][0] + per * (I * sp + y * sr), R.nat[s][1] + I * sq + y * st]; };  // (its grid's cell)
+  L.alive.forEach((v, t) => { if (v) cells.push([...at(t), v <= K ? 1 : 1 + Math.floor((v - 1) / K)]); });
+  if (!cells.length) return null;
+  const x0 = per * Math.floor(Math.min(...cells.map((c) => c[0])) / per), y0 = Math.min(...cells.map((c) => c[1])) - (base === 'cairo' && (x0 / 2 + Math.min(...cells.map((c) => c[1]))) & 1 ? 1 : 0);
+  const pop = new Map([[key(0, 0), 0], ...cells.map(([x, y, v]) => [key(x - x0, y - y0), v])]);  // (a dead cell at its lattice cell's corner: the rows start there)
   const xs = [...pop.keys()].map((k) => cellXY(k)[0]), ys = [...pop.keys()].map((k) => cellXY(k)[1]);
   let body = populationRle(pop).replace(/^[^:]*:/, '');
   if (L.C === 2) body = body.replace(/\./g, 'b').replace(/A/g, 'o');
   const lines = [], rule = ruleBody($('lifeRule').value);
   for (let i = 0; i < body.length; i += 70) lines.push(body.slice(i, i + 70));
-  return [`#N ${formulaInUse}, generation ${cur}`, `#C Walking Pi: ${location.href}`, ...(kind === 'square' ? [] : [`#C On the app's ${PLANE_CELLS[kind] ?? TILINGS[kind].cells} (not Golly's squares): cells as it numbers them`]),
+  return [`#N ${formulaInUse}, generation ${cur}`, `#C Walking Pi: ${location.href}`, ...(kind === 'square' ? [] : [`#C On the app's ${PLANE_CELLS[base]} (not Golly's squares): cells as its slanted grid numbers them`]),
     `x = ${Math.max(...xs) - Math.min(...xs) + 1}, y = ${Math.max(...ys) - Math.min(...ys) + 1}, rule = ${rule}`, ...lines].join('\n');
 }
 $('copyRle').addEventListener('click', () => {
