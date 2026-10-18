@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.769';
+const VERSION = '0.1.770';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6040,10 +6040,10 @@ function planeFromSetup(s) {
   plane.torus = Number(s.e) !== 1;
   const [kind, a, b] = String(s.sd ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
-  if (kind === 'random' || SYMMETRIES[kind]) {
+  if (kind === 'random' || SYMMETRIES[kind] || zoneOfWord(kind)) {
     plane.start = 'random';
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
-    hunt.zone = 'full';
+    hunt.zone = zoneOfWord(kind) ?? 'full';  // (sd=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -7289,13 +7289,14 @@ function stopHunt() {
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
   if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns' && hunt.zone !== 'face') return null;  // (Custom: the link's, once)
-  const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = density();
-  if (choices) for (const c of choices) { const f = c[Math.floor(Math.random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
+  const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's sd=bloom.30.7 the same start again)
+  const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
+  if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
-    for (const [t, k] of cells) if (Math.random() < d) seed[t] = k;
+    for (const [t, k] of cells) if (random() < d) seed[t] = k;
     for (const k of new Set(cells.map((c) => c[1]))) {  // each colour at least one cell alive (as the hunt's starts)
       const mine = cells.filter((c) => c[1] === k);
-      if (!mine.some(([t]) => seed[t])) seed[mine[Math.floor(Math.random() * mine.length)][0]] = k;
+      if (!mine.some(([t]) => seed[t])) seed[mine[Math.floor(random() * mine.length)][0]] = k;
     }
     for (const [t, first, k] of copies) if (seed[first]) seed[t] = k;
   }
@@ -7305,11 +7306,10 @@ function pickZone(zone) {
   hunt.zone = zone;
   hunt.top = [];
   hunt.status = '';
-  if (zone === 'full') {  // the whole grid: a new soup each time, as dense as drawn (in whole percents)
-    plane.density = Math.round(100 * density());
-    plane.seed = 1 + Math.floor(Math.random() * 999999999);
-    lifeReseed();  // in colours, each in its part
-  } else setLifeSeed(zoneSeed(), { zone });
+  plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
+  plane.seed = 1 + Math.floor(Math.random() * 999999999);
+  if (zone === 'full') lifeReseed();  // the whole grid: a soup, in colours each in its part
+  else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
 }
 function huntClick() {
@@ -7613,7 +7613,7 @@ function setLifeSeed(seed, how) {
   L.seed.set(seed);
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   countSeed(L);
-  championCode = encodeCells(L.seed, walk.base);  // in its shortest form
+  championCode = how?.zone ? null : encodeCells(L.seed, walk.base);  // in its shortest form (a zone's start: its sd says it, see getSetup)
   lifeStart = how;
   describe(walk.base, Infinity);
   restart();
@@ -7689,6 +7689,10 @@ function decodeCells(code, n) {
 
 
 /* ---- 10.2 The setup object ------------------------------------------------------------------- */
+// a random start's word in a link: random (the soup), or its zone's (spark … jungle, realm, famous), with its density
+// and seed (sd=bloom.30.7); a zone from a link's word, else none
+const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase() : 'random');
+const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase() === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = { x: formulaInUse, w };
   if (!mode.life) s.d = $('digits').value;
@@ -7701,11 +7705,11 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    s.sd = plane.start === 'random' ? `random.${plane.density}.${plane.seed}` : plane.start;
+    s.sd = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
-  if (mode.life && !mode.plane) s.sd = plane.start === 'digits' ? 'digits' : `random.${plane.density}.${plane.seed}`;  // a surface's start
+  if (mode.life && !mode.plane) s.sd = plane.start === 'digits' ? 'digits' : `${zoneWord()}.${plane.density}.${plane.seed}`;  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
@@ -7737,8 +7741,8 @@ function applySetup(s) {
     if (MODES[s.w].plane) planeFromSetup(s);
     else {  // a surface's start: a soup, or its digits (an old link's, with no sd)
       const [kind, a, b] = String(s.sd ?? 'digits').split('.');
-      plane.start = kind === 'random' ? 'random' : 'digits';
-      if (kind === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = 'full'; }
+      plane.start = kind === 'random' || zoneOfWord(kind) ? 'random' : 'digits';
+      if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
