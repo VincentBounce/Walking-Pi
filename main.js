@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.697';
+const VERSION = '0.1.698';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2356,6 +2356,7 @@ for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => 
 for (const [kind, t] of Object.entries(TILINGS)) if (t.sheet) {  // the tilings' tori, after the kites (Life only)
   const F = FAMILIES[0];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, t.name]);
+  if (t.turns === 6) F.tabs.push([F.modes.length, true, `tiling-${kind}`, `${t.name}, turned by 30° (rows round the tube)`]);
   F.modes.push([`lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`]);
 }
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
@@ -2363,7 +2364,7 @@ function familyOf(w) {
   for (const F of FAMILIES) {
     const m = F.modes.findIndex((pair) => pair.includes(w));
     if (m < 0) continue;
-    const turnable = !!TURNED[MODES[w].sphere] && !(squareSheet && SQUARE_SHEET[MODES[w].sphere]);
+    const turnable = !!TURNED[MODES[w].sphere];
     return { F, m, tab: F.tabs.findIndex(([t, turned]) => t === m && turned === (turnable && torusTurned)) };
   }
   return null;
@@ -2439,15 +2440,14 @@ function renderModePicker() {
     // (else the same rule on the other side, else its first walk: Cairo pentagons have no grid walk)
     const same = (f) => F.modes[f].find((v) => [0, 3, 4].every((i) => NAV[v][i] === NAV[w][i]))
       ?? F.modes[f].find((v) => [0, 3].every((i) => NAV[v][i] === NAV[w][i])) ?? F.modes[f].find((v) => NAV[v][0] === NAV[w][0]);
-    const sheets = F.name === 'Torus' || F.name === 'Möbius strip', square = sheets && squareSheet;
     // its tilings as the 2D grids are, a picture and a name each, 4 a row; a tiling turned by 30° is the same
-    // tab (the ⟲ by Rectangle | Square), kept turned from one tiling to another that turns
+    // tab (⟲ 30° under them, where it turns), kept turned from one tiling to another that turns
     const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
     $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name]) => {
       if (turned || !same(f)) return [];
       const b = button(`${icon(pic)}<span>${name.split(/[ ,(]/)[0]}</span>`, f === here, () => {
         if (f === here) return;
-        const i = tabOf(f, isTurned && !square) >= 0 ? tabOf(f, isTurned && !square) : tabOf(f, false);
+        const i = tabOf(f, isTurned) >= 0 ? tabOf(f, isTurned) : tabOf(f, false);
         F.tab = i;
         torusTurned = F.tabs[i][1];
         $('mode').value = same(f);
@@ -2455,23 +2455,13 @@ function renderModePicker() {
       }, name);
       return [b];
     }));
-    // a torus: from a long sheet (Rectangle, more round the ring than round the tube, its tiles even once
-    // rolled up) or a square one (as many round the ring as round the tube, stretched along it); hexagons and
-    // triangles on a long sheet turned by 30° or not (⟲: their rows round the tube)
-    $('torusSheet').hidden = !sheets;
-    if (sheets) {
-      const own = !!SQUARE_SHEET[MODES[w].sphere], turns = tabOf(here, true) >= 0;
-      const sheetButtons = [[false, 'Rectangle', 'A long sheet: its tiles even once rolled up'], [true, 'Square', 'A square sheet, its tiles stretched along the ring once rolled up (not turned)']]
-        .map(([sq, word, title]) => {
-          const b = button(word, sq === (squareSheet && own), () => { turnTorus(sq ? false : torusTurned, sq); renderModePicker(); }, title);
-          b.disabled = sq && !own;  // (the tilings' tori: a long sheet only)
-          return b;
-        });
-      const turn = button('⟲ 30°', isTurned, () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); }, F.tabs[tabOf(here, true)]?.[3] ?? '');
+    // ⟲ 30°: the tiling turned (its rows round the tube), where that is another grid (six turns)
+    const turns = tabOf(here, true) >= 0;
+    $('torusSheet').hidden = !turns;
+    if (turns) {
+      const turn = button('⟲ 30°', isTurned, () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); }, F.tabs[tabOf(here, true)][3]);
       turn.classList.add('switch');
-      turn.hidden = !turns;
-      turn.disabled = square;  // (a square sheet: not turned)
-      $('torusSheet').replaceChildren(...sheetButtons, turn);
+      $('torusSheet').replaceChildren(turn);
     }
   } else $('torusSheet').hidden = true;
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
@@ -3649,11 +3639,10 @@ const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
  * (2π by 2π·TUBE, in the x–z plane), at m = 1 the torus. The rectangle first curls into a tube
  * (m from 0 to ½: its short side bends into a circle), then the tube bends into a ring (½ to 1).
  * Bending a length L into an arc of a circle whose circumference is L / k keeps lengths along it. */
-function torusPoint(i, j, nu, nv, m, flatWidth = 1) {  // flatWidth: the flat sheet's length, as a share of 2π
+function torusPoint(i, j, nu, nv, m) {
   const b = Math.min(1, 2 * m), c = Math.max(0, 2 * m - 1);  // tube bend, then ring bend
-  // flat, the sheet lies in the north–east plane: i towards the east, j towards the north; a sheet
-  // shorter than the ring (flatWidth < 1) stretches to it as it bends round (its tiles too)
-  const X = (i / nu - 0.5) * 2 * Math.PI * (flatWidth + (1 - flatWidth) * c), Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
+  // flat, the sheet lies in the north–east plane: i towards the east, j towards the north
+  const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
   let w = -Y, h = 0;  // w: offset away from the ring's centre (the north goes into the hole), h: height
   if (b > 1e-6) {  // it curls down round the tube, so its middle becomes the top of the torus, in front
     const rt = TORUS_TUBE / b, th = Y / rt;
@@ -3764,7 +3753,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', 'mobiusSquare', 'mobiusHexSquare', 'mobiusTriSquare', 'mobiusCairoSquare', 'mobiusKiteSquare'];
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite'];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
  * for them), or rows "x" that count, a length of its own (s=16x240: 16 rows of triangles 120 long). */
@@ -3777,14 +3766,13 @@ const MOBIUS_ALONG = {
   mobiusCairo: { step: 1, ok: (n, nv) => (n + nv) % 2 === 1 },
 };
 MOBIUS_ALONG.mobiusKite = MOBIUS_ALONG.mobiusTri;  // kites: the triangles', each cut in 3
-for (const k of ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusCairo', 'mobiusKite']) MOBIUS_ALONG[`${k}Square`] = MOBIUS_ALONG[k];  // a square sheet, as its tiling
 const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.split('x').map(Number));  // [rows, count along or null]
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
  * unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends round the circle (keeping
  * lengths, as torusPoint does) and twists along it, up to half a turn at m = 1, so the ends meet
  * upside down: the point (x + L, y) is then the point (x, W − y). Its width is always MOBIUS_WIDTH times
  * the circle's radius; flat, its length is in proportion (flat: its share of the circle), stretched to
- * the circle as it bends round (a square sheet's tiles, much; the usual length's, hardly), as a torus's. */
+ * the circle as it bends round (hardly), as a torus's. */
 function mobiusPoint(x, y, L, W, m) {
   const flat = (L * MOBIUS_WIDTH) / (2 * Math.PI * W), X0 = (x / L - 0.5) * 2 * Math.PI;
   const X = X0 * (flat + (1 - flat) * m), S = (y / W - 0.5) * MOBIUS_WIDTH;  // along, across (the circle's radius 1)
@@ -3806,11 +3794,9 @@ function mobiusPoint(x, y, L, W, m) {
  *   wide, an even number of columns; the edges zigzag along them. */
 function mobiusSheet(kind0, size) {
   if (kind0.startsWith('mobiusKite')) { const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf) }; }  // the triangles', cut in 3
-  // a square sheet (Square, kind …Square): as long as wide, its tiles stretched along the strip once
-  // rolled up (see mobiusPoint); else the usual length, a multiple of 12
-  const square = kind0.endsWith('Square'), kind = square ? kind0.slice(0, -6) : kind0;
-  const [nv, own] = mobiusSize(size), step = MOBIUS_ALONG[kind].step, fit = (x) => (square ? Math.max(1, Math.round(x)) : twelve(x));
-  const len = (W) => (own ? own * step : square ? W : (2 * Math.PI * W) / MOBIUS_WIDTH), tiles = [], H = Math.sqrt(3) / 2;  // its length, or the usual one
+  // the usual length, a multiple of 12
+  const kind = kind0, [nv, own] = mobiusSize(size), step = MOBIUS_ALONG[kind].step, fit = twelve;
+  const len = (W) => (own ? own * step : (2 * Math.PI * W) / MOBIUS_WIDTH), tiles = [], H = Math.sqrt(3) / 2;  // its length, or the usual one
   const done = (L, W) => ({ L, W, tiles });
   if (kind === 'mobiusHexTurned') {
     const W = 1.5 * (nv - 1) + 2, S3 = Math.sqrt(3), a = Math.round(len(W) / S3 - (own && !(nv % 2) ? 0.5 : 0)), L = S3 * (nv % 2 ? a : a + 0.5);
@@ -3916,12 +3902,10 @@ function mobiusMesh(kind, size) {
   return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
 }
 // The sheet point of a surface: a torus, or a Möbius strip
-// (a rhombus sheared into the torus's rectangle: unsheared while flat, sheared as it bends round the ring)
 const sheetPoint = (g, i, j, m) => {
   if (g.mobius) return mobiusPoint(i, j, g.L, g.W, m);
   if (g.klein) return kleinPoint(i, j, g.nu, g.nv, m);
-  if (g.shear) { const k = 1 - Math.max(0, 2 * m - 1); [i, j] = [i + (k * g.shear[0] * j) / g.nv, j + (k * g.shear[1] * i) / g.nu]; }
-  return torusPoint(i, j, g.nu, g.nv, m, g.flatWidth ?? 1);
+  return torusPoint(i, j, g.nu, g.nv, m);
 };
 
 /* Torus of regular hexagons (flat-topped): nu columns around the ring, nv rows around the tube;
@@ -3966,25 +3950,37 @@ function cairoTorusMesh(nv, nu = cairoTorusColumns(nv)) {
 // even once rolled up, as many of each as the sheet's sides ask); the lattice cells whose corner is in that rectangle,
 // each its polygons, at their places on the sheet (as many corners each: the last one repeated, as the sphere's
 // pentagons); uvMid: their middles there (cellMiddle's, for Famous: see sheetMiddle)
-function tilingTorusMesh(kind, nv, nu) {
-  const key = `${kind}torus${nv}x${nu}`;
+function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the ring, A round the tube (⟲ 30°)
+  const key = `${kind}torus${turned ? 'Turned' : ''}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
-  const t = TILINGS[kind], [[p, q], [r, s]] = t.sheet, d = p * s - q * r, sides = Math.max(...t.polys.map((P) => P.length));
-  const at = ([u, v]) => [(s * u - r * v) / d, (p * v - q * u) / d], snap = (x) => Math.round(x * 1e4) / 1e4;  // (a corner the same from every polygon round it)
+  const t = TILINGS[kind], sheet = turned ? [t.sheet[1], t.sheet[0].map((x) => -x)] : t.sheet, [[p, q], [r, s]] = sheet, d = p * s - q * r, sides = Math.max(...t.polys.map((P) => P.length));
+  const at = ([u, v]) => [(s * u - r * v) / d, (p * v - q * u) / d];
+  // its polygons' corners the same from every polygon round them (stored to 6 decimals: those a whole cell apart, or
+  // less than 10⁻⁴, made one), and a corner's key at a scale none of them is half a step on
+  const canon = [], polys = t.polys.map((P) => P.map(([u, v]) => {
+    for (const [a, b] of canon) { const iu = Math.round(u - a), iv = Math.round(v - b); if (Math.abs(u - a - iu) < 1e-4 && Math.abs(v - b - iv) < 1e-4) return [a + iu, b + iv]; }
+    canon.push([u, v]);
+    return [u, v];
+  }));
   const ends = [[0, 0], [nu, 0], [0, nv], [nu, nv]].map(([i, j]) => [p * i + r * j, q * i + s * j]), lo = [0, 1].map((k) => Math.floor(Math.min(...ends.map((e) => e[k])))), hi = [0, 1].map((k) => Math.ceil(Math.max(...ends.map((e) => e[k]))));
-  const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [];
+  const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map();
+  const corner = (i, j) => {  // a corner once, by its place on the sheet round the seams (not by its rounded point in space)
+    const Q = 31415.9, k = `${Math.round((((i % nu) + nu) % nu) * Q) % Math.round(nu * Q)},${Math.round((((j % nv) + nv) % nv) * Q) % Math.round(nv * Q)}`;
+    if (!ids.has(k)) ids.set(k, add(...torusPoint(i, j, nu, nv, 1)));
+    return ids.get(k);
+  };
   for (let v0 = lo[1]; v0 <= hi[1]; v0++) for (let u0 = lo[0]; u0 <= hi[0]; u0++) {
     const [i0, j0] = at([u0, v0]);
     if (i0 < -1e-9 || j0 < -1e-9 || i0 >= nu - 1e-9 || j0 >= nv - 1e-9) continue;
-    for (const P of t.polys) {
-      const c = P.map(([u, v]) => at([snap(u + u0), snap(v + v0)]));
+    for (const P of polys) {
+      const c = P.map(([u, v]) => at([u + u0, v + v0]));
       mid.push(...[0, 1].map((k) => c.reduce((sum, x) => sum + x[k], 0) / c.length));
       while (c.length < sides) c.push(c.at(-1));
-      tiles.push(c.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+      tiles.push(c.map(([i, j]) => corner(i, j)));
       uv.push(...c.flat());
     }
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv), { tiling: kind, uvMid: new Float64Array(mid) }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv), { tiling: kind, sheet, uvMid: new Float64Array(mid) }));
 }
 
 /* Sphere of hexagons (a Goldberg polyhedron, the football's pattern): the dual of the icosahedron
@@ -4051,40 +4047,6 @@ function triTorusMesh(nv, nu = triTorusColumns(nv), kites = false) {  // kites: 
   return (meshCache[key] = Object.assign(finishTorus(verts, tris, kites ? 4 : 3, nu, nv, uv), { kite: kites }));
 }
 
-/* The tori of hexagons and of triangles on a square sheet (Square): the plane's rhombus of W × W tiles,
- * its sides glued as they are, as the 2D grid's torus (the same in its 3 ways: a straight line comes
- * back after W tiles whichever way it goes). Flat, a rhombus: the hexagons' columns, or the triangles'
- * rows, each half a tile further than the last. Rolled up, it is sheared into the torus's rectangle (shear:
- * how far a side's end is moved along the other, see sheetPoint), so that each tile's sheet coordinates
- * (uv) are those of the sheared sheet, whose sides are glued straight as the usual torus's are. */
-function rhombHexTorusMesh(W) {
-  const key = `hexrhomb${W}`;
-  if (meshCache[key]) return meshCache[key];
-  const { verts, add } = vertexStore(), hexes = [], uv = [];
-  for (let c = 0; c < W; c++) for (let r = 0; r < W; r++) {  // tile c·W + r: column c, its rows half a row higher than the last's
-    const corners = [0, 1, 2, 3, 4, 5].map((k) => { const i = c + Math.cos((k * Math.PI) / 3) / 1.5, j = r + c / 2 + Math.sin((k * Math.PI) / 3) / Math.sqrt(3); return [i, j - i / 2]; });
-    hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, W, W, 1))));
-    uv.push(...corners.flat());
-  }
-  return (meshCache[key] = Object.assign(finishTorus(verts, hexes, 6, W, W, uv), { shear: [0, W / 2] }));
-}
-function rhombTriTorusMesh(W, kites = false) {  // its rows across the ring, each round the tube (so that the tube closes on the rhombus's slanted sides, as the hexagons')
-  const key = `${kites ? 'kite' : 'tri'}rhomb${W}`;
-  if (meshCache[key]) return meshCache[key];
-  const { verts, add } = vertexStore(), tris = [], uv = [];
-  // corner i of row j: on the sheet, row j round the ring, i + j / 2 round the tube (each row half a triangle
-  // further than the last), sheared back: (j, i); the corners listed the other way round (a swap is a mirror)
-  const put = (c) => {
-    const t0 = [c[0], c[2], c[1]].map(([i, j]) => [j, i]);
-    for (const t of kites ? kitesOf(t0) : [t0]) { tris.push(t.map(([u, v]) => add(...torusPoint(u, v, W, W, 1)))); uv.push(...t.flat()); }
-  };
-  for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
-    put([[i, j], [i + 1, j], [i, j + 1]]);
-    put([[i + 1, j], [i + 1, j + 1], [i, j + 1]]);
-  }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tris, kites ? 4 : 3, W, W, uv), { shear: [0, W / 2], swap: true, kite: kites }));
-}
-
 /* The same tori turned by 30° (or 90°: the same grid) on the sheet: the triangles' rows, or the
  * hexagons' columns, run around the tube instead of around the ring. Built as the usual ones on a
  * sheet whose two ways are swapped back: (i, j) → (j, i), the corners listed the other way round
@@ -4129,8 +4091,8 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'kitetorusSquare', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'torusSquare', 'hextorus', 'tritorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
-  ...Object.keys(TILINGS).filter((k) => TILINGS[k].sheet).map((k) => `${k}torus`)];
+const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
+  ...Object.keys(TILINGS).filter((k) => TILINGS[k].sheet).flatMap((k) => (TILINGS[k].turns === 6 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -4297,39 +4259,15 @@ const SPHERES = {
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
-  // (torus: a size of its own may share torusSquare's mesh, hence its flatWidth)
-  torus: { mesh: (s) => Object.assign(torusMesh(...torusDims('torus', s)), { flatWidth: 1, square: false }), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => twelve(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
           least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
-  // the square torus (Squares, stretched): as many squares round the ring as round the tube, a square
-  // sheet unrolled, its squares stretched along the ring rolled up (see torusPoint's flatWidth)
-  torusSquare: { mesh: (s) => Object.assign(torusMesh(...torusDims('torusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
-                 radius: (s) => torusDims('torusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [1, 1],
-                 least: 4, tiles: (s) => torusDims('torusSquare', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
               columns: hexTorusColumns, perRow: 1, steps: [1, 2],  // an even count of columns
               least: 3, tiles: (s) => torusDims('hextorus', s).reduce((a, b) => a * b), unit: 'hexagons' },
-  // on a square sheet (Square, under the tilings): as long round the ring as round the tube unrolled, its
-  // tiles stretched along the ring once rolled up (as torusSquare)
-  // hexagons and triangles: the plane's rhombus (see rhombHexTorusMesh), as many tiles round the ring as round the tube
-  hextorusSquare: { mesh: (s) => Object.assign(rhombHexTorusMesh(torusDims('hextorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
-                    radius: (s) => (torusDims('hextorusSquare', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => nv, perRow: 1, steps: [1, 1],
-                    least: 3, tiles: (s) => torusDims('hextorusSquare', s).reduce((a, b) => a * b), unit: 'hexagons' },
-  tritorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('tritorusSquare', s)[0]), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
-                    radius: (s) => torusDims('tritorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => nv, perRow: 2, steps: [1, 1],
-                    tiles: (s) => 2 * torusDims('tritorusSquare', s).reduce((a, b) => a * b), unit: 'triangles' },
-  kitetorusSquare: { mesh: (s) => Object.assign(rhombTriTorusMesh(torusDims('kitetorusSquare', s)[0], true), { flatWidth: (TORUS_TUBE * Math.sqrt(3)) / 2, square: true }),
-                     radius: (s) => torusDims('kitetorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE),
-                     columns: (nv) => nv, perRow: 6, steps: [1, 1],
-                     tiles: (s) => 6 * torusDims('kitetorusSquare', s).reduce((a, b) => a * b), unit: 'kites' },
-  cairotorusSquare: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorusSquare', s)), { flatWidth: TORUS_TUBE, square: true }),
-                      radius: (s) => torusDims('cairotorusSquare', s)[0] / (2 * Math.PI * TORUS_TUBE), columns: (nv) => nv, perRow: 1, steps: [2, 2],
-                      tiles: (s) => 2 * torusDims('cairotorusSquare', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // Cairo pentagons: the tube nv squares of their grid around, two pentagons a square
-  cairotorus: { mesh: (s) => Object.assign(cairoTorusMesh(...torusDims('cairotorus', s)), { flatWidth: 1, square: false }), radius: (s) => torusDims('cairotorus', s)[0] / (2 * Math.PI * TORUS_TUBE),
+  cairotorus: { mesh: (s) => cairoTorusMesh(...torusDims('cairotorus', s)), radius: (s) => torusDims('cairotorus', s)[0] / (2 * Math.PI * TORUS_TUBE),
                 columns: cairoTorusColumns, perRow: 1, steps: [2, 2],  // even counts both ways
                 tiles: (s) => 2 * torusDims('cairotorus', s).reduce((a, b) => a * b), unit: 'pentagons' },
   // the icosahedron's dual: a cell per corner of its triangles (hexagon edge ≈ 1 unit)
@@ -4396,10 +4334,13 @@ const SPHERES = {
 // the tilings' tori (see tilingTorusMesh): their rows B round the tube, as many A round the ring as keep them even
 for (const [kind, t] of Object.entries(TILINGS)) if (t.sheet) {
   const [[p, q], [r, s]] = t.sheet, [a, b] = t.basis, A = Math.hypot(p * a[0] + q * b[0], p * a[1] + q * b[1]), B = Math.hypot(r * a[0] + s * b[0], r * a[1] + s * b[1]);
-  const per = t.polys.length * Math.abs(p * s - q * r), name = `${kind}torus`;  // cells a cell of the sheet
-  SPHERES[name] = { mesh: (z) => tilingTorusMesh(kind, ...torusDims(name, z)), radius: (z) => (torusDims(name, z)[0] * B) / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => Math.max(1, Math.round((nv * B) / (A * TORUS_TUBE))), perRow: per, steps: [1, 1], least: 2,
-                    tiles: (z) => per * torusDims(name, z).reduce((x, y) => x * y), unit: t.cells };
+  const per = t.polys.length * Math.abs(p * s - q * r);  // cells a cell of the sheet
+  for (const turned of t.turns === 6 ? [false, true] : [false]) {  // (turned by 30°, see TURNED: A round the tube)
+    const name = `${kind}torus${turned ? 'Turned' : ''}`, [ring, tube] = turned ? [B, A] : [A, B];
+    SPHERES[name] = { mesh: (z) => tilingTorusMesh(kind, ...torusDims(name, z), turned), radius: (z) => (torusDims(name, z)[0] * tube) / (2 * Math.PI * TORUS_TUBE),
+                      columns: (nv) => Math.max(1, Math.round((nv * tube) / (ring * TORUS_TUBE))), perRow: per, steps: [1, 1], least: 2,
+                      tiles: (z) => per * torusDims(name, z).reduce((x, y) => x * y), unit: t.cells };
+  }
 }
 
 // The surface size as a stepper: [ − ] 6,144 squares [ + ] goes through the sizes of the (hidden)
@@ -4528,8 +4469,8 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite'];
-const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'kitetorusSquare', 'torus', 'torusSquare', 'tritorus', 'hextorus', 'cairotorus', 'hextorusSquare', 'tritorusSquare', 'cairotorusSquare', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
-  ...Object.keys(TILINGS).filter((k) => TILINGS[k].sheet).map((k) => `${k}torus`)];  // sized by rows × tiles per row
+const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
+  ...Object.keys(TILINGS).filter((k) => TILINGS[k].sheet).flatMap((k) => (TILINGS[k].turns === 6 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
 for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
@@ -4545,13 +4486,11 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   S.near = (n) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / n)) < Math.abs(Math.log(S.tiles(a) / n)) ? b : a));  // the usual size with about n cells
   S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
 }
-// The triangle and hexagon tori turned by 30° (the ⟲ button by the size): the surface a mode walks on
+// The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
-// a torus from a square sheet (Rectangle | Square, under its tilings): not turned
-const SQUARE_SHEET = { torus: 'torusSquare', hextorus: 'hextorusSquare', tritorus: 'tritorusSquare', cairotorus: 'cairotorusSquare', kitetorus: 'kitetorusSquare',
-                       mobius: 'mobiusSquare', mobiusHex: 'mobiusHexSquare', mobiusTri: 'mobiusTriSquare', mobiusCairo: 'mobiusCairoSquare', mobiusKite: 'mobiusKiteSquare' };
-let torusTurned = false, squareSheet = false;
-const surfaceOf = (mode) => (squareSheet && SQUARE_SHEET[mode.sphere]) || (torusTurned && TURNED[mode.sphere]) || mode.sphere;
+for (const [kind, t] of Object.entries(TILINGS)) if (t.sheet && t.turns === 6) TURNED[`${kind}torus`] = `${kind}torusTurned`;
+let torusTurned = false;
+const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
@@ -6291,7 +6230,7 @@ function drawLifePlane() {
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
-for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = t.mark;
+for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = t.mark;
 const lifeMark = (mode) => (mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
@@ -6313,10 +6252,8 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
 const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
 const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
-// ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3; on a square sheet (Square:
-// the plane's grid, glued), as on the plane (see COLOUR_GRID)
+// ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3
 function torusBlocks(K, g = walk.geo) {
-  if (g?.square) { const [cols, rows] = COLOUR_GRID[K]; return [rows, cols]; }
   let best = [K, 1], err = Infinity;
   for (let b = 1; b <= K; b++) if (K % b === 0) { const e = Math.abs(Math.log(b / ((K / b) * TORUS_TUBE))); if (e < err) { err = e; best = [K / b, b]; } }
   return best;
@@ -7180,7 +7117,7 @@ TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 12: ICO
 TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
-  const turned = /Turned$/.test(surfaceOf(m));  // (tilings turned by 30°: not yet)
+  const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
@@ -7234,11 +7171,10 @@ function patternAt(i, K, cells) {
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
   if (kind === 'square') return (p) => p;
   if (TILINGS[kind]) {  // its lattice's units, then the sheet's cell's (see tilingTorusMesh)
-    const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], [[p, q], [r, s]] = TILINGS[kind].sheet, d = p * s - q * r;
+    const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], [[p, q], [r, s]] = g.sheet, d = p * s - q * r;
     return ([x, y]) => { const u = (x * b[1] - y * b[0]) / det, v = (a[0] * y - a[1] * x) / det; return [(s * u - r * v) / d, (p * v - q * u) / d]; };
   }
   if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
-  if (g.shear) { const [su, sv] = g.shear, plain = sheetUnits({ ...g, shear: null }, kind); return (p) => { const [a, b] = plain(p), [u, v] = g.swap ? [b, a] : [a, b]; return [u - (su * v) / g.nv, v - (sv * u) / g.nu]; }; }  // (a rhombus: as its sheet, see rhombHexTorusMesh)
   if (kind === 'tri' || kind === 'kite') return g.mobius ? (p) => p : ([x, y]) => [x, y / ROOT3_2];  // (a Möbius strip's sheet: edges of 1; kites: on the triangles' grid)
   const c = Math.cos(Math.PI / 6), sn = Math.sin(Math.PI / 6), r3 = Math.sqrt(3);
   return ([x, y]) => { const X = r3 * (x * c - y * sn), Y = r3 * (x * sn + y * c); return g.mobius ? [X, Y] : [X / 1.5, Y / r3]; };
@@ -7507,8 +7443,7 @@ function getSetup() {
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (modeStarts() && startNo() > 1) s.st = startNo();
-  if (squareSheet && SQUARE_SHEET[mode.sphere]) s.q = 1;  // a square sheet
-  else if (torusTurned && TURNED[mode.sphere]) s.o = 1;
+  if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && lifeColours > 1) s.k = lifeColours;
@@ -7536,7 +7471,6 @@ function applySetup(s) {
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
   torusTurned = Number(s.o) === 1;
-  squareSheet = Number(s.q) === 1 || (torusTurned && MODES[s.w].sphere === 'torus');  // (o=1 on squares, before: their square sheet)
   if (MODES[s.w].sphere) {
     const kind = surfaceOf(MODES[s.w]);
     fillSphereSizes(kind, MODES[s.w].initial);
@@ -10398,13 +10332,11 @@ $('showPath').addEventListener('change', () => { needsFull = true; updateDisplay
 $('loopDown').addEventListener('click', () => browseLoop(-1));
 $('loopUp').addEventListener('click', () => browseLoop(1));
 $('sizeUp').addEventListener('click', () => stepSize(1));
-// Usual | Turned 30°: the triangle and hexagon tori turned or back; Rectangle | Square: the sheet of a
-// torus; at the same size if it has one
-function turnTorus(turned, square = squareSheet) {
-  if (turned === torusTurned && square === squareSheet) return;
+// ⟲ 30°: a torus turned or back; at the same size if it has one
+function turnTorus(turned) {
+  if (turned === torusTurned) return;
   const mode = MODES[$('mode').value];
   torusTurned = turned;
-  squareSheet = square;
   fillSphereSizes(surfaceOf(mode), mode.initial);  // as many cells
   $('startNo').value = 1;  // the starts are not the same
   $('sphereF').dispatchEvent(new Event('change'));
