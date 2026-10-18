@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.755';
+const VERSION = '0.1.756';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5190,71 +5190,67 @@ const LIFE_JUMP = 2000;
 // fading trail after a cell dies: from a light slate grey down to the background
 const LIFE_WALL = '#c4934e';  // the walls of a Life run (the hexagon sphere's pentagons)
 
-// Neighbours of each tile: every other tile sharing an edge or a corner with it
-// (12 for triangles, 8 for squares, fewer next to the solid's corners). Compact lists.
-function cornerNeighbours(g) {
-  if (g.life) return g.life;
-  const nv = g.verts.length / 3, k = g.sides;
-  const ring = k === 6 ? hexRing(g) : null;
-  const byVertex = Array.from({ length: nv }, () => []);
-  for (let t = 0; t < g.n; t++) for (let j = 0; j < k; j++) byVertex[g.poly[k * t + j]].push(t);
-  const start = new Int32Array(g.n + 1), list = [], wall = new Set(g.walls);
-  for (let t = 0; t < g.n; t++) {
-    const set = new Set();
-    // a wall has no neighbours, and is no one's neighbour
-    if (!wall.has(t)) for (let j = 0; j < k; j++) for (const u of byVertex[g.poly[k * t + j]]) if (u !== t && !wall.has(u)) set.add(u);
-    list.push(...set);
-    start[t + 1] = list.length;
+// Life's neighbours, the plane's grids and the surfaces' alike, from each cell's corners (cStart/cList: cell t's
+// corner ids, cList[cStart[t]] … cList[cStart[t + 1] − 1], in turn round it; nv: how many corners). A cell's
+// neighbours: the others sharing a corner with it (a wall: no corners, none). ring (the rules with letters): those
+// sharing a side, in turn round it, −1 where none: sides 6, round a hexagon (Callahan's); sides 8, round a square, its
+// corners' cells too (the one there sharing no side with it), in the order Hensel's letters read the plane's 3 × 3 (see
+// HENSEL_RING). Turned or mirrored alike: the letters do not mind
+function cellNeighbours(cStart, cList, nv, sides = 0) {
+  const n = cStart.length - 1, vStart = new Int32Array(nv + 1);
+  for (let i = 0; i < cList.length; i++) vStart[cList[i] + 1]++;
+  for (let v = 0; v < nv; v++) vStart[v + 1] += vStart[v];
+  const vList = new Int32Array(cList.length), fill = vStart.slice(0, nv);  // each corner's cells
+  for (let t = 0; t < n; t++) for (let i = cStart[t]; i < cStart[t + 1]; i++) vList[fill[cList[i]]++] = t;
+  let most = 0;
+  for (let t = 0; t < n; t++) for (let i = cStart[t]; i < cStart[t + 1]; i++) most += vStart[cList[i] + 1] - vStart[cList[i]] - 1;
+  const start = new Int32Array(n + 1), list = new Int32Array(most);
+  let m = 0;
+  for (let t = 0; t < n; t++) {
+    start[t] = m;
+    for (let i = cStart[t]; i < cStart[t + 1]; i++) for (let j = vStart[cList[i]]; j < vStart[cList[i] + 1]; j++) {
+      const u = vList[j];
+      if (u === t) continue;
+      let k = start[t];
+      while (k < m && list[k] !== u) k++;
+      if (k === m) list[m++] = u;
+    }
   }
-  return (g.life = { start, list: new Int32Array(list), ring });
+  start[n] = m;
+  let ring = null;
+  if (sides) {
+    ring = new Int32Array(sides * n).fill(-1);
+    const across = (t, a, b) => {  // the other cell on side a–b
+      for (let j = vStart[a]; j < vStart[a + 1]; j++) { const u = vList[j]; if (u === t) continue; for (let i = cStart[u]; i < cStart[u + 1]; i++) if (cList[i] === b) return u; }
+      return -1;
+    };
+    const AT = [0, 1, 2, 4, 7, 6, 5, 3];  // round the 3 × 3 (top left, top, top right, right, …): where each is read row by row
+    for (let t = 0; t < n; t++) {
+      const k = cStart[t + 1] - cStart[t], c = (q) => cList[cStart[t] + (q % k)];
+      if (sides === 6) { for (let q = 0; q < k && q < 6; q++) ring[6 * t + q] = across(t, c(q), c(q + 1)); continue; }
+      if (k !== 4) continue;
+      const side = [0, 1, 2, 3].map((q) => across(t, c(q), c(q + 1)));
+      for (let q = 0; q < 4; q++) {
+        ring[8 * t + AT[2 * q + 1]] = side[q];
+        let corner = -1, count = 0;
+        for (let j = vStart[c(q)]; j < vStart[c(q) + 1]; j++) { const u = vList[j]; if (u !== t && !side.includes(u)) { corner = u; count++; } }
+        if (count === 1) ring[8 * t + AT[2 * q]] = corner;
+      }
+    }
+  }
+  return { start, list: list.slice(0, m), ring };
 }
-
-// On hexagons: the 6 neighbours of each tile in order around it (−1 for a wall or none), for the
-// rules that look at where the live neighbours are (Callahan's o, m, p)
-function hexRing(g) {
-  const nv = g.verts.length / 3, wall = new Set(g.walls), ring = new Int32Array(6 * g.n).fill(-1), byEdge = new Map();
+// A surface's: its tiles' corners (a repeated one, a pentagon's of the hexagon sphere, once; a wall: none). On
+// hexagons, their ring (Callahan's letters); on squares, sides 8 asked (Hensel's)
+function cornerNeighbours(g, sides = g.sides === 6 ? 6 : 0) {
+  const key = `life${sides}`;
+  if (g[key]) return g[key];
+  const k = g.sides, wall = new Set(g.walls), cStart = new Int32Array(g.n + 1), cList = [];
   for (let t = 0; t < g.n; t++) {
-    if (wall.has(t)) continue;
-    for (let q = 0; q < 6; q++) {
-      const a = g.poly[6 * t + q], b = g.poly[6 * t + ((q + 1) % 6)];
-      if (a === b) continue;  // a pentagon's repeated corner
-      const key = Math.min(a, b) * nv + Math.max(a, b), other = byEdge.get(key);
-      if (other === undefined) { byEdge.set(key, 6 * t + q); continue; }
-      ring[6 * t + q] = Math.floor(other / 6);
-      ring[other] = t;
-    }
+    if (!wall.has(t)) for (let j = 0; j < k; j++) { const v = g.poly[k * t + j]; if (v !== g.poly[k * t + ((j + 1) % k)]) cList.push(v); }
+    cStart[t + 1] = cList.length;
   }
-  return ring;
-}
-
-// On squares (a surface's): the 8 neighbours of each in the order Hensel's letters read them (the plane's 3 × 3 read
-// row by row, see HENSEL_RING): round it, a corner's (the tile on that corner sharing no side with it), a side's, …;
-// −1 where none (a wall, a cube's corner: 3 squares there). Turned or mirrored alike: the letters do not mind
-function squareRing(g) {
-  if (g.henselRing) return g.henselRing;
-  const nv = g.verts.length / 3, wall = new Set(g.walls), ring = new Int32Array(8 * g.n).fill(-1), byVertex = Array.from({ length: nv }, () => []), byEdge = new Map();
-  const edge = (a, b) => Math.min(a, b) * nv + Math.max(a, b);
-  for (let t = 0; t < g.n; t++) {
-    if (wall.has(t)) continue;
-    for (let q = 0; q < 4; q++) {
-      const a = g.poly[4 * t + q], b = g.poly[4 * t + ((q + 1) % 4)];
-      byVertex[a].push(t);
-      if (!byEdge.has(edge(a, b))) byEdge.set(edge(a, b), []);
-      byEdge.get(edge(a, b)).push(t);
-    }
-  }
-  const AT = [0, 1, 2, 4, 7, 6, 5, 3];  // round the 3 × 3 (top left, top, top right, right, …): where each sits read row by row
-  for (let t = 0; t < g.n; t++) {
-    if (wall.has(t)) continue;
-    const v = [0, 1, 2, 3].map((q) => g.poly[4 * t + q]), sides = new Set();
-    for (let q = 0; q < 4; q++) for (const u of byEdge.get(edge(v[q], v[(q + 1) % 4]))) if (u !== t) sides.add(u);
-    for (let q = 0; q < 4; q++) {
-      const corner = byVertex[v[q]].filter((u) => u !== t && !sides.has(u)), side = byEdge.get(edge(v[q], v[(q + 1) % 4])).find((u) => u !== t);
-      if (corner.length === 1) ring[8 * t + AT[2 * q]] = corner[0];
-      if (side !== undefined) ring[8 * t + AT[2 * q + 1]] = side;
-    }
-  }
-  return (g.henselRing = ring);
+  return (g[key] = cellNeighbours(cStart, Int32Array.from(cList), g.verts.length / 3, sides));
 }
 
 // Callahan's letters for where 2, 3 or 4 live neighbours sit around a hexagon (bit q = neighbour q):
@@ -5377,7 +5373,7 @@ function buildLife(seq, mode) {
   const nbr = cornerNeighbours(g);
   fitColours(g);  // as many colours as the surface has fair spots for
   let rule = lifeRuleNow() || parseRule('B3/S23');
-  const ring = rule.iso === 'hensel' && lifeMark(mode) === '■' ? squareRing(g) : rule.iso === 'hex' ? nbr.ring : null;
+  const ring = rule.iso === 'hensel' && lifeMark(mode) === '■' ? cornerNeighbours(g, 8).ring : rule.iso === 'hex' ? nbr.ring : null;
   if (rule.iso && !ring) {  // Callahan's letters need hexagons, Hensel's squares
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
@@ -5902,40 +5898,29 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
 // the cells sharing an edge or a corner with each one (wrapping around, or not past the edges), as the
 // surfaces' lists; on hexagons, also the 6 around in turn (ring: Callahan's letters)
 function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 8 neighbours in order too
-  const row = planeRow(kind, W), n = row * W, start = new Int32Array(n + 1), list = [];
-  const ring = kind === 'hex' ? new Int32Array(6 * n).fill(-1) : hensel && kind === 'square' ? new Int32Array(8 * n).fill(-1) : null;
-  const at = (x, y) => {  // a cell's index (triangles: by their rhombus), −1 past a dead edge
-    if (torus) { const w = kind === 'tri' ? W : row; x = kind === 'tri' ? 2 * (((x >> 1) % w + w) % w) + (x & 1) : ((x % w) + w) % w; y = ((y % W) + W) % W; }
-    return x < 0 || y < 0 || x >= row || y >= W ? -1 : y * row + x;
-  };
-  const HEX = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
-  // Cairo pentagons: the cells at each corner, its corners in grid units (cairoCorners), wrapping round
-  // the grid every W units
-  const cornerKey = (u, v) => { const r = (a) => { const k = Math.round(a * 1000); return torus ? ((k % (W * 1000)) + W * 1000) % (W * 1000) : k; }; return r(u) * 8388608 + r(v); };
-  const byCorner = new Map(), cornersOf = (x, y) => (TILINGS[kind] ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : APERIODIC[kind] ? APERIODIC[kind](W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
-  if (kind === 'cairo' || kind === 'kite' || APERIODIC[kind] || TILINGS[kind]) for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) for (const [u, v] of cornersOf(x, y)) {
-    const k = cornerKey(u, v);
-    (byCorner.get(k) ?? byCorner.set(k, []).get(k)).push(y * row + x);
-  }
+  const row = planeRow(kind, W), n = row * W, HEX = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+  // each cell's corners in grid units (a hexagon's: the middles of the triangles round its centre), wrapping round the
+  // grid every W units; the same corner of two cells, one id
+  const cornersOf = (x, y) => (kind === 'square' ? [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]
+    : kind === 'hex' ? HEX.map(([a, b], q) => [x + (a + HEX[(q + 1) % 6][0]) / 3, y + (b + HEX[(q + 1) % 6][1]) / 3])
+      : kind === 'tri' ? (x & 1 ? [[(x >> 1) + 1, y], [(x >> 1) + 1, y + 1], [x >> 1, y + 1]] : [[x >> 1, y], [(x >> 1) + 1, y], [x >> 1, y + 1]])
+        : TILINGS[kind] ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : APERIODIC[kind] ? APERIODIC[kind](W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
+  // a corner's id: squares, triangles and hexagons have theirs on a grid of 1/q units, numbered in an array; the others
+  // by a map (their corners to 1/1000)
+  const q = { square: 1, tri: 1, hex: 3 }[kind] ?? 1000, P = W * q, S = P + 4 * q;
+  const r = (a) => { const k = Math.round(a * q); return torus ? ((k % P) + P) % P : k + 2 * q; };
+  const byGrid = q < 1000 ? new Int32Array(S * S).fill(-1) : null, byMap = new Map(), cStart = new Int32Array(n + 1), cList = [];
+  let nv = 0;
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
-    const t = y * row + x, around = new Set();
-    start[t] = list.length;
-    if (kind === 'square') HENSEL_RING.forEach((bit, q) => { const u = at(x + (bit % 3) - 1, y + Math.floor(bit / 3) - 1); if (ring) ring[8 * t + q] = u; around.add(u); });
-    else if (kind === 'hex') HEX.forEach(([dx, dy], q) => { const u = at(x + dx, y + dy); ring[6 * t + q] = u; around.add(u); });
-    else if (kind === 'cairo' || kind === 'kite' || APERIODIC[kind] || TILINGS[kind]) for (const [u, v] of cornersOf(x, y)) for (const c of byCorner.get(cornerKey(u, v))) around.add(c);
-    else {  // triangles: the 6 around each of its 3 corners (corner (a, b): ▲ of (a, b), (a−1, b), (a, b−1); ▼ of (a−1, b), (a−1, b−1), (a, b−1))
-      const i = x >> 1, corners = x & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]];
-      for (const [a, b] of corners) {
-        for (const [p, q] of [[a, b], [a - 1, b], [a, b - 1]]) around.add(at(2 * p, q));
-        for (const [p, q] of [[a - 1, b], [a - 1, b - 1], [a, b - 1]]) around.add(at(2 * p + 1, q));
-      }
+    for (const [u, v] of cornersOf(x, y)) {
+      let id;
+      if (byGrid) { const k = r(u) * S + r(v); id = byGrid[k] < 0 ? (byGrid[k] = nv++) : byGrid[k]; }
+      else { const k = r(u) * 8388608 + r(v); id = byMap.get(k); if (id === undefined) byMap.set(k, (id = nv++)); }
+      cList.push(id);
     }
-    around.delete(-1);
-    around.delete(t);
-    for (const u of around) list.push(u);
+    cStart[y * row + x + 1] = cList.length;
   }
-  start[n] = list.length;
-  return { start, list: Int32Array.from(list), ring };
+  return cellNeighbours(cStart, Int32Array.from(cList), nv, kind === 'hex' ? 6 : hensel && kind === 'square' ? 8 : 0);
 }
 function buildLifePlane(seq) {
   const kind = MODES[current.mode].plane, sides = PLANE_SIDES[kind];
