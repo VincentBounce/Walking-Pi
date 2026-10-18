@@ -404,6 +404,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .ranking .rank-row { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
 .gauges .gauge-row { height: 18px; display: grid; grid-template-columns: 64px minmax(0, 1fr) 110px; align-items: center; gap: 6px; }  /* one colour: fixed rows */
 .gauges .gauge-row > span:first-child { color: var(--muted); }
+.gauges .rank-bar.centred { position: relative; } .gauges .rank-bar.centred i { position: absolute; top: 0; } .gauges .rank-bar.centred::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }  /* Growth: from the middle */
 .ranking .rank-cell { display: none; white-space: nowrap; text-align: right; }
 #ranking .rank-cell:nth-child(4) { display: block; }  /* folded: the table's alive column only */
 .stage-bar:hover #ranking .rank-row { grid-template-columns: 16px 12px minmax(0, 1fr) 70px 56px 56px 70px; }
