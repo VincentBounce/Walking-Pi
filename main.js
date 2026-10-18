@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.753';
+const VERSION = '0.1.754';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6678,9 +6678,8 @@ function lifeReset() {
   L.loopSum = new Float64Array(L.colours + 1);
   L.loopMin = new Float64Array(L.colours + 1).fill(Infinity);  // (a colour the same all round: its count exact, no ≈)
   L.loopMax = new Float64Array(L.colours + 1);
-  L.loopN = 0;
   L.loopAvg = null;
-  L.trace = { alive: [L.seedAlive], change: [0] };  // each generation's live cells and births + deaths (see drawActivity)
+  L.trace = { alive: [L.seedAlive], change: [0], by: [L.seedByColour] };  // each generation's live cells (each colour's too) and births + deaths (see drawActivity)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -6779,6 +6778,7 @@ function lifeStep() {
   }
   L.blueCount = byColour[2] ?? 0;
   L.trace.alive[gen] = alive;
+  L.trace.by[gen] = byColour;
   L.trace.change[gen] = L.born + L.dead - changes;
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
@@ -7971,14 +7971,14 @@ function advanceTo(target) {
       const s = L.stable;
       if (!s) continue;
       if (s.extinct || s.P === 1) { cur = s.T; play(false); break; }  // nothing moves any more: it ends there
-      if (L.loopBase && !L.loopAvg) {  // the first round: each colour's live cells, for their mean over the loop
-        for (let k = 1; k <= L.colours; k++) {
-          const v = L.colours === 1 ? L.aliveCount : L.byColour[k];
+      if (!L.loopAvg) {  // found: each colour's live cells over the loop (its generations' counts, see lifeStep), their mean
+        for (let g = s.T; g < s.T + s.P; g++) for (let k = 1; k <= L.colours; k++) {
+          const v = L.colours === 1 ? L.trace.alive[g] : L.trace.by[g][k];
           L.loopSum[k] += v;
           L.loopMin[k] = Math.min(L.loopMin[k], v);
           L.loopMax[k] = Math.max(L.loopMax[k], v);
         }
-        if (++L.loopN === s.P) L.loopAvg = Array.from(L.loopSum, (v) => v / s.P);
+        L.loopAvg = Array.from(L.loopSum, (v) => v / s.P);
       }
       if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
         cur -= s.P;  // (a trail goes on fading: its time is L.gen's)
