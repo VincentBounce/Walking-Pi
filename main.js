@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.744';
+const VERSION = '0.1.745';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6604,9 +6604,10 @@ function fitRuleToShape() {
   ruleFittedTo = w;
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
-  if (!now || now.text.includes(lifeMark(mode))) return;  // a rule typed, or one for this shape: kept
+  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■' && !!mode.plane);
+  if (lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
-  if (fit) setRuleText(fit.value);
+  if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
 }
 
 function lifeReset() {
