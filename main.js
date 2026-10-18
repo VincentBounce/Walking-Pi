@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.715';
+const VERSION = '0.1.716';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -826,7 +826,8 @@ const FORMULA_NOTES = {
  * a pattern's turns about pivot (lattice units, a centre of the tiling's turns: found by trying each corner, middle and
  * edge's middle), and whether it mirrors across the upright line through it (Florets, Snub, Pythagoras, Capital I: never);
  * sheet: its torus's cell (see tilingTorusMesh), A = p·a + q·b round the ring and B = r·a + s·b round the tube, A ⟂ B
- * (none: Capital I, its I not convex, not drawn on a surface) */
+ * (Stein's pentagon: within 2°, its lattice has no small cell at right angles; none: Capital I, its I not convex, not drawn
+ * on a surface) */
 const TILINGS = {
   rhombille: { name: 'Rhombille', mark: '◇', cells: 'rhombi', where: 'a grid of rhombi, 3 a hexagon (the rhombille tiling)', most: 10, turns: 6, mirror: true, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
     basis: [[2, 0], [1, 1.7320508075688772]],
@@ -855,13 +856,15 @@ const TILINGS = {
   kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16, turns: 6, mirror: true, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
     basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
     polys: [[[0,0],[0.5,0],[0.333333,0.333333]],[[0,0],[0.333333,0.333333],[0,0.5]],[[0,0.5],[0.333333,0.333333],[0,1]],[[0.333333,0.333333],[0.5,0.5],[0,1]],[[0.5,0.5],[0.666667,0.666667],[0,1]],[[0.666667,0.666667],[0.5,1],[0,1]],[[1,0],[1,0.5],[0.666667,0.666667]],[[1,0],[0.666667,0.666667],[0.5,0.5]],[[0.333333,0.333333],[1,0],[0.5,0.5]],[[0.5,0],[1,0],[0.333333,0.333333]],[[0.666667,0.666667],[1,1],[0.5,1]],[[1,0.5],[1,1],[0.666667,0.666667]]] },
-  pent14: { name: 'Type 14', mark: '✦', cells: 'pentagons', where: "a grid of Stein's pentagon (1985, the 14th that tiles, with no freedom: the only other with the 15th)", most: 7, turns: 2, mirror: false, pivot: [0.642825, 0.861384],
+  pent14: { name: 'Type 14', mark: '✦', cells: 'pentagons', where: "a grid of Stein's pentagon (1985, the 14th that tiles, with no freedom: the only other with the 15th)", most: 7, turns: 2, mirror: false, pivot: [0.642825, 0.861384], sheet: [[1, 0], [1, 2]],
     basis: [[-0.46779393374731626, -2.529640934919871], [-2.1693750052092344, 1.6374586088176528]],
     polys: [[[0.826554,1.037401],[0.459096,0.685367],[0.441017,0.310113],[0.647345,0.455198],[1,1]],[[1,1],[0.647345,0.455198],[0.638305,0.267571],[0.844633,0.412656],[1.050961,0.55774],[1.112204,0.76017],[1.173446,0.962599]],[[0.28565,-0.277232],[0.638305,0.267571],[0.647345,0.455198],[0.441017,0.310113],[0.234689,0.165028],[0.173446,-0.037401],[0.112204,-0.23983]],[[0.459096,-0.314633],[0.826554,0.037401],[0.844633,0.412656],[0.638305,0.267571],[0.28565,-0.277232]],[[0.441017,0.310113],[0.459096,0.685367],[0.28565,0.722768],[0.112204,0.76017],[0.050961,0.55774],[0.234689,0.165028]],[[-0.155367,0.412656],[-0.173446,0.037401],[0,0],[0.173446,-0.037401],[0.234689,0.165028],[0.050961,0.55774]]] },
   pent15: { name: 'Type 15', mark: '⬟', cells: 'pentagons', where: 'a grid of the 15th pentagon (Mann, McLoud-Mann and Von Derau, 2015: the last convex one that tiles)', most: 8, turns: 2, mirror: false, pivot: [0.00613, 0.611646], sheet: [[1, 0], [0, 1]],
     basis: [[-2.732050807568877, 4.732050807568877], [4.848076211353315, 2.799038105676658]],
     polys: [[[0.125,0.723291],[0.170753,0.800641],[0.091506,0.845299],[-0.033494,0.723291],[-0.033494,0.633975]],[[0.045753,0.92265],[0.091506,0.845299],[0.170753,0.800641],[0.216506,0.877992],[0.091506,1],[0,1]],[[0.091506,1.089316],[0.091506,1],[0.216506,0.877992],[0.295753,0.92265],[0.25,1]],[[0.125,0.723291],[0.216506,0.723291],[0.341506,0.845299],[0.295753,0.92265],[0.216506,0.877992],[0.170753,0.800641]],[[-0.033494,0.633975],[0.045753,0.589316],[0.216506,0.633975],[0.216506,0.723291],[0.125,0.723291]],[[0.375,0.723291],[0.420753,0.800641],[0.341506,0.845299],[0.216506,0.723291],[0.216506,0.633975]],[[0.25,0],[0.341506,0],[0.341506,0.089316],[0.170753,0.133975],[0.091506,0.089316]],[[0.01226,0.223291],[-0.079247,0.223291],[-0.079247,0.133975],[0.091506,0.089316],[0.170753,0.133975]],[[0.295753,0.92265],[0.341506,0.845299],[0.420753,0.800641],[0.466506,0.877992],[0.341506,1],[0.25,1]],[[0.341506,1.089316],[0.341506,1],[0.466506,0.877992],[0.545753,0.92265],[0.5,1]],[[0.375,0.723291],[0.466506,0.723291],[0.591506,0.845299],[0.545753,0.92265],[0.466506,0.877992],[0.420753,0.800641]],[[0.216506,0.633975],[0.295753,0.589316],[0.466506,0.633975],[0.466506,0.723291],[0.375,0.723291]],[[0.625,0.723291],[0.670753,0.800641],[0.591506,0.845299],[0.466506,0.723291],[0.466506,0.633975]],[[0.5,0],[0.591506,0],[0.591506,0.089316],[0.420753,0.133975],[0.341506,0.089316]],[[0.216506,0.300641],[0.170753,0.377992],[0.091506,0.42265],[0.045753,0.345299],[0.170753,0.223291],[0.26226,0.223291]],[[0.26226,0.223291],[0.170753,0.223291],[0.170753,0.133975],[0.341506,0.089316],[0.420753,0.133975]],[[0.170753,0.133975],[0.170753,0.223291],[0.045753,0.345299],[-0.033494,0.300641],[0.01226,0.223291]],[[0.13726,0.5],[0.045753,0.5],[-0.079247,0.377992],[-0.033494,0.300641],[0.045753,0.345299],[0.091506,0.42265]],[[0.295753,0.589316],[0.216506,0.633975],[0.045753,0.589316],[0.045753,0.5],[0.13726,0.5]],[[0.545753,0.92265],[0.591506,0.845299],[0.670753,0.800641],[0.716506,0.877992],[0.591506,1],[0.5,1]],[[0.591506,1.089316],[0.591506,1],[0.716506,0.877992],[0.795753,0.92265],[0.75,1]],[[0.625,0.723291],[0.716506,0.723291],[0.841506,0.845299],[0.795753,0.92265],[0.716506,0.877992],[0.670753,0.800641]],[[0.466506,0.633975],[0.545753,0.589316],[0.716506,0.633975],[0.716506,0.723291],[0.625,0.723291]],[[0.875,0.723291],[0.920753,0.800641],[0.841506,0.845299],[0.716506,0.723291],[0.716506,0.633975]],[[0.75,0],[0.841506,0],[0.841506,0.089316],[0.670753,0.133975],[0.591506,0.089316]],[[0.466506,0.300641],[0.420753,0.377992],[0.341506,0.42265],[0.295753,0.345299],[0.420753,0.223291],[0.51226,0.223291]],[[0.51226,0.223291],[0.420753,0.223291],[0.420753,0.133975],[0.591506,0.089316],[0.670753,0.133975]],[[0.420753,0.133975],[0.420753,0.223291],[0.295753,0.345299],[0.216506,0.300641],[0.26226,0.223291]],[[0.38726,0.5],[0.295753,0.5],[0.170753,0.377992],[0.216506,0.300641],[0.295753,0.345299],[0.341506,0.42265]],[[0.545753,0.589316],[0.466506,0.633975],[0.295753,0.589316],[0.295753,0.5],[0.38726,0.5]],[[0.13726,0.5],[0.091506,0.42265],[0.170753,0.377992],[0.295753,0.5],[0.295753,0.589316]],[[0.795753,0.92265],[0.841506,0.845299],[0.920753,0.800641],[0.966506,0.877992],[0.841506,1],[0.75,1]],[[0.841506,1.089316],[0.841506,1],[0.966506,0.877992],[1.045753,0.92265],[1,1]],[[0.875,0.723291],[0.966506,0.723291],[1.091506,0.845299],[1.045753,0.92265],[0.966506,0.877992],[0.920753,0.800641]],[[0.716506,0.633975],[0.795753,0.589316],[0.966506,0.633975],[0.966506,0.723291],[0.875,0.723291]],[[1,0],[1.091506,0],[1.091506,0.089316],[0.920753,0.133975],[0.841506,0.089316]],[[0.716506,0.300641],[0.670753,0.377992],[0.591506,0.42265],[0.545753,0.345299],[0.670753,0.223291],[0.76226,0.223291]],[[0.76226,0.223291],[0.670753,0.223291],[0.670753,0.133975],[0.841506,0.089316],[0.920753,0.133975]],[[0.670753,0.133975],[0.670753,0.223291],[0.545753,0.345299],[0.466506,0.300641],[0.51226,0.223291]],[[0.63726,0.5],[0.545753,0.5],[0.420753,0.377992],[0.466506,0.300641],[0.545753,0.345299],[0.591506,0.42265]],[[0.795753,0.589316],[0.716506,0.633975],[0.545753,0.589316],[0.545753,0.5],[0.63726,0.5]],[[0.38726,0.5],[0.341506,0.42265],[0.420753,0.377992],[0.545753,0.5],[0.545753,0.589316]],[[0.966506,0.300641],[0.920753,0.377992],[0.841506,0.42265],[0.795753,0.345299],[0.920753,0.223291],[1.01226,0.223291]],[[0.920753,0.133975],[0.920753,0.223291],[0.795753,0.345299],[0.716506,0.300641],[0.76226,0.223291]],[[0.88726,0.5],[0.795753,0.5],[0.670753,0.377992],[0.716506,0.300641],[0.795753,0.345299],[0.841506,0.42265]],[[1.045753,0.589316],[0.966506,0.633975],[0.795753,0.589316],[0.795753,0.5],[0.88726,0.5]],[[0.63726,0.5],[0.591506,0.42265],[0.670753,0.377992],[0.795753,0.5],[0.795753,0.589316]],[[0.88726,0.5],[0.841506,0.42265],[0.920753,0.377992],[1.045753,0.5],[1.045753,0.589316]]] },
 };
+// the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip)
+const MOBIUS_TILINGS = ['rhombille', 'rhombitri'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
 const tilingAt = (kind, x, y) => { const P = TILINGS[kind].polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
 const tilingWorld = (kind, [u, v]) => { const [a, b] = TILINGS[kind].basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
 
@@ -2256,6 +2259,12 @@ for (const [kind, t] of Object.entries(TILINGS)) {
   MODES[tilingMode(kind)] = { base: 2, lattice: kind, life: true, plane: kind, where: t.where };
   MODE_ICONS[tilingMode(kind)] = `tiling-${kind}`;
   NAV[tilingMode(kind)] = ['Life', '2D', t.name, 'Life', ''];
+  if (MOBIUS_TILINGS.includes(kind)) {  // on a Möbius strip (see tilingStrip)
+    const m = `lifeMobius${kind[0].toUpperCase()}${kind.slice(1)}`;
+    MODES[m] = { base: 2, lattice: 'sphere', sphere: mobiusOf(kind), life: true, perspective: true, round: true, where: `a Möbius strip of ${t.where.replace(/^a grid of /, '')} (both faces, over its edge onto the one behind)` };
+    MODE_ICONS[m] = 'mobius';
+    NAV[m] = ['Life', 'Surfaces', 'Möbius strip', 'Life', ''];
+  }
   if (!t.sheet) continue;  // and on a torus (see tilingTorusMesh)
   const w = `lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`;
   MODES[w] = { base: 2, lattice: 'sphere', sphere: `${kind}torus`, life: true, perspective: true, round: true, where: `a torus of ${t.where.replace(/^a grid of /, '')}` };
@@ -2303,6 +2312,7 @@ const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon
   Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
+const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
 const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
@@ -2338,31 +2348,36 @@ function navGo(level, value) {
 // Surfaces that come in several tilings are one entry each in the list (Torus, Sphere), their
 // tiling picked by tabs under the list: modes, its modes per tiling (walks along the grid and on
 // cells, ants, Life);
-// tabs, [tiling, turned by 30° (see TURNED), icon, name]; tab, the one in use or last chosen
+// tabs, [tiling, turned by 30° (see TURNED), icon, its shape (as the 2D grids name it, see shapeLabel), title]; tab, the one in use or last chosen
 const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk', 'lifeTorus', 'torusPivotGrid', 'torusPivot'], ['hexTorusGrid', 'hexTorusWalk', 'lifeHexTorus', 'hexTorusPivot'],
                           ['triTorusGrid', 'triTorusWalk', 'triTorusPivotGrid', 'lifeTriTorus'], ['cairoTorusWalk', 'lifeCairoTorus'], ['lifeKiteTorus']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [3, false, 'pentagons', 'Cairo pentagons'],
-           [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (columns round the tube)'],
-           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
+           [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)'],
+           [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
                                  ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri'], ['mobiusCairoWalk', 'lifeMobiusCairo'], ['lifeMobiusKite']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [3, false, 'pentagons', 'Cairo pentagons'], [1, false, 'tilesHex', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons, turned by 30° (rows along the strip)'],
-           [2, false, 'tilesTri', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (rows along the strip)'],
+           [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Klein bottle', modes: [['kleinWalk', 'lifeKlein', 'kleinPivot'], ['kleinCairoWalk', 'lifeKleinCairo'], ['kleinHexWalk', 'lifeKleinHex', 'kleinHexPivot'], ['kleinTriWalk', 'lifeKleinTri'], ['lifeKleinKite']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares'], [1, false, 'pentagons', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons'], [3, false, 'tilesTri', 'Triangles'], [4, false, 'kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [3, false, 'tilesTri', 'Triangles', 'Triangles'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid'], ['lifeIcosaKite']], tab: 0,
-    tabs: [[0, false, 'tilesHex', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles (an icosahedron, inflated)'], [2, false, 'kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesHex', 'Hexagons', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles', 'Triangles (an icosahedron, inflated)'], [2, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Tetrahedron', modes: [['tetraGrid', 'tetraLR', 'tetraPivotGrid', 'lifeTetra'], ['lifeTetraKite']], tab: 0,
-    tabs: [[0, false, 'tilesTri', 'Triangles'], [1, false, 'kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesTri', 'Triangles', 'Triangles'], [1, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
   { name: 'Octahedron', modes: [['octaGrid', 'octaLR', 'octaPivotGrid', 'lifeOcta'], ['lifeOctaKite']], tab: 0,
-    tabs: [[0, false, 'tilesTri', 'Triangles'], [1, false, 'kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesTri', 'Triangles', 'Triangles'], [1, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
+for (const kind of MOBIUS_TILINGS) {  // the tilings' strips, after the kites (Life only)
+  const F = FAMILIES[1];
+  F.tabs.push([F.modes.length, false, `tiling-${kind}`, TILINGS[kind].name, TILINGS[kind].name]);
+  F.modes.push([`lifeMobius${kind[0].toUpperCase()}${kind.slice(1)}`]);
+}
 for (const [kind, t] of Object.entries(TILINGS)) if (t.sheet) {  // the tilings' tori, after the kites (Life only)
   const F = FAMILIES[0];
-  F.tabs.push([F.modes.length, false, `tiling-${kind}`, t.name]);
-  if (t.turns === 6) F.tabs.push([F.modes.length, true, `tiling-${kind}`, `${t.name}, turned by 30° (rows round the tube)`]);
+  F.tabs.push([F.modes.length, false, `tiling-${kind}`, t.name, t.name]);
+  if (t.turns === 6) F.tabs.push([F.modes.length, true, `tiling-${kind}`, t.name, `${t.name}, turned by 30° (rows round the tube)`]);
   F.modes.push([`lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`]);
 }
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
@@ -2434,7 +2449,7 @@ function renderModePicker() {
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
   $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) =>
-    button(`${icon(SHAPE_ICONS[sh])}<span>${SHAPE_SHORT[sh] ?? sh}</span>`, sh === shape, () => navGo(2, sh), sh)));
+    button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => navGo(2, sh), sh)));
   // a family picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
   const inFamily = familyOf(w);
   if (inFamily) inFamily.F.tab = inFamily.tab;
@@ -2449,9 +2464,9 @@ function renderModePicker() {
     // its tilings as the 2D grids are, a picture and a name each, 4 a row; one that turns by 30° (another grid:
     // its rows round the tube), a switch once picked: a click turns it (its picture turned) or back
     const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
-    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name]) => {
+    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, shape, name]) => {
       if (turned || !same(f)) return [];
-      const turns = tabOf(f, true) >= 0, b = button(`${icon(pic)}<span>${name.split(/[ ,(]/)[0]}</span>`, f === here, () => {
+      const turns = tabOf(f, true) >= 0, b = button(`${icon(pic)}<span>${shapeLabel(shape)}</span>`, f === here, () => {
         if (f === here) {
           if (turns) { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); }
           return;
@@ -2460,7 +2475,7 @@ function renderModePicker() {
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][3] : name);
+      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name);
       b.classList.toggle('switch', f === here && turns);
       b.classList.toggle('turned', f === here && isTurned);
       return [b];
@@ -3756,7 +3771,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null) {  // mids: t
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite'];
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', ...MOBIUS_TILINGS.map(mobiusOf)];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
  * for them), or rows "x" that count, a length of its own (s=16x240: 16 rows of triangles 120 long). */
@@ -3769,6 +3784,12 @@ const MOBIUS_ALONG = {
   mobiusCairo: { step: 1, ok: (n, nv) => (n + nv) % 2 === 1 },
 };
 MOBIUS_ALONG.mobiusKite = MOBIUS_ALONG.mobiusTri;  // kites: the triangles', each cut in 3
+// a tiling's: by its lattice's second side's share along the first (b·a / |a|, a whole part of |a|), the strip's
+// length such that the twist (x + L, y) → (x, W − y), W = nv rows of b, maps the tiling onto itself (see tilingStrip)
+for (const kind of MOBIUS_TILINGS) {
+  const [a, b] = TILINGS[kind].basis, la = Math.hypot(...a), bx = (a[0] * b[0] + a[1] * b[1]) / la, m = Math.round(la / bx);
+  MOBIUS_ALONG[mobiusOf(kind)] = { step: bx, ok: (n, nv) => (n + nv) % m === 0 };
+}
 const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.split('x').map(Number));  // [rows, count along or null]
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
  * unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends round the circle (keeping
@@ -3797,6 +3818,8 @@ function mobiusPoint(x, y, L, W, m) {
  *   wide, an even number of columns; the edges zigzag along them. */
 function mobiusSheet(kind0, size) {
   if (kind0.startsWith('mobiusKite')) { const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf) }; }  // the triangles', cut in 3
+  const tiling = MOBIUS_TILINGS.find((k) => mobiusOf(k) === kind0);
+  if (tiling) return tilingStrip(tiling, kind0, size);
   // the usual length, a multiple of 12
   const kind = kind0, [nv, own] = mobiusSize(size), step = MOBIUS_ALONG[kind].step, fit = twelve;
   const len = (W) => (own ? own * step : (2 * Math.PI * W) / MOBIUS_WIDTH), tiles = [], H = Math.sqrt(3) / 2;  // its length, or the usual one
@@ -3861,13 +3884,34 @@ function mobiusSheet(kind0, size) {
   for (let i = 0; i < L; i++) for (let j = 0; j < nv; j++) tiles.push([[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]);
   return done(L, nv);
 }
+// A tiling's strip (see MOBIUS_TILINGS): the plane turned so that its lattice's first side a runs along it, its tiles
+// whose middle is within nv rows of b (a mirror along a: the strip's edges alike) and L along (see MOBIUS_ALONG), as
+// many corners each (the last one repeated); the usual length, the counts' nearest that the twist allows
+function tilingStrip(kind, kind0, size) {
+  const t = TILINGS[kind], [a, b] = t.basis, turn = -Math.atan2(a[1], a[0]), m = t.polys.length, { step, ok } = MOBIUS_ALONG[kind0];
+  const [nv, own] = mobiusSize(size), W = nv * turnPoint(b, turn)[1], len = (2 * Math.PI * W) / MOBIUS_WIDTH;
+  let n = own ?? Math.round(len / step);
+  if (!own) for (let d = 0; !ok(n, nv); d++) n += d % 2 ? -d : d;  // (the nearest count the twist allows)
+  const L = n * step, sides = Math.max(...t.polys.map((P) => P.length)), tiles = [], mids = [], by = W / nv, Q = 12000;
+  // a corner on a fine grid, in steps along and rows across from the middle: the twist (x + L, y) → (x, W − y) maps the
+  // grid onto itself, so a corner and its twin meet exactly (the polygons' 6 decimals leave them 10⁻⁶ apart)
+  const snap = ([x, y]) => [(Math.round((x / step) * Q) / Q) * step, W / 2 + (Math.round(((y - W / 2) / by) * Q) / Q) * by];
+  const reach = Math.ceil((L + W) / Math.min(Math.hypot(...a), Math.hypot(...b))) + 2;
+  for (let j = -reach; j <= reach; j++) for (let i = -reach; i <= reach; i++) for (let k = 0; k < m; k++) {
+    const P = tilingPolys(kind)[k].map(([u, v]) => snap(turnPoint(tilingWorld(kind, [u + i, v + j]), turn))), [x, y] = [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length);
+    if (x < -1e-9 || x >= L - 1e-9 || y < -1e-9 || y > W + 1e-9) continue;
+    tiles.push([...P, ...Array(sides - P.length).fill(P.at(-1))]);
+    mids.push(x, y);
+  }
+  return { L, W, tiles, sides, mids };
+}
 // The mesh of the strip's two faces: the front of each tile as on the sheet, its back the same
 // corners turned over. A corner of the sheet is a corner of each face (but one where the faces
 // meet, on the strip's edge); past the glued ends, the front goes on as the back
 function mobiusMesh(kind, size) {
   const key = `${kind}${size}`, nv = mobiusSize(size)[0];
   if (meshCache[key]) return meshCache[key];
-  const { L, W, tiles: sheet } = mobiusSheet(kind, size), k = sheet[0].length;
+  const { L, W, tiles: sheet, mids } = mobiusSheet(kind, size), k = sheet[0].length;
   const { verts, add } = vertexStore();
   const ids = sheet.map((t) => t.map(([x, y]) => add(...mobiusPoint(x, y, L, W, 1))));  // the glued ends share corners
   const n0 = verts.length / 3, uses = new Map(), onEdge = new Uint8Array(n0), home = new Float64Array(n0).fill(NaN);
@@ -3902,7 +3946,8 @@ function mobiusMesh(kind, size) {
       delta.set(a * N + b, [dx, dy]); delta.set(b * N + a, [-dx, -dy]);
     }
   });
-  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_TILINGS.find((k) => mobiusOf(k) === kind), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length,
+    ...(mids && { uvMid: new Float64Array([...mids, ...mids]) }) }));  // (a tiling's: its tiles' own middles, see sheetMiddle)
 }
 // The sheet point of a surface: a torus, or a Möbius strip
 const sheetPoint = (g, i, j, m) => {
@@ -3949,6 +3994,18 @@ function cairoTorusMesh(nv, nu = cairoTorusColumns(nv)) {
   return (meshCache[key] = Object.assign(finishTorus(verts, tiles, 5, nu, nv, uv), { cairo: true }));
 }
 
+// A tiling's polygons, their corners the same from every polygon round them (stored to 6 decimals: those a whole lattice
+// cell apart, or less than 10⁻⁴, made one): a surface glues them by their places, which must agree exactly
+const tilingPolysMemo = {};
+function tilingPolys(kind) {
+  if (tilingPolysMemo[kind]) return tilingPolysMemo[kind];
+  const canon = [];
+  return (tilingPolysMemo[kind] = TILINGS[kind].polys.map((P) => P.map(([u, v]) => {
+    for (const [a, b] of canon) { const iu = Math.round(u - a), iv = Math.round(v - b); if (Math.abs(u - a - iu) < 1e-4 && Math.abs(v - b - iv) < 1e-4) return [a + iu, b + iv]; }
+    canon.push([u, v]);
+    return [u, v];
+  })));
+}
 // A tiling's torus (see TILINGS: sheet): its cell A round the ring nu times, B round the tube nv times (A ⟂ B: its tiles
 // even once rolled up, as many of each as the sheet's sides ask); the lattice cells whose corner is in that rectangle,
 // each its polygons, at their places on the sheet (as many corners each: the last one repeated, as the sphere's
@@ -3958,13 +4015,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
   if (meshCache[key]) return meshCache[key];
   const t = TILINGS[kind], sheet = turned ? [t.sheet[1], t.sheet[0].map((x) => -x)] : t.sheet, [[p, q], [r, s]] = sheet, d = p * s - q * r, sides = Math.max(...t.polys.map((P) => P.length));
   const at = ([u, v]) => [(s * u - r * v) / d, (p * v - q * u) / d];
-  // its polygons' corners the same from every polygon round them (stored to 6 decimals: those a whole cell apart, or
-  // less than 10⁻⁴, made one), and a corner's key at a scale none of them is half a step on
-  const canon = [], polys = t.polys.map((P) => P.map(([u, v]) => {
-    for (const [a, b] of canon) { const iu = Math.round(u - a), iv = Math.round(v - b); if (Math.abs(u - a - iu) < 1e-4 && Math.abs(v - b - iv) < 1e-4) return [a + iu, b + iv]; }
-    canon.push([u, v]);
-    return [u, v];
-  }));
+  const polys = tilingPolys(kind);  // (a corner a key at a scale none of them is half a step on, below)
   const ends = [[0, 0], [nu, 0], [0, nv], [nu, nv]].map(([i, j]) => [p * i + r * j, q * i + s * j]), lo = [0, 1].map((k) => Math.floor(Math.min(...ends.map((e) => e[k])))), hi = [0, 1].map((k) => Math.ceil(Math.max(...ends.map((e) => e[k]))));
   const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map();
   const corner = (i, j) => {  // a corner once, by its place on the sheet round the seams (not by its rounded point in space)
@@ -4311,12 +4362,8 @@ const SPHERES = {
                tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
   mobiusKite: { mesh: (s) => mobiusMesh('mobiusKite', s), radius: (s) => mobiusRadius('mobiusKite', s), columns: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length / mobiusSize(s)[0],
                 tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
-  // Möbius strips from a square sheet (Square): shaped as the usual ones, their tiles stretched along
-  ...Object.fromEntries([['mobius', 'squares'], ['mobiusHex', 'hexagons'], ['mobiusTri', 'triangles'], ['mobiusCairo', 'pentagons'], ['mobiusKite', 'kites']].map(([base, unit]) => {
-    const kind = `${base}Square`;
-    return [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s), columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0],
-                    tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit }];
-  })),
+  ...Object.fromEntries(MOBIUS_TILINGS.map((k) => { const kind = mobiusOf(k); return [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s),
+    columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit: TILINGS[k].cells }]; })),
   // Klein bottles: their size is their rows round the tube, as a torus's
   ...Object.fromEntries([['klein', 'squares', 1], ['kleinHex', 'hexagons', 1], ['kleinTri', 'triangles', 2], ['kleinCairo', 'pentagons', 2], ['kleinKite', 'kites', 6]].map(([kind, unit, per]) => [kind, {
     mesh: (s) => kleinMesh(kind, ...torusDims(kind, s)), radius: (s) => torusDims(kind, s)[0] / (2 * Math.PI * TORUS_TUBE), columns: kleinColumns[kind], perRow: 1,
@@ -6267,7 +6314,7 @@ function drawLifePlane() {
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
-for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = t.mark;
+for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = t.mark;
 const lifeMark = (mode) => (mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
@@ -7243,6 +7290,7 @@ function patternAt(i, K, cells) {
 // and every other one on a tile too (a tiling's cells of several kinds: the first tile that fits them all)
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
   if (kind === 'square') return (p) => p;
+  if (TILINGS[kind] && g.mobius) { const [a] = TILINGS[kind].basis, turn = -Math.atan2(a[1], a[0]); return (p) => turnPoint(p, turn); }  // (a strip: the plane turned, see tilingStrip)
   if (TILINGS[kind]) {  // its lattice's units, then the sheet's cell's (see tilingTorusMesh)
     const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], [[p, q], [r, s]] = g.sheet, d = p * s - q * r;
     return ([x, y]) => { const u = (x * b[1] - y * b[0]) / det, v = (a[0] * y - a[1] * x) / det; return [(s * u - r * v) / d, (p * v - q * u) / d]; };
