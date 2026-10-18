@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.763';
+const VERSION = '0.1.764';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7059,9 +7059,13 @@ function planeSlices(K) {
   const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
   const order = [...angle.keys()].sort((p, q) => angle[p] - angle[q]), part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
   order.forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
+  // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
+  // its slices' middles bunch up), the cell nearest each
   const spots = Array.from({ length: K }, (_, i) => {
-    const ts = order.slice(Math.floor((i * n) / K), Math.floor(((i + 1) * n) / K)), a = angle[ts[ts.length >> 1]] + from, p = [mid[0] + reach * Math.cos(a), mid[1] + reach * Math.sin(a)];
-    return ts.reduce((best, t) => (Math.hypot(at[t][0] - p[0], at[t][1] - p[1]) < Math.hypot(at[best][0] - p[0], at[best][1] - p[1]) ? t : best), ts[0]);
+    const a = from + ((i + 0.5) * 2 * Math.PI) / K, p = [mid[0] + reach * Math.cos(a), mid[1] + reach * Math.sin(a)];
+    let best = 0, near = Infinity;
+    for (let t = 0; t < n; t++) { const d = (at[t][0] - p[0]) ** 2 + (at[t][1] - p[1]) ** 2; if (d < near) { near = d; best = t; } }
+    return best;
   });
   return (sliceMemo = { key, part, spots });
 }
