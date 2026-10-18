@@ -1211,6 +1211,23 @@ None for the rules with a birth on 2 (Prismatic Life, Long prisms, Long florets,
 
 <br>
 
+## ⬟ The 15th pentagon
+
+The last convex pentagon found to tile the plane (Mann, McLoud-Mann and Von Derau, 2015, by a computer search; Rao's proof in 2017 that there are no more): angles 150°, 60°, 135°, 105°, 90°, sides 1, ½, ½, ½ and (√6 + √2)/4 ≈ 0.97, no freedom left. Built as MathWorks's construction (a block of 3, then 6, then 12 by a half turn; tools/tilings/build.js), checked: no gap nor overlap. It is not edge to edge (a corner can fall in the middle of another's side): those corners are added to the sides they lie on, so that the neighbours by a corner are all there: 6 or 8. Its lattice is a rectangle 4.1 times as long as wide, so the app's cell is 4 of them (48 pentagons, near a square). Patterns turn by a half turn, never mirrored (pgg). On a torus too.
+
+| Rule | Score | Settles | Plateau | Alive at 200 | Ash | Ends with oscillators | Patterns | Link |
+|---|--:|---|--:|--:|--:|--:|---|---|
+| **Type 15 Life B247/S034/C4** | 0.52 | 270 to 2,600 | 0.64 | 6.6 % | 3.6 % | 83 % | a ship of 7 cells, period 48, common; an oscillator of 3 cells, period 8; a methuselah of 10 cells: 363 (2 ships off) | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B247/S034/C4&s=48&sd=random.30.7) |
+| **Type 15 classic B256/S67** (2 states) | 0.25 | 420 to 1,900 | 0.32 | 9.5 % | 1.3 % | 100 % | an oscillator of 2 cells, period 2; a methuselah of 8 cells: 1,277 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B256/S67&s=48&sd=random.30.7) |
+
+Type 15 Life is the second most Life-like of all the tilings' rules, after Rhombitri Life (0.565).
+
+<br>
+
+<p align="center">⁂</p>
+
+<br>
+
 ## 🎲 Densities: how full a start should be
 
 For each rule offered, 300 random starts at each density in a patch of radius 3 (squares 49 cells, triangles 73, hexagons 37, Cairo 47) on a 64 × 64 torus, up to 4,000 generations: the mean lifetime (generations before the run repeats), and in brackets the longest (4,000: still going at the cap). Dense starts last longer on average; the records often come from sparse ones, which mostly die at once.

@@ -19,7 +19,8 @@ const rle = (cells) => {
 const cool = () => new Promise((r) => setTimeout(r, 20000));  // a rest between rules (the machine cools)
 for (const [name, rule] of rules) {
   const m = tilingCells(name), small = `${name}:${Math.round(Math.sqrt(5000 / m))}`, big = `${name}:${Math.round(Math.sqrt(90000 / m))}`, starts = [];
-  for (const [r, w, d, from] of [[2, 2, 0.45, 0], [2, 3, 0.35, 1e6], [3, 2, 0.35, 2e6]]) {
+  const shapes = m > 12 ? [[1, 1, 0.2, 0], [1, 1, 0.15, 1e6], [2, 1, 0.1, 2e6]] : [[2, 2, 0.45, 0], [2, 3, 0.35, 1e6], [3, 2, 0.35, 2e6]];  // (a big lattice cell, the 15th pentagon's 48: one of them, sparser)
+  for (const [r, w, d, from] of shapes) {
     const parts = await Promise.all(P.workers.map((wk, k) => P.call(wk, { task: 'seeds', W: small, rule, opts: [trials, from + k * trials, r, w, d, 1200] })));
     for (const p of parts) starts.push(...p.starts);
   }

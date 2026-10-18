@@ -102,6 +102,22 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
 // Capital I: the heptomino I (a bar of 3, a stem, a bar of 3), on the lattice (2, 1), (−1, 3)
 { const I = polyomino([[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]]);
   cell('capitalI', [2, 1], [-1, 3], [[-1, 0], [0, 0], [0, -1], [1, 0], [0, 1], [-1, 1], [1, -1], [-1, -1], [1, 1]].map(([i, j]) => I.map(([x, y]) => [x + 2 * i - j, y + i + 3 * j]))); }
+// the 15th convex pentagon (Mann, McLoud-Mann and Von Derau, 2015; the last of the 15): 12 a cell of its lattice, as MathWorks's
+// construction (Graphics blog, 2015-08-19); not edge to edge: a corner on another pentagon's side is added to its corners
+{ const P = [[0, 0], [-1 / 4, R3 / 4], [-(3 + R3) / 4, (1 + R3) / 4], [-(4 + R3) / 4, 1 / 4], [-1, 0]];
+  const R = (t) => ([x, y]) => [Math.cos(t) * x + Math.sin(t) * y, -Math.sin(t) * x + Math.cos(t) * y], T = (a, b) => ([x, y]) => [x + a, y + b];
+  const M = (...fs) => (p) => fs.reduceRight((q, f) => f(q), p), F = ([x, y]) => [x, -y], G = ([x, y]) => [-x, y];
+  const three = [P, P.map(M(T(R3 / 2, -1 / 2), R(Math.PI / 6))), P.map(M(T((R3 - 1) / 4, (1 + R3) / 4), R(Math.PI / 6), F))];
+  const six = [...three, ...three.map((Q) => Q.map(M(T(-(5 + R3) / 4, (1 - R3) / 4), R(-Math.PI / 3), G)))];
+  const twelve = [...six, ...six.map((Q) => Q.map(M(T(R3, -1 / 2), R(Math.PI))))];
+  // its lattice (u, v) reduced: u, and v − 2u at right angles to it, 4.1 times as long; a cell of 4 u by it (48 pentagons): near a square
+  const u = [-(1 + R3) / 4, (3 + R3) / 4], v = [(10 + 7 * R3) / 4, (3 + 2 * R3) / 4], a = mul(u, 4), b = add(v, mul(u, -2)), patch = [];
+  for (let i = -12; i <= 12; i++) for (let j = -3; j <= 3; j++) for (const Q of twelve) patch.push(Q.map((p) => add(add(p, mul(u, i)), mul(b, j))));
+  const on = (p, q, r) => { const l = Math.hypot(q[0] - p[0], q[1] - p[1]), t = ((r[0] - p[0]) * (q[0] - p[0]) + (r[1] - p[1]) * (q[1] - p[1])) / (l * l);
+    return t > 1e-6 && t < 1 - 1e-6 && Math.abs((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) / l < 1e-6; };
+  const corners = patch.flat(), withT = patch.map((Q) => Q.flatMap((p, k) => { const q = Q[(k + 1) % Q.length];
+    return [p, ...corners.filter((r) => on(p, q, r)).sort((r, s) => Math.hypot(r[0] - p[0], r[1] - p[1]) - Math.hypot(s[0] - p[0], s[1] - p[1])).filter((r, i, l) => !i || key(r) !== key(l[i - 1]))]; }));
+  cell('pent15', a, b, withT); }
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)

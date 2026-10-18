@@ -1,0 +1,87 @@
+{
+ "pent15 B247/S034/C4": {
+  "meths": [
+   {
+    "rle": ".A6.A3.3A5.2A8.A7.A7.A!",
+    "n": 10,
+    "T": 363,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": "2.A2.A.A10.A8.A8.A3.A!",
+    "n": 7,
+    "T": 90,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": "2.A15.2A5.A2.A7.A9.A!",
+    "n": 7,
+    "T": 60,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": ".2A.A3.A5.2A4.A.A5.A9.A6.A!",
+    "n": 11,
+    "T": 60,
+    "ships": 1,
+    "period": 1
+   },
+   {
+    "rle": "8.4A3.A6.2A3.2A7.A8.A!",
+    "n": 11,
+    "T": 50,
+    "ships": 1,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 25,
+   "edge": 23
+  }
+ },
+ "pent15 B256/S67": {
+  "meths": [
+   {
+    "rle": ".A16.A.A2.A2.A6.A3.A4.A!",
+    "n": 8,
+    "T": 1277,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": ".2A10.2A3.A.A14.A.A.2A2.A3.A!",
+    "n": 12,
+    "T": 1178,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": ".A.3A8.A11.A5.A.A4.A!",
+    "n": 9,
+    "T": 1152,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": ".A29.A.A3.A$2.2A24.A.A2.A!",
+    "n": 9,
+    "T": 1129,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": ".A5.2A3.A.A12.A3.A2.A8.3A!",
+    "n": 11,
+    "T": 1066,
+    "ships": 0,
+    "period": 4
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ }
+}
