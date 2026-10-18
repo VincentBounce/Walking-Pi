@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.739';
+const VERSION = '0.1.740';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6491,13 +6491,13 @@ function ruleTutorial(option) {
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
 let customOpen = false;  // the Custom rule card clicked: its states, births and survivals shown, a known rule in use or not
-let henselShown = false;  // squares: Hensel's letters beside the counts, from a rule written with them until a rule card without
+let galleryBefore = null;  // the setup in use while others of the gallery are shown on hover (how a rule works stays meanwhile)
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
-  if (!mode.life) { ruleTutorial(null); return; }
+  if (!mode.life) { if (!galleryBefore) ruleTutorial(null); return; }
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
-  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now}`) ruleTutorial(mine ?? null);  // how a rule works follows the grid and the rule
+  if (!galleryBefore && !$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now}`) ruleTutorial(mine ?? null);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -6510,7 +6510,7 @@ function renderRuleSection() {
       if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
       customOpen = false;
       if (o.value === now) { renderRuleSection(); return; }
-      henselShown = parseRule(o.value)?.iso === 'hensel'; setRuleText(o.value); compute();
+      setRuleText(o.value); compute();
     });
     return b;
   }));
@@ -6527,8 +6527,7 @@ function renderRuleSection() {
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
   const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡';
-  if (rule.iso === 'hensel') henselShown = true;
-  const hensel = mark === '■' && henselShown;  // (kept while its letters are clicked, even all on or all off)
+  const hensel = mark === '■' && !!mode.plane;  // (your own on the plane's squares: always with Hensel's letters; the surfaces have none)
   const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : []);
   const all = (c) => (lettersOf(c).length ? lettersOf(c) : ['']);  // a count without letters: one, ''
   const classOf = (m) => (hex ? hexClass(m).toLowerCase() : henselClass(m)), R = hex ? 6 : 8, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
@@ -10679,7 +10678,7 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
 // edges and cells drawn or found (what is seen; not the tools that found it: the hunt's buttons, Draw's brush)
 const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'sd', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
-let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
+let galleryHover = 0;  // (galleryBefore: see renderRuleSection)
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
 // the setup in use as it was seen
