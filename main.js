@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.779';
+const VERSION = '0.1.780';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1361,6 +1361,13 @@ function relabelColours(mode) {
 }
 
 // Choices as buttons clicked directly (colours, sky); the (hidden) menu stays the source of truth
+// buttons joined in one frame, one choice among them (see .tile-group)
+function tileGroup(buttons) {
+  const g = document.createElement('div');
+  g.className = 'tile-group';
+  g.append(...buttons);
+  return g;
+}
 function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon per value, above its name
   box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
     const b = document.createElement('button');
@@ -1396,7 +1403,7 @@ function renderColorButtons() {
   const names = L ? { mono: 'States', gradient: 'Age', digit: 'Activity' } : { gradient: 'Rainbow', cells: 'Rainbow', visits: 'Heatmap', digit: 'Directions' };
   const picture = (v) => (L ? lifeLookPicture(v) : cellModePicture(v === 'gradient' ? 'cells' : v));
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
-  box.replaceChildren(...looks.map((o) => {
+  const buttons = looks.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.title = o.text;
@@ -1405,7 +1412,8 @@ function renderColorButtons() {
     b.disabled = o.disabled;
     b.addEventListener('click', () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); });
     return b;
-  }), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
+  });
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
@@ -1662,6 +1670,9 @@ const ICONS = (() => {
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
+    // a slanted grid as it is (a rhombus), or as a rectangle
+    rhombus: pathEl('M2 19L8 5H22L16 19Z'),
+    rectangle: '<rect x="3" y="5" width="18" height="14" rx="1"/>',
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
     // numbers
@@ -6102,6 +6113,9 @@ function renderPlaneRow() {
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
   $('edgeWalls').classList.toggle('active', !planeTorus(kind));
   $('edgeTorus').disabled = !!APERIODIC[kind];
+  $('sheetPair').hidden = !RECTS[`${kind}Rect`];
+  $('sheetRhombus').classList.toggle('active', !plane.rect);
+  $('sheetRect').classList.toggle('active', plane.rect);
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -10392,6 +10406,10 @@ for (const [id, torus, pic] of [['edgeTorus', true, 'torus'], ['edgeWalls', fals
   $(id).querySelector('svg').innerHTML = ICONS[pic];
   $(id).addEventListener('click', () => { if (plane.torus === torus) return; plane.torus = torus; compute(true); });
 }
+for (const [id, rect, pic] of [['sheetRhombus', false, 'rhombus'], ['sheetRect', true, 'rectangle']]) {  // (or a click again on the grid's shape)
+  $(id).querySelector('svg').innerHTML = ICONS[pic];
+  $(id).addEventListener('click', () => { if (plane.rect === rect) return; plane.rect = rect; compute(); });
+}
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
@@ -10508,6 +10526,7 @@ function applyTheme() {
   if (t !== 'system') themeLast = t;
   try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
+  $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)));  // Light | Dark, then System
   [...$('themeButtons').children].find((b) => b.classList.contains('active') && t === 'system')?.classList.add('switch');  // (System picked: a click still changes it)
   renderSkyButtons();  // the sky's switch back before them (the buttons were all made again)
   if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
