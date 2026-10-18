@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.782';
+const VERSION = '0.1.783';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6273,21 +6273,37 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     tiles.push({ x, y, al: al - fa, be: be - fb, polys: planeCorners(base, x0, j).map(inRect).map(([u, v]) => [u - fa, v - fb]) });
   }
   if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
-  // the rectangle moved (by sixteenths of its sides) where its cells stick out of it least: its sides a gentle stair
-  // (a cell in it before it, moved on by a whole side)
-  const lu = Math.hypot(...U), lv = Math.hypot(...V), out = (c, sa, sb) => {
-    const da = c.al < sa ? 1 : 0, db = c.be < sb ? 1 : 0;
-    return c.polys.reduce((sum, [u, v]) => sum + lu * Math.max(0, sa - u - da, u + da - sa - 1) + lv * Math.max(0, sb - v - db, v + db - sb - 1), 0);
-  };
-  let shift = [0, 0], least = Infinity;
-  for (let sb = 0; sb < 16; sb++) for (let sa = 0; sa < 16; sa++) {
-    const sum = tiles.reduce((s, c) => s + out(c, sa / 16, sb / 16), 0);
-    if (sum < least - 1e-9) { least = sum; shift = [sa / 16, sb / 16]; }
-  }
-  for (const c of tiles) {
-    const da = c.al < shift[0] ? 1 : 0, db = c.be < shift[1] ? 1 : 0;
+  // the rectangle moved (by sixteenths of its sides) where its cells stick out of it least, then each cell moved on by a
+  // whole side (across or down, either way) where it shares more of its sides with the others: the shortest outline,
+  // its sides a gentle stair
+  const lu = Math.hypot(...U), lv = Math.hypot(...V), move = (c, da, db) => {
     c.x += per * (da * sp + db * sr); c.y += da * sq + db * st; c.al += da; c.be += db;
     c.polys = c.polys.map(([u, v]) => [u + da, v + db]);
+  };
+  const out = (polys, sa, sb) => polys.reduce((sum, [u, v]) => sum + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1), 0);
+  const into = (c, sa, sb) => [c.al < sa ? 1 : 0, c.be < sb ? 1 : 0];  // (a cell before the rectangle: on by a side)
+  let shift = [0, 0], least = Infinity;
+  for (let sb = 0; sb < 1; sb += 1 / 16) for (let sa = 0; sa < 1; sa += 1 / 16) {
+    const sum = tiles.reduce((t, c) => { const [da, db] = into(c, sa, sb); return t + out(c.polys.map(([u, v]) => [u + da, v + db]), sa, sb); }, 0);
+    if (sum < least - 1e-9) { least = sum; shift = [sa, sb]; }
+  }
+  for (const c of tiles) move(c, ...into(c, ...shift));
+  const sides = (polys, da = 0, db = 0) => polys.map(([u, v], i) => {
+    const [u2, v2] = polys[(i + 1) % polys.length], ends = [[u + da, v + db], [u2 + da, v2 + db]].map(([a, b]) => `${Math.round(a * 1e4)},${Math.round(b * 1e4)}`).sort();
+    return [ends.join(' '), Math.hypot((u2 - u) * lu, (v2 - v) * lv)];
+  });
+  const count = new Map(), tally = (c, k) => { for (const [e] of sides(c.polys)) count.set(e, (count.get(e) ?? 0) + k); };
+  for (const c of tiles) tally(c, 1);
+  const shared = (list) => list.reduce((sum, [e, l]) => sum + (count.get(e) ? l : 0), 0);
+  for (let again = true; again;) {
+    again = false;
+    for (const c of tiles) {
+      tally(c, -1);  // (its sides shared with the others, where it is and a side on)
+      let best = [0, 0], most = shared(sides(c.polys)) + 1e-9;
+      for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = shared(sides(c.polys, da, db)); if (n > most) { most = n; best = [da, db]; } }
+      if (best[0] || best[1]) { move(c, ...best); again = true; }
+      tally(c, 1);
+    }
   }
   tiles.sort((p, q) => p.be - q.be || p.al - q.al);
   const kind = `${base}Rect`, t = TILINGS[base];
