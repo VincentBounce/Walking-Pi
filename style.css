@@ -531,7 +531,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #barBase { flex: none; }  /* the base whole: only the loop chip shortens */
 
 /* how a rule works (ruleTutorial): over the grid, its cells as the grid's, a pair each count (before → after) */
-.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: auto; cursor: auto; padding: 20px 24px 24px; background: var(--bg); color: var(--text); }
+.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: auto; scrollbar-gutter: stable both-edges; cursor: auto; padding: 20px 24px 24px; background: var(--bg); color: var(--text); }
 .rule-tuto h3 { margin: 0 0 6px; font-size: 18px; } .rule-tuto h3 code { font-size: 14px; color: var(--muted); margin-left: 6px; }
 .rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); } .rule-tuto h4 code { margin-left: 8px; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); }
 .rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
