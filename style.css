@@ -362,18 +362,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .stage-more { display: block; }
 @media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
 .display-menu { top: 12px; right: 12px; }
-/* the number (Watch number), in place of the whole view: it scrolls, its text can be selected */
-.number-preview {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  padding: 16px 20px;
-  background: var(--bg);
-  overflow: auto;
-  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
-  word-break: break-all;
-  cursor: auto;
-}
+/* the number (Watch number), in place of the whole view as how a rule works (.rule-tuto): its digits */
+.number-view .number-digits { max-width: none; color: var(--text); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
+.tut-tools .icon { width: 16px; height: 16px; vertical-align: middle; }
 #copyNumber.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }

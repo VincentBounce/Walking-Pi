@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.735';
+const VERSION = '0.1.736';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1674,6 +1674,7 @@ const ICONS = (() => {
     back: '<rect class="f" x="15.5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M13 5L4 12L13 19Z', 'f'),
     step: '<rect class="f" x="5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M11 5L20 12L11 19Z', 'f'),
     star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
+    check: pathEl('M5 12.5L10 17.5L19 7'),
     copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/>' + pathEl('M15.5 8.5V5.5A2 2 0 0 0 13.5 3.5H5.5A2 2 0 0 0 3.5 5.5V13.5A2 2 0 0 0 5.5 15.5H8.5'),
     link: pathEl('M9.5 14.5L14.5 9.5') + pathEl('M8.5 11.5L6.5 13.5A3.5 3.5 0 0 0 10.5 17.5L12.5 15.5M15.5 12.5L17.5 10.5A3.5 3.5 0 0 0 13.5 6.5L11.5 8.5'),
   };
@@ -10424,21 +10425,23 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
-// Watch number: shows it over the view, all of it (it scrolls), the button then Copy and close; a click on it copies
-// it and hides it, anywhere else but on the number just hides it
-const sayNumber = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
-function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active'); sayNumber('Watch number'); }
+// Watch number: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
+// (a check once copied) and the cross; a click on the button again, the cross or anywhere else but on it closes it
+function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active', 'switch'); }
 $('copyNumber').addEventListener('click', () => {
-  if ($('numberPreview').hidden) {
-    $('numberPreview').textContent = numberText();
-    $('numberPreview').scrollTop = 0;
-    $('numberPreview').hidden = false;
-    $('copyNumber').classList.add('active');
-    sayNumber('Copy and close');
-    return;
-  }
-  navigator.clipboard.writeText(numberText()).catch(() => {});
-  closeNumber();
+  if (!$('numberPreview').hidden) { closeNumber(); return; }
+  const text = numberText(), name = `${formulaInUse} base ${current.base} `, v = $('numberPreview');
+  v.innerHTML = `<div class="tut-tools"><button type="button" class="tut-copy" title="Copy it">${icon('copy')}</button><button type="button" class="tut-close" title="Back to the walk">✕</button></div>`
+    + `<h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p>`;
+  v.querySelector('.number-digits').textContent = text.slice(name.length);
+  v.querySelector('.tut-close').addEventListener('click', closeNumber);
+  v.querySelector('.tut-copy').addEventListener('click', (e) => {
+    const b = e.currentTarget;
+    navigator.clipboard.writeText(text).then(() => { b.innerHTML = icon('check'); setTimeout(() => { b.innerHTML = icon('copy'); }, 1500); }, () => {});
+  });
+  v.scrollTop = 0;
+  v.hidden = false;
+  $('copyNumber').classList.add('active', 'switch');
 });
 document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => n.id === 'copyNumber' || n.id === 'numberPreview')) closeNumber(); });
 // The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
