@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.709';
+const VERSION = '0.1.710';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8028,6 +8028,9 @@ const SKIES = {
 };
 const skyStops = () => ((walk.is3d || walk.plane) && $('sky').value === 'sky' ? SKIES[document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'] : null);
 const darkSky = () => skyStops() === SKIES.dark;
+// the underside of an open sheet (a torus unrolled, its inside): the foot of the other theme's sky (on a light page,
+// Twilight's; on a dark one, Dawn's)
+const undersideColour = () => (document.documentElement.dataset.theme === 'light' ? SKIES.dark : SKIES.light).at(-1)[1];
 function drawSky(ctx) {
   const stops = skyStops();
   if (!stops) return;  // plain: the page background shows through
@@ -8932,7 +8935,7 @@ function glSurface(palette, levelOf, path) {
   gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
   if (open) {
     gl.cullFace(back);
-    gl.uniform4f(u('uPlain'), ...rgbCached(UNLIT).map((c) => c / 255), 1);
+    gl.uniform4f(u('uPlain'), ...rgbCached(undersideColour()).map((c) => c / 255), 1);
     gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
   }
   gl.disable(gl.CULL_FACE);
@@ -10218,10 +10221,15 @@ $('primorialP').addEventListener('change', () => pickPreset('primorial'));
 $('sky').addEventListener('change', () => { needsFull = true; renderSkyButtons(); });
 renderSkyButtons();
 // Theme: Light, Dark or System (the default, following the system as it changes), kept in this browser
+// (System, clicked again: back to the last of Light and Dark chosen, else to the one the system shows)
 const systemLight = matchMedia('(prefers-color-scheme: light)');
+let themeWas = null, themeLast = null;
+try { themeLast = localStorage.getItem('walkingThemeLast'); } catch { /* none */ }
 function applyTheme() {
   const t = $('theme').value, theme = t === 'system' ? (systemLight.matches ? 'light' : 'dark') : t;
-  try { localStorage.setItem('walkingTheme', t); } catch { /* not kept */ }
+  themeWas = t;
+  if (t !== 'system') themeLast = t;
+  try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
   renderSkyButtons();  // the sky's switch back before them (the buttons were all made again)
   if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
@@ -10236,7 +10244,10 @@ function applyTheme() {
 }
 try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
 if (!$('theme').value) $('theme').value = 'system';
-$('theme').addEventListener('change', applyTheme);
+$('theme').addEventListener('change', () => {
+  if ($('theme').value === 'system' && themeWas === 'system') $('theme').value = themeLast ?? (systemLight.matches ? 'light' : 'dark');
+  applyTheme();
+});
 systemLight.addEventListener('change', () => { if ($('theme').value === 'system') applyTheme(); });
 applyTheme();
 // the animation bar sits over the view: its clicks, drags (the step slider) and wheel are its own
