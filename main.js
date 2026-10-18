@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.734';
+const VERSION = '0.1.735';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10178,7 +10178,7 @@ function fitNow() {
 }
 
 stage.addEventListener('wheel', (e) => {
-  if (e.target.closest('#ruleTuto')) return;  // (how a rule works, over the grid: it scrolls)
+  if (e.target.closest('#ruleTuto, #numberPreview')) return;  // (how a rule works, the number, over the view: they scroll)
   e.preventDefault();
   const r = stage.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
@@ -10194,7 +10194,7 @@ stage.addEventListener('wheel', (e) => {
 let drag = null;
 stage.addEventListener('contextmenu', (e) => e.preventDefault());  // the right button drags the view
 stage.addEventListener('pointerdown', (e) => {
-  if (e.target.closest('#ruleTuto')) return;  // (its buttons: captured by the stage, their clicks went to it)
+  if (e.target.closest('#ruleTuto, #numberPreview')) return;  // (their buttons, their text selected: captured by the stage, their clicks went to it)
   drag = { x: e.clientX, y: e.clientY, pan: !walk.is3d || e.shiftKey || e.button === 2 };  // in 3D, Shift or the right button pans
   stage.setPointerCapture(e.pointerId);
   stage.classList.add('dragging');
@@ -10424,17 +10424,23 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
-// Copy number: copies it and shows it over the view (the start of it: as much as fits), the button then Close; a click
-// on it or anywhere else hides it
-const sayCopy = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
-function closeNumber() { $('numberPreview').hidden = true; sayCopy('Copy number to clipboard'); }
-$('copyNumber').addEventListener('click', async () => {
-  if (!$('numberPreview').hidden) { closeNumber(); return; }
-  $('numberPreview').textContent = numberText(20000);
-  $('numberPreview').hidden = false;
-  try { await navigator.clipboard.writeText(numberText()); sayCopy('Copied — Close'); } catch { sayCopy('Not allowed — Close'); }
+// Watch number: shows it over the view, all of it (it scrolls), the button then Copy and close; a click on it copies
+// it and hides it, anywhere else but on the number just hides it
+const sayNumber = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
+function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active'); sayNumber('Watch number'); }
+$('copyNumber').addEventListener('click', () => {
+  if ($('numberPreview').hidden) {
+    $('numberPreview').textContent = numberText();
+    $('numberPreview').scrollTop = 0;
+    $('numberPreview').hidden = false;
+    $('copyNumber').classList.add('active');
+    sayNumber('Copy and close');
+    return;
+  }
+  navigator.clipboard.writeText(numberText()).catch(() => {});
+  closeNumber();
 });
-document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().includes($('copyNumber'))) closeNumber(); });
+document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => n.id === 'copyNumber' || n.id === 'numberPreview')) closeNumber(); });
 // The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
 // (not − / +) shows every start on an empty globe, turned towards the chosen one.
 function setStart(n) {

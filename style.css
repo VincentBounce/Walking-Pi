@@ -362,17 +362,19 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .stage-more { display: block; }
 @media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
 .display-menu { top: 12px; right: 12px; }
-/* the number that Copy puts on the clipboard, in place of the whole view while the button is hovered */
+/* the number (Watch number), in place of the whole view: it scrolls, its text can be selected */
 .number-preview {
   position: absolute;
   inset: 0;
+  z-index: 5;
   padding: 16px 20px;
   background: var(--bg);
-  overflow: hidden;
+  overflow: auto;
   font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
   word-break: break-all;
-  pointer-events: none;
+  cursor: auto;
 }
+#copyNumber.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 /* Auto-fit stays at the top right; hovering opens the settings, Grid beside it and the rest below */
@@ -538,7 +540,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #barBase { flex: none; }  /* the base whole: only the loop chip shortens */
 
 /* how a rule works (ruleTutorial): over the grid, its cells as the grid's, a pair each count (before → after) */
-.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: auto; padding: 20px 24px 120px; background: var(--bg); color: var(--text); }
+.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: auto; cursor: auto; padding: 20px 24px 120px; background: var(--bg); color: var(--text); }
 .rule-tuto h3 { margin: 0 0 6px; font-size: 18px; } .rule-tuto h3 code { font-size: 14px; color: var(--muted); margin-left: 6px; }
 .rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); } .rule-tuto h4 code { margin-left: 8px; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); }
 .rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
