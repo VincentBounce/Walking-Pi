@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.757';
+const VERSION = '0.1.758';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9817,6 +9817,9 @@ function renderGauges(L) {
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
 // said. By each bar a table (alive, born, died, ever alive, in its colour), its titles on the rule's line: folded, its
 // alive column only; the player open, all of it
+// a colour all died out: none left now; in a loop, none all round it (one born now and then on a tie, gone again: alive,
+// its mean, not ✝ one generation, ≈ the next)
+const colourGone = (L, k) => (L.loopAvg ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
   box.hidden = $('rankTitles').hidden = K < 2;
@@ -9832,7 +9835,7 @@ function renderRanking(L) {
     }), Object.assign(document.createElement('span'), { className: 'all-dead' }));
     box.dataset.k = K;
   }
-  const dead = (k) => L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined, alive = [], gone = [];
+  const dead = (k) => colourGone(L, k), alive = [], gone = [];
   for (let k = 1; k <= K; k++) (dead(k) ? gone : alive).push(k);
   const live = (k) => L.loopAvg?.[k] ?? L.byColour[k], mean = !!L.loopAvg;  // (a loop: each colour's mean over it, ≈)
   alive.sort((a, b) => live(b) - live(a) || a - b);
@@ -9893,7 +9896,7 @@ function updateStats() {
     $('barLoop').hidden = true;
     // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the live cells', as the theme draws them)
     // a colour's live cells, or, once none is left, when it all died out
-    const aliveBubble = (c, k, name, alive) => (L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined
+    const aliveBubble = (c, k, name, alive) => (colourGone(L, k)
       ? bubble(c, '✝', 'All died out', `gen ${fmt(L.extinctAt[k])}`)
       : L.loopAvg && L.loopMax[k] > L.loopMin[k] ? bubble(c, icon('aliveDot'), `${name} (mean of the loop)`, `≈ ${fmt(Math.round(L.loopAvg[k] * 10) / 10)} (${((100 * L.loopAvg[k]) / n).toFixed(1)} %)`)
       : bubble(c, icon('aliveDot'), name, pc(alive)));
