@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.741';
+const VERSION = '0.1.742';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6447,7 +6447,7 @@ const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cai
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
   if (!option) return;
-  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value}`;  // (another grid or rule: shown again, see renderRuleSection)
+  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
   const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
@@ -6496,7 +6496,9 @@ function renderRuleSection() {
   if (!mode.life) { ruleTutorial(null); return; }
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
-  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now}`) ruleTutorial(mine ?? null);  // how a rule works follows the grid and the rule
+  const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
+  const shown = mineNot ? yours : mine;
+  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now} ${shown.dataset.name}`) ruleTutorial(shown);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -6514,12 +6516,17 @@ function renderRuleSection() {
     return b;
   }));
   // after them, your own: picked when the rule in use is none of them, or clicked (its states, births and survivals below)
-  const own = document.createElement('button'), mineNot = !mine || customOpen;
+  const own = document.createElement('button');
   own.type = 'button';
   own.classList.toggle('active', mineNot);
+  own.classList.toggle('switch', mineNot);  // (picked: a click shows how it works, as the others)
   own.innerHTML = `<span class="mode-icon">${pixelIcon('..o..,..o..,ooooo,..o..,..o..')}</span><span><span class="mode-name">Custom rule</span>`
     + `<span class="mode-detail">${mineNot ? `${now} · your own` : 'your own: its states, births and survivals'}</span></span>`;
-  own.addEventListener('click', () => { customOpen = true; renderRuleSection(); });
+  own.addEventListener('click', () => {
+    if (mineNot) { ruleTutorial(!$('ruleTuto').hidden ? null : yours); return; }
+    customOpen = true;
+    renderRuleSection();
+  });
   $('ruleCards').append(own);
   document.querySelector('.rule-build').hidden = !mineNot;
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
@@ -6553,7 +6560,7 @@ function renderRuleSection() {
       b.textContent = text;
       b.className = on;
       b.title = title;
-      b.addEventListener('click', () => { click(); setRuleText(write(B, S, rule.C)); compute(); });
+      b.addEventListener('click', () => { click(); customOpen = true; setRuleText(write(B, S, rule.C)); compute(); });  // (your own still, even as a known one)
       return b;
     };
     const box = (className, items) => { const d = document.createElement('div'); d.className = className; d.append(...items); return d; };
@@ -6571,7 +6578,7 @@ function renderRuleSection() {
   $('statesLabel').innerHTML = rule.C > fit ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
     : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i ? cross(i) : ''}</i>`).join('')}</span>`;
   $('statesBox').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead · a click: ${rule.C + 1 > fit ? 'back to 2' : 'one more'}`;
-  $('statesBox').onclick = () => { setRuleText(write(B, S, rule.C + 1 > fit ? 2 : rule.C + 1)); compute(); };
+  $('statesBox').onclick = () => { customOpen = true; setRuleText(write(B, S, rule.C + 1 > fit ? 2 : rule.C + 1)); compute(); };
   $('statesBox').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('statesBox').onclick(); } };
   // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
   // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
@@ -10415,9 +10422,9 @@ $('lifePreset').addEventListener('change', () => {
   $('lifeRule').value = $('lifePreset').value;
   if (MODES[$('mode').value].life) compute();
 });
-// how a rule works closes on a click anywhere but on it, the rules and the grids (it follows them: renderRuleSection)
+// how a rule works closes on a click anywhere but on it, the rules (your own's too) and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'statesBox', 'ruleBirth', 'ruleSurvive', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
