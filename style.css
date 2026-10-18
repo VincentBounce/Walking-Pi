@@ -536,3 +536,16 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .tabs button.gallery-tab.open { color: var(--text); }
 .caption { margin: 3px 0 0; font-size: 11px; color: var(--muted); }  /* a line under a heading: where Treasures are kept */
 #barBase { flex: none; }  /* the base whole: only the loop chip shortens */
+
+/* how a rule works (ruleTutorial): over the grid, its cells as the grid's, a pair each count (before → after) */
+.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: auto; padding: 20px 24px 120px; background: var(--bg); color: var(--text); }
+.rule-tuto h3 { margin: 0 0 6px; font-size: 18px; } .rule-tuto h3 code { font-size: 14px; color: var(--muted); margin-left: 6px; }
+.rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
+.tut-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.tut-row figure { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, max-content)); grid-auto-flow: column; align-items: center; gap: 4px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.tut-row figure > span { color: var(--muted); }
+.tut-row figure svg { width: 64px; height: 64px; }
+.tut-row figcaption { grid-row: 2; grid-column: 1 / -1; font-size: 11px; color: var(--muted); text-align: center; }
+.tut-row .tut-centre { stroke: var(--accent); }
+.tut-close { position: sticky; top: 0; float: right; z-index: 1; }

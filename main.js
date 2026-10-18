@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.718';
+const VERSION = '0.1.719';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6438,6 +6438,43 @@ const RULE_ICONS = {
 };
 const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
   .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`;
+// How a rule works, in place of the grid (a click on the rule picked; again, or the cross, closes it): a cell of the grid's
+// shape and its neighbours, the live ones in colour, for each count it is born with, survives with, dies with; its
+// dying stages after. The cell the most neighbours have (its counts all drawn), on a patch of its plane grid
+const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre' };
+function ruleTutorial(option) {
+  $('ruleTuto').hidden = !option;
+  if (!option) return;
+  const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
+  const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
+  const corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row)));
+  let c = 0;
+  for (let t = 0; t < row * W; t++) if (nb.start[t + 1] - nb.start[t] > nb.start[c + 1] - nb.start[c]) c = t;
+  const mid = (t) => [0, 1].map((d) => corners(t).reduce((a, p) => a + p[d], 0) / corners(t).length), o = mid(c);
+  const around = [...nb.list.subarray(nb.start[c], nb.start[c + 1])]
+    .sort((u, v) => Math.atan2(mid(u)[1] - o[1], mid(u)[0] - o[0]) - Math.atan2(mid(v)[1] - o[1], mid(v)[0] - o[0]));
+  const pts = [c, ...around].flatMap(corners), x0 = Math.min(...pts.map((p) => p[0])), y0 = Math.min(...pts.map((p) => p[1]));
+  const w = Math.max(...pts.map((p) => p[0])) - x0, h = Math.max(...pts.map((p) => p[1])) - y0, side = Math.max(w, h), pad = side * 0.04;
+  const dying = (s) => faded(LIFE_ALIVE, 1 - s / (rule.C - 1));  // stage s (1 … C − 2)
+  const cell = (centre, k) => `<svg viewBox="${x0 - pad - (side - w) / 2} ${y0 - pad - (side - h) / 2} ${side + 2 * pad} ${side + 2 * pad}">${[c, ...around].map((t, i) => {
+    const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
+    return `<polygon points="${corners(t).map((p) => p.join(',')).join(' ')}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"${i === 0 ? ' class="tut-centre"' : ''}/>`; }).join('')}</svg>`;
+  // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
+  const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
+  const share = (table, k) => { if (!rule.iso) return table[k] ? 1 : 0; const ms = Array.from({ length: 1 << R }, (_, m) => m).filter((m) => ofCount(m) === k); return ms.filter((m) => table[16 + m]).length / (ms.length || 1); };
+  const ks = Array.from({ length: around.length + 1 }, (_, k) => k), some = (table, k) => (share(table, k) < 1 ? ' (some)' : '');
+  const pair = (k, from, to, word, table) => `<figure>${cell(from, k)}<span>→</span>${cell(to, k)}<figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
+  const list = (l) => l.join(', ').replace(/, (\d+)$/, ' or $1');
+  const born = ks.filter((k) => share(rule.B, k) > 0), stays = ks.filter((k) => share(rule.S, k) > 0), dies = ks.filter((k) => share(rule.S, k) < 1);
+  const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
+  $('ruleTuto').innerHTML = `<button type="button" class="tut-close" title="Back to the grid">✕</button>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${rule.iso ? ' (some: only as its letters say where they sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h4>Birth</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B)).join('') || '<p>none</p>'}</div>`
+    + `<h4>Survival</h4><div class="tut-row">${stays.map((k) => pair(k, LIFE_ALIVE, LIFE_ALIVE, 'stays', rule.S)).join('') || '<p>none</p>'}</div>`
+    + `<h4>Death</h4><div class="tut-row">${dies.map((k) => pair(k, LIFE_ALIVE, after, 'dies', rule.S.map((v, i) => (rule.iso && i < 16 ? v : 1 - v)))).join('')}</div>`
+    + (stages.length ? `<h4>Dying stages</h4><div class="tut-row"><figure>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, 0)).join('<span>→</span>')}<figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
+  $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
+}
 let henselShown = false;  // squares: Hensel's letters beside the counts, from a rule written with them until a rule card without
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
@@ -6448,9 +6485,14 @@ function renderRuleSection() {
     const b = document.createElement('button');
     b.type = 'button';
     b.classList.toggle('active', o.value === now);
+    b.classList.toggle('switch', o.value === now);  // (picked: a click shows how it works, see ruleTutorial)
     b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}</span>`
       + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
-    b.addEventListener('click', () => { henselShown = parseRule(o.value)?.iso === 'hensel'; setRuleText(o.value); compute(); });
+    b.addEventListener('click', () => {
+      if (o.value === now) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
+      ruleTutorial(null);
+      henselShown = parseRule(o.value)?.iso === 'hensel'; setRuleText(o.value); compute();
+    });
     return b;
   }));
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
@@ -10346,6 +10388,7 @@ $('lifePreset').addEventListener('change', () => {
   $('lifeRule').value = $('lifePreset').value;
   if (MODES[$('mode').value].life) compute();
 });
+$('mode').addEventListener('change', () => ruleTutorial(null));  // (another grid: its own cells)
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
