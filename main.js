@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.775';
+const VERSION = '0.1.776';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6820,7 +6820,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, dies } = e.data;  // dies: only the runs dying out; dense: a start's density, drawn between these
+    const { n, start, list, ring, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, dies, swaps = true } = e.data;  // dies: only the runs dying out; dense: a start's density, drawn between these
     const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K, R = ring ? ring.length / n : 0;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
@@ -6979,7 +6979,8 @@ function huntWorker() {
       return;
     }
     // else on and on, until stopped: one start in 3 at random, to look elsewhere; the others a tweak of one
-    // of the best (patterns: one colour's choice changed; else 1 to 3 cells), to make it better
+    // of the best (patterns: one colour's choice changed; else 1 to 3 cells flipped, or, one tweak in 2, 1 to 3
+    // live cells swapped with dead ones of their colour: as many alive, elsewhere), to make it better
     for (;;) {
       let seed;
       if (!top.length || done % 3 === 0) seed = choices ? randomPick() : randomSeed();
@@ -6991,9 +6992,12 @@ function huntWorker() {
           seed = fromPick(pick);
         } else {
           seed = base.seed.slice();
+          const swap = swaps && Math.random() < 0.5, any = () => cells[Math.floor(Math.random() * cells.length)];
           for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
-            const [t, k] = cells[Math.floor(Math.random() * cells.length)];
-            seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C);
+            if (!swap) { const [t, k] = any(); seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C); continue; }
+            let t = -1, k = 0;  // a live cell (a few tries), to a dead one of its colour
+            for (let tries = 0; tries < 20 && t < 0; tries++) { const [u, j] = any(); if (seed[u]) [t, k] = [u, j]; }
+            for (let tries = 0; t >= 0 && tries < 20; tries++) { const [u, j] = any(); if (!seed[u] && (K === 1 || j === k)) { seed[u] = seed[t]; seed[t] = 0; break; } }
           }
           copy(seed);
         }
