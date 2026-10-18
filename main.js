@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.777';
+const VERSION = '0.1.778';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9826,20 +9826,19 @@ function drawActivity() {
 }
 // One colour: fixed gauges of how it goes, not of a record: alive (against the peak); its turnover, this generation's
 // births and deaths against the cells alive before and after (100 %: every cell changes; 0: nothing moves); its growth,
-// births less deaths against both, a bar from the middle (right: more born, left: more died); its births and deaths so
-// far; the cells ever alive and the peak (and when) against the grid
+// births less deaths, and its births and deaths so far, in figures (a bar for growth swung too much); the cells ever
+// alive and the peak (and when) against the grid
 function renderGauges(L) {
   const box = $('gauges'), n = L.alive.length;
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
   if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Growth', 'Born · died', 'Ever alive', 'Peak'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
-    + `${i === 3 ? '<span></span>' : `<span class="rank-bar${i === 2 ? ' centred' : ''}"><i style="background:${LIFE_ALIVE}"></i></span>`}<span class="rank-num"></span></div>`).join('');
+    + `${i === 2 || i === 3 ? '<span></span>' : `<span class="rank-bar"><i style="background:${LIFE_ALIVE}"></i></span>`}<span class="rank-num"></span></div>`).join('');
   const varies = L.loopAvg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
-  const turnover = both ? (b + d) / both : 0, growth = b + d ? (b - d) / (b + d) : 0, bar = (i) => box.children[i].children[1].firstChild;
+  const turnover = both ? (b + d) / both : 0, bar = (i) => box.children[i].children[1].firstChild;
   const width = (i, v, most) => { bar(i).style.width = `${most ? Math.min(100, (100 * v) / most) : 0}%`; };
   width(0, varies ? L.loopAvg[1] : L.aliveCount, L.peak);
   width(1, turnover, 1);
-  Object.assign(bar(2).style, { left: `${50 + Math.min(0, growth) * 50}%`, width: `${Math.abs(growth) * 50}%` });
   width(4, L.everAlive, n);
   width(5, L.peak, n);
   [`<b>${varies ? `≈ ${fmt(Math.round(L.loopAvg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`, `${Math.round(100 * turnover)} %`, `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`,
