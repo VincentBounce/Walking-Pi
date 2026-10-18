@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.728';
+const VERSION = '0.1.729';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6459,12 +6459,12 @@ function ruleTutorial(option) {
   const w = Math.max(...pts.map((p) => p[0])) - x0, h = Math.max(...pts.map((p) => p[1])) - y0, side = Math.max(w, h), pad = side * 0.04;
   const dying = (s) => faded(LIFE_ALIVE, 1 - s / (rule.C - 1));  // stage s (1 … C − 2)
   const points = (t) => corners(t).map((p) => p.join(',')).join(' ');
-  // the cell after: its state before shown a moment, fading quickly into the new one, kept 3.2 s, then back at once
+  // the cell after: its state before shown a moment, fading quickly into the new one, kept (once; ↻ plays it again)
   const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad;
   const cell = (centre, k, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
     const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
     return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}`
-    + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.125;0.2;1" dur="4s" repeatCount="indefinite"/></polygon>` : ''}`
+    + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>` : ''}`
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
   // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
   const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
@@ -6474,13 +6474,14 @@ function ruleTutorial(option) {
   const list = (l) => l.join(', ').replace(/, (\d+)$/, ' or $1');
   const born = ks.filter((k) => share(rule.B, k) > 0), stays = ks.filter((k) => share(rule.S, k) > 0), dies = ks.filter((k) => share(rule.S, k) < 1);
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
-  $('ruleTuto').innerHTML = `<button type="button" class="tut-close" title="Back to the grid">✕</button>`
+  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div>`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${rule.iso ? ' (some: only as its letters say where they sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B)).join('') || '<p>none</p>'}</div>`
     + `<h4>Survival</h4><div class="tut-row">${stays.map((k) => pair(k, LIFE_ALIVE, LIFE_ALIVE, 'stays', rule.S)).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((k) => pair(k, LIFE_ALIVE, after, 'dies', rule.S.map((v, i) => (rule.iso && i < 16 ? v : 1 - v)))).join('')}</div>`
     + (stages.length ? `<h4>Dying stages</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, 0)).join('<span>→</span>')}</div><figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
+  $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
 let henselShown = false;  // squares: Hensel's letters beside the counts, from a rule written with them until a rule card without
 function renderRuleSection() {
