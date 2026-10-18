@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.745';
+const VERSION = '0.1.746';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5227,6 +5227,36 @@ function hexRing(g) {
   return ring;
 }
 
+// On squares (a surface's): the 8 neighbours of each in the order Hensel's letters read them (the plane's 3 × 3 read
+// row by row, see HENSEL_RING): round it, a corner's (the tile on that corner sharing no side with it), a side's, …;
+// −1 where none (a wall, a cube's corner: 3 squares there). Turned or mirrored alike: the letters do not mind
+function squareRing(g) {
+  if (g.henselRing) return g.henselRing;
+  const nv = g.verts.length / 3, wall = new Set(g.walls), ring = new Int32Array(8 * g.n).fill(-1), byVertex = Array.from({ length: nv }, () => []), byEdge = new Map();
+  const edge = (a, b) => Math.min(a, b) * nv + Math.max(a, b);
+  for (let t = 0; t < g.n; t++) {
+    if (wall.has(t)) continue;
+    for (let q = 0; q < 4; q++) {
+      const a = g.poly[4 * t + q], b = g.poly[4 * t + ((q + 1) % 4)];
+      byVertex[a].push(t);
+      if (!byEdge.has(edge(a, b))) byEdge.set(edge(a, b), []);
+      byEdge.get(edge(a, b)).push(t);
+    }
+  }
+  const AT = [0, 1, 2, 4, 7, 6, 5, 3];  // round the 3 × 3 (top left, top, top right, right, …): where each sits read row by row
+  for (let t = 0; t < g.n; t++) {
+    if (wall.has(t)) continue;
+    const v = [0, 1, 2, 3].map((q) => g.poly[4 * t + q]), sides = new Set();
+    for (let q = 0; q < 4; q++) for (const u of byEdge.get(edge(v[q], v[(q + 1) % 4]))) if (u !== t) sides.add(u);
+    for (let q = 0; q < 4; q++) {
+      const corner = byVertex[v[q]].filter((u) => u !== t && !sides.has(u)), side = byEdge.get(edge(v[q], v[(q + 1) % 4])).find((u) => u !== t);
+      if (corner.length === 1) ring[8 * t + AT[2 * q]] = corner[0];
+      if (side !== undefined) ring[8 * t + AT[2 * q + 1]] = side;
+    }
+  }
+  return (g.henselRing = ring);
+}
+
 // Callahan's letters for where 2, 3 or 4 live neighbours sit around a hexagon (bit q = neighbour q):
 // o (ortho) side by side, m (meta) one cell apart, p (para) opposite; for 3: o in a row, p every other
 function hexClass(mask) {
@@ -5347,7 +5377,8 @@ function buildLife(seq, mode) {
   const nbr = cornerNeighbours(g);
   fitColours(g);  // as many colours as the surface has fair spots for
   let rule = lifeRuleNow() || parseRule('B3/S23');
-  if (rule.iso && (rule.iso !== 'hex' || !nbr.ring)) {  // Callahan's letters need hexagons
+  const ring = rule.iso === 'hensel' && lifeMark(mode) === '■' ? squareRing(g) : rule.iso === 'hex' ? nbr.ring : null;
+  if (rule.iso && !ring) {  // Callahan's letters need hexagons, Hensel's squares
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
@@ -5356,7 +5387,7 @@ function buildLife(seq, mode) {
   const seed = surfaceSeed(seq, g.n, rule.C, rule.colours);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
+  walk.life = { nbr, ring: rule.iso ? ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -6536,7 +6567,7 @@ function renderRuleSection() {
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
   const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡';
-  const hensel = mark === '■' && !!mode.plane;  // (your own on the plane's squares: always with Hensel's letters; the surfaces have none)
+  const hensel = mark === '■';  // (your own on squares: always with Hensel's letters)
   const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : []);
   const all = (c) => (lettersOf(c).length ? lettersOf(c) : ['']);  // a count without letters: one, ''
   const classOf = (m) => (hex ? hexClass(m).toLowerCase() : henselClass(m)), R = hex ? 6 : 8, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
@@ -6604,7 +6635,7 @@ function fitRuleToShape() {
   ruleFittedTo = w;
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
-  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■' && !!mode.plane);
+  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
   if (lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
