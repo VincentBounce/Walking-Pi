@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.702';
+const VERSION = '0.1.703';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6034,6 +6034,19 @@ function renderPlaneRow() {
   $('brushFlip').disabled = brush.id === 'cell' || !canMirror(kind);
   $('brushFlip').classList.toggle('active', brush.flip && canMirror(kind));
 }
+// A grid's wall (dead edges): the cells just outside it that touch one of its cells, a cell thick whatever the tiling (its
+// rhombus's or lattice cell's row round it, kept where it touches); once a grid
+let wallsMemo = null;
+function planeWalls(kind, W) {
+  if (wallsMemo?.key === `${kind}|${W}`) return wallsMemo.cells;
+  const row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, k = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, rim = new Set(), cells = [];
+  for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) if (y < 2 || y >= W - 2 || x < 2 * per || x >= row - 2 * per) for (const p of planeCorners(kind, x, y)) rim.add(k(p));
+  for (let y = -1; y <= W; y++) for (let x = -2 * per; x < row + 2 * per; x++) {
+    if (y >= 0 && y < W && x >= 0 && x < row) continue;
+    if (planeCorners(kind, x, y).some((p) => rim.has(k(p)))) cells.push([x, y]);
+  }
+  return (wallsMemo = { key: `${kind}|${W}`, cells }).cells;
+}
 // Behind the grid (grid layer, at each view): the sky or the page outside it, the page inside it, and,
 // zoomed in enough, its cells' outlines; dead edges, its border
 function drawPlaneGrid() {
@@ -6070,11 +6083,7 @@ function drawPlaneGrid() {
     ctx.beginPath();
     if (kind === 'square') { ctx.rect(X(-1.5), Y(-1.5), (W + 2) * s, (W + 2) * s); ctx.rect(X(W - 0.5), Y(-0.5), -W * s, W * s); }
     else if (APERIODIC[kind]) for (const p of APERIODIC[kind](W).walls) { ctx.moveTo(X(p[0][0]), Y(p[0][1])); for (const [u, v] of p) ctx.lineTo(X(u), Y(v)); ctx.closePath(); }  // the hats round them
-    else {
-      const out = TILINGS[kind] ? [...Array(TILINGS[kind].polys.length).keys()].flatMap((k) => [-1 - k, row + k]).sort((p, q) => p - q) : kind === 'hex' ? [-1, row] : kind === 'kite' ? [-6, -5, -4, -3, -2, -1, row, row + 1, row + 2, row + 3, row + 4, row + 5] : [-2, -1, row, row + 1];
-      for (let x = out[0]; x <= out.at(-1); x++) { cell(x, -1); cell(x, W); }
-      for (let y = 0; y < W; y++) for (const x of out) cell(x, y);
-    }
+    else for (const [x, y] of planeWalls(kind, W)) cell(x, y);
     ctx.fill('evenodd');
   }
   if (!outline) return turnLayer(ctx, 0);
@@ -6855,14 +6864,15 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOT
 let sliceMemo = null;
 const wallSlices = (K) => walk.plane && !walk.plane.torus && K !== 2 && K !== 4 && K > 1;
 function planeSlices(K) {
-  const { kind, W, row } = walk.plane, n = W * row, key = `${kind}|${W}|${K}`;
+  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${K}|${turn}`;
   if (sliceMemo?.key === key) return sliceMemo;
-  const b = planeBounds(0), mid = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
-  const at = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row))), angle = at.map(([u, v]) => Math.atan2(v - mid[1], u - mid[0]));
+  // as seen (turned, see planeTurn), from red's, its middle up and to the left (½ a slice left of straight up), clockwise
+  const b = planeBounds(), mid = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2], from = -Math.PI / 2 - (2 * Math.PI) / K, round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
   const order = [...angle.keys()].sort((p, q) => angle[p] - angle[q]), part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
   order.forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
   const spots = Array.from({ length: K }, (_, i) => {
-    const ts = order.slice(Math.floor((i * n) / K), Math.floor(((i + 1) * n) / K)), a = angle[ts[ts.length >> 1]], p = [mid[0] + reach * Math.cos(a), mid[1] + reach * Math.sin(a)];
+    const ts = order.slice(Math.floor((i * n) / K), Math.floor(((i + 1) * n) / K)), a = angle[ts[ts.length >> 1]] + from, p = [mid[0] + reach * Math.cos(a), mid[1] + reach * Math.sin(a)];
     return ts.reduce((best, t) => (Math.hypot(at[t][0] - p[0], at[t][1] - p[1]) < Math.hypot(at[best][0] - p[0], at[best][1] - p[1]) ? t : best), ts[0]);
   });
   return (sliceMemo = { key, part, spots });
