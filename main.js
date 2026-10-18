@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.716';
+const VERSION = '0.1.717';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3816,7 +3816,11 @@ function mobiusPoint(x, y, L, W, m) {
  *   further on; L whole hexagons, or half one more when nv is even; the edges zigzag along them;
  * - triangles pointing along the strip, in columns √3/2 wide (vertical edges), the strip nv edges
  *   wide, an even number of columns; the edges zigzag along them. */
+const stripMemo = {};
 function mobiusSheet(kind0, size) {
+  return (stripMemo[`${kind0}|${size}`] ??= mobiusSheetOf(kind0, size));  // (once: the sizes' labels and ladder ask again and again)
+}
+function mobiusSheetOf(kind0, size) {
   if (kind0.startsWith('mobiusKite')) { const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf) }; }  // the triangles', cut in 3
   const tiling = MOBIUS_TILINGS.find((k) => mobiusOf(k) === kind0);
   if (tiling) return tilingStrip(tiling, kind0, size);
@@ -3896,8 +3900,11 @@ function tilingStrip(kind, kind0, size) {
   // a corner on a fine grid, in steps along and rows across from the middle: the twist (x + L, y) → (x, W − y) maps the
   // grid onto itself, so a corner and its twin meet exactly (the polygons' 6 decimals leave them 10⁻⁶ apart)
   const snap = ([x, y]) => [(Math.round((x / step) * Q) / Q) * step, W / 2 + (Math.round(((y - W / 2) / by) * Q) / Q) * by];
-  const reach = Math.ceil((L + W) / Math.min(Math.hypot(...a), Math.hypot(...b))) + 2;
-  for (let j = -reach; j <= reach; j++) for (let i = -reach; i <= reach; i++) for (let k = 0; k < m; k++) {
+  // the lattice cells over the strip's rectangle (its corners in the lattice's units, a cell more round them)
+  const [ta, tb] = [a, b].map((v) => turnPoint(v, turn)), det = ta[0] * tb[1] - ta[1] * tb[0];
+  const ends = [[0, 0], [L, 0], [0, W], [L, W]].map(([x, y]) => [(x * tb[1] - y * tb[0]) / det, (ta[0] * y - ta[1] * x) / det]);
+  const [i0, i1, j0, j1] = [0, 1].flatMap((d) => [Math.floor(Math.min(...ends.map((e) => e[d]))) - 1, Math.ceil(Math.max(...ends.map((e) => e[d]))) + 1]);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) for (let k = 0; k < m; k++) {
     const P = tilingPolys(kind)[k].map(([u, v]) => snap(turnPoint(tilingWorld(kind, [u + i, v + j]), turn))), [x, y] = [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length);
     if (x < -1e-9 || x >= L - 1e-9 || y < -1e-9 || y > W + 1e-9) continue;
     tiles.push([...P, ...Array(sides - P.length).fill(P.at(-1))]);
