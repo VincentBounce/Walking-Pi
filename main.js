@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.748';
+const VERSION = '0.1.749';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6520,12 +6520,12 @@ function ruleTutorial(option) {
     const s = stages.indexOf(centre) + 1, light = document.documentElement.dataset.theme === 'light';
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
-  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div>`
+  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
-    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '');
+    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + '</div>';
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
@@ -10477,14 +10477,14 @@ $('copyNumber').addEventListener('click', () => {
   if (!$('numberPreview').hidden) { closeNumber(); return; }
   const text = numberText(), name = `${formulaInUse} base ${current.base} `, v = $('numberPreview');
   v.innerHTML = `<div class="tut-tools"><button type="button" class="tut-copy" title="Copy it">${icon('copy')}</button><button type="button" class="tut-close" title="Back to the walk">✕</button></div>`
-    + `<h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p>`;
+    + `<div class="tut-body"><h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p></div>`;
   v.querySelector('.number-digits').textContent = text.slice(name.length);
   v.querySelector('.tut-close').addEventListener('click', closeNumber);
   v.querySelector('.tut-copy').addEventListener('click', (e) => {
     const b = e.currentTarget;
     navigator.clipboard.writeText(text).then(() => { b.innerHTML = icon('check'); setTimeout(() => { b.innerHTML = icon('copy'); }, 1500); }, () => {});
   });
-  v.scrollTop = 0;
+  v.querySelector('.tut-body').scrollTop = 0;
   v.hidden = false;
   $('copyNumber').classList.add('active', 'switch');
 });

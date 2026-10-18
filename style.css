@@ -356,7 +356,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 @media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
 .display-menu { top: 12px; right: 12px; }
 /* the number (Watch digits), in place of the whole view as how a rule works (.rule-tuto): its digits */
-.number-view .number-digits { clear: both; margin-top: 12px; max-width: none; color: var(--text); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
+.number-view .number-digits { margin-top: 12px; max-width: none; color: var(--text); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
 .tut-tools .icon { width: 16px; height: 16px; vertical-align: middle; }
 #copyNumber.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .display-menu:hover { width: 230px; }
@@ -524,7 +524,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 #barBase { flex: none; }  /* the base whole: only the loop chip shortens */
 
 /* how a rule works (ruleTutorial): over the grid, its cells as the grid's, a pair each count (before → after) */
-.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: auto; cursor: auto; padding: 20px 24px 24px; background: var(--bg); color: var(--text); }
+.rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: hidden; cursor: auto; background: var(--bg); color: var(--text); }
+.tut-body { position: absolute; inset: 0; overflow: auto; padding: 20px 24px 24px; }  /* what scrolls, under its buttons (pinned to the top right) */
+.tut-body > h3, .tut-body > h3 + p:not(.number-digits) { margin-right: 96px; }  /* (beside the buttons) */
 .rule-tuto h3 { margin: 0 0 6px; font-size: 18px; } .rule-tuto h3 code { font-size: 14px; color: var(--muted); margin-left: 6px; }
 .rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); } .rule-tuto h4 code { margin-left: 8px; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); }
 .rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
@@ -535,4 +537,4 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .tut-row figure svg { flex: none; width: 64px; height: 64px; }
 .tut-row figcaption { width: 0; min-width: 100%; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
 .tut-row .tut-centre { stroke: var(--accent); stroke-linejoin: round; }
-.tut-tools { position: sticky; top: 0; float: right; z-index: 1; display: flex; gap: 6px; }
+.tut-tools { position: absolute; top: 20px; right: 24px; z-index: 1; display: flex; gap: 6px; }
