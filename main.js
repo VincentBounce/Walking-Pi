@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.707';
+const VERSION = '0.1.708';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6879,25 +6879,35 @@ function planeSlices(K) {
   return (sliceMemo = { key, part, spots });
 }
 // The plane's colour blocks as seen: their columns along the grid's side that runs most across the screen, left to
-// right, their rows along the other, top to bottom, whichever way its lattice lies (turned too, see planeTurn): a
-// cell's block, and the cell at a place (its shares across and down)
+// right, their rows along the other, top to bottom, whichever way its lattice lies (turned too, see planeTurn). Each
+// cell by where it is, not by its number: its middle's shares (0 to 1) along those two sides, from the grid's ends
+// (once a grid and a view); a cell's block, and the cell nearest a place (its shares across and down)
+let frameMemo = null;
 function planeFrame() {
-  const { kind, W, row } = walk.plane, per = PER_RHOMBUS[kind] ?? 1, a = planeTurn(), at = (x, y) => turnPoint(cellMiddle(kind, x, y), a);
-  const o = at(0, 0), X = at(row - per, 0), Y = at(0, W - 1), vx = [X[0] - o[0], X[1] - o[1]], vy = [Y[0] - o[0], Y[1] - o[1]];
-  const xAcross = Math.abs(vx[0]) / Math.hypot(...vx) >= Math.abs(vy[0]) / Math.hypot(...vy), [c, r] = xAcross ? [vx, vy] : [vy, vx];
-  const flip = (f, yes) => (yes ? 1 - f : f), fc = c[0] < 0, fr = r[1] < 0;
-  return {
-    block: (t, cols, rows) => {
-      const x = t % row, y = (t - x) / row, fx = (x + 0.5) / row, fy = (y + 0.5) / W;
-      const across = flip(xAcross ? fx : fy, fc), down = flip(xAcross ? fy : fx, fr);
-      return Math.min(rows - 1, Math.floor(down * rows)) * cols + Math.min(cols - 1, Math.floor(across * cols));
+  const { kind, W, row } = walk.plane, n = W * row, per = PER_RHOMBUS[kind] ?? 1, turn = planeTurn(), key = `${kind}|${W}|${turn}`;
+  if (frameMemo?.key === key) return frameMemo;
+  const mid = (t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn), o = mid(0), X = mid(row - per), Y = mid((W - 1) * row);
+  const vx = [X[0] - o[0], X[1] - o[1]], vy = [Y[0] - o[0], Y[1] - o[1]], xAcross = Math.abs(vx[0]) / Math.hypot(...vx) >= Math.abs(vy[0]) / Math.hypot(...vy);
+  const [c, r] = xAcross ? [vx, vy] : [vy, vx], det = c[0] * r[1] - c[1] * r[0], fc = c[0] < 0, fr = r[1] < 0;
+  // each middle in that frame (c across, r down), then as shares between the grid's ends, flipped to run left to right and top to bottom
+  const A = new Float32Array(n), D = new Float32Array(n);
+  for (let t = 0; t < n; t++) { const [px, py] = mid(t), dx = px - o[0], dy = py - o[1]; A[t] = (dx * r[1] - dy * r[0]) / det; D[t] = (c[0] * dy - c[1] * dx) / det; }
+  for (const [arr, flip] of [[A, fc], [D, fr]]) {
+    let lo = Infinity, hi = -Infinity;
+    for (const v of arr) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    for (let t = 0; t < n; t++) { const f = (arr[t] - lo) / (hi - lo || 1); arr[t] = flip ? 1 - f : f; }
+  }
+  const lc = Math.hypot(...c), lr = Math.hypot(...r);  // (their lengths: a place's nearest cell in true distances)
+  return (frameMemo = {
+    key,
+    block: (t, cols, rows) => Math.min(rows - 1, Math.floor(D[t] * rows)) * cols + Math.min(cols - 1, Math.floor(A[t] * cols)),
+    cell: (across, down) => {
+      let best = 0, far = Infinity;
+      for (let t = 0; t < n; t++) { const d = ((A[t] - across) * lc) ** 2 + ((D[t] - down) * lr) ** 2; if (d < far) { far = d; best = t; } }
+      return best;
     },
-    cell: (across, down) => {  // (shares, 0 to 1)
-      const a1 = flip(across, fc), d1 = flip(down, fr), fx = xAcross ? a1 : d1, fy = xAcross ? d1 : a1;
-      return Math.min(W - 1, Math.floor(fy * W)) * row + Math.min(row - 1, Math.floor(fx * row));
-    },
-    across: xAcross ? row : W, down: xAcross ? W : row,  // (the cells along each)
-  };
+    across: xAcross ? row / per : W, down: xAcross ? W : row / per,  // (the cells, or lattice cells, along each: a share's step)
+  });
 }
 function huntParts(r, K) {
   const L = walk.life, g = walk.geo, n = L.alive.length, [cols, rows] = COLOUR_GRID[K], open = (t) => L.nbr.start[t] < L.nbr.start[t + 1];
