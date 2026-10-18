@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.743';
+const VERSION = '0.1.744';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6531,7 +6531,7 @@ function renderRuleSection() {
     renderRuleSection();
   });
   $('ruleCards').append(own);
-  document.querySelector('.rule-build').hidden = !mineNot;
+  document.querySelector('.rule-build').hidden = $('lifeCustomRow').hidden = !mineNot;  // (its states and chips, its text: your own's only)
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
@@ -10427,10 +10427,11 @@ $('lifePreset').addEventListener('change', () => {
 });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too) and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'statesBox', 'ruleBirth', 'ruleSurvive', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'statesBox', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
+  customOpen = true;  // (typed: your own still, even as a known one)
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
 // Watch digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
