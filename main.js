@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.774';
+const VERSION = '0.1.775';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7023,7 +7023,7 @@ const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], ra
                      face: ['zoneFace', 'Realm'],  // a whole face of a solid (see faceParts)
                      full: ['zoneAll', 'Wild'],
                      patterns: [null, 'Famous'],  // the rule's patterns, mixed (see patternChoices)
-                     custom: ['link', 'Custom'] };  // a start from a link, from none of these: shown then only
+                     custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
@@ -7227,13 +7227,13 @@ function renderHunt() {
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
-  const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells from a link · pick a zone to hunt in`
+  const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells found by a hunt, from a link · pick a zone to hunt in`
     : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
       : `${all ? '' : `${fmt(Math.max(1, Math.round(DENSITY[0] * perColour)))}–${fmt(Math.max(1, Math.round(DENSITY[1] * perColour)))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
       + (all ? ` · ${fmt(all)} starts, all to try` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
-  $('huntBtn').title = hunt.zone === 'custom' ? 'A start from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
+  $('huntBtn').title = hunt.zone === 'custom' ? 'A start found by a hunt, from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
   $('huntStatus').textContent = hunt.status || zone;
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
@@ -7289,7 +7289,7 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
-  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns' && hunt.zone !== 'face') return null;  // (Custom: the link's, once)
+  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns' && hunt.zone !== 'face') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's sd=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
   if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
@@ -10361,7 +10361,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   b.type = 'button';
   b.dataset.zone = zone;
   b.innerHTML = `${pic ? icon(pic) : pixelIcon('.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Patterns: a glider
-  b.title = zone === 'custom' ? 'A start from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour at its spot, turned or mirrored"
+  b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour at its spot, turned or mirrored"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : zone === 'face' ? 'A whole face of the solid for each colour: random starts on it' : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
