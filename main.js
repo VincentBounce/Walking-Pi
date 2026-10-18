@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.784';
+const VERSION = '0.1.785';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -865,11 +865,11 @@ const TILINGS = {
 };
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip)
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
-const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after cellMiddle)
+const RECTS = {}, RECT_SHEETS = {};  // the slanted grids as rectangles: their sides, then their cells when first shown (see rectOf, after cellMiddle)
 const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
 const tilingOf = (kind) => TILINGS[kind] ?? RECTS[kind];
 const baseOf = (kind) => RECTS[kind]?.base ?? kind;
-const planeKind = (kind) => (plane.rect && RECTS[`${kind}Rect`] ? `${kind}Rect` : kind);  // the grid as it is built: a rectangle's, if so
+const planeKind = (kind) => (plane.rect && RECT_SHEETS[`${kind}Rect`] && rectOf(`${kind}Rect`) ? `${kind}Rect` : kind);  // the grid as it is built: a rectangle's, if so
 const tilingAt = (kind, x, y) => { const P = tilingOf(kind).polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
 const tilingWorld = (kind, [u, v]) => { const [a, b] = tilingOf(kind).basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
 
@@ -2467,7 +2467,7 @@ function renderModePicker() {
   // the shapes, as pictures with their (short) names
   // (a slanted grid of Life picked: a switch, a click shows it as a rectangle or back, see RECTS)
   $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) => {
-    const again = sh === shape && !!RECTS[`${MODES[w].plane}Rect`], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
+    const again = sh === shape && !!RECT_SHEETS[`${MODES[w].plane}Rect`], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
       if (!again) { navGo(2, sh); return; }
       plane.rect = !plane.rect;
       compute();
@@ -6113,7 +6113,7 @@ function renderPlaneRow() {
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
   $('edgeWalls').classList.toggle('active', !planeTorus(kind));
   $('edgeTorus').disabled = !!APERIODIC[kind];
-  $('sheetPair').hidden = !RECTS[`${kind}Rect`];
+  $('sheetPair').hidden = !RECT_SHEETS[`${kind}Rect`];
   $('sheetRhombus').classList.toggle('active', !plane.rect);
   $('sheetRect').classList.toggle('active', plane.rect);
   const syms = PLANE_SYMMETRIES[kind];
@@ -6243,10 +6243,10 @@ const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
 const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
 // A slanted grid shown as a rectangle (o=1: its button clicked again): a tiling of its own, its lattice cell a rectangle
-// of its lattice cells (two sides of whole steps at right angles, or within 3°, the nearest a square), its cells the ones
-// whose middles are in it: a torus that wraps straight across and down, and straight walls (as a 3D torus's sheet).
-// Each its grid's cells (nat: which, from its row's first lattice cell), its patterns its grid's, laid where they are
-// (see orientPattern); its RLE its grid's again (see lifeRle)
+// of its lattice cells (two sides of whole steps at right angles, or within 3°, the nearest a square), each of its grid's
+// cells in it once: a torus that wraps straight across and down, and straight walls (as a 3D torus's sheet). Each its
+// grid's cells (nat: which, from its row's first lattice cell), its patterns its grid's, laid where they are (see
+// orientPattern); its RLE its grid's again (see lifeRle). Its sides found here, its cells when first shown (see rectOf)
 for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   const per = PER_RHOMBUS[base] ?? 1, o = cellMiddle(base, 0, 0), d = (x, y) => { const m = cellMiddle(base, x, y); return [m[0] - o[0], m[1] - o[1]]; }, a = d(per, 0), b = d(0, 1);
   if (Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b)) continue;  // (at right angles already)
@@ -6260,20 +6260,24 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     const score = [off > 1e-6 ? off : 0, det, ratio];
     if (!best || score[0] < best.score[0] - 1e-9 || (score[0] < best.score[0] + 1e-9 && (det < best.det || (det === best.det && ratio < best.score[2] - 1e-9)))) best = { U, V, det, score, step: [[p, q], [r, t]] };
   }
-  if (!best) continue;
-  const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
-  // its cells in bricks: each of its grid's cells with the lattice point nearest its middle (a brick round a point of
-  // the grid, the lattice moved there), the bricks whose point is in the rectangle (whole bricks: no cell alone, its sides
-  // a stair); each middle and corner of a lattice cell's cells tried as that point (or each cell alone, by its middle:
-  // Kites, their sides straight lines), and the rectangle moved by eighths of its sides, the cells sticking out of it least
-  // kept. (In the rectangle's units: cell k of lattice cell n, m its polygon k moved by n·a + m·b)
+  if (best) RECT_SHEETS[`${base}Rect`] = { base, a, b, U: best.U, V: best.V, det: best.det, step: best.step };
+}
+// A rectangle's cells, in bricks or alone, in a frame straight or a saw: each of its grid's cells with the lattice point
+// nearest its middle (a brick round a point of the grid, the lattice moved there: each middle and corner of a lattice
+// cell's cells tried as that point), or alone; the bricks whose point is in a frame of its sides, straight or along its
+// cells' sides (k teeth across, each as steep as a side near across; l down), moved by eighths of its sides: the cells
+// sticking out of it least kept (whole bricks, no cell alone; along its cells' sides, a gentle stair).
+// (In the rectangle's units: cell k of lattice cell n, m its polygon k moved by n·a + m·b; its sides U, V: 1)
+function rectOf(kind) {
+  if (RECTS[kind]) return RECTS[kind];
+  const { base, a, b, U, V, det, step: [[sp, sq], [sr, st]] } = RECT_SHEETS[kind], per = PER_RHOMBUS[base] ?? 1;
+  const D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D], lu = Math.hypot(...U), lv = Math.hypot(...V);
   const P = Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inRect)), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
-  const la = inRect(a), lb = inRect(b), lu = Math.hypot(...U), lv = Math.hypot(...V), at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]];
-  const out = (k, n, m, sa, sb) => P[k].reduce((t, q) => { const [u, v] = at(q, n, m); return t + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1); }, 0);
-  let pick = null, least = Infinity;
-  const dl = la[0] * lb[1] - la[1] * lb[0], frac = (x) => Math.round((((x % 1) + 1) % 1) * 1e4) % 1e4;  // (once each: a lattice step apart, the same)
-  const centres = new Map(P.flatMap((Q) => [mid(Q), ...Q]).map((c) => [`${frac((c[0] * lb[1] - c[1] * lb[0]) / dl)},${frac((la[0] * c[1] - la[1] * c[0]) / dl)}`, c]));
-  for (const c of [null, ...centres.values()]) {  // (null: each cell alone)
+  const la = inRect(a), lb = inRect(b), at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]], frac = (x) => x - Math.floor(x);
+  const dl = la[0] * lb[1] - la[1] * lb[0], key = (x) => Math.round(frac(x) * 1e4) % 1e4;  // (a lattice step apart, the same)
+  const centres = new Map(P.flatMap((Q) => [mid(Q), ...Q]).map((c) => [`${key((c[0] * lb[1] - c[1] * lb[0]) / dl)},${key((la[0] * c[1] - la[1] * c[0]) / dl)}`, c]));
+  // the units: each brick (or cell) once, by its point (its middle): [point, its cells [k, n, m]]
+  const units = [null, ...centres.values()].map((c) => {
     const brick = P.map((Q) => {  // (cell k's lattice point, the one nearest its middle)
       if (!c) return [0, 0];
       const m = mid(Q), w = (x, y) => Math.hypot((m[0] - c[0] - x * la[0] - y * lb[0]) * lu, (m[1] - c[1] - x * la[1] - y * lb[1]) * lv);
@@ -6281,27 +6285,40 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
       for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) if (!near || w(i, j) < w(...near) - 1e-9) near = [i, j];
       return near;
     });
-    const points = [];  // (each brick's point in the rectangle, its cells [k, n, m])
+    const list = [];
     for (let m = -8; m <= 8; m++) for (let n = -8; n <= 8; n++) {
-      if (!c) { P.forEach((Q, k) => points.push([at(mid(Q), n, m), [[k, n, m]]])); continue; }
-      points.push([at(c, n, m), brick.map(([i, j], k) => [k, n - i, m - j])]);
+      if (!c) { P.forEach((Q, k) => list.push([at(mid(Q), n, m), [[k, n, m]]])); continue; }
+      list.push([at(c, n, m), brick.map(([i, j], k) => [k, n - i, m - j])]);
     }
-    for (let sb = 0; sb < 1; sb += 1 / 8) for (let sa = 0; sa < 1; sa += 1 / 8) {
-      const cells = points.filter(([[al, be]]) => al >= sa - 1e-6 && al < sa + 1 - 1e-6 && be >= sb - 1e-6 && be < sb + 1 - 1e-6).flatMap((p) => p[1]);
-      const sum = cells.reduce((t, [k, n, m]) => t + out(k, n, m, sa, sb), 0);
-      if (sum < least - 1e-6) { least = sum; pick = cells; }
+    return list.filter(([[u, v]]) => u >= -1e-6 && u < 1 - 1e-6 && v >= -1e-6 && v < 1 - 1e-6);  // (those in the rectangle: one of each)
+  });
+  // the slopes of its cells' sides near across (dv/du) and near down (du/dv)
+  const slopes = (i) => { const s = new Set([0]); for (const Q of P) Q.forEach((p, j) => { const q = Q[(j + 1) % Q.length], w = [(q[0] - p[0]) * lu, (q[1] - p[1]) * lv]; if (Math.abs(w[1 - i]) < Math.abs(w[i]) / 2) s.add(Math.round(((q[1 - i] - p[1 - i]) / (q[i] - p[i])) * 1e6) / 1e6); }); return [...s]; };
+  const frames = slopes(0).flatMap((s1) => (s1 ? [1, 2] : [1]).flatMap((k) => slopes(1).flatMap((s2) => (s2 ? [1, 2] : [1]).map((l) => [s1, k, s2, l]))));
+  let pick = null, least = Infinity;
+  for (const list of units) for (const [s1, k, s2, l] of frames) for (let sb = 0; sb < 1; sb += 1 / 8) for (let sa = 0; sa < 1; sa += 1 / 8) {
+    const f = (u) => (s1 * frac(k * (u - sa))) / k, g = (v) => (s2 * frac(l * (v - sb))) / l, cells = [];
+    let sum = 0;
+    for (const [[u, v], unit] of list) {  // (moved into the frame by whole sides: first down, then across)
+      const B = Math.floor(v - sb - f(u)), A = Math.floor(u - sa - g(v - B)), dn = -(A * sp + B * sr), dm = -(A * sq + B * st);
+      for (const [c, n, m] of unit) {
+        cells.push([c, n + dn, m + dm]);
+        for (const q of P[c]) { const [x, y] = at(q, n + dn, m + dm), down = y - sb - f(x), across = x - sa - g(y); sum += lv * Math.max(0, -down, down - 1) + lu * Math.max(0, -across, across - 1); }
+      }
+      if (sum >= least) break;
     }
+    if (sum < least - 1e-6) { least = sum; pick = cells; }
   }
   const tiles = pick.map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
-  if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
   tiles.sort((p, q) => p.be - q.be || p.al - q.al);
-  const kind = `${base}Rect`, t = TILINGS[base];
-  RECTS[kind] = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
+  const t = TILINGS[base];
+  RECTS[kind] = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step: RECT_SHEETS[kind].step };
   PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
   PLANE_SIDES[kind] = PLANE_SIDES[base];
   PATTERN_TURNS[kind] = PATTERN_TURNS[base];
   PLANE_CELLS[kind] = PLANE_CELLS[base];
   PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
+  return RECTS[kind];
 }
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
