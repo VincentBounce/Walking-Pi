@@ -358,7 +358,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 /* the number (Watch digits), in place of the whole view as how a rule works (.rule-tuto): its digits */
 .number-view .number-digits { margin-top: 12px; max-width: none; color: var(--text); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
 .tut-tools .icon { width: 16px; height: 16px; vertical-align: middle; }
-#copyNumber.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
+button.wide.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 /* Auto-fit stays at the top right; hovering opens the settings, Grid beside it and the rest below */

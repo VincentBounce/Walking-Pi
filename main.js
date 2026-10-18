@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.750';
+const VERSION = '0.1.751';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6477,6 +6477,8 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre' };
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
+  $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as Watch digits)
+  $('watchRule').classList.toggle('switch', !!option);
   if (!option) return;
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
@@ -6561,6 +6563,7 @@ function renderRuleSection() {
   own.classList.toggle('switch', mineNot);  // (picked: a click shows how it works, as the others)
   own.innerHTML = `<span class="mode-icon">${pixelIcon('..o..,..o..,ooooo,..o..,..o..')}</span><span><span class="mode-name">Custom rule</span>`
     + `<span class="mode-detail">${mineNot ? `${now} · your own` : 'your own: its states, births and survivals'}</span></span>`;
+  $('watchRule').onclick = () => ruleTutorial(!$('ruleTuto').hidden ? null : yours);
   own.addEventListener('click', () => {
     if (mineNot) { ruleTutorial(!$('ruleTuto').hidden ? null : yours); return; }
     customOpen = true;
@@ -10463,7 +10466,7 @@ $('lifePreset').addEventListener('change', () => {
 });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too) and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'watchRule', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
