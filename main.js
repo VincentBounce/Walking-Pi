@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.740';
+const VERSION = '0.1.741';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6491,13 +6491,12 @@ function ruleTutorial(option) {
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
 let customOpen = false;  // the Custom rule card clicked: its states, births and survivals shown, a known rule in use or not
-let galleryBefore = null;  // the setup in use while others of the gallery are shown on hover (how a rule works stays meanwhile)
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
-  if (!mode.life) { if (!galleryBefore) ruleTutorial(null); return; }
+  if (!mode.life) { ruleTutorial(null); return; }
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
-  if (!galleryBefore && !$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now}`) ruleTutorial(mine ?? null);  // how a rule works follows the grid and the rule
+  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now}`) ruleTutorial(mine ?? null);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -10424,7 +10423,7 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
-// Watch number: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
+// Watch digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
 // (a check once copied) and the cross; a click on the button again, the cross or anywhere else but on it closes it
 function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active', 'switch'); }
 $('copyNumber').addEventListener('click', () => {
@@ -10678,7 +10677,7 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
 // edges and cells drawn or found (what is seen; not the tools that found it: the hunt's buttons, Draw's brush)
 const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'sd', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
-let galleryHover = 0;  // (galleryBefore: see renderRuleSection)
+let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
 // the setup in use as it was seen
@@ -10714,6 +10713,8 @@ function setupRow(name, detail, setup, onDelete) {
   b.setAttribute('role', 'option');
   b.classList.toggle('active', !galleryBefore && isInUse(setup));
   b.addEventListener('mouseenter', () => {
+    ruleTutorial(null);  // what lies over the view (how a rule works, the digits) closes: the setup shown instead
+    closeNumber();
     clearTimeout(galleryHover);
     galleryHover = setTimeout(() => { if (!galleryBefore) { galleryBefore = getSetup(); galleryView = viewNow(); } showSetup(setup); }, 120);
   });
