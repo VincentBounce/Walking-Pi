@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.760';
+const VERSION = '0.1.761';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1260,7 +1260,7 @@ function describe(base, available) {
   $('barBase').textContent = walk.life.ruleText;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
   $('barBase').title = known ? known.dataset.name : '';
   $('barBase').parentElement.classList.add('life');
-  $('description').innerHTML = `${walk.life.colours > 1 ? 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead · ' : ''}Neighbours share an edge or a corner · ${lead}`;
+  $('description').innerHTML = `Neighbours share an edge or a corner · ${lead}`;  // (the rule, a newborn's colour too: Watch rule panel)
 }
 
 // What the Display menu offers depends only on the walk tab (the group of the mode in the menu).
@@ -6528,7 +6528,7 @@ function ruleTutorial(option) {
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
