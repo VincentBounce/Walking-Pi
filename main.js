@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.722';
+const VERSION = '0.1.723';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5945,8 +5945,8 @@ function buildLifePlane(seq) {
 // shows it biggest in the view (on a tie, the least turn): a rhombus's sides across a view wider than high, upright in a
 // higher one; a rectangle upright, its long side along the view's. The angle the view turns its world
 // by (drawn turned, see turnLayer; a frame or the pointer in the turned world)
-function planeTurn() {
-  const kind = walk.plane?.kind, t = TILINGS[kind];
+function planeTurn(kind = walk.plane?.kind) {
+  const t = TILINGS[kind];
   if (!t && kind !== 'hex' && kind !== 'tri' && kind !== 'kite') return 0;
   const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], ends = [[0, 0], a, b, [a[0] + b[0], a[1] + b[1]]], half = Math.PI / 2;
   let best = 0, big = -Infinity;
@@ -6449,7 +6449,7 @@ function ruleTutorial(option) {
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
-  const corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row)));
+  const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
   let c = 0;
   for (let t = 0; t < row * W; t++) if (nb.start[t + 1] - nb.start[t] > nb.start[c + 1] - nb.start[c]) c = t;
   const mid = (t) => [0, 1].map((d) => corners(t).reduce((a, p) => a + p[d], 0) / corners(t).length), o = mid(c);
@@ -6458,22 +6458,25 @@ function ruleTutorial(option) {
   const pts = [c, ...around].flatMap(corners), x0 = Math.min(...pts.map((p) => p[0])), y0 = Math.min(...pts.map((p) => p[1]));
   const w = Math.max(...pts.map((p) => p[0])) - x0, h = Math.max(...pts.map((p) => p[1])) - y0, side = Math.max(w, h), pad = side * 0.04;
   const dying = (s) => faded(LIFE_ALIVE, 1 - s / (rule.C - 1));  // stage s (1 … C − 2)
-  const cell = (centre, k) => `<svg viewBox="${x0 - pad - (side - w) / 2} ${y0 - pad - (side - h) / 2} ${side + 2 * pad} ${side + 2 * pad}">${[c, ...around].map((t, i) => {
-    const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
-    return `<polygon points="${corners(t).map((p) => p.join(',')).join(' ')}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"${i === 0 ? ' class="tut-centre"' : ''}/>`; }).join('')}</svg>`;
+  const points = (t) => corners(t).map((p) => p.join(',')).join(' ');
+  // pulse: the live cell coming (born: from 80 % to its full size and back) or going (dies: from 20 % to nothing and back)
+  const cell = (centre, k, pulse) => `<svg viewBox="${x0 - pad - (side - w) / 2} ${y0 - pad - (side - h) / 2} ${side + 2 * pad} ${side + 2 * pad}">${[c, ...around].map((t, i) => {
+    const fill = i === 0 ? (pulse === 'born' ? UNLIT : centre) : i <= k ? LIFE_ALIVE : UNLIT;
+    return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"${i === 0 ? ' class="tut-centre"' : ''}/>`; }).join('')}`
+    + `${pulse ? `<polygon points="${points(c)}" fill="${LIFE_ALIVE}" class="tut-${pulse}"/>` : ''}</svg>`;
   // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
   const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
   const share = (table, k) => { if (!rule.iso) return table[k] ? 1 : 0; const ms = Array.from({ length: 1 << R }, (_, m) => m).filter((m) => ofCount(m) === k); return ms.filter((m) => table[16 + m]).length / (ms.length || 1); };
   const ks = Array.from({ length: around.length + 1 }, (_, k) => k), some = (table, k) => (share(table, k) < 1 ? ' (some)' : '');
-  const pair = (k, from, to, word, table) => `<figure>${cell(from, k)}<span>→</span>${cell(to, k)}<figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
+  const pair = (k, from, to, word, table, pulse) => `<figure>${cell(from, k)}<span>→</span>${cell(to, k, pulse)}<figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
   const list = (l) => l.join(', ').replace(/, (\d+)$/, ' or $1');
   const born = ks.filter((k) => share(rule.B, k) > 0), stays = ks.filter((k) => share(rule.S, k) > 0), dies = ks.filter((k) => share(rule.S, k) < 1);
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   $('ruleTuto').innerHTML = `<button type="button" class="tut-close" title="Back to the grid">✕</button>`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${rule.iso ? ' (some: only as its letters say where they sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
-    + `<h4>Birth</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B)).join('') || '<p>none</p>'}</div>`
+    + `<h4>Birth</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B, 'born')).join('') || '<p>none</p>'}</div>`
     + `<h4>Survival</h4><div class="tut-row">${stays.map((k) => pair(k, LIFE_ALIVE, LIFE_ALIVE, 'stays', rule.S)).join('') || '<p>none</p>'}</div>`
-    + `<h4>Death</h4><div class="tut-row">${dies.map((k) => pair(k, LIFE_ALIVE, after, 'dies', rule.S.map((v, i) => (rule.iso && i < 16 ? v : 1 - v)))).join('')}</div>`
+    + `<h4>Death</h4><div class="tut-row">${dies.map((k) => pair(k, LIFE_ALIVE, after, 'dies', rule.S.map((v, i) => (rule.iso && i < 16 ? v : 1 - v)), 'dies')).join('')}</div>`
     + (stages.length ? `<h4>Dying stages</h4><div class="tut-row"><figure>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, 0)).join('<span>→</span>')}<figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
 }
