@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.731';
+const VERSION = '0.1.732';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6448,7 +6448,7 @@ function ruleTutorial(option) {
   if (!option) return;
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
-  const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
+  const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
   const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
   let c = 0;
   for (let t = 0; t < row * W; t++) if (nb.start[t + 1] - nb.start[t] > nb.start[c + 1] - nb.start[c]) c = t;
@@ -6461,26 +6461,31 @@ function ruleTutorial(option) {
   const points = (t) => corners(t).map((p) => p.join(',')).join(' ');
   // the cell after: its state before shown a moment, fading quickly into the new one, kept (once; ↻ plays it again)
   const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad;
-  const cell = (centre, k, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
-    const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
+  const cell = (centre, live, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
+    const fill = i === 0 ? centre : live.has(t) ? LIFE_ALIVE : UNLIT;
     return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}`
     + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>` : ''}`
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
-  // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
-  const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
-  const share = (table, k) => { if (!rule.iso) return table[k] ? 1 : 0; const ms = Array.from({ length: 1 << R }, (_, m) => m).filter((m) => ofCount(m) === k); return ms.filter((m) => table[16 + m]).length / (ms.length || 1); };
-  const ks = Array.from({ length: around.length + 1 }, (_, k) => k), some = (table, k) => (share(table, k) < 1 ? ' (some)' : '');
-  const pair = (k, from, to, word, table) => `<figure><div>${cell(from, k)}<span>→</span>${cell(to, k, from)}</div><figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
-  const list = (l) => l.join(', ').replace(/, (\d+)$/, ' or $1');
-  const born = ks.filter((k) => share(rule.B, k) > 0), stays = ks.filter((k) => share(rule.S, k) > 0), dies = ks.filter((k) => share(rule.S, k) < 1);
+  // the cases: each count of live neighbours; a rule with letters (Hensel's on squares, Callahan's on hexagons), each
+  // count split into its letters, where they sit (its live ones: an arrangement of that letter round the ring)
+  const iso = rule.iso, R = iso === 'hensel' ? 8 : 6, ring = iso ? [...nb.ring.subarray(R * c, R * c + R)] : null, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
+  const lettersOf = (k) => (iso === 'hensel' ? HENSEL_LETTERS[k] : iso && k >= 2 && k <= 4 ? ['o', 'm', 'p'] : []), classOf = (m) => (iso === 'hensel' ? henselClass(m) : hexClass(m).toLowerCase());
+  const cases = Array.from({ length: around.length + 1 }, (_, k) => k).flatMap((k) => (lettersOf(k).length ? lettersOf(k) : ['']).map((x) => {
+    if (!iso) return { k, x, live: new Set(around.slice(0, k)), on: (table) => table[k] === 1 };
+    const m = Array.from({ length: 1 << R }, (_, m) => m).find((m) => ofCount(m) === k && (!x || classOf(m) === x));
+    return { k, x, live: new Set(ring.filter((_, q) => (m >> q) & 1)), on: (table) => table[16 + m] === 1 };
+  }));
+  const pair = (cs, from, to, word) => `<figure><div>${cell(from, cs.live)}<span>→</span>${cell(to, cs.live, from)}</div><figcaption>${cs.k}${cs.x} live: ${word}</figcaption></figure>`;
+  const list = (l) => l.map((cs) => cs.k + cs.x).join(', ').replace(/, (\w+)$/, ' or $1');
+  const born = cases.filter((cs) => cs.on(rule.B)), stays = cases.filter((cs) => cs.on(rule.S)), dies = cases.filter((cs) => !cs.on(rule.S));
   const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div>`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${rule.iso ? ' (some: only as its letters say where they sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
-    + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B)).join('') || '<p>none</p>'}</div>`
-    + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((k) => pair(k, LIFE_ALIVE, LIFE_ALIVE, 'stays', rule.S)).join('') || '<p>none</p>'}</div>`
-    + `<h4>Death</h4><div class="tut-row">${dies.map((k) => pair(k, LIFE_ALIVE, after, 'dies', rule.S.map((v, i) => (rule.iso && i < 16 ? v : 1 - v)))).join('')}</div>`
-    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, 0)).join('<span>→</span>')}</div><figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>`
+    + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
+    + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
+    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
