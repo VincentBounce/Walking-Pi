@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.708';
+const VERSION = '0.1.709';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4215,20 +4215,24 @@ function updateMorphButton() {
   const sh = walk.shape;
   $('shapeRow').hidden = !sh || !shows('shape');
   if (!sh) return;
-  const names = walk.geo.torus ? ['Unrolled', 'Rolled'] : ['Flat', 'Inflated'];
-  $('shapeButtons').replaceChildren(...names.map((name, m) => {
-    const b = document.createElement('button');
-    b.textContent = name;
-    b.classList.toggle('active', sh.target === m);
-    b.addEventListener('click', () => {
-      walk.shape.target = m;
-      updateMorphButton();
-      $('perspective').checked = perspectiveFor(MODES[$('mode').value], m);  // the form's own
-      $('perspective').dispatchEvent(new Event('change'));
-    });
-    return b;
-  }));
+  [$('shapeFlat').textContent, $('shapeRound').textContent] = walk.geo.torus ? ['Unrolled', 'Rolled'] : ['Flat', 'Inflated'];
+  if (document.activeElement !== $('shapeM')) $('shapeM').value = sh.target;
 }
+// Unrolled ── Rolled (Flat ── Inflated): the form follows the slider at once (the buttons' animation, from
+// one end to the other, when set from elsewhere); its perspective, the form's own at an end
+$('shapeM').addEventListener('input', () => {
+  const sh = walk.shape;
+  if (!sh) return;
+  const m = Number($('shapeM').value);
+  Object.assign(sh, shapeAt(walk.geo, m), { target: m });
+  applyShape();
+});
+$('shapeM').addEventListener('change', () => {
+  const m = Number($('shapeM').value);
+  if (m !== 0 && m !== 1) return;
+  $('perspective').checked = perspectiveFor(MODES[$('mode').value], m);
+  $('perspective').dispatchEvent(new Event('change'));
+});
 
 // The perspective a surface starts with, in its form m: the walk mode's, but none on a solid
 // inflated (a ball is seen whole without it)

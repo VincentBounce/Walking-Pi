@@ -97,6 +97,8 @@ input[type=number], input[type=text], select {
 /* a value of one's own, in yellow bold: a formula no card matches, a rule no preset matches */
 .field input.custom { color: var(--accent); font-weight: 600; }
 input[type=range] { width: 100%; accent-color: var(--accent); }
+.shape-slider { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }  /* Flat ── Inflated: a surface's form */
+.shape-slider input { flex: 1; min-width: 0; }
 /* checkboxes as switches (iOS style): a pill whose knob slides to the right, yellow when on */
 input[type=checkbox] {
   appearance: none;
