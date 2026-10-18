@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.765';
+const VERSION = '0.1.766';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5537,6 +5537,7 @@ const DRAW_PATTERNS = [
   ['rhombillelife-osc', 'rhombille', ['B367/S015'], 'Oscillator', '7.A$5.A$A.A!', 'period 3 · 4 cells'],
   ['rhombillesparks-meth', 'rhombille', ['B358/S0237/C4'], 'Methuselah', '.3A.A.2A$.A3.A!', 'settles at generation 1,588 · 8 cells'],
   ['rhombillesparks-ship', 'rhombille', ['B358/S0237/C4'], 'Spaceship', '5.3AB3A.A$C2.BAB3CACA$6.C2.ACB.A$6.B.3B$3.C!', 'flies, period 4 · 28 cells'],
+  ['rhombilletrails-ship', 'rhombille', ['B2/S28/C8'], 'Spaceship', '7.GF.E$5.3F2.DC.B$G.3F.2E3C2.A$E2.D.3C.2BA$3.B2.A!', 'flies, period 3 · 29 cells'],
   ['rhombitrilife-osc', 'rhombitri', ['B279/S069/C4'], 'Oscillator', '5.A.A$A!', 'period 12 · 3 cells'],
   ['rhombitrilife-meth', 'rhombitri', ['B279/S069/C4'], 'Methuselah', '.A2.2A.A.A$A.A3.A2.2A!', 'settles at generation 3,210 · 10 cells'],
   ['longrhombitri-osc', 'rhombitri', ['B29/S067/C4'], 'Oscillator', '10.2C$A.C.C.2A!', 'period 13 · 7 cells'],
@@ -5546,10 +5547,13 @@ const DRAW_PATTERNS = [
   ['snubembers-osc', 'snubtri', ['B359/S0146/C3'], 'Oscillator', '5.A$8.3A!', 'period 6 · 4 cells'],
   ['snubembers-meth', 'snubtri', ['B359/S0146/C3'], 'Methuselah', '4.A.A2.A.A3.A$2.2A3.A6.A2.A!', 'settles at generation 390 · 10 cells'],
   ['ilife-osc', 'capitalI', ['B345/S0236'], 'Oscillator', '.A$.2A$A!', 'period 2 · 4 cells'],
+  ['itrails-ship', 'capitalI', ['B2/S24/C8'], 'Spaceship', '4.C2A$2.FD2A$.GCDC$FGF!', 'flies, period 3 · 14 cells'],
   ['pythagoraslife-osc', 'pythagorean', ['B28/S28'], 'Oscillator', 'A$A!', 'period 2 · 2 cells'],
   ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', '2.A$3.A$A.2A!', 'flies, period 2 · 5 cells'],
   ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', '3.A$A.2A!', 'period 3 · 4 cells'],
+  ['pythagorastrails-ship', 'pythagorean', ['B23/S13/C8'], 'Spaceship', '3.A$A.AC$C.CE$E.EG$G.G!', 'flies, period 2 · 12 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', '2.A.BAB.D.DC$.A.B.BADCD!', 'flies, period 4 · 14 cells'],
+  ['prismtrails-ship', 'prismatic', ['B2/S1/C8'], 'Spaceship', '2.GFGDE.E.CBC2A.A$FG.G.EDEBC.C.A.A!', 'flies, period 4 · 23 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', '2.A.BAB.D.DC$.A.BAB.D.DC!', 'flies, period 4 · 14 cells'],
   ['tetrakislife-osc', 'tetrakis', ['B37/S1'], 'Oscillator', 'A$A$.A!', 'period 2 · 3 cells'],
   ['tetrakislife-meth', 'tetrakis', ['B37/S1'], 'Methuselah', 'A.A.A5.A$2A2.A3.3A!', 'settles at generation 4,016 · 10 cells'],
@@ -5568,6 +5572,7 @@ const DRAW_PATTERNS = [
   ['type15life-meth', 'pent15', ['B247/S034/C4'], 'Methuselah', '19.2A19.A5.A3.A4.A7.2A7.A16.A!', 'settles at generation 363 · 10 cells'],
   ['type15classic-osc', 'pent15', ['B256/S67'], 'Oscillator', '35.A18.A!', 'period 2 · 2 cells'],
   ['type15classic-meth', 'pent15', ['B256/S67'], 'Methuselah', '32.A7.A8.A11.A.A2.A8.A8.A!', 'settles at generation 1,277 · 8 cells'],
+  ['type15trails-ship', 'pent15', ['B24/S13/C12'], 'Spaceship', '11.DF.4AC2.GCG.A.2BEDHKFH5.GF3.F2.2I.HG$24.J12.K17.J!', 'flies, period 14 · 29 cells'],
 ];
 const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]));
 // the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
@@ -6417,7 +6422,7 @@ const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
-  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...',
+  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...', 'B24/S13/C12': 'o....,.++..,..++.,...++,....+', 'B2/S1/C8': '.....,oo+++,o.+++,.....,.....', 'B23/S13/C8': '..o..,..+..,..+..,..+..,..+..', 'B2/S24/C8': '.....,.o++.,oo+++,.....,.....', 'B2/S28/C8': '....o,...o+,..++.,.++..,++...',
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',

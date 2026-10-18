@@ -1264,3 +1264,18 @@ For each rule offered, 300 random starts at each density in a patch of radius 3 
 ## 🕯 Faders: 25 states
 
 The rules may now have up to 25 states (23 dying stages; with colours, as many as a cell's byte holds: 22 for twelve). **Faders** (B2/S2/C25, Rudy Rucker and John Walker's, from MCell's collection; see [LifeWiki's Generations rules](https://conwaylife.com/wiki/OCA:Fireworks)) is on the squares: Life crossed with Brian's Brain, its sparks wandering in long fading trails. On a soup (128 × 128, 30 % alive) it stays lively, about 2 % of the cells alive and 30 % dying, still going after 3,000 generations. [Faders](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S2/C25&s=128).
+
+## ☄ Trails: rules with many states on the tilings
+
+With room for up to 25 states, a search on the tilings (tools/tilings/states.js): every B (2 or 3, and up to one more count) / S (up to two counts) / C (8, 12, 16, 25), one soup each on ~1,500 cells; the lively ones (0.3 to 8 % alive, 300 generations or more) given 150 small random starts (3 × 3 lattice cells) on ~4,000 cells, for the ships they leave. Long dying trails make ships common: a ship's back is shielded by its own fading cells. Five rules, one a tiling, each with its most common ship (checked in the app: it flies every way its tiling turns or mirrors):
+
+| Tiling | Rule | Its ship | How common | Soups |
+|---|---|---|---|---|
+| Prismatic | [**Prism trails** B2/S1/C8](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPrismatic&r=B2/S1/C8&s=48&sd=random.30.7) | period 4 · 5 live cells and 18 dying | 412 of the 436 ships of 150 starts | break up into them within a hundred generations |
+| Rhombille | [**Rhombille trails** B2/S28/C8](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dRhombille&r=B2/S28/C8&s=48&sd=random.30.7) | period 3 · 3 live and 26 dying (3 kinds) | 125 of 314 | simmer for thousands of generations, then end in ships going round |
+| Capital I | [**I trails** B2/S24/C8](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCapitalI&r=B2/S24/C8&s=48&sd=random.30.7) | period 3 · 4 live and 10 dying | 19 of 21 | end in ships within a few dozen generations |
+| Pythagoras | [**Pythagoras trails** B23/S13/C8](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPythagorean&r=B23/S13/C8&s=48&sd=random.30.7) | period 2 · 3 live and 9 dying (13 kinds) | 23 of 102 | end in ships within a few hundred generations |
+| Type 15 | [**Type 15 trails** B24/S13/C12](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B24/S13/C12&s=48&sd=random.30.7) | period 14 · 5 live and 24 dying (5 kinds) | 53 of 218 | end in ships within about 150 generations |
+
+On a small torus their soups end in long loops (periods 68 to 340): their ships going round. None on Penrose's rhombi or the spectres (no lattice: a ship has no copy of itself to come back on), nor so far on the florets, the snub, tetrakis, kisrhombille and the 14th pentagon.
+
