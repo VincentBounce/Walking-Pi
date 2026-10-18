@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.747';
+const VERSION = '0.1.748';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5300,7 +5300,7 @@ function parseRule(text) {
   // k + K × s dying of colour k at stage s (1 … C − 2). A start has live cells only: one digit a cell in
   // base K + 1 (one colour: in base C, its dying stages too)
   const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = hex ? 'hex' : hensel ? 'hensel' : false;
-  if (C < 2 || C > 10 || colours > LIFE_COLOURS.length) return null;
+  if (C < 2 || C > 25 || colours > LIFE_COLOURS.length || colours * (C - 1) > 255) return null;  // (a cell's state a byte)
   const ring = hensel ? 8 : 6, classOf = hensel ? (mask) => henselClass(mask).toUpperCase() : hexClass;
   const table = (spec) => {
     const a = new Uint8Array(16 + (1 << ring));  // by the count, and by 16 + the mask of where they sit
@@ -6495,7 +6495,7 @@ function ruleTutorial(option) {
   const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad;
   const cell = (centre, live, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
     const fill = i === 0 ? centre : live.has(t) ? LIFE_ALIVE : UNLIT;
-    return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}`
+    return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}${tomb(centre)}`
     + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>` : ''}`
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
   // the cases: each count of live neighbours; a rule with letters (Hensel's on squares, Callahan's on hexagons), each
@@ -6515,12 +6515,17 @@ function ruleTutorial(option) {
   const born = section((cs) => cs.on(rule.B)), stays = section((cs) => cs.on(rule.S)), dies = section((cs) => !cs.on(rule.S));
   const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
+  // a dying stage's ✝ (white on the cells nearer the live colour on a light page, as on the grid's)
+  function tomb(centre) {
+    const s = stages.indexOf(centre) + 1, light = document.documentElement.dataset.theme === 'light';
+    return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
+  }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div>`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
-    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
+    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '');
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
@@ -6603,17 +6608,14 @@ function renderRuleSection() {
       ...(lettersOf(c).length ? [box('lt', lettersOf(c).map((x) => chip(x, on.has(x) ? cls : '', said(c, x), () => { on.has(x) ? on.delete(x) : on.add(x); })))] : []),
     ])));
   }
-  // the states as cells, from the top: alive, its dying stages fading, dead on the panel's white (✝ on each but the
-  // live one; white on the cells nearer the live colour on a light page, the dead one on a dark page); past the room
-  // (a rule typed), in words. A click on the frame: one more state, back to 2 when one more would not fit
-  const cells = [LIFE_ALIVE, ...Array.from({ length: rule.C - 2 }, (_, s) => faded(LIFE_ALIVE, 1 - (s + 1) / (rule.C - 1))), 'var(--panel)'];
-  const room = $('statesLabel').clientHeight || 160, fit = Math.min(10, Math.floor((room + 2) / 24)), words = `${rule.C} states${rule.C > 2 ? ` · ${rule.C - 2} dying` : ''}`;
-  const cross = (i) => `<b style="color:${((1 - i / (rule.C - 1) > 0.45) === (document.documentElement.dataset.theme === 'light')) ? '#fff' : '#1f2328'}">✝</b>`;
-  $('statesLabel').innerHTML = rule.C > fit ? `${rule.C}<small>states</small>${rule.C > 2 ? `${rule.C - 2}<small>dying</small>` : ''}`
-    : `<span class="states-cells">${cells.map((c, i) => `<i style="background:${c}">${i ? cross(i) : ''}</i>`).join('')}</span>`;
-  $('statesBox').title = `${words}: alive${rule.C > 2 ? `, then ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (it will die)` : ''}, dead · a click: ${rule.C + 1 > fit ? 'back to 2' : 'one more'}`;
-  $('statesBox').onclick = () => { customOpen = true; setRuleText(write(B, S, rule.C + 1 > fit ? 2 : rule.C + 1)); compute(); };
-  $('statesBox').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('statesBox').onclick(); } };
+  // the states (alive, its dying stages, dead): − / +, 2 to 25, as many as a cell's byte holds with the colours
+  // (a state up to K × (C − 1), see parseRule)
+  const most = Math.min(25, Math.floor(255 / lifeColours) + 1), states = (C) => { customOpen = true; setRuleText(write(B, S, C)); compute(); };
+  $('statesLabel').innerHTML = `${rule.C} states<small>${rule.C > 2 ? `${rule.C - 2} dying` : 'none dying'}</small>`;
+  $('statesDown').disabled = rule.C <= 2;
+  $('statesUp').disabled = rule.C >= most;
+  $('statesDown').onclick = () => states(rule.C - 1);
+  $('statesUp').onclick = () => states(rule.C + 1);
   // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
   // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
   // (a birth's count split among the K colours, the two most equal), all of them, a line each
@@ -10461,10 +10463,10 @@ $('lifePreset').addEventListener('change', () => {
 });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too) and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'statesBox', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
-  if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
+  if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   customOpen = true;  // (typed: your own still, even as a known one)
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });

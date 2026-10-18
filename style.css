@@ -307,16 +307,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-icon rect, .rule-icon polygon { fill: currentColor; stroke: none; }
 .rule-icon rect.dim, .rule-icon polygon.dim { opacity: 0.4; }
 .rule-build { margin: 0 0 10px; }
-.build-cols { display: grid; grid-template-columns: 46px 1fr 1fr; gap: 6px; margin-bottom: 10px; }  /* States, Birth, Survive: a frame each */
+.build-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }  /* Birth, Survive: a frame each */
 .build-box { min-width: 0; padding: 6px 4px; border: 1px solid var(--border); border-radius: 8px; }
 .build-box h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
-.states-box:hover { border-color: var(--muted); }  /* a click: one more state */
-.states-box { cursor: pointer; contain: size; display: flex; flex-direction: column; align-items: center; }  /* as high as the others (its own cells never make it higher) */
-#statesLabel { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--accent); text-align: center; line-height: 1.1; }
-#statesLabel small { display: block; font-size: 9px; font-weight: 400; color: var(--muted); }
-.states-cells { display: flex; flex-direction: column; gap: 2px; }  /* a cell's states, from the top: alive, its dying stages, dead (✝) */
-.states-cells i { width: 22px; height: 22px; flex: none; border: 1px solid var(--border); border-radius: 3px; display: grid; place-items: center; font-style: normal; font-size: 11px; line-height: 1; }
-.states-cells i b { font-weight: 600; }
 .determined { margin: 12px 0 4px; }  /* Births by majority colour: its title on the left, the colours' picture before its lines */
 .determined .births { display: flex; align-items: flex-start; gap: 8px; }
 .determined .births > svg { width: 24px; height: 24px; flex: none; border-radius: 3px; }
