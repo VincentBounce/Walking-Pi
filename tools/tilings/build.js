@@ -70,6 +70,41 @@ function polyomino(cells) {
   return out;
 }
 
+// the corners of a patch's polygons that lie on another's side, added to that side (a tiling not edge to edge: a neighbour
+// by a corner on a side is one by a corner then)
+function withT(patch) {
+  const on = (p, q, r) => { const l = Math.hypot(q[0] - p[0], q[1] - p[1]), t = ((r[0] - p[0]) * (q[0] - p[0]) + (r[1] - p[1]) * (q[1] - p[1])) / (l * l);
+    return t > 1e-6 && t < 1 - 1e-6 && Math.abs((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) / l < 1e-6; };
+  const corners = patch.flat();
+  return patch.map((Q) => Q.flatMap((p, k) => { const q = Q[(k + 1) % Q.length];
+    return [p, ...corners.filter((r) => on(p, q, r)).sort((r, s) => Math.hypot(r[0] - p[0], r[1] - p[1]) - Math.hypot(s[0] - p[0], s[1] - p[1])).filter((r, i, l) => !i || key(r) !== key(l[i - 1]))]; }));
+}
+// a lattice's basis made short (Gauss's reduction: each vector the other's nearest multiple taken off)
+function reduce(u, v) {
+  const dot = (p, q) => p[0] * q[0] + p[1] * q[1];
+  for (let n = 0; n < 20; n++) { const k = Math.round(dot(u, v) / dot(u, u)); v = add(v, mul(u, -k)); if (dot(v, v) < dot(u, u)) [u, v] = [v, u]; else if (!k) break; }
+  return [u, v];
+}
+// tiles laid as Jaap Scherphuis's Tiling Viewer lays them (TilingType.recalcFundRegion): each row [colour, its corner,
+// its next, the tile it goes on, that tile's corner, that tile's next, mirrored]: moved so that its corner is on the
+// other's, turned (mirrored first) so that its side runs along the other's
+function jaap(base, rows) {
+  const tiles = [], ang = (p, q) => Math.atan2(q[1] - p[1], q[0] - p[0]);
+  const rot = (T, o, a) => T.map(([x, y]) => [o[0] + (x - o[0]) * Math.cos(a) - (y - o[1]) * Math.sin(a), o[1] + (y - o[1]) * Math.cos(a) + (x - o[0]) * Math.sin(a)]);
+  rows.forEach(([, c1, c2, other, o1, o2, mirrored], i) => {
+    let T = base.map((p) => [...p]);
+    if (other !== i) {
+      const O = tiles[other];
+      T = T.map(([x, y]) => [x + O[o1][0] - T[c1][0], y + O[o1][1] - T[c1][1]]);
+      const o = T[c1];
+      if (mirrored) { T = rot(T, o, -ang(o, T[c2])).map(([x, y]) => [x, 2 * o[1] - y]); T = rot(T, o, ang(o, O[o2])); }
+      else T = rot(T, o, ang(o, O[o2]) - ang(o, T[c2]));
+    }
+    tiles.push(T);
+  });
+  return tiles;
+}
+
 const T = {};
 // the polygons of one lattice cell (their middles in it), in lattice units
 function cell(name, a, b, polys, extra = {}) {
@@ -113,11 +148,22 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   // its lattice (u, v) reduced: u, and v + u at right angles to it, 4.1 times as long; a cell of 4 u by it (48 pentagons): near a square
   const u = [-(1 + R3) / 4, (3 + R3) / 4], v = [(10 + 7 * R3) / 4, (3 + 2 * R3) / 4], a = mul(u, 4), b = add(v, u), patch = [];
   for (let i = -12; i <= 12; i++) for (let j = -3; j <= 3; j++) for (const Q of twelve) patch.push(Q.map((p) => add(add(p, mul(u, i)), mul(b, j))));
-  const on = (p, q, r) => { const l = Math.hypot(q[0] - p[0], q[1] - p[1]), t = ((r[0] - p[0]) * (q[0] - p[0]) + (r[1] - p[1]) * (q[1] - p[1])) / (l * l);
-    return t > 1e-6 && t < 1 - 1e-6 && Math.abs((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) / l < 1e-6; };
-  const corners = patch.flat(), withT = patch.map((Q) => Q.flatMap((p, k) => { const q = Q[(k + 1) % Q.length];
-    return [p, ...corners.filter((r) => on(p, q, r)).sort((r, s) => Math.hypot(r[0] - p[0], r[1] - p[1]) - Math.hypot(s[0] - p[0], s[1] - p[1])).filter((r, i, l) => !i || key(r) !== key(l[i - 1]))]; }));
-  cell('pent15', a, b, withT); }
+  cell('pent15', a, b, withT(patch)); }
+
+// Stein's pentagon (type 14, 1985; the only other with no freedom): 6 a cell, as Jaap Scherphuis's Tiling Viewer builds
+// it (jaapsch.net/tilings, TilingTypeN5_14): its corners from B (2B + C = 360, C + E = 180, A = 90, 2a = 2c = d = e),
+// each tile laid on another by a side (mirrored or not), the lattice from two tiles' corners; not edge to edge either
+{ const f = (b) => 1 + 2 * Math.sin(((2 * b - 270) * Math.PI) / 180) - 3 * Math.sin(((180 - b) * Math.PI) / 180);
+  let lo = 0, hi = 90;
+  while (hi - lo > 1e-12) { const m = (lo + hi) / 2; if (f(m) * f(lo) > 0) lo = m; else hi = m; }
+  const b = (lo + hi) / 2, D = Math.PI / 180, ln = 1;
+  const x3 = -ln * Math.cos((90 + 2 * b) * D), y3 = ln / 2 + ln * Math.sin((90 + 2 * b) * D), x2 = x3 - ln * Math.cos((180 + b) * D), y2 = y3 + ln * Math.sin((180 + b) * D);
+  const x1 = x2 - 0.5 * ln * Math.cos(-b * D), y1 = y2 + 0.5 * ln * Math.sin(-b * D);
+  const tiles = jaap([[0, 0], [x1, y1], [x2, y2], [x3, y3], [0, ln / 2]], [[0, 0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 0, 1, 1], [1, 1, 2, 1, 2, 1, 1], [0, 0, 1, 2, 0, 1, 0], [2, 4, 3, 0, 2, 3, 0], [2, 1, 0, 4, 0, 1, 0]]);
+  const u = [tiles[0][4][0] - tiles[3][3][0], tiles[0][4][1] - tiles[3][3][1]], v = [tiles[0][4][0] - tiles[5][3][0], tiles[0][4][1] - tiles[5][3][1]];
+  const [a1, b1] = reduce(u, v), patch = [];
+  for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (const Q of tiles) patch.push(Q.map((p) => add(add(p, mul(a1, i)), mul(b1, j))));
+  cell('pent14', a1, b1, withT(patch)); }
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)

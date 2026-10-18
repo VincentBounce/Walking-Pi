@@ -1,0 +1,175 @@
+{
+ "pent14 B24/S0345/C4": {
+  "ships": [],
+  "oscs": [
+   {
+    "rle": ".A8.A$8.A2.A!",
+    "n": 4,
+    "cells": 4,
+    "period": 14,
+    "move": [
+     0,
+     0
+    ],
+    "count": 8
+   },
+   {
+    "rle": "4.A$4A6.BA$6.5AB$17.A!",
+    "n": 12,
+    "cells": 14,
+    "period": 14,
+    "move": [
+     0,
+     0
+    ],
+    "count": 6
+   },
+   {
+    "rle": "2A8.BA$8.3AB!",
+    "n": 6,
+    "cells": 8,
+    "period": 14,
+    "move": [
+     0,
+     0
+    ],
+    "count": 4
+   },
+   {
+    "rle": "B3A6.CB$6.3A2BC!",
+    "n": 6,
+    "cells": 12,
+    "period": 14,
+    "move": [
+     0,
+     0
+    ],
+    "count": 3
+   },
+   {
+    "rle": ".C$7.2B2C5.A$12.C2B2.A5.C$20.C!",
+    "n": 2,
+    "cells": 12,
+    "period": 14,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "4.A$.B2C6.A$6.2CB2.A$17.A!",
+    "n": 4,
+    "cells": 10,
+    "period": 14,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   }
+  ],
+  "meths": [
+   {
+    "rle": "4.2A3.A.A.A.A.A$2.3A10.A.A!",
+    "n": 12,
+    "T": 384,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": ".A3.2A4.A$A.A4.A!",
+    "n": 7,
+    "T": 250,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A2.A4.2A$2A3.A4.A!",
+    "n": 8,
+    "T": 243,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "5.A.2A.A2.A2.A$A3.A2.2A6.A!",
+    "n": 11,
+    "T": 236,
+    "ships": 0,
+    "period": 1
+   }
+  ]
+ },
+ "pent14 B34/S2357": {
+  "ships": [],
+  "oscs": [
+   {
+    "rle": "3A.A$.3A7.A!",
+    "n": 8,
+    "cells": 8,
+    "period": 2,
+    "move": [
+     0,
+     0
+    ],
+    "count": 28
+   },
+   {
+    "rle": "3A$.3A!",
+    "n": 6,
+    "cells": 6,
+    "period": 2,
+    "move": [
+     0,
+     0
+    ],
+    "count": 12
+   },
+   {
+    "rle": "2.3A.3A.2A$3.A3.3A.A5.A!",
+    "n": 14,
+    "cells": 14,
+    "period": 4,
+    "move": [
+     0,
+     0
+    ],
+    "count": 11
+   },
+   {
+    "rle": "A.3A2.2A.2A$3.A3.2A2.A5.A!",
+    "n": 13,
+    "cells": 13,
+    "period": 4,
+    "move": [
+     0,
+     0
+    ],
+    "count": 9
+   },
+   {
+    "rle": ".2A.A.A3.A$.2A3.2A.3A5.A!",
+    "n": 13,
+    "cells": 13,
+    "period": 4,
+    "move": [
+     0,
+     0
+    ],
+    "count": 9
+   },
+   {
+    "rle": "3A.A$.A.A7.A!",
+    "n": 7,
+    "cells": 7,
+    "period": 4,
+    "move": [
+     0,
+     0
+    ],
+    "count": 8
+   }
+  ],
+  "meths": []
+ }
+}

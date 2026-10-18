@@ -1222,6 +1222,8 @@ The last convex pentagon found to tile the plane (Mann, McLoud-Mann and Von Dera
 
 Type 15 Life is the second most Life-like of all the tilings' rules, after Rhombitri Life (0.565).
 
+**Stein's pentagon** (type 14, Rolf Stein, 1985: the only other convex pentagon that tiles with no freedom left; A = 90°, 2B + C = 360°, C + E = 180°, 2a = 2c = d = e), built as Jaap Scherphuis's Tiling Viewer builds it (6 a cell, each laid on another by a side; not edge to edge either, its corners on another's side added to it: 5, 6 or 7 neighbours). Its rules are far from Life (the most Life-like scores 0.07: few neighbours, soups settle within a few hundred generations): **Stein sparks B24/S0345/C4** (an oscillator of 4 cells, period 14; a methuselah of 11 cells: 420) and **Stein blinkers B34/S2357** (blinkers of 6 cells, period 2, and of 7, period 4) ([soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent14&r=B24/S0345/C4&s=48&sd=random.30.7)). Its lattice has no small cell with sides at right angles: no torus yet.
+
 <br>
 
 <p align="center">⁂</p>
