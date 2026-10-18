@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.727';
+const VERSION = '0.1.728';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6459,12 +6459,12 @@ function ruleTutorial(option) {
   const w = Math.max(...pts.map((p) => p[0])) - x0, h = Math.max(...pts.map((p) => p[1])) - y0, side = Math.max(w, h), pad = side * 0.04;
   const dying = (s) => faded(LIFE_ALIVE, 1 - s / (rule.C - 1));  // stage s (1 … C − 2)
   const points = (t) => corners(t).map((p) => p.join(',')).join(' ');
-  // the cell after: its state before shown a moment, fading quickly into the new one, kept 2 s, then back at once
+  // the cell after: its state before shown a moment, fading quickly into the new one, kept 3.2 s, then back at once
   const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad;
   const cell = (centre, k, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
     const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
     return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}`
-    + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.18;0.29;1" dur="2.8s" repeatCount="indefinite"/></polygon>` : ''}`
+    + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.125;0.2;1" dur="4s" repeatCount="indefinite"/></polygon>` : ''}`
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
   // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
   const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
