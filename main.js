@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.754';
+const VERSION = '0.1.755';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6563,7 +6563,7 @@ function renderRuleSection() {
   own.classList.toggle('switch', mineNot);  // (picked: a click shows how it works, as the others)
   own.innerHTML = `<span class="mode-icon">${pixelIcon('..o..,..o..,ooooo,..o..,..o..')}</span><span><span class="mode-name">Custom rule</span>`
     + `<span class="mode-detail">${mineNot ? `${now} · your own` : 'your own: its states, births and survivals'}</span></span>`;
-  $('watchRule').onclick = () => ruleTutorial(!$('ruleTuto').hidden ? null : yours);
+  $('watchRule').onclick = () => ruleTutorial(!$('ruleTuto').hidden ? null : shown);  // (the rule in use: a card's, or your own)
   own.addEventListener('click', () => {
     if (mineNot) { ruleTutorial(!$('ruleTuto').hidden ? null : yours); return; }
     customOpen = true;

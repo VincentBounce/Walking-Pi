@@ -307,8 +307,9 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-icon rect, .rule-icon polygon { fill: currentColor; stroke: none; }
 .rule-icon rect.dim, .rule-icon polygon.dim { opacity: 0.4; }
 .rule-build { display: flex; flex-direction: column; gap: 4px; margin: 0 0 4px; }  /* your own's: one block under its card, as close as the cards */
-.rule-build > .wide, .rule-build > .build-cols, .rule-build > .stepper { margin-bottom: 0; }
-.rule-cards:has(+ .rule-build:not([hidden])) { margin-bottom: 4px; }
+.rule-build > .build-cols, .rule-build > .stepper { margin-bottom: 0; }
+.rule-cards { margin-bottom: 4px; }  /* Watch rule panel under them, then your own's block: all one */
+#watchRule:has(+ .rule-build:not([hidden])) { margin-bottom: 4px; }
 .build-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }  /* Birth, Survive: a frame each */
 .build-box { min-width: 0; padding: 6px 4px; border: 1px solid var(--border); border-radius: 8px; }
 .build-box h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
