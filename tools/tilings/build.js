@@ -165,6 +165,13 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (const Q of tiles) patch.push(Q.map((p) => add(add(p, mul(a1, i)), mul(b1, j))));
   cell('pent14', a1, b1, withT(patch)); }
 
+// truncated hexagonal (3.12.12): dodecagons of side 1 side by side (their middles 2 + √3 apart), triangles between
+{ const s = 2 + R3, R = 1 / (2 * Math.sin(Math.PI / 12)), a = [s, 0], b = mul(dir(60), s), pts = points(a, b, Array.from({ length: 12 }, (_, k) => mul(dir(15 + 30 * k), R)), 6);
+  cell('trunchex', a, b, polygons(pts, false)); }
+// truncated trihexagonal (4.6.12): the kisrhombille's points, their faces (dodecagons, hexagons, squares)
+{ const s = 3 + R3, R = 1 / (2 * Math.sin(Math.PI / 12)), a = [s, 0], b = mul(dir(60), s), pts = points(a, b, Array.from({ length: 12 }, (_, k) => mul(dir(15 + 30 * k), R)), 5);
+  cell('trunctrihex', a, b, polygons(pts, false)); }
+
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)
 for (const [name, t] of Object.entries(T)) {
