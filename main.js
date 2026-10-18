@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.726';
+const VERSION = '0.1.727';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6459,23 +6459,18 @@ function ruleTutorial(option) {
   const w = Math.max(...pts.map((p) => p[0])) - x0, h = Math.max(...pts.map((p) => p[1])) - y0, side = Math.max(w, h), pad = side * 0.04;
   const dying = (s) => faded(LIFE_ALIVE, 1 - s / (rule.C - 1));  // stage s (1 … C − 2)
   const points = (t) => corners(t).map((p) => p.join(',')).join(' ');
-  // the cell after: born, a light sweeping across it (a band, clipped to it); dies, its live black fading out and back
-  const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad, beat = 'dur="2.4s" repeatCount="indefinite"';
-  const shine = (id) => `<defs><clipPath id="${id}c"><polygon points="${points(c)}"/></clipPath><linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1">`
-    + `<stop offset="0.3" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.75"/><stop offset="0.7" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>`
-    + `<rect clip-path="url(#${id}c)" y="${T}" width="${S / 2}" height="${S}" fill="url(#${id}g)"><animate attributeName="x" values="${L - S / 2};${L + S};${L + S}" keyTimes="0;0.45;1" ${beat}/></rect>`;
-  const fade = `<polygon points="${points(c)}" fill="${LIFE_ALIVE}"><animate attributeName="opacity" values="1;0;0;1" keyTimes="0;0.4;0.75;1" ${beat}/></polygon>`;
-  let ids = 0;
-  const cell = (centre, k, after) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
+  // the cell after: its state before shown a moment, fading quickly into the new one, kept 2 s, then back at once
+  const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad;
+  const cell = (centre, k, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
     const fill = i === 0 ? centre : i <= k ? LIFE_ALIVE : UNLIT;
     return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}`
-    + `${after === 'born' ? shine(`tut${ids++}`) : after === 'dies' ? fade : ''}`
+    + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.18;0.29;1" dur="2.8s" repeatCount="indefinite"/></polygon>` : ''}`
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
   // a count's share of its arrangements the table keeps (a rule with letters: some of them; a count alone: all or none)
   const R = rule.iso === 'hensel' ? 8 : 6, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
   const share = (table, k) => { if (!rule.iso) return table[k] ? 1 : 0; const ms = Array.from({ length: 1 << R }, (_, m) => m).filter((m) => ofCount(m) === k); return ms.filter((m) => table[16 + m]).length / (ms.length || 1); };
   const ks = Array.from({ length: around.length + 1 }, (_, k) => k), some = (table, k) => (share(table, k) < 1 ? ' (some)' : '');
-  const pair = (k, from, to, word, table) => `<figure><div>${cell(from, k)}<span>→</span>${cell(to, k, word)}</div><figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
+  const pair = (k, from, to, word, table) => `<figure><div>${cell(from, k)}<span>→</span>${cell(to, k, from)}</div><figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
   const list = (l) => l.join(', ').replace(/, (\d+)$/, ' or $1');
   const born = ks.filter((k) => share(rule.B, k) > 0), stays = ks.filter((k) => share(rule.S, k) > 0), dies = ks.filter((k) => share(rule.S, k) < 1);
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
