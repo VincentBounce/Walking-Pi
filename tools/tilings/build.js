@@ -110,8 +110,8 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   const three = [P, P.map(M(T(R3 / 2, -1 / 2), R(Math.PI / 6))), P.map(M(T((R3 - 1) / 4, (1 + R3) / 4), R(Math.PI / 6), F))];
   const six = [...three, ...three.map((Q) => Q.map(M(T(-(5 + R3) / 4, (1 - R3) / 4), R(-Math.PI / 3), G)))];
   const twelve = [...six, ...six.map((Q) => Q.map(M(T(R3, -1 / 2), R(Math.PI))))];
-  // its lattice (u, v) reduced: u, and v − 2u at right angles to it, 4.1 times as long; a cell of 4 u by it (48 pentagons): near a square
-  const u = [-(1 + R3) / 4, (3 + R3) / 4], v = [(10 + 7 * R3) / 4, (3 + 2 * R3) / 4], a = mul(u, 4), b = add(v, mul(u, -2)), patch = [];
+  // its lattice (u, v) reduced: u, and v + u at right angles to it, 4.1 times as long; a cell of 4 u by it (48 pentagons): near a square
+  const u = [-(1 + R3) / 4, (3 + R3) / 4], v = [(10 + 7 * R3) / 4, (3 + 2 * R3) / 4], a = mul(u, 4), b = add(v, u), patch = [];
   for (let i = -12; i <= 12; i++) for (let j = -3; j <= 3; j++) for (const Q of twelve) patch.push(Q.map((p) => add(add(p, mul(u, i)), mul(b, j))));
   const on = (p, q, r) => { const l = Math.hypot(q[0] - p[0], q[1] - p[1]), t = ((r[0] - p[0]) * (q[0] - p[0]) + (r[1] - p[1]) * (q[1] - p[1])) / (l * l);
     return t > 1e-6 && t < 1 - 1e-6 && Math.abs((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])) / l < 1e-6; };

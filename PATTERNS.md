@@ -1217,7 +1217,7 @@ The last convex pentagon found to tile the plane (Mann, McLoud-Mann and Von Dera
 
 | Rule | Score | Settles | Plateau | Alive at 200 | Ash | Ends with oscillators | Patterns | Link |
 |---|--:|---|--:|--:|--:|--:|---|---|
-| **Type 15 Life B247/S034/C4** | 0.52 | 270 to 2,600 | 0.64 | 6.6 % | 3.6 % | 83 % | a ship of 7 cells, period 48, common; an oscillator of 3 cells, period 8; a methuselah of 10 cells: 363 (2 ships off) | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B247/S034/C4&s=48&sd=random.30.7) |
+| **Type 15 Life B247/S034/C4** | 0.52 | 270 to 2,600 | 0.64 | 6.6 % | 3.6 % | 83 % | a ship of 7 cells, period 12 (about half a pentagon a generation), common; an oscillator of 3 cells, period 8; a methuselah of 10 cells: 363 (2 ships off) | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B247/S034/C4&s=48&sd=random.30.7) |
 | **Type 15 classic B256/S67** (2 states) | 0.25 | 420 to 1,900 | 0.32 | 9.5 % | 1.3 % | 100 % | an oscillator of 2 cells, period 2; a methuselah of 8 cells: 1,277 | [soup](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B256/S67&s=48&sd=random.30.7) |
 
 Type 15 Life is the second most Life-like of all the tilings' rules, after Rhombitri Life (0.565).
