@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.772';
+const VERSION = '0.1.773';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6470,7 +6470,7 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre' };
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
-  $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as All digits)
+  $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as Full number)
   $('watchRule').classList.toggle('switch', !!option);
   if (!option) return;
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours}`;  // (another grid or rule: shown again, see renderRuleSection)
@@ -10505,7 +10505,7 @@ $('copyRle').addEventListener('click', () => {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => { b.innerHTML = `${icon('check')} Copied`; setTimeout(() => { b.innerHTML = `${icon('copy')} Copy RLE`; }, 1500); }, () => {});
 });
-// All digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
+// Full number: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
 // (a check once copied) and the cross; another number picked, it shows that one; a click on the button again, the cross
 // or anywhere else but on it and the Digits closes it
 function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active', 'switch'); }

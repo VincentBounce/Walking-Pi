@@ -71,7 +71,7 @@ main { flex: 1; display: flex; min-height: 0; }
 /* a section's title: its gold picture, then its name; a sub-section's (field-label): semibold */
 h2 { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; font-size: 14px; font-weight: 600; color: var(--text); }
 h2 .icon { width: 24px; height: 24px; flex: none; color: var(--accent); vertical-align: 0; }
-/* a section's own action, on its title's right (How it works, Copy RLE, All digits) */
+/* a section's own action, on its title's right (How it works, Copy RLE, Full number) */
 .head-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 12px; font-weight: 500; border-radius: 6px; }
 h2 .head-btn .icon { width: 14px; height: 14px; color: inherit; }
 
@@ -356,7 +356,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .stage-box:hover .stage-more { display: block; }
 @media (hover: none) { .stage-box:focus-within .stage-more { display: block; } }
 .display-menu { top: 12px; right: 12px; }
-/* the number (All digits), in place of the whole view as how a rule works (.rule-tuto): its digits */
+/* the number (Full number), in place of the whole view as how a rule works (.rule-tuto): its digits */
 .number-view .number-digits { margin-top: 12px; max-width: none; color: var(--text); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
 .tut-tools .icon { width: 16px; height: 16px; vertical-align: middle; }
 button.wide.active, .head-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
