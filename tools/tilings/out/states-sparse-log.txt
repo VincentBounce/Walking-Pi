@@ -1,0 +1,49 @@
+floret 2392 rules 323 lively 3s
+floret done 155s 2 rules with ships
+  B25/S25/C8       T 1500 0.46% ships 5 (p25·38c×1 p25·36c×1 p25·38c×1) oscs 0 explode 0
+  B25/S26/C8       T 405 3.13% ships 2 (p25·37c×1 p25·37c×1) oscs 0 explode 0
+  B24/S25/C16      T 1500 0.46% ships 0 () oscs 0 explode 0
+  B24/S27/C16      T 1500 0.46% ships 0 () oscs 0 explode 0
+  B25/S25/C25      T 1500 0.46% ships 0 () oscs 0 explode 0
+  B24/S2/C16       T 1500 0.46% ships 0 () oscs 0 explode 0
+snubtri 3360 rules 470 lively 6s
+snubtri done 193s 0 rules with ships
+  B34/S34/C12      T 1500 0.72% ships 0 () oscs 14 explode 0
+  B34/S34/C8       T 1500 1.18% ships 0 () oscs 44 explode 0
+  B23/S34/C25      T 1500 0.33% ships 0 () oscs 0 explode 0
+  B23/S15/C25      T 1500 0.92% ships 0 () oscs 0 explode 0
+  B29/S18/C16      T 1500 1.58% ships 0 () oscs 0 explode 0
+  B23/S08/C25      T 1500 1.64% ships 0 () oscs 0 explode 0
+tetrakis 3360 rules 456 lively 8s
+tetrakis done 213s 2 rules with ships
+  B34/S23/C12      T 1500 0.97% ships 11 (p3·30c×4 p3·34c×3 p3·30c×3) oscs 0 explode 0
+  B34/S18/C8       T 1500 0.42% ships 2 (p2·36c×1 p2·34c×1) oscs 0 explode 0
+  B36/S34/C25      T 1500 0.69% ships 0 () oscs 0 explode 0
+  B26/S19/C25      T 1500 0.55% ships 0 () oscs 0 explode 0
+  B29/S16/C25      T 1500 0.42% ships 0 () oscs 0 explode 0
+  B25/S15/C25      T 1500 0.55% ships 0 () oscs 0 explode 0
+kisrhombille 3360 rules 445 lively 8s
+kisrhombille done 193s 1 rules with ships
+  B34/S13/C8       T 590 0.55% ships 1 (p4·32c×1) oscs 0 explode 0
+  B2/S2/C16        T 1500 0.55% ships 0 () oscs 0 explode 0
+  B26/S15/C25      T 1500 0.55% ships 0 () oscs 0 explode 0
+  B27/S18/C25      T 1500 0.41% ships 0 () oscs 0 explode 0
+  B24/S15/C25      T 1500 0.83% ships 0 () oscs 0 explode 0
+  B25/S1/C25       T 1500 0.83% ships 0 () oscs 0 explode 0
+pent14 1628 rules 40 lively 1s
+pent14 done 45s 0 rules with ships
+  B26/S02/C16      T 1500 4.62% ships 0 () oscs 12 explode 0
+  B24/S02/C25      T 1500 4.75% ships 0 () oscs 16 explode 0
+  B24/S02/C8       T 1500 4.82% ships 0 () oscs 9 explode 0
+  B24/S23/C16      T 1500 4.43% ships 0 () oscs 0 explode 0
+  B25/S02/C25      T 1500 5.86% ships 0 () oscs 15 explode 0
+  B27/S23/C12      T 1500 4.56% ships 0 () oscs 0 explode 0
+rhombitri 3360 rules 268 lively 3s
+rhombitri done 166s 5 rules with ships
+  B23/S06/C8       T 1500 4.88% ships 6 (p38·16c×1 p38·26c×1 p38·16c×1) oscs 26 explode 0
+  B24/S06/C8       T 308 1.04% ships 4 (p44·28c×1 p44·29c×1 p44·19c×1) oscs 23 explode 0
+  B23/S07/C8       T 1500 5.01% ships 3 (p38·20c×1 p38·16c×1 p38·24c×1) oscs 25 explode 0
+  B23/S09/C8       T 572 1.89% ships 2 (p38·20c×1 p38·20c×1) oscs 24 explode 0
+  B23/S0/C8        T 1317 2.99% ships 1 (p38·26c×1) oscs 24 explode 0
+  B27/S25/C16      T 1500 0.59% ships 0 () oscs 0 explode 0
+finished

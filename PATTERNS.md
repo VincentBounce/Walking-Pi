@@ -1267,7 +1267,7 @@ The rules may now have up to 25 states (23 dying stages; with colours, as many a
 
 ## ☄ Trails: rules with many states on the tilings
 
-With room for up to 25 states, a search on the tilings (tools/tilings/states.js): every B (2 or 3, and up to one more count) / S (up to two counts) / C (8, 12, 16, 25), one soup each on ~1,500 cells; the lively ones (0.3 to 8 % alive, 300 generations or more) given 150 small random starts (3 × 3 lattice cells) on ~4,000 cells, for the ships they leave. Long dying trails make ships common: a ship's back is shielded by its own fading cells. Five rules, one a tiling, each with its most common ship (checked in the app: it flies every way its tiling turns or mirrors):
+With room for up to 25 states, a search on the tilings (tools/tilings/states.js): every B (2 or 3, and up to one more count) / S (up to two counts) / C (8, 12, 16, 25), one soup each on ~1,500 cells; the lively ones (0.3 to 8 % alive, 300 generations or more) given 150 small random starts (3 × 3 lattice cells) on ~4,000 cells, for the ships they leave. Long dying trails make ships common: a ship's back is shielded by its own fading cells. Six rules, one a tiling, each with its most common ship (the sparsest rules tried again with 120 of them: tetrakis's) (checked in the app: it flies every way its tiling turns or mirrors):
 
 | Tiling | Rule | Its ship | How common | Soups |
 |---|---|---|---|---|
@@ -1276,6 +1276,7 @@ With room for up to 25 states, a search on the tilings (tools/tilings/states.js)
 | Capital I | [**I trails** B2/S24/C8](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dCapitalI&r=B2/S24/C8&s=48&sd=random.30.7) | period 3 · 4 live and 10 dying | 19 of 21 | end in ships within a few dozen generations |
 | Pythagoras | [**Pythagoras trails** B23/S13/C8](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPythagorean&r=B23/S13/C8&s=48&sd=random.30.7) | period 2 · 3 live and 9 dying (13 kinds) | 23 of 102 | end in ships within a few hundred generations |
 | Type 15 | [**Type 15 trails** B24/S13/C12](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dPent15&r=B24/S13/C12&s=48&sd=random.30.7) | period 14 · 5 live and 24 dying (5 kinds) | 53 of 218 | end in ships within about 150 generations |
+| Tetrakis | [**Tetrakis trails** B34/S23/C12](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2dTetrakis&r=B34/S23/C12&s=48&sd=random.30.7) | period 3 · 6 live cells and 24 dying (a dozen kinds) | 9 of 26, from the sparsest rules' starts | last thousands of generations: the first ships on tetrakis |
 
-On a small torus their soups end in long loops (periods 68 to 340): their ships going round. None on Penrose's rhombi or the spectres (no lattice: a ship has no copy of itself to come back on), nor so far on the florets, the snub, tetrakis, kisrhombille and the 14th pentagon.
+On a small torus their soups end in long loops (periods 68 to 340): their ships going round. None on Penrose's rhombi or the spectres (no lattice: a ship has no copy of itself to come back on), and only rare ones on the florets (B25/S25/C8, period 25), kisrhombille (B34/S13/C8, period 4) and rhombitri (B23/S06/C8, period 38); none so far on the snub and the 14th pentagon.
 

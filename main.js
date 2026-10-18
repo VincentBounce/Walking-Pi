@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.766';
+const VERSION = '0.1.767';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5559,6 +5559,7 @@ const DRAW_PATTERNS = [
   ['tetrakislife-meth', 'tetrakis', ['B37/S1'], 'Methuselah', 'A.A.A5.A$2A2.A3.3A!', 'settles at generation 4,016 · 10 cells'],
   ['tetrakisembers-osc', 'tetrakis', ['B3/S278'], 'Oscillator', '.A.A$2.2A!', 'period 4 · 4 cells'],
   ['tetrakisembers-meth', 'tetrakis', ['B3/S278'], 'Methuselah', '2A.A$2A.A2.A!', 'settles at generation 710 · 7 cells'],
+  ['tetrakistrails-ship', 'tetrakis', ['B34/S23/C12'], 'Spaceship', '2.3A.A$CA3DADC$FD3GDGF$IG3JGJI$.J3.J!', 'flies, period 3 · 30 cells'],
   ['kisrhombillelife-osc', 'kisrhombille', ['B356/S6789/C5'], 'Oscillator', '16.AD2C2.2A.B3.ADC3.A.BA.A3.A$11.AD2BCB2A.5A.B.D2.2A.AC2A2B!', 'period 60 · 38 cells'],
   ['kisrhombillelife-meth', 'kisrhombille', ['B356/S6789/C5'], 'Methuselah', 'A.A4.A.A3.A8.2A$A8.A5.A2.A4.A!', 'settles at generation 310 · 12 cells'],
   ['longkisrhombille-osc', 'kisrhombille', ['B38/S169/C3'], 'Oscillator', '4.A.B.A.A!', 'period 3 · 4 cells'],
@@ -6422,7 +6423,7 @@ const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
-  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...', 'B24/S13/C12': 'o....,.++..,..++.,...++,....+', 'B2/S1/C8': '.....,oo+++,o.+++,.....,.....', 'B23/S13/C8': '..o..,..+..,..+..,..+..,..+..', 'B2/S24/C8': '.....,.o++.,oo+++,.....,.....', 'B2/S28/C8': '....o,...o+,..++.,.++..,++...',
+  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...', 'B34/S23/C12': '..o..,.ooo.,.+++.,.+++.,.+.+.', 'B24/S13/C12': 'o....,.++..,..++.,...++,....+', 'B2/S1/C8': '.....,oo+++,o.+++,.....,.....', 'B23/S13/C8': '..o..,..+..,..+..,..+..,..+..', 'B2/S24/C8': '.....,.o++.,oo+++,.....,.....', 'B2/S28/C8': '....o,...o+,..++.,.++..,++...',
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',
