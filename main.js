@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.751';
+const VERSION = '0.1.752';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6431,7 +6431,7 @@ const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
-  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.',
+  'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...',
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
   'B34/S2/C4': '.....,..o..,.o+o.,..+..', 'B34/S123/C3': '.ooo.,o...o,o...o,o...o,.ooo.', 'B24/S134/C4': '.....,..o..,.o+o.,..+..',
   'B24/S35': '.....,..o..,.o.o.,..o..', 'B234/S234': '.....,..oo.,.oo..,..o..', 'B234/S1234': '.....,..oo.,.oo..,..o..,+...+',

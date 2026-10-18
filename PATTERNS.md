@@ -1260,3 +1260,7 @@ For each rule offered, 300 random starts at each density in a patch of radius 3 
 | Cairo | B2347/S35/C3 | 164 (4,000) | 999 (4,000) | 2,106 (4,000) | 2,539 (4,000) | 2,686 (4,000) | 2,855 (4,000) | 2,768 (4,000) |
 | Cairo | B24/S346/C4 | 6 (70) | 208 (4,000) | 716 (4,000) | 1,276 (4,000) | 1,862 (4,000) | 2,395 (4,000) | 2,966 (4,000) |
 | Cairo | B34/S23 | 2 (12) | 5 (56) | 14 (87) | 24 (166) | 28 (148) | 33 (195) | 29 (216) |
+
+## 🕯 Faders: 25 states
+
+The rules may now have up to 25 states (23 dying stages; with colours, as many as a cell's byte holds: 22 for twelve). **Faders** (B2/S2/C25, Rudy Rucker and John Walker's, from MCell's collection; see [LifeWiki's Generations rules](https://conwaylife.com/wiki/OCA:Fireworks)) is on the squares: Life crossed with Brian's Brain, its sparks wandering in long fading trails. On a soup (128 × 128, 30 % alive) it stays lively, about 2 % of the cells alive and 30 % dying, still going after 3,000 generations. [Faders](https://vincentbounce.github.io/Walking-Pi/#x=pi&w=life2d&r=B2/S2/C25&s=128).
