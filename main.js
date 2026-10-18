@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.704';
+const VERSION = '0.1.705';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8840,13 +8840,19 @@ function glSurface(palette, levelOf, path) {
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.nrm); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.DYNAMIC_DRAW);
     if (S.keys.topo !== `${n}|${k}` || S.keys.topoObj !== g) {  // the fans and the edges only change with the tiling
-      // each edge once (two tiles' strokes over each other were twice as strong as the outline's), a Möbius strip's
-      // two faces each theirs; none of no length (a repeated corner)
-      const fan = new Uint32Array(3 * (k - 2) * n), edges = [], seen = new Set(), nv = g.verts.length / 3;
+      // each edge once (two tiles' strokes over each other were twice as strong as the outline's): a corner by its
+      // place on the sheet where there is one (unrolled, a seam's two sides are apart), a Möbius strip's two faces
+      // each theirs; none of no length (a repeated corner)
+      const fan = new Uint32Array(3 * (k - 2) * n), edges = [], seen = new Set();
+      const corner = (t, q) => {
+        if (!g.uv) return String(g.poly[k * t + q]);
+        const back = g.mobius && t >= g.front, i = 2 * (k * (back ? t - g.front : t) + q);
+        return `${Math.round(g.uv[i] * 31415.9)},${Math.round(g.uv[i + 1] * 31415.9)}${back ? 'b' : ''}`;  // (a scale no corner is half a step on)
+      };
       for (let t = 0, f = 0; t < n; t++) {
         for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
         for (let q = 0; q < k; q++) {
-          const a = g.poly[k * t + q], b = g.poly[k * t + ((q + 1) % k)], key = `${Math.min(a, b) * nv + Math.max(a, b)}${g.mobius && t >= g.front ? 'b' : ''}`;
+          const a = corner(t, q), b = corner(t, (q + 1) % k), key = a < b ? `${a}|${b}` : `${b}|${a}`;
           if (a === b || seen.has(key)) continue;
           seen.add(key);
           edges.push(k * t + q, k * t + ((q + 1) % k));
