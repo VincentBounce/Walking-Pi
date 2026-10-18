@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.742';
+const VERSION = '0.1.743';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6478,7 +6478,10 @@ function ruleTutorial(option) {
   }));
   const pair = (cs, from, to, word) => `<figure><div>${cell(from, cs.live)}<span>→</span>${cell(to, cs.live, from)}</div><figcaption>${cs.k}${cs.x} live: ${word}</figcaption></figure>`;
   const list = (l) => l.map((cs) => cs.k + cs.x).join(', ').replace(/, (\w+)$/, ' or $1');
-  const born = cases.filter((cs) => cs.on(rule.B)), stays = cases.filter((cs) => cs.on(rule.S)), dies = cases.filter((cs) => !cs.on(rule.S));
+  // a section's cases: a count all of whose letters are in it, one card (the count alone); else its letters in it
+  const section = (p) => cases.filter((cs) => p(cs) && (!cs.x || !cases.every((o) => o.k !== cs.k || p(o)) || cs === cases.find((o) => o.k === cs.k)))
+    .map((cs) => (cs.x && cases.every((o) => o.k !== cs.k || p(o)) ? { ...cs, x: '' } : cs));
+  const born = section((cs) => cs.on(rule.B)), stays = section((cs) => cs.on(rule.S)), dies = section((cs) => !cs.on(rule.S));
   const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div>`
