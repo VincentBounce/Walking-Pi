@@ -1,0 +1,17 @@
+prismatic B25/S157/C5 539s {"edge":44,"dies":4} 
+prismatic B245/S16/C5 970s {"edge":47,"dies":1} 
+pythagorean B28/S28 1064s {"edge":48} 
+pythagorean B267/S3457 1201s {"edge":48} 
+kisrhombille B356/S6789/C5 1341s {"settles":10,"dies":5} 310:12 131:12 38:12 31:12 25:12
+kisrhombille B38/S169/C3 2204s {"edge":2,"settles":12,"dies":1} 346:12 205:12 76:12 67:12 51:12
+capitalI B345/S0236 2232s {"settles":48} 4:4 4:4 4:4 4:4
+rhombille B367/S015 2314s {"settles":48} 94:10 88:8 87:10 84:5 78:7
+rhombille B358/S0237/C4 2418s {"settles":47,"edge":1} 1588:8 1354:9 1079:5 931:8 903:7
+floret B26/S3578/C3 2830s {"settles":3,"edge":45} 1566:9 339:12 185:11
+floret B24/S456/C4 3268s {"edge":48} 
+snubtri B38/S1369 3508s {"settles":48} 2497:12 1470:12 1061:12 957:11 909:11
+snubtri B359/S0146/C3 3570s {"settles":48} 390:10 242:12 196:12 187:11 183:12
+tetrakis B37/S1 3764s {"settles":46,"edge":2} 4016:10 3720:10 3665:10 3429:11 3167:8
+tetrakis B3/S278 3944s {"edge":44,"settles":4} 710:7 586:8 443:8 443:8
+rhombitri B279/S069/C4 4060s {"settles":48} 3210:10 2283:8 1731:11 1542:6 1456:10
+rhombitri B29/S067/C4 4174s {"settles":48} 2369:8 1221:8 1186:9 1105:10 1007:11

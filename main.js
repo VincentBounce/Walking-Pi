@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.695';
+const VERSION = '0.1.696';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5490,28 +5490,33 @@ const DRAW_PATTERNS = [
   ['longkites-meth', 'kite', ['B3/S1247'], 'Methuselah', '7.A.2A$4.3A!', 'settles at generation 157 · 6 cells'],
   // the new tilings: from a search of small starts in the app's page (tools/famoussearch.js), as found (not turned)
   ['floretlife-osc', 'floret', ['B26/S3578/C3'], 'Oscillator', '5.A.B$3.B2.A!', 'period 3 · 4 cells'],
-  ['floretlife-meth', 'floret', ['B26/S3578/C3'], 'Methuselah', '2.2A.A2.A.A$A4.2A2.A.A!', 'settles at generation 207 · 10 cells'],
+  ['floretlife-meth', 'floret', ['B26/S3578/C3'], 'Methuselah', 'A3.A2.A2.A$A2.A4.2A.A!', 'settles at generation 1,566 · 9 cells'],
   ['longflorets-ship', 'floret', ['B24/S456/C4'], 'Spaceship', '.A3.B2ABA.A$3.CB.C2.CB!', 'flies, period 5 · 12 cells'],
   ['longflorets-osc', 'floret', ['B24/S456/C4'], 'Oscillator', '.B.C.4ABA$3.A2.A.C.A!', 'period 8 · 12 cells'],
   ['rhombillelife-osc', 'rhombille', ['B367/S015'], 'Oscillator', '7.A$5.A$A.A!', 'period 3 · 4 cells'],
-  ['rhombillesparks-meth', 'rhombille', ['B358/S0237/C4'], 'Methuselah', '3A$2.A2.A!', 'settles at generation 856 · 5 cells'],
+  ['rhombillesparks-meth', 'rhombille', ['B358/S0237/C4'], 'Methuselah', '.3A.A.2A$.A3.A!', 'settles at generation 1,588 · 8 cells'],
+  ['rhombillesparks-ship', 'rhombille', ['B358/S0237/C4'], 'Spaceship', '5.3AB3A.A$C2.BAB3CACA$6.C2.ACB.A$6.B.3B$3.C!', 'flies, period 4 · 28 cells'],
   ['rhombitrilife-osc', 'rhombitri', ['B279/S069/C4'], 'Oscillator', '5.A.A$A!', 'period 12 · 3 cells'],
-  ['rhombitrilife-meth', 'rhombitri', ['B279/S069/C4'], 'Methuselah', '4.A2.A3.A$.A3.2A.A2.A!', 'settles at generation 529 · 8 cells'],
+  ['rhombitrilife-meth', 'rhombitri', ['B279/S069/C4'], 'Methuselah', '.A2.2A.A.A$A.A3.A2.2A!', 'settles at generation 3,210 · 10 cells'],
   ['longrhombitri-osc', 'rhombitri', ['B29/S067/C4'], 'Oscillator', '10.2C$A.C.C.2A!', 'period 13 · 7 cells'],
-  ['longrhombitri-meth', 'rhombitri', ['B29/S067/C4'], 'Methuselah', 'A2.A2.A2.A$2.4A4.A!', 'settles at generation 310 · 9 cells'],
+  ['longrhombitri-meth', 'rhombitri', ['B29/S067/C4'], 'Methuselah', '2.2A4.A$5.2A$2.A2.A5.A!', 'settles at generation 2,369 · 8 cells'],
   ['snublife-osc', 'snubtri', ['B38/S1369'], 'Oscillator', '6.A.A4.A$10.A!', 'period 4 · 4 cells'],
-  ['snublife-meth', 'snubtri', ['B38/S1369'], 'Methuselah', '4.2A.A2.A3.A.A$5.A.A4.A3.A!', 'settles at generation 1,411 · 10 cells'],
+  ['snublife-meth', 'snubtri', ['B38/S1369'], 'Methuselah', '8.A3.A.A2.A.A.A.A$A4.A.A4.A5.A!', 'settles at generation 2,497 · 12 cells'],
   ['snubembers-osc', 'snubtri', ['B359/S0146/C3'], 'Oscillator', '5.A$8.3A!', 'period 6 · 4 cells'],
+  ['snubembers-meth', 'snubtri', ['B359/S0146/C3'], 'Methuselah', '4.A.A2.A.A3.A$2.2A3.A6.A2.A!', 'settles at generation 390 · 10 cells'],
   ['ilife-osc', 'capitalI', ['B345/S0236'], 'Oscillator', '.A$.2A$A!', 'period 2 · 4 cells'],
   ['pythagoraslife-osc', 'pythagorean', ['B28/S28'], 'Oscillator', 'A$A!', 'period 2 · 2 cells'],
   ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', '3.A$A.2A!', 'period 3 · 4 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', '2.A.BAB.D.DC$.A.B.BADCD!', 'flies, period 4 · 14 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', '2.A.BAB.D.DC$.A.BAB.D.DC!', 'flies, period 4 · 14 cells'],
   ['tetrakislife-osc', 'tetrakis', ['B37/S1'], 'Oscillator', 'A$A$.A!', 'period 2 · 3 cells'],
-  ['tetrakislife-meth', 'tetrakis', ['B37/S1'], 'Methuselah', '.A4.A$A.4A.A!', 'settles at generation 1,527 · 8 cells'],
+  ['tetrakislife-meth', 'tetrakis', ['B37/S1'], 'Methuselah', 'A.A.A5.A$2A2.A3.3A!', 'settles at generation 4,016 · 10 cells'],
   ['tetrakisembers-osc', 'tetrakis', ['B3/S278'], 'Oscillator', '.A.A$2.2A!', 'period 4 · 4 cells'],
+  ['tetrakisembers-meth', 'tetrakis', ['B3/S278'], 'Methuselah', '2A.A$2A.A2.A!', 'settles at generation 710 · 7 cells'],
   ['kisrhombillelife-osc', 'kisrhombille', ['B356/S6789/C5'], 'Oscillator', '16.AD2C2.2A.B3.ADC3.A.BA.A3.A$11.AD2BCB2A.5A.B.D2.2A.AC2A2B!', 'period 60 · 38 cells'],
+  ['kisrhombillelife-meth', 'kisrhombille', ['B356/S6789/C5'], 'Methuselah', 'A.A4.A.A3.A8.2A$A8.A5.A2.A4.A!', 'settles at generation 310 · 12 cells'],
   ['longkisrhombille-osc', 'kisrhombille', ['B38/S169/C3'], 'Oscillator', '4.A.B.A.A!', 'period 3 · 4 cells'],
+  ['longkisrhombille-meth', 'kisrhombille', ['B38/S169/C3'], 'Methuselah', '.A3.A6.A2.2A$6.A5.A6.A.A!', 'settles at generation 463 · 9 cells'],
 ];
 const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]));
 // the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of

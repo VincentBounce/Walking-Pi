@@ -1,0 +1,517 @@
+{
+ "prismatic B25/S157/C5": {
+  "meths": [],
+  "ends": {
+   "edge": 44,
+   "dies": 4
+  }
+ },
+ "prismatic B245/S16/C5": {
+  "meths": [],
+  "ends": {
+   "edge": 47,
+   "dies": 1
+  }
+ },
+ "pythagorean B28/S28": {
+  "meths": [],
+  "ends": {
+   "edge": 48
+  }
+ },
+ "pythagorean B267/S3457": {
+  "meths": [],
+  "ends": {
+   "edge": 48
+  }
+ },
+ "kisrhombille B356/S6789/C5": {
+  "meths": [
+   {
+    "rle": "A.A4.A.A3.A8.2A$A8.A5.A2.A4.A!",
+    "n": 12,
+    "T": 310,
+    "ships": 0,
+    "period": 5
+   },
+   {
+    "rle": "4.2A4.A9.A$.A2.A.2A3.2A3.A5.A!",
+    "n": 12,
+    "T": 131,
+    "ships": 0,
+    "period": 5
+   },
+   {
+    "rle": "A2.A.2A14.A$6.3A10.A$7.A.A13.A!",
+    "n": 12,
+    "T": 38,
+    "ships": 0,
+    "period": 5
+   },
+   {
+    "rle": "5.2A8.A3.A$.A3.A.A8.3A2.A.A!",
+    "n": 12,
+    "T": 31,
+    "ships": 0,
+    "period": 5
+   },
+   {
+    "rle": "A5.A4.2A2.A4.3A$A10.A4.2A!",
+    "n": 12,
+    "T": 25,
+    "ships": 0,
+    "period": 5
+   }
+  ],
+  "ends": {
+   "settles": 10,
+   "dies": 5
+  }
+ },
+ "kisrhombille B38/S169/C3": {
+  "meths": [
+   {
+    "rle": "4.2A4.A9.A$.A2.A.2A3.2A3.A5.A!",
+    "n": 12,
+    "T": 346,
+    "ships": 0,
+    "period": 3
+   },
+   {
+    "rle": "A.A4.A.A3.A8.2A$A8.A5.A2.A4.A!",
+    "n": 12,
+    "T": 205,
+    "ships": 0,
+    "period": 3
+   },
+   {
+    "rle": "5.2A8.A3.A$.A3.A.A8.3A2.A.A!",
+    "n": 12,
+    "T": 76,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "2.A4.A.2A5.A.A$2.2A3.A6.A3.A.A!",
+    "n": 12,
+    "T": 67,
+    "ships": 0,
+    "period": 3
+   },
+   {
+    "rle": ".A3.2A.A4.A5.A$A2.A2.2A3.A11.A!",
+    "n": 12,
+    "T": 51,
+    "ships": 0,
+    "period": 3
+   }
+  ],
+  "ends": {
+   "edge": 2,
+   "settles": 12,
+   "dies": 1
+  }
+ },
+ "capitalI B345/S0236": {
+  "meths": [
+   {
+    "rle": "2A$A.A!",
+    "n": 4,
+    "T": 4,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A.A$.2A!",
+    "n": 4,
+    "T": 4,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A$.A$2A!",
+    "n": 4,
+    "T": 4,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "2A$A$.A!",
+    "n": 4,
+    "T": 4,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "rhombille B367/S015": {
+  "meths": [
+   {
+    "rle": "A2.A.2A.A$A2.A.A.2A!",
+    "n": 10,
+    "T": 94,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": ".2A2.A$.A$2A2.2A!",
+    "n": 8,
+    "T": 88,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": ".5A$.2A$A.A.A!",
+    "n": 10,
+    "T": 87,
+    "ships": 0,
+    "period": 3
+   },
+   {
+    "rle": ".A4.A$.A2.2A!",
+    "n": 5,
+    "T": 84,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "A.A.A$2A.A.A!",
+    "n": 7,
+    "T": 78,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "rhombille B358/S0237/C4": {
+  "meths": [
+   {
+    "rle": ".3A.A.2A$.A3.A!",
+    "n": 8,
+    "T": 1588,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "2A3.A$A.A.A$3A!",
+    "n": 9,
+    "T": 1354,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A.3A$5.A!",
+    "n": 5,
+    "T": 1079,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A5.A.A$A.4A!",
+    "n": 8,
+    "T": 931,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A2.A2.2A$.A3.A2.A!",
+    "n": 7,
+    "T": 903,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 47,
+   "edge": 1
+  }
+ },
+ "floret B26/S3578/C3": {
+  "meths": [
+   {
+    "rle": "A3.A2.A2.A$A2.A4.2A.A!",
+    "n": 9,
+    "T": 1566,
+    "ships": 0,
+    "period": 3
+   },
+   {
+    "rle": "A.3A3.2A$3.4A.A.A!",
+    "n": 12,
+    "T": 339,
+    "ships": 0,
+    "period": 3
+   },
+   {
+    "rle": "2.4A.4A$A.A3.A!",
+    "n": 11,
+    "T": 185,
+    "ships": 0,
+    "period": 3
+   }
+  ],
+  "ends": {
+   "settles": 3,
+   "edge": 45
+  }
+ },
+ "floret B24/S456/C4": {
+  "meths": [],
+  "ends": {
+   "edge": 48
+  }
+ },
+ "snubtri B38/S1369": {
+  "meths": [
+   {
+    "rle": "8.A3.A.A2.A.A.A.A$A4.A.A4.A5.A!",
+    "n": 12,
+    "T": 2497,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "2A3.A8.A.2A$3.A.A2.A.2A.A!",
+    "n": 12,
+    "T": 1470,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "4.A.2A5.A.2A$2.3A.A2.A2.A!",
+    "n": 12,
+    "T": 1061,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "A6.A.2A.A3.A$.A2.A5.2A.A!",
+    "n": 11,
+    "T": 957,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "2.A4.A3.A6.A.A4.A$8.A3.A6.A5.2A!",
+    "n": 11,
+    "T": 909,
+    "ships": 0,
+    "period": 2
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "snubtri B359/S0146/C3": {
+  "meths": [
+   {
+    "rle": "4.A.A2.A.A3.A$2.2A3.A6.A2.A!",
+    "n": 10,
+    "T": 390,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "2A2.A4.A4.A2.A$14.2A$9.2A4.2A!",
+    "n": 12,
+    "T": 242,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A5.A3.A2.2A$5.A6.A3.A$A.A8.A3.A!",
+    "n": 12,
+    "T": 196,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "2A.A4.2A4.2A$2.A6.A.A3.A!",
+    "n": 11,
+    "T": 187,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A7.A2.A4.A9.A$2.A4.A2.A2.A4.A2.A3.A!",
+    "n": 12,
+    "T": 183,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "tetrakis B37/S1": {
+  "meths": [
+   {
+    "rle": "A.A.A5.A$2A2.A3.3A!",
+    "n": 10,
+    "T": 4016,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "2.2A.2A2.2A$A4.A2.A.A!",
+    "n": 10,
+    "T": 3720,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "2A2.A2.A$.A2.2A$2.A.A2.A!",
+    "n": 10,
+    "T": 3665,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "4.2A.A.A.A$4A3.A3.A!",
+    "n": 11,
+    "T": 3429,
+    "ships": 0,
+    "period": 2
+   },
+   {
+    "rle": "2.A2.A3.2A$2.A.A4.A.A!",
+    "n": 8,
+    "T": 3167,
+    "ships": 0,
+    "period": 2
+   }
+  ],
+  "ends": {
+   "settles": 46,
+   "edge": 2
+  }
+ },
+ "tetrakis B3/S278": {
+  "meths": [
+   {
+    "rle": "2A.A$2A.A2.A!",
+    "n": 7,
+    "T": 710,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": "2.2A2.2A$.A.A.2A!",
+    "n": 8,
+    "T": 586,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": "A3.3A$3.4A!",
+    "n": 8,
+    "T": 443,
+    "ships": 0,
+    "period": 4
+   },
+   {
+    "rle": "2.A2.A$2A.3A.A!",
+    "n": 8,
+    "T": 443,
+    "ships": 0,
+    "period": 4
+   }
+  ],
+  "ends": {
+   "edge": 44,
+   "settles": 4
+  }
+ },
+ "rhombitri B279/S069/C4": {
+  "meths": [
+   {
+    "rle": ".A2.2A.A.A$A.A3.A2.2A!",
+    "n": 10,
+    "T": 3210,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": ".A6.A6.2A$A4.A5.A5.A!",
+    "n": 8,
+    "T": 2283,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": "A3.A2.A3.A$3.A.6A!",
+    "n": 11,
+    "T": 1731,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": "$3.A7.A$2.A3.3A!",
+    "n": 6,
+    "T": 1542,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": "4.A.2A2.A$7.A$.2A2.A.2A!",
+    "n": 10,
+    "T": 1456,
+    "ships": 0,
+    "period": 12
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "rhombitri B29/S067/C4": {
+  "meths": [
+   {
+    "rle": "2.2A4.A$5.2A$2.A2.A5.A!",
+    "n": 8,
+    "T": 2369,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": ".A6.A6.2A$A4.A5.A5.A!",
+    "n": 8,
+    "T": 1221,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": "A5.A$.A6.3A$4.A2.A.A!",
+    "n": 9,
+    "T": 1186,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": "13.A.A$A2.A.A.A.A3.2A.A!",
+    "n": 10,
+    "T": 1105,
+    "ships": 0,
+    "period": 12
+   },
+   {
+    "rle": "A3.2A2.A$3.A$.4A2.2A!",
+    "n": 11,
+    "T": 1007,
+    "ships": 0,
+    "period": 12
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ }
+}
