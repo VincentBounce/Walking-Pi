@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.784';
+const VERSION = '0.1.786';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6262,13 +6262,17 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   }
   if (!best) continue;
   const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
+  // a brick for the least rectangle its sides are whole times of (U = ku steps of a lattice side, V = kv), laid ku × kv
+  // times: every one of its parts the same, as the rectangle's copies are (Snub: 2 across)
+  const [[sp, sq], [sr, st]] = step, gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x)), ku = gcd(sp, sq), kv = gcd(sr, st);
+  const U0 = U.map((x) => x / ku), V0 = V.map((x) => x / kv), D0 = D / ku / kv, inBrick = ([wx, wy]) => [(wx * V0[1] - wy * V0[0]) / D0, (U0[0] * wy - U0[1] * wx) / D0];
   // its cells in bricks: each of its grid's cells with the lattice point nearest its middle (a brick round a point of
   // the grid, the lattice moved there), the bricks whose point is in the rectangle (whole bricks: no cell alone, its sides
   // a stair); each middle and corner of a lattice cell's cells tried as that point (or each cell alone, by its middle:
   // Kites, their sides straight lines), and the rectangle moved by eighths of its sides, the cells sticking out of it least
   // kept. (In the rectangle's units: cell k of lattice cell n, m its polygon k moved by n·a + m·b)
-  const P = Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inRect)), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
-  const la = inRect(a), lb = inRect(b), lu = Math.hypot(...U), lv = Math.hypot(...V), at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]];
+  const P = Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
+  const la = inBrick(a), lb = inBrick(b), lu = Math.hypot(...U0), lv = Math.hypot(...V0), at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]];
   const out = (k, n, m, sa, sb) => P[k].reduce((t, q) => { const [u, v] = at(q, n, m); return t + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1); }, 0);
   let pick = null, least = Infinity;
   const dl = la[0] * lb[1] - la[1] * lb[0], frac = (x) => Math.round((((x % 1) + 1) % 1) * 1e4) % 1e4;  // (once each: a lattice step apart, the same)
@@ -6292,7 +6296,7 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
       if (sum < least - 1e-6) { least = sum; pick = cells; }
     }
   }
-  const tiles = pick.map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
+  const tiles = pick.flatMap(([k, n, m]) => Array.from({ length: ku * kv }, (_, c) => [k, n + ((c % ku) * sp) / ku + (Math.floor(c / ku) * sr) / kv, m + ((c % ku) * sq) / ku + (Math.floor(c / ku) * st) / kv])).map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
   if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
   tiles.sort((p, q) => p.be - q.be || p.al - q.al);
   const kind = `${base}Rect`, t = TILINGS[base];
