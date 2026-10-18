@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.714';
+const VERSION = '0.1.715';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5883,19 +5883,22 @@ function buildLifePlane(seq) {
   autoplay();
 }
 // A grid of a lattice (W of its cells along each side: a parallelogram) lies along the view: one of its sides across or
-// upright, whichever shows it biggest in the view (on a tie, the least turn): a rhombus's sides across a view wider than
-// high, upright in a higher one; a rectangle upright, its long side along the view's. The angle the view turns its world
+// upright, the other two slanting the same way on every grid (down to the right, as the rhombi's), whichever of those
+// shows it biggest in the view (on a tie, the least turn): a rhombus's sides across a view wider than high, upright in a
+// higher one; a rectangle upright, its long side along the view's. The angle the view turns its world
 // by (drawn turned, see turnLayer; a frame or the pointer in the turned world)
 function planeTurn() {
   const kind = walk.plane?.kind, t = TILINGS[kind];
   if (!t && kind !== 'hex' && kind !== 'tri' && kind !== 'kite') return 0;
   const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], ends = [[0, 0], a, b, [a[0] + b[0], a[1] + b[1]]], half = Math.PI / 2;
   let best = 0, big = -Infinity;
-  for (const v of [a, b]) for (const up of [0, half]) {
+  for (const [v, w] of [[a, b], [b, a]]) for (const up of [0, half]) {
     let turn = up - Math.atan2(v[1], v[0]);
     turn -= Math.PI * Math.round(turn / Math.PI);  // (a half turn shows the same)
-    const pts = ends.map((p) => turnPoint(p, turn)), w = Math.max(...pts.map((p) => p[0])) - Math.min(...pts.map((p) => p[0])), h = Math.max(...pts.map((p) => p[1])) - Math.min(...pts.map((p) => p[1]));
-    const size = Math.min(cw / w, ch / h);
+    const [wx, wy] = turnPoint(w, turn);
+    if (wx * wy < -1e-9 * Math.hypot(wx, wy) ** 2) continue;  // (the other side slanting up to the right: the other way)
+    const pts = ends.map((p) => turnPoint(p, turn)), across = Math.max(...pts.map((p) => p[0])) - Math.min(...pts.map((p) => p[0])), down = Math.max(...pts.map((p) => p[1])) - Math.min(...pts.map((p) => p[1]));
+    const size = Math.min(cw / across, ch / down);
     if (size > big * (1 + 1e-9) || (size > big * (1 - 1e-9) && Math.abs(turn) < Math.abs(best))) { best = turn; big = size; }
   }
   return best;
