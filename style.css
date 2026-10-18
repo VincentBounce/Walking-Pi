@@ -313,10 +313,6 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .build-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }  /* Birth, Survive: a frame each */
 .build-box { min-width: 0; padding: 6px 4px; border: 1px solid var(--border); border-radius: 8px; }
 .build-box h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
-.determined { margin: 12px 0 4px; }  /* Births by majority colour: its title on the left, the colours' picture before its lines */
-.determined .births { display: flex; align-items: flex-start; gap: 8px; }
-.determined .births > svg { width: 24px; height: 24px; flex: none; border-radius: 3px; }
-.determined small { display: block; font-size: 11px; color: var(--muted); }
 #brushCards button:disabled { opacity: 0.55; }  /* a surface's patterns: to see, not to draw */
 .nchips .r { display: flex; align-items: flex-start; gap: 2px; min-height: 24px; }  /* a count a row, its letters (if any) beside it */
 .nchips .r > button { flex: none; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.758';
+const VERSION = '0.1.759';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6466,7 +6466,7 @@ function ruleTutorial(option) {
   $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as Watch digits)
   $('watchRule').classList.toggle('switch', !!option);
   if (!option) return;
-  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name}`;  // (another grid or rule: shown again, see renderRuleSection)
+  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
   const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
@@ -6482,7 +6482,7 @@ function ruleTutorial(option) {
   // the cell after: its state before shown a moment, fading quickly into the new one, kept (once; ↻ plays it again)
   const L = x0 - pad - (side - w) / 2, T = y0 - pad - (side - h) / 2, S = side + 2 * pad;
   const cell = (centre, live, before) => `<svg viewBox="${L} ${T} ${S} ${S}">${[c, ...around].map((t, i) => {
-    const fill = i === 0 ? centre : live.has(t) ? LIFE_ALIVE : UNLIT;
+    const fill = i === 0 ? centre : live.has(t) ? (live.get?.(t) ?? LIFE_ALIVE) : UNLIT;  // (live: a set, or each cell's colour)
     return `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 60}"/>`; }).join('')}${tomb(centre)}`
     + `${before && before !== centre ? `<polygon points="${points(c)}" fill="${before}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>` : ''}`
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
@@ -6501,6 +6501,25 @@ function ruleTutorial(option) {
   const section = (p) => cases.filter((cs) => p(cs) && (!cs.x || !cases.every((o) => o.k !== cs.k || p(o)) || cs === cases.find((o) => o.k === cs.k)))
     .map((cs) => (cs.x && cases.every((o) => o.k !== cs.k || p(o)) ? { ...cs, x: '' } : cs));
   const born = section((cs) => cs.on(rule.B)), stays = section((cs) => cs.on(rule.S)), dies = section((cs) => !cs.on(rule.S));
+  // a battle's: the newborn's colour, the one most of its live neighbours have (a card: the fewest born with); on a tie,
+  // the one colour missing if just one is, else none (a card each tie its births can meet: a count split among the K
+  // colours, the two most equal)
+  function colours() {
+    const K = lifeColours, counts = [...new Set(born.map((cs) => cs.k))].filter((k) => k > 0);
+    if (K === 1 || !counts.length) return '';
+    const splits = (c, k, top) => (k === 0 ? (c ? [] : [[]]) : Array.from({ length: Math.min(c, top) + 1 }, (_, x) => x).flatMap((x) => splits(c - x, k - 1, x).map((r) => [x, ...r])));
+    const ties = counts.flatMap((c) => splits(c, K, c).filter((p) => p[0] > 0 && p[0] === p[1]));
+    const gone = (p) => p.filter((x) => !x).length, say = (p) => p.filter((x) => x).join(' + ');
+    const card = (p, word) => {
+      const c = p.reduce((a, b) => a + b, 0), live = new Map(), cells = [...born.find((cs) => cs.k === c).live];
+      p.forEach((x, j) => cells.splice(0, x).forEach((t) => live.set(t, LIFE_COLOURS[j])));  // (the most first: red, then blue, …)
+      const newborn = word === 'no birth' ? UNLIT : LIFE_COLOURS[word === 'the most' ? 0 : p.indexOf(0)];
+      return `<figure><div>${cell(UNLIT, live)}<span>→</span>${cell(newborn, live, UNLIT)}</div><figcaption>${say(p)}: ${word}</figcaption></figure>`;
+    };
+    const c = counts[0], most = c < 3 ? [c] : [c - 1, 1];  // (the most: all one colour, or all but one)
+    return `<h4>Its colour <code>${COLOUR_STEP_NAMES[K]}</code></h4><div class="tut-row">${card([...most, ...Array(K - most.length).fill(0)], 'the most')}`
+      + `${[...ties.filter((p) => gone(p) === 1), ...ties.filter((p) => gone(p) !== 1)].map((p) => card(p, gone(p) === 1 ? 'the colour missing' : 'no birth')).join('')}</div>`;
+  }
   const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   // a dying stage's ✝ (white on the cells nearer the live colour on a light page, as on the grid's)
@@ -6510,7 +6529,7 @@ function ruleTutorial(option) {
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
-    + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>`
+    + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
     + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + '</div>';
@@ -6525,7 +6544,7 @@ function renderRuleSection() {
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
   const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
   const shown = mineNot ? yours : mine;
-  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now} ${shown.dataset.name}`) ruleTutorial(shown);  // how a rule works follows the grid and the rule
+  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now} ${shown.dataset.name} ${lifeColours}`) ruleTutorial(shown);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -6605,18 +6624,6 @@ function renderRuleSection() {
   $('statesUp').disabled = rule.C >= most;
   $('statesDown').onclick = () => states(rule.C - 1);
   $('statesUp').onclick = () => states(rule.C + 1);
-  // in a battle, a newborn takes the colour most of its live neighbours have; on a tie, the one colour
-  // missing if just one is, else none: the ties this rule's births can meet with these colours, of each kind
-  // (a birth's count split among the K colours, the two most equal), all of them, a line each
-  const K = lifeColours, counts = Array.from({ length: N + 1 }, (_, c) => c).filter((c) => B[c].size);
-  const splits = (c, k, top) => (k === 0 ? (c ? [] : [[]]) : Array.from({ length: Math.min(c, top) + 1 }, (_, x) => x).flatMap((x) => splits(c - x, k - 1, x).map((r) => [x, ...r])));
-  const ties = counts.flatMap((c) => splits(c, K, c).filter((p) => p[0] > 0 && p[0] === p[1]));
-  const say = (p) => p.filter((x) => x).join(' + '), gone = (p) => p.filter((x) => !x).length;
-  $('determinedRow').hidden = K === 1;
-  $('determinedRow').innerHTML = `<div class="field-label">Births by majority colour</div><div class="births">${colourBlock(K)}<span>${!ties.length ? '<small>never a tie</small>'
-    : [...ties.filter((p) => gone(p) !== 1), ...ties.filter((p) => gone(p) === 1)]  // a tie a line, what it gives first: no birth, then the colour missing
-      .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}</span></div>`;
-  $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
 
 }
 let ruleFittedTo = null;
