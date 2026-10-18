@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.781';
+const VERSION = '0.1.782';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6272,8 +6272,24 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     const x = x0 - per * (fa * sp + fb * sr), y = j - (fa * sq + fb * st);  // (its grid's cell there)
     tiles.push({ x, y, al: al - fa, be: be - fb, polys: planeCorners(base, x0, j).map(inRect).map(([u, v]) => [u - fa, v - fb]) });
   }
-  tiles.sort((p, q) => p.be - q.be || p.al - q.al);
   if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
+  // the rectangle moved (by sixteenths of its sides) where its cells stick out of it least: its sides a gentle stair
+  // (a cell in it before it, moved on by a whole side)
+  const lu = Math.hypot(...U), lv = Math.hypot(...V), out = (c, sa, sb) => {
+    const da = c.al < sa ? 1 : 0, db = c.be < sb ? 1 : 0;
+    return c.polys.reduce((sum, [u, v]) => sum + lu * Math.max(0, sa - u - da, u + da - sa - 1) + lv * Math.max(0, sb - v - db, v + db - sb - 1), 0);
+  };
+  let shift = [0, 0], least = Infinity;
+  for (let sb = 0; sb < 16; sb++) for (let sa = 0; sa < 16; sa++) {
+    const sum = tiles.reduce((s, c) => s + out(c, sa / 16, sb / 16), 0);
+    if (sum < least - 1e-9) { least = sum; shift = [sa / 16, sb / 16]; }
+  }
+  for (const c of tiles) {
+    const da = c.al < shift[0] ? 1 : 0, db = c.be < shift[1] ? 1 : 0;
+    c.x += per * (da * sp + db * sr); c.y += da * sq + db * st; c.al += da; c.be += db;
+    c.polys = c.polys.map(([u, v]) => [u + da, v + db]);
+  }
+  tiles.sort((p, q) => p.be - q.be || p.al - q.al);
   const kind = `${base}Rect`, t = TILINGS[base];
   RECTS[kind] = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
   PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
