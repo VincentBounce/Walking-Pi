@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.768';
+const VERSION = '0.1.769';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10478,6 +10478,26 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   customOpen = true;  // (typed: your own still, even as a known one)
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
+});
+// Copy RLE: the generation shown as an RLE file, Golly's and LifeWiki's (its size and rule on top, rows of runs, 70
+// characters a line): two states as b and o; more as . A B … (alive, then each dying stage; in colours, all alive as
+// A). Squares are Golly's grid; another grid's cells as this one numbers them, said in a comment
+function lifeRle() {
+  const L = walk.life, { kind, row } = walk.plane, K = L.colours, pop = new Map();
+  L.alive.forEach((v, t) => { if (v) pop.set(key(t % row, Math.floor(t / row)), v <= K ? 1 : 1 + Math.floor((v - 1) / K)); });
+  if (!pop.size) return null;
+  const xs = [...pop.keys()].map((k) => cellXY(k)[0]), ys = [...pop.keys()].map((k) => cellXY(k)[1]);
+  let body = populationRle(pop).replace(/^[^:]*:/, '');
+  if (L.C === 2) body = body.replace(/\./g, 'b').replace(/A/g, 'o');
+  const lines = [], rule = ruleBody($('lifeRule').value);
+  for (let i = 0; i < body.length; i += 70) lines.push(body.slice(i, i + 70));
+  return [`#N ${formulaInUse}, generation ${cur}`, `#C Walking Pi: ${location.href}`, ...(kind === 'square' ? [] : [`#C On the app's ${PLANE_CELLS[kind] ?? TILINGS[kind].cells} (not Golly's squares): cells as it numbers them`]),
+    `x = ${Math.max(...xs) - Math.min(...xs) + 1}, y = ${Math.max(...ys) - Math.min(...ys) + 1}, rule = ${rule}`, ...lines].join('\n');
+}
+$('copyRle').addEventListener('click', () => {
+  const text = lifeRle(), b = $('copyRle');
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => { b.innerHTML = `${icon('check')} Copied`; setTimeout(() => { b.innerHTML = `${icon('copy')} Copy RLE`; }, 1500); }, () => {});
 });
 // All digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
 // (a check once copied) and the cross; a click on the button again, the cross or anywhere else but on it closes it
