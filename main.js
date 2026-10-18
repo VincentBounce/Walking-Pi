@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.733';
+const VERSION = '0.1.734';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10424,16 +10424,17 @@ $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
-let copyReset = 0;  // the label comes back 1.5 s after the last click
+// Copy number: copies it and shows it over the view (the start of it: as much as fits), the button then Close; a click
+// on it or anywhere else hides it
+const sayCopy = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
+function closeNumber() { $('numberPreview').hidden = true; sayCopy('Copy number to clipboard'); }
 $('copyNumber').addEventListener('click', async () => {
-  const say = (text) => { $('copyNumber').innerHTML = `${icon('copy')} ${text}`; };
-  try { await navigator.clipboard.writeText(numberText()); say('Copied'); } catch { say('Not allowed'); }
-  clearTimeout(copyReset);
-  copyReset = setTimeout(() => say('Copy number to clipboard'), 1500);
+  if (!$('numberPreview').hidden) { closeNumber(); return; }
+  $('numberPreview').textContent = numberText(20000);
+  $('numberPreview').hidden = false;
+  try { await navigator.clipboard.writeText(numberText()); sayCopy('Copied — Close'); } catch { sayCopy('Not allowed — Close'); }
 });
-// Hovering the button shows what it copies over the view (the start of it: as much as fits)
-$('copyNumber').addEventListener('mouseenter', () => { $('numberPreview').textContent = numberText(20000); $('numberPreview').hidden = false; });
-$('copyNumber').addEventListener('mouseleave', () => { $('numberPreview').hidden = true; });
+document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().includes($('copyNumber'))) closeNumber(); });
 // The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
 // (not − / +) shows every start on an empty globe, turned towards the chosen one.
 function setStart(n) {
