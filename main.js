@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.706';
+const VERSION = '0.1.707';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3725,7 +3725,7 @@ function torusMesh(nv, nu = twelve(nv / TORUS_TUBE)) {  // squares about as long
 
 // A torus mesh keeps the sheet coordinates (i, j) of every tile corner (uv, in listing order):
 // when unrolled (m < 1) its seams open, so shapeAt places corners per tile, not per vertex
-function finishTorus(verts, tiles, sides, nu, nv, uv) {
+function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null) {  // mids: the tiles' own middles (their corners repeated: not their mean)
   // outwards = away from the circle running through the middle of the tube
   const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
   const mesh = finishMesh(verts, tiles, sides, nv, fromTubeAxis);
@@ -3735,8 +3735,9 @@ function finishTorus(verts, tiles, sides, nu, nv, uv) {
     const o = 2 * sides * t;
     for (const [d, n] of [[0, nu], [1, nv]]) {
       let mid = 0;
-      for (let q = 0; q < sides; q++) mid += uv[o + 2 * q + d] / sides;
-      const shift = n * Math.floor(mid / n);
+      if (mids) mid = mids[2 * t + d];
+      else for (let q = 0; q < sides; q++) mid += uv[o + 2 * q + d] / sides;
+      const shift = n * Math.floor((mid + 1e-9) / n);  // (a middle on the seam: at the start, as sheetMiddle)
       if (shift) for (let q = 0; q < sides; q++) uv[o + 2 * q + d] -= shift;
     }
   }
@@ -3979,7 +3980,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
       uv.push(...c.flat());
     }
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv), { tiling: kind, sheet, uvMid: new Float64Array(mid) }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid), { tiling: kind, sheet, uvMid: new Float64Array(mid) }));
 }
 
 /* Sphere of hexagons (a Goldberg polyhedron, the football's pattern): the dual of the icosahedron
@@ -6922,7 +6923,7 @@ function huntParts(r, K) {
     return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k + 0.5) * stretch, g.W / 2)));  // at their stretches' middles
   }
   if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its middle is in
-    const [a, b] = torusBlocks(K), block = (t) => { const [u, v] = sheetMiddle(g, t); return Math.floor((u * a) / g.nu) * b + Math.floor((v * b) / g.nv); };
+    const [a, b] = torusBlocks(K), block = (t) => { const [u, v] = sheetMiddle(g, t); return Math.min(a - 1, Math.floor((u * a) / g.nu)) * b + Math.min(b - 1, Math.floor((v * b) / g.nv)); };
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
@@ -7322,7 +7323,8 @@ function sheetMiddle(g, t) {
   let u = 0, v = 0;
   if (g.uvMid) [u, v] = g.uvMid.subarray(2 * t, 2 * t + 2);  // (a tiling's: its corners not repeated)
   else for (let q = 0; q < k; q++) { u += g.uv[2 * (k * t + q)] / k; v += g.uv[2 * (k * t + q) + 1] / k; }
-  return g.mobius ? [u, v] : [((u % g.nu) + g.nu) % g.nu, ((v % g.nv) + g.nv) % g.nv];
+  const wrap = (x, m) => { const r = ((x % m) + m) % m; return r > m - 1e-9 ? 0 : r; };  // (on the seam: at the start, as finishTorus lays it)
+  return g.mobius || g.klein ? [u, v] : [wrap(u, g.nu), wrap(v, g.nv)];  // (a Klein bottle's: where drawn, its tiles across the seam past its end)
 }
 // A Möbius strip's two faces as one strip twice as long, 2L, whose ends meet as they are (no turning over):
 // a tile's place on it, along (s) and across (y); the back's tiles after the front's, turned over
@@ -8839,22 +8841,29 @@ function glSurface(palette, levelOf, path) {
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.nrm); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.DYNAMIC_DRAW);
-    // the edges, each once where it is in this form (two tiles' strokes over each other were twice as strong as the
-    // outline's; a seam apart unrolled, closed rolled up), with both its tiles' normals (drawn if either faces the
-    // viewer); none of no length (a repeated corner)
-    const key = (i) => `${Math.round(pos[i] * 98765.4 / R)},${Math.round(pos[i + 1] * 98765.4 / R)},${Math.round(pos[i + 2] * 98765.4 / R)}`;  // (a scale no corner is half a step on)
-    const at = new Map(), ends = [], n1 = [], n2 = [];
-    for (let t = 0; t < n; t++) for (let q = 0; q < k; q++) {
-      const i = 3 * (k * t + q), j = 3 * (k * t + ((q + 1) % k)), a = key(i), b = key(j);
-      if (a === b) continue;
-      const e = a < b ? `${a}|${b}` : `${b}|${a}`, tn = [sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]];
-      if (at.has(e)) { const m = at.get(e); if (!m.other) { m.other = true; for (let z = 0; z < 6; z++) n2[6 * m.at + z] = tn[z % 3]; } continue; }
-      at.set(e, { at: ends.length / 6, other: false });
-      ends.push(pos[i], pos[i + 1], pos[i + 2], pos[j], pos[j + 1], pos[j + 2]);
-      n1.push(...tn, ...tn); n2.push(...tn, ...tn);
+    // the edges, each once (two tiles' strokes over each other were twice as strong as the outline's): by the corners of
+    // the surface, so that an unrolled seam is drawn on one side only (the other's open, to be glued), with both its
+    // tiles' normals (drawn if either faces the viewer); none of no length (a repeated corner)
+    if (S.keys.edgesOf !== g) {
+      const at = new Map(), list = [], nv = g.verts.length / 3;
+      for (let t = 0; t < n; t++) for (let q = 0; q < k; q++) {
+        const a = g.poly[k * t + q], b = g.poly[k * t + ((q + 1) % k)], e = Math.min(a, b) * nv + Math.max(a, b);
+        if (a === b) continue;
+        if (at.has(e)) { const m = at.get(e); if (m[3] < 0) m[3] = t; continue; }
+        const m = [k * t + q, k * t + ((q + 1) % k), t, -1];  // its two corners' slots, its tile, the other tile
+        at.set(e, m);
+        list.push(m);
+      }
+      S.edgeList = list;
+      S.keys.edgesOf = g;
     }
-    for (const [name, data] of [['ePos', ends], ['eN1', n1], ['eN2', n2]]) { gl.bindBuffer(gl.ARRAY_BUFFER, S[name]); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW); }
-    S.eCount = ends.length / 3;
+    const ends = new Float32Array(6 * S.edgeList.length), n1 = new Float32Array(ends.length), n2 = new Float32Array(ends.length);
+    S.edgeList.forEach(([i, j, t, o], e) => {
+      ends.set(pos.subarray(3 * i, 3 * i + 3), 6 * e); ends.set(pos.subarray(3 * j, 3 * j + 3), 6 * e + 3);
+      for (const [arr, u] of [[n1, t], [n2, o < 0 ? t : o]]) for (const z of [0, 3]) arr.set(sh.nrm.subarray(3 * u, 3 * u + 3), 6 * e + z);
+    });
+    for (const [name, data] of [['ePos', ends], ['eN1', n1], ['eN2', n2]]) { gl.bindBuffer(gl.ARRAY_BUFFER, S[name]); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); }
+    S.eCount = 2 * S.edgeList.length;
     if (S.keys.topo !== `${n}|${k}`) {  // the fans only change with the tiling
       const fan = new Uint32Array(3 * (k - 2) * n);
       for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
