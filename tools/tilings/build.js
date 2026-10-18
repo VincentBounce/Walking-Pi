@@ -165,6 +165,10 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (const Q of tiles) patch.push(Q.map((p) => add(add(p, mul(a1, i)), mul(b1, j))));
   cell('pent14', a1, b1, withT(patch)); }
 
+// truncated square (4.8.8): the tetrakis's points, their faces (octagons, squares)
+{ const s = 1 + Math.SQRT2, h = 0.5 + Math.SQRT1_2, a = [s, 0], b = [0, s], pts = points(a, b, [[0.5, h], [-0.5, h], [-h, 0.5], [-h, -0.5], [-0.5, -h], [0.5, -h], [h, -0.5], [h, 0.5]], 6);
+  cell('truncsquare', a, b, polygons(pts, false)); }
+
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)
 for (const [name, t] of Object.entries(T)) {
