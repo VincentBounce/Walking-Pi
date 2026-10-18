@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.729';
+const VERSION = '0.1.730';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10160,6 +10160,7 @@ function fitNow() {
 }
 
 stage.addEventListener('wheel', (e) => {
+  if (e.target.closest('#ruleTuto')) return;  // (how a rule works, over the grid: it scrolls)
   e.preventDefault();
   const r = stage.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
@@ -10175,6 +10176,7 @@ stage.addEventListener('wheel', (e) => {
 let drag = null;
 stage.addEventListener('contextmenu', (e) => e.preventDefault());  // the right button drags the view
 stage.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#ruleTuto')) return;  // (its buttons: captured by the stage, their clicks went to it)
   drag = { x: e.clientX, y: e.clientY, pan: !walk.is3d || e.shiftKey || e.button === 2 };  // in 3D, Shift or the right button pans
   stage.setPointerCapture(e.pointerId);
   stage.classList.add('dragging');
