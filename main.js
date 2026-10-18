@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.730';
+const VERSION = '0.1.731';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6473,13 +6473,14 @@ function ruleTutorial(option) {
   const pair = (k, from, to, word, table) => `<figure><div>${cell(from, k)}<span>→</span>${cell(to, k, from)}</div><figcaption>${k} live${some(table, k)}: ${word}</figcaption></figure>`;
   const list = (l) => l.join(', ').replace(/, (\d+)$/, ' or $1');
   const born = ks.filter((k) => share(rule.B, k) > 0), stays = ks.filter((k) => share(rule.S, k) > 0), dies = ks.filter((k) => share(rule.S, k) < 1);
+  const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div>`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>A cell with ${around.length} neighbours here: ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${rule.iso ? ' (some: only as its letters say where they sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
-    + `<h4>Birth</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B)).join('') || '<p>none</p>'}</div>`
-    + `<h4>Survival</h4><div class="tut-row">${stays.map((k) => pair(k, LIFE_ALIVE, LIFE_ALIVE, 'stays', rule.S)).join('') || '<p>none</p>'}</div>`
+    + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((k) => pair(k, UNLIT, LIFE_ALIVE, 'born', rule.B)).join('') || '<p>none</p>'}</div>`
+    + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((k) => pair(k, LIFE_ALIVE, LIFE_ALIVE, 'stays', rule.S)).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((k) => pair(k, LIFE_ALIVE, after, 'dies', rule.S.map((v, i) => (rule.iso && i < 16 ? v : 1 - v)))).join('')}</div>`
-    + (stages.length ? `<h4>Dying stages</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, 0)).join('<span>→</span>')}</div><figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
+    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, 0)).join('<span>→</span>')}</div><figcaption>alive, ${stages.length} stage${stages.length > 1 ? 's' : ''}, empty: whatever its neighbours</figcaption></figure></div>` : '');
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
