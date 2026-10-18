@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.703';
+const VERSION = '0.1.704';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8839,16 +8839,25 @@ function glSurface(palette, levelOf, path) {
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.nrm); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.DYNAMIC_DRAW);
-    if (S.keys.topo !== `${n}|${k}`) {  // the fans and the edges only change with the tiling
-      const fan = new Uint32Array(3 * (k - 2) * n), edges = new Uint32Array(2 * k * n);
-      for (let t = 0, f = 0, e = 0; t < n; t++) {
+    if (S.keys.topo !== `${n}|${k}` || S.keys.topoObj !== g) {  // the fans and the edges only change with the tiling
+      // each edge once (two tiles' strokes over each other were twice as strong as the outline's), a Möbius strip's
+      // two faces each theirs; none of no length (a repeated corner)
+      const fan = new Uint32Array(3 * (k - 2) * n), edges = [], seen = new Set(), nv = g.verts.length / 3;
+      for (let t = 0, f = 0; t < n; t++) {
         for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
-        for (let q = 0; q < k; q++) { edges[e++] = k * t + q; edges[e++] = k * t + ((q + 1) % k); }
+        for (let q = 0; q < k; q++) {
+          const a = g.poly[k * t + q], b = g.poly[k * t + ((q + 1) % k)], key = `${Math.min(a, b) * nv + Math.max(a, b)}${g.mobius && t >= g.front ? 'b' : ''}`;
+          if (a === b || seen.has(key)) continue;
+          seen.add(key);
+          edges.push(k * t + q, k * t + ((q + 1) % k));
+        }
       }
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, fan, gl.STATIC_DRAW);
       S.fanCount = fan.length;
-      S.edgeIdx = edges;
+      S.edgeIdx = Uint32Array.from(edges);
       S.keys.topo = `${n}|${k}`;
+      S.keys.topoObj = g;
+      S.keys.edgesTopo = null;
     }
     S.keys.geo = geoKey; S.keys.geoObj = g;
   }
