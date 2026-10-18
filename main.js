@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.717';
+const VERSION = '0.1.718';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3912,6 +3912,9 @@ function tilingStrip(kind, kind0, size) {
   }
   return { L, W, tiles, sides, mids };
 }
+// a tile's corners the other way round, its last one repeated still last (a tile with fewer corners than the strip's:
+// repeated first, its normal, from its first corners, was none, and the back's tiles all but black)
+const turnOver = (c) => { let d = c.length; while (d > 1 && c[d - 1] === c[d - 2]) d--; return [...c.slice(0, d).reverse(), ...c.slice(d)]; };
 // The mesh of the strip's two faces: the front of each tile as on the sheet, its back the same
 // corners turned over. A corner of the sheet is a corner of each face (but one where the faces
 // meet, on the strip's edge); past the glued ends, the front goes on as the back
@@ -3939,8 +3942,8 @@ function mobiusMesh(kind, size) {
   const tiles = [], uv = [];
   for (const side of [0, 1]) sheet.forEach((t, i) => {
     const c = t.map(([x], q) => corner(ids[i][q], side ^ (Math.abs(x - home[ids[i][q]]) > L / 2 ? 1 : 0)));
-    tiles.push(side ? c.reverse() : c);
-    uv.push(...(side ? [...t].reverse() : t).flat());
+    tiles.push(side ? turnOver(c) : c);
+    uv.push(...(side ? turnOver(t) : t).flat());
   });
   const mesh = finishMesh(cv, tiles, k, nv, null);  // as listed: a back faces the other way
   // the step from a corner to a neighbour, on the sheet as seen from its face (a back: mirrored)
