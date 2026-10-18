@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.756';
+const VERSION = '0.1.757';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6380,6 +6380,7 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_CO
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
+  if (k * ((parseRule(ruleBody($('lifeRule').value))?.C ?? 2) - 1) > 255) return false;  // its states and dying stages past a cell's byte (Faders' 25: eight at most)
   if (mode.plane) {
     return true;  // its blocks (rounded down when they do not divide it, as on a torus); with dead edges, its halves, quarters, or slices round the middle (see planeSlices)
   }
