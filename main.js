@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.696';
+const VERSION = '0.1.697';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2440,29 +2440,39 @@ function renderModePicker() {
     const same = (f) => F.modes[f].find((v) => [0, 3, 4].every((i) => NAV[v][i] === NAV[w][i]))
       ?? F.modes[f].find((v) => [0, 3].every((i) => NAV[v][i] === NAV[w][i])) ?? F.modes[f].find((v) => NAV[v][0] === NAV[w][0]);
     const sheets = F.name === 'Torus' || F.name === 'Möbius strip', square = sheets && squareSheet;
-    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name], i) => {
-      if (!same(f)) return [];
-      const b = button(icon(pic), i === tab, () => {
-        if (i === tab) return;
+    // its tilings as the 2D grids are, a picture and a name each, 4 a row; a tiling turned by 30° is the same
+    // tab (the ⟲ by Rectangle | Square), kept turned from one tiling to another that turns
+    const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
+    $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, name]) => {
+      if (turned || !same(f)) return [];
+      const b = button(`${icon(pic)}<span>${name.split(/[ ,(]/)[0]}</span>`, f === here, () => {
+        if (f === here) return;
+        const i = tabOf(f, isTurned && !square) >= 0 ? tabOf(f, isTurned && !square) : tabOf(f, false);
         F.tab = i;
-        const v = same(f);
-        if (v === w) { turnTorus(turned); renderModePicker(); return; }  // the same tiles, turned
-        torusTurned = turned;
-        $('mode').value = v;
+        torusTurned = F.tabs[i][1];
+        $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
       }, name);
-      b.disabled = square && turned;  // a square sheet: not turned
       return [b];
     }));
     // a torus: from a long sheet (Rectangle, more round the ring than round the tube, its tiles even once
-    // rolled up) or a square one (as many round the ring as round the tube, stretched along it)
+    // rolled up) or a square one (as many round the ring as round the tube, stretched along it); hexagons and
+    // triangles on a long sheet turned by 30° or not (⟲: their rows round the tube)
     $('torusSheet').hidden = !sheets;
-    if (sheets) $('torusSheet').replaceChildren(...[[false, 'Rectangle', 'A long sheet: its tiles even once rolled up'], [true, 'Square', 'A square sheet, its tiles stretched along the ring once rolled up (not turned)']]
-      .map(([sq, word, title]) => {
-        const own = !!SQUARE_SHEET[MODES[w].sphere], b = button(word, sq === (squareSheet && own), () => { turnTorus(sq ? false : torusTurned, sq); renderModePicker(); }, title);
-        b.disabled = sq && !own;  // (the tilings' tori: a long sheet only)
-        return b;
-      }));
+    if (sheets) {
+      const own = !!SQUARE_SHEET[MODES[w].sphere], turns = tabOf(here, true) >= 0;
+      const sheetButtons = [[false, 'Rectangle', 'A long sheet: its tiles even once rolled up'], [true, 'Square', 'A square sheet, its tiles stretched along the ring once rolled up (not turned)']]
+        .map(([sq, word, title]) => {
+          const b = button(word, sq === (squareSheet && own), () => { turnTorus(sq ? false : torusTurned, sq); renderModePicker(); }, title);
+          b.disabled = sq && !own;  // (the tilings' tori: a long sheet only)
+          return b;
+        });
+      const turn = button('⟲ 30°', isTurned, () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); }, F.tabs[tabOf(here, true)]?.[3] ?? '');
+      turn.classList.add('switch');
+      turn.hidden = !turns;
+      turn.disabled = square;  // (a square sheet: not turned)
+      $('torusSheet').replaceChildren(...sheetButtons, turn);
+    }
   } else $('torusSheet').hidden = true;
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
