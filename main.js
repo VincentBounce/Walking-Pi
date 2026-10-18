@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.771';
+const VERSION = '0.1.772';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7764,6 +7764,7 @@ function applySetup(s) {
 // hunt zone's start, then write the link
 let huntBack = null;  // the hunt to bring back with a setup left in the Gallery (see viewNow)
 function applyPendingView() {
+  if (!$('numberPreview').hidden) { if ($('copyNumber').hidden) closeNumber(); else showNumber(); }  // the digits shown: the new number's
   const ch = pendingChampion;
   pendingChampion = null;
   if (pendingSpin && walk.is3d && !pendingRestore) spinFrom = performance.now() + SPIN_DELAY;  // faced first (showAll), then turning
@@ -10505,10 +10506,11 @@ $('copyRle').addEventListener('click', () => {
   navigator.clipboard.writeText(text).then(() => { b.innerHTML = `${icon('check')} Copied`; setTimeout(() => { b.innerHTML = `${icon('copy')} Copy RLE`; }, 1500); }, () => {});
 });
 // All digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
-// (a check once copied) and the cross; a click on the button again, the cross or anywhere else but on it closes it
+// (a check once copied) and the cross; another number picked, it shows that one; a click on the button again, the cross
+// or anywhere else but on it and the Digits closes it
 function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active', 'switch'); }
-$('copyNumber').addEventListener('click', () => {
-  if (!$('numberPreview').hidden) { closeNumber(); return; }
+$('copyNumber').addEventListener('click', () => { if (!$('numberPreview').hidden) closeNumber(); else showNumber(); });
+function showNumber() {
   const text = numberText(), name = `${formulaInUse} base ${current.base} `, v = $('numberPreview');
   v.innerHTML = `<div class="tut-tools"><button type="button" class="tut-copy" title="Copy it">${icon('copy')}</button><button type="button" class="tut-close" title="Back to the walk">✕</button></div>`
     + `<div class="tut-body"><h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p></div>`;
@@ -10521,8 +10523,8 @@ $('copyNumber').addEventListener('click', () => {
   v.querySelector('.tut-body').scrollTop = 0;
   v.hidden = false;
   $('copyNumber').classList.add('active', 'switch');
-});
-document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => n.id === 'copyNumber' || n.id === 'numberPreview')) closeNumber(); });
+}
+document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => ['copyNumber', 'numberPreview', 'digitsSection'].includes(n.id))) closeNumber(); });
 // The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
 // (not − / +) shows every start on an empty globe, turned towards the chosen one.
 function setStart(n) {
