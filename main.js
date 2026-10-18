@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.762';
+const VERSION = '0.1.763';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6463,7 +6463,7 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre' };
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
-  $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as Watch digits)
+  $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as All digits)
   $('watchRule').classList.toggle('switch', !!option);
   if (!option) return;
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours}`;  // (another grid or rule: shown again, see renderRuleSection)
@@ -10469,7 +10469,7 @@ $('lifeRule').addEventListener('change', () => {
   customOpen = true;  // (typed: your own still, even as a known one)
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
 });
-// Watch digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
+// All digits: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
 // (a check once copied) and the cross; a click on the button again, the cross or anywhere else but on it closes it
 function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active', 'switch'); }
 $('copyNumber').addEventListener('click', () => {
