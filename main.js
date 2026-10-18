@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.732';
+const VERSION = '0.1.733';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6489,6 +6489,7 @@ function ruleTutorial(option) {
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
+let customOpen = false;  // the Custom rule card clicked: its states, births and survivals shown, a known rule in use or not
 let henselShown = false;  // squares: Hensel's letters beside the counts, from a rule written with them until a rule card without
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
@@ -6499,16 +6500,28 @@ function renderRuleSection() {
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.classList.toggle('active', o.value === now);
-    b.classList.toggle('switch', o.value === now);  // (picked: a click shows how it works, see ruleTutorial)
+    const picked = o.value === now && !customOpen;
+    b.classList.toggle('active', picked);
+    b.classList.toggle('switch', picked);  // (picked: a click shows how it works, see ruleTutorial)
     b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}</span>`
       + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
     b.addEventListener('click', () => {
-      if (o.value === now) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
+      if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
+      customOpen = false;
+      if (o.value === now) { renderRuleSection(); return; }
       henselShown = parseRule(o.value)?.iso === 'hensel'; setRuleText(o.value); compute();
     });
     return b;
   }));
+  // after them, your own: picked when the rule in use is none of them, or clicked (its states, births and survivals below)
+  const own = document.createElement('button'), mineNot = !mine || customOpen;
+  own.type = 'button';
+  own.classList.toggle('active', mineNot);
+  own.innerHTML = `<span class="mode-icon">${pixelIcon('..o..,..o..,ooooo,..o..,..o..')}</span><span><span class="mode-name">Custom rule</span>`
+    + `<span class="mode-detail">${mineNot ? `${now} · your own` : 'your own: its states, births and survivals'}</span></span>`;
+  own.addEventListener('click', () => { customOpen = true; renderRuleSection(); });
+  $('ruleCards').append(own);
+  document.querySelector('.rule-build').hidden = !mineNot;
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
@@ -6573,7 +6586,6 @@ function renderRuleSection() {
     : [...ties.filter((p) => gone(p) !== 1), ...ties.filter((p) => gone(p) === 1)]  // a tie a line, what it gives first: no birth, then the colour missing
       .map((p) => `<small>${gone(p) === 1 ? 'the colour missing' : 'no birth'}: ${say(p)}</small>`).join('')}</span></div>`;
   $('determinedRow').title = 'A dead cell is born only if one colour has more live neighbours than any other; on a tie, it takes the one colour missing around it if just one is, else it stays dead';
-  $('ruleName').textContent = mine ? mine.dataset.name : 'Custom rule';
 
 }
 let ruleFittedTo = null;
