@@ -1,0 +1,86 @@
+{
+ "trihex B349/S0134/C5": {
+  "meths": [
+   {
+    "rle": "A$.2A$2.2A.A!",
+    "n": 6,
+    "T": 355,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A4.A$.A2.2A$.3A!",
+    "n": 8,
+    "T": 286,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A3.A$2.A2.A$.A!",
+    "n": 5,
+    "T": 259,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A.A.A.A$A2.3A!",
+    "n": 8,
+    "T": 258,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "4.A$A4.A$A.A!",
+    "n": 5,
+    "T": 228,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "trihex B348/S0134/C5": {
+  "meths": [
+   {
+    "rle": "A2.A.A$2.2A$2A2.2A!",
+    "n": 9,
+    "T": 498,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".2A3.2A$.A.A.3A!",
+    "n": 9,
+    "T": 341,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A.2A3.A$A2.A.3A!",
+    "n": 9,
+    "T": 288,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A4.A$.A2.2A$.3A!",
+    "n": 8,
+    "T": 286,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": ".A3.A.2A$2A2.A3.A!",
+    "n": 8,
+    "T": 271,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ }
+}

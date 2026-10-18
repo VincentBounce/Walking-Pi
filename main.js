@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.787';
+const VERSION = '0.1.792';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5572,6 +5572,10 @@ const DRAW_PATTERNS = [
   ['steinsparks-meth', 'pent14', ['B24/S0345/C4'], 'Methuselah', 'A2.A.2A.A.A$3.A4.4A!', 'settles at generation 420 · 11 cells'],
   ['steinblinkers-osc', 'pent14', ['B34/S2357'], 'Oscillator', '3A$.3A!', 'period 2 · 6 cells'],
   ['steinblinkers-osc4', 'pent14', ['B34/S2357'], 'Oscillator', '3A.A$.A.A7.A!', 'period 4 · 7 cells'],
+  ['kagomelife-osc', 'trihex', ['B349/S0134/C5'], 'Oscillator', '5.2A$2.5A$A2.A2.A!', 'period 5 · 10 cells'],
+  ['kagomelife-meth', 'trihex', ['B349/S0134/C5'], 'Methuselah', 'A$.2A$2.2A.A!', 'settles at generation 355 · 6 cells'],
+  ['kagomeembers-osc', 'trihex', ['B348/S0134/C5'], 'Oscillator', '5.2A$2.5A$A2.A2.A!', 'period 5 · 10 cells'],
+  ['kagomeembers-meth', 'trihex', ['B348/S0134/C5'], 'Methuselah', 'A2.A.A$2.2A$2A2.2A!', 'settles at generation 498 · 9 cells'],
   ['type15life-ship', 'pent15', ['B247/S034/C4'], 'Spaceship', 'AB.B.A2.2CA!', 'flies, period 24 (turned half way at 12) · 7 cells'],
   ['type15life-osc', 'pent15', ['B247/S034/C4'], 'Oscillator', '26.A10.A17.A!', 'period 8 · 3 cells'],
   ['type15life-meth', 'pent15', ['B247/S034/C4'], 'Methuselah', '19.2A19.A5.A3.A4.A7.2A7.A16.A!', 'settles at generation 363 · 10 cells'],
@@ -6446,6 +6450,8 @@ const RULE_ICONS = {
   'B29/S067/C4': '.ooo.,..+..,.....,..o..,.o.o.',
   'B24/S0345/C4': '+.o.+,.o+o.,o...o,.+o+.,..o..',
   'B34/S2357': 'o.o.o,..o..,ooooo,.....,.o.o.',
+  'B349/S0134/C5': '.....,....o,.oooo,..o..,.....',
+  'B348/S0134/C5': '.....,o..o.,..oo.,oo..o,.....',
   'B247/S034/C4': '++o++,+...+,.ooo.,..o..,+...+',
   'B256/S67': '.....,o.o.o,.ooo.,.....,.ooo.',
   'B38/S1369': '.....,..o..,o.o.o,.o.o.,o...o',
