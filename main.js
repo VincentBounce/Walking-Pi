@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.705';
+const VERSION = '0.1.706';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8664,11 +8664,11 @@ void main() {
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   edge: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; uniform float uBias; uniform bool uBoth; out float vFacing;${GL_PROJECT}
-void main() {  // the edges of a tile turned away are not drawn (the back of an open sheet, or of a strip's face): cut
-  // pixel by pixel, as its two ends may face apart (a strip's twist); an end sent off the screen drew a wire to it
+in vec3 aPos; in vec3 aNrm; in vec3 aNrm2; uniform float uBias; uniform bool uBoth; out float vFacing;${GL_PROJECT}
+void main() {  // an edge whose two tiles are both turned away is not drawn (the back of an open sheet, or of a strip's
+  // face): cut pixel by pixel, as its two ends may face apart (a strip's twist); an end sent off the screen drew a wire to it
   vec3 eye = uPersp.w > 0.0 ? uPersp.xyz + uV * uPersp.w - aPos : uV;
-  vFacing = uBoth ? 1.0 : dot(aNrm, eye);  // a Klein bottle: seen from both sides
+  vFacing = uBoth ? 1.0 : max(dot(aNrm, eye), dot(aNrm2, eye));  // a Klein bottle: seen from both sides
   gl_Position = clipOf(toScreen(aPos), uBias);
 }`, `#version 300 es
 precision mediump float; uniform float uEdge; uniform vec3 uEdgeRgb; in float vFacing; out vec4 o;
@@ -8750,7 +8750,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), edges: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -8839,31 +8839,28 @@ function glSurface(palette, levelOf, path) {
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.nrm); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.DYNAMIC_DRAW);
-    if (S.keys.topo !== `${n}|${k}` || S.keys.topoObj !== g) {  // the fans and the edges only change with the tiling
-      // each edge once (two tiles' strokes over each other were twice as strong as the outline's): a corner by its
-      // place on the sheet where there is one (unrolled, a seam's two sides are apart), a Möbius strip's two faces
-      // each theirs; none of no length (a repeated corner)
-      const fan = new Uint32Array(3 * (k - 2) * n), edges = [], seen = new Set();
-      const corner = (t, q) => {
-        if (!g.uv) return String(g.poly[k * t + q]);
-        const back = g.mobius && t >= g.front, i = 2 * (k * (back ? t - g.front : t) + q);
-        return `${Math.round(g.uv[i] * 31415.9)},${Math.round(g.uv[i + 1] * 31415.9)}${back ? 'b' : ''}`;  // (a scale no corner is half a step on)
-      };
-      for (let t = 0, f = 0; t < n; t++) {
-        for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
-        for (let q = 0; q < k; q++) {
-          const a = corner(t, q), b = corner(t, (q + 1) % k), key = a < b ? `${a}|${b}` : `${b}|${a}`;
-          if (a === b || seen.has(key)) continue;
-          seen.add(key);
-          edges.push(k * t + q, k * t + ((q + 1) % k));
-        }
-      }
+    // the edges, each once where it is in this form (two tiles' strokes over each other were twice as strong as the
+    // outline's; a seam apart unrolled, closed rolled up), with both its tiles' normals (drawn if either faces the
+    // viewer); none of no length (a repeated corner)
+    const key = (i) => `${Math.round(pos[i] * 98765.4 / R)},${Math.round(pos[i + 1] * 98765.4 / R)},${Math.round(pos[i + 2] * 98765.4 / R)}`;  // (a scale no corner is half a step on)
+    const at = new Map(), ends = [], n1 = [], n2 = [];
+    for (let t = 0; t < n; t++) for (let q = 0; q < k; q++) {
+      const i = 3 * (k * t + q), j = 3 * (k * t + ((q + 1) % k)), a = key(i), b = key(j);
+      if (a === b) continue;
+      const e = a < b ? `${a}|${b}` : `${b}|${a}`, tn = [sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]];
+      if (at.has(e)) { const m = at.get(e); if (!m.other) { m.other = true; for (let z = 0; z < 6; z++) n2[6 * m.at + z] = tn[z % 3]; } continue; }
+      at.set(e, { at: ends.length / 6, other: false });
+      ends.push(pos[i], pos[i + 1], pos[i + 2], pos[j], pos[j + 1], pos[j + 2]);
+      n1.push(...tn, ...tn); n2.push(...tn, ...tn);
+    }
+    for (const [name, data] of [['ePos', ends], ['eN1', n1], ['eN2', n2]]) { gl.bindBuffer(gl.ARRAY_BUFFER, S[name]); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW); }
+    S.eCount = ends.length / 3;
+    if (S.keys.topo !== `${n}|${k}`) {  // the fans only change with the tiling
+      const fan = new Uint32Array(3 * (k - 2) * n);
+      for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, fan, gl.STATIC_DRAW);
       S.fanCount = fan.length;
-      S.edgeIdx = Uint32Array.from(edges);
       S.keys.topo = `${n}|${k}`;
-      S.keys.topoObj = g;
-      S.keys.edgesTopo = null;
     }
     S.keys.geo = geoKey; S.keys.geoObj = g;
   }
@@ -8926,12 +8923,11 @@ function glSurface(palette, levelOf, path) {
     gl.uniform3f(u('uEdgeRgb'), ...EDGE_RGB.map((c) => c / 255));
     gl.uniform1f(u('uBias'), edgeBias);
     gl.uniform1i(u('uBoth'), g.klein ? 1 : 0);
-    attrib(prog.edge, 'aPos', S.pos, 3);
-    attrib(prog.edge, 'aNrm', S.nrm, 3);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.edges);
-    if (S.keys.edgesTopo !== S.keys.topo) { gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, S.edgeIdx, gl.STATIC_DRAW); S.keys.edgesTopo = S.keys.topo; }
-    gl.drawElements(gl.LINES, S.edgeIdx.length, gl.UNSIGNED_INT, 0);
-    off(prog.edge, ['aPos', 'aNrm']);
+    attrib(prog.edge, 'aPos', S.ePos, 3);
+    attrib(prog.edge, 'aNrm', S.eN1, 3);
+    attrib(prog.edge, 'aNrm2', S.eN2, 3);
+    gl.drawArrays(gl.LINES, 0, S.eCount);
+    off(prog.edge, ['aPos', 'aNrm', 'aNrm2']);
     gl.disable(gl.BLEND);
   }
   // path: the steps walked so far, printed on their tiles (see pathSegments)
