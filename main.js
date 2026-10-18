@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.773';
+const VERSION = '0.1.774';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6521,7 +6521,7 @@ function ruleTutorial(option) {
       const c = p.reduce((a, b) => a + b, 0), live = new Map(), cells = [...born.find((cs) => cs.k === c).live];
       p.forEach((x, j) => cells.splice(0, x).forEach((t) => live.set(t, LIFE_COLOURS[j])));  // (the most first: red, then blue, …)
       const newborn = word === 'no birth' ? UNLIT : LIFE_COLOURS[word === 'the most' ? 0 : p.indexOf(0)];
-      return `<figure><div>${cell(UNLIT, live)}<span>→</span>${cell(newborn, live, UNLIT)}</div><figcaption>${say(p)}: ${word}</figcaption></figure>`;
+      return `<figure><div>${cell(UNLIT, live)}<span>→</span>${cell(newborn, live, UNLIT)}</div><figcaption>${word === 'the colour missing' ? `<b>${say(p)}: ${word}</b>` : `${say(p)}: ${word}`}</figcaption></figure>`;  // (the missing colour born: the battles' surprises, bold)
     };
     const c = counts[0], most = c < 3 ? [c] : [c - 1, 1];  // (the most: all one colour, or all but one)
     return `<h4>Its colour <code>${COLOUR_STEP_NAMES[K]}</code></h4><div class="tut-row">${card([...most, ...Array(K - most.length).fill(0)], 'the most')}`

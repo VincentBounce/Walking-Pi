@@ -535,7 +535,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .tut-row figure { margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }  /* as wide as its cells: they never wrap, its words never widen it */
 .tut-row figure > div { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
 .tut-row figure > div > span { color: var(--muted); }
-.tut-row figure svg { flex: none; width: 64px; height: 64px; }
+.tut-row figure svg { flex: none; width: 88px; height: 88px; }
 .tut-row figcaption { width: 0; min-width: 100%; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
 .tut-row .tut-centre { stroke: var(--accent); stroke-linejoin: round; }
 .tut-tools { position: absolute; top: 20px; right: 24px; z-index: 1; display: flex; gap: 6px; }
