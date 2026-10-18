@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.721';
+const VERSION = '0.1.722';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6446,6 +6446,7 @@ const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cai
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
   if (!option) return;
+  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
   const corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row)));
@@ -6479,9 +6480,10 @@ function ruleTutorial(option) {
 let henselShown = false;  // squares: Hensel's letters beside the counts, from a rule written with them until a rule card without
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
-  if (!mode.life) return;
+  if (!mode.life) { ruleTutorial(null); return; }
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
+  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now}`) ruleTutorial(mine ?? null);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -6491,7 +6493,6 @@ function renderRuleSection() {
       + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
     b.addEventListener('click', () => {
       if (o.value === now) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
-      ruleTutorial(null);
       henselShown = parseRule(o.value)?.iso === 'hensel'; setRuleText(o.value); compute();
     });
     return b;
@@ -10389,7 +10390,10 @@ $('lifePreset').addEventListener('change', () => {
   $('lifeRule').value = $('lifePreset').value;
   if (MODES[$('mode').value].life) compute();
 });
-$('mode').addEventListener('change', () => ruleTutorial(null));  // (another grid: its own cells)
+// how a rule works closes on a click anywhere but on it, the rules and the grids (it follows them: renderRuleSection)
+document.addEventListener('click', (e) => {
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
+});
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 10 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
   if (MODES[$('mode').value].life) compute();  // restart from generation 0; a new state count needs a new base
