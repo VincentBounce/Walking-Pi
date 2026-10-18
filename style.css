@@ -543,9 +543,10 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
 .tut-row { display: flex; flex-wrap: wrap; gap: 10px; }
-.tut-row figure { margin: 0; display: grid; grid-auto-flow: column; grid-auto-columns: max-content; align-items: center; gap: 4px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
-.tut-row figure > span { color: var(--muted); }
-.tut-row figure svg { width: 64px; height: 64px; }
-.tut-row figcaption { grid-row: 2; grid-column: 1 / -1; width: 0; min-width: 100%; font-size: 11px; color: var(--muted); text-align: center; }
+.tut-row figure { margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }  /* as wide as its cells: they never wrap, its words never widen it */
+.tut-row figure > div { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
+.tut-row figure > div > span { color: var(--muted); }
+.tut-row figure svg { flex: none; width: 64px; height: 64px; }
+.tut-row figcaption { width: 0; min-width: 100%; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
 .tut-row .tut-centre { stroke: var(--accent); }
 .tut-close { position: sticky; top: 0; float: right; z-index: 1; }
