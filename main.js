@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.805';
+const VERSION = '0.1.806';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4061,14 +4061,12 @@ function tilingPolys(kind) {
     return [u, v];
   })));
 }
-// A torus sheet's cells (its sides 1): its slanted grid's rectangle's, its lattice cell's, or placed by placeCells (bricks,
-// the shortest outline first, as a rectangle's)
+// A torus sheet's cells (its sides 1): its 2D rectangle's (see RECTS), its lattice cell's, or the plain one's turned
 function sheetCells(kind, [[p, q], [r, s]]) {
-  const t = TILINGS[kind], { plain } = torusSheets(kind), [a, b] = t.basis, W = ([u, v]) => [u * a[0] + v * b[0], u * a[1] + v * b[1]];
-  if (p === plain[0][0] && q === plain[0][1] && r === plain[1][0] && s === plain[1][1]) return RECTS[`${kind}Rect`]?.polys ?? t.polys;
-  if (p === plain[1][0] && q === plain[1][1] && r === -plain[0][0] && s === -plain[0][1]) return sheetCells(kind, plain).map((P) => P.map(([u, v]) => [v, 1 - u]));  // (turned by 90°: B along)
-  const U = W([p, q]), V = W([r, s]), D = U[0] * V[1] - U[1] * V[0], inSheet = ([x, y]) => [(x * V[1] - y * V[0]) / D, (U[0] * y - U[1] * x) / D];
-  return placeCells(t.polys.map((P) => P.map(W).map(inSheet)), inSheet(a), inSheet(b), U, V, true).map(([k, n, m]) => t.polys[k].map(([u, v]) => inSheet(W([u + n, v + m]))));
+  const t = TILINGS[kind], { plain } = torusSheets(kind), R = RECTS[`${kind}Rect`], same = (x) => x && x[0][0] === p && x[0][1] === q && x[1][0] === r && x[1][1] === s;
+  if (same(R?.step)) return R.polys;  // (the 2D rectangle's: the slanted grids', or along the cells' sides)
+  if (same(plain)) return t.polys;
+  return sheetCells(kind, plain).map((P) => P.map(([u, v]) => [v, 1 - u]));  // (the plain one turned by 90°: B along)
 }
 // A tiling's torus (see TILINGS: sheet): its cell A round the ring nu times, B round the tube nv times (A ⟂ B: its tiles
 // even once rolled up, as many of each as the sheet's sides ask); the lattice cells whose corner is in that rectangle,
@@ -6395,8 +6393,9 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
 // (see orientPattern); its RLE its grid's again (see lifeRle)
 for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   const per = PER_RHOMBUS[base] ?? 1, o = cellMiddle(base, 0, 0), d = (x, y) => { const m = cellMiddle(base, x, y); return [m[0] - o[0], m[1] - o[1]]; }, a = d(per, 0), b = d(0, 1);
-  if (Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b)) continue;  // (at right angles already)
-  const best = rectSides(a, b);
+  // (at right angles already: its lattice cell, or on four turns its sheet along its cells' sides, see torusSheets)
+  const right = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b), along = right && TILINGS[base]?.turns === 4 && torusSheets(base).turned;
+  const best = !right ? rectSides(a, b) : along && { step: along, U: [along[0][0] * a[0] + along[0][1] * b[0], along[0][0] * a[1] + along[0][1] * b[1]], V: [along[1][0] * a[0] + along[1][1] * b[0], along[1][0] * a[1] + along[1][1] * b[1]], det: along[0][0] * along[1][1] - along[0][1] * along[1][0] };
   if (!best) continue;
   const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
   // a brick for the least rectangle its sides are whole times of (U = ku steps of a lattice side, V = kv), laid ku × kv
