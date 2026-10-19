@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.826';
+const VERSION = '0.1.827';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7774,7 +7774,13 @@ function famousGrid() {
 // each colour's choices: the rule's patterns (a rule of your own: all its grid's), every way they turn and mirror
 // (the same shape once), anywhere in its part on the plane, else at its spot where they fit its block, as [cell, state…]
 // in its colour
-function patternChoices(centred) {
+const choicesMemo = {};  // (Famous's, Centered's)
+function patternChoices(centred = false) {  // (once a grid, its colours and rule)
+  const L = walk.life, id = `${walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.torus}|${planeTurn()}` : ''}|${L.colours}|${L.ruleText}`, m = choicesMemo[centred];
+  if (m?.id !== id || m.g !== walk.geo) choicesMemo[centred] = { id, g: walk.geo, choices: laidChoices(centred) };
+  return choicesMemo[centred].choices;
+}
+function laidChoices(centred) {
   const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K], F = !centred && famousGrid();
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
   // (centred: a rectangle's room and its patterns' spans in its grid's lattice cells, as on that grid)
@@ -7793,7 +7799,7 @@ function patternChoices(centred) {
   // anywhere: every shape moved onto every cell of a colour's part (as Wild's), kept where its cells all land on cells
   // of that part of their shapes (a move the grid allows there)
   if (F) return huntParts(0, K).map((part, i) => {
-    const here = new Set(part), out = [], laidSeen = new Set();
+    const here = new Set(part), out = [];
     for (const cells of shapes) {
       const [ms, sh] = F.pattern(cells);
       for (const t of part) {
@@ -7804,8 +7810,7 @@ function patternChoices(centred) {
           if (c === undefined || !here.has(c) || F.shape[c] !== sh[k]) break;
           cs.push(c, K > 1 ? i + 1 + K * (cells[k][2] - 1) : cells[k][2]);
         }
-        const k = cs.filter((_, q) => !(q & 1)).sort().join(' ');
-        if (cs.length === 2 * cells.length && !laidSeen.has(k)) { laidSeen.add(k); out.push(Int32Array.from(cs)); }
+        if (cs.length === 2 * cells.length) out.push(Int32Array.from(cs));
       }
     }
     return out;
