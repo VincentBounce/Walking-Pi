@@ -37,12 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.786';
-const VERSION = '0.1.792';
-const VERSION = '0.1.793';
-const VERSION = '0.1.794';
-const VERSION = '0.1.795';
-const VERSION = '0.1.796';
+const VERSION = '0.1.797';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
