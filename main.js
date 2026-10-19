@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.835';
+const VERSION = '0.1.836';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -879,12 +879,12 @@ const TILINGS = {
     polys: [[[0.333333,1.122008],[0.455342,0.877992],[0.666667,0.877992],[0.544658,1.122008]],[[1.333333,1.122008],[1.544658,1.122008],[1.544658,1.333333],[1.333333,1.544658],[1.122008,1.544658],[1.122008,1.333333]],[[1.333333,1.122008],[1.122008,1.333333],[0.877992,1.455342],[0.666667,1.455342],[0.544658,1.333333],[0.544658,1.122008],[0.666667,0.877992],[0.877992,0.666667],[1.122008,0.544658],[1.333333,0.544658],[1.455342,0.666667],[1.455342,0.877992]],[[1.122008,0.333333],[1.122008,0.544658],[0.877992,0.666667],[0.877992,0.455342]],[[0.333333,0.544658],[0.544658,0.333333],[0.666667,0.455342],[0.455342,0.666667]],[[0.455342,0.666667],[0.666667,0.455342],[0.877992,0.455342],[0.877992,0.666667],[0.666667,0.877992],[0.455342,0.877992]]] },
 };
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip; the others are mirrored
-// along none, and a strip turns its tiles over round it). Prismatic, Tetrakis, Kisrhombille: along their tiles' sides,
-// the strip's edge between tiles; Rhombille, Rhombitri: through tiles, those on the edge as many times as its faces
-const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
+// along none, and a strip turns its tiles over round it); the strip's edges along their tiles' sides where that mirror
+// runs there (Prismatic, Tetrakis, Kisrhombille), else teeth of whole tiles, as the hexagons' strip
+const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
 // Each strip of a tiling: along its lattice's first side a, then the other side b of the strip's lattice cell; turned (as
-// a torus's, by 180° / its turns: 45° on squares, 30° on hexagons), along the shortest lattice side that far round from
-// a, when the tiling is mirrored along it between its tiles (see mobiusMirror)
+// a torus's, by 180° / its turns: 45° on squares, 30° on hexagons, 90° on two turns), along the shortest lattice side
+// that far round from a, when the tiling is mirrored along it (see mobiusMirror)
 const MOBIUS_STRIPS = {};
 for (const kind of MOBIUS_TILINGS) {
   const { basis: [a, b], turns } = TILINGS[kind], deg = 180 / turns, side = ([p, q]) => [p * a[0] + q * b[0], p * a[1] + q * b[1]];
@@ -893,7 +893,7 @@ for (const kind of MOBIUS_TILINGS) {
   const angle = (pq) => { const v = side(pq); return (Math.atan2(a[0] * v[1] - a[1] * v[0], a[0] * v[0] + a[1] * v[1]) * 180) / Math.PI; };
   const d = pqs.filter((pq) => Math.abs(angle(pq) - deg) < 1e-6).sort((x, y) => len(x) - len(y))[0];
   const e = d && pqs.filter(([r, t]) => d[0] * t - d[1] * r === 1).sort((x, y) => len(x) - len(y))[0];  // (the same cells: a whole cell's turn)
-  if (e && mobiusMirror(kind, [side(d), side(e)])?.between) MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`] = { kind, basis: [side(d), side(e)], deg };
+  if (e && mobiusMirror(kind, [side(d), side(e)])) MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`] = { kind, basis: [side(d), side(e)], deg };
 }
 const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after cellMiddle)
 const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
