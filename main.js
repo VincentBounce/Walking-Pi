@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.809';
+const VERSION = '0.1.811';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6326,7 +6326,8 @@ function rectSides(a, b) {
 }
 // A tiling's torus sheets: plain, its slanted grid's rectangle (see rectSides) or its lattice cell if at right angles; turned,
 // the same turned by 90° (B round the ring: by 30° on six turns, by 90° on two), or on four turns the least square of
-// lattice steps along a side of every one of its cells if its lattice is not (Pythagoras: straight squares round the ring), else none;
+// lattice steps along a side of every one of its cells, another way than its lattice (Pythagoras: straight squares round the
+// ring; Tetrakis, Octagons: by 45°), else none;
 // deg: the turn as seen. [[p, q], [r, s]]: A = p·a + q·b round the ring, B = r·a + s·b round the tube
 function torusSheets(kind) {
   const t = TILINGS[kind];
@@ -6335,9 +6336,9 @@ function torusSheets(kind) {
   const plain = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b) ? [[1, 0], [0, 1]] : rectSides(a, b).step;
   let turned = t.turns !== 4 ? [plain[1], plain[0].map((x) => -x)] : null, deg = t.turns === 6 ? 30 : 90;
   if (t.turns === 4) {  // (along a side: U a lattice step along one of its cells' sides, V the same turned, a lattice step too)
-    const sidesOf = (P) => P.map((p, i) => { const [x, y] = W(P[(i + 1) % P.length]).map((c, d) => c - W(p)[d]); return [x / Math.hypot(x, y), y / Math.hypot(x, y)]; }), sides = t.polys.flatMap(sidesOf);
-    const D = cross(a, b), A0 = W(plain[0]), along = sides.some((e) => Math.abs(cross(e, A0)) < 1e-6 * Math.hypot(...A0));  // (its lattice along a side already: none)
-    for (let n = 1; n <= 6 && !turned && !along; n++) for (let p = -n; p <= n && !turned; p++) for (const q of [n - Math.abs(p), Math.abs(p) - n]) {
+    const sidesOf = (P) => P.map((p, i) => { const [x, y] = W(P[(i + 1) % P.length]).map((c, d) => c - W(p)[d]); return [x / Math.hypot(x, y), y / Math.hypot(x, y)]; });
+    const D = cross(a, b), A0 = W(plain[0]);
+    for (let n = 1; n <= 6 && !turned; n++) for (let p = -n; p <= n && !turned; p++) for (const q of [n - Math.abs(p), Math.abs(p) - n]) {
       const U = W([p, q]), l = Math.hypot(...U);
       if (!l || Math.abs(cross(U, A0)) < 1e-6 * l || Math.abs(U[0] * A0[0] + U[1] * A0[1]) < 1e-6 * l || !t.polys.every((P) => sidesOf(P).some((e) => Math.abs(cross(e, U)) < 1e-6 * l))) continue;  // (every cell with a side along it)
       const V = [-U[1], U[0]], r = cross(V, b) / D, s = cross(a, V) / D;
@@ -6403,22 +6404,26 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   const right = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b), along = right && TILINGS[base]?.turns === 4 && torusSheets(base).turned;
   const best = !right ? rectSides(a, b) : along && { step: along, U: [along[0][0] * a[0] + along[0][1] * b[0], along[0][0] * a[1] + along[0][1] * b[1]], V: [along[1][0] * a[0] + along[1][1] * b[0], along[1][0] * a[1] + along[1][1] * b[1]], det: along[0][0] * along[1][1] - along[0][1] * along[1][0] };
   if (!best) continue;
-  const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
-  // a brick for the least rectangle its sides are whole times of (U = ku steps of a lattice side, V = kv), laid ku × kv
-  // times: every one of its parts the same, as the rectangle's copies are (Snub: 2 across)
-  const [[sp, sq], [sr, st]] = step, gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x)), ku = gcd(sp, sq), kv = gcd(sr, st);
-  const U0 = U.map((x) => x / ku), V0 = V.map((x) => x / kv), D0 = D / ku / kv, inBrick = ([wx, wy]) => [(wx * V0[1] - wy * V0[0]) / D0, (U0[0] * wy - U0[1] * wx) / D0];
-  const pick = placeCells(Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), inBrick(a), inBrick(b), U0, V0, true);  // (bricks in a rectangle: the shortest outline first)
-  const tiles = pick.flatMap(([k, n, m]) => Array.from({ length: ku * kv }, (_, c) => [k, n + ((c % ku) * sp) / ku + (Math.floor(c / ku) * sr) / kv, m + ((c % ku) * sq) / ku + (Math.floor(c / ku) * st) / kv])).map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
-  if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
-  tiles.sort((p, q) => p.be - q.be || p.al - q.al);
-  const kind = `${base}Rect`, t = TILINGS[base];
-  RECTS[kind] = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
-  PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
-  PLANE_SIDES[kind] = PLANE_SIDES[base];
-  PATTERN_TURNS[kind] = PATTERN_TURNS[base];
-  PLANE_CELLS[kind] = PLANE_CELLS[base];
-  PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
+  // its cells when first asked for (RECTS[kind]: built then, kept)
+  const kind = `${base}Rect`, build = () => {
+    const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
+    // a brick for the least rectangle its sides are whole times of (U = ku steps of a lattice side, V = kv), laid ku × kv
+    // times: every one of its parts the same, as the rectangle's copies are (Snub: 2 across)
+    const [[sp, sq], [sr, st]] = step, gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x)), ku = gcd(sp, sq), kv = gcd(sr, st);
+    const U0 = U.map((x) => x / ku), V0 = V.map((x) => x / kv), D0 = D / ku / kv, inBrick = ([wx, wy]) => [(wx * V0[1] - wy * V0[0]) / D0, (U0[0] * wy - U0[1] * wx) / D0];
+    const pick = placeCells(Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), inBrick(a), inBrick(b), U0, V0, true);  // (bricks in a rectangle: the shortest outline first)
+    const tiles = pick.flatMap(([k, n, m]) => Array.from({ length: ku * kv }, (_, c) => [k, n + ((c % ku) * sp) / ku + (Math.floor(c / ku) * sr) / kv, m + ((c % ku) * sq) / ku + (Math.floor(c / ku) * st) / kv])).map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
+    if (tiles.length !== det * per) return undefined;  // (a rectangle of whole lattice cells: as many as their cells)
+    tiles.sort((p, q) => p.be - q.be || p.al - q.al);
+    const t = TILINGS[base], R = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
+    PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
+    PLANE_SIDES[kind] = PLANE_SIDES[base];
+    PATTERN_TURNS[kind] = PATTERN_TURNS[base];
+    PLANE_CELLS[kind] = PLANE_CELLS[base];
+    PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
+    return R;
+  };
+  Object.defineProperty(RECTS, kind, { configurable: true, enumerable: true, get: () => { const R = build(); Object.defineProperty(RECTS, kind, { value: R, writable: true, enumerable: true }); return R; } });
 }
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
