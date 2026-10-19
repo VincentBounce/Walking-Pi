@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.823';
+const VERSION = '0.1.824';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6112,7 +6112,7 @@ for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 // a zone of the hunt, a random start in it, in words
 function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
-  if (zone === 'patterns') return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour at its spot'}, turned or mirrored at random`;
+  if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
@@ -7269,8 +7269,10 @@ const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], ra
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      face: ['zoneFace', 'Realm'],  // a whole face of a solid (see faceParts)
                      full: ['zoneAll', 'Wild'],
-                     patterns: [null, 'Famous'],  // the rule's patterns, mixed (see patternChoices)
+                     patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
+                     centred: [null, 'Centered'],  // the same, each at its colour's spot
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
+const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
@@ -7423,8 +7425,8 @@ const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneR
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
-  if (hunt.zone === 'patterns') {
-    const choices = patternChoices(), count = choices.reduce((m, c) => m * c.length, 1);
+  if (famousZone(hunt.zone)) {
+    const choices = patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
   }
   zoneParts(hunt.zone, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
@@ -7454,7 +7456,7 @@ function huntFits() {
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
-    if (zone === 'patterns') return [zone, patternsOn() && patternChoices().every((c) => c.length > 0)];
+    if (famousZone(zone)) return [zone, patternsOn() && patternChoices(zone === 'centred').every((c) => c.length > 0)];
     if (zone === 'face' && faceOf() === null) return [zone, false];
     if (!r && zone !== 'face') return [zone, true];
     const parts = zoneParts(zone, K);
@@ -7476,7 +7478,7 @@ function renderHunt() {
   }
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
   const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells found by a hunt, from a link · pick a zone to hunt in`
-    : (hunt.zone === 'patterns' ? `${fmt(perColour)} patterns and ways a colour`
+    : (famousZone(hunt.zone) ? `${fmt(perColour)} patterns, ways${hunt.zone === 'centred' ? '' : ' and places'} a colour`
       : `${all ? '' : `${fmt(Math.max(1, Math.round(DENSITY[0] * perColour)))}–${fmt(Math.max(1, Math.round(DENSITY[1] * perColour)))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
       + (all ? ` · ${fmt(all)} starts, all to try` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
@@ -7538,7 +7540,7 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
-  if (!zoneRadius(hunt.zone) && hunt.zone !== 'patterns' && hunt.zone !== 'face') return null;  // (Found: the link's, once)
+  if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'face') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's sd=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
   if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
@@ -7623,11 +7625,15 @@ const patternsOn = () => {
 const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
-// colour i's cells [cell, pattern state] off the plane, the pattern centred on its spot: the middle of its block of
-// the torus (a lattice, see huntParts), the middle of its face of the cube
+// colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
+// plane or the torus (a lattice, see huntParts), the middle of its face of the cube
 function patternAt(i, K, cells) {
-  const g = walk.geo, out = [];
+  const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [];
   const w = Math.max(...cells.map((c) => c[0])) + 1, h = Math.max(...cells.map((c) => c[1])) + 1;
+  if (walk.plane) {
+    const { row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : planeFrame().cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows);
+    return brushAt([t % row, Math.floor(t / row)], cells).map(([x, y, v]) => [y * row + x, v]);
+  }
   if (g.torus && (g.mobius || g.klein || g.kite || g.tiling || g.sides !== 4)) return sheetPatternAt(famousSpot(i, K), cells);  // any other sheet
   if (g.torus) {  // cells u × nv + v, the pattern's rows along u
     const [a, b] = torusBlocks(K);
@@ -7688,7 +7694,7 @@ function sheetIndex(g) {
       if (g.klein && k % 2) v = g.nv - v;
       v = ((v % g.nv) + g.nv) % g.nv;
     }
-    const r = (x, n) => { const q = Math.round(x * 1000); return n && q === Math.round(n * 1000) ? 0 : q; };
+    const r = (x, n) => { const q = Math.round(x * 1000 + 0.37); return n && q === Math.round(n * 1000 + 0.37) ? 0 : q; };  // (off halves, as famousGrid)
     return `${r(u, g.mobius ? 2 * g.L : g.nu)},${r(v, g.mobius ? 0 : g.nv)}`;
   };
   const at = new Map();
@@ -7708,7 +7714,7 @@ function famousSpot(i, K) {
 // far apart (a tetrakis triangle and its neighbour turned); a tile's corners there
 const shapeOf = (pts) => {
   const q = [...new Map(pts.map((p) => [`${Math.round(p[0] * 1000)},${Math.round(p[1] * 1000)}`, p])).values()], m = [0, 1].map((d) => q.reduce((sum, p) => sum + p[d], 0) / q.length);
-  return q.map((p) => `${Math.round((p[0] - m[0]) * 100)},${Math.round((p[1] - m[1]) * 100)}`).sort().join(' ');
+  return q.map((p) => `${Math.round((p[0] - m[0]) * 100 + 0.37)},${Math.round((p[1] - m[1]) * 100 + 0.37)}`).sort().join(' ');  // (off halves)
 };
 const tileCorners = (g, t) => {  // (a Möbius strip's back: its front's, turned over, as mobiusLoop)
   const back = g.mobius && t >= g.front, s = back ? t - g.front : t;
@@ -7732,64 +7738,76 @@ function sheetPatternAt(spot, cells) {
   }
   return [];
 }
-// the plane's cell at a place (its middle; a torus: once round it too), and each one's shape (see shapeOf), once a grid
-let cellKeysMemo = null;
-function planeCellKeys() {
-  const { kind, W, row, torus } = walk.plane, id = `${kind}|${W}|${torus}`;
-  if (cellKeysMemo?.id === id) return cellKeysMemo;
-  const at = new Map(), shape = [], key = ([u, v]) => `${Math.round(u * 1000 + 0.37)},${Math.round(v * 1000 + 0.37)}`, o = cellMiddle(kind, 0, 0);  // (off halves: a middle on one, turned round, either side)
-  const P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]);  // (a torus: its two turns round)
-  const ends = torus ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [i * P[0][0] + j * P[1][0], i * P[0][1] + j * P[1][1]])) : [[0, 0]];
-  const cellAt = ([u, v]) => { for (const [x, y] of ends) { const t = at.get(key([u + x, v + y])); if (t !== undefined) return t; } };
-  for (let t = 0; t < W * row; t++) {
-    const x = t % row, y = Math.floor(t / row), pts = planeCorners(kind, x, y);
-    if (!pts) continue;
-    at.set(key(cellMiddle(kind, x, y)), t);
-    shape[t] = shapeOf(pts);
+// Famous anywhere: the cells' places (the plane's middles, a sheet's: see sheetIndex), the cell at a place (a torus:
+// round it too), each cell's shape (see shapeOf), a pattern's cells' places and shapes; null on a solid (Famous
+// centred alone), once a grid
+let famousMemo = null;
+function famousGrid() {
+  const g = walk.geo, kind = patternKind(), id = walk.plane ? `${kind}|${walk.plane.W}|${walk.plane.torus}` : g;
+  if (famousMemo?.id === id) return famousMemo;
+  if (!walk.plane && !g.torus) return null;
+  let place, cellAt, corners, n, unitsOf = (p) => p;
+  if (walk.plane) {
+    const { W, row, torus } = walk.plane, at = new Map(), key = ([u, v]) => `${Math.round(u * 1000 + 0.37)},${Math.round(v * 1000 + 0.37)}`;  // (off halves: a middle on one, turned round, either side)
+    const o = cellMiddle(kind, 0, 0), P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]);  // (a torus: its two turns round)
+    const ends = torus ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [i * P[0][0] + j * P[1][0], i * P[0][1] + j * P[1][1]])) : [[0, 0]];
+    place = (t) => cellMiddle(kind, t % row, Math.floor(t / row));
+    corners = (t) => planeCorners(kind, t % row, Math.floor(t / row));
+    n = W * row;
+    for (let t = 0; t < n; t++) if (corners(t)) at.set(key(place(t)), t);
+    cellAt = ([u, v]) => { for (const [x, y] of ends) { const t = at.get(key([u + x, v + y])); if (t !== undefined) return t; } };
+  } else {
+    const { key, at } = sheetIndex(g);
+    unitsOf = sheetUnits(g, kind);
+    place = (t) => sheetPlace(g, t);
+    corners = (t) => tileCorners(g, t);
+    n = g.n;
+    cellAt = (p) => at.get(key(p));
   }
-  return (cellKeysMemo = { id, cellAt, shape });
+  const shape = Array.from({ length: n }, (_, t) => { const c = corners(t); return c && shapeOf(c); });
+  const pattern = (cells) => [cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y))), cells.map(([x, y]) => shapeOf(planeCorners(kind, x, y).map(unitsOf)))];
+  return (famousMemo = { id, place, cellAt, shape, pattern });
 }
 // each colour's choices: the rule's patterns (a rule of your own: all its grid's), every way they turn and mirror
 // (the same shape once), anywhere in its part on the plane, else at its spot where they fit its block, as [cell, state…]
 // in its colour
-function patternChoices() {
-  const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText;
+function patternChoices(centred) {
+  const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K], F = !centred && famousGrid();
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  const span = (cs) => Math.max(...cs.map((c) => Math.floor(c[0] / (PER_RHOMBUS[kind] ?? 1))), ...cs.map((c) => c[1])) + 1;
-  const room = g.mobius ? Math.min((2 * g.L) / K, g.nv)  // (a Möbius strip: a stretch of its loop)
+  // (centred: a rectangle's room and its patterns' spans in its grid's lattice cells, as on that grid)
+  const R = RECTS[kind], cellsAcross = R ? Math.min(...R.basis.map((v) => Math.hypot(...v))) / Math.hypot(...latticeStep(R.base)) : 1, pk = R ? R.base : kind, pper = PER_RHOMBUS[pk] ?? 1;
+  const span = (rle, t, f) => { const cs = orientPattern(pk, rle, t, f); return Math.max(...cs.map((c) => Math.floor(c[0] / pper)), ...cs.map((c) => c[1])) + 1; };
+  const room = walk.plane ? (Math.min(walk.plane.W / cols, walk.plane.W / rows) * cellsAcross) : g.mobius ? Math.min((2 * g.L) / K, g.nv)  // (a Möbius strip: a stretch of its loop)
     : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
     : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
   const shapes = [], seen = new Set();
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === baseOf(kind) && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
       const cells = orientPattern(kind, p[4], t, f), k = cells.map((c) => c.join(',')).sort().join(' ');
-      if ((walk.plane || span(cells) <= room - 2) && !seen.has(k)) { seen.add(k); shapes.push(cells); }
+      if ((F || span(p[4], t, f) <= room - 2) && !seen.has(k)) { seen.add(k); shapes.push(cells); }
     }
   }
-  // the plane: every shape moved onto every cell of a colour's part (as Wild's), kept where its cells all land on cells
+  // anywhere: every shape moved onto every cell of a colour's part (as Wild's), kept where its cells all land on cells
   // of that part of their shapes (a move the grid allows there)
-  if (walk.plane) {
-    const { kind: pk, row } = walk.plane, { cellAt, shape } = planeCellKeys();
-    return huntParts(0, K).map((part, i) => {
-      const here = new Set(part), out = [], laidSeen = new Set();
-      for (const cells of shapes) {
-        const ms = cells.map(([x, y]) => cellMiddle(pk, x, y)), sh = cells.map(([x, y]) => shapeOf(planeCorners(pk, x, y)));
-        for (const t of part) {
-          if (shape[t] !== sh[0]) continue;
-          const to = cellMiddle(pk, t % row, Math.floor(t / row)), cs = [];
-          for (let k = 0; k < cells.length; k++) {
-            const c = cellAt([ms[k][0] - ms[0][0] + to[0], ms[k][1] - ms[0][1] + to[1]]);
-            if (c === undefined || !here.has(c) || shape[c] !== sh[k]) break;
-            cs.push(c, K > 1 ? i + 1 + K * (cells[k][2] - 1) : cells[k][2]);
-          }
-          const k = cs.filter((_, q) => !(q & 1)).sort().join(' ');
-          if (cs.length === 2 * cells.length && !laidSeen.has(k)) { laidSeen.add(k); out.push(Int32Array.from(cs)); }
+  if (F) return huntParts(0, K).map((part, i) => {
+    const here = new Set(part), out = [], laidSeen = new Set();
+    for (const cells of shapes) {
+      const [ms, sh] = F.pattern(cells);
+      for (const t of part) {
+        if (F.shape[t] !== sh[0]) continue;
+        const to = F.place(t), cs = [];
+        for (let k = 0; k < cells.length; k++) {
+          const c = F.cellAt([ms[k][0] - ms[0][0] + to[0], ms[k][1] - ms[0][1] + to[1]]);
+          if (c === undefined || !here.has(c) || F.shape[c] !== sh[k]) break;
+          cs.push(c, K > 1 ? i + 1 + K * (cells[k][2] - 1) : cells[k][2]);
         }
+        const k = cs.filter((_, q) => !(q & 1)).sort().join(' ');
+        if (cs.length === 2 * cells.length && !laidSeen.has(k)) { laidSeen.add(k); out.push(Int32Array.from(cs)); }
       }
-      return out;
-    });
-  }
-  // a shape kept where it lays whole for every colour (a sheet's: see sheetPatternAt)
+    }
+    return out;
+  });
+  // centred: a shape kept where it lays whole for every colour, at its spot (a sheet's: see sheetPatternAt)
   const laid = shapes.map((cells) => Array.from({ length: K }, (_, i) => patternAt(i, K, cells))).filter((per) => per.every((cs) => cs.length));
   return Array.from({ length: K }, (_, i) => laid.map((per) => Int32Array.from(per[i].flatMap(([t, v]) => [t, K > 1 ? i + 1 + K * (v - 1) : v]))));
 }
@@ -10657,8 +10675,9 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   const b = document.createElement('button');
   b.type = 'button';
   b.dataset.zone = zone;
-  b.innerHTML = `${pic ? icon(pic) : pixelIcon('.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Patterns: a glider
-  b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour at its spot, turned or mirrored"
+  b.innerHTML = `${pic ? icon(pic) : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Famous: a glider (centred: in a frame)
+  b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour anywhere in its part, turned or mirrored"
+    : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : zone === 'face' ? 'A whole face of the solid for each colour: random starts on it' : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
