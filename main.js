@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.851';
+const VERSION = '0.1.852';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1048,7 +1048,10 @@ const MODES = {
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   life2d:     { base: 2, lattice: 'square', life: true, plane: 'square', where: 'a grid of squares' },  // on the plane (see plane)
   // a reversible automaton: the grid in 2 × 2 blocks, shifted by one each generation (Margolus's), each block by its rule
-  blocks2d:   { base: 2, lattice: 'square', life: true, plane: 'square', margolus: true, where: 'a grid of squares in 2 × 2 blocks, shifted by one each generation' },
+  blocks2d:   { base: 2, lattice: 'square', life: true, plane: 'square', margolus: true, where: 'a grid of squares in blocks of 4 round a corner, a corner and the one across a square in turn (Margolus\'s)' },
+  blocks2dTri: { base: 2, lattice: 'tri', life: true, plane: 'tri', margolus: true, where: 'a grid of triangles in blocks of 6 (hexagons) round a corner, 3 sets of corners in turn' },
+  blocks2dHex: { base: 2, lattice: 'hex', life: true, plane: 'hex', margolus: true, where: 'a grid of hexagons in blocks of 3 round a corner, 2 sets of corners in turn' },
+  blocks2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', margolus: true, where: 'a grid of Cairo pentagons in blocks of 4 round a corner, its 2 kinds of corners in turn' },
   life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
   life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
   life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons' },
@@ -2253,7 +2256,7 @@ const MODE_ICONS = {
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dSpectre: 'spectre', life2dAmmann: 'ammann', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
-  life2d: 'grid', blocks2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
+  life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
@@ -2303,7 +2306,7 @@ const NAV = {
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''],
-  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
@@ -5573,12 +5576,12 @@ const HENSEL_LETTERS = Array.from({ length: 9 }, (_, c) => (c === 0 || c === 8 ?
 // live neighbours, and C, the number of states: 2 for Life, more for "Generations" rules (dying
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
-// A block rule (Margolus's): M and the new state of each of a 2 × 2 block's 16 (its cells' bits: 1 top left, 2 top right,
-// 4 bottom left, 8 bottom right), a permutation of them, so reversible: its inverse runs it back
+// A block rule (Margolus's, see planeBlocks): M and the new state of each of a block's 2^k (its k cells' bits in turn
+// round its corner), a permutation of them, so reversible: its inverse runs it back
 function parseBlocks(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^M((?:\d+,){15}\d+)$/), to = m && m[1].split(',').map(Number);
-  if (!to || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(16).keys()]}`) return null;
-  return { margolus: Uint8Array.from(to), B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}` };
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^M(\d+(?:,\d+)*)$/), to = m && m[1].split(',').map(Number), k = to && Math.log2(to.length);
+  if (!to || !Number.isInteger(k) || k < 2 || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(to.length).keys()]}`) return null;
+  return { margolus: Uint8Array.from(to), k, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}` };
 }
 function parseRule(text) {
   if (/^\s*M/i.test(text)) return parseBlocks(text);
@@ -6279,7 +6282,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel');
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? { to: rule.margolus, W, row, torus: planeTorus(kind) && W % 2 === 0 } : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(baseOf(kind), W, planeTorus(kind)), to: rule.margolus } : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -6826,7 +6829,7 @@ function drawLifePlane() {
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
 for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = SURFACE_CELLS[`${mobiusOf(kind)}Turned`] = t.mark;
-const lifeMark = (mode) => (mode.margolus ? '▣' : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺', ammann: '✵' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
+const lifeMark = (mode) => (mode.margolus ? BLOCK_MARKS[mode.plane] : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺', ammann: '✵' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -6900,8 +6903,6 @@ function renderColours() {
 const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '✺': 7, '✵': 12 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
-  'M0,8,4,3,2,5,9,7,1,6,10,11,12,13,14,15': 'oo...,oo...,.....,...oo,...oo', 'M15,14,13,3,11,5,6,1,7,9,10,2,12,4,8,0': '.o.o.,o...o,.....,o...o,.o.o.',
-  'M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0': 'ooooo,o...o,o.o.o,o...o,ooooo', 'M0,4,1,3,8,5,6,7,2,9,10,11,12,13,14,15': '..o..,.....,o...o,.....,..o..',  // (the block rules)
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
   'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...', 'B34/S23/C12': '..o..,.ooo.,.+++.,.+++.,.+.+.', 'B24/S13/C12': 'o....,.++..,..++.,...++,....+', 'B2/S1/C8': '.....,oo+++,o.+++,.....,.....', 'B23/S13/C8': '..o..,..+..,..+..,..+..,..+..', 'B2/S24/C8': '.....,.o++.,oo+++,.....,.....', 'B2/S28/C8': '....o,...o+,..++.,.++..,++...',
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
@@ -6959,24 +6960,42 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 // shape and its neighbours, the live ones in colour, for each count it is born with, survives with, dies with; its
 // dying stages after. The cell the most neighbours have (its counts all drawn), on a patch of its plane grid
 const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre', '✵': 'ammann' };
-// How a block rule works (see ruleTutorial): its blocks on even and odd generations, then each of a block's 16 states and
-// the one it turns into, those changing then those kept, by their live cells; the state before shown a moment, fading
+// How a block rule works (see ruleTutorial): the grid's sets of blocks in turn, on a piece of it (each block its own tint),
+// then a block's states and the one each turns into, one of each turned the same (the rule turns with its block), those
+// changing then those kept, by their live cells; the state before shown a moment, fading
 function blockTutorial(option, to) {
-  const alive = (s) => s.toString(2).replace(/0/g, '').length;
-  const cell = (x, y, fill) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}" stroke="var(--border)" stroke-width="0.04"/>`, square = (k, fill) => cell(k % 2, k >> 1, fill);
-  const block = (s, before) => `<svg viewBox="-0.08 -0.08 2.16 2.16">${[0, 1, 2, 3].map((k) => square(k, (s >> k) & 1 ? LIFE_ALIVE : UNLIT)).join('')}`
-    + (before === undefined ? '' : [0, 1, 2, 3].filter((k) => ((before >> k) & 1) !== ((s >> k) & 1)).map((k) => `<rect x="${k % 2}" y="${k >> 1}" width="1" height="1" fill="${(before >> k) & 1 ? LIFE_ALIVE : UNLIT}">`
-      + '<animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></rect>').join(''))
-    + '<rect x="0" y="0" width="2" height="2" fill="none" stroke-width="0.08" class="tut-centre"/></svg>';
-  const pair = (s) => `<figure><div>${block(s)}<span>→</span>${block(to[s], s)}</div><figcaption>${alive(s)} alive${alive(to[s]) !== alive(s) ? ` → ${alive(to[s])}` : ''}</figcaption></figure>`;
-  const states = [...Array(16).keys()].sort((a, b) => alive(a) - alive(b) || a - b), moved = states.filter((s) => to[s] !== s), kept = states.filter((s) => to[s] === s);
-  // the blocks, on a 4 × 4 piece of the grid: from its corner on even generations, one cell down and right on odd ones
-  const phase = (p) => `<svg viewBox="-0.1 -0.1 4.2 4.2">${[...Array(16).keys()].map((k) => cell(k % 4, k >> 2, UNLIT)).join('')}`
-    + [0, 2, 4].flatMap((y) => [0, 2, 4].map((x) => `<rect x="${x + p - 2}" y="${y + p - 2}" width="2" height="2" fill="none" stroke-width="0.1" class="tut-centre"/>`)).join('') + '</svg>';
+  const { kind, W, row } = walk.plane, { k, turns } = walk.life.margolus, mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
+  // a block of the first set, its cells closest together (not round a torus's seam), as the picture of a block
+  let best = 0, close = Infinity;
+  for (let i = 0; i < turns[0].length; i += k) {
+    const ms = [...turns[0].subarray(i, i + k)].map(mid), far = Math.max(...ms.flatMap((p) => ms.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1]))));
+    if (far < close) { close = far; best = i; }
+  }
+  const ring = [...turns[0].subarray(best, best + k)], pts = ring.flatMap(poly), xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const side = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)), pad = side * 0.05;
+  const box = (x0, y0, w) => `viewBox="${x0 - pad} ${y0 - pad} ${w + 2 * pad} ${w + 2 * pad}"`;
+  const points = (t) => poly(t).map((p) => p.join(',')).join(' '), colour = (st, j) => ((st >> j) & 1 ? LIFE_ALIVE : UNLIT);
+  const shape = (t, fill) => `<polygon points="${points(t)}" fill="${fill}" stroke="var(--border)" stroke-width="${side / 50}"/>`;
+  const fading = (t, fill) => `<polygon points="${points(t)}" fill="${fill}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>`;
+  const block = (st, before) => `<svg ${box(Math.min(...xs), Math.min(...ys), side)}>${ring.map((t, j) => shape(t, colour(st, j))).join('')}`
+    + (before === undefined ? '' : ring.map((t, j) => (colour(before, j) !== colour(st, j) ? fading(t, colour(before, j)) : '')).join('')) + '</svg>';
+  const alive = ringAlive, pair = (st) => `<figure><div>${block(st)}<span>→</span>${block(to[st], st)}</div><figcaption>${alive(st)} alive${alive(to[st]) !== alive(st) ? ` → ${alive(to[st])}` : ''}</figcaption></figure>`;
+  const first = (st) => Math.min(...Array.from({ length: k }, (_, r) => ringTurn(st, r, k)));  // (one of each turned the same)
+  const states = [...Array(1 << k).keys()].filter((st) => first(st) === st).sort((a, b) => alive(a) - alive(b) || a - b);
+  const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
+  // each set's blocks on a piece of the grid round that block: a tint each, in turn
+  const c = [0, 1].map((d) => ring.map(mid).reduce((a, p) => a + p[d], 0) / k), R = side * 1.6;
+  const near = [...Array(W * row).keys()].filter((t) => poly(t) && Math.hypot(mid(t)[0] - c[0], mid(t)[1] - c[1]) < R);
+  const tints = [0, 1, 2, 3, 4].map((j) => faded(LIFE_COLOURS[j], 0.35));
+  const phase = (blocks) => {
+    const of = new Map();
+    for (let i = 0; i < blocks.length; i += k) for (let j = 0; j < k; j++) of.set(blocks[i + j], i / k);
+    return `<svg ${box(c[0] - R, c[1] - R, 2 * R)}>${near.map((t) => shape(t, of.has(t) ? tints[of.get(t) % tints.length] : UNLIT)).join('')}</svg>`;
+  };
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of 2 × 2 cells, from its corner on even generations, one cell down and right on odd ones (Margolus's neighbourhood): `
-    + `each block turns into the one below, a different one for each of its 16 states, so the rule runs back too, the arrows the other way round.</p>`
-    + `<div class="tut-row"><figure><div>${phase(0)}</div><figcaption>even generations</figcaption></figure><figure><div>${phase(1)}</div><figcaption>odd generations</figcaption></figure></div>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood): `
+    + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.</p>`
+    + `<div class="tut-row">${turns.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>generations ${j}, ${j + turns.length}, ${j + 2 * turns.length}…</figcaption></figure>`).join('')}</div>`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div></div>`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
@@ -7155,7 +7174,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = !!parseRule(rule)?.margolus === !!mode.margolus;  // (blocks: a block rule only; else none)
+  const kindFits = mode.margolus ? parseRule(rule)?.k === BLOCKS[mode.plane].k : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
@@ -7228,16 +7247,95 @@ function lifeTrack(gen) {
 // around it if just one is (QuadLife's way: 4 colours, 1 + 1 + 1), else none (it stays dead). With C > 2 states a cell
 // that fails to survive goes through the dying stages, keeping its colour, and cannot be born again until
 // it is dead. A cell dying at generation g records died = g (fading trail).
-// A generation of a block rule: the grid's 2 × 2 blocks from (p, p), p = 0 or 1 each other generation, each block's state
-// to its rule's; on a torus of an even side its blocks round the seams, else a cell in no whole block as it is
-function blockStep({ to, W, row, torus }, a, b, g) {
-  const p = g & 1;
+// Blocks (Margolus's neighbourhood, on any of the reversible tab's grids): a grid's cells round its corners of most cells,
+// 4 squares, 6 triangles (a hexagon), 3 hexagons, 4 Cairo pentagons; those corners in sets, each set's blocks every cell
+// once, the sets in turn a generation each (turn: squares, a corner and the one across a square, Margolus's; triangles,
+// 3; hexagons, a corner and one next to it; Cairo's pentagons, the 2 kinds of corners where 4 meet). A corner's set: by
+// its place on the grid's lattice of corners (squares, triangles, hexagons with their middles: o, e1, e2 from cell 0), Cairo's
+// by its neighbours' (no two of a set on one pentagon). A block's cells in turn round its corner (a rule's ring)
+const mod = (x, m) => ((x % m) + m) % m;
+const BLOCKS = {
+  square: { k: 4, set: ([i, j]) => `${mod(i, 2)},${mod(j, 2)}`, turn: ['1,1', '0,0'], lattice: () => { const c = planeCorners('square', 0, 0); return [c[0], [1, 0], [0, 1]]; } },
+  tri: { k: 6, set: ([i, j]) => `${mod(i - j, 3)}`, turn: ['0', '1', '2'], lattice: () => { const c = planeCorners('tri', 0, 0); return [c[0], [c[1][0] - c[0][0], c[1][1] - c[0][1]], [c[2][0] - c[0][0], c[2][1] - c[0][1]]]; } },
+  hex: { k: 3, set: ([i, j]) => `${mod(i, 3)},${mod(j, 3)}`, turn: ['1,0', '0,1'], lattice: () => { const o = cellMiddle('hex', 0, 0), c = planeCorners('hex', 0, 0); return [o, ...[0, 1].map((q) => [c[q][0] - o[0], c[q][1] - o[1]])]; } },
+  cairo: { k: 4, set: null, turn: ['0', '1'] },
+};
+function planeBlocks(kind, W, torus) {
+  const B = BLOCKS[kind], row = planeRow(kind, W), corners = new Map();
+  const o = cellMiddle(kind, 0, 0), P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]), D = P[0][0] * P[1][1] - P[0][1] * P[1][0];
+  const home = ([x, y]) => {  // (a torus: the point brought onto its sheet, once)
+    if (!torus) return [x, y];
+    const dx = x - o[0], dy = y - o[1], u = (dx * P[1][1] - dy * P[1][0]) / D, v = (P[0][0] * dy - P[0][1] * dx) / D, fu = u - Math.floor(u + 1e-9), fv = v - Math.floor(v + 1e-9);
+    return [o[0] + fu * P[0][0] + fv * P[1][0], o[1] + fu * P[0][1] + fv * P[1][1]];
+  };
+  for (let t = 0; t < W * row; t++) {
+    const pts = planeCorners(kind, t % row, Math.floor(t / row));
+    if (!pts) continue;
+    const m = cellMiddle(kind, t % row, Math.floor(t / row));
+    for (const q of pts) {
+      const key = pointKey(home(q));
+      if (!corners.has(key)) corners.set(key, { at: q, cells: [] });
+      corners.get(key).cells.push([t, Math.atan2(m[1] - q[1], m[0] - q[0])]);  // (its turn round the corner, as the cell sees it)
+    }
+  }
+  const full = [...corners.values()].filter((c) => c.cells.length === B.k);
+  let setOf;
+  if (B.set) {
+    const [lo, e1, e2] = B.lattice(), d = e1[0] * e2[1] - e1[1] * e2[0];
+    setOf = (c) => { const dx = c.at[0] - lo[0], dy = c.at[1] - lo[1]; return B.set([Math.round((dx * e2[1] - dy * e2[0]) / d), Math.round((e1[0] * dy - e1[1] * dx) / d)]); };
+  } else {  // two sets, no two of a set on one cell: by turns from a first corner, across the cells two of them share
+    const of = new Map(), byCell = new Map();
+    for (const c of full) for (const [t] of c.cells) { if (!byCell.has(t)) byCell.set(t, []); byCell.get(t).push(c); }
+    for (const c0 of full) {
+      if (of.has(c0)) continue;
+      of.set(c0, '0');
+      for (const queue = [c0]; queue.length; ) {
+        const c = queue.pop();
+        for (const [t] of c.cells) for (const n of byCell.get(t)) if (!of.has(n)) { of.set(n, of.get(c) === '0' ? '1' : '0'); queue.push(n); }
+      }
+    }
+    setOf = (c) => of.get(c);
+  }
+  const turns = B.turn.map((set) => Int32Array.from(full.filter((c) => setOf(c) === set).flatMap((c) => c.cells.sort((x, y) => x[1] - y[1]).map(([t]) => t))));
+  // each cell in one block of a set at most (a torus of a size the sets do not fit round: its blocks as on walls)
+  const once = turns.every((blocks) => new Set(blocks).size === blocks.length);
+  return torus && !once ? planeBlocks(kind, W, false) : { k: B.k, turns };
+}
+// A generation of a block rule: the blocks of its set in turn (see planeBlocks), each block's state to its rule's; a cell
+// in no whole block (by walls) as it is
+function blockStep({ k, turns, to }, a, b, g) {
+  const blocks = turns[g % turns.length];
   b.set(a);
-  for (let y = p; y < W; y += 2) for (let x = p; x < row; x += 2) {
-    if (!torus && (x + 1 >= row || y + 1 >= W)) continue;
-    const x1 = (x + 1) % row, y1 = (y + 1) % W, c = [y * row + x, y * row + x1, y1 * row + x, y1 * row + x1];
-    const s = (a[c[0]] ? 1 : 0) | (a[c[1]] ? 2 : 0) | (a[c[2]] ? 4 : 0) | (a[c[3]] ? 8 : 0), n = to[s];
-    for (let k = 0; k < 4; k++) b[c[k]] = (n >> k) & 1;
+  for (let i = 0; i < blocks.length; i += k) {
+    let st = 0;
+    for (let j = 0; j < k; j++) if (a[blocks[i + j]]) st |= 1 << j;
+    const n = to[st];
+    for (let j = 0; j < k; j++) b[blocks[i + j]] = (n >> j) & 1;
+  }
+}
+// The block rules, on a ring of k cells (the same on every grid with blocks of k, each turned as its block): their
+// name, the blocks they fit, their words, the state a state turns into, their picture
+const ringTurn = (st, r, k) => { r = mod(r, k); return ((st << r) | (st >> (k - r))) & ((1 << k) - 1); };
+const ringAlive = (st) => st.toString(2).replace(/0/g, '').length;
+const RING_RULES = [
+  ['Billiard balls', (k) => k % 2 === 0, "Fredkin's billiard-ball machine, by Margolus: a lone cell to the far side of its block, two facing ones to the next two facing; balls fly along and bounce off walls (full blocks) and off each other",
+    (st, k) => (ringAlive(st) === 1 ? ringTurn(st, k / 2, k) : ringAlive(st) === 2 && ringTurn(st, k / 2, k) === st ? ringTurn(st, 1, k) : st), 'oo...,oo...,.....,...oo,...oo'],
+  ['Critters', (k) => k % 2 === 0, "Margolus's: a block half alive kept, the others reversed (one more than half also turned round)",
+    (st, k) => { const c = ringAlive(st), t = ((1 << k) - 1) ^ st; return c === k / 2 ? st : c === k / 2 + 1 ? ringTurn(t, k / 2, k) : t; }, '.o.o.,o...o,.....,o...o,.o.o.'],
+  ['Tron', () => true, "Toffoli and Margolus's: a block all alike reversed, the others kept", (st, k) => (st === 0 ? (1 << k) - 1 : st === (1 << k) - 1 ? 0 : st), 'ooooo,o...o,o.o.o,o...o,ooooo'],
+  ['Single rotation', () => true, 'a block of one turned a step round, the others kept', (st, k) => (ringAlive(st) === 1 ? ringTurn(st, 1, k) : st), '..o..,.....,o...o,.....,..o..'],
+  ['Swirl', () => true, 'a block of one turned a step round, one of one empty cell a step the other way', (st, k) => (ringAlive(st) === 1 ? ringTurn(st, 1, k) : ringAlive(st) === k - 1 ? ringTurn(st, -1, k) : st), 'oo..o,....o,.....,o....,o..oo'],
+];
+const BLOCK_MARKS = { square: '▣', tri: '⟐', hex: '⬣', cairo: '⌬' };  // (the rules' menu, by grid: marks of their own)
+for (const [kind, mark] of Object.entries(BLOCK_MARKS)) {  // each grid's rules, as Life's (see renderRuleSection), before Custom…
+  const k = BLOCKS[kind].k;
+  for (const [name, fits, words, rule, art] of RING_RULES) {
+    if (!fits(k)) continue;
+    const value = `M${Array.from({ length: 1 << k }, (_, st) => rule(st, k)).join(',')}`;
+    RULE_ICONS[value] = art;
+    const option = new Option(`${mark} ${value} — ${words}`, value);
+    option.dataset.name = name;
+    $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
   }
 }
 function lifeStep() {
