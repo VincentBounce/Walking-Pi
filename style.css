@@ -547,6 +547,14 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .tut-row figure > div > span { color: var(--muted); }
 .tut-row figure svg { flex: none; width: 88px; height: 88px; }
 .tut-row figcaption { width: 0; min-width: 100%; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
+.tut-phases figure svg { width: 132px; height: 132px; }  /* (a piece of the grid: its blocks, bigger) */
+.tut-walk figure svg { width: 96px; height: 96px; stroke-linecap: round; }  /* a walk's step: the way in, the step, the other digits' */
+.tut-walk .tut-way { stroke: var(--border); stroke-width: 0.05; }
+.tut-walk .tut-in { stroke: var(--muted); stroke-width: 0.09; }
+.tut-walk .tut-step { stroke: var(--accent); stroke-width: 0.12; }
+.tut-walk .tut-end { fill: var(--border); }
+.tut-walk .tut-here { fill: var(--muted); }
+.tut-walk .tut-to { fill: var(--accent); r: 0.14; }
 .tut-row .tut-centre { stroke: var(--accent); stroke-linejoin: round; }
 .tut-tools { position: absolute; top: 20px; right: 24px; z-index: 1; display: flex; gap: 6px; }
 .tut-tools button { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }  /* one size, whatever they hold */

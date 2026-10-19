@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.855';
+const VERSION = '0.1.856';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2572,7 +2572,7 @@ function renderModePicker() {
     return b;
   }));
   $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
-    + (kind === 'Life' || kind === 'Reversible' ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
+    + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
@@ -6968,10 +6968,12 @@ function blockTutorial(option, to) {
   const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), { k, turns } = planeBlocks(kind, W, false);
   if (to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
-  // a block of the first set, its cells closest together (not round a torus's seam), as the picture of a block
+  // a block of the first set, the nearest the grid's middle, as the picture of a block
+  const all = [...Array(W * row).keys()].filter((t) => poly(t)).map(mid), g = [0, 1].map((d) => all.reduce((a, p) => a + p[d], 0) / all.length);
+  const centreOf = (cells) => [0, 1].map((d) => cells.reduce((a, t) => a + mid(t)[d], 0) / cells.length);
   let best = 0, close = Infinity;
   for (let i = 0; i < turns[0].length; i += k) {
-    const ms = [...turns[0].subarray(i, i + k)].map(mid), far = Math.max(...ms.flatMap((p) => ms.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1]))));
+    const o = centreOf([...turns[0].subarray(i, i + k)]), far = Math.hypot(o[0] - g[0], o[1] - g[1]);
     if (far < close) { close = far; best = i; }
   }
   const ring = [...turns[0].subarray(best, best + k)], pts = ring.flatMap(poly), xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
@@ -6987,18 +6989,31 @@ function blockTutorial(option, to) {
   const states = [...Array(1 << k).keys()].filter((st) => first(st) === st).sort((a, b) => alive(a) - alive(b) || a - b);
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
   // each set's blocks on a piece of the grid round that block: a tint each, in turn
-  const c = [0, 1].map((d) => ring.map(mid).reduce((a, p) => a + p[d], 0) / k), R = side * 1.6;
+  // (the piece: its cells within R of that block's centre, framed square round it; a block's tint not its neighbours')
+  const c = centreOf(ring), R = side * 1.25;
   const near = [...Array(W * row).keys()].filter((t) => poly(t) && Math.hypot(mid(t)[0] - c[0], mid(t)[1] - c[1]) < R);
-  const tints = [0, 1, 2, 3, 4].map((j) => faded(LIFE_COLOURS[j], 0.35));
+  const reach = Math.max(...near.flatMap(poly).map((p) => Math.max(Math.abs(p[0] - c[0]), Math.abs(p[1] - c[1]))));
+  const sides = ring.flatMap((t) => poly(t).map((p, j, ps) => [p, ps[(j + 1) % ps.length]])), at = (p) => pointKey(p);
+  const once = sides.filter(([a, b]) => sides.filter(([u, v]) => at(u) === at(b) && at(v) === at(a)).length === 0);  // (its rim: sides not shared inside it)
+  const outline = once.map(([a, b]) => `M${a.join(',')}L${b.join(',')}`).join('');
+  const tints = [0, 1, 2, 3, 4, 5].map((j) => faded(LIFE_COLOURS[j], 0.45));
   const phase = (blocks) => {
-    const of = new Map();
-    for (let i = 0; i < blocks.length; i += k) for (let j = 0; j < k; j++) of.set(blocks[i + j], i / k);
-    return `<svg ${box(c[0] - R, c[1] - R, 2 * R)}>${near.map((t) => shape(t, of.has(t) ? tints[of.get(t) % tints.length] : UNLIT)).join('')}</svg>`;
+    const of = new Map(), tint = [], touching = new Map();  // (a corner: the tints of the blocks round it)
+    for (let i = 0; i < blocks.length; i += k) {
+      const cells = [...blocks.subarray(i, i + k)], b = i / k, keys = cells.flatMap(poly).map(at);
+      if (!cells.some((t) => near.includes(t))) continue;
+      tint[b] = tints.findIndex((_, j) => !keys.some((q) => touching.get(q)?.has(j)));
+      for (const q of keys) touching.set(q, (touching.get(q) ?? new Set()).add(tint[b]));
+      for (const t of cells) of.set(t, b);
+    }
+    return `<svg viewBox="${c[0] - reach - pad} ${c[1] - reach - pad} ${2 * (reach + pad)} ${2 * (reach + pad)}">`
+      + `${near.map((t) => shape(t, of.has(t) ? tints[tint[of.get(t)]] : UNLIT)).join('')}`
+      + `<path d="${outline}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (the block below framed)
   };
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood): `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.</p>`
-    + `<div class="tut-row">${turns.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>generations ${j}, ${j + turns.length}, ${j + 2 * turns.length}…</figcaption></figure>`).join('')}</div>`
+    + `<div class="tut-row tut-phases">${turns.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div></div>`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
@@ -7078,10 +7093,33 @@ function ruleTutorial(option) {
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
+// How a walk works: each digit a step, drawn by its own stepper, the way in (a relative walk's) muted, the digit's step
+// lit, the other digits' ends as dots. The walks a digit steps by (not a spiral's, a parity's or a pivot's)
+const WALK_IN = { turtle: [1], turtleCells: [1], triTurtle: [2], hexTurtleCells: [2], hexTurtle: [0], triTurtleCells: [0], cairo: [1] };  // (a straight step if any)
+const walkTutorialFits = (w) => ['turtle', 'cardinal', 'king', 'cairo', 'triTurtle', 'triFixed', 'hexTurtle', 'hexFixed'].some((m) => w === m || w === `${m}Cells`);
+function walkTutorial(w) {
+  $('ruleTuto').hidden = false;
+  for (const b of document.querySelectorAll('.how-it-works')) { b.classList.add('active'); b.classList.add('switch'); }
+  $('ruleTuto').dataset.shown = w;
+  const mode = MODES[w], into = WALK_IN[w] ?? [];
+  const path = (digits) => { const step = STEPPERS[w](); return [[0, 0], ...digits.map((g) => step(g).slice(1, 3))]; };
+  const figs = [...Array(mode.base).keys()].map((d) => ({ d, at: path([...into, d]), ends: [...Array(mode.base).keys()].map((g) => path([...into, g]).at(-1)) }));
+  const r = Math.max(...figs.flatMap(({ at, ends }) => [...at, ...ends].map((p) => Math.max(...[0, 1].map((a) => Math.abs(p[a] - at.at(-2)[a])))))) + 0.3;  // (round where it steps from)
+  const line = (a, b, cls) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${cls}"/>`;
+  const dot = (p, cls) => `<circle cx="${p[0]}" cy="${p[1]}" r="0.09" class="${cls}"/>`;
+  const fig = ({ d, at, ends }) => `<svg viewBox="${at.at(-2)[0] - r} ${at.at(-2)[1] - r} ${2 * r} ${2 * r}">${ends.map((p) => line(at.at(-2), p, 'tut-way')).join('')}`
+    + `${at.slice(1).map((p, i) => line(at[i], p, i === at.length - 2 ? 'tut-step' : 'tut-in')).join('')}${ends.map((p) => dot(p, 'tut-end')).join('')}${dot(at.at(-2), 'tut-here')}${dot(at.at(-1), 'tut-to')}</svg>`;
+  const words = {};
+  for (const [, d, t] of mode.rule.matchAll(/<b>(\d+)<\/b>\s*([^<]*)/g)) words[d] = t.replace(/[,\s]+(or\s*)?$/, '');
+  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
+    + `<h3>${walkName(w)}</h3><p>The number read digit by digit in base ${mode.base}, each digit a step ${mode.rule.replace(/:.*/, '')}${into.length ? ', the way it came in (grey) telling where it turns' : ''}.</p>`
+    + `<div class="tut-row tut-walk">${figs.map((f) => `<figure><div>${fig(f)}</div><figcaption><b>${f.d}</b> ${words[f.d] ?? ''}</figcaption></figure>`).join('')}</div></div>`;
+  $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
+}
 let customOpen = false;  // the Custom rule card clicked: its states, births and survivals shown, a known rule in use or not
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
-  if (!mode.life) { ruleTutorial(null); return; }
+  if (!mode.life) { if (!$('ruleTuto').hidden && walkTutorialFits($('mode').value)) walkTutorial($('mode').value); else ruleTutorial(null); return; }  // (a walk's: it follows the walk)
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
   const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
@@ -11237,10 +11275,14 @@ $('lifePreset').addEventListener('change', () => {
   if (MODES[$('mode').value].life) compute();
 });
 // How it works by the Grid's and the Populations' titles: as the Rule's
-document.addEventListener('click', (e) => { if (e.target.closest?.('.how-it-works') && e.target.closest('.how-it-works') !== $('watchRule')) $('watchRule').click(); });
+document.addEventListener('click', (e) => {
+  if (!e.target.closest?.('.how-it-works') || e.target.closest('.how-it-works') === $('watchRule')) return;
+  if (MODES[$('mode').value].life) $('watchRule').click();
+  else if ($('ruleTuto').hidden) walkTutorial($('mode').value); else ruleTutorial(null);  // (a walk's)
+});
 // how a rule works closes on a click anywhere but on it, the rules (your own's too), the populations and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles', 'planeRow', 'sizeRow'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles', 'planeRow', 'sizeRow', 'navRules', 'walkOn'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
