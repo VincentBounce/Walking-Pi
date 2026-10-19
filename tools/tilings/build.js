@@ -174,6 +174,12 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
 { const L = (1 + R3) / Math.SQRT2, r = Math.SQRT1_2, a = [L, 0], b = [0, L];
   const motif = [...[60, 150, 240, 330].map((d) => mul(dir(d), r)), ...[30, 120, 210, 300].map((d) => add([L / 2, L / 2], mul(dir(d), r)))];
   cell('snubsquare', a, b, polygons(points(a, b, motif, 8), false)); }
+// truncated hexagonal (3.12.12): dodecagons of side 1 side by side (their middles 2 + √3 apart), triangles between
+{ const s = 2 + R3, R = 1 / (2 * Math.sin(Math.PI / 12)), a = [s, 0], b = mul(dir(60), s), pts = points(a, b, Array.from({ length: 12 }, (_, k) => mul(dir(15 + 30 * k), R)), 6);
+  cell('trunchex', a, b, polygons(pts, false)); }
+// truncated trihexagonal (4.6.12): the kisrhombille's points, their faces (dodecagons, hexagons, squares)
+{ const s = 3 + R3, R = 1 / (2 * Math.sin(Math.PI / 12)), a = [s, 0], b = mul(dir(60), s), pts = points(a, b, Array.from({ length: 12 }, (_, k) => mul(dir(15 + 30 * k), R)), 5);
+  cell('trunctrihex', a, b, polygons(pts, false)); }
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)

@@ -1,0 +1,10 @@
+trunctrihex 103448 rules 2870 candidates 112s
+trunctrihex done 894s
+  B27/S1389/C3    0.351  T 841 (302–3739) spread 0.71 plateau 0.39 at200 7.5% ash 1.13% osc 67%
+  B245/S2378/C5   0.273  T 819 (241–3464) spread 0.82 plateau 0.68 at200 5% ash 1.48% osc 100%
+  B28/S1379/C3    0.267  T 1042 (346–2331) spread 0.51 plateau 0.47 at200 6.4% ash 0.78% osc 83%
+  B247/S2378/C5   0.258  T 869 (354–2569) spread 0.67 plateau 0.5 at200 4.5% ash 0.98% osc 100%
+  B27/S13/C3      0.248  T 1051 (534–2915) spread 0.49 plateau 0.54 at200 7.8% ash 0.69% osc 92%
+  B2/S139/C3      0.241  T 856 (272–2544) spread 0.59 plateau 0.47 at200 5.2% ash 0.87% osc 58%
+  B279/S13/C3     0.227  T 964 (534–2631) spread 0.45 plateau 0.36 at200 6.2% ash 0.64% osc 100%
+  B257/S237/C4    0.216  T 897 (163–6000) spread 1.01 plateau 0.56 at200 4.7% ash 0.72% osc 92%

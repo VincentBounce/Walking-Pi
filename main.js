@@ -41,6 +41,7 @@ const VERSION = '0.1.786';
 const VERSION = '0.1.792';
 const VERSION = '0.1.793';
 const VERSION = '0.1.794';
+const VERSION = '0.1.795';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -874,6 +875,12 @@ const TILINGS = {
   snubsquare: { name: 'Snub square', mark: '✠', cells: 'tiles', where: "a grid of squares and triangles (the snub square tiling, Cairo's dual)", most: 12, turns: 4, mirror: false, pivot: [0, 0], sheet: [[1, 0], [0, 1]],
     basis: [[1.9318516525781364, 0], [0, 1.9318516525781364]],
     polys: [[[-0.183013,-0.316987],[0.316987,-0.183013],[0.183013,0.316987],[-0.316987,0.183013]],[[-0.183013,0.683013],[0.183013,0.316987],[0.316987,0.816987]],[[0.316987,-0.183013],[0.683013,0.183013],[0.183013,0.316987]],[[0.183013,0.316987],[0.683013,0.183013],[0.816987,0.683013],[0.316987,0.816987]],[[0.816987,0.683013],[0.683013,0.183013],[1.183013,0.316987]],[[0.816987,0.683013],[0.683013,1.183013],[0.316987,0.816987]]] },
+  trunchex: { name: 'Dodecagons', mark: '❂', cells: 'tiles', where: "a grid of dodecagons and triangles (the truncated hexagonal tiling)", most: 12, turns: 6, mirror: true, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
+    basis: [[3.732050807568877, 0], [1.866025403784439, 3.232050807568877]],
+    polys: [[[-0.57735,0.154701],[-0.42265,-0.154701],[-0.154701,-0.42265],[0.154701,-0.57735],[0.42265,-0.57735],[0.57735,-0.42265],[0.57735,-0.154701],[0.42265,0.154701],[0.154701,0.42265],[-0.154701,0.57735],[-0.42265,0.57735],[-0.57735,0.42265]],[[0.42265,0.154701],[0.42265,0.42265],[0.154701,0.42265]],[[0.57735,0.57735],[0.845299,0.57735],[0.57735,0.845299]]] },
+  trunctrihex: { name: 'Big rhombitri', mark: '❃', cells: 'tiles', where: "a grid of dodecagons, hexagons and squares (the truncated trihexagonal tiling)", most: 12, turns: 6, mirror: true, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
+    basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
+    polys: [[[0.333333,0.122008],[0.455342,-0.122008],[0.666667,-0.122008],[0.544658,0.122008]],[[0.333333,0.122008],[0.544658,0.122008],[0.544658,0.333333],[0.333333,0.544658],[0.122008,0.544658],[0.122008,0.333333]],[[0.333333,0.122008],[0.122008,0.333333],[-0.122008,0.455342],[-0.333333,0.455342],[-0.455342,0.333333],[-0.455342,0.122008],[-0.333333,-0.122008],[-0.122008,-0.333333],[0.122008,-0.455342],[0.333333,-0.455342],[0.455342,-0.333333],[0.455342,-0.122008]],[[0.122008,0.333333],[0.122008,0.544658],[-0.122008,0.666667],[-0.122008,0.455342]],[[0.333333,0.544658],[0.544658,0.333333],[0.666667,0.455342],[0.455342,0.666667]],[[0.455342,0.666667],[0.666667,0.455342],[0.877992,0.455342],[0.877992,0.666667],[0.666667,0.877992],[0.455342,0.877992]]] },
 };
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip)
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
@@ -5614,6 +5621,14 @@ const DRAW_PATTERNS = [
   ['snubsquarelife-osc', 'snubsquare', ['B359/S0148/C3'], 'Oscillator', '.A.B$2.A3.A!', 'period 3 · 4 cells'],
   ['snubsquarelife-meth', 'snubsquare', ['B359/S0148/C3'], 'Methuselah', 'A2.4A4.A$5.A5.A$.A2.A.A2.A!', 'settles at generation 341 · 12 cells'],
   ['snubsquarefuses-meth', 'snubsquare', ['B367/S1289/C3'], 'Methuselah', '.A6.A.A$4.2A.A.A$4.3A.2A!', 'settles at generation 1,715 · 12 cells'],
+  ['bigrhombitrilife-ship', 'trunctrihex', ['B27/S1389/C3'], 'Spaceship', '5.A$3BA4.A!', 'flies, period 4 · 6 cells'],
+  ['bigrhombitrilife-osc', 'trunctrihex', ['B27/S1389/C3'], 'Oscillator', '10.2A.A2B$5.ABA.BA$8.B!', 'period 6 · 11 cells'],
+  ['bigrhombitrigliders-ship', 'trunctrihex', ['B245/S2378/C5'], 'Spaceship', '11.A$6.3A.2A.ABA$5.AC2D2BA2.AD$B.A.D.B.C5.AD!', 'flies, period 8 · 25 cells'],
+  ['bigrhombitrigliders-osc', 'trunctrihex', ['B245/S2378/C5'], 'Oscillator', '5.D.B.CA$5.ADCAB!', 'period 12 · 9 cells'],
+  ['dodecagonlife-osc', 'trunchex', ['B238/S0457/C5'], 'Oscillator', '3.AB.A$AB.2B.A$A2.A!', 'period 30 · 10 cells'],
+  ['dodecagonlife-meth', 'trunchex', ['B238/S0457/C5'], 'Methuselah', '2.A2.A.2A$.3A!', 'settles at generation 699 · 7 cells'],
+  ['dodecagonsparks-osc', 'trunchex', ['B235/S0457/C5'], 'Oscillator', '2.BA.BA$A.2B2.A$A2.A!', 'period 30 · 10 cells'],
+  ['dodecagonsparks-meth', 'trunchex', ['B235/S0457/C5'], 'Methuselah', '.A.A.A$A2.2A$5.A!', 'settles at generation 791 · 7 cells'],
   ['type15life-ship', 'pent15', ['B247/S034/C4'], 'Spaceship', 'AB.B.A2.2CA!', 'flies, period 24 (turned half way at 12) · 7 cells'],
   ['type15life-osc', 'pent15', ['B247/S034/C4'], 'Oscillator', '26.A10.A17.A!', 'period 8 · 3 cells'],
   ['type15life-meth', 'pent15', ['B247/S034/C4'], 'Methuselah', '19.2A19.A5.A3.A4.A7.2A7.A16.A!', 'settles at generation 363 · 10 cells'],
@@ -6569,6 +6584,10 @@ const RULE_ICONS = {
   'B27/S28': '.....,.....,.o.o.,.....,.....',
   'B359/S0148/C3': '.....,.....,o.+..,.o...,.....',
   'B367/S1289/C3': '.....,.....,.oo.o,.ooo.,.....',
+  'B27/S1389/C3': '.....,.....,...o.,+o...,.....',
+  'B245/S2378/C5': '.....,.....,.ooo.,o++++,.+.+.',
+  'B238/S0457/C5': '.....,..o+.,+.++.,..o..,.....',
+  'B235/S0457/C5': '.....,.o.o.,o..oo,.....,.....',
   'B247/S034/C4': '++o++,+...+,.ooo.,..o..,+...+',
   'B256/S67': '.....,o.o.o,.ooo.,.....,.ooo.',
   'B38/S1369': '.....,..o..,o.o.o,.o.o.,o...o',
