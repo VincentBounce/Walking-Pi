@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.839';
+const VERSION = '0.1.840';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -603,6 +603,12 @@ function formulaWorker() {
     }
   };
 }
+
+// A number to steps of 1/k, off their halves (by 0.37 of a step): a value got two ways, a hair apart, rounds alike (one
+// right on a half, as many of the tiles' corners and middles are, would round either side); a point's key, so: to find
+// a place again however it was computed
+const roundOff = (x, k = 1000) => Math.round(x * k + 0.37);
+const pointKey = ([x, y], k = 1000) => `${roundOff(x, k)},${roundOff(y, k)}`;
 
 /* ---- 1.6 Helpers shared by the page and the worker ------------------------------------------- */
 // A worker cannot see this file's functions: compute() builds its source from the text of
@@ -4152,7 +4158,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
   const polys = frame.map((P) => P.map(([u, v]) => [u + 0.5 - c[0], v + 0.5 - c[1]]));
   const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map();
   const corner = (i, j) => {  // a corner once, by its place on the sheet round the seams (not by its rounded point in space)
-    const Q = 31415.9, k = `${Math.round((((i % nu) + nu) % nu) * Q) % Math.round(nu * Q)},${Math.round((((j % nv) + nv) % nv) * Q) % Math.round(nv * Q)}`;
+    const k = `${roundOff(((i % nu) + nu) % nu, 1e4) % roundOff(nu, 1e4)},${roundOff(((j % nv) + nv) % nv, 1e4) % roundOff(nv, 1e4)}`;
     if (!ids.has(k)) ids.set(k, add(...torusPoint(i, j, nu, nv, 1)));
     return ids.get(k);
   };
@@ -5779,13 +5785,13 @@ function squarePatch(items, W, poly) {
   cells.forEach(poly);
   for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
   // the walls: the items beyond touching one of them (sharing a corner)
-  const key = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, inside = new Set(rows.flatMap((h) => h.p.map(key)));
+  const inside = new Set(rows.flatMap((h) => h.p.map((p) => pointKey(p))));
   const edge = far(items[W * W - 1]) + 3, near = [];  // (the items just beyond: the next ones by distance)
   for (let k = W * W; k < items.length && far(items[k]) < edge; k++) near.push(items[k]);
-  const walls = near.filter((h) => poly(h).some((q) => inside.has(key(q)))).map((h) => h.p);
+  const walls = near.filter((h) => poly(h).some((q) => inside.has(pointKey(q)))).map((h) => h.p);
   // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
   const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
-  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), key };
+  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at) };
 }
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
@@ -5907,7 +5913,7 @@ const PENROSE = (() => {
       const Q = lerp(B, A, 1 / phi), S = lerp(B, C, 1 / phi);
       return [[1, S, C, A], [1, Q, S, B], [0, S, Q, A]];
     });
-    const key = ([x, y]) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`, half = new Map(), items = [];
+    const key = (p) => pointKey(p, 1e4), half = new Map(), items = [];
     for (const [c, A, B, C] of tris) {
       const k = `${c}|${[key(B), key(C)].sort().join('|')}`, other = half.get(k);
       if (!other) { half.set(k, A); continue; }
@@ -6315,7 +6321,7 @@ function renderPlaneRow() {
 let wallsMemo = null;
 function planeWalls(kind, W) {
   if (wallsMemo?.key === `${kind}|${W}`) return wallsMemo.cells;
-  const row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, k = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, rim = new Set(), cells = [];
+  const row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, k = (p) => pointKey(p), rim = new Set(), cells = [];
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) if (y < 2 || y >= W - 2 || x < 2 * per || x >= row - 2 * per) for (const p of planeCorners(kind, x, y)) rim.add(k(p));
   for (let y = -1; y <= W; y++) for (let x = -2 * per; x < row + 2 * per; x++) {
     if (y >= 0 && y < W && x >= 0 && x < row) continue;
@@ -6442,7 +6448,7 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
   const outline = (cells) => {
     const count = new Map(), sides = [];
     for (const [k, n, m] of cells) P[k].forEach((q, i) => {
-      const [u1, v1] = at(q, n, m), [u2, v2] = at(P[k][(i + 1) % P[k].length], n, m), e = [`${Math.round(u1 * 1e4)},${Math.round(v1 * 1e4)}`, `${Math.round(u2 * 1e4)},${Math.round(v2 * 1e4)}`].sort().join(' ');
+      const [u1, v1] = at(q, n, m), [u2, v2] = at(P[k][(i + 1) % P[k].length], n, m), e = [pointKey([u1, v1], 1e4), pointKey([u2, v2], 1e4)].sort().join(' ');
       count.set(e, (count.get(e) ?? 0) + 1);
       sides.push([e, far(u2 - u1, v2 - v1)]);
     });
@@ -7798,7 +7804,7 @@ function sheetIndex(g) {
       if (g.klein && k % 2) v = g.nv - v;
       v = ((v % g.nv) + g.nv) % g.nv;
     }
-    const r = (x, n) => { const q = Math.round(x * 1000 + 0.37); return n && q === Math.round(n * 1000 + 0.37) ? 0 : q; };  // (off halves, as famousGrid)
+    const r = (x, n) => { const q = roundOff(x); return n && q === roundOff(n) ? 0 : q; };
     return `${r(u, g.mobius ? 2 * g.L : g.nu)},${r(v, g.mobius ? 0 : g.nv)}`;
   };
   const at = new Map();
@@ -7817,8 +7823,8 @@ function famousSpot(i, K) {
 // a cell's shape on the sheet: its corners round their middle (once each), to tell apart cells whose middles lie as
 // far apart (a tetrakis triangle and its neighbour turned); a tile's corners there
 const shapeOf = (pts) => {
-  const q = [...new Map(pts.map((p) => [`${Math.round(p[0] * 1000)},${Math.round(p[1] * 1000)}`, p])).values()], m = [0, 1].map((d) => q.reduce((sum, p) => sum + p[d], 0) / q.length);
-  return q.map((p) => `${Math.round((p[0] - m[0]) * 100 + 0.37)},${Math.round((p[1] - m[1]) * 100 + 0.37)}`).sort().join(' ');  // (off halves)
+  const q = [...new Map(pts.map((p) => [pointKey(p), p])).values()], m = [0, 1].map((d) => q.reduce((sum, p) => sum + p[d], 0) / q.length);
+  return q.map((p) => pointKey([p[0] - m[0], p[1] - m[1]], 100)).sort().join(' ');
 };
 const tileCorners = (g, t) => {  // (a Möbius strip's back: its front's, turned over, as mobiusLoop)
   const back = g.mobius && t >= g.front, s = back ? t - g.front : t;
@@ -7852,7 +7858,7 @@ function famousGrid() {
   if (!walk.plane && !g.torus) return null;
   let place, cellAt, corners, n, unitsOf = (p) => p;
   if (walk.plane) {
-    const { W, row, torus } = walk.plane, at = new Map(), key = ([u, v]) => `${Math.round(u * 1000 + 0.37)},${Math.round(v * 1000 + 0.37)}`;  // (off halves: a middle on one, turned round, either side)
+    const { W, row, torus } = walk.plane, at = new Map(), key = (p) => pointKey(p);
     const o = cellMiddle(kind, 0, 0), P = torus ? [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]) : null;  // (a torus: its two turns round)
     const ends = P ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [i * P[0][0] + j * P[1][0], i * P[0][1] + j * P[1][1]])) : [[0, 0]];
     place = (t) => cellMiddle(kind, t % row, Math.floor(t / row));
