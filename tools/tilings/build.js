@@ -170,6 +170,10 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
 // truncated square (4.8.8): the tetrakis's points, their faces (octagons, squares)
 { const s = 1 + Math.SQRT2, h = 0.5 + Math.SQRT1_2, a = [s, 0], b = [0, s], pts = points(a, b, [[0.5, h], [-0.5, h], [-h, 0.5], [-h, -0.5], [-0.5, -h], [0.5, -h], [h, -0.5], [h, 0.5]], 6);
   cell('truncsquare', a, b, polygons(pts, false)); }
+// snub square (3.3.4.3.4): two squares a cell, turned 15° one way and the other, triangles between (Cairo's dual)
+{ const L = (1 + R3) / Math.SQRT2, r = Math.SQRT1_2, a = [L, 0], b = [0, L];
+  const motif = [...[60, 150, 240, 330].map((d) => mul(dir(d), r)), ...[30, 120, 210, 300].map((d) => add([L / 2, L / 2], mul(dir(d), r)))];
+  cell('snubsquare', a, b, polygons(points(a, b, motif, 8), false)); }
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)
