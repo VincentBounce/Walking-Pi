@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.820';
+const VERSION = '0.1.821';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6433,16 +6433,27 @@ const canMirror = (kind) => (RECTS[kind] ? canMirror(RECTS[kind].base) : TILINGS
 function orientPattern(kind, rle, turn, flip) {
   if (RECTS[kind]) {  // a rectangle's: turned on its grid, then laid cell by cell where it is (whole lattice cells along)
     const { base, basis: [U, B] } = RECTS[kind], out = [], per = PER_RHOMBUS[kind], far = [64 * (U[0] + B[0]), 64 * (U[1] + B[1])];  // (64 of its lattice cells in, both ways)
-    for (const [x, y, v] of orientPattern(base, rle, turn, flip)) { const m = cellMiddle(base, x, y), c = planeCellAt(kind, 256, m[0] + far[0], m[1] + far[1]); if (c) out.push([...c, v]); }
-    const i0 = Math.min(...out.map((c) => Math.floor(c[0] / per))), j0 = Math.min(...out.map((c) => c[1]));
-    return out.map(([x, y, v]) => [x - per * i0, y - j0, v]);
+    const cells = orientPattern(base, rle, turn, flip), m0 = cellMiddle(base, cells[0][0], cells[0][1]), pv = [m0[0] + cells.pivot[0] + far[0], m0[1] + cells.pivot[1] + far[1]];
+    for (const [x, y, v] of cells) { const m = cellMiddle(base, x, y), c = planeCellAt(kind, 256, m[0] + far[0], m[1] + far[1]); if (c) out.push([...c, v]); }
+    const i0 = Math.min(...out.map((c) => Math.floor(c[0] / per))), j0 = Math.min(...out.map((c) => c[1])), o = cellMiddle(kind, out[0][0], out[0][1]);
+    return Object.assign(out.map(([x, y, v]) => [x - per * i0, y - j0, v]), { pivot: [pv[0] - o[0], pv[1] - o[1]] });
   }
   const V = 256, T = 128, per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
   const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : TILINGS[kind] ? tilingWorld(kind, [T + TILINGS[kind].pivot[0], T + TILINGS[kind].pivot[1]]) : latticeAt(T, T);
-  const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] : pivot[0];
+  // (turned about the pivot nearest the pattern's middle, one of the grid's turns' centres: a whole step of its lattice
+  // from the first; Cairo's, every other square)
+  const pop = [...populationOf(`0,0:${rle}`)].map(([k, v]) => [...cellXY(k), v]), ms = pop.map(([x, y]) => cellMiddle(kind, x + per * T, y + T));
+  let sx = 0;  // (the pivot's shift across: Cairo's mirror with it)
+  if (!APERIODIC[kind]) {  // (no lattice on hats and the like: the first pivot)
+    const mid = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), o = cellMiddle(kind, 0, 0), sa = cellMiddle(kind, per * (kind === 'cairo' ? 2 : 1), 0).map((c, d) => c - o[d]), sb = cellMiddle(kind, 0, kind === 'cairo' ? 2 : 1).map((c, d) => c - o[d]);
+    const D = sa[0] * sb[1] - sa[1] * sb[0], dx = mid[0] - pivot[0], dy = mid[1] - pivot[1], ni = Math.round((dx * sb[1] - dy * sb[0]) / D), nj = Math.round((sa[0] * dy - sa[1] * dx) / D);
+    sx = ni * sa[0] + nj * sb[0];
+    pivot[0] += sx;
+    pivot[1] += ni * sa[1] + nj * sb[1];
+  }
+  const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] + sx : pivot[0];
   const a = (2 * Math.PI * turn) / PATTERN_TURNS[kind], cos = Math.cos(a), sin = Math.sin(a), cells = [];
-  for (const [k, v] of populationOf(`0,0:${rle}`)) {
-    const [x, y] = cellXY(k);
+  for (const [x, y, v] of pop) {
     let [u, w] = cellMiddle(kind, x + per * T, y + T);
     if (flip && canMirror(kind)) u = 2 * axis - u;
     u -= pivot[0];
@@ -6453,7 +6464,8 @@ function orientPattern(kind, rle, turn, flip) {
   const square = (x) => Math.floor(x / per), i0 = Math.min(...cells.map((c) => square(c[0])));
   let j0 = Math.min(...cells.map((c) => c[1]));
   if (kind === 'cairo' && (i0 + j0) & 1) j0--;  // the tiling repeats every other square
-  return cells.map(([x, y, v]) => [x - per * i0, y - j0, v]);
+  const c0 = cellMiddle(kind, cells[0][0], cells[0][1]);
+  return Object.assign(cells.map(([x, y, v]) => [x - per * i0, y - j0, v]), { pivot: [pivot[0] - c0[0], pivot[1] - c0[1]] });  // (its pivot from its first cell's middle)
 }
 let brushMemo = null;
 function brushCells() {
@@ -6466,15 +6478,15 @@ function brushCells() {
 function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells()) {
   if (!cells) return [[cx, cy, 1]];  // one cell: the one pointed at, whichever way it lies
   const { kind, W, torus } = walk.plane, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
-  if (RECTS[kind]) {  // a rectangle's: laid where it is, its middle on the cell pointed at to a lattice cell of its grid (not a whole rectangle)
-    const { base, basis: [U, V] } = RECTS[kind], a = latticeStep(base), o = cellMiddle(base, 0, 0), b = cellMiddle(base, 0, 1).map((c, d) => c - o[d]);
-    const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), c = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), to = cellMiddle(kind, cx, cy);
-    const D = a[0] * b[1] - a[1] * b[0], dx = to[0] - c[0], dy = to[1] - c[1], n = Math.round((dx * b[1] - dy * b[0]) / D), m = Math.round((a[0] * dy - a[1] * dx) / D);
-    const DU = U[0] * V[1] - U[1] * V[0], wrap = ([x, y]) => {  // (a torus: round its W × W rectangles)
-      const u = (x * V[1] - y * V[0]) / DU, v = (U[0] * y - U[1] * x) / DU, du = Math.floor(u / W) * W, dv = Math.floor(v / W) * W;
-      return [x - du * U[0] - dv * V[0], y - du * U[1] - dv * V[1]];
-    };
-    cells.forEach(([, , st], i) => { const w = [ms[i][0] + n * a[0] + m * b[0], ms[i][1] + n * a[1] + m * b[1]], q = planeCellAt(kind, W, ...(torus ? wrap(w) : w)); if (q) out.push([...q, st]); });
+  if (cells.pivot && !APERIODIC[kind] && kind !== 'cairo') {  // laid where it is, its pivot (see orientPattern) on the cell pointed at, to a step of its grid's lattice
+    const g = baseOf(kind), o = cellMiddle(g, 0, 0), a = latticeStep(g), b = cellMiddle(g, 0, 1).map((c, d) => c - o[d]), D = a[0] * b[1] - a[1] * b[0];
+    const c0 = cellMiddle(kind, cells[0][0], cells[0][1]), to = cellMiddle(kind, cx, cy), dx = to[0] - c0[0] - cells.pivot[0], dy = to[1] - c0[1] - cells.pivot[1];
+    const n = Math.round((dx * b[1] - dy * b[0]) / D + 1e-6), m = Math.round((a[0] * dy - a[1] * dx) / D + 1e-6);  // (half way: the same way whatever the turn)
+    const [U, V] = RECTS[kind]?.basis ?? [a, b], ends = torus ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [W * (i * U[0] + j * V[0]), W * (i * U[1] + j * V[1])])) : [[0, 0]];  // (a torus: round its W × W)
+    for (const [x, y, st] of cells) {
+      const mm = cellMiddle(kind, x, y), w = [mm[0] + n * a[0] + m * b[0], mm[1] + n * a[1] + m * b[1]];
+      for (const [ex, ey] of ends) { const q = planeCellAt(kind, W, w[0] + ex, w[1] + ey); if (q) { out.push([...q, st]); break; } }
+    }
     return out;
   }
   const square = (x) => Math.floor(x / per);
