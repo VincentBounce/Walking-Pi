@@ -1,0 +1,10 @@
+trihex 103448 rules 1095 candidates 706s
+trihex done 1541s
+  B349/S0134/C5   0.141  T 778 (485–1428) spread 0.35 plateau 0.4 at200 12.7% ash 4.21% osc 67%
+  B348/S0134/C5   0.109  T 848 (513–1722) spread 0.36 plateau 0.45 at200 13.3% ash 4.24% osc 58%
+  B257/S2489/C5   0.072  T 1213 (268–6000) spread 1.13 plateau 0.6 at200 4.9% ash 0.26% osc 75%
+  B257/S256/C5    0.064  T 957 (172–6000) spread 1.06 plateau 0.39 at200 3.7% ash 0.17% osc 80%
+  B34/S0134/C5    0.059  T 810 (511–1269) spread 0.29 plateau 0.42 at200 13.7% ash 4.04% osc 50%
+  B3/S235/C3      0.054  T 762 (200–6000) spread 1.22 plateau 0.43 at200 2.2% ash 0.61% osc 25%
+  B368/S2356/C3   0.038  T 1227 (550–1742) spread 0.34 plateau 0.36 at200 14.1% ash 1.79% osc 100%
+  B379/S23        0.031  T 1152 (267–6000) spread 1.33 plateau 0.79 at200 2.8% ash 2.19% osc 17%

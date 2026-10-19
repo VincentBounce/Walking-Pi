@@ -1,0 +1,154 @@
+{
+ "trihex B349/S0134/C5": {
+  "ships": [],
+  "oscs": [
+   {
+    "rle": "5.2A$2.5A$A2.A2.A!",
+    "n": 10,
+    "cells": 10,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 45
+   },
+   {
+    "rle": "5A.A$2A.A$A!",
+    "n": 10,
+    "cells": 10,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 42
+   },
+   {
+    "rle": "5.B2.B$2.B2A2CABA$2.BCABC$3.A!",
+    "n": 6,
+    "cells": 16,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "4.4A$.2A2BAB$2A.B2.2A!",
+    "n": 11,
+    "cells": 15,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "5.A2.A$2.3A2B3A$2.AB2AB$3.A!",
+    "n": 12,
+    "cells": 16,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "3.5A.A$3.2A.A$.A.D!",
+    "n": 10,
+    "cells": 11,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   }
+  ],
+  "meths": []
+ },
+ "trihex B348/S0134/C5": {
+  "ships": [],
+  "oscs": [
+   {
+    "rle": "5.2A$2.5A$A2.A2.A!",
+    "n": 10,
+    "cells": 10,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 49
+   },
+   {
+    "rle": "5A.A$2A.A$A!",
+    "n": 10,
+    "cells": 10,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 40
+   },
+   {
+    "rle": "4.B2AB$.BA2CACB$AB.CB.A!",
+    "n": 6,
+    "cells": 16,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 4
+   },
+   {
+    "rle": "4.C2AC$.CA2DADC$AC.DC.A!",
+    "n": 6,
+    "cells": 16,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "5.A$4.2A$.2A2BABA$2A.BA.A!",
+    "n": 11,
+    "cells": 15,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "5.C2.C$2.C2A2DACA$2.CDACD$3.A!",
+    "n": 6,
+    "cells": 16,
+    "period": 5,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   }
+  ],
+  "meths": [
+   {
+    "rle": "A.4A2.A$2.A.A2.A!",
+    "n": 9,
+    "T": 161,
+    "ships": 0,
+    "period": 1
+   }
+  ]
+ }
+}
