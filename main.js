@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.804';
+const VERSION = '0.1.805';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2412,7 +2412,7 @@ for (const kind of MOBIUS_TILINGS) {  // the tilings' strips, after the kites (L
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus) {  // the tilings' tori, after the kites (Life only)
   const F = FAMILIES[0];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, t.name, t.name]);
-  if (t.turns !== 4) F.tabs.push([F.modes.length, true, `tiling-${kind}`, t.name, `${t.name}, turned by ${t.turns === 6 ? 30 : 90}° (rows round the tube)`]);  // (four turns: turned, the same)
+  if (torusSheets(kind).turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, t.name, `${t.name}, turned by ${torusSheets(kind).deg}° (rows round the tube)`]);  // (see torusSheets)
   F.modes.push([`lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`]);
 }
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
@@ -4061,6 +4061,15 @@ function tilingPolys(kind) {
     return [u, v];
   })));
 }
+// A torus sheet's cells (its sides 1): its slanted grid's rectangle's, its lattice cell's, or placed by placeCells (bricks,
+// the shortest outline first, as a rectangle's)
+function sheetCells(kind, [[p, q], [r, s]]) {
+  const t = TILINGS[kind], { plain } = torusSheets(kind), [a, b] = t.basis, W = ([u, v]) => [u * a[0] + v * b[0], u * a[1] + v * b[1]];
+  if (p === plain[0][0] && q === plain[0][1] && r === plain[1][0] && s === plain[1][1]) return RECTS[`${kind}Rect`]?.polys ?? t.polys;
+  if (p === plain[1][0] && q === plain[1][1] && r === -plain[0][0] && s === -plain[0][1]) return sheetCells(kind, plain).map((P) => P.map(([u, v]) => [v, 1 - u]));  // (turned by 90°: B along)
+  const U = W([p, q]), V = W([r, s]), D = U[0] * V[1] - U[1] * V[0], inSheet = ([x, y]) => [(x * V[1] - y * V[0]) / D, (U[0] * y - U[1] * x) / D];
+  return placeCells(t.polys.map((P) => P.map(W).map(inSheet)), inSheet(a), inSheet(b), U, V, true).map(([k, n, m]) => t.polys[k].map(([u, v]) => inSheet(W([u + n, v + m]))));
+}
 // A tiling's torus (see TILINGS: sheet): its cell A round the ring nu times, B round the tube nv times (A ⟂ B: its tiles
 // even once rolled up, as many of each as the sheet's sides ask); the lattice cells whose corner is in that rectangle,
 // each its polygons, at their places on the sheet (as many corners each: the last one repeated, as the sphere's
@@ -4068,11 +4077,11 @@ function tilingPolys(kind) {
 function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the ring, A round the tube (⟲ 30°)
   const key = `${kind}torus${turned ? 'Turned' : ''}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
-  const t = TILINGS[kind], sheet = turned ? [t.sheet[1], t.sheet[0].map((x) => -x)] : t.sheet, sides = Math.max(...t.polys.map((P) => P.length));
+  const t = TILINGS[kind], sheet = torusSheets(kind)[turned ? 'turned' : 'plain'], sides = Math.max(...t.polys.map((P) => P.length));
   // the 2D sheet's cells (its sides 1), their middle (by area) on the sheet's (unrolled, it lies round its middle); turned: B along
-  const frame = RECTS[`${kind}Rect`]?.polys ?? t.polys, area = (P) => Math.abs(P.reduce((x, p, i) => x + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
+  const frame = sheetCells(kind, sheet), area = (P) => Math.abs(P.reduce((x, p, i) => x + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
   const c = [0, 1].map((d) => frame.reduce((x, P) => x + area(P) * P.reduce((y, p) => y + p[d], 0) / P.length, 0) / frame.reduce((x, P) => x + area(P), 0));
-  const centred = frame.map((P) => P.map(([u, v]) => [u + 0.5 - c[0], v + 0.5 - c[1]])), polys = turned ? centred.map((P) => P.map(([u, v]) => [v, 1 - u])) : centred;
+  const polys = frame.map((P) => P.map(([u, v]) => [u + 0.5 - c[0], v + 0.5 - c[1]]));
   const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map();
   const corner = (i, j) => {  // a corner once, by its place on the sheet round the seams (not by its rounded point in space)
     const Q = 31415.9, k = `${Math.round((((i % nu) + nu) % nu) * Q) % Math.round(nu * Q)},${Math.round((((j % nv) + nv) % nv) * Q) % Math.round(nv * Q)}`;
@@ -4198,7 +4207,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
 const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
-  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (TILINGS[k].turns !== 4 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
+  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (torusSheets(k).turned ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -4439,12 +4448,10 @@ const SPHERES = {
 };
 // the tilings' tori (see tilingTorusMesh): their rows B round the tube, as many A round the ring as keep them even
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus) {
-  const [a0, b0] = t.basis;
-  t.sheet = Math.abs(a0[0] * b0[0] + a0[1] * b0[1]) < 0.01 * Math.hypot(...a0) * Math.hypot(...b0) ? [[1, 0], [0, 1]] : rectSides(a0, b0).step;  // (its slanted grid's rectangle, see RECTS)
-  const [[p, q], [r, s]] = t.sheet, [a, b] = t.basis, A = Math.hypot(p * a[0] + q * b[0], p * a[1] + q * b[1]), B = Math.hypot(r * a[0] + s * b[0], r * a[1] + s * b[1]);
-  const per = t.polys.length * Math.abs(p * s - q * r);  // cells a cell of the sheet
-  for (const turned of t.turns !== 4 ? [false, true] : [false]) {  // (turned by 30°, or 90° on two turns, see TURNED: A round the tube)
-    const name = `${kind}torus${turned ? 'Turned' : ''}`, [ring, tube] = turned ? [B, A] : [A, B];
+  for (const turned of torusSheets(kind).turned ? [false, true] : [false]) {  // (turned: see torusSheets, TURNED)
+    const sheet = torusSheets(kind)[turned ? 'turned' : 'plain'], [[p, q], [r, s]] = sheet, [a, b] = t.basis;
+    const ring = Math.hypot(p * a[0] + q * b[0], p * a[1] + q * b[1]), tube = Math.hypot(r * a[0] + s * b[0], r * a[1] + s * b[1]), per = t.polys.length * Math.abs(p * s - q * r);  // (cells a cell of the sheet)
+    const name = `${kind}torus${turned ? 'Turned' : ''}`;
     SPHERES[name] = { mesh: (z) => tilingTorusMesh(kind, ...torusDims(name, z), turned), radius: (z) => (torusDims(name, z)[0] * tube) / (2 * Math.PI * TORUS_TUBE),
                       columns: (nv) => Math.max(1, Math.round((nv * tube) / (ring * TORUS_TUBE))), perRow: per, steps: [1, 1], least: 2,
                       tiles: (z) => per * torusDims(name, z).reduce((x, y) => x * y), unit: t.cells };
@@ -4578,7 +4585,7 @@ function gridGraph(g) {
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
-  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (TILINGS[k].turns !== 4 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
+  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (torusSheets(k).turned ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
 for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
@@ -4596,7 +4603,7 @@ for (const [kind, S] of Object.entries(SPHERES)) {
 }
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
-for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && t.turns !== 4) TURNED[`${kind}torus`] = `${kind}torusTurned`;  // (two turns: by 90°)
+for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && torusSheets(kind).turned) TURNED[`${kind}torus`] = `${kind}torusTurned`;  // (see torusSheets)
 let torusTurned = false;
 const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
@@ -6312,6 +6319,28 @@ function rectSides(a, b) {
     if (!best || score[0] < best.score[0] - 1e-9 || (score[0] < best.score[0] + 1e-9 && (det < best.det || (det === best.det && ratio < best.score[2] - 1e-9)))) best = { U, V, det, score, step: [[p, q], [r, t]] };
   }
   return best;
+}
+// A tiling's torus sheets: plain, its slanted grid's rectangle (see rectSides) or its lattice cell if at right angles; turned,
+// the same turned by 90° (B round the ring: by 30° on six turns, by 90° on two), or on four turns the least square of
+// lattice steps along its cells' sides if its lattice is not (Pythagoras: straight squares round the ring), else none;
+// deg: the turn as seen. [[p, q], [r, s]]: A = p·a + q·b round the ring, B = r·a + s·b round the tube
+function torusSheets(kind) {
+  const t = TILINGS[kind];
+  if (t.sheets) return t.sheets;  // (once: kept on it, as it is asked for before here)
+  const [a, b] = t.basis, W = ([u, v]) => [u * a[0] + v * b[0], u * a[1] + v * b[1]], cross = (x, y) => x[0] * y[1] - x[1] * y[0];
+  const plain = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b) ? [[1, 0], [0, 1]] : rectSides(a, b).step;
+  let turned = t.turns !== 4 ? [plain[1], plain[0].map((x) => -x)] : null, deg = t.turns === 6 ? 30 : 90;
+  if (t.turns === 4) {  // (along a side: U a lattice step along one of its cells' sides, V the same turned, a lattice step too)
+    const sides = t.polys.flatMap((P) => P.map((p, i) => { const [x, y] = W(P[(i + 1) % P.length]).map((c, d) => c - W(p)[d]); return [x / Math.hypot(x, y), y / Math.hypot(x, y)]; }));
+    const D = cross(a, b), A0 = W(plain[0]), along = sides.some((e) => Math.abs(cross(e, A0)) < 1e-6 * Math.hypot(...A0));  // (its lattice along a side already: none)
+    for (let n = 1; n <= 6 && !turned && !along; n++) for (let p = -n; p <= n && !turned; p++) for (const q of [n - Math.abs(p), Math.abs(p) - n]) {
+      const U = W([p, q]), l = Math.hypot(...U);
+      if (!l || Math.abs(cross(U, A0)) < 1e-6 * l || Math.abs(U[0] * A0[0] + U[1] * A0[1]) < 1e-6 * l || !sides.some((e) => Math.abs(cross(e, U)) < 1e-6 * l)) continue;
+      const V = [-U[1], U[0]], r = cross(V, b) / D, s = cross(a, V) / D;
+      if (Math.abs(r - Math.round(r)) < 1e-6 && Math.abs(s - Math.round(s)) < 1e-6) { turned = [[p, q], [Math.round(r), Math.round(s)]]; deg = Math.round((Math.acos(Math.abs(U[0] * A0[0] + U[1] * A0[1]) / l / Math.hypot(...A0)) * 180) / Math.PI); }
+    }
+  }
+  return (t.sheets = { plain, turned, deg });
 }
 // A frame's cells, the slanted grids' lattice cells and rectangles' alike (tools/tilings/build.js: a copy): each of its grid's
 // cells with the lattice point nearest its middle (a brick round a point of the grid, the lattice moved there), the bricks
