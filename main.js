@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.853';
+const VERSION = '0.1.854';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7329,9 +7329,10 @@ const RING_RULES = [
   ['Swirl', () => true, 'a block of one turned a step round, one of one empty cell a step the other way', (st, k) => (ringAlive(st) === 1 ? ringTurn(st, 1, k) : ringAlive(st) === k - 1 ? ringTurn(st, -1, k) : st), 'oo..o,....o,.....,o....,o..oo'],
 ];
 const BLOCK_MARKS = { square: '▣', tri: '⟐', hex: '⬣', cairo: '⌬' };  // (the rules' menu, by grid: marks of their own)
+const BLOCK_FIRST = { square: 'Tron', cairo: 'Tron' };  // a grid's first rule (its rule at first), else the list's
 for (const [kind, mark] of Object.entries(BLOCK_MARKS)) {  // each grid's rules, as Life's (see renderRuleSection), before Custom…
-  const k = BLOCKS[kind].k;
-  for (const [name, fits, words, rule, art] of RING_RULES) {
+  const k = BLOCKS[kind].k, first = (r) => (r[0] === BLOCK_FIRST[kind] ? 0 : 1);
+  for (const [name, fits, words, rule, art] of [...RING_RULES].sort((a, b) => first(a) - first(b))) {
     if (!fits(k)) continue;
     const value = `M${Array.from({ length: 1 << k }, (_, st) => rule(st, k)).join(',')}`;
     RULE_ICONS[value] = art;
