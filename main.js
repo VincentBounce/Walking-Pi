@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.846';
+const VERSION = '0.1.847';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7719,7 +7719,7 @@ function huntFits() {
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
-    if (famousZone(zone)) return [zone, patternsOn() && patternChoices(zone === 'centred').every((c) => c.length > 0)];
+    if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'face' && faceOf() === null) return [zone, false];
     if (!r && zone !== 'face') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
@@ -8041,7 +8041,7 @@ function patternChoices(centred = false) {  // (once a grid, its colours and rul
   if (m?.id !== id || m.g !== walk.geo) choicesMemo[centred] = { id, g: walk.geo, choices: laidChoices(centred) };
   return choicesMemo[centred].choices;
 }
-function laidChoices(centred) {
+function laidChoices(centred, any = false) {  // any: the first one of each colour only (whether there are some)
   const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K], F = !centred && famousGrid();
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
   // (centred: a rectangle's room and its patterns' spans in its grid's lattice cells, as on that grid)
@@ -8072,11 +8072,12 @@ function laidChoices(centred) {
       }
       out.push(Int32Array.from(cs));
     };
-    if (laid.length * part.length <= FAMOUS_ALL) { for (const l of laid) for (const t of part) lay(l, t); return out; }
+    if (laid.length * part.length <= FAMOUS_ALL) { for (const l of laid) for (const t of part) { lay(l, t); if (any && out.length) return out; } return out; }
     const next = seededRandom(7 + i), drawn = new Set();
     for (let tries = 0; tries < FAMOUS_ALL && out.length < 4000; tries++) {
       const s = next() % laid.length, t = part[next() % part.length];
       if (!drawn.has(s * part.length + t)) { drawn.add(s * part.length + t); lay(laid[s], t); }
+      if (any && out.length) break;
     }
     return out;
   });
