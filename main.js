@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.800';
+const VERSION = '0.1.801';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -834,19 +834,19 @@ const TILINGS = {
     polys: [[[0.666667,-0.333333],[1,0],[0.333333,0.333333],[0,0]],[[0,0],[0.333333,0.333333],[0,1],[-0.333333,0.666667]],[[0.333333,0.333333],[1,0],[0.666667,0.666667],[0,1]]] },
   rhombitri: { name: 'Rhombitri', mark: '✳', cells: 'tiles', where: 'a grid of hexagons, squares and triangles (the rhombitrihexagonal tiling)', most: 12, turns: 6, mirror: true, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
     basis: [[2.366025403784439, 1.3660254037844384], [1.6728986382985834e-16, 2.732050807568877]],
-    polys: [[[0.42265,0.788675],[0.788675,0.788675],[0.57735,1.211325],[0.211325,1.211325]],[[1.42265,0.788675],[1.211325,1.211325],[0.788675,1.42265],[0.57735,1.211325],[0.788675,0.788675],[1.211325,0.57735]],[[0.211325,0.211325],[0.57735,0.211325],[0.211325,0.57735]],[[1.211325,0.211325],[1.211325,0.57735],[0.788675,0.788675],[0.788675,0.42265]],[[0.42265,0.788675],[0.211325,0.57735],[0.57735,0.211325],[0.788675,0.42265]],[[0.42265,0.788675],[0.788675,0.42265],[0.788675,0.788675]]] },
+    polys: [[[1.42265,0.788675],[1.788675,0.788675],[1.57735,1.211325],[1.211325,1.211325]],[[1.42265,0.788675],[1.211325,1.211325],[0.788675,1.42265],[0.57735,1.211325],[0.788675,0.788675],[1.211325,0.57735]],[[1.211325,0.211325],[1.57735,0.211325],[1.211325,0.57735]],[[1.211325,0.211325],[1.211325,0.57735],[0.788675,0.788675],[0.788675,0.42265]],[[1.42265,0.788675],[1.211325,0.57735],[1.57735,0.211325],[1.788675,0.42265]],[[1.42265,0.788675],[1.788675,0.42265],[1.788675,0.788675]]] },
   floret: { name: 'Florets', mark: '✿', cells: 'pentagons', where: 'a grid of floret pentagons, 6 round each flower', most: 8, turns: 6, mirror: false, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
     basis: [[2.5, 0.8660254037844386], [0.5, 2.598076211353316]],
     polys: [[[0,0],[0.380952,0.095238],[0.333333,0.333333],[0.095238,0.52381],[-0.095238,0.47619]],[[0,1],[0.47619,0.619048],[0.666667,0.666667],[0.619048,0.904762],[0.380952,1.095238]],[[0.095238,0.52381],[0.333333,0.333333],[0.52381,0.380952],[0.47619,0.619048],[0,1]],[[0.52381,0.380952],[1,0],[0.904762,0.47619],[0.666667,0.666667],[0.47619,0.619048]],[[0.380952,0.095238],[0.619048,-0.095238],[1,0],[0.52381,0.380952],[0.333333,0.333333]],[[0.666667,0.666667],[0.904762,0.47619],[1.095238,0.52381],[1,1],[0.619048,0.904762]]] },
   snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18, turns: 6, mirror: false, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
     basis: [[2.5, 0.8660254037844386], [0.5, 2.598076211353316]],
-    polys: [[[0.428571,0.857143],[0.571429,1.142857],[0.142857,1.285714]],[[1.428571,0.857143],[1.142857,1.285714],[0.714286,1.428571],[0.571429,1.142857],[0.857143,0.714286],[1.285714,0.571429]],[[0.142857,0.285714],[0.571429,0.142857],[0.285714,0.571429]],[[1.142857,0.285714],[1.285714,0.571429],[0.857143,0.714286]],[[0.428571,0.857143],[0.285714,0.571429],[0.714286,0.428571]],[[0.428571,0.857143],[0.714286,0.428571],[0.857143,0.714286]],[[0.428571,0.857143],[0.857143,0.714286],[0.571429,1.142857]],[[0.285714,0.571429],[0.571429,0.142857],[0.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
+    polys: [[[1.428571,0.857143],[1.571429,1.142857],[1.142857,1.285714]],[[1.428571,0.857143],[1.142857,1.285714],[0.714286,1.428571],[0.571429,1.142857],[0.857143,0.714286],[1.285714,0.571429]],[[1.142857,0.285714],[1.571429,0.142857],[1.285714,0.571429]],[[1.142857,0.285714],[1.285714,0.571429],[0.857143,0.714286]],[[1.428571,0.857143],[1.285714,0.571429],[1.714286,0.428571]],[[1.428571,0.857143],[1.714286,0.428571],[1.857143,0.714286]],[[1.428571,0.857143],[1.857143,0.714286],[1.571429,1.142857]],[[1.285714,0.571429],[1.571429,0.142857],[1.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
   capitalI: { name: 'Capital I', mark: '⌶', cells: 'I tiles', where: 'a grid of capital I tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
     basis: [[2, 1], [-1, 3]],
     polys: [[[0,1],[0.428571,0.857143],[0.857143,0.714286],[1.285714,0.571429],[1.428571,0.857143],[1,1],[1.142857,1.285714],[1.571429,1.142857],[1.714286,1.428571],[1.285714,1.571429],[0.857143,1.714286],[0.428571,1.857143],[0.285714,1.571429],[0.714286,1.428571],[0.571429,1.142857],[0.142857,1.285714]]] },
   pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.2], sheet: [[1, 0], [0, 1]],
     basis: [[2, 1], [-1, 2]],
-    polys: [[[0,1],[0.4,0.8],[0.8,0.6],[1,1],[1.2,1.4],[0.8,1.6],[0.4,1.8],[0.2,1.4]],[[-0.2,0.6],[0.2,0.4],[0.4,0.8],[0,1]]] },
+    polys: [[[0,1],[0.4,0.8],[0.8,0.6],[1,1],[1.2,1.4],[0.8,1.6],[0.4,1.8],[0.2,1.4]],[[-0.2,1.6],[0.2,1.4],[0.4,1.8],[0,2]]] },
   prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], sheet: [[1, 0], [-1, 2]],
     basis: [[1, 0], [0.5, 1.8660254037844386]],
     polys: [[[0.57735,0.845299],[1.154701,0.690599],[1.57735,0.845299],[1.366025,1.267949],[0.366025,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
@@ -5582,20 +5582,20 @@ const DRAW_PATTERNS = [
   ['rhombillesparks-meth', 'rhombille', ['B358/S0237/C4'], 'Methuselah', '.3A.A.2A$.A3.A!', 'settles at generation 1,588 · 8 cells'],
   ['rhombillesparks-ship', 'rhombille', ['B358/S0237/C4'], 'Spaceship', '5.3AB3A.A$C2.BAB3CACA$6.C2.ACB.A$6.B.3B$3.C!', 'flies, period 4 · 28 cells'],
   ['rhombilletrails-ship', 'rhombille', ['B2/S28/C8'], 'Spaceship', '7.GF.E$5.3F2.DC.B$G.3F.2E3C2.A$E2.D.3C.2BA$3.B2.A!', 'flies, period 3 · 29 cells'],
-  ['rhombitrilife-osc', 'rhombitri', ['B279/S069/C4'], 'Oscillator', '.A$A4.A!', 'period 12 · 3 cells'],
-  ['rhombitrilife-meth', 'rhombitri', ['B279/S069/C4'], 'Methuselah', '.A5.A$6.A2.4A$8.2A6.A!', 'settles at generation 3,210 · 10 cells'],
-  ['longrhombitri-osc', 'rhombitri', ['B29/S067/C4'], 'Oscillator', '2A4.A3.2C$2.C.C!', 'period 13 · 7 cells'],
-  ['longrhombitri-meth', 'rhombitri', ['B29/S067/C4'], 'Methuselah', '3.A4.A3.A.A$11.A$8.A2.A5.A!', 'settles at generation 2,369 · 8 cells'],
-  ['snublife-osc', 'snubtri', ['B38/S1369'], 'Oscillator', '.A4.A.A4.A!', 'period 4 · 4 cells'],
-  ['snublife-meth', 'snubtri', ['B38/S1369'], 'Methuselah', '10.A$A2.A4.A3.A.A2.2A4.A$3.A.A.A!', 'settles at generation 2,497 · 12 cells'],
-  ['snubembers-osc', 'snubtri', ['B359/S0146/C3'], 'Oscillator', '.A3.A3.A$8.A!', 'period 6 · 4 cells'],
-  ['snubembers-meth', 'snubtri', ['B359/S0146/C3'], 'Methuselah', '18.A$13.A.A4.A3.A$3.A7.A4.A6.A2.A!', 'settles at generation 390 · 10 cells'],
+  ['rhombitrilife-osc', 'rhombitri', ['B279/S069/C4'], 'Oscillator', '7.A$A4.A!', 'period 12 · 3 cells'],
+  ['rhombitrilife-meth', 'rhombitri', ['B279/S069/C4'], 'Methuselah', '.A5.A$A3.3A2.A$2.A6.2A!', 'settles at generation 3,210 · 10 cells'],
+  ['longrhombitri-osc', 'rhombitri', ['B29/S067/C4'], 'Oscillator', 'A5.2A2.2C$2.C.C!', 'period 13 · 7 cells'],
+  ['longrhombitri-meth', 'rhombitri', ['B29/S067/C4'], 'Methuselah', '2.2A2.A.A$5.A$2.A2.A5.A!', 'settles at generation 2,369 · 8 cells'],
+  ['snublife-osc', 'snubtri', ['B38/S1369'], 'Oscillator', '6.A3.A2.A3.A!', 'period 4 · 4 cells'],
+  ['snublife-meth', 'snubtri', ['B38/S1369'], 'Methuselah', '19.A$A11.A.A2.2A2.A.A2.A$5.A.A4.A!', 'settles at generation 2,497 · 12 cells'],
+  ['snubembers-osc', 'snubtri', ['B359/S0146/C3'], 'Oscillator', '5.A3.2A$17.A!', 'period 6 · 4 cells'],
+  ['snubembers-meth', 'snubtri', ['B359/S0146/C3'], 'Methuselah', '9.A$4.A.A4.A3.A$2.2A3.A6.A11.A!', 'settles at generation 390 · 10 cells'],
   ['ilife-osc', 'capitalI', ['B345/S0236'], 'Oscillator', '.A$.2A$A!', 'period 2 · 4 cells'],
   ['itrails-ship', 'capitalI', ['B2/S24/C8'], 'Spaceship', '4.C2A$2.FD2A$.GCDC$FGF!', 'flies, period 3 · 14 cells'],
   ['pythagoraslife-osc', 'pythagorean', ['B28/S28'], 'Oscillator', 'A$A!', 'period 2 · 2 cells'],
-  ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', '2.A2$A.2A$3.A!', 'flies, period 2 · 5 cells'],
-  ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', 'A.2A$3.A!', 'period 3 · 4 cells'],
-  ['pythagorastrails-ship', 'pythagorean', ['B23/S13/C8'], 'Spaceship', 'A.2A$C.2C$E.2E$G.2G!', 'flies, period 2 · 12 cells'],
+  ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', '2.A$3.A$A.2A!', 'flies, period 2 · 5 cells'],
+  ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', '3.A$A.2A!', 'period 3 · 4 cells'],
+  ['pythagorastrails-ship', 'pythagorean', ['B23/S13/C8'], 'Spaceship', '3.A$A.AC$C.CE$E.EG$G.G!', 'flies, period 2 · 12 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', 'A.B.BAD.D2.C$.A.BABCD.D!', 'flies, period 4 · 14 cells'],
   ['prismtrails-ship', 'prismatic', ['B2/S1/C8'], 'Spaceship', '2.G.GFEDE.C.CB3A$F2.G.GDEBE.C.C.A.A!', 'flies, period 4 · 23 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', 'A.B.BAD.D2.C$.2AB.B.DCD!', 'flies, period 4 · 14 cells'],
@@ -6302,16 +6302,26 @@ const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return 
 // A frame's cells, the slanted grids' lattice cells and rectangles' alike (tools/tilings/build.js: a copy): each of its grid's
 // cells with the lattice point nearest its middle (a brick round a point of the grid, the lattice moved there), the bricks
 // whose point is in the frame (whole bricks: no cell alone, its sides a stair); each middle and corner of a lattice cell's
-// cells tried as that point (or each cell alone, by its middle: Kites, their sides straight lines), and the frame moved by
-// eighths of its sides, the cells sticking out of it least kept. P: a lattice cell's polygons in the frame's units (its
+// cells tried as that point (or each cell alone, by its middle), and the frame moved by sixteenths of its sides: the cells
+// sticking out of it least kept, then the shortest outline (outlineFirst: the other way, a rectangle's bricks). P: a lattice cell's polygons in the frame's units (its
 // sides U, V: 1), la, lb: the lattice's steps in them; its cells [k, n, m]: polygon k moved by n·la + m·lb
-function placeCells(P, la, lb, U, V) {
+function placeCells(P, la, lb, U, V, outlineFirst) {
   const lu = Math.hypot(...U), lv = Math.hypot(...V), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
   const at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]], far = (du, dv) => Math.hypot(du * U[0] + dv * V[0], du * U[1] + dv * V[1]);
   const out = (k, n, m, sa, sb) => P[k].reduce((t, q) => { const [u, v] = at(q, n, m); return t + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1); }, 0);
   const dl = la[0] * lb[1] - la[1] * lb[0], frac = (x) => Math.round((((x % 1) + 1) % 1) * 1e4) % 1e4;  // (once each: a lattice step apart, the same)
   const centres = new Map(P.flatMap((Q) => [mid(Q), ...Q]).map((c) => [`${frac((c[0] * lb[1] - c[1] * lb[0]) / dl)},${frac((la[0] * c[1] - la[1] * c[0]) / dl)}`, c]));
-  let pick = null, least = Infinity;
+  // the outline: its cells' sides not shared by two of them (in world units), once a set of cells
+  const outline = (cells) => {
+    const count = new Map(), sides = [];
+    for (const [k, n, m] of cells) P[k].forEach((q, i) => {
+      const [u1, v1] = at(q, n, m), [u2, v2] = at(P[k][(i + 1) % P[k].length], n, m), e = [`${Math.round(u1 * 1e4)},${Math.round(v1 * 1e4)}`, `${Math.round(u2 * 1e4)},${Math.round(v2 * 1e4)}`].sort().join(' ');
+      count.set(e, (count.get(e) ?? 0) + 1);
+      sides.push([e, far(u2 - u1, v2 - v1)]);
+    });
+    return sides.reduce((t, [e, l]) => t + (count.get(e) === 1 ? l : 0), 0);
+  }, outlines = new Map();
+  let pick = null, least = [Infinity, Infinity];
   for (const c of [null, ...centres.values()]) {  // (null: each cell alone)
     const brick = P.map((Q) => {  // (cell k's lattice point, the one nearest its middle)
       if (!c) return [0, 0];
@@ -6325,10 +6335,12 @@ function placeCells(P, la, lb, U, V) {
       if (!c) { P.forEach((Q, k) => points.push([at(mid(Q), n, m), [[k, n, m]]])); continue; }
       points.push([at(c, n, m), brick.map(([i, j], k) => [k, n - i, m - j])]);
     }
-    for (let sb = 0; sb < 1; sb += 1 / 8) for (let sa = 0; sa < 1; sa += 1 / 8) {
+    for (let sb = 0; sb < 1; sb += 1 / 16) for (let sa = 0; sa < 1; sa += 1 / 16) {
       const cells = points.filter(([[al, be]]) => al >= sa - 1e-6 && al < sa + 1 - 1e-6 && be >= sb - 1e-6 && be < sb + 1 - 1e-6).flatMap((p) => p[1]);
+      const key = cells.map((c) => c.join()).sort().join(' '), len = outlines.get(key) ?? outlines.set(key, outline(cells)).get(key);
       const sum = cells.reduce((t, [k, n, m]) => t + out(k, n, m, sa, sb), 0);
-      if (sum < least - 1e-6) { least = sum; pick = cells; }
+      const score = outlineFirst ? [len, sum] : [sum, len];
+      if (score[0] < least[0] - 1e-6 || (score[0] < least[0] + 1e-6 && score[1] < least[1] - 1e-6)) { least = score; pick = cells; }
     }
   }
   return pick;
@@ -6357,7 +6369,7 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   // times: every one of its parts the same, as the rectangle's copies are (Snub: 2 across)
   const [[sp, sq], [sr, st]] = step, gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x)), ku = gcd(sp, sq), kv = gcd(sr, st);
   const U0 = U.map((x) => x / ku), V0 = V.map((x) => x / kv), D0 = D / ku / kv, inBrick = ([wx, wy]) => [(wx * V0[1] - wy * V0[0]) / D0, (U0[0] * wy - U0[1] * wx) / D0];
-  const pick = placeCells(Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), inBrick(a), inBrick(b), U0, V0);
+  const pick = placeCells(Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), inBrick(a), inBrick(b), U0, V0, true);  // (bricks in a rectangle: the shortest outline first)
   const tiles = pick.flatMap(([k, n, m]) => Array.from({ length: ku * kv }, (_, c) => [k, n + ((c % ku) * sp) / ku + (Math.floor(c / ku) * sr) / kv, m + ((c % ku) * sq) / ku + (Math.floor(c / ku) * st) / kv])).map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
   if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
   tiles.sort((p, q) => p.be - q.be || p.al - q.al);
