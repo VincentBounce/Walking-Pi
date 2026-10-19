@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.827';
+const VERSION = '0.1.828';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2426,7 +2426,7 @@ function familyOf(w) {
   return null;
 }
 // whether the number's digits are read: not by an ant by colour, nor by Life but for a start by the digits (the number
-// then neither shown nor in the link: x= is the number followed, the cells' start is sd= and p=)
+// then neither shown nor in the link: x= is the number followed, the cells' start is pop= and p=)
 const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].life && plane.start !== 'digits');
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 function renderAntRow() {
@@ -6134,12 +6134,12 @@ function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
   plane.rect = Number(s.o) === 1;
-  const [kind, a, b] = String(s.sd ?? 'random').split('.');
+  const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
   if (kind === 'random' || SYMMETRIES[kind] || zoneOfWord(kind)) {
     plane.start = 'random';
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
-    hunt.zone = zoneOfWord(kind) ?? 'full';  // (sd=bloom.30.7: Bloom's patches, from that seed)
+    hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -7544,7 +7544,7 @@ function stopHunt() {
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
   if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'face') return null;  // (Found: the link's, once)
-  const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's sd=bloom.30.7 the same start again)
+  const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
   if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
@@ -7926,7 +7926,7 @@ function setLifeSeed(seed, how) {
   L.seed.set(seed);
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   countSeed(L);
-  championCode = how?.zone ? null : encodeCells(L.seed, walk.base);  // in its shortest form (a zone's start: its sd says it, see getSetup)
+  championCode = how?.zone ? null : encodeCells(L.seed, walk.base);  // in its shortest form (a zone's start: its pop says it, see getSetup)
   lifeStart = how;
   describe(walk.base, Infinity);
   restart();
@@ -8003,7 +8003,7 @@ function decodeCells(code, n) {
 
 /* ---- 10.2 The setup object ------------------------------------------------------------------- */
 // a random start's word in a link: random (the soup), or its zone's (spark … jungle, realm, famous), with its density
-// and seed (sd=bloom.30.7); a zone from a link's word, else none
+// and seed (pop=bloom.30.7); a zone from a link's word, else none
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase() : 'random');
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase() === w);
 function getSetup() {
@@ -8019,11 +8019,11 @@ function getSetup() {
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
-    s.sd = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
+    s.pop = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
-  if (mode.life && !mode.plane) s.sd = plane.start === 'digits' ? 'digits' : `${zoneWord()}.${plane.density}.${plane.seed}`;  // a surface's start
+  if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : `${zoneWord()}.${plane.density}.${plane.seed}`;  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
@@ -8056,7 +8056,7 @@ function applySetup(s) {
   } else if (s.r) {
     if (MODES[s.w].plane) planeFromSetup(s);
     else {  // a surface's start: a soup (none said: one), or its digits
-      const [kind, a, b] = String(s.sd ?? 'random').split('.');
+      const [kind, a, b] = String(s.pop ?? 'random').split('.');
       plane.start = kind === 'random' || zoneOfWord(kind) ? 'random' : 'digits';
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
     }
@@ -11080,7 +11080,7 @@ const BUILT_IN = [
   ['Dragon', 'Paperfolding', { x: 'dragon', w: 'turtle', d: 20000 }],
   ['Thue–Morse', 'Koch curve', { x: 'thuemorse', w: 'triPivot', d: 4096 }],
   // added later: their batch number, so that a browser that took the first ones gets these once too (see seedCurated)
-  ['Möbius battle', 'A battle of 2 colours round the strip', { w: 'lifeMobius', s: 8, r: 'B3/S23', k: 2, sd: 'random.69.711421864',
+  ['Möbius battle', 'A battle of 2 colours round the strip', { w: 'lifeMobius', s: 8, r: 'B3/S23', k: 2, pop: 'random.69.711421864',
     ch: 's3.74-0-0-0-1-1-2-1-0-1-0-0-0-1-0-1-2-0-1-4-0-0-0-0-0-2-0-0-1-1-0-1-1-1-0-0-0-0-0-0-0-0-e8_2-2_2-0_2-1_2-1_2-0_2-1_2-0_2-1_2-1_2-2_2-0_2-0_2-0_2-2_2-0_2-0_2-1_2-1_2-0_2-0_2-1_2-1_2-0_2-2_2-1_2-2_2-0_2-0_2-1_2-1_2-1_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2' }, 2],
   ['1/438', 'A highway from step 534,473', { x: '1/438', w: 'antSquare', d: 540989, r: 'digits LR' }, 2],
   ['Rabbit', 'Fibonacci word fractal', { x: 'rabbit', w: 'squareParity', d: 4181 }],
@@ -11093,7 +11093,7 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 // the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
 // edges and cells drawn or found (what is seen; not the tools that found it: the hunt's buttons, Draw's brush)
-const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'sd', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
+const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'pop', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
