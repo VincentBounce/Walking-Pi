@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.834';
+const VERSION = '0.1.835';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2542,9 +2542,7 @@ function renderModePicker() {
         $('mode').dispatchEvent(new Event('change'));
       }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name);
       b.classList.toggle('switch', f === here && turns);
-      b.classList.toggle('turned', f === here && isTurned);
-      const k = Object.keys(TILINGS).find((x) => MODES[same(f)].sphere === `${x}torus`);  // (a tiling's: as it lies on the torus, its sheet's A round the ring across)
-      if (k) { const [[p, q]] = torusSheets(k)[f === here && isTurned ? 'turned' : 'plain'], [a, c] = TILINGS[k].basis; b.querySelector('.icon').style.transform = `rotate(${(Math.atan2(p * a[1] + q * c[1], p * a[0] + q * c[0]) * 180) / Math.PI}deg)`; }
+      if (f === here && isTurned) b.querySelector('.icon').style.transform = `rotate(${torusDeg(TURNED[MODES[same(f)].sphere])}deg)`;  // turned: its picture by as much (a torus's, a strip's alike)
       return [b];
     }));
   }
