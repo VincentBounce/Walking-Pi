@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.847';
+const VERSION = '0.1.848';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2624,18 +2624,20 @@ function renderModePicker() {
   }
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
-  const rules = navValues(3, [kind, space, shape]), optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
+  // an ant's creatures as the shapes, tiles, all of them on whatever shape (Ant, Turmite on squares, Worm on triangles:
+  // one of another shape, a click takes it there); a walk's rules a list, each with its base
+  const creatures = kind === 'Ant', optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
+  const rules = creatures ? [...new Set(Object.values(NAV).filter((n) => n[0] === kind && n[1] === space).map((n) => n[3]))] : navValues(3, [kind, space, shape]);
   $('navRules').hidden = rules.length < 2;
-  // an ant's creatures as the shapes, tiles (Ant, Worm); a walk's rules a list, each with its base
-  const creatures = kind === 'Ant';
   $('navRules').className = creatures ? 'nav-shapes' : 'mode-list';
   $('rulesLabel').hidden = !creatures || $('navRules').hidden;
   $('navRules').replaceChildren(...rules.map((r) => {
-    const v = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
+    const here = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
+    const v = here ?? Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][3] === r);  // (elsewhere: its first shape)
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
     const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
     const b = button(creatures ? `${pic}<span>${r}</span>` : `<span class="mode-icon">${pic}</span><span><span class="mode-name">${r}</span></span>`
-      + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => navGo(3, r));
+      + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => { if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); });
     b.disabled = !has(kind, r);
     return b;
   }));
