@@ -40,6 +40,7 @@ body { display: flex; flex-direction: column; }
 header { padding: 0 20px; border-bottom: 1px solid var(--border); }  /* one hairline, edge to edge, under the tabs */
 /* the walk tabs at the very top on the left, on a hairline; the app's name and version on the right */
 .header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.header-end { display: flex; align-items: center; gap: 12px; }  /* Share, then the title */
 h1 { margin: 0; font-size: 22px; letter-spacing: 0.02em; white-space: nowrap; }
 h1 .pi, .bar-sub .pi { color: var(--accent); }
 h1 .home { color: inherit; text-decoration: none; }  /* the title: back to the site's start */
@@ -73,7 +74,7 @@ h2 { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; font-size
 h2 .icon { width: 24px; height: 24px; flex: none; color: var(--accent); vertical-align: 0; }
 /* a section's own action, on its title's right (How it works, Copy RLE, Full number) */
 .head-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 12px; font-weight: 500; border-radius: 6px; }
-h2 .head-btn .icon { width: 14px; height: 14px; color: inherit; }
+.head-btn .icon { width: 14px; height: 14px; color: inherit; }
 
 /* Walk: Grid or Cells, beside the heading */
 .walk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }

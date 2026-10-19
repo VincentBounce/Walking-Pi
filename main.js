@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.828';
+const VERSION = '0.1.829';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7926,7 +7926,7 @@ function setLifeSeed(seed, how) {
   L.seed.set(seed);
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   countSeed(L);
-  championCode = how?.zone ? null : encodeCells(L.seed, walk.base);  // in its shortest form (a zone's start: its pop says it, see getSetup)
+  championCode = how && !how.zone ? encodeCells(L.seed, walk.base) : null;  // a hunt's, a battle's, a saved start, in its shortest form (a zone's or the grid's own: its pop says it, see getSetup)
   lifeStart = how;
   describe(walk.base, Infinity);
   restart();
@@ -10834,6 +10834,13 @@ function lifeRle() {
   return [`#N ${formulaInUse}, generation ${cur}`, `#C Walking Pi: ${location.href}`, ...(kind === 'square' ? [] : [`#C On the app's ${PLANE_CELLS[base]} (not Golly's squares): cells as its slanted grid numbers them`]),
     `x = ${Math.max(...xs) - Math.min(...xs) + 1}, y = ${Math.max(...ys) - Math.min(...ys) + 1}, rule = ${rule}`, ...lines].join('\n');
 }
+// Share: the page link (the setup shown, see syncLink), copied
+$('shareLink').innerHTML = `${icon('link')} Share`;
+$('shareLink').addEventListener('click', () => {
+  const b = $('shareLink');
+  syncLink();
+  navigator.clipboard.writeText(location.href).then(() => { b.innerHTML = `${icon('check')} Copied`; setTimeout(() => { b.innerHTML = `${icon('link')} Share`; }, 1500); }, () => {});
+});
 $('copyRle').addEventListener('click', () => {
   const text = lifeRle(), b = $('copyRle');
   if (!text) return;
