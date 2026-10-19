@@ -106,21 +106,35 @@ function jaap(base, rows) {
 }
 
 const T = {};
-// a lattice cell's polygons, each moved by whole steps of the lattice where it sticks out of the cell least (the cell moved
-// by eighths of its sides, the least of all kept): a grid of them a parallelogram as near as its tiles let it
-function compact(polys, a, b) {
-  const la = Math.hypot(...a), lb = Math.hypot(...b);
-  const out = (P, s, t) => P.reduce((sum, [u, v]) => sum + la * Math.max(0, s - u, u - s - 1) + lb * Math.max(0, t - v, v - t - 1), 0);
-  let best = polys, least = Infinity;
-  for (let t = 0; t < 1; t += 1 / 8) for (let s = 0; s < 1; s += 1 / 8) {
-    const moved = polys.map((P) => {
-      let Q = P, o = Infinity;
-      for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const R = P.map(([u, v]) => [u + i, v + j]), x = out(R, s, t); if (x < o - 1e-9) { o = x; Q = R; } }
-      return [o, Q];
-    }), sum = moved.reduce((x, [o]) => x + o, 0);
-    if (sum < least - 1e-9) { least = sum; best = moved.map(([, Q]) => Q); }
+// a lattice cell's polygons, the frame the cell itself, as main.js places a frame's cells (a copy: placeCells): in
+// bricks or alone, where they stick out of it least; a grid of them a parallelogram as near as its tiles let it
+function placeCells(P, la, lb, U, V) {
+  const lu = Math.hypot(...U), lv = Math.hypot(...V), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
+  const at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]], far = (du, dv) => Math.hypot(du * U[0] + dv * V[0], du * U[1] + dv * V[1]);
+  const out = (k, n, m, sa, sb) => P[k].reduce((t, q) => { const [u, v] = at(q, n, m); return t + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1); }, 0);
+  const dl = la[0] * lb[1] - la[1] * lb[0], frac = (x) => Math.round((((x % 1) + 1) % 1) * 1e4) % 1e4;  // (once each: a lattice step apart, the same)
+  const centres = new Map(P.flatMap((Q) => [mid(Q), ...Q]).map((c) => [`${frac((c[0] * lb[1] - c[1] * lb[0]) / dl)},${frac((la[0] * c[1] - la[1] * c[0]) / dl)}`, c]));
+  let pick = null, least = Infinity;
+  for (const c of [null, ...centres.values()]) {  // (null: each cell alone)
+    const brick = P.map((Q) => {  // (cell k's lattice point, the one nearest its middle)
+      if (!c) return [0, 0];
+      const m = mid(Q), w = (x, y) => far(m[0] - c[0] - x * la[0] - y * lb[0], m[1] - c[1] - x * la[1] - y * lb[1]);
+      let near = null;
+      for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) if (!near || w(i, j) < w(...near) - 1e-9) near = [i, j];
+      return near;
+    });
+    const points = [];  // (each brick's point in the frame, its cells [k, n, m])
+    for (let m = -8; m <= 8; m++) for (let n = -8; n <= 8; n++) {
+      if (!c) { P.forEach((Q, k) => points.push([at(mid(Q), n, m), [[k, n, m]]])); continue; }
+      points.push([at(c, n, m), brick.map(([i, j], k) => [k, n - i, m - j])]);
+    }
+    for (let sb = 0; sb < 1; sb += 1 / 8) for (let sa = 0; sa < 1; sa += 1 / 8) {
+      const cells = points.filter(([[al, be]]) => al >= sa - 1e-6 && al < sa + 1 - 1e-6 && be >= sb - 1e-6 && be < sb + 1 - 1e-6).flatMap((p) => p[1]);
+      const sum = cells.reduce((t, [k, n, m]) => t + out(k, n, m, sa, sb), 0);
+      if (sum < least - 1e-6) { least = sum; pick = cells; }
+    }
   }
-  return best;
+  return pick;
 }
 // the polygons of one lattice cell (their middles in it), in lattice units
 function cell(name, a, b, polys, extra = {}) {
@@ -128,7 +142,7 @@ function cell(name, a, b, polys, extra = {}) {
   const own = polys.map((P) => P.map(toL)).filter((P) => { const [u, v] = mid(P); return Math.floor(u + 1e-6) === 0 && Math.floor(v + 1e-6) === 0; });  // (a middle on the cell's edge: once)
   const sum = own.reduce((s, P) => s + Math.abs(area(P)), 0);
   if (Math.abs(sum - 1) > 1e-6) throw new Error(`${name}: the cell's polygons fill ${sum} of it`);
-  T[name] = { basis: [a, b], polys: compact(own, a, b).map((P) => (area(P) < 0 ? P.reverse() : P).map(([u, v]) => [+u.toFixed(6), +v.toFixed(6)])), ...extra };
+  T[name] = { basis: [a, b], polys: placeCells(own, [1, 0], [0, 1], a, b).sort((p, q) => p[0] - q[0]).map(([k, n, m]) => own[k].map(([u, v]) => [u + n, v + m])).map((P) => (area(P) < 0 ? P.reverse() : P).map(([u, v]) => [+u.toFixed(6), +v.toFixed(6)])), ...extra };
 }
 const tri = [[1, 0], [0.5, R3 / 2]];  // the unit triangular lattice's vectors (e0, e1)
 

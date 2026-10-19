@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.799';
+const VERSION = '0.1.800';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6299,6 +6299,40 @@ for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
 const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
 const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
+// A frame's cells, the slanted grids' lattice cells and rectangles' alike (tools/tilings/build.js: a copy): each of its grid's
+// cells with the lattice point nearest its middle (a brick round a point of the grid, the lattice moved there), the bricks
+// whose point is in the frame (whole bricks: no cell alone, its sides a stair); each middle and corner of a lattice cell's
+// cells tried as that point (or each cell alone, by its middle: Kites, their sides straight lines), and the frame moved by
+// eighths of its sides, the cells sticking out of it least kept. P: a lattice cell's polygons in the frame's units (its
+// sides U, V: 1), la, lb: the lattice's steps in them; its cells [k, n, m]: polygon k moved by n·la + m·lb
+function placeCells(P, la, lb, U, V) {
+  const lu = Math.hypot(...U), lv = Math.hypot(...V), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
+  const at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]], far = (du, dv) => Math.hypot(du * U[0] + dv * V[0], du * U[1] + dv * V[1]);
+  const out = (k, n, m, sa, sb) => P[k].reduce((t, q) => { const [u, v] = at(q, n, m); return t + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1); }, 0);
+  const dl = la[0] * lb[1] - la[1] * lb[0], frac = (x) => Math.round((((x % 1) + 1) % 1) * 1e4) % 1e4;  // (once each: a lattice step apart, the same)
+  const centres = new Map(P.flatMap((Q) => [mid(Q), ...Q]).map((c) => [`${frac((c[0] * lb[1] - c[1] * lb[0]) / dl)},${frac((la[0] * c[1] - la[1] * c[0]) / dl)}`, c]));
+  let pick = null, least = Infinity;
+  for (const c of [null, ...centres.values()]) {  // (null: each cell alone)
+    const brick = P.map((Q) => {  // (cell k's lattice point, the one nearest its middle)
+      if (!c) return [0, 0];
+      const m = mid(Q), w = (x, y) => far(m[0] - c[0] - x * la[0] - y * lb[0], m[1] - c[1] - x * la[1] - y * lb[1]);
+      let near = null;
+      for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) if (!near || w(i, j) < w(...near) - 1e-9) near = [i, j];
+      return near;
+    });
+    const points = [];  // (each brick's point in the frame, its cells [k, n, m])
+    for (let m = -8; m <= 8; m++) for (let n = -8; n <= 8; n++) {
+      if (!c) { P.forEach((Q, k) => points.push([at(mid(Q), n, m), [[k, n, m]]])); continue; }
+      points.push([at(c, n, m), brick.map(([i, j], k) => [k, n - i, m - j])]);
+    }
+    for (let sb = 0; sb < 1; sb += 1 / 8) for (let sa = 0; sa < 1; sa += 1 / 8) {
+      const cells = points.filter(([[al, be]]) => al >= sa - 1e-6 && al < sa + 1 - 1e-6 && be >= sb - 1e-6 && be < sb + 1 - 1e-6).flatMap((p) => p[1]);
+      const sum = cells.reduce((t, [k, n, m]) => t + out(k, n, m, sa, sb), 0);
+      if (sum < least - 1e-6) { least = sum; pick = cells; }
+    }
+  }
+  return pick;
+}
 // A slanted grid shown as a rectangle (o=1: its button clicked again): a tiling of its own, its lattice cell a rectangle
 // of its lattice cells (two sides of whole steps at right angles, or within 3°, the nearest a square), its cells the ones
 // whose middles are in it: a torus that wraps straight across and down, and straight walls (as a 3D torus's sheet).
@@ -6323,36 +6357,7 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   // times: every one of its parts the same, as the rectangle's copies are (Snub: 2 across)
   const [[sp, sq], [sr, st]] = step, gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x)), ku = gcd(sp, sq), kv = gcd(sr, st);
   const U0 = U.map((x) => x / ku), V0 = V.map((x) => x / kv), D0 = D / ku / kv, inBrick = ([wx, wy]) => [(wx * V0[1] - wy * V0[0]) / D0, (U0[0] * wy - U0[1] * wx) / D0];
-  // its cells in bricks: each of its grid's cells with the lattice point nearest its middle (a brick round a point of
-  // the grid, the lattice moved there), the bricks whose point is in the rectangle (whole bricks: no cell alone, its sides
-  // a stair); each middle and corner of a lattice cell's cells tried as that point (or each cell alone, by its middle:
-  // Kites, their sides straight lines), and the rectangle moved by eighths of its sides, the cells sticking out of it least
-  // kept. (In the rectangle's units: cell k of lattice cell n, m its polygon k moved by n·a + m·b)
-  const P = Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), mid = (Q) => [0, 1].map((i) => Q.reduce((t, q) => t + q[i], 0) / Q.length);
-  const la = inBrick(a), lb = inBrick(b), lu = Math.hypot(...U0), lv = Math.hypot(...V0), at = ([u, v], n, m) => [u + n * la[0] + m * lb[0], v + n * la[1] + m * lb[1]];
-  const out = (k, n, m, sa, sb) => P[k].reduce((t, q) => { const [u, v] = at(q, n, m); return t + lu * Math.max(0, sa - u, u - sa - 1) + lv * Math.max(0, sb - v, v - sb - 1); }, 0);
-  let pick = null, least = Infinity;
-  const dl = la[0] * lb[1] - la[1] * lb[0], frac = (x) => Math.round((((x % 1) + 1) % 1) * 1e4) % 1e4;  // (once each: a lattice step apart, the same)
-  const centres = new Map(P.flatMap((Q) => [mid(Q), ...Q]).map((c) => [`${frac((c[0] * lb[1] - c[1] * lb[0]) / dl)},${frac((la[0] * c[1] - la[1] * c[0]) / dl)}`, c]));
-  for (const c of [null, ...centres.values()]) {  // (null: each cell alone)
-    const brick = P.map((Q) => {  // (cell k's lattice point, the one nearest its middle)
-      if (!c) return [0, 0];
-      const m = mid(Q), w = (x, y) => Math.hypot((m[0] - c[0] - x * la[0] - y * lb[0]) * lu, (m[1] - c[1] - x * la[1] - y * lb[1]) * lv);
-      let near = null;
-      for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) if (!near || w(i, j) < w(...near) - 1e-9) near = [i, j];
-      return near;
-    });
-    const points = [];  // (each brick's point in the rectangle, its cells [k, n, m])
-    for (let m = -8; m <= 8; m++) for (let n = -8; n <= 8; n++) {
-      if (!c) { P.forEach((Q, k) => points.push([at(mid(Q), n, m), [[k, n, m]]])); continue; }
-      points.push([at(c, n, m), brick.map(([i, j], k) => [k, n - i, m - j])]);
-    }
-    for (let sb = 0; sb < 1; sb += 1 / 8) for (let sa = 0; sa < 1; sa += 1 / 8) {
-      const cells = points.filter(([[al, be]]) => al >= sa - 1e-6 && al < sa + 1 - 1e-6 && be >= sb - 1e-6 && be < sb + 1 - 1e-6).flatMap((p) => p[1]);
-      const sum = cells.reduce((t, [k, n, m]) => t + out(k, n, m, sa, sb), 0);
-      if (sum < least - 1e-6) { least = sum; pick = cells; }
-    }
-  }
+  const pick = placeCells(Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), inBrick(a), inBrick(b), U0, V0);
   const tiles = pick.flatMap(([k, n, m]) => Array.from({ length: ku * kv }, (_, c) => [k, n + ((c % ku) * sp) / ku + (Math.floor(c / ku) * sr) / kv, m + ((c % ku) * sq) / ku + (Math.floor(c / ku) * st) / kv])).map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
   if (tiles.length !== det * per) continue;  // (a rectangle of whole lattice cells: as many as their cells)
   tiles.sort((p, q) => p.be - q.be || p.al - q.al);
