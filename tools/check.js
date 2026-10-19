@@ -68,6 +68,8 @@ async function crawl(fail) {
   for (let ti = 0; ti < tabs().length; ti++) {
     tabs()[ti].click();
     await look(`tab ${tabs()[ti].textContent.trim()}`);
+    const how = document.querySelector('#walkHeading .how-it-works');  // (its How it works open: it follows the grid and the rule)
+    if (how && $('ruleTuto').hidden) { how.click(); await look(`How it works ${tabs()[ti].textContent.trim()}`); }
     for (let si = 0; si < $('navSpace').children.length; si++) {
       $('navSpace').children[si].click();
       await look(`space ${$('navSpace').children[si]?.textContent}`);
