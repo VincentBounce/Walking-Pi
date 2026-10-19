@@ -167,6 +167,9 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
 
 // trihexagonal (3.6.3.6, the kagome): the rhombille's points, their faces (hexagons, triangles between)
 { const a = [2, 0], b = [1, R3], pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 7); cell('trihex', a, b, polygons(pts, false)); }
+// truncated square (4.8.8): the tetrakis's points, their faces (octagons, squares)
+{ const s = 1 + Math.SQRT2, h = 0.5 + Math.SQRT1_2, a = [s, 0], b = [0, s], pts = points(a, b, [[0.5, h], [-0.5, h], [-h, 0.5], [-h, -0.5], [-0.5, -h], [0.5, -h], [h, -0.5], [h, 0.5]], 6);
+  cell('truncsquare', a, b, polygons(pts, false)); }
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)

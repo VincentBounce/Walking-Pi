@@ -39,6 +39,7 @@
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
 const VERSION = '0.1.786';
 const VERSION = '0.1.792';
+const VERSION = '0.1.793';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -866,6 +867,9 @@ const TILINGS = {
   trihex: { name: 'Trihex', mark: '✡', cells: 'tiles', where: "a grid of hexagons and triangles meeting at their corners (the trihexagonal tiling, the kagome)", most: 12, turns: 6, mirror: true, pivot: [0, 0], sheet: [[1, 0], [-1, 2]],
     basis: [[2, 0], [1, 1.7320508075688772]],
     polys: [[[-0.5,0],[0,-0.5],[0.5,-0.5],[0.5,0],[0,0.5],[-0.5,0.5]],[[0.5,0],[0.5,0.5],[0,0.5]],[[0.5,1],[0.5,0.5],[1,0.5]]] },
+  truncsquare: { name: 'Octagons', mark: '❖', cells: 'tiles', where: "a grid of octagons and squares (the truncated square tiling)", most: 8, turns: 4, mirror: true, pivot: [0, 0], sheet: [[1, 0], [0, 1]],
+    basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
+    polys: [[[-0.5,-0.207107],[-0.207107,-0.5],[0.207107,-0.5],[0.5,-0.207107],[0.5,0.207107],[0.207107,0.5],[-0.207107,0.5],[-0.5,0.207107]],[[0.207107,0.5],[0.5,0.207107],[0.792893,0.5],[0.5,0.792893]]] },
 };
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip)
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
@@ -5601,6 +5605,8 @@ const DRAW_PATTERNS = [
   ['kagomelife-meth', 'trihex', ['B349/S0134/C5'], 'Methuselah', 'A$.2A$2.2A.A!', 'settles at generation 355 · 6 cells'],
   ['kagomeembers-osc', 'trihex', ['B348/S0134/C5'], 'Oscillator', '5.2A$2.5A$A2.A2.A!', 'period 5 · 10 cells'],
   ['kagomeembers-meth', 'trihex', ['B348/S0134/C5'], 'Methuselah', 'A2.A.A$2.2A$2A2.2A!', 'settles at generation 498 · 9 cells'],
+  ['octagonlife-osc', 'truncsquare', ['B278/S2'], 'Oscillator', 'A.A!', 'period 2 · 2 cells'],
+  ['octagonchimes-osc', 'truncsquare', ['B27/S28'], 'Oscillator', 'A.A!', 'period 2 · 2 cells'],
   ['type15life-ship', 'pent15', ['B247/S034/C4'], 'Spaceship', 'AB.B.A2.2CA!', 'flies, period 24 (turned half way at 12) · 7 cells'],
   ['type15life-osc', 'pent15', ['B247/S034/C4'], 'Oscillator', '26.A10.A17.A!', 'period 8 · 3 cells'],
   ['type15life-meth', 'pent15', ['B247/S034/C4'], 'Methuselah', '19.2A19.A5.A3.A4.A7.2A7.A16.A!', 'settles at generation 363 · 10 cells'],
@@ -6552,6 +6558,8 @@ const RULE_ICONS = {
   'B34/S2357': 'o.o.o,..o..,ooooo,.....,.o.o.',
   'B349/S0134/C5': '.....,....o,.oooo,..o..,.....',
   'B348/S0134/C5': '.....,o..o.,..oo.,oo..o,.....',
+  'B278/S2': '.....,.....,.o.o.,.....,.....',
+  'B27/S28': '.....,.....,.o.o.,.....,.....',
   'B247/S034/C4': '++o++,+...+,.ooo.,..o..,+...+',
   'B256/S67': '.....,o.o.o,.ooo.,.....,.ooo.',
   'B38/S1369': '.....,..o..,o.o.o,.o.o.,o...o',

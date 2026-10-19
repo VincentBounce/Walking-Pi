@@ -1,0 +1,10 @@
+truncsquare 50176 rules 206 candidates 142s
+truncsquare done 409s
+  B278/S2         0.13   T 983 (359–5735) spread 0.69 plateau 0.48 at200 12% ash 0.57% osc 100%
+  B27/S28         0.073  T 1361 (473–2464) spread 0.5 plateau 0.46 at200 11.6% ash 0.57% osc 100%
+  B28/S28         0.059  T 1300 (685–4649) spread 0.54 plateau 0.32 at200 11.1% ash 0.57% osc 100%
+  B267/S3458      0.055  T 539 (211–1358) spread 0.59 plateau 0.25 at200 5.2% ash 0.77% osc 100%
+  B236/S3456/C4   0.047  T 858 (316–5056) spread 0.77 plateau 0.74 at200 14.8% ash 3.57% osc 100%
+  B278/S26        0.031  T 1617 (420–3807) spread 0.7 plateau 0.43 at200 12.3% ash 0.62% osc 100%
+  B27/S278        0.03   T 1186 (505–4956) spread 0.68 plateau 0.46 at200 14.2% ash 0.4% osc 100%
+  B2/S26          0.027  T 1591 (593–6000) spread 0.6 plateau 0.59 at200 12% ash 0.57% osc 92%
