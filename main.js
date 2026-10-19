@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.829';
+const VERSION = '0.1.830';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7398,24 +7398,43 @@ function huntParts(r, K) {
   if (K === 1) return [lifePatch(r)];
   return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
 }
-// A solid's face of cell t (a cube with pits: the face its pit is in, by the largest of its coordinates);
-// null without faces (the plane, a torus, the sphere of hexagons). Without t: whether there are faces
+// A solid's face of cell t (a cube with pits: the face its pit is in, by the largest of its coordinates; the
+// sphere of hexagons: its icosahedron's face it is in, see hexFaces); null without faces (the plane, a torus).
+// Without t: whether there are faces
 function faceOf(t = 0) {
   const g = walk.geo;
   if (walk.plane || !g || g.torus) return null;
   if (g.perFace) return Math.floor(t / g.perFace / facesPer());
+  if (MODES[$('mode').value].sphere === 'hexsphere') return hexFaces(g)[t];
   if (!g.floors) return null;
   const c = g.cen.subarray(3 * t, 3 * t + 3), ax = [0, 1, 2].reduce((m, d) => (Math.abs(c[d]) > Math.abs(c[m]) ? d : m), 0);
   return 2 * ax + (c[ax] < 0 ? 1 : 0);
 }
+// the sphere of hexagons: each cell's face of its icosahedron, the one its middle is nearest; a cell on an edge or
+// a corner (as near two faces): in none (-1), every face as big (once a grid)
+function hexFaces(g) {
+  if (g.hexFaces) return g.hexFaces;
+  const { P, faces } = POLYHEDRA.icosa, dirs = faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + P[v][d], 0)))), walls = new Set(g.walls);
+  return (g.hexFaces = Int8Array.from({ length: g.n }, (_, t) => {
+    if (walls.has(t)) return -1;  // (the 12 pentagons, at its corners)
+    const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), near = dirs.map((d) => dot3(d, c)), best = Math.max(...near);
+    return near.filter((x) => x > best - 1e-9).length > 1 ? -1 : near.indexOf(best);
+  }));
+}
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
-// Each colour's face: the one in front (one colour), else the face at its spot
+// Each colour's face: the one in front (one colour), else the face nearest its spot not taken by a colour before
+// (a spot on a corner, as near several: one each)
 function faceParts(K) {
-  const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K];
+  const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K], used = new Set();
+  const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3);
   return spots.map((d) => {
-    const f = faceOf(centreCells(d ?? undefined)[0]), part = [];
-    for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && faceOf(t) === f) part.push(t);
+    const dir = d ? unit(d) : cen(centreCells()[0]);
+    let f = -1, top = -Infinity;
+    for (let t = 0; t < g.n; t++) { const h = faceOf(t), x = dot3(cen(t), dir); if (h >= 0 && !used.has(h) && x > top) { top = x; f = h; } }
+    used.add(f);
+    const part = [];
+    if (f >= 0) for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && faceOf(t) === f) part.push(t);  // (no face left: none)
     return part;
   });
 }
@@ -7462,8 +7481,8 @@ function huntFits() {
     if (famousZone(zone)) return [zone, patternsOn() && patternChoices(zone === 'centred').every((c) => c.length > 0)];
     if (zone === 'face' && faceOf() === null) return [zone, false];
     if (!r && zone !== 'face') return [zone, true];
-    const parts = zoneParts(zone, K);
-    return [zone, new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
+    const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
+    return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
 }
 function renderHunt() {
