@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.842';
+const VERSION = '0.1.843';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2563,7 +2563,9 @@ function renderModePicker() {
   const inFamily = familyOf(w);
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
-  $('shapesLabel').hidden = $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles)
+  $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles; an ant's: its shape, then its creatures)
+  $('shapesLabel').hidden = !inFamily && kind !== 'Ant';
+  $('shapesLabel').textContent = space === '2D' ? 'Shape' : 'Surface';
   if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
     const { F, tab } = inFamily;
@@ -2597,10 +2599,15 @@ function renderModePicker() {
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
   const rules = navValues(3, [kind, space, shape]), optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
   $('navRules').hidden = rules.length < 2;
+  // an ant's creatures as the shapes, tiles (Ant, Worm); a walk's rules a list, each with its base
+  const creatures = kind === 'Ant';
+  $('navRules').className = creatures ? 'nav-shapes' : 'mode-list';
+  $('rulesLabel').hidden = !creatures || $('navRules').hidden;
   $('navRules').replaceChildren(...rules.map((r) => {
     const v = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
-    const b = button(`<span class="mode-icon">${icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : MODE_ICONS[v])}</span><span><span class="mode-name">${r}</span></span>`  // a turtle for the walks turning relative to their heading
+    const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
+    const b = button(creatures ? `${pic}<span>${r}</span>` : `<span class="mode-icon">${pic}</span><span><span class="mode-name">${r}</span></span>`
       + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => navGo(3, r));
     b.disabled = !has(kind, r);
     return b;
@@ -2618,7 +2625,7 @@ function renderModePicker() {
   };
   const cellsWord = space === '3D' ? 'Cube' : 'Cells';
   side($('walkOnGrid'), 'grid', 'Grid', 'not on the grid');
-  side($('walkOnCells'), 'cells', cellsWord, `not on ${cellsWord.toLowerCase()}s`);
+  side($('walkOnCells'), 'cells', cellsWord, space === '3D' ? 'not on cubes' : 'not on cells');
   renderAntRow();
 }
 
@@ -9739,11 +9746,11 @@ function glFlat(to) {
     S.keys.flatPts = walk.xs; S.keys.flatProj = ptsKey;
   }
   const keysKey = `${mode === 'digit'}|${walk.keys === walk.antStates}`;
-  if (S.keys.flatKeys !== walk.digits || S.keys.flatKeysMode !== keysKey) {
+  if (S.keys.flatKeys !== walk.keys || S.keys.flatKeysMode !== keysKey) {  // (a worm's turns: its keys, its digits the same)
     const keys = new Uint8Array(Math.max(1, walk.n));
     for (let i = 0; i < walk.n; i++) keys[i] = walk.skipZeros && walk.digits[i] === 0 ? 255 : mode === 'digit' ? walk.keys[i] : 0;
     upload(S.flatKeys, keys);
-    S.keys.flatKeys = walk.digits; S.keys.flatKeysMode = keysKey;
+    S.keys.flatKeys = walk.keys; S.keys.flatKeysMode = keysKey;
   }
   if (S.keys.pal !== `${walk.base}|${walk.ant}|${antRamp}|${walk.skipZeros}|${current.mode}|${MONO}`) {  // the digits' colours (an ant's)
     const pal = new Uint8Array(4 * 256);
@@ -11175,7 +11182,7 @@ function renderCellModes(mode) {
     b.title = title;
     b.innerHTML = `${cellModePicture(look)}<span>${name}</span>`;
     b.classList.toggle('active', look === now);
-    b.disabled = !mode.cells || (look === 'visits' && !useful('visits'));
+    b.disabled = (!mode.cells && !['cells', 'digit'].includes(look)) || (look === 'visits' && !useful('visits'));  // (along the lines: Rainbow, Directions, its line's colours)
     b.addEventListener('click', () => pickCellMode(look));
     return b;
   };
@@ -11187,7 +11194,7 @@ function pickCellMode(look) {
   const ant = !!MODES[$('mode').value].antOf;
   $('showPath').checked = look === 'path';
   if (ant) setAntRamp(look === 'ink' ? 'ink' : look === 'amber' || look === 'path' ? 'amber' : null);
-  $('colorMode').value = look === 'ink' || look === 'amber' || (look === 'path' && ant) ? 'digit' : look === 'path' ? 'cells' : look;
+  $('colorMode').value = look === 'ink' || look === 'amber' || (look === 'path' && ant) ? 'digit' : look === 'path' ? 'cells' : look === 'cells' && !MODES[$('mode').value].cells ? 'gradient' : look;
   $('colorMode').dispatchEvent(new Event('change'));
   needsFull = true;
   updateDisplayMenu();

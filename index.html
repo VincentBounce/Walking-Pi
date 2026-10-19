@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261104g">
+  <link rel="stylesheet" href="style.css?v=20261104h">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -53,6 +53,7 @@
             <div class="tile-group" id="sheetPair"><button id="sheetRhombus" type="button" title="The grid as it is, slanted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Rhombus</span></button><button id="sheetRect" type="button" title="The same grid cut as a rectangle (its cells moved, the same neighbours)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Rectangle</span></button></div>
           </div>
         </div>
+        <div id="rulesLabel" class="block-label" hidden>Creature</div>
         <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
         <div id="antRow" hidden>  <!-- Langton's ant: by colour or by the digits, each with its rule -->
           <div class="choice-row"><button id="antColours" type="button">Colours</button><button id="antDigits" type="button">Digits</button></div>
@@ -589,6 +590,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261104g"></script>
+  <script src="main.js?v=20261104h"></script>
 </body>
 </html>
