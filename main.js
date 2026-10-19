@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.806';
+const VERSION = '0.1.807';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6320,7 +6320,7 @@ function rectSides(a, b) {
 }
 // A tiling's torus sheets: plain, its slanted grid's rectangle (see rectSides) or its lattice cell if at right angles; turned,
 // the same turned by 90° (B round the ring: by 30° on six turns, by 90° on two), or on four turns the least square of
-// lattice steps along its cells' sides if its lattice is not (Pythagoras: straight squares round the ring), else none;
+// lattice steps along a side of every one of its cells if its lattice is not (Pythagoras: straight squares round the ring), else none;
 // deg: the turn as seen. [[p, q], [r, s]]: A = p·a + q·b round the ring, B = r·a + s·b round the tube
 function torusSheets(kind) {
   const t = TILINGS[kind];
@@ -6329,11 +6329,11 @@ function torusSheets(kind) {
   const plain = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b) ? [[1, 0], [0, 1]] : rectSides(a, b).step;
   let turned = t.turns !== 4 ? [plain[1], plain[0].map((x) => -x)] : null, deg = t.turns === 6 ? 30 : 90;
   if (t.turns === 4) {  // (along a side: U a lattice step along one of its cells' sides, V the same turned, a lattice step too)
-    const sides = t.polys.flatMap((P) => P.map((p, i) => { const [x, y] = W(P[(i + 1) % P.length]).map((c, d) => c - W(p)[d]); return [x / Math.hypot(x, y), y / Math.hypot(x, y)]; }));
+    const sidesOf = (P) => P.map((p, i) => { const [x, y] = W(P[(i + 1) % P.length]).map((c, d) => c - W(p)[d]); return [x / Math.hypot(x, y), y / Math.hypot(x, y)]; }), sides = t.polys.flatMap(sidesOf);
     const D = cross(a, b), A0 = W(plain[0]), along = sides.some((e) => Math.abs(cross(e, A0)) < 1e-6 * Math.hypot(...A0));  // (its lattice along a side already: none)
     for (let n = 1; n <= 6 && !turned && !along; n++) for (let p = -n; p <= n && !turned; p++) for (const q of [n - Math.abs(p), Math.abs(p) - n]) {
       const U = W([p, q]), l = Math.hypot(...U);
-      if (!l || Math.abs(cross(U, A0)) < 1e-6 * l || Math.abs(U[0] * A0[0] + U[1] * A0[1]) < 1e-6 * l || !sides.some((e) => Math.abs(cross(e, U)) < 1e-6 * l)) continue;
+      if (!l || Math.abs(cross(U, A0)) < 1e-6 * l || Math.abs(U[0] * A0[0] + U[1] * A0[1]) < 1e-6 * l || !t.polys.every((P) => sidesOf(P).some((e) => Math.abs(cross(e, U)) < 1e-6 * l))) continue;  // (every cell with a side along it)
       const V = [-U[1], U[0]], r = cross(V, b) / D, s = cross(a, V) / D;
       if (Math.abs(r - Math.round(r)) < 1e-6 && Math.abs(s - Math.round(s)) < 1e-6) { turned = [[p, q], [Math.round(r), Math.round(s)]]; deg = Math.round((Math.acos(Math.abs(U[0] * A0[0] + U[1] * A0[1]) / l / Math.hypot(...A0)) * 180) / Math.PI); }
     }
