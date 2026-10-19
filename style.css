@@ -221,6 +221,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 /* a group of tiles, one choice among them: joined in one frame, 2 or 3 columns of tiles */
 .tile-group { display: flex; grid-column: span 2; }
 .tile-group:has(> :nth-child(3)) { grid-column: span 3; }
+.tile-group:has(> :nth-child(4)) { grid-column: span 4; }
 .tile-group > button { flex: 1 1 0; border-radius: 0; }
 .tile-group > button + button { margin-left: -1px; }  /* one line between them */
 .tile-group > button:first-child { border-radius: 6px 0 0 6px; }

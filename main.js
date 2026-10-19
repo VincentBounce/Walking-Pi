@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.840';
+const VERSION = '0.1.841';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4540,7 +4540,7 @@ function syncSizeStepper() {
   // the size (see gridSize)
   const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize();
   // (a torus that turns: its turn too, 0° or its own)
-  const turn = kind && TURNED[kind.replace(/Turned$/, '')] ? ` – ${Math.round(Math.abs(tilesTurn(kind)))}°` : '';  // (as its tiles lie)
+  const turn = kind && TURNED[kind.replace(/Turned$/, '')] ? ` · ${Math.round(Math.abs(tilesTurn(kind)))}°` : '';  // (as its tiles lie)
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`;
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
@@ -11038,7 +11038,7 @@ function renderAreaModes() {
   const now = !$('fillAreas').checked ? 'empty' : $('fillTranslucent').checked && light ? 'light' : 'plain', c = GRADIENT[Math.round(0.55 * (BANDS - 1))];
   const picture = (look) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7L11 3L20 6L19 17L9 21L3 15Z" fill="${look === 'empty' ? 'none' : c}"`
     + `${look === 'light' ? ' fill-opacity="0.35"' : ''} stroke="${GRADIENT[Math.round(0.2 * (BANDS - 1))]}" stroke-width="2" stroke-linejoin="round"/></svg>`;  // a closed loop
-  $('areaModes').replaceChildren(...AREA_MODES.map(([look, name, title]) => {
+  $('areaModes').replaceChildren(tileGroup(AREA_MODES.map(([look, name, title]) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.title = title;
@@ -11051,7 +11051,7 @@ function renderAreaModes() {
       $('fillAreas').dispatchEvent(new Event('change'));
     });
     return b;
-  }));
+  })));
 }
 // The looks of a 2D walk on cells, as square buttons: an ant's states in Ink or Amber; Path, the rainbow
 // line over its cells faded (an ant's in Amber); Directions, a colour per digit (an ant's, its turns);
@@ -11084,7 +11084,7 @@ function renderCellModes(mode) {
   if ($('cellModes').hidden) return;
   // an ant: all six; a walk in 2D: Path, Rainbow, Directions, Heatmap; on a surface: Path, Rainbow, Heatmap
   const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber' && (shows('cells') || look !== 'digit'))), now = cellModeOf(mode);
-  $('cellModes').replaceChildren(...looks.map(([look, name, title]) => {
+  const button = ([look, name, title]) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.title = title;
@@ -11093,7 +11093,10 @@ function renderCellModes(mode) {
     b.disabled = !mode.cells || (look === 'visits' && !useful('visits'));
     b.addEventListener('click', () => pickCellMode(look));
     return b;
-  }));
+  };
+  // joined in one frame (see tileGroup); an ant's states in one, before the walk's looks in another
+  const ants = ['ink', 'amber'], groups = [looks.filter(([look]) => ants.includes(look)), looks.filter(([look]) => !ants.includes(look))].filter((g) => g.length);
+  $('cellModes').replaceChildren(...groups.map((g) => (g.length > 1 ? tileGroup(g.map(button)) : button(g[0]))));
 }
 function pickCellMode(look) {
   const ant = !!MODES[$('mode').value].antOf;
