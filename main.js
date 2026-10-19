@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.852';
+const VERSION = '0.1.853';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6282,7 +6282,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel');
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(baseOf(kind), W, planeTorus(kind)), to: rule.margolus } : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(kind, W, planeTorus(kind)), to: rule.margolus } : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -7261,9 +7261,11 @@ const BLOCKS = {
   cairo: { k: 4, set: null, turn: ['0', '1'] },
 };
 function planeBlocks(kind, W, torus) {
-  const B = BLOCKS[kind], row = planeRow(kind, W), corners = new Map();
-  const o = cellMiddle(kind, 0, 0), P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]), D = P[0][0] * P[1][1] - P[0][1] * P[1][0];
-  const home = ([x, y]) => {  // (a torus: the point brought onto its sheet, once)
+  const B = BLOCKS[baseOf(kind)], row = planeRow(kind, W), corners = new Map();  // (a rectangle's: its grid's blocks, its own cells)
+  // (a torus: its two turns round, W rectangles of a rectangle's; a point brought onto its sheet, once)
+  const o = cellMiddle(kind, 0, 0), P = !torus ? null : RECTS[kind] ? RECTS[kind].basis.map(([x, y]) => [W * x, W * y]) : [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]);
+  const D = P && P[0][0] * P[1][1] - P[0][1] * P[1][0];
+  const home = ([x, y]) => {
     if (!torus) return [x, y];
     const dx = x - o[0], dy = y - o[1], u = (dx * P[1][1] - dy * P[1][0]) / D, v = (P[0][0] * dy - P[0][1] * dx) / D, fu = u - Math.floor(u + 1e-9), fv = v - Math.floor(v + 1e-9);
     return [o[0] + fu * P[0][0] + fv * P[1][0], o[1] + fu * P[0][1] + fv * P[1][1]];
@@ -10635,7 +10637,9 @@ function updateStats() {
   // the progress: a slider to go to any step (none for the Game of Life, which has no end; a reversible one's, back and
   // forth, as far as it went, LIFE_JUMP at least)
   const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !walk.life) || blocks, far = blocks ? Math.max(LIFE_JUMP, walk.life.reached ?? 0) : walk.n;
-  $('seek').parentElement.hidden = $('seekCountOpen').hidden = !finite;  // its whole line
+  $('seek').parentElement.hidden = !finite;  // its whole line
+  $('seekCountOpen').hidden = !finite || blocks;  // (open, the count under the curve; a reversible one's, its slider's)
+  $('animBar').classList.toggle('blocks', blocks);  // (open too: its curve is no slider)
   if (finite) {
     $('seek').max = far;
     if (document.activeElement !== $('seek')) $('seek').value = cur;
