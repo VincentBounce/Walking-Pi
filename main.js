@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.821';
+const VERSION = '0.1.822';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6446,7 +6446,11 @@ function orientPattern(kind, rle, turn, flip) {
   let sx = 0;  // (the pivot's shift across: Cairo's mirror with it)
   if (!APERIODIC[kind]) {  // (no lattice on hats and the like: the first pivot)
     const mid = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), o = cellMiddle(kind, 0, 0), sa = cellMiddle(kind, per * (kind === 'cairo' ? 2 : 1), 0).map((c, d) => c - o[d]), sb = cellMiddle(kind, 0, kind === 'cairo' ? 2 : 1).map((c, d) => c - o[d]);
-    const D = sa[0] * sb[1] - sa[1] * sb[0], dx = mid[0] - pivot[0], dy = mid[1] - pivot[1], ni = Math.round((dx * sb[1] - dy * sb[0]) / D), nj = Math.round((sa[0] * dy - sa[1] * dx) / D);
+    const D = sa[0] * sb[1] - sa[1] * sb[0], steps = ([x, y]) => { const dx = x - pivot[0], dy = y - pivot[1]; return [(dx * sb[1] - dy * sb[0]) / D, (sa[0] * dy - sa[1] * dx) / D]; };
+    // (a cell of it on a turn centre, the nearest its middle: its hexagon, say; else the centre nearest its middle)
+    const on = ms.map(steps).filter(([i, j]) => Math.abs(i - Math.round(i)) < 1e-6 && Math.abs(j - Math.round(j)) < 1e-6);
+    const far = ([i, j]) => { const p = [pivot[0] + i * sa[0] + j * sb[0], pivot[1] + i * sa[1] + j * sb[1]]; return Math.hypot(p[0] - mid[0], p[1] - mid[1]); };
+    const [ni, nj] = on.length ? on.map(([i, j]) => [Math.round(i), Math.round(j)]).sort((p, q) => far(p) - far(q))[0] : steps(mid).map(Math.round);
     sx = ni * sa[0] + nj * sb[0];
     pivot[0] += sx;
     pivot[1] += ni * sa[1] + nj * sb[1];
