@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.797';
+const VERSION = '0.1.798';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2479,18 +2479,19 @@ function renderModePicker() {
     b.setAttribute('role', 'tab');
     return b;
   }));
-  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'ant', Life: 'grid' }[kind]) + WALK_HEADINGS[kind];
+  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'ant', Life: 'grid' }[kind]) + WALK_HEADINGS[kind]
+    + (kind === 'Life' ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
-  // (a slanted grid of Life picked: a switch, a click shows it as a rectangle or back, see RECTS)
+  // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   $('navShapes').replaceChildren(...navValues(2, [kind, space]).map((sh) => {
-    const again = sh === shape && !!RECTS[`${MODES[w].plane}Rect`], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
+    const again = sh === shape && !!MODES[w].plane && !APERIODIC[MODES[w].plane], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
       if (!again) { navGo(2, sh); return; }
-      plane.rect = !plane.rect;
-      compute();
+      plane.torus = !plane.torus;
+      compute(true);
     }, sh);
-    if (again) { b.classList.add('switch'); b.title = plane.rect ? 'Shown as a rectangle (a click: as it is, slanted)' : 'A click: shown as a rectangle'; }
+    if (again) { b.classList.add('switch'); b.title = plane.torus ? 'A torus (a click: walls)' : 'Walls (a click: a torus)'; }
     return b;
   }));
   // a family picked: its tilings as tabs, the same walk (along the grid or on cells) on another one
@@ -6637,8 +6638,7 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre', '✵': 'ammann' };
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
-  $('watchRule').classList.toggle('active', !!option);  // (lit while it shows, as Full number)
-  $('watchRule').classList.toggle('switch', !!option);
+  for (const b of document.querySelectorAll('.how-it-works')) { b.classList.toggle('active', !!option); b.classList.toggle('switch', !!option); }  // (lit while it shows, as Full number)
   if (!option) return;
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours}`;  // (another grid or rule: shown again, see renderRuleSection)
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
@@ -7431,8 +7431,9 @@ function renderHunt() {
     const [colour, word] = light(r);
     b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ` · at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}`}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
     b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
-    b.addEventListener('pointerdown', (e) => { if (e.button === 0) playHuntResult(r); });  // at once, even while the hunt goes on
-    b.addEventListener('click', (e) => { if (!e.detail) playHuntResult(r); });  // from the keyboard
+    const pick = () => (huntId(r) === hunt.picked && !hunt.worker ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
+    b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
+    b.addEventListener('click', (e) => { if (!e.detail) pick(); });  // from the keyboard
     return b;
   }));
 }
@@ -10658,9 +10659,11 @@ $('lifePreset').addEventListener('change', () => {
   $('lifeRule').value = $('lifePreset').value;
   if (MODES[$('mode').value].life) compute();
 });
+// How it works by the Grid's and the Populations' titles: as the Rule's
+document.addEventListener('click', (e) => { if (e.target.closest?.('.how-it-works') && e.target.closest('.how-it-works') !== $('watchRule')) $('watchRule').click(); });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too), the populations and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
