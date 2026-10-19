@@ -1,0 +1,58 @@
+{
+ "truncsquare B278/S2": {
+  "ships": [],
+  "oscs": [
+   {
+    "rle": "A.A!",
+    "n": 2,
+    "cells": 2,
+    "period": 2,
+    "move": [
+     0,
+     0
+    ],
+    "count": 931
+   },
+   {
+    "rle": "A$A!",
+    "n": 2,
+    "cells": 2,
+    "period": 2,
+    "move": [
+     0,
+     0
+    ],
+    "count": 889
+   }
+  ],
+  "meths": []
+ },
+ "truncsquare B27/S28": {
+  "ships": [],
+  "oscs": [
+   {
+    "rle": "A.A!",
+    "n": 2,
+    "cells": 2,
+    "period": 2,
+    "move": [
+     0,
+     0
+    ],
+    "count": 732
+   },
+   {
+    "rle": "A$A!",
+    "n": 2,
+    "cells": 2,
+    "period": 2,
+    "move": [
+     0,
+     0
+    ],
+    "count": 727
+   }
+  ],
+  "meths": []
+ }
+}
