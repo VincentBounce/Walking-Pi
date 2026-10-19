@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.844';
+const VERSION = '0.1.845';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -947,6 +947,8 @@ const MODES = {
   // Langton's ant on the cells of a turtle walk (antOf: its walk in the list; see ANTS), its rule in the
   // ant settings (see antRuleText)
   antSquare: { get base() { return antBase('antSquare'); }, lattice: 'square', cells: true, fill: false, antOf: 'turtle', get rule() { return antRuleText('antSquare'); } },
+  // a turmite: an ant with states (see turmiteStepper), by its rule only
+  turmite: { base: 2, lattice: 'square', cells: true, fill: false, antOf: 'turtle', turmite: true, get rule() { return turmiteRuleText(); } },
   antTri: { get base() { return antBase('antTri'); }, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
   // Paterson's worm: along the lines of the triangles, as their turtle (see wormStepper); its turns counted, its digits
   // read by the digits only
@@ -1690,6 +1692,7 @@ const ICONS = (() => {
       + pathEl('M7.8 8.2Q3.6 5.6 1.4 8.4Q4.4 10.8 7.6 10.6Z', 'f') + pathEl('M16.2 8.2Q20.4 5.6 22.6 8.4Q19.6 10.8 16.4 10.6Z', 'f')
       + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
       + '<ellipse cx="12" cy="13.2" rx="5.2" ry="6.4" stroke-width="1.9"/>' + pathEl('M12 10.2L14 11.4V14.2L12 15.4L10 14.2V11.4Z', 'thin'),
+    turmite: pathEl('M12 12H15V9H9V15H18V6H6V18H21'),  // a square spiral
     worm: pathEl('M3 19L7.5 11.2L12 19L16.5 11.2L14.3 7.3L18.8 7.3L21 3.5') + pathEl(pathOf([[20, 2], [22, 2], [22, 4], [20, 4]]), 'f'),  // its path along the triangles' lines, its head
     ant: '<path d="M10.5 10L7 8.4 5.6 5.4M13.5 10L17 8.4 18.4 5.4M10.2 11.4L5.2 11.8 3.4 13.6M13.8 11.4L18.8 11.8 20.6 13.6M10.4 12.8L7.2 15.6 6.4 19.6M13.6 12.8L16.8 15.6 17.6 19.6M10.8 4.8L9.2 2.6 7.4 2.8M13.2 4.8L14.8 2.6 16.6 2.8" stroke-width="1.8"/>'
       + '<ellipse class="f" cx="12" cy="6.2" rx="2.5" ry="2.2"/><ellipse class="f" cx="12" cy="11.1" rx="2" ry="2.5"/><ellipse class="f" cx="12" cy="17.8" rx="3.3" ry="4.4"/>',
@@ -2241,7 +2244,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', worm: 'worm', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube', antHexSphere: 'hexagon', antIcosa: 'icosahedron',
+  king: 'king', cairo: 'pentagons', antSquare: 'grid', turmite: 'turmite', antTri: 'triangleFilled', worm: 'worm', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube', antHexSphere: 'hexagon', antIcosa: 'icosahedron',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -2292,7 +2295,7 @@ const NAV = {
   dodecaGrid: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'grid'], dodecaLR: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'cells'],
   hexSphereGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], hexSphereWalk: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
   icosaGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], icosaLR: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
-  antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'], worm: ['Ant', '2D', 'Triangles', 'Worm', 'grid'],
+  antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], turmite: ['Ant', '2D', 'Squares', 'Turmite', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'], worm: ['Ant', '2D', 'Triangles', 'Worm', 'grid'],
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
@@ -2476,7 +2479,9 @@ function renderAntRow() {
   $('clearCells').disabled = !population.size;
   $('wormRow').hidden = !MODES[w].worm;
   if (MODES[w].worm) renderWormRow();
-  $('antRow').hidden = !A;
+  $('turmiteRow').hidden = !MODES[w].turmite;
+  if (MODES[w].turmite) { antByDigits = false; renderTurmiteRow(); }  // (by its rule only)
+  $('antRow').hidden = !A || !!MODES[w].turmite;
   if ($('antRow').hidden) return;
   $('antColours').classList.toggle('active', !antByDigits);
   $('antDigits').classList.toggle('active', antByDigits);
@@ -2511,6 +2516,28 @@ function renderWormRow() {
   }));
   if (document.activeElement !== $('wormRuleText')) $('wormRuleText').value = worm.rule;
   $('wormRuleText').classList.toggle('custom', !WORM_PRESETS.includes(worm.rule));
+}
+// The turmite's rule: presets, or typed (see turmiteOf). Langton's ant, then of the 65,536 with 2 states and 2 colours,
+// walked here 5,000 steps: a spiral; the widest mess (3,765 cells); squares growing filled (97 %, and all); a highway
+// from step 3,090, every 54 steps
+const TURMITE_PRESETS = ['1R0 0L0', '1L1 1L1 | 1R1 0N0', '1N1 1N0 | 1R0 0L0', '1L0 0R1 | 0R0 1L1', '1L0 1U1 | 0L0 1L0', '1N1 0R1 | 1L0 1N0'];
+function renderTurmiteRow() {
+  $('turmitePresets').replaceChildren(...TURMITE_PRESETS.map((r) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r;
+    b.classList.toggle('active', r === turmite.rule);
+    b.addEventListener('click', () => setTurmiteRule(r));
+    return b;
+  }));
+  if (document.activeElement !== $('turmiteRuleText')) $('turmiteRuleText').value = turmite.rule;
+  $('turmiteRuleText').classList.toggle('custom', !TURMITE_PRESETS.includes(turmite.rule));
+}
+function setTurmiteRule(rule) {
+  if (!turmiteOf(rule)) { $('turmiteRuleText').value = turmite.rule; return; }
+  turmite.rule = turmiteOf(rule).text;
+  renderModePicker();
+  compute();
 }
 function setWormRule(rule) {
   if (!wormRuleOf(rule)) { $('wormRuleText').value = worm.rule; return; }
@@ -2617,7 +2644,7 @@ function renderModePicker() {
   $('walkOn').hidden = sides.includes('');
   const side = (b, s, word, none) => {
     const v = sides.includes(s) ? navPick(4, s) : null, here = NAV[w][4] === s;
-    const info = !v ? null : MODES[v].antOf ? { base: '', detail: antByDigits ? `digits ${antDigitRules[v]}` : antRules[v] } : splitModeLabel(optionOf(v).text);
+    const info = !v ? null : MODES[v].turmite ? { base: '', detail: turmite.rule } : MODES[v].antOf ? { base: '', detail: antByDigits ? `digits ${antDigitRules[v]}` : antRules[v] } : splitModeLabel(optionOf(v).text);
     b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
       + `<span class="mode-detail">${info ? info.detail : none}</span>`;
     b.disabled = !v;
@@ -3212,6 +3239,7 @@ function populationOf(text) {
  * turn: its digit) and their arrows, its turns, and rules to start from, by the digits and by colour. */
 const ANTS = {
   antSquare: { arrows: '←↑→', inner: () => STEPPERS.turtle(), turns: { L: 0, N: 1, R: 2 }, digitPresets: ['LR', 'LNR'], presets: ['RL', 'RLR', 'LLRR', 'LRRRRRLLR', 'RRLLLRLLLRRR'] },
+  turmite: { arrows: '←↑→↓', inner: null, turns: { L: 0, N: 1, R: 2, U: 3 }, digitPresets: ['LR'], presets: ['RL'] },  // (its rule its own: see turmiteOf)
   antTri: { arrows: '↖↗', inner: () => triStepper('lr'), turns: { L: 0, R: 1 }, digitPresets: ['LR'], presets: ['RL', 'RRL', 'RLL', 'RRLL'] },
   antHex: { arrows: '↙↖↑↗↘', inner: () => hexStepper('relative'), turns: { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 }, digitPresets: ['L1 R1', 'L1 N R1', 'L2 L1 R1 R2', 'L2 L1 N R1 R2'],
             presets: ['L1 R1', 'L2 R2', 'L1 L2 R1', 'R2 L1 N L1 R2'] },
@@ -3264,7 +3292,7 @@ const antRuleText = (w) => antByDigits
   ? `turning by the digit, mirrored on a dark cell (left and right swap), which changes colour as the ant leaves it: ${turnWords(antDigitRules[w]).map((t, d) => `<b>${d}</b> ${TURN_WORDS[t]}`).join(', ')}`
   : `turning by the colour of its cell, which then takes the next one: ${turnWords(antRules[w]).map((t, c) => `<b>${c}</b> ${TURN_WORDS[t]}`).join(', ')}`;
 // an ant by its rule: one chip per colour, its digits unused
-const antColours = (w) => (MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRules[w]).length : 0);
+const antColours = (w) => (MODES[w].turmite ? turmiteOf(turmite.rule).C : MODES[w].antOf && !antByDigits ? antTurnsOf(w, antRules[w]).length : 0);
 // the step: turned, the colour of the cell it turned on; left, the colour it gave it; first, the step
 // the cell it is now on was first walked; cells, how many it walked; next(), the colour the cell it is
 // on would take. Its cells in one map, each its first step × 16 + its colour (12 colours at most)
@@ -3299,6 +3327,45 @@ function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0), pop = null) {
   step.would = (g) => { const c = cells.get(here) % 16; return antByDigits ? A.turns[words[took(g, c)]] : turns[c]; };  // the turn it would take
   return step;
 }
+// A turmite (Greg Turk, Jim Propp): Langton's ant with states. In state s on a cell of colour c, its rule's entry for
+// (s, c) is the colour it leaves there, its turn (L, N straight on, R, U back) and its state next. A rule: per state an
+// entry per colour, as 1R0 (write 1, turn right, state 0), the states parted by |: 1R0 0L0, Langton's ant. Its steps
+// as an ant's (see antStepper): took, the colour it turned on; its cells in one map, each its first step × 16 + colour
+const turmite = { rule: '1L1 1L1 | 1R1 0N0' };
+function turmiteOf(rule) {
+  const states = rule.toUpperCase().split('|').map((e) => e.trim().split(/\s+/)), C = states[0].length, S = states.length;
+  if (C < 2 || C > 12 || S > 8 || states.some((e) => e.length !== C)) return null;
+  const table = states.map((e) => e.map((x) => { const m = x.match(/^(\d+)([LNRU])(\d+)$/); return m && { write: +m[1], turn: ANTS.turmite.turns[m[2]], next: +m[3] }; }));
+  return table.flat().every((x) => x && x.write < C && x.next < S) ? { table, C, S, text: states.map((e) => e.join(' ')).join(' | ') } : null;
+}
+function turmiteStepper() {
+  const { table, C } = turmiteOf(turmite.rule);
+  let x = 0, y = 0, d = 0, s = 0, n = 0, here = key(0, 0);
+  const cells = new Map([[here, 0]]);
+  const step = () => {
+    const v = cells.get(here), c = v % 16, e = table[s][c];
+    step.turned = step.took = c;
+    step.left = e.write;
+    step.turn = e.turn;
+    cells.set(here, v - c + e.write);
+    s = e.next;
+    d = (d + [3, 0, 1, 2][e.turn]) % 4;  // (left, straight on, right, back: as the turtle's)
+    x += DIRS[d][0]; y += DIRS[d][1];
+    here = key(x, y);
+    n++;
+    let u = cells.get(here);
+    if (u === undefined) cells.set(here, (u = n * 16));
+    step.first = Math.floor(u / 16);
+    step.cells = cells.size;
+    return [here, x, y, 0];
+  };
+  step.colours = C;
+  step.next = () => table[s][cells.get(here) % 16].write;
+  step.would = () => table[s][cells.get(here) % 16].turn;
+  return step;
+}
+const turmiteRuleText = () => `a turmite, an ant with states: in a state, on a cell of a colour, it leaves a colour there, turns and takes a state, by its rule ${turmite.rule}`;
+
 // A highway: the walk ends repeating a stretch of p steps, each one shifted by the same (dx, dy) ≠ 0,
 // over 1,000 steps at least (and 8 stretches, LOOP_ROUNDS): not a mere straight run through the mess; from its first step
 function highwayOf(xs, ys, n) {
@@ -3339,6 +3406,7 @@ const STEPPERS = {
   },
   cairo: () => cairoStepper(),
   antSquare: () => antStepper('antSquare', undefined, undefined, population),
+  turmite: () => turmiteStepper(),
   antTri: () => antStepper('antTri'),
   worm: (digits) => wormStepper(digits),
   antHex: () => antStepper('antHex'),
@@ -8218,7 +8286,8 @@ function getSetup() {
   }
   if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : `${zoneWord()}.${plane.density}.${plane.seed}`;  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
-  if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;  // "digits LNR"; "digits" alone: left, right
+  if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
+  if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
   return s;
@@ -8241,7 +8310,10 @@ function applySetup(s) {
     fillSphereSizes(kind, MODES[s.w].initial);
     if (s.s !== undefined) selectSize(kind, linkSize(kind, s.s));
   }
-  if (s.r && MODES[s.w].worm) {
+  if (s.r && MODES[s.w].turmite) {
+    if (turmiteOf(s.r)) turmite.rule = turmiteOf(s.r).text;
+    antByDigits = false;
+  } else if (s.r && MODES[s.w].worm) {
     worm.byDigits = s.r === 'digits';
     if (!worm.byDigits && wormRuleOf(s.r)) worm.rule = wormRuleOf(s.r).join(' ');
   } else if (s.r && MODES[s.w].antOf) {
@@ -10487,7 +10559,7 @@ function updateStats() {
   const strip = $('digitStrip');
   strip.classList.remove('line', 'turns');  // one line of digits; the other texts may wrap
   if (!walk.n) { strip.textContent = ''; return; }
-  if (walk.ant && !antByDigits) { strip.textContent = `Rule ${antRules[current.mode]} · the number's digits are not used`; return; }  // an ant by its rule
+  if (walk.ant && !antByDigits) { strip.textContent = `Rule ${MODES[current.mode].turmite ? turmite.rule : antRules[current.mode]} · the number's digits are not used`; return; }  // an ant by its rule
   // One line of digits, exactly as many as fit (the strip is monospace, so it is a column count).
   // The head sits at 60 % of the line; at the start the line begins with the first digit, at the
   // end it finishes with the last one. The window then shrinks until "…", "0." and "." fit too.
@@ -11110,6 +11182,7 @@ for (const [id, digits] of [['antColours', false], ['antDigits', true]]) {
 }
 $('antRule').addEventListener('change', () => setAntRule($('mode').value, $('antRule').value));
 $('wormRuleText').addEventListener('change', () => setWormRule($('wormRuleText').value));
+$('turmiteRuleText').addEventListener('change', () => setTurmiteRule($('turmiteRuleText').value));
 for (const [id, digits] of [['wormRule', false], ['wormDigits', true]]) $(id).addEventListener('click', () => { if (worm.byDigits === digits) return; worm.byDigits = digits; renderModePicker(); compute(); });
 // Heatmap of visits on a surface: the cells by their visits, else the rainbow line
 $('heatmap').addEventListener('change', () => {
