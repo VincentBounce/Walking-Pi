@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.814';
+const VERSION = '0.1.815';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10081,13 +10081,12 @@ function renderGauges(L) {
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
-// said. By each bar a table (alive, its cell-generations: its live cells summed over the generations till it settles
+// said. By each bar a table (alive, its mean: its live cells summed over the generations, by how many, till it settles
 // or loops, born, died, ever alive, in its colour), its titles on the rule's line: folded, its
 // alive column only; the player open, all of it
 // a colour all died out: none left now; in a loop, none all round it (one born now and then on a tie, gone again: alive,
 // its mean, not ✝ one generation, ≈ the next)
 const colourGone = (L, k) => (L.loopAvg ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
-const short = (v) => (v < 1e4 ? fmt(Math.round(v)) : v < 1e6 ? `${+(v / 1e3).toFixed(v < 1e5 ? 1 : 0)}k` : `${+(v / 1e6).toFixed(v < 1e7 ? 1 : 0)}M`);  // (54.2k, 1.3M)
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
   box.hidden = $('rankTitles').hidden = K < 2;
@@ -10117,7 +10116,7 @@ function renderRanking(L) {
     r.children[0].textContent = place + 1;  // (then its colour, its bar, its table)
     const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, short((L.footBy ?? L.sumBy)[k]), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
+    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((L.footBy ?? L.sumBy)[k] / (L.footBy ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
