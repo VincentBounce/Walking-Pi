@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.843';
+const VERSION = '0.1.844';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9708,10 +9708,10 @@ function glSurface(palette, levelOf, path) {
  *    the walk's order, so that a cell shows its last colour; Digits are written in 2D over them;
  *  - path: one instance per step, a quad from point i to point i + 1 (as in glSurface), in the rainbow,
  *    one colour or a colour per digit. */
-// cells: always on a spiral (its line is greyed out), else for Rainbow, Heatmap and, on cells in 2D,
-// Directions (a colour per digit; an ant's turns or states)
-const flatCellsOn = () => greyed('line') || ($('colorMode').value === 'cells' && shows('cells')) || ($('colorMode').value === 'visits' && useful('visits'))
-  || ($('colorMode').value === 'digit' && shows('cells') && !!MODES[current.mode]?.cells);
+// cells: always on a spiral (its line is greyed out), else, a walk on cells, for Rainbow, Heatmap and, in 2D, Directions
+// (a colour per digit; an ant's turns or states); along the lines, none: its line (a look left from cells, its colours)
+const flatCellsOn = () => greyed('line') || (!!MODES[current.mode]?.cells && (($('colorMode').value === 'cells' && shows('cells'))
+  || ($('colorMode').value === 'visits' && useful('visits')) || ($('colorMode').value === 'digit' && shows('cells'))));
 const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n)
   && !($('colorMode').value === 'digit' && walk.base > 255);
 // the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
