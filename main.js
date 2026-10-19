@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.802';
+const VERSION = '0.1.803';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3788,13 +3788,13 @@ function torusMesh(nv, nu = twelve(nv / TORUS_TUBE)) {  // squares about as long
 
 // A torus mesh keeps the sheet coordinates (i, j) of every tile corner (uv, in listing order):
 // when unrolled (m < 1) its seams open, so shapeAt places corners per tile, not per vertex
-function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null) {  // mids: the tiles' own middles (their corners repeated: not their mean)
+function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = false) {  // mids: the tiles' own middles (their corners repeated: not their mean); placed: its tiles already a sheet's (placeCells')
   // outwards = away from the circle running through the middle of the tube
   const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
   const mesh = finishMesh(verts, tiles, sides, nv, fromTubeAxis);
   // on the sheet, each tile on the side of a seam its middle is on (a triangle across the end, its middle past
   // it, drawn at the start once unrolled, with the tiles it belongs with)
-  for (let t = 0; t < uv.length / (2 * sides); t++) {
+  if (!placed) for (let t = 0; t < uv.length / (2 * sides); t++) {
     const o = 2 * sides * t;
     for (const [d, n] of [[0, nu], [1, nv]]) {
       let mid = 0;
@@ -4083,7 +4083,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
     tiles.push(c.map(([i, j]) => corner(i, j)));
     uv.push(...c.flat());
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid), { tiling: kind, sheet, uvMid: new Float64Array(mid) }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid, true), { tiling: kind, sheet, uvMid: new Float64Array(mid) }));
 }
 
 /* Sphere of hexagons (a Goldberg polyhedron, the football's pattern): the dual of the icosahedron
