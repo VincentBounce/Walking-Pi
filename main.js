@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.812';
+const VERSION = '0.1.813';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6897,6 +6897,7 @@ function lifeReset() {
   L.bornBy = new Int32Array(L.colours + 1);
   L.deadBy = new Int32Array(L.colours + 1);
   L.everBy = L.seedByColour.slice();
+  L.sumBy = Float64Array.from(L.seedByColour);  // (each colour's live cells summed over the generations: its mean, see renderRanking)
   L.everMask = Uint16Array.from(L.seed, (v) => (L.colours > 1 && v ? 1 << v : 0));  // up to 12 colours
   // lifetime: fingerprint of every generation's state; the first repeat gives the loop
   L.seen = new Map([[lifeFingerprint(L.alive), 0]]);
@@ -7007,6 +7008,7 @@ function lifeStep() {
   L.blueCount = byColour[2] ?? 0;
   L.trace.alive[gen] = alive;
   L.trace.by[gen] = byColour;
+  for (let k = 1; k <= K; k++) L.sumBy[k] += byColour[k];
   L.trace.change[gen] = L.born + L.dead - changes;
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
@@ -10077,7 +10079,7 @@ function renderGauges(L) {
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
-// said. By each bar a table (alive, born, died, ever alive, in its colour), its titles on the rule's line: folded, its
+// said. By each bar a table (alive, its mean over the generations so far, born, died, ever alive, in its colour), its titles on the rule's line: folded, its
 // alive column only; the player open, all of it
 // a colour all died out: none left now; in a loop, none all round it (one born now and then on a tie, gone again: alive,
 // its mean, not ✝ one generation, ≈ the next)
@@ -10091,7 +10093,7 @@ function renderRanking(L) {
       const r = document.createElement('div');
       r.className = 'rank-row';
       r.innerHTML = `<span></span><i style="background:${LIFE_COLOURS[k]}"></i><span class="rank-bar"><i style="background:${LIFE_COLOURS[k]}"></i></span>`
-        + `<span class="rank-cell" style="color:${LIFE_COLOURS[k]}"></span>`.repeat(4);
+        + `<span class="rank-cell" style="color:${LIFE_COLOURS[k]}"></span>`.repeat(5);
       r.title = LIFE_COLOUR_NAMES[k];
       return r;
     }), Object.assign(document.createElement('span'), { className: 'all-dead' }));
@@ -10111,7 +10113,7 @@ function renderRanking(L) {
     r.children[0].textContent = place + 1;  // (then its colour, its bar, its table)
     const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
+    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round(L.sumBy[k] / (L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
