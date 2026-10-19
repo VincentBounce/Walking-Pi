@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.811';
+const VERSION = '0.1.812';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4466,7 +4466,7 @@ function syncSizeStepper() {
   // the size (see gridSize)
   const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize();
   // (a torus that turns: its turn too, 0° or its own)
-  const turn = TURNED[kind.replace(/Turned$/, '')] ? ` – ${kind.endsWith('Turned') ? torusDeg(kind) : 0}°` : '';
+  const turn = kind && TURNED[kind.replace(/Turned$/, '')] ? ` – ${kind.endsWith('Turned') ? torusDeg(kind) : 0}°` : '';
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`;
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
@@ -8410,7 +8410,7 @@ function drawGrid() {
   ctx.clearRect(0, 0, cw, ch);
   if (walk.is3d) drawSky(ctx);
   stage.classList.toggle('on-sky', darkSky());  // light text over a dark sky, whatever the theme
-  if (!$('showGrid').checked) return;
+  if (!$('showGrid').checked || !walk.lattice) return;  // (no grid built yet, at load: no lines)
   const s = view.scale;
   let stepCells = 1;
   while (s * stepCells < 10) stepCells *= 5;
