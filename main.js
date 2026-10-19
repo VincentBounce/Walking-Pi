@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.836';
+const VERSION = '0.1.837';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -882,18 +882,23 @@ const TILINGS = {
 // along none, and a strip turns its tiles over round it); the strip's edges along their tiles' sides where that mirror
 // runs there (Prismatic, Tetrakis, Kisrhombille), else teeth of whole tiles, as the hexagons' strip
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
+// the turn of a tiling's tiles on a sheet along a side (x, y) of its lattice, against the plane's (degrees, the nearest
+// of its turns' copies: within half a turn of 0)
+const sideTurn = (kind, [x, y]) => { const P = 360 / TILINGS[kind].turns, r = ((((-Math.atan2(y, x) * 180) / Math.PI) % P) + P) % P; return r >= P / 2 - 1e-9 ? r - P : r; };
 // Each strip of a tiling: along its lattice's first side a, then the other side b of the strip's lattice cell; turned (as
 // a torus's, by 180° / its turns: 45° on squares, 30° on hexagons, 90° on two turns), along the shortest lattice side
-// that far round from a, when the tiling is mirrored along it (see mobiusMirror)
+// that far round from a, when the tiling is mirrored along it (see mobiusMirror); the straight one, of the two, the one
+// whose tiles lie nearest the plane's way (see sideTurn)
 const MOBIUS_STRIPS = {};
 for (const kind of MOBIUS_TILINGS) {
   const { basis: [a, b], turns } = TILINGS[kind], deg = 180 / turns, side = ([p, q]) => [p * a[0] + q * b[0], p * a[1] + q * b[1]];
-  MOBIUS_STRIPS[mobiusOf(kind)] = { kind, basis: [a, b] };
   const ks = [-4, -3, -2, -1, 0, 1, 2, 3, 4], pqs = ks.flatMap((p) => ks.map((q) => [p, q])).filter(([p, q]) => p || q), len = (pq) => Math.hypot(...side(pq));
   const angle = (pq) => { const v = side(pq); return (Math.atan2(a[0] * v[1] - a[1] * v[0], a[0] * v[0] + a[1] * v[1]) * 180) / Math.PI; };
   const d = pqs.filter((pq) => Math.abs(angle(pq) - deg) < 1e-6).sort((x, y) => len(x) - len(y))[0];
   const e = d && pqs.filter(([r, t]) => d[0] * t - d[1] * r === 1).sort((x, y) => len(x) - len(y))[0];  // (the same cells: a whole cell's turn)
-  if (e && mobiusMirror(kind, [side(d), side(e)])) MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`] = { kind, basis: [side(d), side(e)], deg };
+  const along = [[a, b], ...(e && mobiusMirror(kind, [side(d), side(e)]) ? [[side(d), side(e)]] : [])].sort((x, y) => Math.abs(sideTurn(kind, x[0])) - Math.abs(sideTurn(kind, y[0])));
+  MOBIUS_STRIPS[mobiusOf(kind)] = { kind, basis: along[0] };  // (straight: its tiles nearest the plane's way)
+  if (along[1]) MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`] = { kind, basis: along[1], deg };
 }
 const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after cellMiddle)
 const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
@@ -2519,6 +2524,8 @@ function renderModePicker() {
   const inFamily = familyOf(w);
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
+  $('shapesLabel').hidden = $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles)
+  if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
     const { F, tab } = inFamily;
     // the same kind (walk, ant, Life) on another tiling, along the grid or on cells as now; only the
@@ -2542,7 +2549,8 @@ function renderModePicker() {
         $('mode').dispatchEvent(new Event('change'));
       }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name);
       b.classList.toggle('switch', f === here && turns);
-      if (f === here && isTurned) b.querySelector('.icon').style.transform = `rotate(${torusDeg(TURNED[MODES[same(f)].sphere])}deg)`;  // turned: its picture by as much (a torus's, a strip's alike)
+      const surface = MODES[same(f)].sphere, r = tilesTurn(f === here && isTurned ? TURNED[surface] : surface);
+      if (r) b.querySelector('.icon').style.transform = `rotate(${r}deg)`;  // its picture as its tiles lie (a torus's, a strip's alike)
       return [b];
     }));
   }
@@ -4525,7 +4533,7 @@ function syncSizeStepper() {
   // the size (see gridSize)
   const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize();
   // (a torus that turns: its turn too, 0° or its own)
-  const turn = kind && TURNED[kind.replace(/Turned$/, '')] ? ` – ${kind.endsWith('Turned') ? torusDeg(kind) : 0}°` : '';
+  const turn = kind && TURNED[kind.replace(/Turned$/, '')] ? ` – ${Math.round(Math.abs(tilesTurn(kind)))}°` : '';  // (as its tiles lie)
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`;
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
@@ -4568,7 +4576,7 @@ function gridSize(kind, f) {
   if (!TORI.includes(kind)) return null;
   const { tiles, unit } = SPHERES[kind], cells = tiles(f);
   const h = MOBIUS_KINDS.includes(kind) ? mobiusSize(f)[0] : torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);
-  return [h, cells / h, cells, unit];
+  return [h, Math.round(cells / h), cells, unit];  // (a strip of teeth: its rows not all alike, as many on average)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
 const sizeShape = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };
@@ -4665,7 +4673,15 @@ for (const [kind, S] of Object.entries(SPHERES)) {
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
 // a torus's turn, turned (see torusSheets: the tilings'; the hexagons' and triangles' by 30°)
-const torusDeg = (surface) => { const k = Object.keys(TILINGS).find((x) => surface.replace(/Turned$/, '') === `${x}torus`); return k ? torusSheets(k).deg : MOBIUS_STRIPS[surface]?.deg ?? 30; };
+// the turn of a surface's tiles on its sheet against the plane's (see sideTurn): a tiling's torus, by its sheet's side round
+// the ring; a strip, along it; the hexagons' and triangles', 0, or 30 turned
+function tilesTurn(surface) {
+  if (MOBIUS_STRIPS[surface]) return sideTurn(MOBIUS_STRIPS[surface].kind, MOBIUS_STRIPS[surface].basis[0]);
+  const k = Object.keys(TILINGS).find((x) => surface.replace(/Turned$/, '') === `${x}torus`);
+  if (!k) return surface.endsWith('Turned') ? 30 : 0;
+  const [a, b] = TILINGS[k].basis, [p, q] = torusSheets(k)[surface.endsWith('Turned') ? 'turned' : 'plain'][0];
+  return sideTurn(k, [p * a[0] + q * b[0], p * a[1] + q * b[1]]);
+}
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && torusSheets(kind).turned) TURNED[`${kind}torus`] = `${kind}torusTurned`;  // (see torusSheets)
 for (const strip of Object.keys(MOBIUS_STRIPS)) if (MOBIUS_STRIPS[`${strip}Turned`]) TURNED[strip] = `${strip}Turned`;  // (see MOBIUS_STRIPS)
 let torusTurned = false;
@@ -6388,12 +6404,13 @@ function rectSides(a, b) {
 // the same turned by 90° (B round the ring: by 30° on six turns, by 90° on two), or on four turns the least square of
 // lattice steps along a side of every one of its cells, another way than its lattice (Pythagoras: straight squares round the
 // ring; Tetrakis, Octagons: by 45°), else none;
-// deg: the turn as seen. [[p, q], [r, s]]: A = p·a + q·b round the ring, B = r·a + s·b round the tube
+// deg: the turn as seen; plain, of the two, the one whose tiles lie nearest the plane's way (see sideTurn).
+// [[p, q], [r, s]]: A = p·a + q·b round the ring, B = r·a + s·b round the tube
 function torusSheets(kind) {
   const t = TILINGS[kind];
   if (t.sheets) return t.sheets;  // (once: kept on it, as it is asked for before here)
   const [a, b] = t.basis, W = ([u, v]) => [u * a[0] + v * b[0], u * a[1] + v * b[1]], cross = (x, y) => x[0] * y[1] - x[1] * y[0];
-  const plain = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b) ? [[1, 0], [0, 1]] : rectSides(a, b).step;
+  let plain = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b) ? [[1, 0], [0, 1]] : rectSides(a, b).step;
   let turned = t.turns !== 4 ? [plain[1], plain[0].map((x) => -x)] : null, deg = t.turns === 6 ? 30 : 90;
   if (t.turns === 4) {  // (along a side: U a lattice step along one of its cells' sides, V the same turned, a lattice step too)
     const sidesOf = (P) => P.map((p, i) => { const [x, y] = W(P[(i + 1) % P.length]).map((c, d) => c - W(p)[d]); return [x / Math.hypot(x, y), y / Math.hypot(x, y)]; });
@@ -6405,6 +6422,7 @@ function torusSheets(kind) {
       if (Math.abs(r - Math.round(r)) < 1e-6 && Math.abs(s - Math.round(s)) < 1e-6) { turned = [[p, q], [Math.round(r), Math.round(s)]]; deg = Math.round((Math.acos(Math.abs(U[0] * A0[0] + U[1] * A0[1]) / l / Math.hypot(...A0)) * 180) / Math.PI); }
     }
   }
+  if (turned && Math.abs(sideTurn(kind, W(turned[0]))) < Math.abs(sideTurn(kind, W(plain[0]))) - 1e-6) [plain, turned] = [turned, plain];  // (plain: its tiles nearest the plane's way)
   return (t.sheets = { plain, turned, deg });
 }
 // A frame's cells, the slanted grids' lattice cells and rectangles' alike (tools/tilings/build.js: a copy): each of its grid's
