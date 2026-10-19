@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.803';
+const VERSION = '0.1.804';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2412,7 +2412,7 @@ for (const kind of MOBIUS_TILINGS) {  // the tilings' strips, after the kites (L
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus) {  // the tilings' tori, after the kites (Life only)
   const F = FAMILIES[0];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, t.name, t.name]);
-  if (t.turns === 6) F.tabs.push([F.modes.length, true, `tiling-${kind}`, t.name, `${t.name}, turned by 30° (rows round the tube)`]);
+  if (t.turns !== 4) F.tabs.push([F.modes.length, true, `tiling-${kind}`, t.name, `${t.name}, turned by ${t.turns === 6 ? 30 : 90}° (rows round the tube)`]);  // (four turns: turned, the same)
   F.modes.push([`lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`]);
 }
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
@@ -4069,7 +4069,10 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
   const key = `${kind}torus${turned ? 'Turned' : ''}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const t = TILINGS[kind], sheet = turned ? [t.sheet[1], t.sheet[0].map((x) => -x)] : t.sheet, sides = Math.max(...t.polys.map((P) => P.length));
-  const frame = RECTS[`${kind}Rect`]?.polys ?? t.polys, polys = turned ? frame.map((P) => P.map(([u, v]) => [v, 1 - u])) : frame;  // (the 2D sheet's cells, its sides 1; turned: B along)
+  // the 2D sheet's cells (its sides 1), their middle (by area) on the sheet's (unrolled, it lies round its middle); turned: B along
+  const frame = RECTS[`${kind}Rect`]?.polys ?? t.polys, area = (P) => Math.abs(P.reduce((x, p, i) => x + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
+  const c = [0, 1].map((d) => frame.reduce((x, P) => x + area(P) * P.reduce((y, p) => y + p[d], 0) / P.length, 0) / frame.reduce((x, P) => x + area(P), 0));
+  const centred = frame.map((P) => P.map(([u, v]) => [u + 0.5 - c[0], v + 0.5 - c[1]])), polys = turned ? centred.map((P) => P.map(([u, v]) => [v, 1 - u])) : centred;
   const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map();
   const corner = (i, j) => {  // a corner once, by its place on the sheet round the seams (not by its rounded point in space)
     const Q = 31415.9, k = `${Math.round((((i % nu) + nu) % nu) * Q) % Math.round(nu * Q)},${Math.round((((j % nv) + nv) % nv) * Q) % Math.round(nv * Q)}`;
@@ -4195,7 +4198,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
 const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
-  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (TILINGS[k].turns === 6 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
+  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (TILINGS[k].turns !== 4 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
 
 function shapeAt(g, m) {
   const k = g.sides, n = g.n;
@@ -4440,7 +4443,7 @@ for (const [kind, t] of Object.entries(TILINGS)) if (t.torus) {
   t.sheet = Math.abs(a0[0] * b0[0] + a0[1] * b0[1]) < 0.01 * Math.hypot(...a0) * Math.hypot(...b0) ? [[1, 0], [0, 1]] : rectSides(a0, b0).step;  // (its slanted grid's rectangle, see RECTS)
   const [[p, q], [r, s]] = t.sheet, [a, b] = t.basis, A = Math.hypot(p * a[0] + q * b[0], p * a[1] + q * b[1]), B = Math.hypot(r * a[0] + s * b[0], r * a[1] + s * b[1]);
   const per = t.polys.length * Math.abs(p * s - q * r);  // cells a cell of the sheet
-  for (const turned of t.turns === 6 ? [false, true] : [false]) {  // (turned by 30°, see TURNED: A round the tube)
+  for (const turned of t.turns !== 4 ? [false, true] : [false]) {  // (turned by 30°, or 90° on two turns, see TURNED: A round the tube)
     const name = `${kind}torus${turned ? 'Turned' : ''}`, [ring, tube] = turned ? [B, A] : [A, B];
     SPHERES[name] = { mesh: (z) => tilingTorusMesh(kind, ...torusDims(name, z), turned), radius: (z) => (torusDims(name, z)[0] * tube) / (2 * Math.PI * TORUS_TUBE),
                       columns: (nv) => Math.max(1, Math.round((nv * tube) / (ring * TORUS_TUBE))), perRow: per, steps: [1, 1], least: 2,
@@ -4575,7 +4578,7 @@ function gridGraph(g) {
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
-  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (TILINGS[k].turns === 6 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
+  ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (TILINGS[k].turns !== 4 ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
 for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
@@ -4593,7 +4596,7 @@ for (const [kind, S] of Object.entries(SPHERES)) {
 }
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
-for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && t.turns === 6) TURNED[`${kind}torus`] = `${kind}torusTurned`;
+for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && t.turns !== 4) TURNED[`${kind}torus`] = `${kind}torusTurned`;  // (two turns: by 90°)
 let torusTurned = false;
 const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
