@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.817';
+const VERSION = '0.1.818';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7734,11 +7734,12 @@ function patternChoices() {
     : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
     : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
   const shapes = [], seen = new Set(), per = PER_RHOMBUS[kind] ?? 1;
+  const margin = RECTS[kind] ? (2 * Math.hypot(...latticeStep(RECTS[kind].base))) / Math.min(...RECTS[kind].basis.map((v) => Math.hypot(...v))) : 2;  // (2 lattice cells: a rectangle's in its own units)
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === baseOf(kind) && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
       const cells = orientPattern(kind, p[4], t, f), k = cells.map((c) => c.join(',')).sort().join(' ');
       const span = Math.max(...cells.map((c) => Math.floor(c[0] / per)), ...cells.map((c) => c[1])) + 1;
-      if (span <= room - 2 && !seen.has(k)) { seen.add(k); shapes.push(cells); }
+      if (span <= room - margin && !seen.has(k)) { seen.add(k); shapes.push(cells); }
     }
   }
   // a shape kept where it lays whole for every colour (a sheet's: see sheetPatternAt)
