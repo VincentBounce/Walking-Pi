@@ -1,0 +1,10 @@
+snubsquare 103448 rules 1099 candidates 885s
+snubsquare done 1186s
+  B359/S0148/C3   0.31   T 714 (265–1638) spread 0.54 plateau 0.62 at200 9.8% ash 4.75% osc 75%
+  B367/S1289/C3   0.253  T 859 (350–1924) spread 0.48 plateau 0.5 at200 8.3% ash 2.43% osc 0%
+  B37/S127/C3     0.241  T 621 (227–1326) spread 0.47 plateau 0.42 at200 8% ash 2.78% osc 0%
+  B358/S125/C4    0.234  T 635 (248–1214) spread 0.51 plateau 0.4 at200 7.6% ash 2.55% osc 0%
+  B39/S128        0.233  T 820 (260–1659) spread 0.52 plateau 0.51 at200 6.3% ash 2.2% osc 0%
+  B378/S1279/C3   0.228  T 578 (201–1232) spread 0.47 plateau 0.45 at200 7.6% ash 2.84% osc 0%
+  B35/S1258/C4    0.223  T 669 (469–2572) spread 0.49 plateau 0.4 at200 9.1% ash 2.58% osc 0%
+  B367/S0145/C3   0.207  T 733 (561–2436) spread 0.39 plateau 0.52 at200 10.5% ash 4.8% osc 42%
