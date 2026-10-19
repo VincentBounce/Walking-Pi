@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="style.css?v=20261102g">
   <link rel="stylesheet" href="style.css?v=20261102h">
   <link rel="stylesheet" href="style.css?v=20261102i">
+  <link rel="stylesheet" href="style.css?v=20261102j">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -192,6 +193,7 @@
               <option value="life2dHat">Life — hats (aperiodic)</option>
               <option value="life2dPenrose">Life — Penrose rhombi (aperiodic)</option>
               <option value="life2dSpectre">Life — spectres (aperiodic)</option>
+              <option value="life2dAmmann">Life — Ammann–Beenker squares and rhombi (aperiodic)</option>
               <option value="life2dRhombille">Life — rhombille grid</option>
               <option value="life2dRhombitri">Life — rhombitrihexagonal grid</option>
               <option value="life2dFloret">Life — floret pentagons grid</option>
@@ -412,6 +414,8 @@
             <option value="B245/S2378/C5" data-name="Big rhombitri gliders">❃ B245/S2378/C5 — soups settling after 241 to 3,464 generations (1.48 % alive at the end), a ship of 25 cells, period 8 and an oscillator of 9 cells, period 12 (5 states)</option>
             <option value="B238/S0457/C5" data-name="Dodecagon Life">❂ B238/S0457/C5 — soups settling after 395 to 5,518 generations (1.12 % alive at the end), an oscillator of 10 cells, period 30 and a methuselah of 7 cells: 699 (5 states)</option>
             <option value="B235/S0457/C5" data-name="Dodecagon sparks">❂ B235/S0457/C5 — soups settling after 243 to 1,249 generations (1.01 % alive at the end), an oscillator of 10 cells, period 30 and a methuselah of 7 cells: 791 (5 states)</option>
+            <option value="B356/S0345/C4" data-name="Ammann Life">✵ B356/S0345/C4 — soups settling after 336 to 1,174 generations (2.56 % alive at the end), oscillators in 25 % of their ash (4 states)</option>
+            <option value="B38/S013" data-name="Ammann blinkers">✵ B38/S013 — soups settling after 316 to 1,261 generations (4.83 % alive at the end), oscillators in 100 % of their ash (2 states)</option>
             <option value="B247/S034/C4" data-name="Type 15 Life">⬟ B247/S034/C4 — the most Life-like on the 15th pentagon: soups settling after 270 to 2,600 generations, oscillators in most ends (4 states)</option>
             <option value="B256/S67" data-name="Type 15 classic">⬟ B256/S67 — two states only, soups settling after 420 to 1,900 generations, oscillators in every end</option>
             <option value="B24/S13/C12" data-name="Type 15 trails">⬟ B24/S13/C12 — ships of period 14 with trails of a dozen stages, five kinds; soups end in them within about 150 generations (12 states)</option>
@@ -567,5 +571,6 @@
   <script src="main.js?v=20261102g"></script>
   <script src="main.js?v=20261102h"></script>
   <script src="main.js?v=20261102i"></script>
+  <script src="main.js?v=20261102j"></script>
 </body>
 </html>
