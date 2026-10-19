@@ -884,7 +884,7 @@ const TILINGS = {
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
 // the turn of a tiling's tiles on a sheet along a side (x, y) of its lattice, against the plane's (degrees, the nearest
 // of its turns' copies: within half a turn of 0)
-const sideTurn = (kind, [x, y]) => { const P = 360 / TILINGS[kind].turns, r = ((((-Math.atan2(y, x) * 180) / Math.PI) % P) + P) % P; return r >= P / 2 - 1e-9 ? r - P : r; };
+const sideTurn = (kind, [x, y]) => { const P = 360 / TILINGS[kind].turns, r = ((((-Math.atan2(y, x) * 180) / Math.PI) % P) + P) % P; return Math.round((r >= P / 2 - 1e-9 ? r - P : r) * 1e6) / 1e6; };
 // Each strip of a tiling: along its lattice's first side a, then the other side b of the strip's lattice cell; turned (as
 // a torus's, by 180° / its turns: 45° on squares, 30° on hexagons, 90° on two turns), along the shortest lattice side
 // that far round from a, when the tiling is mirrored along it (see mobiusMirror); the straight one, of the two, the one
