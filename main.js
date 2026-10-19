@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.833';
+const VERSION = '0.1.834';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -882,6 +882,19 @@ const TILINGS = {
 // along none, and a strip turns its tiles over round it). Prismatic, Tetrakis, Kisrhombille: along their tiles' sides,
 // the strip's edge between tiles; Rhombille, Rhombitri: through tiles, those on the edge as many times as its faces
 const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
+// Each strip of a tiling: along its lattice's first side a, then the other side b of the strip's lattice cell; turned (as
+// a torus's, by 180° / its turns: 45° on squares, 30° on hexagons), along the shortest lattice side that far round from
+// a, when the tiling is mirrored along it between its tiles (see mobiusMirror)
+const MOBIUS_STRIPS = {};
+for (const kind of MOBIUS_TILINGS) {
+  const { basis: [a, b], turns } = TILINGS[kind], deg = 180 / turns, side = ([p, q]) => [p * a[0] + q * b[0], p * a[1] + q * b[1]];
+  MOBIUS_STRIPS[mobiusOf(kind)] = { kind, basis: [a, b] };
+  const ks = [-4, -3, -2, -1, 0, 1, 2, 3, 4], pqs = ks.flatMap((p) => ks.map((q) => [p, q])).filter(([p, q]) => p || q), len = (pq) => Math.hypot(...side(pq));
+  const angle = (pq) => { const v = side(pq); return (Math.atan2(a[0] * v[1] - a[1] * v[0], a[0] * v[0] + a[1] * v[1]) * 180) / Math.PI; };
+  const d = pqs.filter((pq) => Math.abs(angle(pq) - deg) < 1e-6).sort((x, y) => len(x) - len(y))[0];
+  const e = d && pqs.filter(([r, t]) => d[0] * t - d[1] * r === 1).sort((x, y) => len(x) - len(y))[0];  // (the same cells: a whole cell's turn)
+  if (e && mobiusMirror(kind, [side(d), side(e)])?.between) MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`] = { kind, basis: [side(d), side(e)], deg };
+}
 const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after cellMiddle)
 const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
 const tilingOf = (kind) => TILINGS[kind] ?? RECTS[kind];
@@ -2407,8 +2420,9 @@ const FAMILIES = [
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
 for (const kind of MOBIUS_TILINGS) {  // the tilings' strips, after the kites (Life only)
-  const F = FAMILIES[1];
+  const F = FAMILIES[1], turned = MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, TILINGS[kind].name, TILINGS[kind].name]);
+  if (turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, TILINGS[kind].name, `${TILINGS[kind].name}, turned by ${turned.deg}° (along the strip)`]);  // (see MOBIUS_STRIPS)
   F.modes.push([`lifeMobius${kind[0].toUpperCase()}${kind.slice(1)}`]);
 }
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus) {  // the tilings' tori, after the kites (Life only)
@@ -3838,7 +3852,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = fals
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', ...MOBIUS_TILINGS.map(mobiusOf)];
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', ...Object.keys(MOBIUS_STRIPS)];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
  * for them), or rows "x" that count, a length of its own (s=16x240: 16 rows of triangles 120 long). */
@@ -3851,30 +3865,37 @@ const MOBIUS_ALONG = {
   mobiusCairo: { step: 1, ok: (n, nv) => (n + nv) % 2 === 1 },
 };
 MOBIUS_ALONG.mobiusKite = MOBIUS_ALONG.mobiusTri;  // kites: the triangles', each cut in 3
-// A tiling's mirror along its lattice's first side a, the plane turned so that a runs along x: the line y = c, and the
-// slide g along it with it (0: a mirror; else a glide), (x, y) → (x + g, 2c − y) mapping its corners and its cells'
-// middles onto theirs; the nearest the origin, a mirror before a glide
-function mobiusMirror(kind) {
-  const { basis: [a, b], polys } = TILINGS[kind], la = Math.hypot(...a), [ca, sa] = [a[0] / la, -a[1] / la];
-  const W = ([u, v]) => { const x = u * a[0] + v * b[0], y = u * a[1] + v * b[1]; return [x * ca - y * sa, x * sa + y * ca]; };  // (turned: a along x)
-  const [ta, tb] = [W([1, 0]), W([0, 1])], det = ta[0] * tb[1] - ta[1] * tb[0];
+// A tiling's mirror along a side a of its lattice (with b, a lattice cell), the plane turned so that a runs along x: the
+// line y = c, and the slide g along it with it (0: a mirror; else a glide), (x, y) → (x + g, 2c − y) mapping its corners
+// and its cells' middles onto theirs; the nearest the origin, a mirror before a glide, between tiles first (between: no
+// tile across it)
+function mobiusMirror(kind, [a, b] = TILINGS[kind].basis) {
+  const { basis: [a0, b0], polys } = TILINGS[kind], la = Math.hypot(...a), [ca, sa] = [a[0] / la, -a[1] / la];
+  const W = ([u, v]) => { const x = u * a0[0] + v * b0[0], y = u * a0[1] + v * b0[1]; return [x * ca - y * sa, x * sa + y * ca]; };  // (turned: a along x)
+  const turned = ([x, y]) => [x * ca - y * sa, x * sa + y * ca], [ta, tb] = [turned(a), turned(b)], det = ta[0] * tb[1] - ta[1] * tb[0];
   const frac = ([x, y]) => [(x * tb[1] - y * tb[0]) / det, (ta[0] * y - ta[1] * x) / det];  // (in lattice cells: a point, as all its copies)
   const near = (z) => Math.abs(z - Math.round(z)) < 1e-4, among = (set) => (p) => { const [u, v] = frac(p); return set.some(([s, t]) => near(u - s) && near(v - t)); };
   const mids = polys.map((P) => W([0, 1].map((d) => P.reduce((t, q) => t + q[d], 0) / P.length))), corners = polys.flat().map(W);
   const [inMids, inCorners] = [among(mids.map(frac)), among(corners.map(frac))], ys = [...mids, ...corners].map((p) => p[1]);
   const cs = [...new Set([0, ...ys.flatMap((y) => ys.map((z) => Math.round(((y + z) / 2) * 1e6) / 1e6))])].sort((p, q) => Math.abs(p) - Math.abs(q));  // (through the origin first)
+  const [A, B] = [W([1, 0]), W([0, 1])], tiles = [-3, -2, -1, 0, 1, 2, 3].flatMap((i) => [-3, -2, -1, 0, 1, 2, 3].flatMap((j) => polys.map((P) => P.map(W).map(([x, y]) => y + i * A[1] + j * B[1]))));
+  const between = (c) => !tiles.some((ys) => Math.min(...ys) < c - 1e-6 && Math.max(...ys) > c + 1e-6);  // (no tile across the line)
+  let through = null;
   for (const g of [0, la / 2, tb[0] / 2, (la + tb[0]) / 2, -tb[0] / 2]) for (const c of cs) {
     const on = ([x, y]) => [x + g, 2 * c - y];
-    if (mids.every((p) => inMids(on(p))) && corners.every((p) => inCorners(on(p)))) return { c, g, la, bx: tb[0], q: [1, 2, 3, 4, 6, 12].find((k) => [g, tb[0]].every((v) => Math.abs((v * k) / la - Math.round((v * k) / la)) < 1e-6)) };
+    if (!mids.every((p) => inMids(on(p))) || !corners.every((p) => inCorners(on(p)))) continue;
+    const m = { c, g, la, bx: tb[0], q: [1, 2, 3, 4, 6, 12].find((k) => [g, tb[0]].every((v) => Math.abs((v * k) / la - Math.round((v * k) / la)) < 1e-6)), between: between(c) };
+    if (m.between) return m;
+    through ??= m;
   }
-  return null;
+  return through;
 }
 // the strip's length such that the twist (x + L, y) → (x, W − y), W = nv rows of b, maps the tiling onto itself (see
 // tilingStrip): with its mirror on y = 0, L − g a lattice vector's way along with nv rows across, nv·b_x + k·|a|; in
 // steps of |a| / q, the least that g and b_x are whole counts of
-for (const kind of MOBIUS_TILINGS) {
-  const { g, la, bx, q } = mobiusMirror(kind), step = la / q;
-  MOBIUS_ALONG[mobiusOf(kind)] = { step, ok: (n, nv) => (((n - Math.round((g + nv * bx) / step)) % q) + q) % q === 0 };
+for (const [strip, { kind, basis }] of Object.entries(MOBIUS_STRIPS)) {
+  const { g, la, bx, q } = mobiusMirror(kind, basis), step = la / q;
+  MOBIUS_ALONG[strip] = { step, ok: (n, nv) => (((n - Math.round((g + nv * bx) / step)) % q) + q) % q === 0 };
 }
 const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.split('x').map(Number));  // [rows, count along or null]
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
@@ -3908,7 +3929,7 @@ function mobiusSheet(kind0, size) {
 }
 function mobiusSheetOf(kind0, size) {
   if (kind0.startsWith('mobiusKite')) { const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf) }; }  // the triangles', cut in 3
-  const tiling = MOBIUS_TILINGS.find((k) => mobiusOf(k) === kind0);
+  const tiling = MOBIUS_STRIPS[kind0]?.kind;
   if (tiling) return tilingStrip(tiling, kind0, size);
   // the usual length, a multiple of 12
   const kind = kind0, [nv, own] = mobiusSize(size), step = MOBIUS_ALONG[kind].step, fit = twelve;
@@ -3979,7 +4000,7 @@ function mobiusSheetOf(kind0, size) {
 // whose middle is within nv rows of b (a mirror along a: the strip's edges alike) and L along (see MOBIUS_ALONG), as
 // many corners each (the last one repeated); the usual length, the counts' nearest that the twist allows
 function tilingStrip(kind, kind0, size) {
-  const t = TILINGS[kind], [a, b] = t.basis, turn = -Math.atan2(a[1], a[0]), m = t.polys.length, { step, ok } = MOBIUS_ALONG[kind0], { c } = mobiusMirror(kind);
+  const t = TILINGS[kind], [a, b] = MOBIUS_STRIPS[kind0].basis, turn = -Math.atan2(a[1], a[0]), m = t.polys.length, { step, ok } = MOBIUS_ALONG[kind0], { c } = mobiusMirror(kind, [a, b]);
   const [nv, own] = mobiusSize(size), W = nv * turnPoint(b, turn)[1], len = (2 * Math.PI * W) / MOBIUS_WIDTH;
   let n = own ?? Math.round(len / step);
   if (!own) for (let d = 0; !ok(n, nv); d++) n += d % 2 ? -d : d;  // (the nearest count the twist allows)
@@ -3988,7 +4009,7 @@ function tilingStrip(kind, kind0, size) {
   // grid onto itself, so a corner and its twin meet exactly (the polygons' 6 decimals leave them 10⁻⁶ apart)
   const snap = ([x, y]) => [(Math.round((x / step) * Q) / Q) * step, W / 2 + (Math.round(((y - W / 2) / by) * Q) / Q) * by];
   // the lattice cells over the strip's rectangle (its corners in the lattice's units, a cell more round them)
-  const [ta, tb] = [a, b].map((v) => turnPoint(v, turn)), det = ta[0] * tb[1] - ta[1] * tb[0];
+  const [ta, tb] = t.basis.map((v) => turnPoint(v, turn)), det = ta[0] * tb[1] - ta[1] * tb[0];  // (the tiling's own cells)
   const ends = [[0, 0], [L, 0], [0, W], [L, W]].map(([x, y]) => [(x * tb[1] - y * tb[0]) / det, (ta[0] * y - ta[1] * x) / det]);
   const [i0, i1, j0, j1] = [0, 1].flatMap((d) => [Math.floor(Math.min(...ends.map((e) => e[d]))) - 1, Math.ceil(Math.max(...ends.map((e) => e[d]))) + 1]);
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) for (let k = 0; k < m; k++) {
@@ -4043,7 +4064,7 @@ function mobiusMesh(kind, size) {
       delta.set(a * N + b, [dx, dy]); delta.set(b * N + a, [-dx, -dy]);
     }
   });
-  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_TILINGS.find((k) => mobiusOf(k) === kind), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length,
+  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_STRIPS[kind]?.kind, stripTurn: MOBIUS_STRIPS[kind] && -Math.atan2(MOBIUS_STRIPS[kind].basis[0][1], MOBIUS_STRIPS[kind].basis[0][0]), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length,
     ...(mids && { uvMid: new Float64Array([...mids, ...mids]) }) }));  // (a tiling's: its tiles' own middles, see sheetMiddle)
 }
 // The sheet point of a surface: a torus, or a Möbius strip
@@ -4463,8 +4484,8 @@ const SPHERES = {
                tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
   mobiusKite: { mesh: (s) => mobiusMesh('mobiusKite', s), radius: (s) => mobiusRadius('mobiusKite', s), columns: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length / mobiusSize(s)[0],
                 tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
-  ...Object.fromEntries(MOBIUS_TILINGS.map((k) => { const kind = mobiusOf(k); return [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s),
-    columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit: TILINGS[k].cells }]; })),
+  ...Object.fromEntries(Object.entries(MOBIUS_STRIPS).map(([kind, { kind: k }]) => [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s),
+    columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit: TILINGS[k].cells }])),
   // Klein bottles: their size is their rows round the tube, as a torus's
   ...Object.fromEntries([['klein', 'squares', 1], ['kleinHex', 'hexagons', 1], ['kleinTri', 'triangles', 2], ['kleinCairo', 'pentagons', 2], ['kleinKite', 'kites', 6]].map(([kind, unit, per]) => [kind, {
     mesh: (s) => kleinMesh(kind, ...torusDims(kind, s)), radius: (s) => torusDims(kind, s)[0] / (2 * Math.PI * TORUS_TUBE), columns: kleinColumns[kind], perRow: 1,
@@ -4646,8 +4667,9 @@ for (const [kind, S] of Object.entries(SPHERES)) {
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
 // a torus's turn, turned (see torusSheets: the tilings'; the hexagons' and triangles' by 30°)
-const torusDeg = (surface) => { const k = Object.keys(TILINGS).find((x) => surface.replace(/Turned$/, '') === `${x}torus`); return k ? torusSheets(k).deg : 30; };
+const torusDeg = (surface) => { const k = Object.keys(TILINGS).find((x) => surface.replace(/Turned$/, '') === `${x}torus`); return k ? torusSheets(k).deg : MOBIUS_STRIPS[surface]?.deg ?? 30; };
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && torusSheets(kind).turned) TURNED[`${kind}torus`] = `${kind}torusTurned`;  // (see torusSheets)
+for (const strip of Object.keys(MOBIUS_STRIPS)) if (MOBIUS_STRIPS[`${strip}Turned`]) TURNED[strip] = `${strip}Turned`;  // (see MOBIUS_STRIPS)
 let torusTurned = false;
 const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
@@ -6617,7 +6639,7 @@ function drawLifePlane() {
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
-for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = t.mark;
+for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = SURFACE_CELLS[`${mobiusOf(kind)}Turned`] = t.mark;
 const lifeMark = (mode) => (mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺', ammann: '✵' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
@@ -7735,7 +7757,7 @@ function patternAt(i, K, cells) {
 // and every other one on a tile too (a tiling's cells of several kinds: the first tile that fits them all)
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
   if (kind === 'square') return (p) => p;
-  if (TILINGS[kind] && g.mobius) { const [a] = TILINGS[kind].basis, turn = -Math.atan2(a[1], a[0]); return (p) => turnPoint(p, turn); }  // (a strip: the plane turned, see tilingStrip)
+  if (TILINGS[kind] && g.mobius) return (p) => turnPoint(p, g.stripTurn);  // (a strip: the plane turned, see tilingStrip)
   if (TILINGS[kind]) {  // its lattice's units, then the sheet's cell's (see tilingTorusMesh)
     const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], [[p, q], [r, s]] = g.sheet, d = p * s - q * r;
     return ([x, y]) => { const u = (x * b[1] - y * b[0]) / det, v = (a[0] * y - a[1] * x) / det; return [(s * u - r * v) / d, (p * v - q * u) / d]; };
