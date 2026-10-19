@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.850';
+const VERSION = '0.1.851';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2569,7 +2569,7 @@ function renderModePicker() {
     return b;
   }));
   $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
-    + (kind === 'Life' ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
+    + (kind === 'Life' || kind === 'Reversible' ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
@@ -2676,7 +2676,6 @@ function compute(keepDigits = false) {
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
   $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
-  $('watchRule').hidden = !!mode.margolus;  // (how a rule works: births and survivals)
   $('autoPlayRow').hidden = !mode.life;
   renderColours();
   renderRuleSection();
@@ -6960,11 +6959,34 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 // shape and its neighbours, the live ones in colour, for each count it is born with, survives with, dies with; its
 // dying stages after. The cell the most neighbours have (its counts all drawn), on a patch of its plane grid
 const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '✺': 'spectre', '✵': 'ammann' };
+// How a block rule works (see ruleTutorial): its blocks on even and odd generations, then each of a block's 16 states and
+// the one it turns into, those changing then those kept, by their live cells; the state before shown a moment, fading
+function blockTutorial(option, to) {
+  const alive = (s) => s.toString(2).replace(/0/g, '').length;
+  const cell = (x, y, fill) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}" stroke="var(--border)" stroke-width="0.04"/>`, square = (k, fill) => cell(k % 2, k >> 1, fill);
+  const block = (s, before) => `<svg viewBox="-0.08 -0.08 2.16 2.16">${[0, 1, 2, 3].map((k) => square(k, (s >> k) & 1 ? LIFE_ALIVE : UNLIT)).join('')}`
+    + (before === undefined ? '' : [0, 1, 2, 3].filter((k) => ((before >> k) & 1) !== ((s >> k) & 1)).map((k) => `<rect x="${k % 2}" y="${k >> 1}" width="1" height="1" fill="${(before >> k) & 1 ? LIFE_ALIVE : UNLIT}">`
+      + '<animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></rect>').join(''))
+    + '<rect x="0" y="0" width="2" height="2" fill="none" stroke-width="0.08" class="tut-centre"/></svg>';
+  const pair = (s) => `<figure><div>${block(s)}<span>→</span>${block(to[s], s)}</div><figcaption>${alive(s)} alive${alive(to[s]) !== alive(s) ? ` → ${alive(to[s])}` : ''}</figcaption></figure>`;
+  const states = [...Array(16).keys()].sort((a, b) => alive(a) - alive(b) || a - b), moved = states.filter((s) => to[s] !== s), kept = states.filter((s) => to[s] === s);
+  // the blocks, on a 4 × 4 piece of the grid: from its corner on even generations, one cell down and right on odd ones
+  const phase = (p) => `<svg viewBox="-0.1 -0.1 4.2 4.2">${[...Array(16).keys()].map((k) => cell(k % 4, k >> 2, UNLIT)).join('')}`
+    + [0, 2, 4].flatMap((y) => [0, 2, 4].map((x) => `<rect x="${x + p - 2}" y="${y + p - 2}" width="2" height="2" fill="none" stroke-width="0.1" class="tut-centre"/>`)).join('') + '</svg>';
+  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of 2 × 2 cells, from its corner on even generations, one cell down and right on odd ones (Margolus's neighbourhood): `
+    + `each block turns into the one below, a different one for each of its 16 states, so the rule runs back too, the arrows the other way round.</p>`
+    + `<div class="tut-row"><figure><div>${phase(0)}</div><figcaption>even generations</figcaption></figure><figure><div>${phase(1)}</div><figcaption>odd generations</figcaption></figure></div>`
+    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div></div>`;
+  $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
+  $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
+}
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.toggle('active', !!option); b.classList.toggle('switch', !!option); }  // (lit while it shows, as Full number)
   if (!option) return;
   $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours}`;  // (another grid or rule: shown again, see renderRuleSection)
+  if (parseRule(option.value)?.margolus) { blockTutorial(option, parseRule(option.value).margolus); return; }
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
   const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
@@ -8594,6 +8616,7 @@ function advanceTo(target) {
     for (let k = target - cur; k > 0 && !lifeEnded(); k--) {
       lifeStep();
       cur++;
+      if (cur > (L.reached ?? 0)) L.reached = cur;  // (the furthest, for a reversible one's slider)
       const s = L.stable;
       if (!s) continue;
       if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += L.trace.by[g][k]; }  // (its cell-generations till it settles or loops)
@@ -10511,16 +10534,17 @@ function updateStats() {
     $('end').innerHTML = $('end').dataset.shown = jump;
     $('end').title = walk.life ? `${fmt(LIFE_JUMP)} generations ahead (E)` : 'Jump to end (E)';
   }
-  // the progress: a slider to go to any step (none for the Game of Life, which has no end)
-  const finite = Number.isFinite(walk.n) && !walk.life;
+  // the progress: a slider to go to any step (none for the Game of Life, which has no end; a reversible one's, back and
+  // forth, as far as it went, LIFE_JUMP at least)
+  const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !walk.life) || blocks, far = blocks ? Math.max(LIFE_JUMP, walk.life.reached ?? 0) : walk.n;
   $('seek').parentElement.hidden = $('seekCountOpen').hidden = !finite;  // its whole line
   if (finite) {
-    $('seek').max = walk.n;
+    $('seek').max = far;
     if (document.activeElement !== $('seek')) $('seek').value = cur;
-    $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
     // as wide as its widest value, so the slider keeps its width: digits 1ch each (tabular), commas and
     // the " / " much narrower
-    const digits = String(walk.n).length, commas = fmt(walk.n).length - digits;
+    const digits = String(far).length, commas = fmt(far).length - digits;
     $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
   }
   if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
