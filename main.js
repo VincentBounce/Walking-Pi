@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.841';
+const VERSION = '0.1.842';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -948,6 +948,9 @@ const MODES = {
   // ant settings (see antRuleText)
   antSquare: { get base() { return antBase('antSquare'); }, lattice: 'square', cells: true, fill: false, antOf: 'turtle', get rule() { return antRuleText('antSquare'); } },
   antTri: { get base() { return antBase('antTri'); }, lattice: 'tri', cells: true, fill: false, antOf: 'triTurtle', get rule() { return antRuleText('antTri'); } },
+  // Paterson's worm: along the lines of the triangles, as their turtle (see wormStepper); its turns counted, its digits
+  // read by the digits only
+  worm: { base: 5, arrows: '↙↖↑↗↘', lattice: 'hex', lines: true, worm: true, get rule() { return wormRuleText(); } },
   antHex: { get base() { return antBase('antHex'); }, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
   antCairo: { get base() { return antBase('antCairo'); }, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
   // on a surface: the ant on the cells of its walk there, which keep their colours (turns: as the walk's)
@@ -1282,7 +1285,7 @@ function describe(base, available) {
       + walk.bridges.map((b) => `${fmt(b.from)} (${fmt(Math.floor((b.to - b.from) / b.period))} stretches)`).join(', ') : '')
       + (walk.highway && !walk.loop ? ` · a highway from step ${fmt(walk.highway.from)}, every ${walk.highway.period} steps` : '')
       + (loopText() ? ` · ${loopText()}` : '');  // why the length stops where it does
-    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
+    $('description').innerHTML = `<b>${walkName($('mode').value)}</b> · ${walk.loop ? '' : `${fmt(walk.n)} ${mode.antOf || mode.worm ? 'steps' : 'digits'} · `}${chips ? lead + around + (after ? ` · ${after}` : '') : mode.rule}${highway}`;
     if (chips) {
       $('ruleChips').replaceChildren(...items.map(([, d, text]) => {
         // without the closing note and the words around the digits (they are in the description)
@@ -1524,6 +1527,8 @@ function syncDigitsStepper() {
 // Why a walk that repeats has a most of digits: the loop (or drift), from its first step, and how many
 // rounds are walked; '' when it does not repeat
 function loopText() {
+  if (walk.wormEnd) return `✝ The worm stops at step ${fmt(walk.n)}, after ${fmt(walk.wormMade)} turns of its own: ${{ dead: 'no line left to eat at its corner', eaten: 'its rule turns onto a line already eaten',
+    rule: 'its rule has no turn left for a new corner', digits: 'no digit left for a new corner' }[walk.wormEnd]}.`;
   const L = !randomPrimeSize() && walk.loop;
   if (!L) return '';
   const period = L.period ?? walk.n - L.from, rounds = L.rounds ?? (L.period ? LOOP_ROUNDS : 1), total = L.cap ?? walk.n;
@@ -1685,6 +1690,7 @@ const ICONS = (() => {
       + pathEl('M7.8 8.2Q3.6 5.6 1.4 8.4Q4.4 10.8 7.6 10.6Z', 'f') + pathEl('M16.2 8.2Q20.4 5.6 22.6 8.4Q19.6 10.8 16.4 10.6Z', 'f')
       + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
       + '<ellipse cx="12" cy="13.2" rx="5.2" ry="6.4" stroke-width="1.9"/>' + pathEl('M12 10.2L14 11.4V14.2L12 15.4L10 14.2V11.4Z', 'thin'),
+    worm: pathEl('M3 19L7.5 11.2L12 19L16.5 11.2L14.3 7.3L18.8 7.3L21 3.5') + pathEl(pathOf([[20, 2], [22, 2], [22, 4], [20, 4]]), 'f'),  // its path along the triangles' lines, its head
     ant: '<path d="M10.5 10L7 8.4 5.6 5.4M13.5 10L17 8.4 18.4 5.4M10.2 11.4L5.2 11.8 3.4 13.6M13.8 11.4L18.8 11.8 20.6 13.6M10.4 12.8L7.2 15.6 6.4 19.6M13.6 12.8L16.8 15.6 17.6 19.6M10.8 4.8L9.2 2.6 7.4 2.8M13.2 4.8L14.8 2.6 16.6 2.8" stroke-width="1.8"/>'
       + '<ellipse class="f" cx="12" cy="6.2" rx="2.5" ry="2.2"/><ellipse class="f" cx="12" cy="11.1" rx="2" ry="2.5"/><ellipse class="f" cx="12" cy="17.8" rx="3.3" ry="4.4"/>',
     walk2d: pathEl('M3 20V15H8V10H12V16H17V6H21V3'),  // a walk on the square grid
@@ -2235,7 +2241,7 @@ const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
-  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube', antHexSphere: 'hexagon', antIcosa: 'icosahedron',
+  king: 'king', cairo: 'pentagons', antSquare: 'grid', antTri: 'triangleFilled', worm: 'worm', antHex: 'hexagonFilled', antCairo: 'pentagons', antCube: 'cube', antHexSphere: 'hexagon', antIcosa: 'icosahedron',
   cubeRel: 'cubeFilled', cubeFixed: 'cube', cubeRelCells: 'cubeFilled', cubeFixedCells: 'cube', diag: 'cube', diagCells: 'cube', diamond: 'tetrahedron', torusWalk: 'torus', triTorusWalk: 'torus', hexTorusWalk: 'torus', cubeFlat: 'cube', mobiusWalk: 'mobius', mobiusGrid: 'mobius', mobiusHexGrid: 'mobius', mobiusHexWalk: 'mobius', mobiusTriGrid: 'mobius', mobiusTriWalk: 'mobius',
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
@@ -2286,7 +2292,7 @@ const NAV = {
   dodecaGrid: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'grid'], dodecaLR: ['Walk', 'Surfaces', 'Dodecahedron', 'Turtle', 'cells'],
   hexSphereGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], hexSphereWalk: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
   icosaGrid: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'grid'], icosaLR: ['Walk', 'Surfaces', 'Sphere', 'Turtle', 'cells'],
-  antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'],
+  antSquare: ['Ant', '2D', 'Squares', 'Ant', 'cells'], antTri: ['Ant', '2D', 'Triangles', 'Ant', 'cells'], worm: ['Ant', '2D', 'Triangles', 'Worm', 'grid'],
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
@@ -2454,7 +2460,7 @@ function familyOf(w) {
 }
 // whether the number's digits are read: not by an ant by colour, nor by Life but for a start by the digits (the number
 // then neither shown nor in the link: x= is the number followed, the cells' start is pop= and p=)
-const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].life && plane.start !== 'digits');
+const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].worm && !worm.byDigits) && !(MODES[w].life && plane.start !== 'digits');
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 let antRowMode = null;  // (the mode they were last shown for)
 function renderAntRow() {
@@ -2468,6 +2474,8 @@ function renderAntRow() {
   $('drawCells').checked = drawing;
   $('clearCells').hidden = !drawing;  // while drawing only
   $('clearCells').disabled = !population.size;
+  $('wormRow').hidden = !MODES[w].worm;
+  if (MODES[w].worm) renderWormRow();
   $('antRow').hidden = !A;
   if ($('antRow').hidden) return;
   $('antColours').classList.toggle('active', !antByDigits);
@@ -2484,6 +2492,31 @@ function renderAntRow() {
     : `Rule, a turn per colour: ${Object.keys(A.turns).join(', ')}`;
   if (document.activeElement !== $('antRule')) $('antRule').value = antRuleOf(w);
   $('antRule').classList.toggle('custom', !(antByDigits ? A.digitPresets : A.presets).includes(antRuleOf(w)));  // a rule of one's own
+}
+// The worm's settings: by its rule (presets, or typed) or by the digits. Its rules, all 411 of them (a mirror the same),
+// walked here: dying at step 918,339, 569,804, 83,618 and 4,802, the longest lives that end (all but 85 die before step
+// 200,000, all but 81 before 5,000,000), and two of those still going at 5,000,000
+const WORM_PRESETS = ['L1 R1 R2 R2 R1 R1 L1', 'L1 R1 L2 R1 R1 L1 L1', 'L1 N R2 N R1 L1 L2', 'L1 N R2 L2 N L1 N', 'L2 L1 R1', 'L2 N L1 R2 L1 R2 L2'];
+function renderWormRow() {
+  $('wormRule').classList.toggle('active', !worm.byDigits);
+  $('wormDigits').classList.toggle('active', worm.byDigits);
+  $('wormPresets').hidden = $('wormRuleRow').hidden = worm.byDigits;
+  $('wormPresets').replaceChildren(...WORM_PRESETS.map((r) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r;
+    b.classList.toggle('active', r === worm.rule);
+    b.addEventListener('click', () => setWormRule(r));
+    return b;
+  }));
+  if (document.activeElement !== $('wormRuleText')) $('wormRuleText').value = worm.rule;
+  $('wormRuleText').classList.toggle('custom', !WORM_PRESETS.includes(worm.rule));
+}
+function setWormRule(rule) {
+  if (!wormRuleOf(rule)) { $('wormRuleText').value = worm.rule; return; }
+  worm.rule = wormRuleOf(rule).join(' ');
+  renderModePicker();
+  compute();
 }
 // a rule typed or picked, by the digits (its base the number of its turns) or by colour
 function setAntRule(w, rule) {
@@ -2839,7 +2872,7 @@ function buildWalkOf() {
   const wz = is3d ? new Float64Array(len + 1) : null;
   const cells = new Int32Array(len + 1);
   const maxDist = new Float64Array(len + 1);
-  const ant = !!MODES[current.mode].antOf, step = STEPPERS[current.mode]();
+  const ant = !!MODES[current.mode].antOf, isWorm = !!MODES[current.mode].worm, step = STEPPERS[current.mode](seq);
   // an ant by its rule: counted by the colour it turned on (each colour its turn), not by digit; by the
   // digits: by the turn it took (left or right), the other way from its digit on a dark cell
   const byColour = ant && !antByDigits, base = byColour ? step.colours : MODES[current.mode].base;
@@ -2847,7 +2880,7 @@ function buildWalkOf() {
   const origin = is3d ? key3(0, 0, 0) : key(0, 0), seen = new Set([origin]);
   // a fraction's walk repeats (see walkRepeat), walked 8 rounds; not an ant's, whose state is all its
   // cells, nor a spiral's, whose path the digits do not steer (its sides grow: it never repeats)
-  let loop = current.ratio && !ant && !MODES[current.mode].skipZeros ? walkRepeat() : null;
+  let loop = current.ratio && !ant && !isWorm && !MODES[current.mode].skipZeros ? walkRepeat() : null;  // (a worm: its digits only at its new corners)
   let steps = loop ? Math.min(len, loop.cap) : len, m = 0, walked = 0, nextLook = 2000;
   // an ant on a highway goes on along it for ever: stopped as far as its cloud is wide (driftRounds;
   // looked for every 2,000 steps, then every 5 % of them so far, and at the end). Its last stretch on
@@ -2865,9 +2898,12 @@ function buildWalkOf() {
   };
   const bridges = [];
   cells[0] = 1;
+  const took = isWorm ? new Uint8Array(len) : null;  // (a worm: its turns, its colours and counts)
   for (let i = 0; i < steps; i++) {
-    const g = seq[i];
-    const [k, x, y, z] = step(g);
+    const g = seq[i], at = step(g);
+    if (!at) { steps = i; break; }  // (a worm stopped)
+    const [k, x, y, z] = at;
+    if (isWorm) took[i] = step.took;
     wx[i + 1] = x; wy[i + 1] = y;
     if (is3d) wz[i + 1] = z;
     if (ant) {  // its cells by their first visit, as the ant keeps them (one map over millions of them)
@@ -2880,7 +2916,7 @@ function buildWalkOf() {
     m = Math.max(m, Math.hypot(x, y, z));
     maxDist[i + 1] = m;
     for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + (ant ? step.took : g)]++;  // an ant: the turn it took (by the digits) or its cell's colour
+    counts[base * (i + 1) + (ant || isWorm ? step.took : g)]++;  // an ant: the turn it took (by the digits) or its cell's colour; a worm, its turn
     if (ant) { left[i] = step.left; turns[i] = step.turn; }
     walked = i + 1;
     if (ant && loop && walked > loop.from + loop.period
@@ -2896,7 +2932,7 @@ function buildWalkOf() {
   // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be)
   // an ant's cells, each coloured as it is once the ant has left it (the last one as it would be): by
   // its state (Ink, Amber, Teal), or by the turn it took there (Directions)
-  let keys = seq, antStates = null, antTurns = null;
+  let keys = isWorm ? took : seq, antStates = null, antTurns = null;
   if (ant) {
     antStates = new Uint8Array(steps); antTurns = new Uint8Array(steps);
     for (let j = 0; j < steps; j++) {
@@ -2908,7 +2944,7 @@ function buildWalkOf() {
   Object.assign(walk, { vert: null, stepTiles: null, loop, n: steps, digits: seq, wx, wy, wz, is3d, cells, maxDist, base, counts,
                         lattice: MODES[current.mode].lattice, lines: !!MODES[current.mode].lines,
                         skipZeros: !!MODES[current.mode].skipZeros, ant: ant ? step.colours : 0, turns, antStates, antTurns,
-                        highway: ant ? highwayOf(wx, wy, steps) : null, bridges,
+                        highway: ant ? highwayOf(wx, wy, steps) : null, bridges, wormEnd: isWorm && step.end, wormMade: isWorm ? step.made ?? 0 : 0,
                         keys, sphere: false, life: null,
                         xs: is3d ? new Float64Array(len + 1) : wx,
                         ys: is3d ? new Float64Array(len + 1) : wy });
@@ -3297,6 +3333,7 @@ const STEPPERS = {
   cairo: () => cairoStepper(),
   antSquare: () => antStepper('antSquare', undefined, undefined, population),
   antTri: () => antStepper('antTri'),
+  worm: (digits) => wormStepper(digits),
   antHex: () => antStepper('antHex'),
   antCairo: () => antStepper('antCairo'),
   spiral() { // fixed square spiral from the centre: right, up, left, down with runs 1, 1, 2, 2, 3, 3, …
@@ -3427,6 +3464,48 @@ function key3(x, y, z) {
  * Position = a·u0 + b·u1 with u0 = N = (0, −1) and u1 = NE = (H, −1/2) on screen.
  * Directions clockwise: 0 = N, 1 = NE, 2 = SE, 3 = S, 4 = SW, 5 = NW. */
 const HEX_DIRS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
+
+// Paterson's worm (Mike Paterson and John Conway, 1971): along the lines of a triangle grid, as the triangles' turtle,
+// never twice along a line. At a corner, the lines ahead it has not eaten (sharp left to sharp right, as seen coming in)
+// are its situation: met for the first time, it turns by its rule's next turn (by the digits: the number's next digit,
+// base 5, one onto an eaten line passed over), met again, the same way; one line left, along it; none, it dies. Its first
+// step straight on. step.took: its turn (0 sharp left … 4 sharp right); null once it stops, step.end: why (dead: no line
+// left; eaten: its rule onto an eaten line; rule, digits: none left for a new situation, step.free: its free lines there)
+const WORM_TURNS = { L2: 0, L1: 1, N: 2, R1: 3, R2: 4 };
+const worm = { byDigits: false, rule: 'L1 R1 R2 R2 R1 R1 L1' };
+const wormRuleOf = (rule) => { const words = turnWords(rule); return words.length && words.join('') === rule.toUpperCase().replace(/\s+/g, '') && words.every((t) => t in WORM_TURNS) ? words : null; };
+function wormStepper(digits) {
+  let a = 0, b = 0, d = 0, read = 0, made = 0, first = true;
+  const eaten = new Set(), choices = new Map(), rule = wormRuleOf(worm.rule).map((t) => WORM_TURNS[t]);
+  // a line by its corner it leaves from northwards (directions 0 to 2), a number: millions of them
+  const line = (e) => (e < 3 ? key(a, b) * 3 + e : key(a + HEX_DIRS[e][0], b + HEX_DIRS[e][1]) * 3 + e - 3), dirOf = (c) => (d + c + 4) % 6;  // (c − 2: from straight on)
+  const step = () => {
+    if (step.end) return null;
+    const free = [0, 1, 2, 3, 4].filter((c) => !eaten.has(line(dirOf(c))));
+    let c = first ? 2 : free.length === 1 ? free[0] : choices.get(`${free}`);
+    if (!free.length) step.end = 'dead';
+    else if (c === undefined) {  // a new situation
+      if (worm.byDigits) {
+        while (read < digits.length && !free.includes(digits[read])) read++;
+        if (read < digits.length) c = digits[read++]; else step.end = 'digits';
+      } else if (made >= rule.length) { step.end = 'rule'; step.free = free; }  // (the turns it could take there)
+      else if (!free.includes((c = rule[made++]))) step.end = 'eaten';
+      if (!step.end) choices.set(`${free}`, c);
+    }
+    if (step.end) return null;
+    first = false;
+    d = dirOf(c);
+    eaten.add(line(d));
+    a += HEX_DIRS[d][0]; b += HEX_DIRS[d][1];
+    step.took = c;
+    step.made = choices.size;
+    return [key(a, b), b * H, -a - b / 2, 0];
+  };
+  return step;
+}
+const wormRuleText = () => `along the lines of a triangle grid, never twice along one: at a corner met for the first time, `
+  + (worm.byDigits ? 'it turns by the next digit, <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (one onto an eaten line passed over)'
+    : `it turns by its rule's next turn, ${worm.rule}`) + ', and the same way at that corner met again; it dies where no line is left';
 
 // kind: 'relative' (0 = sharp left … 4 = sharp right), 'fixed' (digit = direction) or
 // 'spiral' (turn left whenever that hexagon is unvisited, else go straight; the digit is ignored)
@@ -8131,7 +8210,8 @@ function getSetup() {
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
   if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : `${zoneWord()}.${plane.density}.${plane.seed}`;  // a surface's start
-  if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];  // "digits LNR"; "digits" alone: left, right
+  if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
+  if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;  // "digits LNR"; "digits" alone: left, right
   if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
   return s;
@@ -8154,7 +8234,10 @@ function applySetup(s) {
     fillSphereSizes(kind, MODES[s.w].initial);
     if (s.s !== undefined) selectSize(kind, linkSize(kind, s.s));
   }
-  if (s.r && MODES[s.w].antOf) {
+  if (s.r && MODES[s.w].worm) {
+    worm.byDigits = s.r === 'digits';
+    if (!worm.byDigits && wormRuleOf(s.r)) worm.rule = wormRuleOf(s.r).join(' ');
+  } else if (s.r && MODES[s.w].antOf) {
     antByDigits = s.r.startsWith('digits');
     population = populationOf(s.p);
     const rule = s.r.slice(6).trim();
@@ -11019,6 +11102,8 @@ for (const [id, digits] of [['antColours', false], ['antDigits', true]]) {
   $(id).addEventListener('click', () => { if (antByDigits === digits) return; antByDigits = digits; renderModePicker(); compute(); });
 }
 $('antRule').addEventListener('change', () => setAntRule($('mode').value, $('antRule').value));
+$('wormRuleText').addEventListener('change', () => setWormRule($('wormRuleText').value));
+for (const [id, digits] of [['wormRule', false], ['wormDigits', true]]) $(id).addEventListener('click', () => { if (worm.byDigits === digits) return; worm.byDigits = digits; renderModePicker(); compute(); });
 // Heatmap of visits on a surface: the cells by their visits, else the rainbow line
 $('heatmap').addEventListener('change', () => {
   $('colorMode').value = $('heatmap').checked ? 'visits' : 'gradient';

@@ -75,6 +75,12 @@ async function crawl(fail) {
         const b = $('navShapes').children[hi], name = b.textContent.trim();
         b.click();
         await look(`shape ${name}`);
+        if (!$('navRules').hidden) for (let r = 0; r < $('navRules').children.length; r++) {  // its rules (Turtle, Pivot…; Ant, Worm)
+          const rb = $('navRules').children[r];
+          if (rb.disabled || rb.classList.contains('active')) continue;
+          rb.click();
+          await look(`${name} rule ${rb.textContent.trim()}`);
+        }
         if ($('torusTiles').hidden) continue;
         for (let k = 0; k < $('torusTiles').children.length; k++) {
           const tile = $('torusTiles').children[k], tn = tile.textContent.trim();
