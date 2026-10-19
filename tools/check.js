@@ -75,8 +75,9 @@ async function crawl(fail) {
         const b = $('navShapes').children[hi], name = b.textContent.trim();
         b.click();
         await look(`shape ${name}`);
-        if (!$('navRules').hidden) for (let r = 0; r < $('navRules').children.length; r++) {  // its rules (Turtle, Pivot…; Ant, Worm)
-          const rb = $('navRules').children[r];
+        const rulesBox = $('antRuleSection').hidden ? $('navRules') : $('antCreatures');  // its rules (Turtle, Pivot…), an ant's creatures
+        if (!rulesBox.closest('[hidden]')) for (let r = 0; r < rulesBox.children.length; r++) {
+          const rb = rulesBox.children[r];
           if (rb.disabled || rb.classList.contains('active')) continue;
           rb.click();
           await look(`${name} rule ${rb.textContent.trim()}`);

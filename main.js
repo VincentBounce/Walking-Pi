@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.848';
+const VERSION = '0.1.849';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2384,7 +2384,7 @@ for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-$
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Grid' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level: the levels above as they are, the ones below kept where they can
@@ -2464,83 +2464,77 @@ function familyOf(w) {
 // whether the number's digits are read: not by an ant by colour, nor by Life but for a start by the digits (the number
 // then neither shown nor in the link: x= is the number followed, the cells' start is pop= and p=)
 const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].worm && !worm.byDigits) && !(MODES[w].life && plane.start !== 'digits');
-// Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
-let antRowMode = null;  // (the mode they were last shown for)
+// An ant's sections, as Life's: Start, by its rule (an ant by colour, a worm by its rule) or by the digits (a turmite by
+// its rule only), the square ant's cells drawn; Rule, its creature (see renderModePicker), then its rules as cards, its
+// rule and its words (see creatureRules), then your own, its rule typed
+let antRowMode = null, antCustomOpen = false;  // (the mode they were last shown for; the Custom rule card clicked)
 function renderAntRow() {
-  const w = $('mode').value, A = ANTS[w];
+  const w = $('mode').value, m = MODES[w], ant = NAV[w][0] === 'Ant';
   $('digitsSection').hidden = !readsDigits(w);
   $('populationRow').hidden = w !== 'antSquare';
-  if (MODES[w].plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
+  if (m.plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
   else if (w !== 'antSquare' || antRowMode !== w) drawing = false;  // the square ant draws once asked, there (not from Life's Draw)
+  if (antRowMode !== w) antCustomOpen = false;
   antRowMode = w;
   stage.classList.toggle('drawing', drawing);
   $('drawCells').checked = drawing;
   $('clearCells').hidden = !drawing;  // while drawing only
   $('clearCells').disabled = !population.size;
-  $('wormRow').hidden = !MODES[w].worm;
-  if (MODES[w].worm) renderWormRow();
-  $('turmiteRow').hidden = !MODES[w].turmite;
-  if (MODES[w].turmite) { antByDigits = false; renderTurmiteRow(); }  // (by its rule only)
-  $('antRow').hidden = !A || !!MODES[w].turmite;
-  if ($('antRow').hidden) return;
-  $('antColours').classList.toggle('active', !antByDigits);
-  $('antDigits').classList.toggle('active', antByDigits);
-  $('antPresets').replaceChildren(...(antByDigits ? A.digitPresets : A.presets).map((r) => {
+  $('antStartSection').hidden = $('antRuleSection').hidden = !ant;
+  if (!ant) return;
+  if (m.turmite) antByDigits = false;  // (by its rule only)
+  const R = creatureRules(w);
+  $('antStartTabs').hidden = !!m.turmite;
+  $('antStartSection').hidden = !!m.turmite && $('populationRow').hidden;
+  $('antByRule').textContent = m.worm ? 'Rule' : 'Colours';
+  $('antByRule').classList.toggle('active', !R.byDigits);
+  $('antByDigits').classList.toggle('active', !!R.byDigits);
+  const card = (pic, name, words, active, go) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = r;
-    b.classList.toggle('active', r === antRuleOf(w));
-    b.addEventListener('click', () => setAntRule(w, r));
+    b.classList.toggle('active', active);
+    b.innerHTML = `<span class="mode-icon">${pic}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${words}</span></span>`;
+    b.addEventListener('click', go);
     return b;
-  }));
-  $('antRuleName').textContent = antByDigits ? `Rule, a turn per digit, mirrored on a dark cell: ${Object.keys(A.turns).join(', ')}`
-    : `Rule, a turn per colour: ${Object.keys(A.turns).join(', ')}`;
-  if (document.activeElement !== $('antRule')) $('antRule').value = antRuleOf(w);
-  $('antRule').classList.toggle('custom', !(antByDigits ? A.digitPresets : A.presets).includes(antRuleOf(w)));  // a rule of one's own
+  };
+  const known = R.cards.some(([r]) => r === R.now), mine = !known || antCustomOpen, pic = icon(m.worm ? 'worm' : m.turmite ? 'turmite' : 'ant');
+  $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => card(pic, r, words, r === R.now && !antCustomOpen, () => { antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
+    ...(R.typed ? [card(pixelIcon('..o..,..o..,ooooo,..o..,..o..'), 'Custom rule', mine ? `${R.now} · your own` : 'your own, typed', mine, () => { antCustomOpen = true; renderAntRow(); })] : []));
+  $('antCustomRow').hidden = !R.typed || !mine;
+  $('antRuleName').textContent = R.name;
+  if (document.activeElement !== $('antRule')) $('antRule').value = R.now;
 }
-// The worm's settings: by its rule (presets, or typed) or by the digits. Its rules, all 411 of them (a mirror the same),
-// walked here: dying at step 918,339, 569,804, 83,618 and 4,802, the longest lives that end (all but 85 die before step
-// 200,000, all but 81 before 5,000,000), and two of those still going at 5,000,000
+// an ant's rules: its presets [rule, words], the rule in use, how to set one, whether one is typed, the field's title
+const ANT_WORDS = { RL: "Langton's ant: a highway from step 9,976", RLR: 'grows chaotically', LLRR: 'grows symmetrically', LRRRRRLLR: 'fills a square around itself',
+                    RRLLLRLLLRRR: 'a filled triangle, growing and moving' };  // (on squares)
+const TURMITE_WORDS = ["Langton's ant", 'a spiral', 'the widest mess', 'a square growing filled', 'a shape growing filled', 'a highway from step 3,090, every 54 steps'];
+const WORM_WORDS = ['dies at step 4,802', 'dies at step 83,618', 'dies at step 569,804', 'dies at step 918,339', 'still going at step 5,000,000', 'still going at step 5,000,000'];
+function creatureRules(w) {
+  if (MODES[w].worm) return { byDigits: worm.byDigits, now: worm.rule, typed: !worm.byDigits, cards: worm.byDigits ? [] : WORM_PRESETS.map((r, i) => [r, WORM_WORDS[i]]), set: setWormRule,
+                              name: 'Rule, a turn at each new corner: L2, L1, N, R1, R2' };
+  if (MODES[w].turmite) return { now: turmite.rule, typed: true, cards: TURMITE_PRESETS.map((r, i) => [r, TURMITE_WORDS[i]]), set: setTurmiteRule,
+                                 name: 'Rule, per state an entry per colour (write, turn L N R U, state), the states parted by |' };
+  const A = ANTS[w], turns = Object.keys(A.turns).join(', ');
+  return { byDigits: antByDigits, now: antRuleOf(w), typed: true, set: (r) => setAntRule(w, r),
+           cards: (antByDigits ? A.digitPresets : A.presets).map((r) => [r, antByDigits ? turnWords(r).map((t, d) => `${d} ${TURN_WORDS[t]}`).join(', ')
+             : (w === 'antSquare' && ANT_WORDS[r]) || `${turnWords(r).length} colours`]),
+           name: antByDigits ? `Rule, a turn per digit, mirrored on a dark cell: ${turns}` : `Rule, a turn per colour: ${turns}` };
+}
+// The worm's rules, all 411 of them (a mirror the same), walked here: dying at step 918,339, 569,804, 83,618 and 4,802,
+// the longest lives that end (all but 85 die before step 200,000, all but 81 before 5,000,000), and two of those still
+// going at 5,000,000
 const WORM_PRESETS = ['L1 R1 R2 R2 R1 R1 L1', 'L1 R1 L2 R1 R1 L1 L1', 'L1 N R2 N R1 L1 L2', 'L1 N R2 L2 N L1 N', 'L2 L1 R1', 'L2 N L1 R2 L1 R2 L2'];
-function renderWormRow() {
-  $('wormRule').classList.toggle('active', !worm.byDigits);
-  $('wormDigits').classList.toggle('active', worm.byDigits);
-  $('wormPresets').hidden = $('wormRuleRow').hidden = worm.byDigits;
-  $('wormPresets').replaceChildren(...WORM_PRESETS.map((r) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = r;
-    b.classList.toggle('active', r === worm.rule);
-    b.addEventListener('click', () => setWormRule(r));
-    return b;
-  }));
-  if (document.activeElement !== $('wormRuleText')) $('wormRuleText').value = worm.rule;
-  $('wormRuleText').classList.toggle('custom', !WORM_PRESETS.includes(worm.rule));
-}
-// The turmite's rule: presets, or typed (see turmiteOf). Langton's ant, then of the 65,536 with 2 states and 2 colours,
-// walked here 5,000 steps: a spiral; the widest mess (3,765 cells); squares growing filled (97 %, and all); a highway
-// from step 3,090, every 54 steps
+// The turmite's rules (see turmiteOf): Langton's ant, then of the 65,536 with 2 states and 2 colours, walked here 5,000
+// steps: a spiral; the widest mess (3,765 cells); squares growing filled (97 %, and all); a highway from step 3,090
 const TURMITE_PRESETS = ['1R0 0L0', '1L1 1L1 | 1R1 0N0', '1N1 1N0 | 1R0 0L0', '1L0 0R1 | 0R0 1L1', '1L0 1U1 | 0L0 1L0', '1N1 0R1 | 1L0 1N0'];
-function renderTurmiteRow() {
-  $('turmitePresets').replaceChildren(...TURMITE_PRESETS.map((r) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = r;
-    b.classList.toggle('active', r === turmite.rule);
-    b.addEventListener('click', () => setTurmiteRule(r));
-    return b;
-  }));
-  if (document.activeElement !== $('turmiteRuleText')) $('turmiteRuleText').value = turmite.rule;
-  $('turmiteRuleText').classList.toggle('custom', !TURMITE_PRESETS.includes(turmite.rule));
-}
 function setTurmiteRule(rule) {
-  if (!turmiteOf(rule)) { $('turmiteRuleText').value = turmite.rule; return; }
+  if (!turmiteOf(rule)) { $('antRule').value = turmite.rule; return; }
   turmite.rule = turmiteOf(rule).text;
   renderModePicker();
   compute();
 }
 function setWormRule(rule) {
-  if (!wormRuleOf(rule)) { $('wormRuleText').value = worm.rule; return; }
+  if (!wormRuleOf(rule)) { $('antRule').value = worm.rule; return; }
   worm.rule = wormRuleOf(rule).join(' ');
   renderModePicker();
   compute();
@@ -2571,7 +2565,7 @@ function renderModePicker() {
     b.setAttribute('role', 'tab');
     return b;
   }));
-  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'ant', Life: 'grid' }[kind]) + WALK_HEADINGS[kind]
+  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid' }[kind]) + WALK_HEADINGS[kind]
     + (kind === 'Life' ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
@@ -2624,14 +2618,12 @@ function renderModePicker() {
   }
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
-  // an ant's creatures as the shapes, tiles, all of them on whatever shape (Ant, Turmite on squares, Worm on triangles:
-  // one of another shape, a click takes it there); a walk's rules a list, each with its base
+  // an ant's creatures as the shapes, tiles in its Rule section, all of them on whatever shape (Ant, Turmite on squares,
+  // Worm on triangles: one of another shape, a click takes it there); a walk's rules a list, each with its base
   const creatures = kind === 'Ant', optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
   const rules = creatures ? [...new Set(Object.values(NAV).filter((n) => n[0] === kind && n[1] === space).map((n) => n[3]))] : navValues(3, [kind, space, shape]);
-  $('navRules').hidden = rules.length < 2;
-  $('navRules').className = creatures ? 'nav-shapes' : 'mode-list';
-  $('rulesLabel').hidden = !creatures || $('navRules').hidden;
-  $('navRules').replaceChildren(...rules.map((r) => {
+  $('navRules').hidden = creatures || rules.length < 2;
+  (creatures ? $('antCreatures') : $('navRules')).replaceChildren(...rules.map((r) => {
     const here = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const v = here ?? Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][3] === r);  // (elsewhere: its first shape)
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
@@ -11184,13 +11176,16 @@ $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
 $('walkOnGrid').addEventListener('click', () => navGo(4, 'grid'));
 $('walkOnCells').addEventListener('click', () => navGo(4, 'cells'));
-for (const [id, digits] of [['antColours', false], ['antDigits', true]]) {
-  $(id).addEventListener('click', () => { if (antByDigits === digits) return; antByDigits = digits; renderModePicker(); compute(); });
+for (const [id, digits] of [['antByRule', false], ['antByDigits', true]]) {  // (a worm's own, by its rule or the digits)
+  $(id).addEventListener('click', () => {
+    const w = MODES[$('mode').value];
+    if ((w.worm ? worm.byDigits : antByDigits) === digits) return;
+    if (w.worm) worm.byDigits = digits; else antByDigits = digits;
+    renderModePicker();
+    compute();
+  });
 }
-$('antRule').addEventListener('change', () => setAntRule($('mode').value, $('antRule').value));
-$('wormRuleText').addEventListener('change', () => setWormRule($('wormRuleText').value));
-$('turmiteRuleText').addEventListener('change', () => setTurmiteRule($('turmiteRuleText').value));
-for (const [id, digits] of [['wormRule', false], ['wormDigits', true]]) $(id).addEventListener('click', () => { if (worm.byDigits === digits) return; worm.byDigits = digits; renderModePicker(); compute(); });
+$('antRule').addEventListener('change', () => creatureRules($('mode').value).set($('antRule').value));
 // Heatmap of visits on a surface: the cells by their visits, else the rainbow line
 $('heatmap').addEventListener('change', () => {
   $('colorMode').value = $('heatmap').checked ? 'visits' : 'gradient';
