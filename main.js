@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.824';
+const VERSION = '0.1.825';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2353,7 +2353,7 @@ const WALK_HEADINGS = { Walk: 'Walk', Ant: "Langton's ant", Life: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level: the levels above as they are, the ones below kept where they can
-// be, else the first (Grid before Cells); in a family, its tiling in use or last chosen
+// be (a level it has none of: not kept), else the first (Grid before Cells); in a family, its tiling in use or last chosen
 function navPick(level, value) {
   const want = [...NAV[$('mode').value]];
   want[level] = value;
@@ -2361,21 +2361,23 @@ function navPick(level, value) {
   for (const [w, n] of Object.entries(NAV)) {
     if (n.slice(0, level + 1).some((v, i) => v !== want[i])) continue;
     let score = 0;
-    for (let i = level + 1; i < 5; i++) score = score * 4 + (n[i] === want[i] ? 2 : 0) + (i === 4 && n[i] !== 'cells' ? 1 : 0);
+    for (let i = level + 1; i < 5; i++) score = score * 4 + (n[i] && n[i] === want[i] ? 2 : 0) + (i === 4 && n[i] && n[i] !== 'cells' ? 1 : 0);  // (none: no match)
     const fam = familyOf(w);
     if (fam && fam.F.modes[fam.F.tabs[fam.F.tab][0]].includes(w)) score += 0.5;
     if (score > top) { best = w; top = score; }
   }
   return best;
 }
+// Walk, Ant, Life: each one's mode and number when left, to come back to
+const kindLeft = {};
 function navGo(level, value) {
-  const w = navPick(level, value);
-  if (!w || w === $('mode').value) return;
+  const from = $('mode').value, back = level === 0 ? kindLeft[value] : null, w = back?.w ?? navPick(level, value);
+  if (!w || w === from) return;
+  if (level === 0) kindLeft[NAV[from][0]] = { w: from, x: $('formula').value };
   const fam = familyOf(w);
   if (fam) torusTurned = fam.F.tabs[fam.F.tab][1];  // the tiling last chosen, turned or not
-  if (MODES[w].life && !MODES[$('mode').value].life) {  // the automata start from a random number on the whole surface
-    $('formula').value = presetFormula('random');
-  }
+  if (back) $('formula').value = back.x;
+  else if (!MODES[w].life !== !MODES[from].life) $('formula').value = MODES[w].life ? presetFormula('random') : 'pi';  // the automata start from a random number on the whole surface; the walks, from π
   $('mode').value = w;
   $('mode').dispatchEvent(new Event('change'));
 }
