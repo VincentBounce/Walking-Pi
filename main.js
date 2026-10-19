@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.832';
+const VERSION = '0.1.833';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2431,12 +2431,14 @@ function familyOf(w) {
 // then neither shown nor in the link: x= is the number followed, the cells' start is pop= and p=)
 const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].life && plane.start !== 'digits');
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
+let antRowMode = null;  // (the mode they were last shown for)
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
   $('digitsSection').hidden = !readsDigits(w);
   $('populationRow').hidden = w !== 'antSquare';
   if (MODES[w].plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
-  else if (w !== 'antSquare') drawing = false;  // drawing ends with the square ant
+  else if (w !== 'antSquare' || antRowMode !== w) drawing = false;  // the square ant draws once asked, there (not from Life's Draw)
+  antRowMode = w;
   stage.classList.toggle('drawing', drawing);
   $('drawCells').checked = drawing;
   $('clearCells').hidden = !drawing;  // while drawing only
@@ -7811,8 +7813,8 @@ function famousGrid() {
   let place, cellAt, corners, n, unitsOf = (p) => p;
   if (walk.plane) {
     const { W, row, torus } = walk.plane, at = new Map(), key = ([u, v]) => `${Math.round(u * 1000 + 0.37)},${Math.round(v * 1000 + 0.37)}`;  // (off halves: a middle on one, turned round, either side)
-    const o = cellMiddle(kind, 0, 0), P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]);  // (a torus: its two turns round)
-    const ends = torus ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [i * P[0][0] + j * P[1][0], i * P[0][1] + j * P[1][1]])) : [[0, 0]];
+    const o = cellMiddle(kind, 0, 0), P = torus ? [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]) : null;  // (a torus: its two turns round)
+    const ends = P ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [i * P[0][0] + j * P[1][0], i * P[0][1] + j * P[1][1]])) : [[0, 0]];
     place = (t) => cellMiddle(kind, t % row, Math.floor(t / row));
     corners = (t) => planeCorners(kind, t % row, Math.floor(t / row));
     n = W * row;
