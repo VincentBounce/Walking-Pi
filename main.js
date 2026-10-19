@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.819';
+const VERSION = '0.1.820';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6466,6 +6466,17 @@ function brushCells() {
 function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells()) {
   if (!cells) return [[cx, cy, 1]];  // one cell: the one pointed at, whichever way it lies
   const { kind, W, torus } = walk.plane, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
+  if (RECTS[kind]) {  // a rectangle's: laid where it is, its middle on the cell pointed at to a lattice cell of its grid (not a whole rectangle)
+    const { base, basis: [U, V] } = RECTS[kind], a = latticeStep(base), o = cellMiddle(base, 0, 0), b = cellMiddle(base, 0, 1).map((c, d) => c - o[d]);
+    const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), c = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), to = cellMiddle(kind, cx, cy);
+    const D = a[0] * b[1] - a[1] * b[0], dx = to[0] - c[0], dy = to[1] - c[1], n = Math.round((dx * b[1] - dy * b[0]) / D), m = Math.round((a[0] * dy - a[1] * dx) / D);
+    const DU = U[0] * V[1] - U[1] * V[0], wrap = ([x, y]) => {  // (a torus: round its W × W rectangles)
+      const u = (x * V[1] - y * V[0]) / DU, v = (U[0] * y - U[1] * x) / DU, du = Math.floor(u / W) * W, dv = Math.floor(v / W) * W;
+      return [x - du * U[0] - dv * V[0], y - du * U[1] - dv * V[1]];
+    };
+    cells.forEach(([, , st], i) => { const w = [ms[i][0] + n * a[0] + m * b[0], ms[i][1] + n * a[1] + m * b[1]], q = planeCellAt(kind, W, ...(torus ? wrap(w) : w)); if (q) out.push([...q, st]); });
+    return out;
+  }
   const square = (x) => Math.floor(x / per);
   let i = square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1), j = cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1);
   if (kind === 'cairo' && (i + j) & 1) j--;
