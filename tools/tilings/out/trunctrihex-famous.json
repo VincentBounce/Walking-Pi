@@ -1,0 +1,280 @@
+{
+ "trunctrihex B27/S1389/C3": {
+  "ships": [
+   {
+    "rle": "5.A$3BA4.A!",
+    "n": 3,
+    "cells": 6,
+    "period": 4,
+    "move": [
+     6,
+     -1
+    ],
+    "count": 163
+   },
+   {
+    "rle": "5.B.2AB$A7.B!",
+    "n": 3,
+    "cells": 6,
+    "period": 4,
+    "move": [
+     6,
+     -1
+    ],
+    "count": 162
+   },
+   {
+    "rle": "5.B3.A$B2A5.B!",
+    "n": 3,
+    "cells": 6,
+    "period": 4,
+    "move": [
+     -6,
+     1
+    ],
+    "count": 152
+   },
+   {
+    "rle": "5.A.BABA$8.B!",
+    "n": 3,
+    "cells": 6,
+    "period": 4,
+    "move": [
+     -6,
+     0
+    ],
+    "count": 140
+   },
+   {
+    "rle": "AB2.BA2.B$2.A!",
+    "n": 3,
+    "cells": 6,
+    "period": 4,
+    "move": [
+     0,
+     1
+    ],
+    "count": 135
+   },
+   {
+    "rle": ".A2.2B2.BA$2.A!",
+    "n": 3,
+    "cells": 6,
+    "period": 4,
+    "move": [
+     -6,
+     0
+    ],
+    "count": 135
+   }
+  ],
+  "oscs": [
+   {
+    "rle": "10.2A.A2B$5.ABA.BA$8.B!",
+    "n": 6,
+    "cells": 11,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "4.2A.A.2A3.A$2.A!",
+    "n": 7,
+    "cells": 7,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": ".A2.B3A.2BA2.B$A.B!",
+    "n": 6,
+    "cells": 11,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 2
+   },
+   {
+    "rle": "5.A2.2A$2A.A$2.A!",
+    "n": 7,
+    "cells": 7,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": "5.3A.A4.A$A.A!",
+    "n": 7,
+    "cells": 7,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": ".5A3.A$8.A!",
+    "n": 7,
+    "cells": 7,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   }
+  ],
+  "meths": []
+ },
+ "trunctrihex B245/S2378/C5": {
+  "ships": [
+   {
+    "rle": "11.A$6.3A.2A.ABA$5.AC2D2BA2.AD$B.A.D.B.C5.AD!",
+    "n": 13,
+    "cells": 25,
+    "period": 8,
+    "move": [
+     0,
+     -2
+    ],
+    "count": 145
+   },
+   {
+    "rle": "5.A4.2A$.AB2C.2ABD2A.AC2A$CBDCA.A7.A$2.B!",
+    "n": 14,
+    "cells": 25,
+    "period": 8,
+    "move": [
+     12,
+     0
+    ],
+    "count": 137
+   },
+   {
+    "rle": "11.A$.A2.4ABAC2D2A2B.D.A$2.A3.BAD.B3.CD$8.A!",
+    "n": 13,
+    "cells": 25,
+    "period": 8,
+    "move": [
+     -12,
+     0
+    ],
+    "count": 117
+   },
+   {
+    "rle": "11.D2.DC2A$5.C4.3ACBABA.AC2A$BCD3.2ADCA.A7.A$8.B!",
+    "n": 15,
+    "cells": 29,
+    "period": 8,
+    "move": [
+     12,
+     0
+    ],
+    "count": 115
+   },
+   {
+    "rle": "15.D6.D$6.B2A.BDBACBD3.A$5.ACAD3A2.A$3A5.B!",
+    "n": 13,
+    "cells": 25,
+    "period": 8,
+    "move": [
+     -12,
+     2
+    ],
+    "count": 113
+   },
+   {
+    "rle": "17.A$D5.D2A2BD3AC2A.ABA$4.D.BACB4.D5.A$8.A!",
+    "n": 13,
+    "cells": 25,
+    "period": 8,
+    "move": [
+     12,
+     0
+    ],
+    "count": 112
+   }
+  ],
+  "oscs": [
+   {
+    "rle": "5.D.B.CA$5.ADCAB!",
+    "n": 3,
+    "cells": 9,
+    "period": 12,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": "5.D.A2.BC$CB2.A.D.A!",
+    "n": 3,
+    "cells": 9,
+    "period": 12,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": "10.DC$AB2.CDB2A!",
+    "n": 3,
+    "cells": 9,
+    "period": 12,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": "5.B.D.C.A$A5.BCAD!",
+    "n": 3,
+    "cells": 9,
+    "period": 12,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": "5.A.C.BD$.D2.CB2.2A!",
+    "n": 3,
+    "cells": 9,
+    "period": 12,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   },
+   {
+    "rle": "7.A2.BC$DC2.BAD.A!",
+    "n": 3,
+    "cells": 9,
+    "period": 6,
+    "move": [
+     0,
+     0
+    ],
+    "count": 1
+   }
+  ],
+  "meths": []
+ }
+}

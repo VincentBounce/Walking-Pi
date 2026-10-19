@@ -1,0 +1,86 @@
+{
+ "trunchex B238/S0457/C5": {
+  "meths": [
+   {
+    "rle": "2.A2.A.2A$.3A!",
+    "n": 7,
+    "T": 699,
+    "ships": 0,
+    "period": 1
+   },
+   {
+    "rle": "A3.2A$3A.A.2A!",
+    "n": 9,
+    "T": 497,
+    "ships": 0,
+    "period": 30
+   },
+   {
+    "rle": "A3.A$3.A.A2.A!",
+    "n": 5,
+    "T": 496,
+    "ships": 0,
+    "period": 10
+   },
+   {
+    "rle": "2.2A.A$2.A.A$A2.A.A!",
+    "n": 8,
+    "T": 418,
+    "ships": 0,
+    "period": 10
+   },
+   {
+    "rle": "A3.2A$2.3A!",
+    "n": 6,
+    "T": 379,
+    "ships": 0,
+    "period": 30
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ },
+ "trunchex B235/S0457/C5": {
+  "meths": [
+   {
+    "rle": ".A.A.A$A2.2A$5.A!",
+    "n": 7,
+    "T": 791,
+    "ships": 0,
+    "period": 10
+   },
+   {
+    "rle": "7.A$A2.3A2.A!",
+    "n": 6,
+    "T": 503,
+    "ships": 0,
+    "period": 10
+   },
+   {
+    "rle": "3.A$2.2A.A$.A3.A!",
+    "n": 6,
+    "T": 503,
+    "ships": 0,
+    "period": 10
+   },
+   {
+    "rle": "5.A2.A$.4A3.A!",
+    "n": 7,
+    "T": 500,
+    "ships": 0,
+    "period": 10
+   },
+   {
+    "rle": ".3A$A3.A$A.3A!",
+    "n": 9,
+    "T": 467,
+    "ships": 0,
+    "period": 60
+   }
+  ],
+  "ends": {
+   "settles": 48
+  }
+ }
+}
