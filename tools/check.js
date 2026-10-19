@@ -54,7 +54,7 @@ async function crawl(fail) {
   const wait = (ms) => new Promise((go) => setTimeout(go, ms)), errors = [];
   const onError = (e) => errors.push(e.message);
   window.addEventListener('error', onError);
-  const tabs = () => [...document.querySelectorAll('#modeTabs [role=tab]')].filter((b) => /Walk|Ant|Life/.test(b.textContent));
+  const tabs = () => [...document.querySelectorAll('#modeTabs [role=tab]')].filter((b) => !/Gallery/.test(b.textContent));  // (Life, Reversible, Ant, Walk)
   let checked = 0;
   const look = async (what) => {
     await wait(450);
@@ -65,7 +65,7 @@ async function crawl(fail) {
     if (hashW !== w) fail(`${what} → ${w}: the link says ${hashW}`);
     if (n && said && said !== n) fail(`${what} → ${w}: ${n} cells, said ${said}`);
   };
-  for (const ti of [0, 1, 2]) {
+  for (let ti = 0; ti < tabs().length; ti++) {
     tabs()[ti].click();
     await look(`tab ${tabs()[ti].textContent.trim()}`);
     for (let si = 0; si < $('navSpace').children.length; si++) {

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.849';
+const VERSION = '0.1.850';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1047,6 +1047,8 @@ const MODES = {
   icosaGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'icosaLR', sphere: 'icosa', grid: true, turns: [120, 60, 0, -60, -120], round: true,
                rule: 'along the edges of an icosahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
   life2d:     { base: 2, lattice: 'square', life: true, plane: 'square', where: 'a grid of squares' },  // on the plane (see plane)
+  // a reversible automaton: the grid in 2 × 2 blocks, shifted by one each generation (Margolus's), each block by its rule
+  blocks2d:   { base: 2, lattice: 'square', life: true, plane: 'square', margolus: true, where: 'a grid of squares in 2 × 2 blocks, shifted by one each generation' },
   life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
   life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
   life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons' },
@@ -1692,6 +1694,7 @@ const ICONS = (() => {
       + pathEl('M7.8 8.2Q3.6 5.6 1.4 8.4Q4.4 10.8 7.6 10.6Z', 'f') + pathEl('M16.2 8.2Q20.4 5.6 22.6 8.4Q19.6 10.8 16.4 10.6Z', 'f')
       + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
       + '<ellipse cx="12" cy="13.2" rx="5.2" ry="6.4" stroke-width="1.9"/>' + pathEl('M12 10.2L14 11.4V14.2L12 15.4L10 14.2V11.4Z', 'thin'),
+    billiard: '<circle cx="8.5" cy="15.5" r="4.5"/><circle cx="15.5" cy="8.5" r="4.5"/>',  // two balls meeting
     turmite: pathEl('M12 12H15V9H9V15H18V6H6V18H21'),  // a square spiral
     worm: pathEl('M3 19L7.5 11.2L12 19L16.5 11.2L14.3 7.3L18.8 7.3L21 3.5') + pathEl(pathOf([[20, 2], [22, 2], [22, 4], [20, 4]]), 'f'),  // its path along the triangles' lines, its head
     ant: '<path d="M10.5 10L7 8.4 5.6 5.4M13.5 10L17 8.4 18.4 5.4M10.2 11.4L5.2 11.8 3.4 13.6M13.8 11.4L18.8 11.8 20.6 13.6M10.4 12.8L7.2 15.6 6.4 19.6M13.6 12.8L16.8 15.6 17.6 19.6M10.8 4.8L9.2 2.6 7.4 2.8M13.2 4.8L14.8 2.6 16.6 2.8" stroke-width="1.8"/>'
@@ -2250,7 +2253,7 @@ const MODE_ICONS = {
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dSpectre: 'spectre', life2dAmmann: 'ammann', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
-  life2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
+  life2d: 'grid', blocks2d: 'grid', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
@@ -2300,7 +2303,7 @@ const NAV = {
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''],
-  life2d: ['Life', '2D', 'Squares', 'Life', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
@@ -2364,7 +2367,7 @@ MODE_ICONS.lifePits = 'walls';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Life', 'glider'], ['Ant', 'ant'], ['Walk', 'compass']];
+const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'billiard'], ['Ant', 'ant'], ['Walk', 'compass']];
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
 const NAV_SPACES = ['2D', 'Surfaces', '3D'], SPACE_NAMES = { '2D': '2D', Surfaces: '3D', '3D': 'Space' };
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
@@ -2384,7 +2387,7 @@ for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-$
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level: the levels above as they are, the ones below kept where they can
@@ -2565,7 +2568,7 @@ function renderModePicker() {
     b.setAttribute('role', 'tab');
     return b;
   }));
-  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid' }[kind]) + WALK_HEADINGS[kind]
+  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
     + (kind === 'Life' ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
@@ -2672,7 +2675,8 @@ function compute(keepDigits = false) {
   $('copyRle').hidden = !mode.plane;  // (the plane's cells only)  // its start: Hunt, Draw (the plane only), Digits
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
-  $('colourSection').hidden = !mode.life;
+  $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
+  $('watchRule').hidden = !!mode.margolus;  // (how a rule works: births and survivals)
   $('autoPlayRow').hidden = !mode.life;
   renderColours();
   renderRuleSection();
@@ -5570,7 +5574,15 @@ const HENSEL_LETTERS = Array.from({ length: 9 }, (_, c) => (c === 0 || c === 8 ?
 // live neighbours, and C, the number of states: 2 for Life, more for "Generations" rules (dying
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
+// A block rule (Margolus's): M and the new state of each of a 2 × 2 block's 16 (its cells' bits: 1 top left, 2 top right,
+// 4 bottom left, 8 bottom right), a permutation of them, so reversible: its inverse runs it back
+function parseBlocks(text) {
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^M((?:\d+,){15}\d+)$/), to = m && m[1].split(',').map(Number);
+  if (!to || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(16).keys()]}`) return null;
+  return { margolus: Uint8Array.from(to), B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}` };
+}
 function parseRule(text) {
+  if (/^\s*M/i.test(text)) return parseBlocks(text);
   const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZ-]*)\/S([\dOMPCEKAINYQJRTWZ-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these
@@ -6258,6 +6270,7 @@ function buildLifePlane(seq) {
     renderPlaneRow();
   }
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
+  if (MODES[current.mode].margolus) lifeColours = 1;  // (blocks: one colour)
   fitColours();  // as many colours as the grid has fair blocks for
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares
@@ -6267,6 +6280,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel');
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
+                margolus: MODES[current.mode].margolus && rule.margolus ? { to: rule.margolus, W, row, torus: planeTorus(kind) && W % 2 === 0 } : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -6385,6 +6399,7 @@ function renderPlaneRow() {
   for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on a surface: its patterns, to see)
     b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
     b.disabled = false;
+    if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
   }
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
   if (!kind) {
@@ -6812,7 +6827,7 @@ function drawLifePlane() {
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
 for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = SURFACE_CELLS[`${mobiusOf(kind)}Turned`] = t.mark;
-const lifeMark = (mode) => (mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺', ammann: '✵' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
+const lifeMark = (mode) => (mode.margolus ? '▣' : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', spectre: '✺', ammann: '✵' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -6886,6 +6901,8 @@ function renderColours() {
 const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '✺': 7, '✵': 12 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
+  'M0,8,4,3,2,5,9,7,1,6,10,11,12,13,14,15': 'oo...,oo...,.....,...oo,...oo', 'M15,14,13,3,11,5,6,1,7,9,10,2,12,4,8,0': '.o.o.,o...o,.....,o...o,.o.o.',
+  'M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0': 'ooooo,o...o,o.o.o,o...o,ooooo', 'M0,4,1,3,8,5,6,7,2,9,10,11,12,13,14,15': '..o..,.....,o...o,.....,..o..',  // (the block rules)
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
   'B3/S12345': 'o.ooo,o.o..,o.o.o,o...o,ooooo', 'B3/S1234': 'o.o.o,o.o.o,o.o.o,o...o,ooooo', 'B2/S/C3': '.o+..,.o+..,..+o.,..+o.', 'B2/S2/C25': 'oo+++,o.+++,.+...,.+...,.+...', 'B34/S23/C12': '..o..,.ooo.,.+++.,.+++.,.+.+.', 'B24/S13/C12': 'o....,.++..,..++.,...++,....+', 'B2/S1/C8': '.....,oo+++,o.+++,.....,.....', 'B23/S13/C8': '..o..,..+..,..+..,..+..,..+..', 'B2/S24/C8': '.....,.o++.,oo+++,.....,.....', 'B2/S28/C8': '....o,...o+,..++.,.++..,++...',
   'B2/S345/C4': '..o..,.ooo.,o+o+o,..o..,.+.+.', 'B2/S': 'o...o,..o..,o...o,.....,.o.o.', 'B45/S345/C4': 'o....,...o.,.....,.o...,....o',
@@ -7057,6 +7074,7 @@ function renderRuleSection() {
   });
   $('ruleCards').append(own);
   document.querySelector('.rule-build').hidden = $('lifeCustomRow').hidden = !mineNot;  // (its states and chips, its text: your own's only)
+  if (mode.margolus) { document.querySelector('.rule-build').hidden = true; return; }  // (a block rule: typed only, no births nor survivals)
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
@@ -7115,7 +7133,8 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  if (lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
+  const kindFits = !!parseRule(rule)?.margolus === !!mode.margolus;  // (blocks: a block rule only; else none)
+  if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
 }
@@ -7187,16 +7206,30 @@ function lifeTrack(gen) {
 // around it if just one is (QuadLife's way: 4 colours, 1 + 1 + 1), else none (it stays dead). With C > 2 states a cell
 // that fails to survive goes through the dying stages, keeping its colour, and cannot be born again until
 // it is dead. A cell dying at generation g records died = g (fading trail).
+// A generation of a block rule: the grid's 2 × 2 blocks from (p, p), p = 0 or 1 each other generation, each block's state
+// to its rule's; on a torus of an even side its blocks round the seams, else a cell in no whole block as it is
+function blockStep({ to, W, row, torus }, a, b, g) {
+  const p = g & 1;
+  b.set(a);
+  for (let y = p; y < W; y += 2) for (let x = p; x < row; x += 2) {
+    if (!torus && (x + 1 >= row || y + 1 >= W)) continue;
+    const x1 = (x + 1) % row, y1 = (y + 1) % W, c = [y * row + x, y * row + x1, y1 * row + x, y1 * row + x1];
+    const s = (a[c[0]] ? 1 : 0) | (a[c[1]] ? 2 : 0) | (a[c[2]] ? 4 : 0) | (a[c[3]] ? 8 : 0), n = to[s];
+    for (let k = 0; k < 4; k++) b[c[k]] = (n >> k) & 1;
+  }
+}
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const changes = L.born + L.dead, born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
+  if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
     let now;
-    if (start[t] === start[t + 1]) {
+    if (L.margolus) now = b[t];  // (worked out by blocks)
+    else if (start[t] === start[t + 1]) {
       now = 0;  // a wall (a pentagon of the hexagon sphere)
     } else if (was > K) {
       now = was + K <= last ? was + K : 0;  // one more dying stage, or dead
@@ -7723,9 +7756,10 @@ function huntFits() {
 function renderHunt() {
   $('huntRow').hidden = !huntOn() || surfaceDraw;
   if ($('huntRow').hidden) return;
+  $('huntBtn').hidden = !!walk.life.margolus;  // (the hunt's own step: births and survivals; blocks, their zones' starts only)
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? 'the longest battle' : { longest: 'the longest life', dies: 'the longest death', peak: 'the highest peak' }[hunt.goal];
-  $('huntGoals').hidden = K > 1;
+  $('huntGoals').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
   for (const b of $('huntZones').children) {
@@ -10468,7 +10502,7 @@ function renderRanking(L) {
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
-  $('back').disabled = cur === 0 || !!walk.life;
+  $('back').disabled = cur === 0 || (!!walk.life && !walk.life.margolus);  // (a block rule: reversible, back as forth)
   $('step').disabled = cur >= walk.n || lifeEnded();
   $('end').disabled = cur >= walk.n || !!walk.life?.stable;  // a Game of Life's end known: there already (or in its loop)
   // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so

@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261104n">
+  <link rel="stylesheet" href="style.css?v=20261104o">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -185,6 +185,7 @@
             </optgroup>
             <optgroup label="Automata on the plane">
               <option value="life2d">Life — square grid</option>
+              <option value="blocks2d">Reversible — square grid in 2 × 2 blocks</option>
               <option value="life2dTri">Life — triangle grid</option>
               <option value="life2dHex">Life — hexagon grid</option>
               <option value="life2dCairo">Life — Cairo pentagon grid</option>
@@ -363,6 +364,10 @@
         </div>
         <label id="lifeRuleRow" hidden>  <!-- the rules known, each marked for its shapes (■ ▲ ⬡ ⬠), with its name: shown as cards (ruleCards) -->
           <select id="lifePreset">
+            <option value="M0,8,4,3,2,5,9,7,1,6,10,11,12,13,14,15" data-name="Billiard balls">▣ M0,8,4,3,2,5,9,7,1,6,10,11,12,13,14,15 — Fredkin's billiard-ball machine, by Margolus: a lone cell of a block to its opposite corner, two across it to the other two; balls fly along the diagonals, bounce off walls (full blocks) and off each other</option>
+            <option value="M15,14,13,3,11,5,6,1,7,9,10,2,12,4,8,0" data-name="Critters">▣ M15,14,13,3,11,5,6,1,7,9,10,2,12,4,8,0 — Margolus's: a block of two kept, the others reversed (one of three also turned round)</option>
+            <option value="M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0" data-name="Tron">▣ M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0 — Toffoli and Margolus's: a block all alike reversed, the others kept</option>
+            <option value="M0,4,1,3,8,5,6,7,2,9,10,11,12,13,14,15" data-name="Single rotation">▣ M0,4,1,3,8,5,6,7,2,9,10,11,12,13,14,15 — a block of one turned a quarter, the others kept</option>
             <option value="B3/S23" data-name="Life">■▲ B3/S23 — Life (2 states)</option>
             <option value="B45/S345/C4" data-name="Sparse">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
             <option value="B34/S2/C4" data-name="Brink">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
@@ -591,6 +596,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261104n"></script>
+  <script src="main.js?v=20261104o"></script>
 </body>
 </html>
