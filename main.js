@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.845';
+const VERSION = '0.1.846';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8035,7 +8035,7 @@ function famousGrid() {
 // each colour's choices: the rule's patterns (a rule of your own: all its grid's), every way they turn and mirror
 // (the same shape once), anywhere in its part on the plane, else at its spot where they fit its block, as [cell, state…]
 // in its colour
-const choicesMemo = {};  // (Famous's, Centered's)
+const choicesMemo = {}, FAMOUS_ALL = 20000;  // (Famous's, Centered's; see laidChoices)
 function patternChoices(centred = false) {  // (once a grid, its colours and rule)
   const L = walk.life, id = `${walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.torus}|${planeTurn()}` : ''}|${L.colours}|${L.ruleText}`, m = choicesMemo[centred];
   if (m?.id !== id || m.g !== walk.geo) choicesMemo[centred] = { id, g: walk.geo, choices: laidChoices(centred) };
@@ -8058,21 +8058,25 @@ function laidChoices(centred) {
     }
   }
   // anywhere: every shape moved onto every cell of a colour's part (as Wild's), kept where its cells all land on cells
-  // of that part of their shapes (a move the grid allows there)
+  // of that part of their shapes (a move the grid allows there); more than FAMOUS_ALL moves to try (a big grid), 4,000
+  // of them drawn instead (from a seed of its own: a link's start the same again), at most FAMOUS_ALL tried
   if (F) return huntParts(0, K).map((part, i) => {
-    const here = new Set(part), out = [];
-    for (const cells of shapes) {
-      const [ms, sh] = F.pattern(cells);
-      for (const t of part) {
-        if (F.shape[t] !== sh[0]) continue;
-        const to = F.place(t), cs = [];
-        for (let k = 0; k < cells.length; k++) {
-          const c = F.cellAt([ms[k][0] - ms[0][0] + to[0], ms[k][1] - ms[0][1] + to[1]]);
-          if (c === undefined || !here.has(c) || F.shape[c] !== sh[k]) break;
-          cs.push(c, K > 1 ? i + 1 + K * (cells[k][2] - 1) : cells[k][2]);
-        }
-        if (cs.length === 2 * cells.length) out.push(Int32Array.from(cs));
+    const here = new Set(part), out = [], laid = shapes.map((cells) => [cells, ...F.pattern(cells)]);
+    const lay = ([cells, ms, sh], t) => {
+      if (F.shape[t] !== sh[0]) return;
+      const to = F.place(t), cs = [];
+      for (let k = 0; k < cells.length; k++) {
+        const c = F.cellAt([ms[k][0] - ms[0][0] + to[0], ms[k][1] - ms[0][1] + to[1]]);
+        if (c === undefined || !here.has(c) || F.shape[c] !== sh[k]) return;
+        cs.push(c, K > 1 ? i + 1 + K * (cells[k][2] - 1) : cells[k][2]);
       }
+      out.push(Int32Array.from(cs));
+    };
+    if (laid.length * part.length <= FAMOUS_ALL) { for (const l of laid) for (const t of part) lay(l, t); return out; }
+    const next = seededRandom(7 + i), drawn = new Set();
+    for (let tries = 0; tries < FAMOUS_ALL && out.length < 4000; tries++) {
+      const s = next() % laid.length, t = part[next() % part.length];
+      if (!drawn.has(s * part.length + t)) { drawn.add(s * part.length + t); lay(laid[s], t); }
     }
     return out;
   });
