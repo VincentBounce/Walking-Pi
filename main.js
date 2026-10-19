@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.816';
+const VERSION = '0.1.817';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6629,8 +6629,9 @@ function renderColours() {
     b.innerHTML = `${colourBlock(k)}<span>${COLOUR_STEP_NAMES[k]}</span>`;
     b.title = k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`;
     b.classList.toggle('active', k === lifeColours);
+    b.classList.toggle('switch', k === lifeColours);  // (picked: a click shows how it works, as a rule's)
     b.disabled = !coloursFit(k);
-    b.addEventListener('click', () => { lifeColours = k; compute(); });
+    b.addEventListener('click', () => { if (k === lifeColours) { $('watchRule').click(); return; } lifeColours = k; compute(); });
     return b;
   }));
 }
