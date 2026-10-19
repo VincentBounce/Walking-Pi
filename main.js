@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.837';
+const VERSION = '0.1.838';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4130,12 +4130,13 @@ function tilingPolys(kind) {
     return [u, v];
   })));
 }
-// A torus sheet's cells (its sides 1): its 2D rectangle's (see RECTS), its lattice cell's, or the plain one's turned
+// A torus sheet's cells (its sides 1), by its sides: its lattice cell's, its 2D rectangle's (see RECTS), or those of the one
+// it is turned by 90° from (B along)
 function sheetCells(kind, [[p, q], [r, s]]) {
-  const t = TILINGS[kind], { plain } = torusSheets(kind), R = RECTS[`${kind}Rect`], same = (x) => x && x[0][0] === p && x[0][1] === q && x[1][0] === r && x[1][1] === s;
+  const R = RECTS[`${kind}Rect`], same = (x) => x && x[0][0] === p && x[0][1] === q && x[1][0] === r && x[1][1] === s;
+  if (same([[1, 0], [0, 1]])) return TILINGS[kind].polys;
   if (same(R?.step)) return R.polys;  // (the 2D rectangle's: the slanted grids', or along the cells' sides)
-  if (same(plain)) return t.polys;
-  return sheetCells(kind, plain).map((P) => P.map(([u, v]) => [v, 1 - u]));  // (the plain one turned by 90°: B along)
+  return sheetCells(kind, [[-r, -s], [p, q]]).map((P) => P.map(([u, v]) => [v, 1 - u]));
 }
 // A tiling's torus (see TILINGS: sheet): its cell A round the ring nu times, B round the tube nv times (A ⟂ B: its tiles
 // even once rolled up, as many of each as the sheet's sides ask); the lattice cells whose corner is in that rectangle,
@@ -4576,7 +4577,7 @@ function gridSize(kind, f) {
   if (!TORI.includes(kind)) return null;
   const { tiles, unit } = SPHERES[kind], cells = tiles(f);
   const h = MOBIUS_KINDS.includes(kind) ? mobiusSize(f)[0] : torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);
-  return [h, Math.round(cells / h), cells, unit];  // (a strip of teeth: its rows not all alike, as many on average)
+  return [h, Math.round((cells / h) * 10) / 10, cells, unit];  // (a strip of teeth: its rows not all alike, on average, to a tenth)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
 const sizeShape = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };
@@ -6479,7 +6480,8 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
 for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   const per = PER_RHOMBUS[base] ?? 1, o = cellMiddle(base, 0, 0), d = (x, y) => { const m = cellMiddle(base, x, y); return [m[0] - o[0], m[1] - o[1]]; }, a = d(per, 0), b = d(0, 1);
   // (at right angles already: its lattice cell, or on four turns its sheet along its cells' sides, see torusSheets)
-  const right = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b), along = right && TILINGS[base]?.turns === 4 && torusSheets(base).turned;
+  const right = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b), cell = (x) => `${x}` === '1,0,0,1';  // (its sheet that is not its lattice cell)
+  const along = right && TILINGS[base]?.turns === 4 && [torusSheets(base).plain, torusSheets(base).turned].find((x) => x && !cell(x));
   const best = !right ? rectSides(a, b) : along && { step: along, U: [along[0][0] * a[0] + along[0][1] * b[0], along[0][0] * a[1] + along[0][1] * b[1]], V: [along[1][0] * a[0] + along[1][1] * b[0], along[1][0] * a[1] + along[1][1] * b[1]], det: along[0][0] * along[1][1] - along[0][1] * along[1][0] };
   if (!best) continue;
   // its cells when first asked for (RECTS[kind]: built then, kept)
