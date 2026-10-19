@@ -106,13 +106,29 @@ function jaap(base, rows) {
 }
 
 const T = {};
+// a lattice cell's polygons, each moved by whole steps of the lattice where it sticks out of the cell least (the cell moved
+// by eighths of its sides, the least of all kept): a grid of them a parallelogram as near as its tiles let it
+function compact(polys, a, b) {
+  const la = Math.hypot(...a), lb = Math.hypot(...b);
+  const out = (P, s, t) => P.reduce((sum, [u, v]) => sum + la * Math.max(0, s - u, u - s - 1) + lb * Math.max(0, t - v, v - t - 1), 0);
+  let best = polys, least = Infinity;
+  for (let t = 0; t < 1; t += 1 / 8) for (let s = 0; s < 1; s += 1 / 8) {
+    const moved = polys.map((P) => {
+      let Q = P, o = Infinity;
+      for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const R = P.map(([u, v]) => [u + i, v + j]), x = out(R, s, t); if (x < o - 1e-9) { o = x; Q = R; } }
+      return [o, Q];
+    }), sum = moved.reduce((x, [o]) => x + o, 0);
+    if (sum < least - 1e-9) { least = sum; best = moved.map(([, Q]) => Q); }
+  }
+  return best;
+}
 // the polygons of one lattice cell (their middles in it), in lattice units
 function cell(name, a, b, polys, extra = {}) {
   const det = a[0] * b[1] - a[1] * b[0], toL = ([x, y]) => [(x * b[1] - y * b[0]) / det, (a[0] * y - a[1] * x) / det];
   const own = polys.map((P) => P.map(toL)).filter((P) => { const [u, v] = mid(P); return Math.floor(u + 1e-6) === 0 && Math.floor(v + 1e-6) === 0; });  // (a middle on the cell's edge: once)
   const sum = own.reduce((s, P) => s + Math.abs(area(P)), 0);
   if (Math.abs(sum - 1) > 1e-6) throw new Error(`${name}: the cell's polygons fill ${sum} of it`);
-  T[name] = { basis: [a, b], polys: own.map((P) => (area(P) < 0 ? P.reverse() : P).map(([u, v]) => [+u.toFixed(6), +v.toFixed(6)])), ...extra };
+  T[name] = { basis: [a, b], polys: compact(own, a, b).map((P) => (area(P) < 0 ? P.reverse() : P).map(([u, v]) => [+u.toFixed(6), +v.toFixed(6)])), ...extra };
 }
 const tri = [[1, 0], [0.5, R3 / 2]];  // the unit triangular lattice's vectors (e0, e1)
 
