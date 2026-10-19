@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.838';
+const VERSION = '0.1.839';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2550,7 +2550,7 @@ function renderModePicker() {
       }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name);
       b.classList.toggle('switch', f === here && turns);
       const surface = MODES[same(f)].sphere, r = tilesTurn(f === here && isTurned ? TURNED[surface] : surface);
-      if (r) b.querySelector('.icon').style.transform = `rotate(${r}deg)`;  // its picture as its tiles lie (a torus's, a strip's alike)
+      if (r) b.querySelector('.icon').style.transform = `rotate(${-r}deg)`;  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
     }));
   }
