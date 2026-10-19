@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.807';
+const VERSION = '0.1.808';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2522,6 +2522,7 @@ function renderModePicker() {
       }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name);
       b.classList.toggle('switch', f === here && turns);
       b.classList.toggle('turned', f === here && isTurned);
+      if (f === here && isTurned) b.querySelector('.icon').style.transform = `rotate(${torusDeg(MODES[same(f)].sphere)}deg)`;  // (its own turn: 27° for Pythagoras)
       return [b];
     }));
   }
@@ -4463,7 +4464,9 @@ function syncSizeStepper() {
   syncLoopRow();
   // the size (see gridSize)
   const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize();
-  if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}<small>${sizeCells(kind, f)}</small>`;
+  // (a torus that turns: its turn too, 0° or its own)
+  const turn = TURNED[kind.replace(/Turned$/, '')] ? ` – ${kind.endsWith('Turned') ? torusDeg(kind) : 0}°` : '';
+  if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`;
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
@@ -4601,6 +4604,8 @@ for (const [kind, S] of Object.entries(SPHERES)) {
 }
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
 const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
+// a torus's turn, turned (see torusSheets: the tilings'; the hexagons' and triangles' by 30°)
+const torusDeg = (surface) => { const k = Object.keys(TILINGS).find((x) => surface.replace(/Turned$/, '') === `${x}torus`); return k ? torusSheets(k).deg : 30; };
 for (const [kind, t] of Object.entries(TILINGS)) if (t.torus && torusSheets(kind).turned) TURNED[`${kind}torus`] = `${kind}torusTurned`;  // (see torusSheets)
 let torusTurned = false;
 const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
