@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.825';
+const VERSION = '0.1.826';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2368,16 +2368,14 @@ function navPick(level, value) {
   }
   return best;
 }
-// Walk, Ant, Life: each one's mode and number when left, to come back to
+// Walk, Ant, Life: each one's mode when left, to come back to (the number, the one followed by all)
 const kindLeft = {};
 function navGo(level, value) {
-  const from = $('mode').value, back = level === 0 ? kindLeft[value] : null, w = back?.w ?? navPick(level, value);
+  const from = $('mode').value, w = (level === 0 && kindLeft[value]) || navPick(level, value);
   if (!w || w === from) return;
-  if (level === 0) kindLeft[NAV[from][0]] = { w: from, x: $('formula').value };
+  if (level === 0) kindLeft[NAV[from][0]] = from;
   const fam = familyOf(w);
   if (fam) torusTurned = fam.F.tabs[fam.F.tab][1];  // the tiling last chosen, turned or not
-  if (back) $('formula').value = back.x;
-  else if (!MODES[w].life !== !MODES[from].life) $('formula').value = MODES[w].life ? presetFormula('random') : 'pi';  // the automata start from a random number on the whole surface; the walks, from π
   $('mode').value = w;
   $('mode').dispatchEvent(new Event('change'));
 }
@@ -2427,10 +2425,13 @@ function familyOf(w) {
   }
   return null;
 }
+// whether the number's digits are read: not by an ant by colour, nor by Life but for a start by the digits (the number
+// then neither shown nor in the link: x= is the number followed, the cells' start is sd= and p=)
+const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].life && plane.start !== 'digits');
 // Langton's ant's settings: by colour or by the digits, each with its rule (presets of its tiling, or typed)
 function renderAntRow() {
   const w = $('mode').value, A = ANTS[w];
-  $('digitsSection').hidden = (!!A && !antByDigits) || (!!MODES[w].life && plane.start !== 'digits');  // an ant by colour, Life not by the digits: no digit read
+  $('digitsSection').hidden = !readsDigits(w);
   $('populationRow').hidden = w !== 'antSquare';
   if (MODES[w].plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
   else if (w !== 'antSquare') drawing = false;  // drawing ends with the square ant
@@ -8001,7 +8002,7 @@ function decodeCells(code, n) {
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase() : 'random');
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase() === w);
 function getSetup() {
-  const w = $('mode').value, mode = MODES[w], s = { x: formulaInUse, w };
+  const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
   if (!mode.life) s.d = $('digits').value;
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (modeStarts() && startNo() > 1) s.st = startNo();
@@ -8026,9 +8027,11 @@ function getSetup() {
 
 function applySetup(s) {
   const set = (id, v) => { if (v !== undefined && v !== null) $(id).value = v; };
-  if (typeof s.x !== 'string' || !MODES[s.w]) return false;
-  $('formula').value = s.x;
-  if (readFormula().error) return false;
+  if (!MODES[s.w]) return false;
+  if (typeof s.x === 'string') {  // (none: the number kept, not read)
+    $('formula').value = s.x;
+    if (readFormula().error) return false;
+  }
   digitsBeforeLoop = null;  // a setup says its own count of digits
   set('digits', s.d);
   set('mode', s.w);
@@ -8047,8 +8050,8 @@ function applySetup(s) {
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
   } else if (s.r) {
     if (MODES[s.w].plane) planeFromSetup(s);
-    else {  // a surface's start: a soup, or its digits (an old link's, with no sd)
-      const [kind, a, b] = String(s.sd ?? 'digits').split('.');
+    else {  // a surface's start: a soup (none said: one), or its digits
+      const [kind, a, b] = String(s.sd ?? 'random').split('.');
       plane.start = kind === 'random' || zoneOfWord(kind) ? 'random' : 'digits';
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
     }
@@ -8122,7 +8125,7 @@ function parseHash() {
       const at = kv.indexOf('=');
       return [kv.slice(0, at), decodeURIComponent(kv.slice(at + 1))];
     }));
-    return s.x && s.w ? s : null;
+    return s.w ? s : null;
   } catch { return null; }
 }
 // The link is written when what it holds changes: a walk built (see buildWalk), Fill areas, a Life
@@ -8232,7 +8235,7 @@ function exportSetups() {
 async function importSetups(file) {
   try {
     const data = JSON.parse(await file.text());
-    const incoming = (data.setups || []).filter((x) => x && x.name && x.setup && x.setup.x && x.setup.w);
+    const incoming = (data.setups || []).filter((x) => x && x.name && x.setup && x.setup.w);
     const list = readSetups();
     for (const x of incoming) {  // a name already used gets a suffix instead of overwriting
       let name = x.name;
@@ -11072,7 +11075,7 @@ const BUILT_IN = [
   ['Dragon', 'Paperfolding', { x: 'dragon', w: 'turtle', d: 20000 }],
   ['Thue–Morse', 'Koch curve', { x: 'thuemorse', w: 'triPivot', d: 4096 }],
   // added later: their batch number, so that a browser that took the first ones gets these once too (see seedCurated)
-  ['Möbius battle', 'A battle of 2 colours round the strip', { x: 'random(801457958)', w: 'lifeMobius', s: 8, r: 'B3/S23', k: 2, sd: 'random.69.711421864',
+  ['Möbius battle', 'A battle of 2 colours round the strip', { w: 'lifeMobius', s: 8, r: 'B3/S23', k: 2, sd: 'random.69.711421864',
     ch: 's3.74-0-0-0-1-1-2-1-0-1-0-0-0-1-0-1-2-0-1-4-0-0-0-0-0-2-0-0-1-1-0-1-1-1-0-0-0-0-0-0-0-0-e8_2-2_2-0_2-1_2-1_2-0_2-1_2-0_2-1_2-1_2-2_2-0_2-0_2-0_2-2_2-0_2-0_2-1_2-1_2-0_2-0_2-1_2-1_2-0_2-2_2-1_2-2_2-0_2-0_2-1_2-1_2-1_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2' }, 2],
   ['1/438', 'A highway from step 534,473', { x: '1/438', w: 'antSquare', d: 540989, r: 'digits LR' }, 2],
   ['Rabbit', 'Fibonacci word fractal', { x: 'rabbit', w: 'squareParity', d: 4181 }],
