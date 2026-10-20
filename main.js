@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.926';
+const VERSION = '0.1.927';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1453,17 +1453,20 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
     return b;
   }));
 }
+// A switch, every one alike (Torus, Square; as System and Trail): a standard tile (.nav-shapes button), its picture and its
+// name fixed whatever its state: gold on (active, and switch: a click still changes it), plain off, greyed when it cannot be
+const switchTile = (b, pic, click) => { b.querySelector('svg').innerHTML = ICONS[pic]; b.addEventListener('click', click); };
+const setSwitch = (b, can, on) => { b.disabled = !can; b.classList.toggle('active', can && on); b.classList.toggle('switch', can && on); };
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
 const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
 const trailOn = () => $('lifeTrail').checked && trailApplies();
-// Trail as a tile: lit (gold) when on; its picture a live cell with its comet of fading Ink behind, or alone;
-// greyed for Activity and dying stages
+// Trail as a switch (see setSwitch): its picture a live cell with its comet of fading Ink behind; greyed for Activity and dying
+// stages
 const trailButton = $('lifeTrailButton');  // kept: it goes after Life's looks, in their row (see renderColorButtons)
 function renderTrailButton() {
   const b = trailButton, on = $('lifeTrail').checked, sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
-  b.disabled = !trailApplies();
-  b.classList.toggle('active', on && !b.disabled);
-  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${on ? sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1]) : ''}${sq(3, LIFE_ALIVE)}</svg><span>Trail</span>`;  // up the diagonal
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1])}${sq(3, LIFE_ALIVE)}</svg><span>Trail</span>`;  // up the diagonal
+  setSwitch(b, trailApplies(), on);
 }
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
@@ -1497,11 +1500,10 @@ function lifeLookPicture(look) {
 }
 // square rings, hot inside (a heatmap, Life's activity)
 const heatRings = (g) => `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;
-// the sky, a switch before the themes: named after the theme (Dawn on a light page, Twilight on a dark one),
-// its picture the sky, or the page's plain colour; shown where there is a sky (see updateDisplayMenu)
+// the sky, a switch before the themes (see setSwitch): named after the theme (Dawn on a light page, Twilight on a dark one), its
+// picture the sky; shown where there is a sky (see updateDisplayMenu)
 const skyButton = document.createElement('button');
 skyButton.type = 'button';
-skyButton.className = 'switch';
 skyButton.title = 'The background: a sky in the page\'s tone, or plain';
 skyButton.addEventListener('click', () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); });
 const renderSkyButtons = () => {
@@ -1511,8 +1513,8 @@ const renderSkyButtons = () => {
   // the sky's picture, its colours deeper than the sky's own (pale behind a view, they would not read so small)
   const deep = { light: [[0, '#7fa7de'], [0.5, '#c6b8e6'], [0.8, '#eea3b6'], [1, '#f39a68']], dark: [[0, '#0a1a4a'], [0.45, '#2c3f8f'], [0.75, '#6b3f8e'], [1, '#c8644f']] }[theme];
   skyButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="skyPicture" x1="0" y1="0" x2="0" y2="1">${deep.map(([f, c]) => `<stop offset="${f}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`
-    + `<rect x="2" y="2" width="20" height="20" rx="2" fill="${on ? 'url(#skyPicture)' : UNLIT}" stroke="var(--border)"/></svg><span>${name}</span>`;
-  skyButton.classList.toggle('active', on);
+    + `<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#skyPicture)" stroke="var(--border)"/></svg><span>${name}</span>`;
+  setSwitch(skyButton, true, on);
   $('themeButtons').prepend(skyButton);  // first, before the themes
 };
 
@@ -6611,10 +6613,6 @@ function planeFromSetup(s) {
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
 let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was)
-// A switch, every one alike (Torus, Square; as System and Trail): a standard tile (.nav-shapes button), its picture and its
-// name fixed whatever its state: gold on (active, and switch: a click still changes it), plain off, greyed when it cannot be
-const switchTile = (b, pic, click) => { b.querySelector('svg').innerHTML = ICONS[pic]; b.addEventListener('click', click); };
-const setSwitch = (b, can, on) => { b.disabled = !can; b.classList.toggle('active', can && on); b.classList.toggle('switch', can && on); };
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   if (kind) surfaceDraw = false;
@@ -11825,7 +11823,7 @@ function applyTheme() {
   try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
   $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)));  // Light | Dark, then System
-  [...$('themeButtons').children].find((b) => b.classList.contains('active') && t === 'system')?.classList.add('switch');  // (System picked: a click still changes it)
+  setSwitch([...$('themeButtons').children].find((b) => b.textContent === 'System'), true, t === 'system');  // (a switch: see setSwitch)
   renderSkyButtons();  // the sky's switch back before them (the buttons were all made again)
   if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
   document.documentElement.dataset.theme = theme;
