@@ -1,0 +1,10 @@
+flower 50176 rules 454 candidates 57s
+flower done 224s
+  B345/S0238      0.306  T 586 (311–1397) spread 0.42 plateau 0.45 at200 11.7% ash 4.14% osc 100%
+  B345/S023       0.243  T 622 (423–1534) spread 0.38 plateau 0.38 at200 12% ash 3.65% osc 92%
+  B27/S0345/C5    0.164  T 495 (275–1274) spread 0.49 plateau 0.72 at200 4.9% ash 3.3% osc 75%
+  B278/S0345/C5   0.158  T 495 (275–1274) spread 0.45 plateau 0.72 at200 4.9% ash 3.3% osc 75%
+  B36/S0134       0.133  T 471 (295–6000) spread 0.74 plateau 0.46 at200 11.8% ash 4.97% osc 92%
+  B268/S0346/C4   0.081  T 890 (340–3163) spread 0.71 plateau 0.81 at200 6.9% ash 3.39% osc 0%
+  B346/S023       0.066  T 393 (278–732) spread 0.26 plateau 0.52 at200 8% ash 3.94% osc 58%
+  B2/S0346/C4     0.061  T 913 (250–4550) spread 0.89 plateau 0.85 at200 6.3% ash 3.36% osc 0%

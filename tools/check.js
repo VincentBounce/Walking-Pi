@@ -73,8 +73,9 @@ async function crawl(fail) {
     for (let si = 0; si < $('navSpace').children.length; si++) {
       $('navSpace').children[si].click();
       await look(`space ${$('navSpace').children[si]?.textContent}`);
-      for (let hi = 0; hi < $('navShapes').children.length; hi++) {
-        const b = $('navShapes').children[hi], name = b.textContent.trim();
+      const shapeButtons = () => $('navShapes').querySelectorAll('button');  // (in 2D, among the groups' titles)
+      for (let hi = 0; hi < shapeButtons().length; hi++) {
+        const b = shapeButtons()[hi], name = b.textContent.trim();
         b.click();
         await look(`shape ${name}`);
         const rulesBox = $('antRuleSection').hidden ? $('navRules') : $('antCreatures');  // its rules (Turtle, Pivot…), an ant's creatures

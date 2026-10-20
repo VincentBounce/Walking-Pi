@@ -213,6 +213,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
 .tabs button .icon { width: 24px; height: 24px; vertical-align: -0.35em; }  /* the tabs' pictures, as the sections' */
 .block-label { margin: 2px 0 4px; font-size: 11px; color: var(--muted); }  /* a block of shapes' title: Surface, Tiles of the torus */
+.nav-shapes > .block-label { grid-column: 1 / -1; margin: 4px 0 0; }  /* a group's title among the shapes, across its row */
 .nav-shapes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; }  /* the shapes, 4 a row */
 .nav-shapes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px; font-size: 10px; background: var(--panel); color: var(--muted); min-width: 0; }
 .nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
