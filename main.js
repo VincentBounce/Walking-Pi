@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.911';
+const VERSION = '0.1.912';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7187,8 +7187,8 @@ const colourBlock = (k) => {
 };
 const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 12: 'Dozen' };  // one colour, then battles
 // the counts of colours fair on the plane's grid: on a six-fold one (Hexagons, the natural rhombi), one colour, and 2, 3, 6
-// or 12 (each as many sixths of a turn, or a twelfth and its mirror)
-const colourFair = (K) => hexagonFits(MODES[$('mode').value]?.plane) && [1, 2, 3, 6, 12].includes(K);
+// or 12 (each as many sixths of a turn, or a twelfth and its mirror); on Ammann's octagon, 1, 2, 4 and 8
+const colourFair = (K) => { const kind = MODES[$('mode').value]?.plane; return hexagonFits(kind) ? [1, 2, 3, 6, 12].includes(K) : kind === 'ammann' && [1, 2, 4, 8].includes(K); };
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
@@ -8280,8 +8280,10 @@ function planeSlices(K) {
   // many cells in each, round the grid's frame's middle
   const shape = planeShape(kind, W) ?? (APERIODIC[kind] ? { o: [(W - 1) / 2, (W - 1) / 2], ...(kind === 'ammann' ? { corner: Math.PI / 8, step: Math.PI / 4 } : {}) } : null), slice = (2 * Math.PI) / K;  // (Ammann's octagon: from a corner too)
   const b = planeBounds(), mid = shape ? turnPoint(shape.o, turn) : [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
-  let from = -Math.PI / 2 - slice;
-  if (shape?.corner != null) { const c = shape.corner + turn, step = shape.step ?? Math.PI / 3; from = c + Math.round((from - c) / step) * step; }
+  // (in a circle, a hexagon or an octagon: from the left, a corner just over it, the same for any count: 2's edge one of
+  // 4's and 8's, red's up and to the left; else red's middle up and to the left)
+  let from = shape ? -Math.PI + 0.01 : -Math.PI / 2 - slice;
+  if (shape?.corner != null) { const c = shape.corner + turn, step = shape.step ?? Math.PI / 3; from = c + Math.floor((from - c) / step) * step; }
   if (shape) from -= 1e-6;
   const round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
   const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
