@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261105d">
+  <link rel="stylesheet" href="style.css?v=20261105e">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -330,8 +330,8 @@
         </div>
         <div id="huntRow" hidden>  <!-- Life, in 1 to 12 colours: a hunt for the longest life, or long, even battles -->
           <div id="blockColourRow" class="nav-shapes colour-blocks" hidden title="Colours drawn at random over the start, carried along: one population all the same"></div>  <!-- blocks: their cells' colours (see blockColours) -->
-          <div id="huntGoals" class="choice-row"></div>  <!-- what the hunt looks for -->
           <div id="huntZones" class="nav-shapes" title="Where the random starts go: the whole grid (in colours, each its part of it) or patches of radius 1, 2 or 3 side by side round the middle"></div>
+          <div id="huntGoals" class="nav-shapes"></div>  <!-- what the hunt looks for, over its button -->
           <button id="huntBtn" type="button" class="wide" title="Random starts, then tweaks of the best: the 5 best kept, a click plays one"></button>
           <p id="huntStatus" class="muted"></p>
           <div id="huntTop" class="mode-list" role="listbox"></div>
@@ -600,6 +600,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261105d"></script>
+  <script src="main.js?v=20261105e"></script>
 </body>
 </html>
