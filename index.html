@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261107n">
+  <link rel="stylesheet" href="style.css?v=20261107o">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -46,7 +46,7 @@
         <div id="planeRow" hidden>  <!-- Life on the plane: its outline and a torus or not, its size -->
           <div id="planeEdges" class="nav-shapes">
             <div class="block-label">Outline</div>
-            <button id="outlineBtn" type="button" title="The grid's outline: a click, the next it has (its natural one, a rhombus, a square)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Circle</span></button>
+            <button id="squareBtn" type="button" title="A slanted grid cut as a square (its cells moved, the same neighbours); off: as it is, a rhombus"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Square</span></button>
             <button id="edgeTorus" type="button" title="A torus: the grid's edges glued, left to right and top to bottom (what leaves on one side comes back on the other); else walls"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Torus</span></button>
           </div>
           <div class="block-label">Size</div>
@@ -651,6 +651,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261107n"></script>
+  <script src="main.js?v=20261107o"></script>
 </body>
 </html>
