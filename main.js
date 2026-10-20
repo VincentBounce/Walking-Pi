@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.925';
+const VERSION = '0.1.926';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6611,6 +6611,10 @@ function planeFromSetup(s) {
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
 let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was)
+// A switch, every one alike (Torus, Square; as System and Trail): a standard tile (.nav-shapes button), its picture and its
+// name fixed whatever its state: gold on (active, and switch: a click still changes it), plain off, greyed when it cannot be
+const switchTile = (b, pic, click) => { b.querySelector('svg').innerHTML = ICONS[pic]; b.addEventListener('click', click); };
+const setSwitch = (b, can, on) => { b.disabled = !can; b.classList.toggle('active', can && on); b.classList.toggle('switch', can && on); };
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   if (kind) surfaceDraw = false;
@@ -6641,15 +6645,11 @@ function renderPlaneRow() {
   $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  $('edgeTorus').classList.toggle('active', planeTorus(kind));
-  $('edgeTorus').classList.toggle('switch', planeTorus(kind));  // (on: a click still changes it)
-  $('edgeTorus').disabled = !!APERIODIC[kind];  // (a grid that never repeats: never a torus)
+  setSwitch($('edgeTorus'), !APERIODIC[kind], planeTorus(kind));  // (a grid that never repeats: never a torus)
   // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
   // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)
   const cut = !!RECTS[`${kind}Rect`] && !hexagonFits(kind);
-  $('squareBtn').disabled = !cut;
-  $('squareBtn').classList.toggle('active', cut && plane.rect);
-  $('squareBtn').classList.toggle('switch', cut && plane.rect);  // (on: a click still changes it)
+  setSwitch($('squareBtn'), cut, plane.rect);
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -11702,11 +11702,10 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
     compute(true);
   });
 }
-$('squareBtn').querySelector('svg').innerHTML = ICONS.walls;  // a slanted grid cut as a square: on, off
-$('squareBtn').addEventListener('click', () => { plane.rect = !plane.rect; compute(true); });
+// the switches (a standard tile, see setSwitch): a click turns them on or off
+switchTile($('squareBtn'), 'walls', () => { plane.rect = !plane.rect; compute(true); });  // a slanted grid cut as a square
 
-$('edgeTorus').querySelector('svg').innerHTML = ICONS.torus;  // a torus or walls: on, off
-$('edgeTorus').addEventListener('click', () => { plane.torus = !plane.torus; compute(true); });
+switchTile($('edgeTorus'), 'torus', () => { plane.torus = !plane.torus; compute(true); });  // a torus or walls
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
