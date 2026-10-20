@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.862';
+const VERSION = '0.1.863';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6291,7 +6291,8 @@ function buildLifePlane(seq) {
   walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(kind, W, planeTorus(kind)), to: rule.margolus } : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
-                died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
+                died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
+                paint: MODES[current.mode].margolus && blockColours > 1 ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -6784,6 +6785,7 @@ function drawLifePlane() {
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
+  const painted = L.paint ? [0, ...LIFE_COLOURS.slice(0, blockColours).map(pack)] : null;  // (blocks: each cell its colour)
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
@@ -6795,7 +6797,7 @@ function drawLifePlane() {
     const st = a[t];
     px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+      : colour === 'mono' ? (st === 1 ? (painted ? painted[L.paint[t]] : alive) : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
       : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
@@ -6841,6 +6843,22 @@ const lifeMark = (mode) => (mode.margolus ? BLOCK_MARKS[mode.plane] : mode.plane
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
 let lifeColours = 1;
+// Blocks' colours: 1, or 2, 4, 8 drawn at random over the start's cells, each cell's carried along by the blocks (see
+// blockStep): a picture only, one population (no civilisations, no battles)
+const BLOCK_COLOURS = [1, 2, 4, 8];
+let blockColours = 1;
+function renderBlockColours() {
+  $('blockColourRow').hidden = !MODES[$('mode').value].margolus;
+  $('blockColourRow').replaceChildren(...BLOCK_COLOURS.map((k) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `${colourBlock(k)}<span>${k === 1 ? '1 colour' : `${k} colours`}</span>`;
+    b.title = k === 1 ? 'One colour' : `Each cell of the start one of ${k} colours at random, carried along by the blocks`;
+    b.classList.toggle('active', k === blockColours);
+    b.addEventListener('click', () => { if (k !== blockColours) { blockColours = k; compute(); } });
+    return b;
+  }));
+}
 const ruleColours = () => lifeColours;
 const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d+)$/i, '');  // births, survivals (and dying stages), no colours
 const lifeRuleNow = () => {
@@ -6892,6 +6910,7 @@ const colourBlock = (k) => {
 };
 const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 12: 'Dozen' };  // one colour, then battles
 function renderColours() {
+  renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -7313,6 +7332,7 @@ function fitRuleToShape() {
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
+  if (L.paint) for (let t = 0; t < L.paint.length; t++) L.paint[t] = 1 + Math.floor(cellRandom(plane.seed + 7, t) * blockColours);  // (blocks: at random, the same each time)
   for (let t = 0; t < L.alive.length; t++) {
     const live = L.alive[t] > 0 && L.alive[t] <= L.colours;
     L.age[t] = L.ever[t] = live ? 1 : 0;
@@ -7435,14 +7455,20 @@ function planeBlocks(kind, W, torus) {
 }
 // A generation of a block rule: the blocks of its set in turn (see planeBlocks), each block's state to its rule's; a cell
 // in no whole block (by walls) as it is
-function blockStep({ k, turns, to }, a, b, g) {
-  const blocks = turns[g % turns.length];
+// paint: each cell's colour (or none), carried along: a block's live cells' colours, in turn round it, to its live cells
+// after, again from the first when there are more (none before: each keeps its own)
+function blockStep({ k, turns, to }, a, b, g, paint = null) {
+  const blocks = turns[g % turns.length], cs = [];
   b.set(a);
   for (let i = 0; i < blocks.length; i += k) {
     let st = 0;
-    for (let j = 0; j < k; j++) if (a[blocks[i + j]]) st |= 1 << j;
+    cs.length = 0;
+    for (let j = 0; j < k; j++) if (a[blocks[i + j]]) { st |= 1 << j; if (paint) cs.push(paint[blocks[i + j]]); }
     const n = to[st];
-    for (let j = 0; j < k; j++) b[blocks[i + j]] = (n >> j) & 1;
+    for (let j = 0, m = 0; j < k; j++) {
+      b[blocks[i + j]] = (n >> j) & 1;
+      if (paint && cs.length && (n >> j) & 1) paint[blocks[i + j]] = cs[m++ % cs.length];
+    }
   }
 }
 // The block rules, on a ring of k cells (the same on every grid with blocks of k, each turned as its block): their
@@ -7476,7 +7502,7 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const changes = L.born + L.dead, born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
+  if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -8561,7 +8587,7 @@ function getSetup() {
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
-  if (mode.life && lifeColours > 1) s.k = lifeColours;
+  if (mode.life && (mode.margolus ? blockColours : lifeColours) > 1) s.k = mode.margolus ? blockColours : lifeColours;
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
@@ -8617,6 +8643,7 @@ function applySetup(s) {
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
+    if (MODES[s.w].margolus) blockColours = BLOCK_COLOURS.includes(Number(s.k)) ? Number(s.k) : 1;  // (blocks: their cells' colours, k= too)
     setRuleText(ruleBody(s.r));
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
@@ -9370,6 +9397,9 @@ function drawSphere() {
       const civ = civColours(L.colours, L.C);
       palette = [null, ...civ, ...LIFE_FADE];
       levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
+    } else if (colour === 'mono' && L.paint) {  // blocks: each cell its colour, then the trail of the dead
+      palette = [null, ...LIFE_COLOURS.slice(0, blockColours), ...LIFE_FADE];
+      levelOf = (t) => (L.alive[t] ? L.paint[t] : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? blockColours + L.gen - L.died[t] : 0);
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
