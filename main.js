@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.869';
+const VERSION = '0.1.870';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5727,6 +5727,8 @@ function buildLife(seq, mode) {
 // the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
 const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128], hat: [16, 24, 32, 48, 64, 128], penrose: [16, 24, 32, 48, 64, 128], spectre: [16, 24, 32, 48, 64, 128], ammann: [16, 24, 32, 48, 64, 128] };
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
+// the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
+const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
 const plane = { side: 48, torus: true, rect: false, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -6282,7 +6284,7 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
   return cellNeighbours(cStart, Int32Array.from(cList), nv, baseOf(kind) === 'hex' ? 6 : hensel && kind === 'square' ? 8 : 0);  // (a rectangle of hexagons: theirs too)
 }
 function buildLifePlane(seq) {
-  const kind = planeKind(MODES[current.mode].plane), sides = PLANE_SIDES[kind];  // (a rectangle's, if so)
+  const kind = planeKind(MODES[current.mode].plane), sides = planeSides(kind);  // (a rectangle's, if so)
   if (!sides.includes(plane.side)) {  // a link's size not offered: the nearest one, said at once
     plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
     renderPlaneRow();
@@ -6439,7 +6441,7 @@ function renderPlaneRow() {
   }
   $('drawNote').hidden = true;
   for (const b of $('brushCards').children) b.disabled = false;
-  const sides = PLANE_SIDES[kind];
+  const sides = planeSides(kind);
   $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
@@ -11313,7 +11315,7 @@ $('clearCells').addEventListener('click', () => { population = new Map(); comput
 // Life on the plane: the grid's size and edges (built again), its start (the cells only, but by the digits)
 for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
   $(id).addEventListener('click', () => {
-    const sides = PLANE_SIDES[MODES[$('mode').value].plane];
+    const sides = planeSides(MODES[$('mode').value].plane);
     plane.side = sides[Math.min(sides.length - 1, Math.max(0, sides.indexOf(plane.side) + k))];
     compute(true);
   });
