@@ -3,7 +3,7 @@
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
-// said; the grids that never repeat, their walls closed. The crawl: no error, the link's mode the one shown, the size said its cells' count.
+// said; the grids that never repeat, their walls closed; those in a circle or a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count.
 
 const neighbourCounts = (g, keep = () => true) => {  // how many cells have k neighbours, as shares
   const { start } = cornerNeighbours(g), walls = new Set(g.walls ?? []), c = {};
@@ -56,7 +56,8 @@ function checkMeshes(fail) {
     all.forEach((P, j) => { const c = cell(P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
     const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
     let gaps = 0;
-    for (const P of h.polys) {
+    const dead = new Set(h.dead);
+    for (const P of h.polys.filter((P, t) => !dead.has(t))) {  // (the live cells)
       const o = sarea(P) > 0 ? 1 : -1;
       for (let i = 0; i < P.length; i++) {
         const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -67,6 +68,37 @@ function checkMeshes(fail) {
     if (gaps) fail(`${kind} ${round ? 'circle' : 'square'} ${W}: its walls open (${gaps} sides)`);
   }
   plane.round = round0;
+  // the grids with walls in a circle or a hexagon (see planeShape): their walls closed round the live cells, and the live
+  // cells turning onto each other round its centre
+  const saved = { torus: plane.torus, round: plane.round, hexagon: plane.hexagon };
+  for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', ...Object.keys(TILINGS), ...Object.keys(RECTS)]) for (const hexagon of [false, true]) {
+    if (!tilingOf(kind) && !PLANE_PER[kind] || hexagon && !hexagonFits(kind)) continue;  // (a rectangle's cells: built when first asked for, if any)
+    Object.assign(plane, { torus: false, round: true, hexagon });
+    const W = planeW(kind, 32), row = planeRow(kind, W), sh = planeShape(kind, W), dead = new Set(sh.dead), at = (t) => planeCorners(kind, t % row, Math.floor(t / row));
+    const live = [...Array(row * W).keys()].filter((t) => !dead.has(t)).map(at), all = [...live, ...sh.walls.map(([x, y]) => planeCorners(kind, x, y))], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
+    const mid = (P) => [P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length];
+    all.forEach((P, j) => { const c = cell(...mid(P)); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
+    const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
+    let gaps = 0;
+    for (const P of live) {
+      const o = sarea(P) > 0 ? 1 : -1;
+      for (let i = 0; i < P.length; i++) {
+        const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (len > 1e-6 && !covered((a[0] + b[0]) / 2 + (0.03 * o * (b[1] - a[1])) / len, (a[1] + b[1]) / 2 - (0.03 * o * (b[0] - a[0])) / len)) gaps++;
+      }
+    }
+    // its symmetry: the live cells' middles turned by a turn of the grid round their mean, onto live ones
+    const mids = live.map(mid), c = [0, 1].map((d) => mids.reduce((t, m) => t + m[d], 0) / mids.length), turn = (2 * Math.PI) / PATTERN_TURNS[baseOf(kind)];
+    const keys = new Set(mids.map(([u, v]) => `${Math.round(u * 100)},${Math.round(v * 100)}`));
+    const off = mids.filter(([u, v]) => { const x = c[0] + (u - c[0]) * Math.cos(turn) - (v - c[1]) * Math.sin(turn), y = c[1] + (u - c[0]) * Math.sin(turn) + (v - c[1]) * Math.cos(turn); return ![-1, 0, 1].some((e) => [-1, 0, 1].some((f) => keys.has(`${Math.round(x * 100) + e},${Math.round(y * 100) + f}`))); }).length;
+    checked++;
+    const what = `${kind} ${hexagon ? 'hexagon' : 'circle'} ${W}`;
+    if (gaps) fail(`${what}: its walls open (${gaps} sides)`);
+    if (off) fail(`${what}: ${off} of its ${live.length} cells not turning onto others`);
+    const W0 = sideW(kind, 32), want = (Math.PI / 4) * planeRow(kind, W0) * W0;  // (as a disc of ⌀ 32's, see shapeW; a grid of few big lattice cells: by big steps)
+    if (Math.abs(live.length / want - 1) > 0.3 + 4 / W) fail(`${what}: ${live.length} cells, ${Math.round(want)} wanted`);
+  }
+  Object.assign(plane, saved);
   return checked;
 }
 

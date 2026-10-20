@@ -28,18 +28,23 @@ function squarePatch(items, W, poly, round = false, middle = null) {  // round: 
   }
   const far = (h) => (round ? Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]) : Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1])));
   items.sort((a, b) => far(a) - far(b));
+  // in a circle: the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
+  // those as far out of it; the rest of the W² cells of the wall (and a ring's hole: its middle)
+  let live = W * W;
+  if (round) while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
+  for (let k = live; k < W * W; k++) items[k].dead = true;
   const cells = items.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
   cells.forEach(poly);
   for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
-  // the walls: the items beyond touching one of them (sharing a corner)
-  const inside = new Set(rows.flatMap((h) => h.p.map((p) => pointKey(p))));
+  // the walls: the cells of the wall and the items beyond touching a live one (sharing a corner)
+  const inside = new Set(rows.filter((h) => !h.dead).flatMap((h) => h.p.map((p) => pointKey(p))));
   const edge = far(items[W * W - 1]) + 3, near = [];  // (the items just beyond: the next ones by distance)
   for (let k = W * W; k < items.length && far(items[k]) < edge; k++) near.push(items[k]);
-  const walls = near.filter((h) => poly(h).some((q) => inside.has(pointKey(q)))).map((h) => h.p);
+  const walls = [...rows.filter((h) => h.dead), ...near].filter((h) => poly(h).some((q) => inside.has(pointKey(q)))).map((h) => h.p);
   // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
   const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
   const dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
-  return { polys: rows.map((h) => at(h.p)), walls: [...walls, ...dead.map((t) => rows[t].p)].map(at), dead };
+  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead };
 }
 function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon left empty (its own pentagon: Sugimoto's (3))
   const deg = hole ? [180 - 720 / n, 1080 / n, 180 - 360 / n, 90 - 180 / n, 90 + 180 / n] : [180 - 240 / n, 360 / n, 180 - 120 / n, 90 - 60 / n, 90 + 60 / n];  // A B C D E
