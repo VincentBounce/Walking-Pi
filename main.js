@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.859';
+const VERSION = '0.1.861';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2499,13 +2499,14 @@ function renderAntRow() {
     const b = document.createElement('button');
     b.type = 'button';
     b.classList.toggle('active', active);
+    b.classList.toggle('switch', active);  // (picked: a click shows how it works, as Life's rules)
     b.innerHTML = `<span class="mode-icon">${pic}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${words}</span></span>`;
     b.addEventListener('click', go);
     return b;
   };
   const known = R.cards.some(([r]) => r === R.now), mine = !known || antCustomOpen, pic = icon(m.worm ? 'worm' : m.turmite ? 'turmite' : 'ant');
-  $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => card(pic, r, words, r === R.now && !antCustomOpen, () => { antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
-    ...(R.typed ? [card(pixelIcon('..o..,..o..,ooooo,..o..,..o..'), 'Custom rule', mine ? `${R.now} · your own` : 'your own, typed', mine, () => { antCustomOpen = true; renderAntRow(); })] : []));
+  $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => card(pic, r, words, r === R.now && !antCustomOpen, () => { if (r === R.now && !antCustomOpen) { walkTutorialToggle(); return; } antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
+    ...(R.typed ? [card(pixelIcon('..o..,..o..,ooooo,..o..,..o..'), 'Custom rule', mine ? `${R.now} · your own` : 'your own, typed', mine, () => { if (mine) { walkTutorialToggle(); return; } antCustomOpen = true; renderAntRow(); })] : []));
   $('antCustomRow').hidden = !R.typed || !mine;
   $('antRuleName').textContent = R.name;
   if (document.activeElement !== $('antRule')) $('antRule').value = R.now;
@@ -7103,7 +7104,7 @@ function ruleTutorial(option) {
 // of its grid by its turns (as on its flat tiling). A pivot's and a parity's: the step after dashed (where it heads);
 // a spiral's: its steps so far muted, a 0's step dashed (not drawn)
 const WALK_IN = { turtle: [1], turtleCells: [1], triTurtle: [2], hexTurtleCells: [2], hexTurtle: [0], triTurtleCells: [0], cairo: [1] };  // (a straight step if any)
-const walkTutorialFits = (w) => NAV[w]?.[0] === 'Walk' && (MODES[w].lattice === 'sphere' ? !!MODES[w].turns : ['square', 'hex', 'tri', 'cairo'].includes(MODES[w].lattice));
+const walkTutorialFits = (w) => NAV[w]?.[0] === 'Ant' || (NAV[w]?.[0] === 'Walk' && (MODES[w].lattice === 'sphere' ? !!MODES[w].turns : ['square', 'hex', 'tri', 'cairo'].includes(MODES[w].lattice)));
 // a 2D walk's cell round its middle
 function walkCell(lattice, [x, y]) {
   if (lattice === 'square') return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [x + u / 2, y + v / 2]);
@@ -7146,11 +7147,33 @@ function walkFigures(w) {
   if (mode.pivot) return digits.map((d) => figure(d, way, d ? [0] : []));
   return digits.map((d) => figure(d, WALK_IN[w] ?? []));
 }
+// A creature's: an ant's, a figure per colour of its cell (by the digits: per digit, on a light cell and on a dark one, its
+// turn mirrored), the turn of the walk it goes through the cells with, its cell's colour then the one it leaves; a
+// turmite's, one per state and colour; a worm's, its 5 turns at a corner (its rule: one for each new corner, in turn)
+const ANT_WALKS = { antSquare: 'turtleCells', antTri: 'triTurtleCells', antHex: 'hexTurtleCells', antCairo: 'cairo' };  // (else on a surface: its walk's)
+function creatureFigures(w) {
+  const m = MODES[w];
+  if (m.worm) { const figs = walkFigures('triTurtle'); return Object.entries(WORM_TURNS).map(([t, d]) => ({ ...figs[d], label: `<b>${t}</b>`, caption: TURN_WORDS[t] })); }
+  if (m.turmite) {
+    const { table, C } = turmiteOf(turmite.rule), square = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+    const step = (t) => { const a = ((90 + [90, 0, -90, 180][t]) * Math.PI) / 180; return [Math.cos(a), -Math.sin(a)]; };  // (left, straight on, right, back)
+    return table.flatMap((row, st) => row.map((e, c) => ({ at: [[0, 1], [0, 0], step(e.turn)], here: 1, ends: [], cells: [square], paint: [rampColour(c, C), rampColour(e.write, C)],
+      label: `<b>state ${st}, colour ${c}</b>:`, caption: `turns ${['left', 'straight on', 'right', 'back'][e.turn]}, leaves ${e.write}, then state ${e.next}` })));
+  }
+  const A = ANTS[w], figs = walkFigures(ANT_WALKS[w] ?? m.antOf);
+  if (antByDigits) {
+    const light = rampColour(0, 2), dark = rampColour(1, 2);
+    return turnWords(antDigitRules[w]).flatMap((t, d) => [[t, light, dark, 'a light'], [MIRROR[t], dark, light, 'a dark']]
+      .map(([u, c, left, on]) => ({ ...figs[A.turns[u]], paint: [c, left], label: `<b>${d}</b>`, caption: `on ${on} cell: ${TURN_WORDS[u]}` })));
+  }
+  const words = turnWords(antRules[w]), k = words.length;
+  return words.map((t, c) => ({ ...figs[A.turns[t]], paint: [rampColour(c, k), rampColour((c + 1) % k, k)], label: `<b>${c}</b>`, caption: `on colour ${c}: ${TURN_WORDS[t]}, the cell then ${(c + 1) % k}` }));
+}
 function walkTutorial(w) {
   $('ruleTuto').hidden = false;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.add('active'); b.classList.add('switch'); }
   $('ruleTuto').dataset.shown = w;
-  const mode = MODES[w], figs = walkFigures(w), cellsOn = (f, p) => f.cells.find((c) => pointKey(c.reduce((s, q) => [s[0] + q[0] / c.length, s[1] + q[1] / c.length], [0, 0])) === pointKey(p));
+  const mode = MODES[w], creature = NAV[w][0] === 'Ant', figs = creature ? creatureFigures(w) : walkFigures(w), cellsOn = (f, p) => f.cells.find((c) => pointKey(c.reduce((s, q) => [s[0] + q[0] / c.length, s[1] + q[1] / c.length], [0, 0])) === pointKey(p));
   const from = (f) => f.at[f.here], pts = (f) => [...f.at, ...(f.next ?? []), ...f.ends, ...f.cells.flat()];
   const span = (f, a) => [Math.min(...pts(f).map((p) => p[a])), Math.max(...pts(f).map((p) => p[a]))];
   const r = Math.max(...figs.flatMap((f) => [0, 1].map((a) => (span(f, a)[1] - span(f, a)[0]) / 2))) + 0.15, mid = (f, a) => (span(f, a)[0] + span(f, a)[1]) / 2;  // (all alike, each its own middle)
@@ -7159,15 +7182,22 @@ function walkTutorial(w) {
   const poly = (c, cls) => `<polygon points="${c.map((p) => p.join(',')).join(' ')}" class="${cls}"/>`;
   const fig = (f) => {
     const to = f.at.at(-1), still = pointKey(to) === pointKey(from(f));  // (a pivot's turn: no step)
-    return `<svg viewBox="${mid(f, 0) - r} ${mid(f, 1) - r} ${2 * r} ${2 * r}">${f.cells.map((c) => poly(c, c === cellsOn(f, to) && !still ? 'tut-cell-to' : c === cellsOn(f, from(f)) ? 'tut-cell-here' : 'tut-cell')).join('')}`
-      + `${f.ends.map((p) => line(from(f), p, 'tut-way')).join('')}${f.at.slice(1, f.here + 1).map((p, i) => line(f.at[i], p, 'tut-in')).join('')}`
+    const here = cellsOn(f, from(f)), points = (c) => c.map((p) => p.join(',')).join(' ');
+    // (a creature's cell: its colour, fading into the one it leaves there)
+    const painted = (c) => `<polygon points="${points(c)}" fill="${f.paint[1]}"/><polygon points="${points(c)}" fill="${f.paint[0]}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>${poly(c, 'tut-cell')}`;
+    const lit = !still && cellsOn(f, to), others = f.cells.filter((c) => c !== here && c !== lit);  // (the lit cell last: its frame on top)
+    return `<svg viewBox="${mid(f, 0) - r} ${mid(f, 1) - r} ${2 * r} ${2 * r}">${others.map((c) => poly(c, 'tut-cell')).join('')}`
+      + `${here ? (f.paint ? painted(here) : poly(here, 'tut-cell-here')) : ''}`
+      + `${f.ends.map((p) => line(from(f), p, 'tut-way')).join('')}${f.at.slice(1, f.here + 1).map((p, i) => line(f.at[i], p, 'tut-in')).join('')}${lit ? poly(lit, 'tut-cell-to') : ''}`
       + `${(f.next ?? []).slice(1).map((p, i) => line(f.next[i], p, 'tut-next')).join('')}${still ? '' : line(from(f), to, f.dashed ? 'tut-step tut-dashed' : 'tut-step')}`
       + `${f.ends.map((p) => dot(p, 'tut-end')).join('')}${dot(from(f), 'tut-here')}${still ? '' : dot(to, 'tut-to')}</svg>`;
   };
   const how = mode.lattice === 'sphere' ? `, turning as on its flat ${mode.grid ? 'grid' : 'tiling'}` : '';
-  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${walkName(w)}</h3><p>The number read digit by digit in base ${mode.base}, each digit a step ${mode.rule.replace(/:.*/, '')}${how}${figs.some((f) => f.here) ? '; the way it came in grey' : ''}${figs.some((f) => f.next?.length > 1) ? ', the step after dashed' : ''}.</p>`
-    + `<div class="tut-row tut-walk">${figs.map((f) => `<figure><div>${fig(f)}</div><figcaption><b>${f.d}</b> ${f.caption ?? ''}</figcaption></figure>`).join('')}</div></div>`;
+  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
+    + `<h3>${walkName(w)}</h3><p>${creature ? `${mode.rule[0].toUpperCase()}${mode.rule.slice(1)}` : `The number read digit by digit in base ${mode.base}, each digit a step ${mode.rule.replace(/:.*/, '')}${how}`}`
+    + `${figs.some((f) => f.here) ? '; the way it came in grey' : ''}${figs.some((f) => f.next?.length > 1) ? ', the step after dashed' : ''}.</p>`
+    + `<div class="tut-row tut-walk">${figs.map((f) => `<figure><div>${fig(f)}</div><figcaption>${f.label ?? `<b>${f.d}</b>`} ${f.caption ?? ''}</figcaption></figure>`).join('')}</div></div>`;
+  $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => walkTutorial(w));  // (its steps appearing again)
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
 }
 const walkTutorialToggle = () => ($('ruleTuto').hidden ? walkTutorial($('mode').value) : ruleTutorial(null));
@@ -11337,7 +11367,7 @@ document.addEventListener('click', (e) => {
 });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too), the populations and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles', 'planeRow', 'sizeRow', 'navRules', 'walkOn'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles', 'planeRow', 'sizeRow', 'navRules', 'walkOn', 'antRuleSection', 'antStartSection'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }

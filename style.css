@@ -555,6 +555,8 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .tut-walk .tut-end { fill: var(--border); }
 .tut-walk .tut-here { fill: var(--muted); }
 .tut-walk .tut-to { fill: var(--accent); r: 0.14; }
+.tut-walk .tut-step, .tut-walk .tut-to, .tut-walk .tut-next, .tut-walk .tut-cell-to { animation: tut-appear 0.8s ease-out both; }  /* the step lit softly, as a cell's colour fades */
+@keyframes tut-appear { 0%, 30% { opacity: 0; } 100% { opacity: 1; } }
 .tut-walk .tut-next { stroke: var(--accent); stroke-width: 0.07; stroke-dasharray: 0.12 0.12; }
 .tut-walk .tut-dashed { stroke-dasharray: 0.18 0.16; }
 .tut-walk .tut-cell { fill: none; stroke: var(--border); stroke-width: 0.03; }
