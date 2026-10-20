@@ -40,7 +40,7 @@ function squarePatch(items, W, poly) {
  * offset), each crossing of two a tile, its corners the sum of the lattice steps of the lines it lies between (a square
  * where two at right angles cross, a rhombus where at 45°); as the hats' (see squarePatch), each about a square unit */
 const AMMANN = (() => {
-  const e = [0, 1, 2, 3].map((m) => [Math.cos((m * Math.PI) / 4), Math.sin((m * Math.PI) / 4)]), g = [0.1234, 0.3141, 0.2718, 0.1618], S = 1 / Math.sqrt((1 + Math.SQRT2 * Math.SQRT1_2) / (1 + Math.SQRT2));  // (their mean area 1)
+  const e = [0, 1, 2, 3].map((m) => [Math.cos((m * Math.PI) / 4), Math.sin((m * Math.PI) / 4)]), g = [0.5, 0.5, 0.5, 0.5], S = 1 / Math.sqrt((1 + Math.SQRT2 * Math.SQRT1_2) / (1 + Math.SQRT2));  // (their mean area 1)
   const cache = {};
   return (W) => cache[W] ??= (() => {
     const K = Math.ceil(Math.sqrt((6 * W * W) / (4.84 * Math.PI))) + 3, items = [];  // (about 4.84 crossings a unit of the grid, 6 W² tiles)
