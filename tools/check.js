@@ -3,7 +3,7 @@
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
-// said. The crawl: no error, the link's mode the one shown, the size said its cells' count.
+// said; the grids that never repeat, their walls closed. The crawl: no error, the link's mode the one shown, the size said its cells' count.
 
 const neighbourCounts = (g, keep = () => true) => {  // how many cells have k neighbours, as shares
   const { start } = cornerNeighbours(g), walls = new Set(g.walls ?? []), c = {};
@@ -47,6 +47,26 @@ function checkMeshes(fail) {
     if (!torus) fail(`${kind}: no torus of its tiles to compare with`);
     else if (!within(inside, torus)) fail(`${kind}: inside ${show(inside)}, its torus ${show(torus)}`);
   }
+  // the grids that never repeat: their walls closed round them (a point just past each side of a cell in a cell or a
+  // wall), round and square, sizes 16 to 64
+  const sarea = (P) => P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0), round0 = plane.round;
+  for (const kind of Object.keys(APERIODIC)) for (const round of [true, false]) for (const W of [16, 24, 32, 48, 64]) {
+    plane.round = round;
+    const h = APERIODIC[kind](W), all = [...h.polys, ...h.walls], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
+    all.forEach((P, j) => { const c = cell(P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
+    const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
+    let gaps = 0;
+    for (const P of h.polys) {
+      const o = sarea(P) > 0 ? 1 : -1;
+      for (let i = 0; i < P.length; i++) {
+        const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (len > 1e-6 && !covered((a[0] + b[0]) / 2 + (0.03 * o * (b[1] - a[1])) / len, (a[1] + b[1]) / 2 - (0.03 * o * (b[0] - a[0])) / len)) gaps++;
+      }
+    }
+    checked++;
+    if (gaps) fail(`${kind} ${round ? 'circle' : 'square'} ${W}: its walls open (${gaps} sides)`);
+  }
+  plane.round = round0;
   return checked;
 }
 

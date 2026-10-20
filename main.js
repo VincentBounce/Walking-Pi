@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.877';
+const VERSION = '0.1.879';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2398,7 +2398,7 @@ function tilingIcon(kind) {
 for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(kind);
 // The 2D grids by their natural shape: none repeating (round walls), a square lattice (quarter turns), a lattice of 60°
 // rhombi (sixth turns), else a parallelogram (half turns only); each its title
-const SHAPE_GROUPS = [['Circles', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
+const SHAPE_GROUPS = [['Circles (walls only)', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
                       ['Natural rhombi', (k) => [3, 6].includes(TILINGS[k]?.turns ?? PATTERN_TURNS[k])], ['Parallelograms', () => true]];
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Spectre: 'spectre', Ammann: 'ammann', Flower: 'flower', Cubes: 'cube', Diamond: 'tetrahedron',
@@ -4772,7 +4772,7 @@ function gridSize(kind, f) {
   return [h, Math.round((cells / h) * 10) / 10, cells, unit];  // (a strip of teeth: its rows not all alike, on average, to a tenth)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
-const sizeShape = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] && plane.round ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };  // (a circle: its diameter)
 const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
 // A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
@@ -5961,7 +5961,8 @@ const ROOT3_2 = Math.sqrt(3) / 2;
 const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penrose's rhombi never wrap round: they never repeat
 const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, spectre: 1, ammann: 1, flower: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
-const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
+// (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
+const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] && plane.round ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
 // blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
 const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : sideW(kind, side));
 const blockWraps = new Map();
@@ -5977,9 +5978,9 @@ const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triang
 // An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
 // about a square unit; poly(item): its corners), the W² items nearest a middle (a square), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
-function squarePatch(items, W, poly, round = false) {  // round: walls in a circle (the items nearest the middle), else a square
-  // the middle: where a square of W² items' room (a cell about 1 square unit) holds the most of them, the nearest the
-  // patch's centre (its outline is ragged: round its centre, a corner may be bare)
+function squarePatch(items, W, poly, round = false, middle = null) {  // round: walls in a circle (the items nearest the middle), else a square
+  // the middle (middle, else): where a square of W² items' room (a cell about 1 square unit) and 4 units more all round (its
+  // walls' room) holds the most of them, the nearest the patch's centre (its outline is ragged: a corner may be bare)
   const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
   const half = (Math.sqrt(W * W) * 1.05) / 2, centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
   // (the items by unit cells of a grid over the patch, summed from a corner: a box's count at once)
@@ -5988,9 +5989,9 @@ function squarePatch(items, W, poly, round = false) {  // round: walls in a circ
   for (let y = 1; y <= ny; y++) for (let x = 1; x <= nx; x++) sum[y * (nx + 1) + x] += sum[(y - 1) * (nx + 1) + x] + sum[y * (nx + 1) + x - 1] - sum[(y - 1) * (nx + 1) + x - 1];
   const count = (x0, y0, x1, y1) => sum[y1 * (nx + 1) + x1] - sum[y0 * (nx + 1) + x1] - sum[y1 * (nx + 1) + x0] + sum[y0 * (nx + 1) + x0];
   const k = Math.ceil(2 * half) + 1;
-  let mid = centre, best = -1;
-  for (let y = 0; y + k <= ny; y++) for (let x = 0; x + k <= nx; x++) {
-    const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x, y, x + k, y + k) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
+  let mid = middle ?? centre, best = -1;
+  if (!middle) for (let y = 4; y + k + 4 <= ny; y++) for (let x = 4; x + k + 4 <= nx; x++) {
+    const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
     if (score > best) { best = score; mid = c; }
   }
   const far = (h) => (round ? Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]) : Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1])));
@@ -6177,7 +6178,7 @@ const SPECTRE = (() => {
   const cache = {};
   return (W) => cache[`${W} ${plane.round}`] ??= (() => {
     let sys = base;
-    while (count(sys.Delta) < 6 * W * W) sys = supertiles(sys);
+    while (count(sys.Delta) < 10 * W * W) sys = supertiles(sys);  // (room for the walls all round too)
     const items = spectresOf(sys.Delta, ident, []).map((T) => { const p = spectre.map((q) => at(T, q)).map(([x, y]) => [x * S, -y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / 14) }; });
     return squarePatch(items, W, (h) => h.p, plane.round);
   })();
@@ -6289,7 +6290,7 @@ const FLOWER = (() => {
   return (W) => cache[`${W} ${plane.round}`] ??= (() => {
     const R = ((0.525 * W) * Math.SQRT2 + 5) / U;  // (round the W² tiles' square, its walls too)
     const items = grow(R).map((P) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p) }; });
-    return squarePatch(items, W, (h) => h.p, plane.round);
+    return squarePatch(items, W, (h) => h.p, plane.round, [0, 0]);  // (round its middle)
   })();
 })();
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, flower: FLOWER };  // the grids that never repeat: a square patch, walls round it, never a torus
