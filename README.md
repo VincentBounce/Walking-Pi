@@ -158,6 +158,15 @@ A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons
   - **Digits:** the number's digits, one per cell, in base C.
 - The start is kept in the link, so a found pattern can be shared.
 
+#### Tilings left out
+
+Of the duals of the k-uniform tilings of pentagons (Wikipedia, *Pentagonal tiling*, dual k-uniform tilings), the app has Dual 16, Dual 56 and Dual 314. These were tried and left out, not to be added again: too like one another, or too drawn out along one side, or all with the same asymmetry (a half turn, no mirror):
+
+- 2-uniform: no. 17
+- 3-uniform: no. 53, 55
+- 4-uniform: no. 142, 143, 144
+- 5-uniform: no. 309, 310, 311, 312, 315 (no. 303 on Wikimedia is no tiling of pentagons: its dual has hexagons)
+
 ### 2D spirals
 
 | Mode | Base | Rule |

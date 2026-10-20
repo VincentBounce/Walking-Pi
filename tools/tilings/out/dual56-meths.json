@@ -1,0 +1,32 @@
+{
+ "dual56 B246/S0467/C5": {
+  "meths": [
+   {
+    "rle": ".A5.2A.A.A!",
+    "n": 5,
+    "T": 30,
+    "ships": 1,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "edge": 47,
+   "settles": 1
+  }
+ },
+ "dual56 B25/S046/C5": {
+  "meths": [
+   {
+    "rle": "A6.A2.A2.A.A!",
+    "n": 5,
+    "T": 30,
+    "ships": 1,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "edge": 47,
+   "settles": 1
+  }
+ }
+}

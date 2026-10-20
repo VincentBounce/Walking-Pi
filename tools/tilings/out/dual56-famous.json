@@ -1,0 +1,146 @@
+{
+ "dual56 B246/S0467/C5": {
+  "ships": [
+   {
+    "rle": "7.BA4.A3.BC9.BC3.C$22.A7.A.B!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     -18,
+     1
+    ],
+    "count": 78
+   },
+   {
+    "rle": "5.C5.C.C$2.B3.BA.A4.B3.2A2.B!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     18,
+     2
+    ],
+    "count": 70
+   },
+   {
+    "rle": "7.C5.C3.CB2.A6.BA3.B$22.B7.A.A!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     36,
+     1
+    ],
+    "count": 67
+   },
+   {
+    "rle": "5.B5.B.A2.A$2.B3.2C6.C3.BA2.A!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     18,
+     -1
+    ],
+    "count": 65
+   },
+   {
+    "rle": "5.B5.A.B2.A$2.C3.2B.A4.A3.C3.C!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     -36,
+     -1
+    ],
+    "count": 62
+   },
+   {
+    "rle": "5.A5.A$2.A3.2B2D2.D.B3.A!",
+    "n": 4,
+    "cells": 10,
+    "period": 10,
+    "move": [
+     18,
+     -1
+    ],
+    "count": 61
+   }
+  ],
+  "oscs": [],
+  "meths": []
+ },
+ "dual56 B25/S046/C5": {
+  "ships": [
+   {
+    "rle": "3.D.B2.D2.B.B2.D$2.A3.A7.A7.A!",
+    "n": 4,
+    "cells": 10,
+    "period": 10,
+    "move": [
+     18,
+     2
+    ],
+    "count": 40
+   },
+   {
+    "rle": "5.A5.A$2.A3.2B2D2.D.B3.A!",
+    "n": 4,
+    "cells": 10,
+    "period": 10,
+    "move": [
+     18,
+     -1
+    ],
+    "count": 39
+   },
+   {
+    "rle": "13.A3.A10.BA3.A$19.D2.B4.D2.D.B!",
+    "n": 4,
+    "cells": 10,
+    "period": 10,
+    "move": [
+     -18,
+     -2
+    ],
+    "count": 35
+   },
+   {
+    "rle": "7.A9.ABD.D6.AB3.BD$32.A!",
+    "n": 4,
+    "cells": 10,
+    "period": 10,
+    "move": [
+     -18,
+     1
+    ],
+    "count": 32
+   },
+   {
+    "rle": "5.A7.A$2.B3.2A10.BD.DB7.D!",
+    "n": 4,
+    "cells": 10,
+    "period": 10,
+    "move": [
+     -36,
+     -1
+    ],
+    "count": 30
+   },
+   {
+    "rle": "7.BA4.A3.BC9.BC3.C$22.A7.A.B!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     -18,
+     1
+    ],
+    "count": 28
+   }
+  ],
+  "oscs": [],
+  "meths": []
+ }
+}

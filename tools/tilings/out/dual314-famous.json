@@ -1,0 +1,146 @@
+{
+ "dual314 B258/S0456/C4": {
+  "ships": [
+   {
+    "rle": "19.3B2.A$3.A!",
+    "n": 2,
+    "cells": 5,
+    "period": 8,
+    "move": [
+     0,
+     1
+    ],
+    "count": 5
+   },
+   {
+    "rle": ".C26.CA3.A8.2BA!",
+    "n": 3,
+    "cells": 7,
+    "period": 8,
+    "move": [
+     30,
+     -1
+    ],
+    "count": 4
+   },
+   {
+    "rle": "17.A$A6.A7.2B.C.C.2C2.3BA!",
+    "n": 4,
+    "cells": 13,
+    "period": 14,
+    "move": [
+     60,
+     -1
+    ],
+    "count": 4
+   },
+   {
+    "rle": "A3.BC.BC6.AB8.C10.B2.2AB9.C!",
+    "n": 4,
+    "cells": 13,
+    "period": 14,
+    "move": [
+     30,
+     -2
+    ],
+    "count": 3
+   },
+   {
+    "rle": "49.B.C2.A$.C30.AC9.BA!",
+    "n": 3,
+    "cells": 8,
+    "period": 8,
+    "move": [
+     30,
+     0
+    ],
+    "count": 3
+   },
+   {
+    "rle": "CA2.C21.C15.2A!",
+    "n": 3,
+    "cells": 6,
+    "period": 8,
+    "move": [
+     30,
+     -1
+    ],
+    "count": 3
+   }
+  ],
+  "oscs": [],
+  "meths": []
+ },
+ "dual314 B25/S0456/C4": {
+  "ships": [
+   {
+    "rle": "19.3B2.A$3.A!",
+    "n": 2,
+    "cells": 5,
+    "period": 8,
+    "move": [
+     0,
+     1
+    ],
+    "count": 4
+   },
+   {
+    "rle": "4.A31.A2.AB.B5.B4.A!",
+    "n": 4,
+    "cells": 7,
+    "period": 8,
+    "move": [
+     0,
+     1
+    ],
+    "count": 4
+   },
+   {
+    "rle": ".C26.CA3.A8.2BA!",
+    "n": 3,
+    "cells": 7,
+    "period": 8,
+    "move": [
+     30,
+     -1
+    ],
+    "count": 4
+   },
+   {
+    "rle": "49.B.C2.A$.C30.AC9.BA!",
+    "n": 3,
+    "cells": 8,
+    "period": 8,
+    "move": [
+     30,
+     0
+    ],
+    "count": 3
+   },
+   {
+    "rle": "2.C7.A.A2C3.A!",
+    "n": 3,
+    "cells": 6,
+    "period": 8,
+    "move": [
+     0,
+     1
+    ],
+    "count": 3
+   },
+   {
+    "rle": "AB7.2A4.A2.B3.AB2.B3C!",
+    "n": 5,
+    "cells": 12,
+    "period": 14,
+    "move": [
+     -30,
+     2
+    ],
+    "count": 3
+   }
+  ],
+  "oscs": [],
+  "meths": []
+ }
+}

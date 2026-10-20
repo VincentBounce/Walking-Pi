@@ -1,0 +1,88 @@
+{
+ "dual314 B258/S0456/C4": {
+  "meths": [
+   {
+    "rle": "8.A13.A5.A$3.A3.A4.A.A5.A6.A!",
+    "n": 9,
+    "T": 190,
+    "ships": 3,
+    "period": 1
+   },
+   {
+    "rle": "3.A.A.A7.2A8.A2.A!",
+    "n": 7,
+    "T": 60,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": "2A.A4.A4.A2.A3.A3.2A!",
+    "n": 9,
+    "T": 60,
+    "ships": 1,
+    "period": 1
+   },
+   {
+    "rle": "18.A3.A2.A$.A6.A3.A7.A!",
+    "n": 7,
+    "T": 50,
+    "ships": 1,
+    "period": 1
+   },
+   {
+    "rle": "16.A10.2A!",
+    "n": 3,
+    "T": 40,
+    "ships": 1,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 17,
+   "edge": 31
+  }
+ },
+ "dual314 B25/S0456/C4": {
+  "meths": [
+   {
+    "rle": "8.A13.A5.A$3.A3.A4.A.A5.A6.A!",
+    "n": 9,
+    "T": 190,
+    "ships": 3,
+    "period": 1
+   },
+   {
+    "rle": "3.A.A.A7.2A8.A2.A!",
+    "n": 7,
+    "T": 60,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": "2A.A4.A4.A2.A3.A3.2A!",
+    "n": 9,
+    "T": 60,
+    "ships": 1,
+    "period": 1
+   },
+   {
+    "rle": "18.A3.A2.A$.A6.A3.A7.A!",
+    "n": 7,
+    "T": 50,
+    "ships": 1,
+    "period": 1
+   },
+   {
+    "rle": "16.A10.2A!",
+    "n": 3,
+    "T": 40,
+    "ships": 1,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "settles": 17,
+   "edge": 31
+  }
+ }
+}
