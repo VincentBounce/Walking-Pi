@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.912';
+const VERSION = '0.1.913';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7187,8 +7187,8 @@ const colourBlock = (k) => {
 };
 const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 12: 'Dozen' };  // one colour, then battles
 // the counts of colours fair on the plane's grid: on a six-fold one (Hexagons, the natural rhombi), one colour, and 2, 3, 6
-// or 12 (each as many sixths of a turn, or a twelfth and its mirror); on Ammann's octagon, 1, 2, 4 and 8
-const colourFair = (K) => { const kind = MODES[$('mode').value]?.plane; return hexagonFits(kind) ? [1, 2, 3, 6, 12].includes(K) : kind === 'ammann' && [1, 2, 4, 8].includes(K); };
+// or 12 (each as many sixths of a turn, or a twelfth and its mirror); on Ammann's octagon, Flower 4 and Ring 8, 1, 2, 4 and 8
+const colourFair = (K) => { const kind = MODES[$('mode').value]?.plane; return hexagonFits(kind) ? [1, 2, 3, 6, 12].includes(K) : ['ammann', 'flower4', 'ring8'].includes(kind) && [1, 2, 4, 8].includes(K); };
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
