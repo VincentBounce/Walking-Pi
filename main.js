@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.906';
+const VERSION = '0.1.907';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7177,19 +7177,16 @@ const colourBlock = (k) => {
   return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
 };
 const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 12: 'Dozen' };  // one colour, then battles
-// the counts of colours fair on the plane's grid: its turns n (a rosette's n, Penrose's 5, Ammann's 8, a hat's or a spectre's
-// none), each colour as many turns of it (K divides n) or half one (K = 2n, a slice and its mirror): hexagons 2, 3, 6, 12
-const colourFair = (K) => {
-  const kind = MODES[$('mode').value]?.plane, n = !kind ? 0 : ROSETTES[kind]?.[0] ?? { penrose: 5, ammann: 8, hat: 1, spectre: 1 }[kind] ?? PATTERN_TURNS[kind] ?? 1;
-  return K > 1 && n > 1 && (n % K === 0 || K === 2 * n);
-};
+// the counts of colours fair on the plane's grid: on a six-fold one (Hexagons, the natural rhombi), one colour, and 2, 3, 6
+// or 12 (each as many sixths of a turn, or a twelfth and its mirror)
+const colourFair = (K) => hexagonFits(MODES[$('mode').value]?.plane) && [1, 2, 3, 6, 12].includes(K);
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.innerHTML = `${colourBlock(k)}<span>${COLOUR_STEP_NAMES[k]}</span>`;
-    b.title = k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}${colourFair(k) ? ' (fair on this grid: its turns share them alike)' : ''}`;
+    b.title = `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourFair(k) ? ' (fair on this grid: its turns share them alike)' : ''}`;
     b.classList.toggle('fair', colourFair(k));  // (its corner's mark)
     b.classList.toggle('active', k === lifeColours);
     b.classList.toggle('switch', k === lifeColours);  // (picked: a click shows how it works, as a rule's)
