@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261105u">
+  <link rel="stylesheet" href="style.css?v=20261105w">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -216,6 +216,8 @@
               <option value="life2dSpectre">Life — spectres (aperiodic)</option>
               <option value="life2dAmmann">Life — Ammann–Beenker squares and rhombi (aperiodic)</option>
               <option value="life2dFlower">Life — Hirschhorn's flower of pentagons (six-fold)</option>
+              <option value="life2dFlower5">Life — a 5-fold rosette of pentagons</option>
+              <option value="life2dFlower7">Life — a 7-fold rosette of pentagons</option>
               <option value="life2dRhombille">Life — rhombille grid</option>
               <option value="life2dRhombitri">Life — rhombitrihexagonal grid</option>
               <option value="life2dFloret">Life — floret pentagons grid</option>
@@ -466,8 +468,12 @@
             <option value="B237/S056/C4" data-name="Dual 16 ships">❁ B237/S056/C4 — soups settling after 407 to 4,433 generations (1.79 % alive at the end), ships of 7 cells, period 10 (4 states)</option>
             <option value="B238/S0457/C5" data-name="Dodecagon Life">❂ B238/S0457/C5 — soups settling after 395 to 5,518 generations (1.12 % alive at the end), an oscillator of 10 cells, period 30 and a methuselah of 7 cells: 699 (5 states)</option>
             <option value="B235/S0457/C5" data-name="Dodecagon sparks">❂ B235/S0457/C5 — soups settling after 243 to 1,249 generations (1.01 % alive at the end), an oscillator of 10 cells, period 30 and a methuselah of 7 cells: 791 (5 states)</option>
-            <option value="B345/S0238" data-name="Flower Life">❀ B345/S0238 — soups settling after 311 to 1,397 generations (4.14 % alive at the end), oscillators in all their ash</option>
-            <option value="B27/S0345/C5" data-name="Flower embers">❀ B27/S0345/C5 — soups settling after 275 to 1,274 generations (3.3 % alive at the end), oscillators in 75 % of their ash (5 states)</option>
+            <option value="B368/S3457" data-name="Flower 5 Life">✾ B368/S3457 — soups settling after 289 to 3,046 generations (1.72 % alive at the end), oscillators in all their ash</option>
+            <option value="B2/S0345/C5" data-name="Flower 5 sparks">✾ B2/S0345/C5 — soups settling after 203 to over 6,000 generations (3.56 % alive at the end), oscillators in half their ash (5 states)</option>
+            <option value="B345/S0238" data-name="Flower 6 Life">❀ B345/S0238 — soups settling after 311 to 1,397 generations (4.14 % alive at the end), oscillators in all their ash</option>
+            <option value="B27/S0345/C5" data-name="Flower 6 embers">❀ B27/S0345/C5 — soups settling after 275 to 1,274 generations (3.3 % alive at the end), oscillators in 75 % of their ash (5 states)</option>
+            <option value="B36/S3457" data-name="Flower 7 Life">✽ B36/S3457 — soups settling after 420 to 1,864 generations (1.84 % alive at the end), oscillators in all their ash</option>
+            <option value="B278/S0345/C5" data-name="Flower 7 embers">✽ B278/S0345/C5 — soups settling after 184 to 1,805 generations (3.25 % alive at the end), oscillators in 75 % of their ash (5 states)</option>
             <option value="B356/S0345/C4" data-name="Ammann Life">✵ B356/S0345/C4 — soups settling after 336 to 1,174 generations (2.56 % alive at the end), oscillators in 25 % of their ash (4 states)</option>
             <option value="B38/S013" data-name="Ammann blinkers">✵ B38/S013 — soups settling after 316 to 1,261 generations (4.83 % alive at the end), oscillators in 100 % of their ash (2 states)</option>
             <option value="B247/S034/C4" data-name="Type 15 Life">⬟ B247/S034/C4 — the most Life-like on the 15th pentagon: soups settling after 270 to 2,600 generations, oscillators in most ends (4 states)</option>
@@ -620,6 +626,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261105u"></script>
+  <script src="main.js?v=20261105w"></script>
 </body>
 </html>
