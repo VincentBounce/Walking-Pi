@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.857';
+const VERSION = '0.1.858';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2643,9 +2643,11 @@ function renderModePicker() {
   }));
   // Grid | Cells (Cube in 3D): each with its base and its digits, or what it is not on (that side off)
   const sides = navValues(4, [kind, space, shape, rule]).filter((s) => has(kind, rule, s));  // (Cairo pentagons: no grid)
-  $('walkOn').hidden = sides.includes('');
+  // (kept, the same height, where there are neither: a spiral's steps from cell to cell, its Cells picked)
+  const alone = sides.includes('');
+  $('walkOn').hidden = alone && kind !== 'Walk';
   const side = (b, s, word, none) => {
-    const v = sides.includes(s) ? navPick(4, s) : null, here = NAV[w][4] === s;
+    const v = alone ? (s === 'cells' ? w : null) : sides.includes(s) ? navPick(4, s) : null, here = alone ? s === 'cells' : NAV[w][4] === s;
     const info = !v ? null : MODES[v].turmite ? { base: '', detail: turmite.rule } : MODES[v].antOf ? { base: '', detail: antByDigits ? `digits ${antDigitRules[v]}` : antRules[v] } : splitModeLabel(optionOf(v).text);
     b.innerHTML = `<span class="walk-on-name">${word}${info?.base ? ` <span class="mode-base">${info.base}</span>` : ''}</span>`
       + `<span class="mode-detail">${info ? info.detail : none}</span>`;
