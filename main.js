@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.873';
+const VERSION = '0.1.874';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1673,7 +1673,7 @@ const ICONS = (() => {
     hexagon: pathEl(pathOf(hex)),
     hexagonFilled: pathEl(pathOf(hex), 'f'),
     king: pathEl('M12 3V21M3 12H21M5.6 5.6L18.4 18.4M18.4 5.6L5.6 18.4'),  // the 8 ways out
-    pentagons: pathEl('M12 3L18 7L16 13H8L6 7Z') + pathEl('M8 13L6 19L12 22L18 19L16 13'),  // two of the Cairo tiling's, sharing an edge
+    pentagons: pathEl('M7 7L9.3 12H14.7L17 7L12 4.7ZM7 17L12 19.3L17 17L14.7 12H9.3ZM7 7L9.3 12L7 17L2 14.7V9.3ZM17 7L22 9.3V14.7L17 17L14.7 12Z'),  // four of the Cairo tiling's: two across a bar, two at its ends
     ammann: [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const e = (j) => [Math.cos((j * Math.PI) / 4), Math.sin((j * Math.PI) / 4)], a = e(k), b = e(k + 1), s = 10 / (2 * Math.cos(Math.PI / 8)), pt = ([x, y]) => `${(12 + x * s).toFixed(1)} ${(12 - y * s).toFixed(1)}`;
       return pathEl(`M12 12L${pt(a)}L${pt([a[0] + b[0], a[1] + b[1]])}L${pt(b)}Z`); }).join(''),  // Ammann–Beenker's star: 8 rhombi round a point
     spectre: pathEl('M6 15L10 15L12 18.5L15.5 16.5L15.5 12.5L19.5 12.5L21.5 9L18 7L14.5 9L12.5 5.5L8.5 5.5L4.5 5.5L2.5 9L6 11Z'),  // the Spectre
