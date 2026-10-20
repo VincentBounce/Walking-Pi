@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.889';
+const VERSION = '0.1.890';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2614,7 +2614,7 @@ function renderModePicker() {
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title
   const shapes = navValues(2, [kind, space]), planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
   const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh));
-  $('navShapes').replaceChildren(...(grouped ? [...SHAPE_GROUPS.slice(1), SHAPE_GROUPS[0]].map(([g]) => g) : [null]).flatMap((g) => {  // (the circles last)
+  $('navShapes').replaceChildren(...(grouped ? [1, 3, 0, 2].map((i) => SHAPE_GROUPS[i][0]) : [null]).flatMap((g) => {  // (squares, parallelograms, the circles, rhombi)
     const these = g ? shapes.filter((sh) => groupOf(sh) === g) : shapes;
     if (!these.length) return [];
     const title = g ? [Object.assign(document.createElement('div'), { className: 'block-label', textContent: g })] : [];
@@ -6016,6 +6016,8 @@ function squarePatch(items, W, poly, round = false, middle = null) {  // round: 
   let live = W * W;
   if (round) while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
   for (let k = live; k < W * W; k++) items[k].dead = true;
+  // its core: the items nearest the middle (all as far), and the next ones as far if those are of the wall (a ring's hole)
+  for (let k = 0; !items.slice(0, k).some((h) => !h.dead);) { const d = far(items[k]); while (far(items[k]) - d < 1e-6) items[k++].core = true; }
   const cells = items.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
   cells.forEach(poly);
   for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
@@ -6027,7 +6029,7 @@ function squarePatch(items, W, poly, round = false, middle = null) {  // round: 
   // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
   const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
   const dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
-  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead };
+  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead, core: rows.filter((h) => h.core).map((h) => at(h.p)) };
 }
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
@@ -7076,6 +7078,15 @@ function drawLifePlane() {
     ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
     ctx.fill();
   }
+  // a grid that never repeats: its core outlined in yellow (see squarePatch), the sides of its cells not shared by two of them
+  const core = APERIODIC[kind]?.(W).core ?? [], sides = new Map();
+  for (const P of core) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, q]); });
+  ctx.strokeStyle = '#ffd60a';
+  ctx.lineWidth = Math.max(2, s / 6);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
+  ctx.stroke();
   turnLayer(ctx, 0);
   drawGhost();
 }
@@ -7336,12 +7347,14 @@ function shapeBubbles(kinds, c, corners, count, area) {
   const nameOf = (t) => { const n = plain(t), same = kinds.filter((u) => plain(u) === n);
     const sizes = same.map((u) => area(corners(u))), big = Math.max(...sizes), small = Math.min(...sizes);
     return big - small > 1e-3 * big ? `${area(corners(t)) > (big + small) / 2 ? 'big' : 'small'} ${n}` : n; };  // (one size: its neighbours tell them apart)
+  // each at one scale (the biggest fills its bubble), its neighbours' count in it
+  const span = (P, d) => Math.max(...P.map((p) => p[d])) - Math.min(...P.map((p) => p[d])), S = Math.max(...kinds.flatMap((t) => [span(corners(t), 0), span(corners(t), 1)])), pad = S * 0.08;
   const pic = (t) => {
-    const pts = corners(t), x0 = Math.min(...pts.map((p) => p[0])), y0 = Math.min(...pts.map((p) => p[1]));
-    const w = Math.max(...pts.map((p) => p[0])) - x0, h = Math.max(...pts.map((p) => p[1])) - y0, s = Math.max(w, h), pad = s * 0.12;
-    return `<svg viewBox="${x0 - pad - (s - w) / 2} ${y0 - pad - (s - h) / 2} ${s + 2 * pad} ${s + 2 * pad}"><polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="${t === c ? LIFE_ALIVE : UNLIT}" stroke="var(--border)" stroke-width="${s / 25}"/></svg>`;  // (the one shown filled)
+    const pts = corners(t), m = [0, 1].map((d) => pts.reduce((a, p) => a + p[d], 0) / pts.length);
+    return `<svg viewBox="${m[0] - S / 2 - pad} ${m[1] - S / 2 - pad} ${S + 2 * pad} ${S + 2 * pad}"><polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="${t === c ? LIFE_ALIVE : UNLIT}" stroke="var(--border)" stroke-width="${S / 30}"/>`
+      + `<text x="${m[0]}" y="${m[1]}" font-size="${S * 0.3}" font-weight="600" fill="${t === c ? '#fff' : 'var(--text)'}" text-anchor="middle" dominant-baseline="central">${count(t)}</text></svg>`;  // (the one shown filled)
   };
-  return `<div class="tut-row tut-shapes">${kinds.map((t, i) => `<figure data-at="${i}" class="${t === c ? 'active' : ''}"><div>${pic(t)}</div><figcaption>${nameOf(t)}<br>${count(t)} neighbours</figcaption></figure>`).join('')}</div>`;
+  return `<div class="tut-row tut-shapes">${kinds.map((t, i) => `<figure data-at="${i}" class="${t === c ? 'active' : ''}" title="${nameOf(t)}: ${count(t)} neighbours"><div>${pic(t)}</div><figcaption>${nameOf(t)}</figcaption></figure>`).join('')}</div>`;
 }
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
