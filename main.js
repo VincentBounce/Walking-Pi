@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.866';
+const VERSION = '0.1.867';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7395,6 +7395,7 @@ function lifeFingerprint(state) {
 // Record generation gen (state already in L.alive) and detect the first repeat
 function lifeTrack(gen) {
   const L = walk.life;
+  if (L.margolus) { if (!L.stable && blockBack(L, L.alive, gen)) L.stable = { T: 0, P: gen, extinct: false }; return; }  // (blocks: see blockBack)
   if (L.stable || L.seen.size >= LIFE_TRACK) return;
   const key = lifeFingerprint(L.alive);
   const first = L.seen.get(key);
@@ -7402,6 +7403,39 @@ function lifeTrack(gen) {
   else L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 };
 }
 
+// Blocks run back too: each state the only one before the next, so no lead-in on a finite grid, its first repeat the
+// start itself, at its phase (its sets in turn: the same dots at another phase step on otherwise). Its period: that
+// generation, however far (no generations kept); at most its states × its phases, 2^n × p, or with a rule keeping its
+// live cells (Billiard balls, Single rotation, Swirl), C(n, m) × p (m alive)
+const blockBack = (L, a, gen) => gen > 0 && gen % L.margolus.turns.length === 0 && a.every((v, t) => v === L.seed[t]);
+function blockBound(L) {  // its log10
+  const n = L.alive.length, m = L.seedAlive, p = Math.log10(L.margolus.turns.length), keeps = L.margolus.to.every((v, st) => ringAlive(v) === ringAlive(st));
+  let c = 0;
+  if (keeps) for (let i = 0; i < Math.min(m, n - m); i++) c += Math.log10((n - i) / (i + 1));
+  return { keeps, log: (keeps ? c : n * Math.LOG10E * Math.LN2) + p };
+}
+const bigWords = (log) => (log < 15 ? fmt(Math.round(10 ** log)) : `10^${fmt(Math.floor(log))}`);
+// the search for its return, past the generations played: the start stepped on its own, in slices (Find its return)
+const backSearch = { life: null, gen: 0, a: null, b: null, found: 0 };
+function searchBack(on) {
+  const L = walk.life;
+  if (!on) { backSearch.life = null; renderHunt(); return; }
+  if (backSearch.life !== L) Object.assign(backSearch, { life: L, gen: 0, a: L.seed.slice(), b: new Uint8Array(L.seed.length), found: 0 });
+  const slice = () => {
+    if (backSearch.life !== walk.life) return;  // (stopped, or another grid)
+    const S = backSearch, end = performance.now() + 15;
+    while (performance.now() < end && !S.found) for (let i = 0; i < 64; i++) {
+      blockStep(L.margolus, S.a, S.b, S.gen);
+      [S.a, S.b] = [S.b, S.a];
+      if (blockBack(L, S.a, ++S.gen)) { S.found = S.gen; break; }
+    }
+    if (S.found) { L.stable ??= { T: 0, P: S.found, extinct: false }; S.life = null; }
+    statsDirty = true;
+    renderHunt();
+    if (S.life) setTimeout(slice, 0);
+  };
+  slice();
+}
 // One generation. A cell: 0 dead, k alive of colour k (1 … K, one colour: 1), k + K × s dying of colour
 // k at stage s (1 … C − 2, see parseRule). Only live cells count as neighbours (on hexagons maybe where
 // they sit, Callahan's letters); a newborn takes the colour most of them have; on a tie, the one colour missing
@@ -8053,10 +8087,20 @@ function huntFits() {
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
 }
+// blocks: the search for its return, whatever the start (see searchBack)
+function renderBack() {
+  const L = walk.life;
+  $('backBtn').hidden = !L?.margolus;
+  if ($('backBtn').hidden) return;
+  $('backBtn').innerHTML = L.stable ? `${icon('search')} Back to start at gen ${fmt(L.stable.P)}` : backSearch.life === L ? `${icon('stop')} Stop · gen ${fmt(backSearch.gen)} searched` : `${icon('search')} Find its return to the start`;
+  $('backBtn').disabled = !!L.stable;
+}
 function renderHunt() {
+  renderBack();
   $('huntRow').hidden = !huntOn() || surfaceDraw;
   if ($('huntRow').hidden) return;
   $('huntBtn').hidden = !!walk.life.margolus;  // (the hunt's own step: births and survivals; blocks, their zones' starts only)
+
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? 'the longest battle' : { longest: 'the longest life', dies: 'the longest death', peak: 'the highest peak', cover: 'the fastest to reach all cells' }[hunt.goal];
   $('huntGoals').hidden = K > 1 || !!walk.life.margolus;
@@ -10848,8 +10892,15 @@ function updateStats() {
     // out, ■ frozen), or its loop: its phase, its period, from which generation
     const s = L.stable, pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
     $('barNum').textContent = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
-      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)} from ${fmt(s.T)}`;
-    $('barLoop').hidden = true;
+      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)}${s.T ? ` from ${fmt(s.T)}` : ''}`;  // (from the start: no lead-in)
+    $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
+    renderBack();
+    if (L.margolus) {
+      const B = blockBound(L), far = Math.max(L.reached ?? 0, backSearch.life === L ? backSearch.gen : 0);
+      $('barLoop').textContent = s ? `↻ back to start at gen ${fmt(s.P)}` : `not back by gen ${fmt(far)} · ≤ ${bigWords(B.log)}`;
+      $('barLoop').title = s ? 'A reversible rule: no lead-in, the start comes back, and again every so many generations'
+        : `A reversible rule: it comes back to its start, at the latest after ${bigWords(B.log)} generations (${B.keeps ? 'the ways its live cells can lie' : 'all its states'}, × its phases)`;
+    }
     // a row a colour, all its bubbles in it: alive, born, died, ever alive (one colour: the live cells', as the theme draws them)
     // a colour's live cells, or, once none is left, when it all died out
     const aliveBubble = (c, k, name, alive) => (colourGone(L, k)
@@ -11282,6 +11333,7 @@ $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % PATTERN_TURNS[MODES[$('mode').value].plane]; renderPlaneRow(); });
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
 $('huntBtn').addEventListener('click', huntClick);
+$('backBtn').addEventListener('click', () => searchBack(backSearch.life !== walk.life));
 $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, name, words]]) => {
   const b = document.createElement('button');
   b.type = 'button';
