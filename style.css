@@ -581,3 +581,5 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .size-row { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }  /* Torus (a tile, a column of the shapes' 4 wide), then the size */
 .size-row > .nav-shapes { width: calc((100% - 12px) / 4); grid-template-columns: 1fr; margin: 0; }
 .size-row > .stepper { flex: 1; margin: 0; }
+#colourBlocks button { position: relative; }
+#colourBlocks button.fair::after { content: ''; position: absolute; right: 3px; bottom: 3px; border-left: 9px solid transparent; border-bottom: 9px solid var(--accent); }  /* a count of colours fair on this grid: a small triangle, its right angle in the corner */
