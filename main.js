@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.894';
+const VERSION = '0.1.895';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7344,7 +7344,7 @@ const tutorialKey = (option) => `${$('mode').value} ${option.value} ${option.dat
   + (walk.life?.margolus ? ` ${walk.life.alive.length} ${walk.life.seedAlive} ${walk.life.stable?.P}` : '');
 // a tiling of several shapes: a bubble each (the cell and its neighbours, its name and how many), the one shown lit
 const tutShape = { mode: null, at: 0 };
-function shapeBubbles(kinds, c, corners, count, area) {
+function shapeBubbles(kinds, c, corners, count, area, shapeOf) {
   const names = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon', 9: 'nonagon', 10: 'decagon', 12: 'dodecagon' };
   const quad = (P) => { const [a, b, d] = [P[0], P[1], P[3]], u = [b[0] - a[0], b[1] - a[1]], v = [d[0] - a[0], d[1] - a[1]]; return Math.abs(u[0] * v[0] + u[1] * v[1]) < 1e-3 * Math.hypot(...u) * Math.hypot(...v) ? 'square' : 'rhombus'; };
   // (its true corners: not those on a side, there for a neighbour's corner; a size said where two have one name)
@@ -7360,7 +7360,10 @@ function shapeBubbles(kinds, c, corners, count, area) {
     return `<svg viewBox="${m[0] - S / 2 - pad} ${m[1] - S / 2 - pad} ${S + 2 * pad} ${S + 2 * pad}"><polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="${t === c ? LIFE_ALIVE : UNLIT}" stroke="var(--border)" stroke-width="${S / 30}"/>`
       + `<text x="${m[0]}" y="${m[1]}" font-size="${S * 0.3}" font-weight="600" fill="${t === c ? '#fff' : 'var(--text)'}" text-anchor="middle" dominant-baseline="central">${count(t)}</text></svg>`;  // (the one shown filled)
   };
-  return `<div class="tut-row tut-shapes">${kinds.map((t, i) => `<figure data-at="${i}" class="${t === c ? 'active' : ''}" title="${nameOf(t)}: ${count(t)} neighbours"><div>${pic(t)}</div><figcaption>${nameOf(t)}</figcaption></figure>`).join('')}</div>`;
+  // (one shape in several bubbles: said, with its counts of neighbours)
+  const same = [...new Set(kinds.map((t) => shapeOf.get(t)))].map((sk) => kinds.filter((t) => shapeOf.get(t) === sk)).filter((ts) => ts.length > 1);
+  const note = same.map((ts) => `<p class="tut-note">One ${nameOf(ts[0])}, turned and placed ${ts.length} ways: ${ts.map(count).join(', ').replace(/, (\d+)$/, ' or $1')} neighbours.</p>`).join('');
+  return `<div class="tut-row tut-shapes">${kinds.map((t, i) => `<figure data-at="${i}" class="${t === c ? 'active' : ''}" title="${nameOf(t)}: ${count(t)} neighbours"><div>${pic(t)}</div><figcaption>${nameOf(t)}</figcaption></figure>`).join('')}</div>${note}`;
 }
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
@@ -7369,13 +7372,30 @@ function ruleTutorial(option) {
   $('ruleTuto').dataset.shown = tutorialKey(option);  // (another grid or rule: shown again, see renderRuleSection)
   if (parseRule(option.value)?.margolus) { blockTutorial(option, parseRule(option.value).margolus); return; }
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
-  const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
+  const W = APERIODIC[kind] ? 16 : 8, rule = parseRule(option.value), row = planeRow(kind, W), dead = APERIODIC[kind]?.(W).dead;  // (one that never repeats: room for all its ways)
+  const nb = withoutCells(planeNeighbours(kind, W, false, rule.iso === 'hensel'), dead);  // (walls: a cell with them all is inside; the wall's cells none)
   const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
-  // its shapes (a tiling of several: each by its corners and its size, the cell of each with the most neighbours, the wall's
-  // left out), the one shown picked by its bubble (tutShape), at first the one with the most neighbours
+  // its cells' kinds: by their shape (its true corners' sides and angles, mirrored or turned the same) and their count of neighbours (the
+  // same shape may have several, by where it lies: Stein's pentagon 7, 6 or 5), of the cells all round by others (each corner
+  // a whole turn of cells: its neighbours all there), the wall's left out; the one shown picked by its bubble (tutShape), at
+  // first the one with the most neighbours, the one nearest the middle of each
   const count = (t) => nb.start[t + 1] - nb.start[t], area = (P) => Math.abs(P.reduce((a, p, i) => a + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) / 2);
-  const shapes = new Map(), wall = new Set(APERIODIC[kind]?.(W).dead);
-  for (let t = 0; t < row * W; t++) { const P = corners(t), k = `${P.length}|${Math.round(area(P) * 10)}`; if (!wall.has(t) && (!shapes.has(k) || count(t) > count(shapes.get(k)))) shapes.set(k, t); }
+  const n = row * W, wall = new Set(dead), turnAt = new Map(), all = Array.from({ length: n }, (_, t) => corners(t));
+  for (const P of all) {
+    const o = Math.sign(P.reduce((a, p, i) => a + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0));
+    P.forEach((p, i) => { const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]); turnAt.set(pointKey(p), (turnAt.get(pointKey(p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a)); });
+  }
+  const shapeKey = (P) => { const Q = P.filter((p, i) => { const a = P.at(i - 1), b = P[(i + 1) % P.length]; return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-4; });
+    const angle = (i) => { const p = Q[i], [u, v] = [Q[(i + 1) % Q.length], Q.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]); return Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])).toFixed(2); };
+    return `${Q.map((p, i) => Math.hypot(Q[(i + 1) % Q.length][0] - p[0], Q[(i + 1) % Q.length][1] - p[1]).toFixed(2)).sort()}|${Q.map((p, i) => angle(i)).sort()}`; };  // (its sides and its angles: a rhombus not a square)
+  const centre = [0, 1].map((d) => all.flat().reduce((a, p) => a + p[d], 0) / all.flat().length), far = (t) => Math.hypot(all[t][0][0] - centre[0], all[t][0][1] - centre[1]);
+  const shapes = new Map(), shapeOf = new Map();
+  for (let t = 0; t < n; t++) {
+    if (wall.has(t) || all[t].some((p) => turnAt.get(pointKey(p)) < 2 * Math.PI - 1e-3)) continue;
+    const sk = shapeKey(all[t]), k = `${sk}|${count(t)}`;
+    shapeOf.set(t, sk);
+    if (!shapes.has(k) || far(t) < far(shapes.get(k))) shapes.set(k, t);
+  }
   const kinds = [...shapes.values()].sort((u, v) => count(v) - count(u));
   if (tutShape.mode !== $('mode').value) Object.assign(tutShape, { mode: $('mode').value, at: 0 });
   const c = kinds[Math.min(tutShape.at, kinds.length - 1)];
@@ -7435,7 +7455,7 @@ function ruleTutorial(option) {
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
