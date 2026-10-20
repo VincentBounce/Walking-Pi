@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.920';
+const VERSION = '0.1.921';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2392,7 +2392,7 @@ MODE_ICONS.lifePits = 'walls';
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Hats', 1, 'Kites'], ['Penrose', 1, 'Hats'], ['Spectre', 1, 'Penrose'], ['Ammann', 1, 'Spectre'], ['Flower 3', 1, 'Ammann'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Ring 7', 1, 'Flower 8'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 12', 1, 'Ring 9'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Hats', 1, 'Kites'], ['Spectre', 1, 'Hats'], ['Penrose', 1, 'Spectre'], ['Ammann', 1, 'Penrose'], ['Flower 3', 1, 'Ammann'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Ring 7', 1, 'Flower 8'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 12', 1, 'Ring 9'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -7155,10 +7155,10 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   const preset = [...$('lifePreset').options].find((o) => o.value === rule);
   $('lifePreset').value = preset ? rule : 'custom';
 }
-// The colours, as blocks: one (black), or 2, 3, 4, 5, 6, 8, 9, 12 civilisations, each block its colours in
+// The colours, as blocks: one (black), or 2, 3, 4, 5, 6, 7, 8, 9, 12 civilisations, each block its colours in
 // a cols × rows grid; a block greyed when the figure has no fair spots for that many (see coloursFit)
-const COLOUR_STEPS = [1, 2, 3, 4, 5, 6, 8, 9, 12];
-const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 5: [5, 1], 6: [3, 2], 8: [4, 2], 9: [3, 3], 12: [4, 3] };
+const COLOUR_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12];
+const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 5: [5, 1], 6: [3, 2], 7: [7, 1], 8: [4, 2], 9: [3, 3], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
 // ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3
 function torusBlocks(K, g = walk.geo) {
@@ -7194,7 +7194,7 @@ const colourBlock = (k) => {
   const [cols, rows] = COLOUR_GRID[k], cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
   return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
 };
-const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5: 'Quintet', 6: 'Sextet', 8: 'Octet', 9: 'Nonet', 12: 'Dozen' };  // one colour, then battles
+const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5: 'Quintet', 6: 'Sextet', 7: 'Septet', 8: 'Octet', 9: 'Nonet', 12: 'Dozen' };  // one colour, then battles
 // the counts of colours fair on the figure, every colour's part a copy of the others': on the plane, those its turns n share
 // with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
 // 1), on a torus any (its blocks); on a
@@ -8274,7 +8274,7 @@ const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 5: '5 fifths', 6: '6 sixths', 8: '8 eighths', 9: '9 ninths', 12: '12 twelfths' };
+const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 5: '5 fifths', 6: '6 sixths', 7: '7 sevenths', 8: '8 eighths', 9: '9 ninths', 12: '12 twelfths' };
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
 // cells apart): on the plane, their patches touch round the middle; the others' sit at fair spots
 const NEAR_RULES = ['B3678/S34678', 'B34/S123/C3', 'B2/S34', 'B24/S35', 'B2o/S2m34', 'B34/S23', 'B2/S24/C3', 'B23/S6/C3'];
