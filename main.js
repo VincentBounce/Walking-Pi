@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.861';
+const VERSION = '0.1.862';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1698,6 +1698,7 @@ const ICONS = (() => {
       + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
       + '<ellipse cx="12" cy="13.2" rx="5.2" ry="6.4" stroke-width="1.9"/>' + pathEl('M12 10.2L14 11.4V14.2L12 15.4L10 14.2V11.4Z', 'thin'),
     billiard: '<circle cx="8.5" cy="15.5" r="4.5"/><circle cx="15.5" cy="8.5" r="4.5"/>',  // two balls meeting
+    reversible: pathEl('M5 12A7 7 0 0 1 18.06 8.5M18.94 5.22L18.06 8.5L14.78 7.62') + pathEl('M19 12A7 7 0 0 1 5.94 15.5M5.06 18.78L5.94 15.5L9.22 16.38'),  // two arrows round, clockwise (🔄 the other way)
     turmite: pathEl('M12 12H15V9H9V15H18V6H6V18H21'),  // a square spiral
     worm: pathEl('M3 19L7.5 11.2L12 19L16.5 11.2L14.3 7.3L18.8 7.3L21 3.5') + pathEl(pathOf([[20, 2], [22, 2], [22, 4], [20, 4]]), 'f'),  // its path along the triangles' lines, its head
     ant: '<path d="M10.5 10L7 8.4 5.6 5.4M13.5 10L17 8.4 18.4 5.4M10.2 11.4L5.2 11.8 3.4 13.6M13.8 11.4L18.8 11.8 20.6 13.6M10.4 12.8L7.2 15.6 6.4 19.6M13.6 12.8L16.8 15.6 17.6 19.6M10.8 4.8L9.2 2.6 7.4 2.8M13.2 4.8L14.8 2.6 16.6 2.8" stroke-width="1.8"/>'
@@ -2370,7 +2371,7 @@ MODE_ICONS.lifePits = 'walls';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'billiard'], ['Ant', 'ant'], ['Walk', 'compass']];
+const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
 const NAV_SPACES = ['2D', 'Surfaces', '3D'], SPACE_NAMES = { '2D': '2D', Surfaces: '3D', '3D': 'Space' };
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
@@ -7136,8 +7137,11 @@ function walkFigures(w) {
   // a surface's cell: the one it steps from, a side toward where it came from
   const polygon = (p, q) => { const t = Math.atan2(q[1] - p[1], q[0] - p[0]), R = 0.5 / Math.cos(Math.PI / n); return [...Array(n).keys()].map((k) => [p[0] + R * Math.cos(t + ((2 * k + 1) * Math.PI) / n), p[1] + R * Math.sin(t + ((2 * k + 1) * Math.PI) / n)]); };
   const figure = (d, into, after = [], caption = words[d]) => {
-    const at = path([...into, d, ...after]), here = start.length - 1 + into.length, choice = !spiral && !mode.pivot && !mode.parity;
-    const ends = choice ? digits.map((g) => path([...into, g]).at(-1)) : [];
+    const at = path([...into, d, ...after]), here = start.length - 1 + into.length, notches = mode.pivot ?? mode.parity;
+    // the ways on: each digit's end; a pivot's or a parity's, round it along its fixed directions (a surface's, its notches)
+    const round = () => (surface ? [...Array(notches).keys()].map((k) => [Math.cos(Math.PI / 2 + (2 * Math.PI * k) / notches), -Math.sin(Math.PI / 2 + (2 * Math.PI * k) / notches)])
+      : [...Array(MODES[mode.steps].base).keys()].map((g) => STEPPERS[mode.steps]()(g).slice(1, 3))).map((o) => [at[here][0] + o[0], at[here][1] + o[1]]);
+    const ends = spiral ? [] : notches ? round() : digits.map((g) => path([...into, g]).at(-1));
     const drawn = !cells ? [] : surface ? [polygon(at[here], at[here - 1])] : [...new Map([...at, ...ends].map((p) => [pointKey(p), walkCell(mode.lattice, p)])).values()];
     return { d, caption, at: at.slice(0, here + 2), next: at.slice(here + 1), ends, here, dashed: spiral && !d, cells: drawn };
   };
@@ -7185,7 +7189,7 @@ function walkTutorial(w) {
     const here = cellsOn(f, from(f)), points = (c) => c.map((p) => p.join(',')).join(' ');
     // (a creature's cell: its colour, fading into the one it leaves there)
     const painted = (c) => `<polygon points="${points(c)}" fill="${f.paint[1]}"/><polygon points="${points(c)}" fill="${f.paint[0]}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>${poly(c, 'tut-cell')}`;
-    const lit = !still && cellsOn(f, to), others = f.cells.filter((c) => c !== here && c !== lit);  // (the lit cell last: its frame on top)
+    const lit = !still && cellsOn(f, to), others = f.cells.filter((c) => c !== here);  // (the lit cell again last: its frame on top, lit softly)
     return `<svg viewBox="${mid(f, 0) - r} ${mid(f, 1) - r} ${2 * r} ${2 * r}">${others.map((c) => poly(c, 'tut-cell')).join('')}`
       + `${here ? (f.paint ? painted(here) : poly(here, 'tut-cell-here')) : ''}`
       + `${f.ends.map((p) => line(from(f), p, 'tut-way')).join('')}${f.at.slice(1, f.here + 1).map((p, i) => line(f.at[i], p, 'tut-in')).join('')}${lit ? poly(lit, 'tut-cell-to') : ''}`
