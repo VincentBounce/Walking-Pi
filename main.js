@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.921';
+const VERSION = '0.1.922';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -919,7 +919,7 @@ const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after
 const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
 const tilingOf = (kind) => TILINGS[kind] ?? RECTS[kind];
 const baseOf = (kind) => RECTS[kind]?.base ?? kind;
-const planeKind = (kind) => (plane.rect && RECTS[`${kind}Rect`] ? `${kind}Rect` : kind);  // the grid as it is built: a rectangle's, if so
+const planeKind = (kind) => (plane.rect && RECTS[`${kind}Rect`] && !hexagonFits(kind) ? `${kind}Rect` : kind);  // (a six-fold grid: never, a hexagon or a rhombus)  // the grid as it is built: a rectangle's, if so
 const tilingAt = (kind, x, y) => { const P = tilingOf(kind).polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
 const tilingWorld = (kind, [u, v]) => { const [a, b] = tilingOf(kind).basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
 
@@ -5775,7 +5775,7 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, round: true, rect: false, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 48, torus: true, rect: false, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -6593,7 +6593,6 @@ function planeLead(number) {
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
-  plane.round = Number(s.sq) !== 1;
   plane.rect = Number(s.o) === 1;
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
@@ -6645,16 +6644,16 @@ function renderPlaneRow() {
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
   $('edgeTorus').classList.toggle('switch', planeTorus(kind));  // (on: a click still changes it)
   $('edgeTorus').disabled = !!APERIODIC[kind];  // (a grid that never repeats: never a torus)
-  // its outline, the four always there, those it cannot have greyed: its natural one (round: rings round its middle), a
-  // circle on a grid that never repeats, a hexagon on a six-fold one with walls; a slanted grid a rhombus or cut as a square,
-  // another its square
-  // (on a torus: a click on one it cannot have, walls)
+  // its outline, the four always there, those it cannot have greyed: a grid that never repeats, a circle (Ammann's, an
+  // octagon); a six-fold one, a hexagon with walls, a rhombus on a torus (a click on one, the other's torus); another slanted
+  // one, a rhombus or cut as a square; the others their square
   const A = !!APERIODIC[kind], slanted = !!RECTS[`${kind}Rect`], hexagon = hexagonFits(kind) && !MODES[$('mode').value].margolus;
-  const round = A || (plane.round && hexagon && !planeTorus(kind)), squared = !slanted || plane.rect;  // (a grid that never repeats: always in a circle)
+  const squared = !A && !hexagon && (!slanted || plane.rect);
   const oct = kind === 'ammann';  // (its natural outline an octagon, in Circle's place)
   $('patchRound').querySelector('span').textContent = oct ? 'Octagon' : 'Circle';
   $('patchRound').querySelector('svg').innerHTML = ICONS[oct ? 'wallsOctagon' : 'wallsRound'];
-  for (const [id, can, on] of [['patchRound', A, A && round], ['patchHex', hexagon, !A && round], ['patchRhombus', !A && slanted, !round && !squared], ['patchSquare', !A, !round && squared]]) {
+  for (const [id, can, on] of [['patchRound', A, A], ['patchHex', hexagon, hexagon && !planeTorus(kind)], ['patchRhombus', !A && slanted, hexagon ? planeTorus(kind) : !A && slanted && !plane.rect],
+    ['patchSquare', !A && !hexagon, squared]]) {
     $(id).disabled = !can;
     $(id).classList.toggle('active', on);
   }
@@ -6715,7 +6714,7 @@ function renderPlaneRow() {
 // middle, corner or side's middle that its cells round turn onto) the nearest its middle, the biggest that keeps the
 // grid's edge out of it by a cell's width: { dead, walls: [[x, y], …] }, else null. Its cells
 // as the whole grid's (patterns, symmetry and hunts the same); a cut by a distance: cells as far, all in or all out
-const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind) && plane.round && !MODES[$('mode').value]?.margolus;
+const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind) && !MODES[$('mode').value]?.margolus;  // (a six-fold grid with walls: always a hexagon)
 function planeShape(kind, W) {
   if (!shaped(kind)) return null;
   const key = `${kind}|${W}`;
@@ -7203,7 +7202,7 @@ const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, penrose: 5, ha
 const colourFair = (K, g = walk.geo) => {
   const mode = MODES[$('mode').value], kind = mode?.plane;
   if (K === 1) return true;
-  if (kind && planeTorus(kind)) return true;  // (a torus: blocks of its side, see colourW, all alike)
+  if (kind && (planeTorus(kind) || kind === 'hat' || kind === 'spectre')) return true;  // (a torus: blocks of its side, see colourW, all alike; a hat's or a spectre's circle, as many cells each, see planeSlices)
   if (kind) {
     const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'penrose'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
     return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
@@ -8306,7 +8305,7 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOT
 let sliceMemo = null;
 const wallSlices = (K) => walk.plane && !walk.plane.torus && K > 1 && ((K !== 2 && K !== 4) || !!APERIODIC[walk.plane.kind] || !!planeShape(walk.plane.kind, walk.plane.W));  // (in a circle or a hexagon: always)
 function planeSlices(K) {
-  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${K}|${turn}|${plane.round}`;
+  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${K}|${turn}`;
   if (sliceMemo?.key === key) return sliceMemo;
   // as seen (turned, see planeTurn), from red's, its middle up and to the left (½ a slice left of straight up), clockwise;
   // in a circle or a hexagon: round its own middle, slices of one angle each (a hexagon's from a corner: on 3, 6 or 12
@@ -8324,9 +8323,9 @@ function planeSlices(K) {
   const part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
   // (the cell on its middle no one's, the slices all alike; on twice as many as its turns, each slice a mirror of the next,
   // the cells on the lines between them no one's either: all as many)
-  const halves = shape && K === 2 * figureTurns(kind);
-  if (shape) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
-  else [...angle.keys()].sort((p, q) => angle[p] - angle[q]).forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
+  const halves = shape && K === 2 * figureTurns(kind), byCells = !shape || kind === 'hat' || kind === 'spectre';  // (no turns: as many cells each, round its middle)
+  if (!byCells) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
+  else { const wall = new Set(walk.geo.walls), cells = [...angle.keys()].filter((t) => !wall.has(t)).sort((p, q) => angle[p] - angle[q]); part.fill(-1); cells.forEach((t, k) => { part[t] = Math.floor((k * K) / cells.length); }); }
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
   // its slices' middles bunch up), the cell nearest each
   const spots = Array.from({ length: K }, (_, i) => {
@@ -9066,7 +9065,6 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    if (!plane.round) s.sq = 1;  // (a rhombus or a square, not round)
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     s.pop = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
@@ -11711,15 +11709,15 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
     compute(true);
   });
 }
-// the outline: its natural one (round: a circle, a hexagon), else the grid as a rhombus or a square (rect); kept from grid to grid
-for (const [id, set, pic] of [['patchRound', { round: true }, 'wallsRound'], ['patchHex', { round: true }, 'wallsHex'],
-  ['patchRhombus', { round: false, rect: false }, 'wallsRhombus'], ['patchSquare', { round: false, rect: true }, 'walls']]) {
+// the outline: a six-fold grid's hexagon (walls) or rhombus (a torus); another slanted grid's rhombus or square (rect), kept
+// from grid to grid
+for (const [id, set, pic] of [['patchRound', {}, 'wallsRound'], ['patchHex', { torus: false }, 'wallsHex'],
+  ['patchRhombus', { rect: false }, 'wallsRhombus'], ['patchSquare', { rect: true }, 'walls']]) {
   $(id).querySelector('svg').innerHTML = ICONS[pic];
   $(id).addEventListener('click', () => {
-    const off = set.round && plane.torus;  // (a circle or a hexagon: walls, the torus off)
-    if (!off && Object.keys(set).every((k) => plane[k] === set[k])) return;
-    Object.assign(plane, set, off ? { torus: false } : {});
-    compute(true);
+    const was = { ...plane };
+    Object.assign(plane, set, id === 'patchRhombus' && hexagonFits(MODES[$('mode').value].plane) ? { torus: true } : {});
+    if (Object.keys(plane).some((k) => plane[k] !== was[k])) compute(true);
   });
 }
 $('edgeTorus').querySelector('svg').innerHTML = ICONS.torus;  // a torus or walls: on, off
