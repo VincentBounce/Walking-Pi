@@ -1,0 +1,10 @@
+ring7 22168 rules 224 candidates 25s
+ring7 done 131s
+  B2/S0345/C5     0.178  T 528 (156–6000) spread 1.31 plateau 0.76 at200 6.2% ash 3.3% osc 67%
+  B2/S0346/C4     0.116  T 574 (222–2824) spread 0.81 plateau 0.68 at200 5.9% ash 3.36% osc 0%
+  B267/S0346/C4   0.103  T 509 (351–1100) spread 0.37 plateau 0.58 at200 6% ash 3.22% osc 0%
+  B25/S0347/C4    0.099  T 799 (288–3063) spread 0.8 plateau 0.77 at200 6.1% ash 3.16% osc 0%
+  B26/S0346/C4    0.097  T 734 (342–4361) spread 0.8 plateau 0.75 at200 5.3% ash 3.22% osc 0%
+  B26/S034/C4     0.078  T 697 (199–1690) spread 0.7 plateau 0.77 at200 4.8% ash 3.25% osc 0%
+  B27/S0347/C4    0.064  T 532 (307–1764) spread 0.53 plateau 0.76 at200 5.4% ash 3.25% osc 0%
+  B26/S0347/C4    0.062  T 874 (140–2279) spread 0.84 plateau 0.81 at200 4.8% ash 3.19% osc 0%

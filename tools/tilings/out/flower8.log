@@ -1,0 +1,10 @@
+flower8 103448 rules 898 candidates 135s
+flower8 done 467s
+  B345/S0239      0.185  T 684 (419–1430) spread 0.34 plateau 0.35 at200 11.3% ash 3.56% osc 58%
+  B36/S3457       0.156  T 851 (312–2417) spread 0.53 plateau 0.32 at200 12% ash 1.35% osc 100%
+  B24/S0356/C4    0.083  T 484 (250–1636) spread 0.49 plateau 0.65 at200 5.3% ash 3.3% osc 0%
+  B258/S0345/C5   0.082  T 453 (238–1872) spread 0.6 plateau 0.76 at200 5.3% ash 3.05% osc 42%
+  B279/S0367/C4   0.079  T 597 (211–1120) spread 0.49 plateau 0.73 at200 4.7% ash 3.27% osc 0%
+  B249/S0356/C4   0.072  T 465 (250–1636) spread 0.53 plateau 0.66 at200 5.3% ash 3.3% osc 0%
+  B27/S0369/C4    0.067  T 693 (226–1424) spread 0.65 plateau 0.79 at200 4.7% ash 3.45% osc 0%
+  B345/S023       0.067  T 479 (236–744) spread 0.31 plateau 0.37 at200 12.3% ash 3.99% osc 67%

@@ -38,12 +38,17 @@ function squarePatch(items, W, poly, round = false, middle = null) {  // round: 
   const walls = near.filter((h) => poly(h).some((q) => inside.has(pointKey(q)))).map((h) => h.p);
   // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
   const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
-  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at) };
+  const dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
+  return { polys: rows.map((h) => at(h.p)), walls: [...walls, ...dead.map((t) => rows[t].p)].map(at), dead };
 }
-function ROSETTE(n, seed = null) {
-  const deg = [180 - 240 / n, 360 / n, 180 - 120 / n, 90 - 60 / n, 90 + 60 / n], side = [1, 1, 1, 2 * Math.sin(Math.PI / n), 1];  // A B C D E; AB BC CD DE EA
-  const P0 = [[0, 0]];
-  for (let i = 0, h = 0; i < 4; i++) { const [x, y] = P0[i]; P0.push([x + side[i] * Math.cos((h * Math.PI) / 180), y + side[i] * Math.sin((h * Math.PI) / 180)]); h += 180 - deg[i + 1]; }
+function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon left empty (its own pentagon: Sugimoto's (3))
+  const deg = hole ? [180 - 720 / n, 1080 / n, 180 - 360 / n, 90 - 180 / n, 90 + 180 / n] : [180 - 240 / n, 360 / n, 180 - 120 / n, 90 - 60 / n, 90 + 60 / n];  // A B C D E
+  // its corners: AB, BC, CD of side 1, then DE and EA as the angles close it (DE: 2 sin(B / 2) round a star; EA: 1)
+  const dir = [0]; for (let i = 1; i < 5; i++) dir.push(dir[i - 1] + 180 - deg[i]);
+  const u = dir.map((h) => [Math.cos((h * Math.PI) / 180), Math.sin((h * Math.PI) / 180)]), D3 = [0, 1].map((k) => u[0][k] + u[1][k] + u[2][k]);
+  const det = u[3][0] * u[4][1] - u[3][1] * u[4][0], e = (-D3[0] * u[4][1] + D3[1] * u[4][0]) / det, f = (-u[3][0] * D3[1] + u[3][1] * D3[0]) / det;  // (DE·u3 + EA·u4 = −(AB + BC + CD))
+  const side = [1, 1, 1, e, f], P0 = [[0, 0]];
+  for (let i = 0; i < 4; i++) P0.push([P0[i][0] + side[i] * u[i][0], P0[i][1] + side[i] * u[i][1]]);
   const A0 = deg.map((d) => Math.round(d * n)), FULL = 360 * n;  // (angles in n-ths of a degree: whole numbers)
   const SH = [];  // the tile and its mirror, from each corner (counterclockwise): its corners and their angles
   for (const [P, A] of [[P0, A0], [P0.map(([x, y]) => [x, -y]).reverse(), [...A0].reverse()]]) for (let s = 0; s < 5; s++) SH.push([[...P.slice(s), ...P.slice(0, s)], [...A.slice(s), ...A.slice(0, s)]]);
@@ -88,8 +93,13 @@ function ROSETTE(n, seed = null) {
       const t = Math.atan2(a[1] - b[1], a[0] - b[0]) - Math.atan2(Q[1][1] - Q[0][1], Q[1][0] - Q[0][0]), c = Math.cos(t), s = Math.sin(t);
       return [Q.map(([x, y]) => [b[0] + c * (x - Q[0][0]) - s * (y - Q[0][1]), b[1] + s * (x - Q[0][0]) + c * (y - Q[0][1])]), A];
     };
-    // the middle: the seed's tiles n times round, or n tiles round their corner B
-    if (seed) for (let k = 0; k < n; k++) for (const P of seed) { const Q = turn(P, k); add(Q, angleOf(Q)); }
+    // the middle: the seed's tiles n times round; or n tiles round their corner B; or round a hole, a regular n-gon of side 1
+    // (its corners' angles, 180° − 360°/n, A + B more round them), a tile's side AB on each of its sides
+    if (hole) {
+      const r = 1 / (2 * Math.sin(Math.PI / n)), gon = [...Array(n).keys()].map((k) => [r * Math.cos(((2 * k + 1) * Math.PI) / n - Math.PI / 2), r * Math.sin(((2 * k + 1) * Math.PI) / n - Math.PI / 2)]);
+      add(gon, gon.map(() => Math.round((180 - 360 / n) * n)));
+      for (let k = 0; k < n; k++) add(...place(SH[0], gon[k], gon[(k + 1) % n]));
+    } else if (seed) for (let k = 0; k < n; k++) for (const P of seed) { const Q = turn(P, k); add(Q, angleOf(Q)); }
     else { const [Q, A] = SH[1], t = -Math.atan2(Q[1][1] - Q[0][1], Q[1][0] - Q[0][0]), c = Math.cos(t), s = Math.sin(t), star = Q.map(([x, y]) => [c * (x - Q[0][0]) - s * (y - Q[0][1]), s * (x - Q[0][0]) + c * (y - Q[0][1])]);
       for (let k = 0; k < n; k++) add(turn(star, k), A); }
     let steps = 0;
@@ -100,7 +110,7 @@ function ROSETTE(n, seed = null) {
       if (!best) return true;
       // (its open sides: the sides at it with a tile on one side only, that tile on their left)
       const sides = new Map();
-      for (const [j, i] of best.uses) { const P = tiles[j].P; for (const [a, b] of [[P[i], P[(i + 1) % 5]], [P[(i + 4) % 5], P[i]]]) sides.set(`${key(a)}|${key(b)}`, [a, b]); }
+      for (const [j, i] of best.uses) { const P = tiles[j].P, L = P.length; for (const [a, b] of [[P[i], P[(i + 1) % L]], [P[(i + L - 1) % L], P[i]]]) sides.set(`${key(a)}|${key(b)}`, [a, b]); }
       for (const [s, [a, b]] of sides) {
         const [ka, kb] = s.split('|');
         if (sides.has(`${kb}|${ka}`)) continue;
@@ -117,25 +127,27 @@ function ROSETTE(n, seed = null) {
       return false;
     };
     if (!step()) throw new Error('rosette: stuck');
-    return tiles.map((t) => t.P);
+    return tiles.map((t) => t.P);  // (round a hole: the hole first)
   };
   const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % 5][1] - P[(i + 1) % 5][0] * p[1], 0) / 2), U = 1 / Math.sqrt(area(P0));  // (a tile a square unit)
   const cache = {};
   return (W, round = false) => cache[`${W} ${round}`] ??= (() => {
     const R = (0.525 * W * Math.SQRT2 + 5) / U;  // (round the W² tiles' square, its walls too)
-    const items = grow(R).map((P) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p) }; });
+    const items = grow(R).map((P, i) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p), dead: hole && i === 0 }; });  // (the hole: a cell of the wall)
     return squarePatch(items, W, (h) => h.p, round, [0, 0]);  // (round its middle)
   })();
 }
-// the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 5-fold and the 7-fold (from their stars)
+// the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 3-, 4-, 5-, 7- and 8-fold (from their stars), the
+// 7- and 8-fold rings (round a hole)
 const FLOWER_SEED = [[[0.0,0.0],[1.0,0.0],[1.9396926208,0.3420201433],[1.4396926208,1.2080455471],[0.5,0.8660254038]],[[1.0,0.0],[1.7660444431,-0.6427876097],[2.7057370639,-0.984807753],[2.8793852416,-0.0],[1.9396926208,0.3420201433]],[[2.2057370639,-1.8508331568],[2.3793852416,-2.8356409098],[3.3793852416,-2.8356409098],[3.2057370639,-1.8508331568],[2.7057370639,-0.984807753]],[[2.8793852416,0.0],[2.7057370639,0.984807753],[2.2057370639,1.8508331568],[1.4396926208,1.2080455471],[1.9396926208,0.3420201433]],[[2.7057370639,-0.984807753],[3.2057370639,-1.8508331568],[4.1454296847,-1.5088130135],[3.6454296847,-0.6427876097],[2.8793852416,0.0]],[[2.8793852416,-0.0],[3.6454296847,-0.6427876097],[4.4114741278,0.0],[3.6454296847,0.6427876097],[2.7057370639,0.984807753]],[[4.4114741278,0.0],[5.4114741278,0.0],[6.3511667486,0.3420201433],[5.8511667486,1.2080455471],[4.9114741278,0.8660254038]],[[4.4114741278,0.0],[3.6454296847,-0.6427876097],[4.1454296847,-1.5088130135],[4.9114741278,-0.8660254038],[5.4114741278,0.0]],[[4.9114741278,0.8660254038],[5.8511667486,1.2080455471],[6.6172111917,1.8508331568],[5.8511667486,2.4936207665],[5.0851223055,1.8508331568]],[[4.1454296847,1.5088130135],[3.6454296847,0.6427876097],[4.4114741278,-0.0],[4.9114741278,0.8660254038],[5.0851223055,1.8508331568]],[[4.1454296847,-1.5088130135],[5.0851223055,-1.8508331568],[6.0851223055,-1.8508331568],[5.9114741278,-0.8660254038],[4.9114741278,-0.8660254038]],[[4.9114741278,-0.8660254038],[5.9114741278,-0.8660254038],[6.8511667486,-0.5240052605],[6.3511667486,0.3420201433],[5.4114741278,0.0]],[[4.1454296847,-1.5088130135],[3.2057370639,-1.8508331568],[3.3793852416,-2.8356409098],[4.3190778624,-2.4936207665],[5.0851223055,-1.8508331568]],[[4.3190778624,-2.4936207665],[5.2587704831,-2.8356409098],[6.2587704831,-2.8356409098],[6.0851223055,-1.8508331568],[5.0851223055,-1.8508331568]],[[3.3793852416,-2.8356409098],[4.1454296847,-3.4784285195],[5.0851223055,-3.8204486628],[5.2587704831,-2.8356409098],[4.3190778624,-2.4936207665]],[[7.0248149263,-1.5088130135],[6.0851223055,-1.8508331568],[6.2587704831,-2.8356409098],[7.1984631039,-2.4936207665],[7.964507547,-1.8508331568]],[[6.8511667486,-0.5240052604],[5.9114741278,-0.8660254038],[6.0851223055,-1.8508331568],[7.0248149263,-1.5088130135],[7.7908593694,-0.8660254038]],[[6.2587704831,-2.8356409098],[5.2587704831,-2.8356409098],[5.0851223055,-3.8204486629],[6.0851223055,-3.8204486628],[7.0248149263,-3.4784285195]],[[7.1172111917,0.984807753],[6.3511667486,0.3420201433],[6.8511667486,-0.5240052605],[7.6172111917,0.1187823492],[8.1172111917,0.984807753]],[[6.6172111917,1.8508331568],[5.8511667486,1.2080455471],[6.3511667486,0.3420201433],[7.1172111917,0.984807753],[7.6172111917,1.8508331568]],[[6.3511667486,3.3596461703],[5.8511667486,2.4936207665],[6.6172111917,1.8508331568],[7.1172111917,2.7168585606],[7.2908593694,3.7016663136]]];
-const ROSETTES = { flower: [6, ROSETTE(6, FLOWER_SEED)], flower5: [5, ROSETTE(5)], flower7: [7, ROSETTE(7)] };
+const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, FLOWER_SEED)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)],
+                   ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 export function rosetteGrid(name, W) {
-  const h = ROSETTES[name][1](W), n = W * W, by = new Map(), start = new Int32Array(n + 1), list = [], k = ([x, y]) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`;
+  const h = ROSETTES[name][1](W), n = W * W, by = new Map(), start = new Int32Array(n + 1), list = [], k = ([x, y]) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`, dead = new Set(h.dead);
   h.polys.forEach((p, t) => p.forEach((q) => { (by.get(k(q)) ?? by.set(k(q), []).get(k(q))).push(t); }));
   for (let t = 0; t < n; t++) {
     const around = new Set();
-    for (const q of h.polys[t]) for (const u of by.get(k(q))) if (u !== t) around.add(u);
+    if (!dead.has(t)) for (const q of h.polys[t]) for (const u of by.get(k(q))) if (u !== t && !dead.has(u)) around.add(u);  // (the wall's cells: none)
     start[t] = list.length;
     list.push(...[...around].sort((a, b) => a - b));
   }

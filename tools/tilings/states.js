@@ -11,7 +11,7 @@ const digits = [...Array(most + 1).keys()], Bs = new Set();
 for (const lo of [2, 3]) for (const rest of subsets(digits.filter((d) => d > lo), 1)) Bs.add([lo, ...rest].join(''));
 const rules = [];
 for (const b of Bs) for (const s of subsets(digits, 2)) for (const c of [8, 12, 16, 25]) rules.push(`B${b}/S${s.join('')}/C${c}`);
-const m = name === 'penrose' || name === 'spectre' || name === 'ammann' || name.startsWith('flower') ? 1 : tilingCells(name), W = (k) => (name === 'penrose' || name === 'spectre' || name === 'ammann' || name.startsWith('flower') ? `${name}:${Math.round(Math.sqrt(k))}` : `${name}:${Math.round(Math.sqrt(k / m))}`);
+const m = name === 'penrose' || name === 'spectre' || name === 'ammann' || name.startsWith('flower') || name.startsWith('ring') ? 1 : tilingCells(name), W = (k) => (name === 'penrose' || name === 'spectre' || name === 'ammann' || name.startsWith('flower') || name.startsWith('ring') ? `${name}:${Math.round(Math.sqrt(k))}` : `${name}:${Math.round(Math.sqrt(k / m))}`);
 const dir = new URL('./out/', import.meta.url), t0 = Date.now(), P = pool(N);
 Deno.mkdirSync(dir, { recursive: true });
 const cool = () => new Promise((r) => setTimeout(r, 20000));  // a rest between stages (the machine cools)
