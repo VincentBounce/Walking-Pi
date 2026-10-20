@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.901';
+const VERSION = '0.1.902';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1757,6 +1757,7 @@ const ICONS = (() => {
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
     wallsRound: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>',  // walls in a circle
     wallsHex: '<path d="M7.5 4.2h9L21 12l-4.5 7.8h-9L3 12z"/><path d="M9.8 8.1h4.4L16.5 12l-2.3 3.9H9.8L7.5 12z"/>',  // in a hexagon
+    wallsRhombus: '<path d="M2.5 18.5L8 5.5h13.5L16 18.5z"/><path d="M7.3 15.2L10 8.8h6.7L14 15.2z"/>',  // in a rhombus (the slanted grid's own)
     // a slanted grid as it is (a rhombus), or as a rectangle
     rhombus: pathEl('M22 19L16 5H2L8 19Z'),
     rectangle: '<rect x="3" y="5" width="18" height="14" rx="1"/>',
@@ -11653,7 +11654,7 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 }
 // the outline: its natural one (round: a circle, a hexagon), else the grid as a rhombus or a square (rect); kept from grid to grid
 for (const [id, set, pic] of [['patchRound', { round: true }, 'wallsRound'], ['patchHex', { round: true }, 'wallsHex'],
-  ['patchRhombus', { round: false, rect: false }, 'rhombus'], ['patchSquare', { round: false, rect: true }, 'walls']]) {
+  ['patchRhombus', { round: false, rect: false }, 'wallsRhombus'], ['patchSquare', { round: false, rect: true }, 'walls']]) {
   $(id).querySelector('svg').innerHTML = ICONS[pic];
   $(id).addEventListener('click', () => {
     const off = set.round && plane.torus;  // (a circle or a hexagon: walls, the torus off)
