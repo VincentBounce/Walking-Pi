@@ -3,7 +3,7 @@
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
-// said; the grids that never repeat, their walls closed; those in a circle or a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count.
+// said; the grids that never repeat, their walls closed; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count.
 
 const neighbourCounts = (g, keep = () => true) => {  // how many cells have k neighbours, as shares
   const { start } = cornerNeighbours(g), walls = new Set(g.walls ?? []), c = {};
@@ -68,12 +68,12 @@ function checkMeshes(fail) {
     if (gaps) fail(`${kind} ${round ? 'circle' : 'square'} ${W}: its walls open (${gaps} sides)`);
   }
   plane.round = round0;
-  // the grids with walls in a circle or a hexagon (see planeShape): their walls closed round the live cells, and the live
+  // the six-fold grids with walls in a hexagon (see planeShape): their walls closed round the live cells, and the live
   // cells turning onto each other round its centre
-  const saved = { torus: plane.torus, round: plane.round, hexagon: plane.hexagon };
-  for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', ...Object.keys(TILINGS), ...Object.keys(RECTS)]) for (const hexagon of [false, true]) {
-    if (!tilingOf(kind) && !PLANE_PER[kind] || hexagon && !hexagonFits(kind)) continue;  // (a rectangle's cells: built when first asked for, if any)
-    Object.assign(plane, { torus: false, round: true, hexagon });
+  const saved = { torus: plane.torus, round: plane.round };
+  for (const kind of ['hex', 'tri', 'kite', ...Object.keys(TILINGS), ...Object.keys(RECTS)]) {
+    if (!tilingOf(kind) && !PLANE_PER[kind] || !hexagonFits(kind)) continue;  // (a rectangle's cells: built when first asked for, if any)
+    Object.assign(plane, { torus: false, round: true });
     const W = planeW(kind, 32), row = planeRow(kind, W), sh = planeShape(kind, W), dead = new Set(sh.dead), at = (t) => planeCorners(kind, t % row, Math.floor(t / row));
     const live = [...Array(row * W).keys()].filter((t) => !dead.has(t)).map(at), all = [...live, ...sh.walls.map(([x, y]) => planeCorners(kind, x, y))], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
     const mid = (P) => [P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length];
@@ -92,7 +92,7 @@ function checkMeshes(fail) {
     const sig = (P) => `${P.length}|${Math.round(Math.abs(sarea(P)) * 50)}`, keys = new Set(mids.map(([u, v], i) => `${Math.round(u * 100)},${Math.round(v * 100)}|${sig(live[i])}`));  // (a cell by its middle and its shape)
     const off = mids.filter(([u, v], i) => { const x = c[0] + (u - c[0]) * Math.cos(turn) - (v - c[1]) * Math.sin(turn), y = c[1] + (u - c[0]) * Math.sin(turn) + (v - c[1]) * Math.cos(turn); return ![-1, 0, 1].some((e) => [-1, 0, 1].some((f) => keys.has(`${Math.round(x * 100) + e},${Math.round(y * 100) + f}|${sig(live[i])}`))); }).length;
     checked++;
-    const what = `${kind} ${hexagon ? 'hexagon' : 'circle'} ${W}`;
+    const what = `${kind} hexagon ${W}`;
     if (gaps) fail(`${what}: its walls open (${gaps} sides)`);
     if (off) fail(`${what}: ${off} of its ${live.length} cells not turning onto others`);
     const W0 = sideW(kind, 32), want = (Math.PI / 4) * planeRow(kind, W0) * W0;  // (as a disc of ⌀ 32's, see shapeW; a grid of few big lattice cells: by big steps)
