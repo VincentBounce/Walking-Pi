@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.865';
+const VERSION = '0.1.866';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5924,7 +5924,15 @@ const ROOT3_2 = Math.sqrt(3) / 2;
 const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penrose's rhombi never wrap round: they never repeat
 const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, spectre: 1, ammann: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
-const planeW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
+const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
+// blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
+const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : sideW(kind, side));
+const blockWraps = new Map();
+function blockWrapW(kind, W) {
+  const key = `${kind} ${W}`, d = kind === 'cairo' || kind === 'cairoRect' ? 2 : 1;  // (Cairo's: even)
+  if (!blockWraps.has(key)) blockWraps.set(key, [0, d, -d, 2 * d, -2 * d, 3 * d, -3 * d].map((e) => W + e).find((w) => w > 2 && planeBlocks(kind, w, true).wraps) ?? W);
+  return blockWraps.get(key);
+}
 const planeRow = (kind, W) => (tilingOf(kind) ? tilingOf(kind).polys.length * W : kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)
 // kite x of row y: kite x % 3 of triangle ⌊x / 3⌋ (as the triangles' x), its corners on the triangles' lattice
 const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
@@ -7014,32 +7022,35 @@ function blockTutorial(option, to) {
   const first = (st) => Math.min(...Array.from({ length: k }, (_, r) => ringTurn(st, r, k)));  // (one of each turned the same)
   const states = [...Array(1 << k).keys()].filter((st) => first(st) === st).sort((a, b) => alive(a) - alive(b) || a - b);
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
-  // each set's blocks on a piece of the grid round that block: a tint each, in turn
-  // (the piece: its cells within R of that block's centre, framed square round it; a block's tint not its neighbours')
-  const c = centreOf(ring), R = side * 1.25;
-  const near = [...Array(W * row).keys()].filter((t) => poly(t) && Math.hypot(mid(t)[0] - c[0], mid(t)[1] - c[1]) < R);
-  const reach = Math.max(...near.flatMap(poly).map((p) => Math.max(Math.abs(p[0] - c[0]), Math.abs(p[1] - c[1]))));
-  const sides = ring.flatMap((t) => poly(t).map((p, j, ps) => [p, ps[(j + 1) % ps.length]])), at = (p) => pointKey(p);
-  const once = sides.filter(([a, b]) => sides.filter(([u, v]) => at(u) === at(b) && at(v) === at(a)).length === 0);  // (its rim: sides not shared inside it)
-  const outline = once.map(([a, b]) => `M${a.join(',')}L${b.join(',')}`).join('');
-  const tints = [0, 1, 2, 3, 4, 5].map((j) => faded(LIFE_COLOURS[j], 0.45));
-  const phase = (blocks) => {
-    const of = new Map(), tint = [], touching = new Map();  // (a corner: the tints of the blocks round it)
-    for (let i = 0; i < blocks.length; i += k) {
-      const cells = [...blocks.subarray(i, i + k)], b = i / k, keys = cells.flatMap(poly).map(at);
-      if (!cells.some((t) => near.includes(t))) continue;
-      tint[b] = tints.findIndex((_, j) => !keys.some((q) => touching.get(q)?.has(j)));
-      for (const q of keys) touching.set(q, (touching.get(q) ?? new Set()).add(tint[b]));
-      for (const t of cells) of.set(t, b);
-    }
-    return `<svg viewBox="${c[0] - reach - pad} ${c[1] - reach - pad} ${2 * (reach + pad)} ${2 * (reach + pad)}">`
-      + `${near.map((t) => shape(t, of.has(t) ? tints[tint[of.get(t)]] : UNLIT)).join('')}`
-      + `<path d="${outline}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (the block below framed)
+  // each set at the grid's upper left corner (its 16 cells nearest it; past its edges, its wall as on the grid and the
+  // sky): a block of it framed, the nearest the corner
+  const torus = planeTorus(kind), { turns: edged } = planeBlocks(kind, W, torus), at = (p) => pointKey(p);
+  const corner = [...Array(W * row).keys()].filter((t) => poly(t)).flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
+  const far = (p) => Math.max(p[0] - corner[0], p[1] - corner[1]);
+  const patch = [...Array(W * row).keys()].filter((t) => poly(t)).sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
+  const reach = Math.max(...patch.flatMap(poly).map(far)), m = reach * 0.3, span = reach + m;
+  const inView = (ps) => ps.some((p) => p[0] < corner[0] + reach && p[1] < corner[1] + reach && p[0] > corner[0] - m && p[1] > corner[1] - m);
+  const shown = [...Array(W * row).keys()].filter((t) => poly(t) && inView(poly(t)));
+  const wall = torus ? [] : planeWalls(kind, W).map(([x, y]) => planeCorners(kind, x, y)).filter(inView);
+  const outlineOf = (cells) => {
+    const sides = cells.flatMap((t) => poly(t).map((p, j, ps) => [p, ps[(j + 1) % ps.length]]));
+    const keyOf = ([a, b]) => [at(a), at(b)].sort().join(' '), count = new Map();
+    for (const e of sides) count.set(keyOf(e), (count.get(keyOf(e)) ?? 0) + 1);
+    return sides.filter((e) => count.get(keyOf(e)) === 1).map(([a, b]) => `M${a.join(',')}L${b.join(',')}`).join('');  // (its rim: sides not shared, either way round)
   };
+  const phase = (blocks) => {
+    const whole = [];
+    for (let i = 0; i < blocks.length; i += k) { const cells = [...blocks.subarray(i, i + k)]; if (cells.every((t) => patch.includes(t))) whole.push(cells); }
+    const framed = whole.sort((u, v) => Math.hypot(...centreOf(u).map((x, d) => x - corner[d])) - Math.hypot(...centreOf(v).map((x, d) => x - corner[d])))[0] ?? [];
+    return `<svg viewBox="${corner[0] - m} ${corner[1] - m} ${span} ${span}"><defs><linearGradient id="tutSky" x2="0" y2="1"><stop offset="0" stop-color="#c3d7f2"/><stop offset="1" stop-color="#f0d9e2"/></linearGradient></defs>`
+      + `<rect x="${corner[0] - m}" y="${corner[1] - m}" width="${span}" height="${span}" fill="url(#tutSky)"/>${wall.length ? `<path d="${wall.map((c) => `M${c.map((p) => p.join(',')).join('L')}Z`).join('')}" fill="${LIFE_WALL}"/>` : ''}`  // (the wall one shape: no seams between its cells)
+      + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${outlineOf(framed)}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (a block framed)
+  };
+  const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood): `
-    + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.</p>`
-    + `<div class="tut-row tut-phases">${turns.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
+    + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
+    + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div></div>`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
@@ -7048,7 +7059,7 @@ function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.toggle('active', !!option); b.classList.toggle('switch', !!option); }  // (lit while it shows, as Full number)
   if (!option) return;
-  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours}`;  // (another grid or rule: shown again, see renderRuleSection)
+  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours} ${plane.torus}`;  // (another grid or rule: shown again, see renderRuleSection)
   if (parseRule(option.value)?.margolus) { blockTutorial(option, parseRule(option.value).margolus); return; }
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
@@ -7232,7 +7243,7 @@ function renderRuleSection() {
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
   const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
   const shown = mineNot ? yours : mine;
-  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now} ${shown.dataset.name} ${lifeColours}`) ruleTutorial(shown);  // how a rule works follows the grid and the rule
+  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now} ${shown.dataset.name} ${lifeColours} ${plane.torus}`) ruleTutorial(shown);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -7451,7 +7462,7 @@ function planeBlocks(kind, W, torus) {
   const turns = B.turn.map((set) => Int32Array.from(full.filter((c) => setOf(c) === set).flatMap((c) => c.cells.sort((x, y) => x[1] - y[1]).map(([t]) => t))));
   // each cell in one block of a set at most (a torus of a size the sets do not fit round: its blocks as on walls)
   const once = turns.every((blocks) => new Set(blocks).size === blocks.length);
-  return torus && !once ? planeBlocks(kind, W, false) : { k: B.k, turns };
+  return torus && !once ? { ...planeBlocks(kind, W, false), wraps: false } : { k: B.k, turns, wraps: torus };
 }
 // A generation of a block rule: the blocks of its set in turn (see planeBlocks), each block's state to its rule's; a cell
 // in no whole block (by walls) as it is
