@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.856';
+const VERSION = '0.1.857';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2634,8 +2634,10 @@ function renderModePicker() {
     const v = here ?? Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][3] === r);  // (elsewhere: its first shape)
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
     const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
+    const how = !creatures && r === rule && walkTutorialFits(w);  // (picked: a click shows how it works, as Life's rules)
     const b = button(creatures ? `${pic}<span>${r}</span>` : `<span class="mode-icon">${pic}</span><span><span class="mode-name">${r}</span></span>`
-      + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => { if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); });
+      + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => { if (how) { walkTutorialToggle(); return; } if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); });
+    b.classList.toggle('switch', how);
     b.disabled = !has(kind, r);
     return b;
   }));
@@ -7093,29 +7095,79 @@ function ruleTutorial(option) {
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
-// How a walk works: each digit a step, drawn by its own stepper, the way in (a relative walk's) muted, the digit's step
-// lit, the other digits' ends as dots. The walks a digit steps by (not a spiral's, a parity's or a pivot's)
+// How a walk works: a figure for each digit, its step lit, the way in (a relative walk's) muted, the other digits'
+// ends as dots; on cells, the cells. On the plane by the walk's own stepper; on a surface, a cell of it or a corner
+// of its grid by its turns (as on its flat tiling). A pivot's and a parity's: the step after dashed (where it heads);
+// a spiral's: its steps so far muted, a 0's step dashed (not drawn)
 const WALK_IN = { turtle: [1], turtleCells: [1], triTurtle: [2], hexTurtleCells: [2], hexTurtle: [0], triTurtleCells: [0], cairo: [1] };  // (a straight step if any)
-const walkTutorialFits = (w) => ['turtle', 'cardinal', 'king', 'cairo', 'triTurtle', 'triFixed', 'hexTurtle', 'hexFixed'].some((m) => w === m || w === `${m}Cells`);
+const walkTutorialFits = (w) => NAV[w]?.[0] === 'Walk' && (MODES[w].lattice === 'sphere' ? !!MODES[w].turns : ['square', 'hex', 'tri', 'cairo'].includes(MODES[w].lattice));
+// a 2D walk's cell round its middle
+function walkCell(lattice, [x, y]) {
+  if (lattice === 'square') return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [x + u / 2, y + v / 2]);
+  if (lattice === 'hex') return [0, 1, 2, 3, 4, 5].map((k) => [x + Math.cos(k * Math.PI / 3) / Math.sqrt(3), y + Math.sin(k * Math.PI / 3) / Math.sqrt(3)]);
+  if (lattice === 'tri') { const s = (((y - TRI_Y0) / H) % 1 + 1) % 1 > 0.5 ? 1 : -1; return [[x, y - s * 2 * H / 3], [x + 0.5, y + s * H / 3], [x - 0.5, y + s * H / 3]]; }  // (▲ or ▼)
+  return cairoCorners(...cairoAt(x, y)).map((p) => p.map((v, a) => (v - CAIRO_0[a]) * CAIRO));
+}
+// a surface's walk as on its flat tiling: a step of 1, its heading turned by its turns (degrees at a corner of its grid;
+// out of a cell, the edges counted from the one come in by, of n), a pivot's on the spot, a parity's after its step
+function surfaceStepper(mode, n) {
+  let x = 0, y = 0, a = Math.PI / 2, k = 0;  // (heading up, left positive)
+  const go = () => { x += Math.cos(a); y -= Math.sin(a); return [null, x, y]; }, notch = (m) => (2 * Math.PI) / m;
+  return (g) => {
+    if (mode.pivot) { if (g) a -= notch(mode.pivot); else go(); return [null, x, y]; }
+    if (mode.parity) { go(); k++; if (g) a += (k % 2 ? -1 : 1) * notch(mode.parity); return [null, x, y]; }
+    const t = mode.turns[g];
+    a += mode.grid ? (t * Math.PI) / 180 : (2 * Math.PI * t) / n - Math.PI;
+    return go();
+  };
+}
+// the figures: { d, caption, at (the way in, then the step), here (where it steps from), next (dashed), ends, cells, dashed (the step) }
+function walkFigures(w) {
+  const mode = MODES[w], digits = [...Array(mode.base).keys()], words = {}, surface = mode.lattice === 'sphere';
+  for (const [, d, t] of mode.rule.matchAll(/<b>(\d+)<\/b>\s*([^<]*)/g)) words[d] = t.replace(/[,\s]+(or\s*)?$/, '');
+  const n = mode.sphere === 'hexsphere' ? 6 : Math.max(...(mode.turns ?? [0])) + 1;  // (a surface's cell: the most it turns by and one, but on the sphere of hexagons)
+  const start = surface ? [[0, 1], [0, 0]] : [[0, 0]];  // (on a surface: come in from below)
+  const path = (seq) => { const step = surface ? surfaceStepper(mode, n) : STEPPERS[w](); return [...start, ...seq.map((g) => step(g).slice(1, 3))]; };
+  const spiral = /Spiral$|^spiral$/.test(w), cells = mode.cells || spiral;
+  // a surface's cell: the one it steps from, a side toward where it came from
+  const polygon = (p, q) => { const t = Math.atan2(q[1] - p[1], q[0] - p[0]), R = 0.5 / Math.cos(Math.PI / n); return [...Array(n).keys()].map((k) => [p[0] + R * Math.cos(t + ((2 * k + 1) * Math.PI) / n), p[1] + R * Math.sin(t + ((2 * k + 1) * Math.PI) / n)]); };
+  const figure = (d, into, after = [], caption = words[d]) => {
+    const at = path([...into, d, ...after]), here = start.length - 1 + into.length, choice = !spiral && !mode.pivot && !mode.parity;
+    const ends = choice ? digits.map((g) => path([...into, g]).at(-1)) : [];
+    const drawn = !cells ? [] : surface ? [polygon(at[here], at[here - 1])] : [...new Map([...at, ...ends].map((p) => [pointKey(p), walkCell(mode.lattice, p)])).values()];
+    return { d, caption, at: at.slice(0, here + 2), next: at.slice(here + 1), ends, here, dashed: spiral && !d, cells: drawn };
+  };
+  if (spiral) return [figure(1, Array(7).fill(1)), figure(0, Array(7).fill(1))];
+  const way = surface ? [] : [0];  // (a step forward first, its heading: a surface's comes in already)
+  if (mode.parity) return [figure(0, way, [0]), figure(1, surface ? [] : [0, 0], [0], 'step forward, then turn right (an odd digit: the 1st, 3rd…)'), figure(1, [0], [0], 'step forward, then turn left (an even digit)')];
+  if (mode.pivot) return digits.map((d) => figure(d, way, d ? [0] : []));
+  return digits.map((d) => figure(d, WALK_IN[w] ?? []));
+}
 function walkTutorial(w) {
   $('ruleTuto').hidden = false;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.add('active'); b.classList.add('switch'); }
   $('ruleTuto').dataset.shown = w;
-  const mode = MODES[w], into = WALK_IN[w] ?? [];
-  const path = (digits) => { const step = STEPPERS[w](); return [[0, 0], ...digits.map((g) => step(g).slice(1, 3))]; };
-  const figs = [...Array(mode.base).keys()].map((d) => ({ d, at: path([...into, d]), ends: [...Array(mode.base).keys()].map((g) => path([...into, g]).at(-1)) }));
-  const r = Math.max(...figs.flatMap(({ at, ends }) => [...at, ...ends].map((p) => Math.max(...[0, 1].map((a) => Math.abs(p[a] - at.at(-2)[a])))))) + 0.3;  // (round where it steps from)
+  const mode = MODES[w], figs = walkFigures(w), cellsOn = (f, p) => f.cells.find((c) => pointKey(c.reduce((s, q) => [s[0] + q[0] / c.length, s[1] + q[1] / c.length], [0, 0])) === pointKey(p));
+  const from = (f) => f.at[f.here], pts = (f) => [...f.at, ...(f.next ?? []), ...f.ends, ...f.cells.flat()];
+  const span = (f, a) => [Math.min(...pts(f).map((p) => p[a])), Math.max(...pts(f).map((p) => p[a]))];
+  const r = Math.max(...figs.flatMap((f) => [0, 1].map((a) => (span(f, a)[1] - span(f, a)[0]) / 2))) + 0.15, mid = (f, a) => (span(f, a)[0] + span(f, a)[1]) / 2;  // (all alike, each its own middle)
   const line = (a, b, cls) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${cls}"/>`;
   const dot = (p, cls) => `<circle cx="${p[0]}" cy="${p[1]}" r="0.09" class="${cls}"/>`;
-  const fig = ({ d, at, ends }) => `<svg viewBox="${at.at(-2)[0] - r} ${at.at(-2)[1] - r} ${2 * r} ${2 * r}">${ends.map((p) => line(at.at(-2), p, 'tut-way')).join('')}`
-    + `${at.slice(1).map((p, i) => line(at[i], p, i === at.length - 2 ? 'tut-step' : 'tut-in')).join('')}${ends.map((p) => dot(p, 'tut-end')).join('')}${dot(at.at(-2), 'tut-here')}${dot(at.at(-1), 'tut-to')}</svg>`;
-  const words = {};
-  for (const [, d, t] of mode.rule.matchAll(/<b>(\d+)<\/b>\s*([^<]*)/g)) words[d] = t.replace(/[,\s]+(or\s*)?$/, '');
+  const poly = (c, cls) => `<polygon points="${c.map((p) => p.join(',')).join(' ')}" class="${cls}"/>`;
+  const fig = (f) => {
+    const to = f.at.at(-1), still = pointKey(to) === pointKey(from(f));  // (a pivot's turn: no step)
+    return `<svg viewBox="${mid(f, 0) - r} ${mid(f, 1) - r} ${2 * r} ${2 * r}">${f.cells.map((c) => poly(c, c === cellsOn(f, to) && !still ? 'tut-cell-to' : c === cellsOn(f, from(f)) ? 'tut-cell-here' : 'tut-cell')).join('')}`
+      + `${f.ends.map((p) => line(from(f), p, 'tut-way')).join('')}${f.at.slice(1, f.here + 1).map((p, i) => line(f.at[i], p, 'tut-in')).join('')}`
+      + `${(f.next ?? []).slice(1).map((p, i) => line(f.next[i], p, 'tut-next')).join('')}${still ? '' : line(from(f), to, f.dashed ? 'tut-step tut-dashed' : 'tut-step')}`
+      + `${f.ends.map((p) => dot(p, 'tut-end')).join('')}${dot(from(f), 'tut-here')}${still ? '' : dot(to, 'tut-to')}</svg>`;
+  };
+  const how = mode.lattice === 'sphere' ? `, turning as on its flat ${mode.grid ? 'grid' : 'tiling'}` : '';
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${walkName(w)}</h3><p>The number read digit by digit in base ${mode.base}, each digit a step ${mode.rule.replace(/:.*/, '')}${into.length ? ', the way it came in (grey) telling where it turns' : ''}.</p>`
-    + `<div class="tut-row tut-walk">${figs.map((f) => `<figure><div>${fig(f)}</div><figcaption><b>${f.d}</b> ${words[f.d] ?? ''}</figcaption></figure>`).join('')}</div></div>`;
+    + `<h3>${walkName(w)}</h3><p>The number read digit by digit in base ${mode.base}, each digit a step ${mode.rule.replace(/:.*/, '')}${how}${figs.some((f) => f.here) ? '; the way it came in grey' : ''}${figs.some((f) => f.next?.length > 1) ? ', the step after dashed' : ''}.</p>`
+    + `<div class="tut-row tut-walk">${figs.map((f) => `<figure><div>${fig(f)}</div><figcaption><b>${f.d}</b> ${f.caption ?? ''}</figcaption></figure>`).join('')}</div></div>`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
 }
+const walkTutorialToggle = () => ($('ruleTuto').hidden ? walkTutorial($('mode').value) : ruleTutorial(null));
 let customOpen = false;  // the Custom rule card clicked: its states, births and survivals shown, a known rule in use or not
 function renderRuleSection() {
   const mode = MODES[$('mode').value];
@@ -11278,7 +11330,7 @@ $('lifePreset').addEventListener('change', () => {
 document.addEventListener('click', (e) => {
   if (!e.target.closest?.('.how-it-works') || e.target.closest('.how-it-works') === $('watchRule')) return;
   if (MODES[$('mode').value].life) $('watchRule').click();
-  else if ($('ruleTuto').hidden) walkTutorial($('mode').value); else ruleTutorial(null);  // (a walk's)
+  else walkTutorialToggle();  // (a walk's)
 });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too), the populations and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
