@@ -578,5 +578,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .tut-tools { position: absolute; top: 20px; right: 24px; z-index: 1; display: flex; gap: 6px; }
 .tut-tools button { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }  /* one size, whatever they hold */
 .tut-note { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }  /* one shape in several bubbles, said */
-#planeRow .stepper #edgeTorus { width: auto; padding: 5px 10px; }  /* a torus or walls: a plain button, its picture and its name, on or off */
-#planeRow .stepper #edgeTorus.active { border-color: var(--accent); background: rgba(240, 180, 41, 0.08); }
+.size-row { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }  /* Torus (a tile, a column of the shapes' 4 wide), then the size */
+.size-row > .nav-shapes { width: calc((100% - 12px) / 4); grid-template-columns: 1fr; margin: 0; }
+.size-row > .stepper { flex: 1; margin: 0; }

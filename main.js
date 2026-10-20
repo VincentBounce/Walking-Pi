@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.899';
+const VERSION = '0.1.900';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6628,6 +6628,7 @@ function renderPlaneRow() {
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
+  $('edgeTorus').classList.toggle('switch', planeTorus(kind));  // (on: a click still changes it)
   $('edgeTorus').disabled = !!APERIODIC[kind];  // (a grid that never repeats: never a torus)
   // its outline, the four always there, those it cannot have greyed: its natural one (round: rings round its middle), a
   // circle on a grid that never repeats, a hexagon on a six-fold one with walls; a slanted grid a rhombus or cut as a square,
