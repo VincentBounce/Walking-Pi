@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.914';
+const VERSION = '0.1.915';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7147,10 +7147,10 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   const preset = [...$('lifePreset').options].find((o) => o.value === rule);
   $('lifePreset').value = preset ? rule : 'custom';
 }
-// The colours, as blocks: one (black), or 2, 3, 4, 6, 8, 12 civilisations, each block its colours in
+// The colours, as blocks: one (black), or 2, 3, 4, 6, 8, 9, 12 civilisations, each block its colours in
 // a cols × rows grid; a block greyed when the figure has no fair spots for that many (see coloursFit)
-const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 12];
-const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 12: [4, 3] };
+const COLOUR_STEPS = [1, 2, 3, 4, 6, 8, 9, 12];
+const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2], 8: [4, 2], 9: [3, 3], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
 // ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3
 function torusBlocks(K, g = walk.geo) {
@@ -7185,10 +7185,12 @@ const colourBlock = (k) => {
   const [cols, rows] = COLOUR_GRID[k], cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
   return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
 };
-const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 12: 'Dozen' };  // one colour, then battles
+const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 9: 'Nonet', 12: 'Dozen' };  // one colour, then battles
 // the counts of colours fair on the plane's grid: on a six-fold one (Hexagons, the natural rhombi), one colour, and 2, 3, 6
-// or 12 (each as many sixths of a turn, or a twelfth and its mirror); on Ammann's octagon, Flower 4, Flower 8 and Ring 8, 1, 2, 4 and 8
-const colourFair = (K) => { const kind = MODES[$('mode').value]?.plane; return hexagonFits(kind) ? [1, 2, 3, 6, 12].includes(K) : ['ammann', 'flower4', 'flower8', 'ring8'].includes(kind) && [1, 2, 4, 8].includes(K); };
+// or 12 (each as many sixths of a turn, or a twelfth and its mirror); on Ammann's octagon, Flower 4, Flower 8 and Ring 8, 1, 2, 4
+// and 8; on Flower 3 and Ring 9, 1, 3 and 9
+const colourFair = (K) => { const kind = MODES[$('mode').value]?.plane;
+  return hexagonFits(kind) ? [1, 2, 3, 6, 12].includes(K) : ['ammann', 'flower4', 'flower8', 'ring8'].includes(kind) ? [1, 2, 4, 8].includes(K) : ['flower3', 'ring9'].includes(kind) && [1, 3, 9].includes(K); };
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
@@ -8240,7 +8242,7 @@ const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 12: '12 twelfths' };
+const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 6: '6 sixths', 8: '8 eighths', 9: '9 ninths', 12: '12 twelfths' };
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
 // cells apart): on the plane, their patches touch round the middle; the others' sit at fair spots
 const NEAR_RULES = ['B3678/S34678', 'B34/S123/C3', 'B2/S34', 'B24/S35', 'B2o/S2m34', 'B34/S23', 'B2/S24/C3', 'B23/S6/C3'];
