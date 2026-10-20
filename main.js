@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.907';
+const VERSION = '0.1.908';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4777,11 +4777,11 @@ function torusDims(kind, size) {
   return [rows, perRow / SPHERES[kind].perRow];
 }
 /* A grid's size, one way for all of them: its height × its width, their product its cells. On the plane
- * (kind: its cells' shape), its rows × the cells of a row; on a torus or a Klein bottle, its cells round
+ * (kind: its cells' shape), its rows × the lattice cells of a row (its cells all of them, a lattice cell's several); on a torus or a Klein bottle, its cells round
  * the tube × round the ring; on a Möbius strip, across × along it twice round (its two faces, one strip).
  * A solid has none: its edge says its size. [height, width, cells, unit] */
 function gridSize(kind, f) {
-  if (PLANE_CELLS[kind]) { const h = planeW(kind, f), w = planeRow(kind, h); return [h, w, h * w - (planeDead(kind, h)?.length ?? 0), kind === 'cairo' ? 'pentagons' : PLANE_CELLS[kind]]; }  // (but the wall's: a hole)
+  if (PLANE_CELLS[kind]) { const h = planeW(kind, f), w = planeRow(kind, h); return [h, w / (PER_RHOMBUS[kind] ?? 1), h * w - (planeDead(kind, h)?.length ?? 0), kind === 'cairo' ? 'pentagons' : PLANE_CELLS[kind]]; }  // (its width in lattice cells; its cells but the wall's)
   if (!TORI.includes(kind)) return null;
   const { tiles, unit } = SPHERES[kind], cells = tiles(f);
   const h = MOBIUS_KINDS.includes(kind) ? mobiusSize(f)[0] : torusDims(kind, f)[0] * (SPHERES[kind].perColumn ?? 1);
@@ -7352,15 +7352,17 @@ const tutorialKey = (option) => `${$('mode').value} ${option.value} ${option.dat
   + (walk.life?.margolus ? ` ${walk.life.alive.length} ${walk.life.seedAlive} ${walk.life.stable?.P}` : '');
 // a tiling of several shapes: a bubble each (the cell and its neighbours, its name and how many), the one shown lit
 const tutShape = { mode: null, at: 0 };
-function shapeBubbles(kinds, c, corners, count, area, shapeOf) {
+function shapeBubbles(kinds, c, corners, count, area, shapeOf, own) {  // own: the tile's own name (a hat, a spectre)
   const names = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon', 9: 'nonagon', 10: 'decagon', 12: 'dodecagon' };
   const quad = (P) => { const [a, b, d] = [P[0], P[1], P[3]], u = [b[0] - a[0], b[1] - a[1]], v = [d[0] - a[0], d[1] - a[1]]; return Math.abs(u[0] * v[0] + u[1] * v[1]) < 1e-3 * Math.hypot(...u) * Math.hypot(...v) ? 'square' : 'rhombus'; };
   // (its true corners: not those on a side, there for a neighbour's corner; a size said where two have one name)
   const turns = (P) => P.filter((p, i) => { const a = P[(i + P.length - 1) % P.length], b = P[(i + 1) % P.length]; return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-4 * Math.hypot(p[0] - a[0], p[1] - a[1]) * Math.hypot(b[0] - p[0], b[1] - p[1]); });
-  const plain = (t) => { const P = turns(corners(t)); return P.length === 4 ? quad(P) : names[P.length] ?? `${P.length}-gon`; };
-  const nameOf = (t) => { const n = plain(t), same = kinds.filter((u) => plain(u) === n);
-    const sizes = same.map((u) => area(corners(u))), big = Math.max(...sizes), small = Math.min(...sizes);
-    return big - small > 1e-3 * big ? `${area(corners(t)) > (big + small) / 2 ? 'big' : 'small'} ${n}` : n; };  // (one size: its neighbours tell them apart)
+  const plain = (t) => { const P = turns(corners(t)); return own ?? (P.length === 4 ? quad(P) : names[P.length] ?? `${P.length}-gon`); };
+  // (shapes of one name: two, small and big; more, lettered by size, A the smallest; one, its neighbours tell them apart)
+  const nameOf = (t) => { const n = plain(t), same = [...new Set(kinds.filter((u) => plain(u) === n).map((u) => shapeOf.get(u)))];
+    if (same.length < 2) return n;
+    const size = (sk) => area(corners(kinds.find((u) => shapeOf.get(u) === sk))), rank = same.sort((a, b) => size(a) - size(b)).indexOf(shapeOf.get(t));
+    return same.length === 2 ? `${rank ? 'big' : 'small'} ${n}` : `${n} ${'ABCDEFGH'[rank]}`; };
   // each at one scale (the biggest fills its bubble), its neighbours' count in it
   const span = (P, d) => Math.max(...P.map((p) => p[d])) - Math.min(...P.map((p) => p[d])), S = Math.max(...kinds.flatMap((t) => [span(corners(t), 0), span(corners(t), 1)])), pad = S * 0.08;
   const pic = (t) => {
@@ -7463,7 +7465,7 @@ function ruleTutorial(option) {
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
