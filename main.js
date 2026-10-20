@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.917';
+const VERSION = '0.1.919';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5985,7 +5985,15 @@ for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.lengt
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
 const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
 // blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
-const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : sideW(kind, side));
+const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
+// colours in blocks (on a torus, or 2 and 4 with walls along the edges: see huntParts), cols × rows of them: the nearest side
+// they divide (12, 4 × 3: a multiple of 12), every colour as many cells
+const colourW = (kind, W) => {
+  const K = lifeColours;
+  if (K < 2 || APERIODIC[kind] || !(planeTorus(kind) || K === 2 || K === 4)) return W;
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a), [c, r] = COLOUR_GRID[K], m = ((c * r) / gcd(c, r)) * (baseOf(kind) === 'cairo' && ((c * r) / gcd(c, r)) % 2 ? 2 : 1);  // (Cairo's: even)
+  return Math.max(m, Math.round(W / m) * m);
+};
 const blockWraps = new Map();
 function blockWrapW(kind, W) {
   const key = `${kind} ${W}`, d = kind === 'cairo' || kind === 'cairoRect' ? 2 : 1;  // (Cairo's: even)
@@ -6477,9 +6485,9 @@ function buildLifePlane(seq) {
     plane.side = sides.reduce((a, b) => (Math.abs(b - plane.side) < Math.abs(a - plane.side) ? b : a));
     renderPlaneRow();
   }
-  const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
   if (MODES[current.mode].margolus) lifeColours = 1;  // (blocks: one colour)
-  fitColours();  // as many colours as the grid has fair blocks for
+  fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
+  const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares
     rule = parseRule('B3/S23');
@@ -7188,13 +7196,16 @@ const colourBlock = (k) => {
 };
 const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 9: 'Nonet', 12: 'Dozen' };  // one colour, then battles
 // the counts of colours fair on the figure, every colour's part a copy of the others': on the plane, those its turns n share
-// (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat 1); on a
+// with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
+// 1), on a torus any (its blocks); on a
 // solid, its fair spots (see SOLID_COLOURS); on a torus, blocks that divide it; on a Möbius strip, any
+const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, penrose: 5, hat: 1, spectre: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
 const colourFair = (K, g = walk.geo) => {
   const mode = MODES[$('mode').value], kind = mode?.plane;
   if (K === 1) return true;
+  if (kind && planeTorus(kind)) return true;  // (a torus: blocks of its side, see colourW, all alike)
   if (kind) {
-    const n = ROSETTES[kind]?.[0] ?? { ammann: 8, penrose: 5, hat: 1, spectre: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1, mirror = APERIODIC[kind] ? !['hat', 'spectre'].includes(kind) : canMirror(kind);
+    const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'penrose'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
     return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
   }
   if (SOLID_COLOURS[mode?.sphere]) return SOLID_COLOURS[mode.sphere].includes(K);
@@ -8307,11 +8318,14 @@ function planeSlices(K) {
   // 4's and 8's, red's up and to the left; else red's middle up and to the left)
   let from = shape ? -Math.PI + 0.01 : -Math.PI / 2 - slice;
   if (shape?.corner != null) { const c = shape.corner + turn, step = shape.step ?? Math.PI / 3; from = c + Math.floor((from - c) / step) * step; }
-  if (shape) from -= 1e-6;
+  if (shape) from -= 1e-4;  // (a hair: past the tilings' corners' 6 places)
   const round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
   const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
   const part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
-  if (shape) angle.forEach((a, t) => { part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 ? -1 : Math.min(K - 1, Math.floor(a / slice)); });  // (the cell on its middle: no one's, the slices all alike)
+  // (the cell on its middle no one's, the slices all alike; on twice as many as its turns, each slice a mirror of the next,
+  // the cells on the lines between them no one's either: all as many)
+  const halves = shape && K === 2 * figureTurns(kind);
+  if (shape) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
   else [...angle.keys()].sort((p, q) => angle[p] - angle[q]).forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
   // its slices' middles bunch up), the cell nearest each
