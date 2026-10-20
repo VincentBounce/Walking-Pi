@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.903';
+const VERSION = '0.1.904';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5706,7 +5706,7 @@ function startColours(seed) {
   const fits = huntFits(), r = hunt.zone === 'face' ? Infinity : zoneRadius(hunt.zone);
   if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [8, 7, 6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? 'full';
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
-  if (z) { seed.set(z); lifeStart = { zone: hunt.zone }; return; }
+  if (z) { seed.set(z); for (const t of walk.geo.walls ?? []) seed[t] = 0; lifeStart = { zone: hunt.zone }; return; }  // (none on the wall's cells)
   if (K === 1) return;
   huntParts(0, K).forEach((part, i) => { for (const t of part) if (seed[t]) seed[t] = i + 1; });
 }
@@ -8246,11 +8246,11 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOT
 // each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
 // a rule whose colours must start side by side, touching patches round the middle); on a torus, a
 // lattice; on a solid, its fair spots (see SOLID_SPOTS); one colour, the middle or the front
-// With dead edges and 3, 6, 8 or 12 colours (not halves or quarters): slices round the middle, the cells by their
+// With dead edges and 3, 6, 8 or 12 colours (not halves or quarters; in a circle or a hexagon, any): slices round the middle, the cells by their
 // angle from it, as many in each (a colour from the middle out to the wall, as much wall as the others); a slice's
 // spot: its cell nearest halfway out along its middle angle. Kept per grid
 let sliceMemo = null;
-const wallSlices = (K) => walk.plane && !walk.plane.torus && K !== 2 && K !== 4 && K > 1;
+const wallSlices = (K) => walk.plane && !walk.plane.torus && K > 1 && ((K !== 2 && K !== 4) || !!APERIODIC[walk.plane.kind] || !!planeShape(walk.plane.kind, walk.plane.W));  // (in a circle or a hexagon: always)
 function planeSlices(K) {
   const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${K}|${turn}|${plane.round}`;
   if (sliceMemo?.key === key) return sliceMemo;
