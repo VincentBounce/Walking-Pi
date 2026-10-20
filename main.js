@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.858';
+const VERSION = '0.1.859';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2645,7 +2645,8 @@ function renderModePicker() {
   const sides = navValues(4, [kind, space, shape, rule]).filter((s) => has(kind, rule, s));  // (Cairo pentagons: no grid)
   // (kept, the same height, where there are neither: a spiral's steps from cell to cell, its Cells picked)
   const alone = sides.includes('');
-  $('walkOn').hidden = alone && kind !== 'Walk';
+  $('walkRuleSection').hidden = kind !== 'Walk';  // (an ant's: its own Rule section)
+  $('walkRuleHow').hidden = !walkTutorialFits(w);
   const side = (b, s, word, none) => {
     const v = alone ? (s === 'cells' ? w : null) : sides.includes(s) ? navPick(4, s) : null, here = alone ? s === 'cells' : NAV[w][4] === s;
     const info = !v ? null : MODES[v].turmite ? { base: '', detail: turmite.rule } : MODES[v].antOf ? { base: '', detail: antByDigits ? `digits ${antDigitRules[v]}` : antRules[v] } : splitModeLabel(optionOf(v).text);

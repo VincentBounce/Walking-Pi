@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261104y">
+  <link rel="stylesheet" href="style.css?v=20261104z">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -53,8 +53,25 @@
             <div class="tile-group" id="sheetPair"><button id="sheetRhombus" type="button" title="The grid as it is, slanted"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Rhombus</span></button><button id="sheetRect" type="button" title="The same grid cut as a rectangle (its cells moved, the same neighbours)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Rectangle</span></button></div>
           </div>
         </div>
+        <div id="sphereRow" hidden>
+          <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover to see them all" hidden>
+            <button id="startDown" title="Previous start">−</button>
+            <span class="field"><input id="startLabel" type="text" inputmode="numeric" maxlength="7" spellcheck="false" autocomplete="off" title="Type a start number, then Enter"><button class="enter" type="button" tabindex="-1" title="Start here (Enter)">↵</button></span>
+            <button id="startUp" title="Next start">+</button>
+          </div>
+          <input id="startNo" type="hidden" value="1">
+          <div id="loopRow" class="stepper" title="The sizes and starts where this fraction's chain closes in the fewest laps around the ring and the tube" hidden>
+            <button id="loopDown" title="Previous loop">−</button>
+            <span id="loopLabel"></span>
+            <button id="loopUp" title="Next loop">+</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="walkRuleSection">  <!-- a walk's rule: Turtle, Pivot…, along the grid or on cells -->
+        <h2 data-icon="turtle">Rule<button id="walkRuleHow" class="head-btn how-it-works" data-icon="glider" type="button">How it works</button></h2>
         <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
-        <div id="walkOn" class="choice-row" hidden title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
+        <div id="walkOn" class="choice-row" title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
           <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
         </div>  <!-- under the rules: along the grid, or on cells -->
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
@@ -274,19 +291,6 @@
             </optgroup>
           </select>
         </label>
-        <div id="sphereRow" hidden>
-          <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover to see them all" hidden>
-            <button id="startDown" title="Previous start">−</button>
-            <span class="field"><input id="startLabel" type="text" inputmode="numeric" maxlength="7" spellcheck="false" autocomplete="off" title="Type a start number, then Enter"><button class="enter" type="button" tabindex="-1" title="Start here (Enter)">↵</button></span>
-            <button id="startUp" title="Next start">+</button>
-          </div>
-          <input id="startNo" type="hidden" value="1">
-          <div id="loopRow" class="stepper" title="The sizes and starts where this fraction's chain closes in the fewest laps around the ring and the tube" hidden>
-            <button id="loopDown" title="Previous loop">−</button>
-            <span id="loopLabel"></span>
-            <button id="loopUp" title="Next loop">+</button>
-          </div>
-        </div>
       </section>
 
       <section id="antStartSection" hidden>  <!-- an ant's start: by its rule (an ant by colour, a worm) or by the digits; the square ant's cells drawn -->
@@ -595,6 +599,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261104y"></script>
+  <script src="main.js?v=20261104z"></script>
 </body>
 </html>
