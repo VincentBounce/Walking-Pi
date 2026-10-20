@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.868';
+const VERSION = '0.1.869';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5712,6 +5712,7 @@ function buildLife(seq, mode) {
   hunt.status = '';
   stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
+  if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
 
@@ -6316,6 +6317,7 @@ function buildLifePlane(seq) {
   hunt.status = '';
   stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
+  if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
 // A grid of a lattice (W of its cells along each side: a parallelogram) lies along the view: one of its sides across or
@@ -7063,11 +7065,15 @@ function blockTutorial(option, to) {
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
+// what a rule's page shows: the grid, the rule, its colours and edges; blocks, their max period too (the grid's size, the
+// start's live cells, its return once found)
+const tutorialKey = (option) => `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours} ${plane.torus}`
+  + (walk.life?.margolus ? ` ${walk.life.alive.length} ${walk.life.seedAlive} ${walk.life.stable?.P}` : '');
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.toggle('active', !!option); b.classList.toggle('switch', !!option); }  // (lit while it shows, as Full number)
   if (!option) return;
-  $('ruleTuto').dataset.shown = `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours} ${plane.torus}`;  // (another grid or rule: shown again, see renderRuleSection)
+  $('ruleTuto').dataset.shown = tutorialKey(option);  // (another grid or rule: shown again, see renderRuleSection)
   if (parseRule(option.value)?.margolus) { blockTutorial(option, parseRule(option.value).margolus); return; }
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const rule = parseRule(option.value), W = 8, nb = planeNeighbours(kind, W, false, rule.iso === 'hensel'), row = planeRow(kind, W);  // (walls: a cell with them all is inside)
@@ -7251,7 +7257,7 @@ function renderRuleSection() {
   const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
   const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
   const shown = mineNot ? yours : mine;
-  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== `${$('mode').value} ${now} ${shown.dataset.name} ${lifeColours} ${plane.torus}`) ruleTutorial(shown);  // how a rule works follows the grid and the rule
+  if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== tutorialKey(shown)) ruleTutorial(shown);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -7403,7 +7409,7 @@ function lifeFingerprint(state) {
 // Record generation gen (state already in L.alive) and detect the first repeat
 function lifeTrack(gen) {
   const L = walk.life;
-  if (L.margolus) { if (!L.stable && blockBack(L, L.alive, gen)) L.stable = { T: 0, P: gen, extinct: false }; return; }  // (blocks: see blockBack)
+  if (L.margolus) { if (!L.stable && blockBack(L, L.alive, gen)) { L.stable = { T: 0, P: gen, extinct: false }; renderRuleSection(); } return; }  // (blocks: see blockBack; its page told)
   if (L.stable || L.seen.size >= LIFE_TRACK) return;
   const key = lifeFingerprint(L.alive);
   const first = L.seen.get(key);
@@ -7438,7 +7444,7 @@ function searchBack(on) {
       [S.a, S.b] = [S.b, S.a];
       if (blockBack(L, S.a, ++S.gen)) { S.found = S.gen; break; }
     }
-    if (S.found) { L.stable ??= { T: 0, P: S.found, extinct: false }; S.life = null; }
+    if (S.found) { L.stable ??= { T: 0, P: S.found, extinct: false }; S.life = null; renderRuleSection(); }
     statsDirty = true;
     renderHunt();
     if (S.life) setTimeout(slice, 0);
@@ -8579,6 +8585,7 @@ function setLifeSeed(seed, how) {
   lifeStart = how;
   describe(walk.base, Infinity);
   restart();
+  if (!$('ruleTuto').hidden) renderRuleSection();  // (blocks: the start's max period)
   autoplay();
   syncLink();
 }
@@ -11484,7 +11491,7 @@ document.addEventListener('click', (e) => {
 });
 // how a rule works closes on a click anywhere but on it, the rules (your own's too), the populations and the grids (it follows them: renderRuleSection)
 document.addEventListener('click', (e) => {
-  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles', 'planeRow', 'sizeRow', 'navRules', 'walkOn', 'antRuleSection', 'antStartSection'].includes(n.id))) ruleTutorial(null);
+  if (!$('ruleTuto').hidden && !e.composedPath().some((n) => n.classList?.contains('how-it-works') || ['ruleTuto', 'ruleCards', 'watchRule', 'colourBlocks', 'statesRow', 'ruleBirth', 'ruleSurvive', 'lifeCustomRow', 'navSpace', 'navShapes', 'torusTiles', 'planeRow', 'sizeRow', 'navRules', 'walkOn', 'antRuleSection', 'antStartSection', 'backBtn'].includes(n.id))) ruleTutorial(null);
 });
 $('lifeRule').addEventListener('change', () => {
   if (!parseRule(ruleBody($('lifeRule').value))) { $('status').textContent = 'Enter a rule like B3/S23, B2/S/C3 (2 to 25 states) or, on hexagons, B2o/S2m34 (the colours: Colors, above)'; return; }
