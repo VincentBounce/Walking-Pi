@@ -107,31 +107,35 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
     } else if (seed) for (let k = 0; k < n; k++) for (const P of seed) { const Q = turn(P, k); add(Q, angleOf(Q)); }
     else { const [Q, A] = SH[1], t = -Math.atan2(Q[1][1] - Q[0][1], Q[1][0] - Q[0][0]), c = Math.cos(t), s = Math.sin(t), star = Q.map(([x, y]) => [c * (x - Q[0][0]) - s * (y - Q[0][1]), s * (x - Q[0][0]) + c * (y - Q[0][1])]);
       for (let k = 0; k < n; k++) add(turn(star, k), A); }
-    let steps = 0;
-    const step = () => {
-      if (++steps > 2e6) throw new Error('rosette: too many steps');
+    // a search, a step a frame of a stack (not a call: thousands of them deep): at the open corner most filled, its first
+    // side with a tile on one side only; each shape as long laid on it, n at a time; a dead end, back to the last frame
+    const frame = () => {
       let best = null;
       for (const k of open) { const e = at.get(k); if (!best || e.sum > best.sum) best = e; }
-      if (!best) return true;
+      if (!best) return null;  // (none left: done)
       // (its open sides: the sides at it with a tile on one side only, that tile on their left)
       const sides = new Map();
       for (const [j, i] of best.uses) { const P = tiles[j].P, L = P.length; for (const [a, b] of [[P[i], P[(i + 1) % L]], [P[(i + L - 1) % L], P[i]]]) sides.set(`${key(a)}|${key(b)}`, [a, b]); }
       for (const [s, [a, b]] of sides) {
         const [ka, kb] = s.split('|');
-        if (sides.has(`${kb}|${ka}`)) continue;
-        for (const sh of SH) {
-          if (Math.abs(len(sh[0][0], sh[0][1]) - len(a, b)) > 1e-6) continue;  // (a side as long)
-          const [P, A] = place(sh, a, b);
-          let added = 0;
-          for (let r = 0; r < n; r++) { const Q = turn(P, r); if (!fits(Q, A)) break; add(Q, A); added++; }
-          if (added === n && step()) return true;
-          for (let r = 0; r < added; r++) remove();
-        }
-        return false;  // (this side takes a tile, and none fits: a dead end)
+        if (!sides.has(`${kb}|${ka}`)) return { tries: SH.filter((sh) => Math.abs(len(sh[0][0], sh[0][1]) - len(a, b)) < 1e-6).map((sh) => place(sh, a, b)), i: 0, added: 0 };
       }
-      return false;
+      return { tries: [], i: 0, added: 0 };  // (no side free, the corner not full: a dead end)
     };
-    if (!step()) throw new Error('rosette: stuck');
+    const stack = [frame()];
+    for (let steps = 0; stack[0] && stack.length;) {
+      if (++steps > 2e6) throw new Error('rosette: too many steps');
+      const top = stack.at(-1);
+      for (; top.added; top.added--) remove();  // (its last try undone)
+      if (top.i >= top.tries.length) { stack.pop(); continue; }
+      const [P, A] = top.tries[top.i++];
+      for (let r = 0; r < n; r++) { const Q = turn(P, r); if (!fits(Q, A)) break; add(Q, A); top.added++; }
+      if (top.added < n) continue;
+      const next = frame();
+      if (!next) break;
+      stack.push(next);
+    }
+    if (!stack.length) throw new Error('rosette: stuck');
     return tiles.map((t) => t.P);  // (round a hole: the hole first)
   };
   const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % 5][1] - P[(i + 1) % 5][0] * p[1], 0) / 2), U = 1 / Math.sqrt(area(P0));  // (a tile a square unit)
