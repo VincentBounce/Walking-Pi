@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.897';
+const VERSION = '0.1.898';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6628,13 +6628,13 @@ function renderPlaneRow() {
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
-  $('edgeWalls').classList.toggle('active', !planeTorus(kind));
-  $('edgeTorus').disabled = !!APERIODIC[kind];  // (a grid that never repeats: never a torus, the pair there all the same, greyed)
+  $('edgeTorus').disabled = !!APERIODIC[kind];  // (a grid that never repeats: never a torus)
   // its outline, the four always there, those it cannot have greyed: its natural one (round: rings round its middle), a
   // circle on a grid that never repeats, a hexagon on a six-fold one with walls; a slanted grid a rhombus or cut as a square,
   // another its square
-  const A = !!APERIODIC[kind], slanted = !!RECTS[`${kind}Rect`], hexagon = shaped(kind) || (hexagonFits(kind) && !planeTorus(kind) && !MODES[$('mode').value].margolus);
-  const round = plane.round && (A || hexagon), squared = A || !slanted || plane.rect;
+  // (on a torus: a click on one it cannot have, walls)
+  const A = !!APERIODIC[kind], slanted = !!RECTS[`${kind}Rect`], hexagon = hexagonFits(kind) && !MODES[$('mode').value].margolus;
+  const round = plane.round && (A || (hexagon && !planeTorus(kind))), squared = A || !slanted || plane.rect;
   for (const [id, can, on] of [['patchRound', A, A && round], ['patchHex', hexagon, !A && round], ['patchRhombus', !A && slanted, !round && !squared], ['patchSquare', true, !round && squared]]) {
     $(id).disabled = !can;
     $(id).classList.toggle('active', on);
@@ -11654,12 +11654,15 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 for (const [id, set, pic] of [['patchRound', { round: true }, 'wallsRound'], ['patchHex', { round: true }, 'wallsHex'],
   ['patchRhombus', { round: false, rect: false }, 'rhombus'], ['patchSquare', { round: false, rect: true }, 'walls']]) {
   $(id).querySelector('svg').innerHTML = ICONS[pic];
-  $(id).addEventListener('click', () => { if (Object.keys(set).every((k) => plane[k] === set[k])) return; Object.assign(plane, set); compute(true); });
+  $(id).addEventListener('click', () => {
+    const off = set.round && plane.torus;  // (a circle or a hexagon: walls, the torus off)
+    if (!off && Object.keys(set).every((k) => plane[k] === set[k])) return;
+    Object.assign(plane, set, off ? { torus: false } : {});
+    compute(true);
+  });
 }
-for (const [id, torus, pic] of [['edgeTorus', true, 'torus'], ['edgeWalls', false, 'walls']]) {
-  $(id).querySelector('svg').innerHTML = ICONS[pic];
-  $(id).addEventListener('click', () => { if (plane.torus === torus) return; plane.torus = torus; compute(true); });
-}
+$('edgeTorus').querySelector('svg').innerHTML = ICONS.torus;  // a torus or walls: on, off
+$('edgeTorus').addEventListener('click', () => { plane.torus = !plane.torus; compute(true); });
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was

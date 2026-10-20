@@ -578,4 +578,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .tut-tools { position: absolute; top: 20px; right: 24px; z-index: 1; display: flex; gap: 6px; }
 .tut-tools button { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }  /* one size, whatever they hold */
 .tut-note { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }  /* one shape in several bubbles, said */
-#edgePair { grid-column: 3 / span 2; }  /* Torus and Walls: on the right, under Rhombus and Square */
+#planeRow .stepper #edgeTorus { width: auto; height: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px; font-size: 10px; color: var(--muted); }  /* a torus or walls: on, off, by the size */
+#planeRow .stepper #edgeTorus svg { width: 22px; height: 22px; }
+#planeRow .stepper #edgeTorus.active { border-color: var(--accent); color: var(--accent); background: rgba(240, 180, 41, 0.08); }
