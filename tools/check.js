@@ -89,8 +89,8 @@ function checkMeshes(fail) {
     }
     // its symmetry: the live cells' middles turned by a turn of the grid round their mean, onto live ones
     const mids = live.map(mid), c = [0, 1].map((d) => mids.reduce((t, m) => t + m[d], 0) / mids.length), turn = (2 * Math.PI) / PATTERN_TURNS[baseOf(kind)];
-    const keys = new Set(mids.map(([u, v]) => `${Math.round(u * 100)},${Math.round(v * 100)}`));
-    const off = mids.filter(([u, v]) => { const x = c[0] + (u - c[0]) * Math.cos(turn) - (v - c[1]) * Math.sin(turn), y = c[1] + (u - c[0]) * Math.sin(turn) + (v - c[1]) * Math.cos(turn); return ![-1, 0, 1].some((e) => [-1, 0, 1].some((f) => keys.has(`${Math.round(x * 100) + e},${Math.round(y * 100) + f}`))); }).length;
+    const sig = (P) => `${P.length}|${Math.round(Math.abs(sarea(P)) * 50)}`, keys = new Set(mids.map(([u, v], i) => `${Math.round(u * 100)},${Math.round(v * 100)}|${sig(live[i])}`));  // (a cell by its middle and its shape)
+    const off = mids.filter(([u, v], i) => { const x = c[0] + (u - c[0]) * Math.cos(turn) - (v - c[1]) * Math.sin(turn), y = c[1] + (u - c[0]) * Math.sin(turn) + (v - c[1]) * Math.cos(turn); return ![-1, 0, 1].some((e) => [-1, 0, 1].some((f) => keys.has(`${Math.round(x * 100) + e},${Math.round(y * 100) + f}|${sig(live[i])}`))); }).length;
     checked++;
     const what = `${kind} ${hexagon ? 'hexagon' : 'circle'} ${W}`;
     if (gaps) fail(`${what}: its walls open (${gaps} sides)`);

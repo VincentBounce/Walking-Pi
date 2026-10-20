@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.895';
+const VERSION = '0.1.896';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5769,7 +5769,7 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, round: true, hexagon: false, rect: false, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 48, torus: true, round: true, hexagon: true, rect: false, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -6579,7 +6579,7 @@ function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
   plane.round = Number(s.sq) !== 1;
-  plane.hexagon = Number(s.sq) === 2;  // (walls in a hexagon: a six-fold grid's)
+  plane.hexagon = Number(s.sq) !== 3;  // (walls in a hexagon: a six-fold grid's, unless sq=3, a circle)
   plane.rect = Number(s.o) === 1;
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
@@ -6707,8 +6707,10 @@ function planeShape(kind, W) {
   // the centre: of the middles, corners and sides' middles of the cells within a lattice cell of the grid's middle, the nearest it that the
   // cells round turn onto (by 1/turns of a turn)
   const L = Math.max(2, ...(tilingOf(baseOf(kind))?.basis.map((v) => Math.hypot(...v)) ?? [])), near = mids.flatMap((m, t) => (far(m, c0) < L ? [t] : [])), k = ([u, v]) => `${Math.round(u * 1000 + 0.237)},${Math.round(v * 1000 + 0.237)}`;  // (off the halves: kites' sixteenths)
-  const round = mids.filter((m) => far(m, c0) < L + 4), known = new Set(round.map(k)), a = (2 * Math.PI) / turns;
-  const turnsOnto = (p) => round.every((m) => far(m, p) > 3 || known.has(k([p[0] + (m[0] - p[0]) * Math.cos(a) - (m[1] - p[1]) * Math.sin(a), p[1] + (m[0] - p[0]) * Math.sin(a) + (m[1] - p[1]) * Math.cos(a)])));
+  // (each cell by its middle and its shape, its corners' count and its size: a dodecagon turned onto a triangle's middle, no)
+  const sig = (t) => `${cs[t].length}|${Math.round(Math.abs(cs[t].reduce((a, p, i) => a + p[0] * cs[t][(i + 1) % cs[t].length][1] - cs[t][(i + 1) % cs[t].length][0] * p[1], 0)) * 50)}`;
+  const round = [...mids.keys()].filter((t) => far(mids[t], c0) < L + 4), known = new Set(round.map((t) => `${k(mids[t])}|${sig(t)}`)), a = (2 * Math.PI) / turns;
+  const turnsOnto = (p) => round.every((t) => { const m = mids[t]; return far(m, p) > 3 || known.has(`${k([p[0] + (m[0] - p[0]) * Math.cos(a) - (m[1] - p[1]) * Math.sin(a), p[1] + (m[0] - p[0]) * Math.sin(a) + (m[1] - p[1]) * Math.cos(a)])}|${sig(t)}`); });
   const tries = near.flatMap((t) => [mids[t], ...cs[t], ...cs[t].map((p, i) => [(p[0] + cs[t][(i + 1) % cs[t].length][0]) / 2, (p[1] + cs[t][(i + 1) % cs[t].length][1]) / 2])]).sort((p, q) => far(p, c0) - far(q, c0));
   const o = tries.find(turnsOnto) ?? c0;
   // its size: a circle's radius, a hexagon's (its sides along the lattice's rows) from its middle to a side
@@ -6724,11 +6726,11 @@ function planeShape(kind, W) {
       turn.set(pointKey(p), (turn.get(pointKey(p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a));
     });
   }
-  const R = cs.flat().reduce((r, p) => (turn.get(pointKey(p)) < 2 * Math.PI - 1e-3 ? Math.min(r, size(p)) : r), Infinity) - width + 1e-6;
+  const R = cs.flat().reduce((r, p) => (turn.get(pointKey(p)) < 2 * Math.PI - 1e-3 ? Math.min(r, size(p)) : r), Infinity) - width + 1e-3;
   const dead = mids.flatMap((m, t) => (size(m) > R ? [t] : [])), out = new Set(dead);
   // its core: the cells nearest its middle, all those as far, then the next ones, till two of them at least
   const byFar = [...mids.keys()].sort((p, q) => far(mids[p], o) - far(mids[q], o)), core = [];
-  while (core.length < 2) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-6) core.push(byFar[core.length]); }
+  while (core.length < 2) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-3) core.push(byFar[core.length]); }  // (as far: within 10⁻³, the tilings' corners to 6 places)
   const inside = new Set(cs.flatMap((P, t) => (out.has(t) ? [] : P.map((p) => pointKey(p)))));
   const walls = dead.filter((t) => cs[t].some((p) => inside.has(pointKey(p)))).map((t) => [t % row, Math.floor(t / row)]);
   return shapeMemo.set(key, { dead, walls, core: core.map((t) => cs[t]), o, corner: hex ? th + Math.PI / 6 : null }).get(key);  // (o: its middle; corner: a hexagon's corner's way)
@@ -8262,7 +8264,7 @@ function planeSlices(K) {
   const round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
   const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
   const part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
-  if (shape) angle.forEach((a, t) => { part[t] = Math.min(K - 1, Math.floor(a / slice)); });
+  if (shape) angle.forEach((a, t) => { part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 ? -1 : Math.min(K - 1, Math.floor(a / slice)); });  // (the cell on its middle: no one's, the slices all alike)
   else [...angle.keys()].sort((p, q) => angle[p] - angle[q]).forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
   // its slices' middles bunch up), the cell nearest each
@@ -8311,7 +8313,7 @@ function huntParts(r, K) {
   const parts = Array.from({ length: K }, () => []);
   if (walk.plane) {
     const F = planeFrame(), block = (t) => F.block(t, cols, rows);
-    if (wallSlices(K)) { const { part, spots } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]].push(t); return parts; } return spots.map((t) => lifePatch(r, t)); }
+    if (wallSlices(K)) { const { part, spots } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]]?.push(t); return parts; } return spots.map((t) => lifePatch(r, t)); }
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
@@ -9004,7 +9006,7 @@ function getSetup() {
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
     if (!plane.round) s.sq = 1;  // (a rhombus or a square, not round)
-    else if (plane.hexagon && hexagonFits(mode.plane)) s.sq = 2;  // (a hexagon's)
+    else if (!plane.hexagon && hexagonFits(mode.plane)) s.sq = 3;  // (a six-fold grid in a circle, not a hexagon)
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     s.pop = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
