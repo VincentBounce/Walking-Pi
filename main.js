@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.870';
+const VERSION = '0.1.871';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -883,11 +883,14 @@ const TILINGS = {
   trunctrihex: { name: 'Big rhombitri', mark: '❃', cells: 'tiles', where: "a grid of dodecagons, hexagons and squares (the truncated trihexagonal tiling)", most: 12, turns: 6, mirror: true, pivot: [0, 0], torus: true,
     basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
     polys: [[[0.333333,1.122008],[0.455342,0.877992],[0.666667,0.877992],[0.544658,1.122008]],[[1.333333,1.122008],[1.544658,1.122008],[1.544658,1.333333],[1.333333,1.544658],[1.122008,1.544658],[1.122008,1.333333]],[[1.333333,1.122008],[1.122008,1.333333],[0.877992,1.455342],[0.666667,1.455342],[0.544658,1.333333],[0.544658,1.122008],[0.666667,0.877992],[0.877992,0.666667],[1.122008,0.544658],[1.333333,0.544658],[1.455342,0.666667],[1.455342,0.877992]],[[1.122008,0.333333],[1.122008,0.544658],[0.877992,0.666667],[0.877992,0.455342]],[[0.333333,0.544658],[0.544658,0.333333],[0.666667,0.455342],[0.455342,0.666667]],[[0.455342,0.666667],[0.666667,0.455342],[0.877992,0.455342],[0.877992,0.666667],[0.666667,0.877992],[0.455342,0.877992]]] },
+  dual16: { name: 'Dual 16', mark: '❁', cells: 'pentagons', where: 'a grid of pentagons of two kinds (the dual of the 16th 2-uniform tiling, 3.3.4.3.4 and 3.3.3.4.4)', most: 7, turns: 4, mirror: false, pivot: [1.105662, 1.394338], torus: true,
+    basis: [[3.3460652149512318, 0], [0, 3.3460652149512318]],
+    polys: [[[0.877992,1.122008],[1.044658,1.166667],[1.105662,1.394338],[0.877992,1.455342],[0.711325,1.288675]],[[1.044658,1.166667],[1.211325,1],[1.377992,1.166667],[1.333333,1.333333],[1.105662,1.394338]],[[0.666667,0.666667],[0.833333,0.622008],[1,0.788675],[0.833333,0.955342],[0.605662,0.894338]],[[0.605662,0.894338],[0.833333,0.955342],[0.877992,1.122008],[0.711325,1.288675],[0.544658,1.122008]],[[1.105662,0.394338],[1.333333,0.333333],[1.5,0.5],[1.333333,0.666667],[1.166667,0.622008]],[[1.377992,1.166667],[1.544658,1.122008],[1.711325,1.288675],[1.5,1.5],[1.333333,1.333333]],[[1.166667,0.622008],[1.333333,0.666667],[1.377992,0.833333],[1.211325,1],[1,0.788675]],[[1.377992,0.833333],[1.605662,0.894338],[1.544658,1.122008],[1.377992,1.166667],[1.211325,1]],[[1.333333,0.666667],[1.5,0.5],[1.666667,0.666667],[1.605662,0.894338],[1.377992,0.833333]],[[0.711325,0.288675],[0.877992,0.455342],[0.833333,0.622008],[0.666667,0.666667],[0.5,0.5]],[[0.833333,0.955342],[1,0.788675],[1.211325,1],[1.044658,1.166667],[0.877992,1.122008]],[[0.877992,0.455342],[1.105662,0.394338],[1.166667,0.622008],[1,0.788675],[0.833333,0.622008]]] },
 };
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip; the others are mirrored
 // along none, and a strip turns its tiles over round it); the strip's edges along their tiles' sides where that mirror
 // runs there (Prismatic, Tetrakis, Kisrhombille), else teeth of whole tiles, as the hexagons' strip
-const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
+const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16'], mobiusOf = (kind) => `mobius${kind[0].toUpperCase()}${kind.slice(1)}`;
 // the turn of a tiling's tiles on a sheet along a side (x, y) of its lattice, against the plane's (degrees, the nearest
 // of its turns' copies: within half a turn of 0)
 const sideTurn = (kind, [x, y]) => { const P = 360 / TILINGS[kind].turns, r = ((((-Math.atan2(y, x) * 180) / Math.PI) % P) + P) % P; return Math.round((r >= P / 2 - 1e-9 ? r - P : r) * 1e6) / 1e6; };
@@ -5890,6 +5893,9 @@ const DRAW_PATTERNS = [
   ['bigrhombitrilife-osc', 'trunctrihex', ['B27/S1389/C3'], 'Oscillator', '7.AB$.A4.B2.B2A$2.2B.A4.A!', 'period 6 · 11 cells'],
   ['bigrhombitrigliders-ship', 'trunctrihex', ['B245/S2378/C5'], 'Spaceship', '7.2A3.2AB2.A$7.2D3.C.4A$2.A3.B.CB.AB.ADBA$10.D4.D!', 'flies, period 8 · 25 cells'],
   ['bigrhombitrigliders-osc', 'trunctrihex', ['B245/S2378/C5'], 'Oscillator', '.B$.CAC.2D3.A$3.B.A!', 'period 12 · 9 cells'],
+  ['dual16gliders-ship', 'dual16', ['B236/S046/C4'], 'Spaceship', '7.AB5.BA2.A3.AB!', 'flies, period 10 · 7 cells'],
+  ['dual16gliders-fast', 'dual16', ['B236/S046/C4'], 'Fast ship', 'BC3A.BCB.BA2.C$11.C!', 'flies, period 5 · 12 cells'],
+  ['dual16ships-ship', 'dual16', ['B237/S056/C4'], 'Spaceship', '.B4.ABA.A3.AB!', 'flies, period 10 · 7 cells'],
   ['dodecagonlife-osc', 'trunchex', ['B238/S0457/C5'], 'Oscillator', '3.AB.A$AB.2B.A$A2.A!', 'period 30 · 10 cells'],
   ['dodecagonlife-meth', 'trunchex', ['B238/S0457/C5'], 'Methuselah', '7.A$.A.A.A2.A2.A$5.A!', 'settles at generation 699 · 7 cells'],
   ['dodecagonsparks-osc', 'trunchex', ['B235/S0457/C5'], 'Oscillator', '3.A2.A$A2.B.BA.B$A2.A.B!', 'period 30 · 10 cells'],
@@ -6970,6 +6976,8 @@ const RULE_ICONS = {
   'B27/S1389/C3': '.....,.....,...o.,+o...,.....',
   'B245/S2378/C5': '.....,.....,.ooo.,o++++,.+.+.',
   'B238/S0457/C5': '.....,..o+.,+.++.,..o..,.....',
+  'B236/S046/C4': '.....,.+o..,..+o.,...o.,.....',  // (Dual 16: a ship flying off)
+  'B237/S056/C4': '.....,..o..,.+.o.,..+o.,.....',
   'B235/S0457/C5': '.....,.o.o.,o..oo,.....,.....',
   'B356/S0345/C4': '.o.o.,o+.+o,..o..,o+.+o,.o.o.',
   'B38/S013': '.....,.ooo.,.o.o.,.ooo.,.....',

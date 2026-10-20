@@ -1,0 +1,10 @@
+dual16 22168 rules 369 candidates 18s
+dual16 done 137s
+  B236/S046/C4    0.204  T 840 (361–2560) spread 0.51 plateau 0.48 at200 4.3% ash 1.56% osc 25%
+  B237/S056/C4    0.147  T 844 (407–4433) spread 0.63 plateau 0.64 at200 4.2% ash 1.79% osc 25%
+  B235/S046/C4    0.101  T 730 (269–3480) spread 0.67 plateau 0.51 at200 3.3% ash 1.38% osc 8%
+  B236/S056/C4    0.097  T 1056 (268–2579) spread 0.71 plateau 0.64 at200 4% ash 1.82% osc 17%
+  B23/S0/C4       0.091  T 627 (180–1565) spread 0.67 plateau 0.52 at200 3.6% ash 1.27% osc 8%
+  B23/S057/C4     0.091  T 569 (246–3835) spread 0.76 plateau 0.59 at200 4% ash 1.64% osc 8%
+  B237/S07/C4     0.087  T 579 (166–1534) spread 0.61 plateau 0.6 at200 3.6% ash 1.5% osc 17%
+  B23/S0467/C4    0.086  T 858 (162–1915) spread 0.65 plateau 0.66 at200 3.9% ash 1.61% osc 8%

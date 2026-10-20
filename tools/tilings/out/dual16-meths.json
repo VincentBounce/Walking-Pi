@@ -1,0 +1,46 @@
+{
+ "dual16 B236/S046/C4": {
+  "meths": [
+   {
+    "rle": "2.A4.A.2A5.A.A$2.2A3.A6.A3.A.A!",
+    "n": 12,
+    "T": 40,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": "2A.A8.A5.A3.A$A.2A5.A13.A!",
+    "n": 11,
+    "T": 30,
+    "ships": 2,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "edge": 13,
+   "settles": 2
+  }
+ },
+ "dual16 B237/S056/C4": {
+  "meths": [
+   {
+    "rle": "2A.A8.A5.A3.A$A.2A5.A13.A!",
+    "n": 11,
+    "T": 30,
+    "ships": 2,
+    "period": 1
+   },
+   {
+    "rle": "2.A4.A.2A5.A.A$2.2A3.A6.A3.A.A!",
+    "n": 12,
+    "T": 10,
+    "ships": 0,
+    "period": 1
+   }
+  ],
+  "ends": {
+   "edge": 13,
+   "settles": 2
+  }
+ }
+}

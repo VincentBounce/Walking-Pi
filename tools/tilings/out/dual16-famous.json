@@ -1,0 +1,146 @@
+{
+ "dual16 B236/S046/C4": {
+  "ships": [
+   {
+    "rle": "BC3A.BCB.BA2.C$11.C!",
+    "n": 4,
+    "cells": 12,
+    "period": 5,
+    "move": [
+     -12,
+     -1
+    ],
+    "count": 26
+   },
+   {
+    "rle": "7.AB5.BA2.A3.AB!",
+    "n": 4,
+    "cells": 7,
+    "period": 10,
+    "move": [
+     12,
+     2
+    ],
+    "count": 26
+   },
+   {
+    "rle": "5.A$4.B2.2B5.2A5.A!",
+    "n": 4,
+    "cells": 7,
+    "period": 10,
+    "move": [
+     24,
+     -1
+    ],
+    "count": 23
+   },
+   {
+    "rle": "5.C6.2C3.B.C$14.A.B.A.AB.B9.A!",
+    "n": 4,
+    "cells": 12,
+    "period": 10,
+    "move": [
+     12,
+     2
+    ],
+    "count": 23
+   },
+   {
+    "rle": ".CA.A.BCB.BA2.BC5.A!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     -12,
+     -2
+    ],
+    "count": 21
+   },
+   {
+    "rle": ".A3.B6.B2.A$4.B3.C12.C.C!",
+    "n": 2,
+    "cells": 8,
+    "period": 10,
+    "move": [
+     -12,
+     -2
+    ],
+    "count": 21
+   }
+  ],
+  "oscs": [],
+  "meths": []
+ },
+ "dual16 B237/S056/C4": {
+  "ships": [
+   {
+    "rle": "5.A.2A3.B.2B$21.A!",
+    "n": 4,
+    "cells": 7,
+    "period": 10,
+    "move": [
+     -24,
+     1
+    ],
+    "count": 41
+   },
+   {
+    "rle": ".B4.ABA.A3.AB!",
+    "n": 4,
+    "cells": 7,
+    "period": 10,
+    "move": [
+     -12,
+     -2
+    ],
+    "count": 37
+   },
+   {
+    "rle": "5.A6.2B.B$16.A4.A.A!",
+    "n": 4,
+    "cells": 7,
+    "period": 10,
+    "move": [
+     -12,
+     2
+    ],
+    "count": 36
+   },
+   {
+    "rle": "5.A.BC3.2ACB2.BA2.BC!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     12,
+     2
+    ],
+    "count": 35
+   },
+   {
+    "rle": "BC2A2.BC2.BA$4.C4.A.B!",
+    "n": 4,
+    "cells": 11,
+    "period": 10,
+    "move": [
+     -24,
+     -1
+    ],
+    "count": 33
+   },
+   {
+    "rle": "BA$2.B.A.A3.AB!",
+    "n": 4,
+    "cells": 7,
+    "period": 10,
+    "move": [
+     24,
+     1
+    ],
+    "count": 32
+   }
+  ],
+  "oscs": [],
+  "meths": []
+ }
+}

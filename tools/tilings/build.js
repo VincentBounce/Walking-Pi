@@ -222,6 +222,13 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
 // truncated trihexagonal (4.6.12): the kisrhombille's points, their faces (dodecagons, hexagons, squares)
 { const s = 3 + R3, R = 1 / (2 * Math.sin(Math.PI / 12)), a = [s, 0], b = mul(dir(60), s), pts = points(a, b, Array.from({ length: 12 }, (_, k) => mul(dir(15 + 30 * k), R)), 5);
   cell('trunctrihex', a, b, polygons(pts, false)); }
+// the 16th 2-uniform tiling [3.3.4.3.4; 3.3.3.4.4] (snub square and elongated triangular vertices, squares and triangles of
+// side 1), as Wikimedia's 2-uniform_n16.svg draws it (its lattice and 12 corners a cell read off it, exact by cos 15°, sin 15°);
+// its dual: pentagons of two kinds, a cell each corner
+{ const c = Math.cos(Math.PI / 12), s = Math.sin(Math.PI / 12), L = 4 * c - 2 * s, a = [L, 0], b = [0, L];
+  const motif = [[0, 0], [4 * c - 3 * s, c], [c - s, c - s], [3 * c - s, 3 * c - s], [3 * c - 2 * s, s], [c, 2 * c - s], [2 * c - s, c], [c - s, 3 * c - s],
+                 [0, 2 * c], [2 * c - 2 * s, 0], [2 * c - s, 3 * c - 2 * s], [3 * c - 2 * s, 2 * c - s]];
+  cell('dual16', a, b, polygons(points(a, b, motif, 6), true)); }
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)
