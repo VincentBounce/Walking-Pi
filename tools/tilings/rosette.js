@@ -4,13 +4,13 @@
 // draws it: Hirschhorn_6-fold-rotational_symmetry_pentagonal_tiling.svg, 21 tiles a sixth, 126 in all, read off it), grown
 // out to any size n tiles at a time (its n turns): the open corner with the least room left takes a tile on one of its
 // open sides, every way that fits (5 sides as long, mirrored or not; edge to edge; the room left at each corner one the
-// angles can fill, counted in n-ths of a degree), depth first, back on a dead end. As the hats (see squarePatch): its W²
+// angles can fill, counted in n-ths of a degree), depth first, back on a dead end. As the hats (see discPatch): its W²
 // tiles nearest its middle, each a square unit. main.js has a copy (ROSETTE); this one for the searches (rosetteGrid)
 const roundOff = (x, k = 1000) => Math.round(x * k + 0.37), pointKey = ([x, y], k = 1000) => `${roundOff(x, k)},${roundOff(y, k)}`;  // (as main.js's)
 // An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
-// about a square unit; poly(item): its corners), the W² items nearest a middle (a square), in W bands from the top,
+// about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
-function squarePatch(items, W, poly, round = false, middle = null) {  // round: walls in a circle (the items nearest the middle), else a square
+function discPatch(items, W, poly, middle = null) {  // walls in a circle: the items nearest the middle
   // the middle (middle, else): where a square of W² items' room (a cell about 1 square unit) and 4 units more all round (its
   // walls' room) holds the most of them, the nearest the patch's centre (its outline is ragged: a corner may be bare)
   const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
@@ -26,12 +26,12 @@ function squarePatch(items, W, poly, round = false, middle = null) {  // round: 
     const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
     if (score > best) { best = score; mid = c; }
   }
-  const far = (h) => (round ? Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]) : Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1])));
+  const far = (h) => Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]);
   items.sort((a, b) => far(a) - far(b));
-  // in a circle: the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
+  // the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
   // those as far out of it; the rest of the W² cells of the wall (and a ring's hole: its middle)
   let live = W * W;
-  if (round) while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
+  while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
   for (let k = live; k < W * W; k++) items[k].dead = true;
   const cells = items.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
   cells.forEach(poly);
@@ -140,10 +140,10 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
   };
   const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % 5][1] - P[(i + 1) % 5][0] * p[1], 0) / 2), U = 1 / Math.sqrt(area(P0));  // (a tile a square unit)
   const cache = {};
-  return (W, round = false) => cache[`${W} ${round}`] ??= (() => {
+  return (W) => cache[W] ??= (() => {
     const R = (0.525 * W * Math.SQRT2 + 5) / U;  // (round the W² tiles' square, its walls too)
     const items = grow(R).map((P, i) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p), dead: hole && i === 0 }; });  // (the hole: a cell of the wall)
-    return squarePatch(items, W, (h) => h.p, round, [0, 0]);  // (round its middle)
+    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle)
   })();
 }
 // the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 3-, 4-, 5-, 7- and 8-fold (from their stars), the

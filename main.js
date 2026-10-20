@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.900';
+const VERSION = '0.1.901';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4787,7 +4787,7 @@ function gridSize(kind, f) {
   return [h, Math.round((cells / h) * 10) / 10, cells, unit];  // (a strip of teeth: its rows not all alike, on average, to a tenth)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
-const sizeShape = (kind, f) => { const d = gridSize(kind, f); return (APERIODIC[kind] && plane.round) || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };  // (a circle: its diameter)
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(f)}`; };  // (a circle: its diameter)
 const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
 // A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
@@ -5977,7 +5977,7 @@ const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penro
 const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, spectre: 1, ammann: 1, flower: 1, flower5: 1, flower7: 1, flower3: 1, flower4: 1, flower8: 1, ring7: 1, ring8: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
-const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] && plane.round ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
+const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
 // blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
 const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : sideW(kind, side));
 const blockWraps = new Map();
@@ -5991,9 +5991,9 @@ const planeRow = (kind, W) => (tilingOf(kind) ? tilingOf(kind).polys.length * W 
 const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
 // An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
-// about a square unit; poly(item): its corners), the W² items nearest a middle (a square), in W bands from the top,
+// about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
-function squarePatch(items, W, poly, round = false, middle = null) {  // round: walls in a circle (the items nearest the middle), else a square
+function discPatch(items, W, poly, middle = null) {  // walls in a circle: the items nearest the middle
   // the middle (middle, else): where a square of W² items' room (a cell about 1 square unit) and 4 units more all round (its
   // walls' room) holds the most of them, the nearest the patch's centre (its outline is ragged: a corner may be bare)
   const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
@@ -6009,12 +6009,12 @@ function squarePatch(items, W, poly, round = false, middle = null) {  // round: 
     const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
     if (score > best) { best = score; mid = c; }
   }
-  const far = (h) => (round ? Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]) : Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1])));
+  const far = (h) => Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]);
   items.sort((a, b) => far(a) - far(b));
-  // in a circle: the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
+  // the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
   // those as far out of it; the rest of the W² cells of the wall (and a ring's hole: its middle)
   let live = W * W;
-  if (round) while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
+  while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
   for (let k = live; k < W * W; k++) items[k].dead = true;
   // its core: the items nearest the middle, all those as far, then the next ones, till two of them at least, one alive
   for (let k = 0; k < 2 || !items.slice(0, k).some((h) => !h.dead);) { const d = far(items[k]); while (far(items[k]) - d < 1e-6) items[k++].core = true; }
@@ -6123,22 +6123,22 @@ const HAT = (() => {
   const hatsOf = (geom, T, out) => { if (geom.hat) out.push(T); else for (const ch of geom.children) hatsOf(ch.geom, mul(T, ch.T), out); return out; };
   const S = 0.54;  // world units a hatviz unit: a hat about as big as a square
   const cache = {};
-  return (W) => cache[`${W} ${plane.round}`] ??= (() => {
+  return (W) => cache[W] ??= (() => {
     let shapes = { H: H0, T: T0, P: P0, F: F0 }, all;
     for (;;) { all = hatsOf(patchOf(shapes), ident, []); if (all.length >= 6 * W * W) break; shapes = metatilesOf(patchOf(shapes)); }
     // each hat: its middle (its corners' mean, moved), its corners only when wanted
     const c0 = corners.reduce((s, q) => padd(s, q), pt(0, 0)), c = pt(c0.x / corners.length, c0.y / corners.length);
     const hats = all.map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S], flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
     const poly = (h) => (h.p ??= corners.map((q) => transPt(h.T, q)).map((q) => [q.x * S, -q.y * S]));
-    return squarePatch(hats, W, poly, plane.round);
+    return discPatch(hats, W, poly);
   })();
 })();
 /* Penrose's rhombi (P3): a wheel of 10 Robinson triangles cut again and again (a thin one in 2, a thick one in 3, each
  * time φ smaller; about φ² as many), two of a colour sharing their base a rhombus (thick: 72°, thin: 36°): a tiling that
- * never repeats, with five-fold symmetry. As the hats' (see squarePatch); each rhombus about a square unit */
+ * never repeats, with five-fold symmetry. As the hats' (see discPatch); each rhombus about a square unit */
 const PENROSE = (() => {
   const phi = (1 + Math.sqrt(5)) / 2, cache = {}, lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-  return (W) => cache[`${W} ${plane.round}`] ??= (() => {
+  return (W) => cache[W] ??= (() => {
     let n = 0;
     while (10 * phi ** (2 * n) < 14 * W * W) n++;  // (about 6 W² rhombi, 2 triangles each)
     const R = 1.11 * phi ** n;  // the rhombi's sides 1.11: their mean area 1
@@ -6158,13 +6158,13 @@ const PENROSE = (() => {
       const p = [A, B, other, C];
       items.push({ p, m: [(B[0] + C[0]) / 2, (B[1] + C[1]) / 2] });
     }
-    return squarePatch(items, W, (h) => h.p, plane.round, [0, 0]);  // (round the wheel's middle: five-fold)
+    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round the wheel's middle: five-fold)
   })();
 })();
 /* The Spectre (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 14 sides all 1 long, that tiles the plane
  * only without ever repeating, and never turned over (its mirror image not needed). Built by substitution, as Kaplan's
  * code (in AaronWebster/spectre-app, Apache 2.0): nine kinds of tiles (Gamma: two spectres, the "mystic"), each a
- * supertile of 8 smaller ones, about 8 times as many each level. As the hats' (see squarePatch); each about a square unit */
+ * supertile of 8 smaller ones, about 8 times as many each level. As the hats' (see discPatch); each about a square unit */
 const SPECTRE = (() => {
   const ident = [1, 0, 0, 0, 1, 0], mul = (A, B) => [A[0] * B[0] + A[1] * B[3], A[0] * B[1] + A[1] * B[4], A[0] * B[2] + A[1] * B[5] + A[2],
     A[3] * B[0] + A[4] * B[3], A[3] * B[1] + A[4] * B[4], A[3] * B[2] + A[4] * B[5] + A[5]];
@@ -6199,21 +6199,21 @@ const SPECTRE = (() => {
   const count = (g) => g.parts.reduce((s, [, sub]) => s + (sub ? count(sub) : 1), 0);
   const S = 1 / Math.sqrt(Math.abs(spectre.reduce((a, p, i) => a + p[0] * spectre[(i + 1) % 14][1] - spectre[(i + 1) % 14][0] * p[1], 0) / 2));  // a spectre a square unit
   const cache = {};
-  return (W) => cache[`${W} ${plane.round}`] ??= (() => {
+  return (W) => cache[W] ??= (() => {
     let sys = base;
     while (count(sys.Delta) < 10 * W * W) sys = supertiles(sys);  // (room for the walls all round too)
     const items = spectresOf(sys.Delta, ident, []).map((T) => { const p = spectre.map((q) => at(T, q)).map(([x, y]) => [x * S, -y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / 14) }; });
-    return squarePatch(items, W, (h) => h.p, plane.round);
+    return discPatch(items, W, (h) => h.p);
   })();
 })();
 /* Ammann–Beenker's squares and 45° rhombi (Ammann, 1977; Beenker, 1982): eightfold, never repeating; built as de
  * Bruijn's tetragrid's dual: 4 families of lines a unit apart (their normals 0°, 45°, 90°, 135°, each moved by its own
  * offset), each crossing of two a tile, its corners the sum of the lattice steps of the lines it lies between (a square
- * where two at right angles cross, a rhombus where at 45°); as the hats' (see squarePatch), each about a square unit */
+ * where two at right angles cross, a rhombus where at 45°); as the hats' (see discPatch), each about a square unit */
 const AMMANN = (() => {
   const e = [0, 1, 2, 3].map((m) => [Math.cos((m * Math.PI) / 4), Math.sin((m * Math.PI) / 4)]), g = [0.5, 0.5, 0.5, 0.5], S = 1 / Math.sqrt((1 + Math.SQRT2 * Math.SQRT1_2) / (1 + Math.SQRT2));  // (their mean area 1)
   const cache = {};
-  return (W) => cache[`${W} ${plane.round}`] ??= (() => {
+  return (W) => cache[W] ??= (() => {
     const K = Math.ceil(Math.sqrt((6 * W * W) / (4.84 * Math.PI))) + 3, items = [];  // (about 4.84 crossings a unit of the grid, 6 W² tiles)
     for (let j = 0; j < 4; j++) for (let l = j + 1; l < 4; l++) for (let kj = -K; kj <= K; kj++) for (let kl = -K; kl <= K; kl++) {
       const [a, b] = [e[j], e[l]], d = a[0] * b[1] - a[1] * b[0], r1 = kj + g[j], r2 = kl + g[l], x = [(r1 * b[1] - r2 * a[1]) / d, (a[0] * r2 - b[0] * r1) / d];
@@ -6224,7 +6224,7 @@ const AMMANN = (() => {
       if (p.reduce((sum, q, i) => sum + q[0] * p[(i + 1) % 4][1] - p[(i + 1) % 4][0] * q[1], 0) < 0) p.reverse();
       items.push({ p, m: [0, 1].map((t) => p.reduce((sum, q) => sum + q[t], 0) / 4) });
     }
-    return squarePatch(items, W, (h) => h.p, plane.round, [0, 0]);  // (round its middle: eight-fold, its lines all moved by ½)
+    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle: eight-fold, its lines all moved by ½)
   })();
 })();
 /* Rosettes: Sugimoto's pentagon for n-fold turns (Sugimoto, arXiv 2005.08470: A = 180° − 240°/n, B = 360°/n, C = 180° −
@@ -6234,7 +6234,7 @@ const AMMANN = (() => {
  * out to any size n tiles at a time (its n turns): the open corner with the least room left takes a tile on one of its
  * open sides, every way that fits (5 sides as long, mirrored or not; edge to edge; the room left at each corner one the
  * angles can fill, counted in n-ths of a degree), depth first, back on a dead end. Round a hole (Sugimoto's (3): A = 180° − 720°/n,
- * B = 1080°/n, C = 180° − 360°/n, D = 90° − 180°/n, E = 90° ± 180°/n), its middle a regular n-gon, a cell of the wall. As the hats (see squarePatch): its W²
+ * B = 1080°/n, C = 180° − 360°/n, D = 90° − 180°/n, E = 90° ± 180°/n), its middle a regular n-gon, a cell of the wall. As the hats (see discPatch): its W²
  * tiles nearest its middle, each a square unit. (tools/tilings/rosette.js: a copy, for the searches) */
 function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon left empty (its own pentagon: Sugimoto's (3))
   const deg = hole ? [180 - 720 / n, 1080 / n, 180 - 360 / n, 90 - 180 / n, 90 + 180 / n] : [180 - 240 / n, 360 / n, 180 - 120 / n, 90 - 60 / n, 90 + 60 / n];  // A B C D E
@@ -6330,10 +6330,10 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
   };
   const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % 5][1] - P[(i + 1) % 5][0] * p[1], 0) / 2), U = 1 / Math.sqrt(area(P0));  // (a tile a square unit)
   const cache = {};
-  return (W, round = false) => cache[`${W} ${round}`] ??= (() => {
+  return (W) => cache[W] ??= (() => {
     const R = (0.525 * W * Math.SQRT2 + 5) / U;  // (round the W² tiles' square, its walls too)
     const items = grow(R).map((P, i) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p), dead: hole && i === 0 }; });  // (the hole: a cell of the wall)
-    return squarePatch(items, W, (h) => h.p, round, [0, 0]);  // (round its middle)
+    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle)
   })();
 }
 // the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 3-, 4-, 5-, 7- and 8-fold (from their stars), the
@@ -6341,7 +6341,7 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
 const FLOWER_SEED = [[[0.0,0.0],[1.0,0.0],[1.9396926208,0.3420201433],[1.4396926208,1.2080455471],[0.5,0.8660254038]],[[1.0,0.0],[1.7660444431,-0.6427876097],[2.7057370639,-0.984807753],[2.8793852416,-0.0],[1.9396926208,0.3420201433]],[[2.2057370639,-1.8508331568],[2.3793852416,-2.8356409098],[3.3793852416,-2.8356409098],[3.2057370639,-1.8508331568],[2.7057370639,-0.984807753]],[[2.8793852416,0.0],[2.7057370639,0.984807753],[2.2057370639,1.8508331568],[1.4396926208,1.2080455471],[1.9396926208,0.3420201433]],[[2.7057370639,-0.984807753],[3.2057370639,-1.8508331568],[4.1454296847,-1.5088130135],[3.6454296847,-0.6427876097],[2.8793852416,0.0]],[[2.8793852416,-0.0],[3.6454296847,-0.6427876097],[4.4114741278,0.0],[3.6454296847,0.6427876097],[2.7057370639,0.984807753]],[[4.4114741278,0.0],[5.4114741278,0.0],[6.3511667486,0.3420201433],[5.8511667486,1.2080455471],[4.9114741278,0.8660254038]],[[4.4114741278,0.0],[3.6454296847,-0.6427876097],[4.1454296847,-1.5088130135],[4.9114741278,-0.8660254038],[5.4114741278,0.0]],[[4.9114741278,0.8660254038],[5.8511667486,1.2080455471],[6.6172111917,1.8508331568],[5.8511667486,2.4936207665],[5.0851223055,1.8508331568]],[[4.1454296847,1.5088130135],[3.6454296847,0.6427876097],[4.4114741278,-0.0],[4.9114741278,0.8660254038],[5.0851223055,1.8508331568]],[[4.1454296847,-1.5088130135],[5.0851223055,-1.8508331568],[6.0851223055,-1.8508331568],[5.9114741278,-0.8660254038],[4.9114741278,-0.8660254038]],[[4.9114741278,-0.8660254038],[5.9114741278,-0.8660254038],[6.8511667486,-0.5240052605],[6.3511667486,0.3420201433],[5.4114741278,0.0]],[[4.1454296847,-1.5088130135],[3.2057370639,-1.8508331568],[3.3793852416,-2.8356409098],[4.3190778624,-2.4936207665],[5.0851223055,-1.8508331568]],[[4.3190778624,-2.4936207665],[5.2587704831,-2.8356409098],[6.2587704831,-2.8356409098],[6.0851223055,-1.8508331568],[5.0851223055,-1.8508331568]],[[3.3793852416,-2.8356409098],[4.1454296847,-3.4784285195],[5.0851223055,-3.8204486628],[5.2587704831,-2.8356409098],[4.3190778624,-2.4936207665]],[[7.0248149263,-1.5088130135],[6.0851223055,-1.8508331568],[6.2587704831,-2.8356409098],[7.1984631039,-2.4936207665],[7.964507547,-1.8508331568]],[[6.8511667486,-0.5240052604],[5.9114741278,-0.8660254038],[6.0851223055,-1.8508331568],[7.0248149263,-1.5088130135],[7.7908593694,-0.8660254038]],[[6.2587704831,-2.8356409098],[5.2587704831,-2.8356409098],[5.0851223055,-3.8204486629],[6.0851223055,-3.8204486628],[7.0248149263,-3.4784285195]],[[7.1172111917,0.984807753],[6.3511667486,0.3420201433],[6.8511667486,-0.5240052605],[7.6172111917,0.1187823492],[8.1172111917,0.984807753]],[[6.6172111917,1.8508331568],[5.8511667486,1.2080455471],[6.3511667486,0.3420201433],[7.1172111917,0.984807753],[7.6172111917,1.8508331568]],[[6.3511667486,3.3596461703],[5.8511667486,2.4936207665],[6.6172111917,1.8508331568],[7.1172111917,2.7168585606],[7.2908593694,3.7016663136]]];
 const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, FLOWER_SEED)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)],
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
-const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, (W) => r(W, plane.round)])) };  // the grids that never repeat: a square patch, walls round it, never a torus
+const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
@@ -6635,8 +6635,8 @@ function renderPlaneRow() {
   // another its square
   // (on a torus: a click on one it cannot have, walls)
   const A = !!APERIODIC[kind], slanted = !!RECTS[`${kind}Rect`], hexagon = hexagonFits(kind) && !MODES[$('mode').value].margolus;
-  const round = plane.round && (A || (hexagon && !planeTorus(kind))), squared = A || !slanted || plane.rect;
-  for (const [id, can, on] of [['patchRound', A, A && round], ['patchHex', hexagon, !A && round], ['patchRhombus', !A && slanted, !round && !squared], ['patchSquare', true, !round && squared]]) {
+  const round = A || (plane.round && hexagon && !planeTorus(kind)), squared = !slanted || plane.rect;  // (a grid that never repeats: always in a circle)
+  for (const [id, can, on] of [['patchRound', A, A && round], ['patchHex', hexagon, !A && round], ['patchRhombus', !A && slanted, !round && !squared], ['patchSquare', !A, !round && squared]]) {
     $(id).disabled = !can;
     $(id).classList.toggle('active', on);
   }
@@ -6744,7 +6744,7 @@ function shapeW(kind, W0) {
   for (let i = 0; i < 6; i++) { const next = Math.min(4 * W0, Math.round(W * Math.sqrt(want / Math.max(1, live(W))))); if (next === W) break; W = next; }
   return W;
 }
-// a grid's cells of the wall: one that never repeats, its own (see squarePatch); one in a hexagon, out of it
+// a grid's cells of the wall: one that never repeats, its own (see discPatch); one in a hexagon, out of it
 const hexagonFits = (kind) => !APERIODIC[kind] && PATTERN_TURNS[baseOf(kind)] === 6;  // (walls in a hexagon: a six-fold grid's)
 const planeDead = (kind, W) => APERIODIC[kind]?.(W).dead ?? planeShape(kind, W)?.dead;
 let wallsMemo = null;
@@ -7086,7 +7086,7 @@ function drawLifePlane() {
     ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
     ctx.fill();
   }
-  // a grid in a circle or a hexagon: its core outlined in yellow (see squarePatch, planeShape), the sides of its cells not
+  // a grid in a circle or a hexagon: its core outlined in yellow (see discPatch, planeShape), the sides of its cells not
   // shared by two of them
   const core = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? [], sides = new Map();
   for (const P of core) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, q]); });
@@ -8257,7 +8257,7 @@ function planeSlices(K) {
   // in a circle or a hexagon: round its own middle, slices of one angle each (a hexagon's from a corner: on 3, 6 or 12
   // colours, each a triangle's or two), their edges a hair before (a cell on one, the same slice's all round); else as
   // many cells in each, round the grid's frame's middle
-  const shape = planeShape(kind, W) ?? (APERIODIC[kind] && plane.round ? { o: [(W - 1) / 2, (W - 1) / 2] } : null), slice = (2 * Math.PI) / K;
+  const shape = planeShape(kind, W) ?? (APERIODIC[kind] ? { o: [(W - 1) / 2, (W - 1) / 2] } : null), slice = (2 * Math.PI) / K;
   const b = planeBounds(), mid = shape ? turnPoint(shape.o, turn) : [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
   let from = -Math.PI / 2 - slice;
   if (shape?.corner != null) { const c = shape.corner + turn; from = c + Math.round((from - c) / (Math.PI / 3)) * (Math.PI / 3); }

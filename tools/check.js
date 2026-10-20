@@ -48,10 +48,9 @@ function checkMeshes(fail) {
     else if (!within(inside, torus)) fail(`${kind}: inside ${show(inside)}, its torus ${show(torus)}`);
   }
   // the grids that never repeat: their walls closed round them (a point just past each side of a cell in a cell or a
-  // wall), round and square, sizes 16 to 64
-  const sarea = (P) => P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0), round0 = plane.round;
-  for (const kind of Object.keys(APERIODIC)) for (const round of [true, false]) for (const W of [16, 24, 32, 48, 64]) {
-    plane.round = round;
+  // wall), sizes 16 to 64
+  const sarea = (P) => P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0);
+  for (const kind of Object.keys(APERIODIC)) for (const W of [16, 24, 32, 48, 64]) {
     const h = APERIODIC[kind](W), all = [...h.polys, ...h.walls], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
     all.forEach((P, j) => { const c = cell(P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
     const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
@@ -65,9 +64,8 @@ function checkMeshes(fail) {
       }
     }
     checked++;
-    if (gaps) fail(`${kind} ${round ? 'circle' : 'square'} ${W}: its walls open (${gaps} sides)`);
+    if (gaps) fail(`${kind} ${W}: its walls open (${gaps} sides)`);
   }
-  plane.round = round0;
   // the six-fold grids with walls in a hexagon (see planeShape): their walls closed round the live cells, and the live
   // cells turning onto each other round its centre
   const saved = { torus: plane.torus, round: plane.round };
