@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.902';
+const VERSION = '0.1.903';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2634,7 +2634,7 @@ function renderModePicker() {
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
   $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles; an ant's: its shape, then its creatures)
-  $('shapesLabel').hidden = !inFamily && kind !== 'Ant';
+  $('shapesLabel').hidden = grouped;  // (always there, but in 2D's groups: their own titles)
   $('shapesLabel').textContent = space === '2D' ? 'Shape' : 'Surface';
   if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
