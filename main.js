@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.887';
+const VERSION = '0.1.888';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2613,7 +2613,7 @@ function renderModePicker() {
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title
   const shapes = navValues(2, [kind, space]), planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
   const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh));
-  $('navShapes').replaceChildren(...(grouped ? SHAPE_GROUPS.map(([g]) => g) : [null]).flatMap((g) => {
+  $('navShapes').replaceChildren(...(grouped ? [...SHAPE_GROUPS.slice(1), SHAPE_GROUPS[0]].map(([g]) => g) : [null]).flatMap((g) => {  // (the circles last)
     const these = g ? shapes.filter((sh) => groupOf(sh) === g) : shapes;
     if (!these.length) return [];
     const title = g ? [Object.assign(document.createElement('div'), { className: 'block-label', textContent: g })] : [];
