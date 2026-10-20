@@ -229,6 +229,12 @@ cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   const motif = [[0, 0], [4 * c - 3 * s, c], [c - s, c - s], [3 * c - s, 3 * c - s], [3 * c - 2 * s, s], [c, 2 * c - s], [2 * c - s, c], [c - s, 3 * c - s],
                  [0, 2 * c], [2 * c - 2 * s, 0], [2 * c - s, 3 * c - 2 * s], [3 * c - 2 * s, 2 * c - s]];
   cell('dual16', a, b, polygons(points(a, b, motif, 6), true)); }
+// more duals of k-uniform tilings of pentagons (Wikipedia's Pentagonal tiling, dual k-uniform tilings): their tilings read off
+// Wikimedia's drawings, made exact (kuniform.py, kuniform.json); each dual its pentagons of k kinds, a cell each corner
+for (const [name, { a, b, motif }] of Object.entries(JSON.parse(Deno.readTextFileSync(new URL('./kuniform.json', import.meta.url))))) {
+  const N = Math.ceil(18 / Math.min(Math.hypot(...a), Math.hypot(...b)));  // (a patch some 18 sides each way: its middle's corners whole)
+  cell(name, a, b, polygons(points(a, b, motif, N), true));
+}
 
 // the check: a torus of 5 × 5 cells, its polygons by their corners; each edge of a polygon (between corners in turn) one
 // other polygon's; each polygon's neighbours (sharing an edge or a corner)
