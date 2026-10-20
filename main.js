@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.908';
+const VERSION = '0.1.909';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1757,6 +1757,7 @@ const ICONS = (() => {
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
     wallsRound: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>',  // walls in a circle
     wallsHex: '<path d="M7.5 4.2h9L21 12l-4.5 7.8h-9L3 12z"/><path d="M9.8 8.1h4.4L16.5 12l-2.3 3.9H9.8L7.5 12z"/>',  // in a hexagon
+    wallsOctagon: '<path d="M8.5 3.5h7l5 5v7l-5 5h-7l-5-5v-7z"/><path d="M10.3 7.8h3.4l2.5 2.5v3.4l-2.5 2.5h-3.4l-2.5-2.5v-3.4z"/>',  // in an octagon (Ammann's)
     wallsRhombus: '<path d="M2.5 18.5L8 5.5h13.5L16 18.5z"/><path d="M7.3 15.2L10 8.8h6.7L14 15.2z"/>',  // in a rhombus (the slanted grid's own)
     // a slanted grid as it is (a rhombus), or as a rectangle
     rhombus: pathEl('M22 19L16 5H2L8 19Z'),
@@ -5994,7 +5995,7 @@ const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triang
 // An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
 // about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
-function discPatch(items, W, poly, middle = null) {  // walls in a circle: the items nearest the middle
+function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls in a circle: the items nearest the middle (norm: another way to measure, Ammann's octagon)
   // the middle (middle, else): where a square of W² items' room (a cell about 1 square unit) and 4 units more all round (its
   // walls' room) holds the most of them, the nearest the patch's centre (its outline is ragged: a corner may be bare)
   const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
@@ -6010,7 +6011,7 @@ function discPatch(items, W, poly, middle = null) {  // walls in a circle: the i
     const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
     if (score > best) { best = score; mid = c; }
   }
-  const far = (h) => Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]);
+  const far = (h) => norm(h.m[0] - mid[0], h.m[1] - mid[1]);
   items.sort((a, b) => far(a) - far(b));
   // the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
   // those as far out of it; the rest of the W² cells of the wall (and a ring's hole: its middle)
@@ -6225,7 +6226,7 @@ const AMMANN = (() => {
       if (p.reduce((sum, q, i) => sum + q[0] * p[(i + 1) % 4][1] - p[(i + 1) % 4][0] * q[1], 0) < 0) p.reverse();
       items.push({ p, m: [0, 1].map((t) => p.reduce((sum, q) => sum + q[t], 0) / 4) });
     }
-    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle: eight-fold, its lines all moved by ½)
+    return discPatch(items, W, (h) => h.p, [0, 0], (x, y) => Math.max(...e.map(([a, b]) => Math.abs(a * x + b * y))));  // (round its middle: eight-fold, its lines all moved by ½; in an octagon, its sides along the tiles')
   })();
 })();
 /* Rosettes: Sugimoto's pentagon for n-fold turns (Sugimoto, arXiv 2005.08470: A = 180° − 240°/n, B = 360°/n, C = 180° −
@@ -6637,6 +6638,9 @@ function renderPlaneRow() {
   // (on a torus: a click on one it cannot have, walls)
   const A = !!APERIODIC[kind], slanted = !!RECTS[`${kind}Rect`], hexagon = hexagonFits(kind) && !MODES[$('mode').value].margolus;
   const round = A || (plane.round && hexagon && !planeTorus(kind)), squared = !slanted || plane.rect;  // (a grid that never repeats: always in a circle)
+  const oct = kind === 'ammann';  // (its natural outline an octagon, in Circle's place)
+  $('patchRound').querySelector('span').textContent = oct ? 'Octagon' : 'Circle';
+  $('patchRound').querySelector('svg').innerHTML = ICONS[oct ? 'wallsOctagon' : 'wallsRound'];
   for (const [id, can, on] of [['patchRound', A, A && round], ['patchHex', hexagon, !A && round], ['patchRhombus', !A && slanted, !round && !squared], ['patchSquare', !A, !round && squared]]) {
     $(id).disabled = !can;
     $(id).classList.toggle('active', on);
@@ -8264,10 +8268,10 @@ function planeSlices(K) {
   // in a circle or a hexagon: round its own middle, slices of one angle each (a hexagon's from a corner: on 3, 6 or 12
   // colours, each a triangle's or two), their edges a hair before (a cell on one, the same slice's all round); else as
   // many cells in each, round the grid's frame's middle
-  const shape = planeShape(kind, W) ?? (APERIODIC[kind] ? { o: [(W - 1) / 2, (W - 1) / 2] } : null), slice = (2 * Math.PI) / K;
+  const shape = planeShape(kind, W) ?? (APERIODIC[kind] ? { o: [(W - 1) / 2, (W - 1) / 2], ...(kind === 'ammann' ? { corner: Math.PI / 8, step: Math.PI / 4 } : {}) } : null), slice = (2 * Math.PI) / K;  // (Ammann's octagon: from a corner too)
   const b = planeBounds(), mid = shape ? turnPoint(shape.o, turn) : [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
   let from = -Math.PI / 2 - slice;
-  if (shape?.corner != null) { const c = shape.corner + turn; from = c + Math.round((from - c) / (Math.PI / 3)) * (Math.PI / 3); }
+  if (shape?.corner != null) { const c = shape.corner + turn, step = shape.step ?? Math.PI / 3; from = c + Math.round((from - c) / step) * step; }
   if (shape) from -= 1e-6;
   const round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
   const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
