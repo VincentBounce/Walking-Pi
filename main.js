@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.915';
+const VERSION = '0.1.917';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7168,6 +7168,7 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_CO
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
+  if (!colourFair(k, g)) return false;  // (its parts not alike: greyed, see colourFair)
   if (k * ((parseRule(ruleBody($('lifeRule').value))?.C ?? 2) - 1) > 255) return false;  // its states and dying stages past a cell's byte (Faders' 25: eight at most)
   if (mode.plane) {
     return true;  // its blocks (rounded down when they do not divide it, as on a torus); with dead edges, its halves, quarters, or slices round the middle (see planeSlices)
@@ -7186,22 +7187,42 @@ const colourBlock = (k) => {
   return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
 };
 const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 6: 'Sextet', 8: 'Octet', 9: 'Nonet', 12: 'Dozen' };  // one colour, then battles
-// the counts of colours fair on the plane's grid: on a six-fold one (Hexagons, the natural rhombi), one colour, and 2, 3, 6
-// or 12 (each as many sixths of a turn, or a twelfth and its mirror); on Ammann's octagon, Flower 4, Flower 8 and Ring 8, 1, 2, 4
-// and 8; on Flower 3 and Ring 9, 1, 3 and 9
-const colourFair = (K) => { const kind = MODES[$('mode').value]?.plane;
-  return hexagonFits(kind) ? [1, 2, 3, 6, 12].includes(K) : ['ammann', 'flower4', 'flower8', 'ring8'].includes(kind) ? [1, 2, 4, 8].includes(K) : ['flower3', 'ring9'].includes(kind) && [1, 3, 9].includes(K); };
+// the counts of colours fair on the figure, every colour's part a copy of the others': on the plane, those its turns n share
+// (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat 1); on a
+// solid, its fair spots (see SOLID_COLOURS); on a torus, blocks that divide it; on a Möbius strip, any
+const colourFair = (K, g = walk.geo) => {
+  const mode = MODES[$('mode').value], kind = mode?.plane;
+  if (K === 1) return true;
+  if (kind) {
+    const n = ROSETTES[kind]?.[0] ?? { ammann: 8, penrose: 5, hat: 1, spectre: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1, mirror = APERIODIC[kind] ? !['hat', 'spectre'].includes(kind) : canMirror(kind);
+    return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
+  }
+  if (SOLID_COLOURS[mode?.sphere]) return SOLID_COLOURS[mode.sphere].includes(K);
+  if (g?.mobius) return true;
+  if (g?.nu) { const [u, v] = torusBlocks(K, g); return g.nu % u === 0 && g.nv % v === 0; }
+  return false;
+};
+// a count of colours whose battles can bring a colour back: the rule's birth with c live neighbours, c a multiple of K − 1
+// (as many of each of K − 1 colours: a tie, the one missing born, see lifeStep); with letters, any of theirs with c
+const colourMissing = (K) => {
+  const r = parseRule(ruleBody($('lifeRule').value));
+  if (K < 3 || !r) return false;
+  const bits = (m) => m.toString(2).replace(/0/g, '').length;
+  const counts = r.iso ? [...Array(1 << (r.iso === 'hensel' ? 8 : 6)).keys()].filter((m) => r.B[16 + m]).map(bits) : [...Array(16).keys()].filter((c) => r.B[c]);
+  return counts.some((c) => c >= K - 1 && c % (K - 1) === 0);
+};
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.innerHTML = `${colourBlock(k)}<span>${COLOUR_STEP_NAMES[k]}</span>`;
-    b.title = `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourFair(k) ? ' (fair on this grid: its turns share them alike)' : ''}`;
-    b.classList.toggle('fair', colourFair(k));  // (its corner's mark)
+    b.title = `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`;
+
     b.classList.toggle('active', k === lifeColours);
     b.classList.toggle('switch', k === lifeColours);  // (picked: a click shows how it works, as a rule's)
     b.disabled = !coloursFit(k);
+    b.classList.toggle('missing', !b.disabled && colourMissing(k));  // (its corner's mark)
     b.addEventListener('click', () => { if (k === lifeColours) { $('watchRule').click(); return; } lifeColours = k; compute(); });
     return b;
   }));

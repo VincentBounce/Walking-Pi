@@ -582,6 +582,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .size-row > .nav-shapes { width: calc((100% - 12px) / 4); grid-template-columns: 1fr; margin: 0; }
 .size-row > .stepper { flex: 1; margin: 0; }
 #colourBlocks button { position: relative; }
-#colourBlocks button.fair::after { content: ''; position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border-bottom-right-radius: 5px; background: linear-gradient(135deg, transparent 50%, var(--border) 50%); }  /* a count of colours fair on this grid: a triangle in its corner, its tip the button's round, in its border's colour */
-#colourBlocks button.fair:hover:not(:disabled)::after { background: linear-gradient(135deg, transparent 50%, var(--muted) 50%); }
-#colourBlocks button.fair.active::after { background: linear-gradient(135deg, transparent 50%, var(--accent) 50%); }
+#colourBlocks button.missing::after { content: ''; position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border-bottom-right-radius: 5px; background: linear-gradient(135deg, transparent 50%, var(--border) 50%); }  /* a count of colours whose battles can bring a colour back (the rule's ties): a triangle in its corner, its tip the button's round, in its border's colour */
+#colourBlocks button.missing:hover:not(:disabled)::after { background: linear-gradient(135deg, transparent 50%, var(--muted) 50%); }
+#colourBlocks button.missing.active::after { background: linear-gradient(135deg, transparent 50%, var(--accent) 50%); }
