@@ -1,4 +1,5 @@
-// The hats' grid (as main.js's HAT, a copy): the W² hats of a square patch, their neighbours by a shared corner, no wrapping
+// The hats' grid (as main.js's HAT, a copy): the W² hats of a disc (../tilings/patch.js), their neighbours by a shared corner, no wrapping
+import { discPatch, patchGrid } from '../tilings/patch.js';
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
  * (github.com/isohedral/hatviz, BSD 3-clause): four metatiles (H, T, P, F) are laid in a patch, which gives four
@@ -98,45 +99,7 @@ const HAT = (() => {
     const c0 = corners.reduce((s, q) => padd(s, q), pt(0, 0)), c = pt(c0.x / corners.length, c0.y / corners.length);
     const hats = all.map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S], flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
     const poly = (h) => (h.p ??= corners.map((q) => transPt(h.T, q)).map((q) => [q.x * S, -q.y * S]));
-    // the middle: where a square of W² hats' room (a hat about 1 square unit) holds the most of them, the nearest the
-    // patch's centre (its outline is ragged: round its centre, a corner may be bare)
-    const box = (d) => hats.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
-    const half = (Math.sqrt(W * W) * 1.05) / 2, centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
-    // (the hats by unit cells of a grid over the patch, summed from a corner: a box's count at once)
-    const nx = Math.ceil(bx[1] - bx[0]) + 2, ny = Math.ceil(by[1] - by[0]) + 2, sum = new Int32Array((nx + 1) * (ny + 1));
-    for (const h of hats) sum[(Math.floor(h.m[1] - by[0]) + 1) * (nx + 1) + Math.floor(h.m[0] - bx[0]) + 1]++;
-    for (let y = 1; y <= ny; y++) for (let x = 1; x <= nx; x++) sum[y * (nx + 1) + x] += sum[(y - 1) * (nx + 1) + x] + sum[y * (nx + 1) + x - 1] - sum[(y - 1) * (nx + 1) + x - 1];
-    const count = (x0, y0, x1, y1) => sum[y1 * (nx + 1) + x1] - sum[y0 * (nx + 1) + x1] - sum[y1 * (nx + 1) + x0] + sum[y0 * (nx + 1) + x0];
-    const k = Math.ceil(2 * half) + 1;
-    let mid = centre, best = -1;
-    for (let y = 0; y + k <= ny; y++) for (let x = 0; x + k <= nx; x++) {
-      const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x, y, x + k, y + k) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
-      if (score > best) { best = score; mid = c; }
-    }
-    const far = (h) => Math.max(Math.abs(h.m[0] - mid[0]), Math.abs(h.m[1] - mid[1]));
-    hats.sort((a, b) => far(a) - far(b));
-    const cells = hats.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
-    cells.forEach(poly);
-    for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
-    // the walls: the hats beyond touching one of them (sharing a corner)
-    const key = ([u, v]) => `${Math.round(u * 1000)},${Math.round(v * 1000)}`, inside = new Set(rows.flatMap((h) => h.p.map(key)));
-    const edge = far(hats[W * W - 1]) + 3, near = [];  // (the hats just beyond: the next ones by distance)
-    for (let k = W * W; k < hats.length && far(hats[k]) < edge; k++) near.push(hats[k]);
-    const walls = near.filter((h) => poly(h).some((q) => inside.has(key(q)))).map((h) => h.p);
-    // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
-    const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
-    return { polys: rows.map((h) => at(h.p)), flips: rows.map((h) => h.flip), walls: walls.map(at), key };
+    return discPatch(hats, W, poly);  // (as main.js's: the W² nearest its middle, in a circle)
   })();
 })();
-export function hatGrid(W) {
-  const h = HAT(W), n = W * W, by = new Map(), start = new Int32Array(n + 1), list = [];
-  h.polys.forEach((p, t) => p.forEach((q) => { const k = h.key(q); (by.get(k) ?? by.set(k, []).get(k)).push(t); }));
-  for (let t = 0; t < n; t++) {
-    const around = new Set();
-    for (const q of h.polys[t]) for (const u of by.get(h.key(q))) if (u !== t) around.add(u);
-    start[t] = list.length;
-    list.push(...[...around].sort((a, b) => a - b));
-  }
-  start[n] = list.length;
-  return { W, row: W, n, start, list: Int32Array.from(list) };
-}
+export const hatGrid = (W) => patchGrid(HAT(W), W);  // (the wall's cells: no neighbours)

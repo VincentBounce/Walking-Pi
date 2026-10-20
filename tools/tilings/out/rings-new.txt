@@ -1,0 +1,33 @@
+== ring9
+ring9 22168 rules 221 candidates 24s
+ring9 done 131s
+  B25/S0346/C4    0.204  T 932 (272–3741) spread 0.79 plateau 0.6 at200 7% ash 3.42% osc 0%
+  B25/S034/C4     0.142  T 1040 (277–4212) spread 0.85 plateau 0.65 at200 6.4% ash 3.25% osc 0%
+  B2/S034/C4      0.135  T 1027 (305–2929) spread 0.65 plateau 0.66 at200 6.1% ash 3.27% osc 0%
+  B256/S0347/C4   0.12   T 900 (111–2524) spread 0.79 plateau 0.73 at200 6.6% ash 3.19% osc 0%
+  B267/S0346/C4   0.118  T 825 (215–1898) spread 0.55 plateau 0.72 at200 5.6% ash 3.16% osc 0%
+  B27/S0347/C4    0.116  T 737 (293–1706) spread 0.63 plateau 0.73 at200 5.8% ash 3.33% osc 0%
+  B257/S0346/C4   0.112  T 896 (236–6000) spread 0.9 plateau 0.75 at200 7.2% ash 3.22% osc 0%
+  B27/S0346/C4    0.088  T 512 (355–1949) spread 0.48 plateau 0.68 at200 5.6% ash 3.27% osc 0%
+== ring10
+    at [0m[1m[3mArray.<anonymous>[0m ([0m[2m[38;5;245mfile:///Users/VincentBounce/Library/CloudStorage/OneDrive-Personal/@Code/Walking%20Pi/tools/tilings/[0m[0m[36mrosette.js[0m:[0m[33m147[0m:[0m[33m5[0m)
+    at [0m[1m[3mrosetteGrid[0m ([0m[2m[38;5;245mfile:///Users/VincentBounce/Library/CloudStorage/OneDrive-Personal/@Code/Walking%20Pi/tools/tilings/[0m[0m[36mrosette.js[0m:[0m[33m156[0m:[0m[33m30[0m)
+    at [0m[1m[3mG[0m ([0m[36mfile:///Users/VincentBounce/Library/CloudStorage/OneDrive-Personal/@Code/Walking Pi/tools/kitesearch/worker.js[0m:[0m[33m10[0m:[0m[33m318[0m)
+    at [0m[36mfile:///Users/VincentBounce/Library/CloudStorage/OneDrive-Personal/@Code/Walking Pi/tools/kitesearch/worker.js[0m:[0m[33m16[0m:[0m[33m96[0m
+    at [0m[1m[3mArray.map[0m ([0m[36m<anonymous>[0m)
+    at [0m[36mfile:///Users/VincentBounce/Library/CloudStorage/OneDrive-Personal/@Code/Walking Pi/tools/kitesearch/worker.js[0m:[0m[33m16[0m:[0m[33m78[0m
+    at [0m[1m[3mArray.map[0m ([0m[36m<anonymous>[0m)
+    at [0m[1m[3mself.onmessage[0m ([0m[36mfile:///Users/VincentBounce/Library/CloudStorage/OneDrive-Personal/@Code/Walking Pi/tools/kitesearch/worker.js[0m:[0m[33m16[0m:[0m[33m38[0m)
+[0m[1m[31merror[0m: Uncaught (in promise) Error: Unhandled error in child worker.
+    [0m[2m[38;5;245mat [0m[0m[2m[38;5;245mWorker.#pollControl[0m[0m[2m[38;5;245m ([0m[0m[2m[38;5;245mext:runtime/11_workers.js[0m[0m[2m[38;5;245m:[0m[0m[2m[38;5;245m232[0m[0m[2m[38;5;245m:[0m[0m[2m[38;5;245m19[0m[0m[2m[38;5;245m)[0m
+== ring12
+ring12 22168 rules 278 candidates 25s
+ring12 done 146s
+  B2/S0345/C5     0.267  T 1083 (439–6000) spread 1.05 plateau 0.68 at200 6.6% ash 3.71% osc 58%
+  B257/S0346/C4   0.248  T 661 (355–3188) spread 0.64 plateau 0.53 at200 6.5% ash 3.25% osc 0%
+  B37/S0345       0.171  T 416 (212–946) spread 0.39 plateau 0.33 at200 8.8% ash 3.19% osc 100%
+  B27/S0345/C5    0.167  T 496 (184–6000) spread 0.84 plateau 0.67 at200 4.6% ash 3.1% osc 58%
+  B2/S0347/C4     0.142  T 706 (222–2118) spread 0.61 plateau 0.68 at200 5.7% ash 3.25% osc 0%
+  B257/S0347/C4   0.117  T 790 (302–4738) spread 0.8 plateau 0.72 at200 5.5% ash 3.3% osc 0%
+  B267/S0346/C4   0.116  T 534 (275–1348) spread 0.45 plateau 0.61 at200 5.2% ash 3.22% osc 0%
+  B27/S0347/C4    0.098  T 758 (146–1505) spread 0.58 plateau 0.78 at200 6.6% ash 3.33% osc 0%

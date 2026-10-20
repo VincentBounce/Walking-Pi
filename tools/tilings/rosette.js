@@ -6,46 +6,7 @@
 // open sides, every way that fits (5 sides as long, mirrored or not; edge to edge; the room left at each corner one the
 // angles can fill, counted in n-ths of a degree), depth first, back on a dead end. As the hats (see discPatch): its W²
 // tiles nearest its middle, each a square unit. main.js has a copy (ROSETTE); this one for the searches (rosetteGrid)
-const roundOff = (x, k = 1000) => Math.round(x * k + 0.37), pointKey = ([x, y], k = 1000) => `${roundOff(x, k)},${roundOff(y, k)}`;  // (as main.js's)
-// An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
-// about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
-// each by x (a cell (x, y) as on the other grids); the items round them, its walls
-function discPatch(items, W, poly, middle = null) {  // walls in a circle: the items nearest the middle
-  // the middle (middle, else): where a square of W² items' room (a cell about 1 square unit) and 4 units more all round (its
-  // walls' room) holds the most of them, the nearest the patch's centre (its outline is ragged: a corner may be bare)
-  const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
-  const half = (Math.sqrt(W * W) * 1.05) / 2, centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
-  // (the items by unit cells of a grid over the patch, summed from a corner: a box's count at once)
-  const nx = Math.ceil(bx[1] - bx[0]) + 2, ny = Math.ceil(by[1] - by[0]) + 2, sum = new Int32Array((nx + 1) * (ny + 1));
-  for (const h of items) sum[(Math.floor(h.m[1] - by[0]) + 1) * (nx + 1) + Math.floor(h.m[0] - bx[0]) + 1]++;
-  for (let y = 1; y <= ny; y++) for (let x = 1; x <= nx; x++) sum[y * (nx + 1) + x] += sum[(y - 1) * (nx + 1) + x] + sum[y * (nx + 1) + x - 1] - sum[(y - 1) * (nx + 1) + x - 1];
-  const count = (x0, y0, x1, y1) => sum[y1 * (nx + 1) + x1] - sum[y0 * (nx + 1) + x1] - sum[y1 * (nx + 1) + x0] + sum[y0 * (nx + 1) + x0];
-  const k = Math.ceil(2 * half) + 1;
-  let mid = middle ?? centre, best = -1;
-  if (!middle) for (let y = 4; y + k + 4 <= ny; y++) for (let x = 4; x + k + 4 <= nx; x++) {
-    const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
-    if (score > best) { best = score; mid = c; }
-  }
-  const far = (h) => Math.hypot(h.m[0] - mid[0], h.m[1] - mid[1]);
-  items.sort((a, b) => far(a) - far(b));
-  // the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
-  // those as far out of it; the rest of the W² cells of the wall (and a ring's hole: its middle)
-  let live = W * W;
-  while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
-  for (let k = live; k < W * W; k++) items[k].dead = true;
-  const cells = items.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
-  cells.forEach(poly);
-  for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
-  // the walls: the cells of the wall and the items beyond touching a live one (sharing a corner)
-  const inside = new Set(rows.filter((h) => !h.dead).flatMap((h) => h.p.map((p) => pointKey(p))));
-  const edge = far(items[W * W - 1]) + 3, near = [];  // (the items just beyond: the next ones by distance)
-  for (let k = W * W; k < items.length && far(items[k]) < edge; k++) near.push(items[k]);
-  const walls = [...rows.filter((h) => h.dead), ...near].filter((h) => poly(h).some((q) => inside.has(pointKey(q)))).map((h) => h.p);
-  // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
-  const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
-  const dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
-  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead };
-}
+import { discPatch, patchGrid, pointKey } from './patch.js';
 function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon left empty (its own pentagon: Sugimoto's (3))
   const deg = hole ? [180 - 720 / n, 1080 / n, 180 - 360 / n, 90 - 180 / n, 90 + 180 / n] : [180 - 240 / n, 360 / n, 180 - 120 / n, 90 - 60 / n, 90 + 60 / n];  // A B C D E
   // its corners: AB, BC, CD of side 1, then DE and EA as the angles close it (DE: 2 sin(B / 2) round a star; EA: 1)
@@ -150,17 +111,7 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
 // 7- and 8-fold rings (round a hole)
 const FLOWER_SEED = [[[0.0,0.0],[1.0,0.0],[1.9396926208,0.3420201433],[1.4396926208,1.2080455471],[0.5,0.8660254038]],[[1.0,0.0],[1.7660444431,-0.6427876097],[2.7057370639,-0.984807753],[2.8793852416,-0.0],[1.9396926208,0.3420201433]],[[2.2057370639,-1.8508331568],[2.3793852416,-2.8356409098],[3.3793852416,-2.8356409098],[3.2057370639,-1.8508331568],[2.7057370639,-0.984807753]],[[2.8793852416,0.0],[2.7057370639,0.984807753],[2.2057370639,1.8508331568],[1.4396926208,1.2080455471],[1.9396926208,0.3420201433]],[[2.7057370639,-0.984807753],[3.2057370639,-1.8508331568],[4.1454296847,-1.5088130135],[3.6454296847,-0.6427876097],[2.8793852416,0.0]],[[2.8793852416,-0.0],[3.6454296847,-0.6427876097],[4.4114741278,0.0],[3.6454296847,0.6427876097],[2.7057370639,0.984807753]],[[4.4114741278,0.0],[5.4114741278,0.0],[6.3511667486,0.3420201433],[5.8511667486,1.2080455471],[4.9114741278,0.8660254038]],[[4.4114741278,0.0],[3.6454296847,-0.6427876097],[4.1454296847,-1.5088130135],[4.9114741278,-0.8660254038],[5.4114741278,0.0]],[[4.9114741278,0.8660254038],[5.8511667486,1.2080455471],[6.6172111917,1.8508331568],[5.8511667486,2.4936207665],[5.0851223055,1.8508331568]],[[4.1454296847,1.5088130135],[3.6454296847,0.6427876097],[4.4114741278,-0.0],[4.9114741278,0.8660254038],[5.0851223055,1.8508331568]],[[4.1454296847,-1.5088130135],[5.0851223055,-1.8508331568],[6.0851223055,-1.8508331568],[5.9114741278,-0.8660254038],[4.9114741278,-0.8660254038]],[[4.9114741278,-0.8660254038],[5.9114741278,-0.8660254038],[6.8511667486,-0.5240052605],[6.3511667486,0.3420201433],[5.4114741278,0.0]],[[4.1454296847,-1.5088130135],[3.2057370639,-1.8508331568],[3.3793852416,-2.8356409098],[4.3190778624,-2.4936207665],[5.0851223055,-1.8508331568]],[[4.3190778624,-2.4936207665],[5.2587704831,-2.8356409098],[6.2587704831,-2.8356409098],[6.0851223055,-1.8508331568],[5.0851223055,-1.8508331568]],[[3.3793852416,-2.8356409098],[4.1454296847,-3.4784285195],[5.0851223055,-3.8204486628],[5.2587704831,-2.8356409098],[4.3190778624,-2.4936207665]],[[7.0248149263,-1.5088130135],[6.0851223055,-1.8508331568],[6.2587704831,-2.8356409098],[7.1984631039,-2.4936207665],[7.964507547,-1.8508331568]],[[6.8511667486,-0.5240052604],[5.9114741278,-0.8660254038],[6.0851223055,-1.8508331568],[7.0248149263,-1.5088130135],[7.7908593694,-0.8660254038]],[[6.2587704831,-2.8356409098],[5.2587704831,-2.8356409098],[5.0851223055,-3.8204486629],[6.0851223055,-3.8204486628],[7.0248149263,-3.4784285195]],[[7.1172111917,0.984807753],[6.3511667486,0.3420201433],[6.8511667486,-0.5240052605],[7.6172111917,0.1187823492],[8.1172111917,0.984807753]],[[6.6172111917,1.8508331568],[5.8511667486,1.2080455471],[6.3511667486,0.3420201433],[7.1172111917,0.984807753],[7.6172111917,1.8508331568]],[[6.3511667486,3.3596461703],[5.8511667486,2.4936207665],[6.6172111917,1.8508331568],[7.1172111917,2.7168585606],[7.2908593694,3.7016663136]]];
 const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, FLOWER_SEED)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)],
-                   ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
-export function rosetteGrid(name, W) {
-  const h = ROSETTES[name][1](W), n = W * W, by = new Map(), start = new Int32Array(n + 1), list = [], k = ([x, y]) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`, dead = new Set(h.dead);
-  h.polys.forEach((p, t) => p.forEach((q) => { (by.get(k(q)) ?? by.set(k(q), []).get(k(q))).push(t); }));
-  for (let t = 0; t < n; t++) {
-    const around = new Set();
-    if (!dead.has(t)) for (const q of h.polys[t]) for (const u of by.get(k(q))) if (u !== t && !dead.has(u)) around.add(u);  // (the wall's cells: none)
-    start[t] = list.length;
-    list.push(...[...around].sort((a, b) => a - b));
-  }
-  start[n] = list.length;
-  return { W, row: W, n, start, list: Int32Array.from(list), per: 1 };
-}
+                   ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
+                   ring9: [9, ROSETTE(9, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
+export const rosetteGrid = (name, W) => patchGrid(ROSETTES[name][1](W), W);  // (the wall's cells: a ring's hole and those past its circle)
 export { ROSETTE, ROSETTES };
