@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.867';
+const VERSION = '0.1.868';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7046,12 +7046,20 @@ function blockTutorial(option, to) {
       + `<rect x="${corner[0] - m}" y="${corner[1] - m}" width="${span}" height="${span}" fill="url(#tutSky)"/>${wall.length ? `<path d="${wall.map((c) => `M${c.map((p) => p.join(',')).join('L')}Z`).join('')}" fill="${LIFE_WALL}"/>` : ''}`  // (the wall one shape: no seams between its cells)
       + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${outlineOf(framed)}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (a block framed)
   };
+  // its max period: it runs back, so a start comes back to itself (no lead-in), at most after its states × its phases;
+  // here, on the grid built, and this start's, if known (see blockBack)
+  const L = walk.life?.margolus ? walk.life : null, p = turns.length, keeps = blockKeeps(to), B = L && blockBound(L, to, p);
+  const maxPeriod = `<h4>Max period</h4><p>It runs back, so on a finite grid any start comes back to itself, with no lead-in: its period is the generation it does, a multiple of its ${p} phases. `
+    + (keeps ? `This rule keeps the live cells (each block as many alive after), so a start of m alive cells on n comes back within C(n, m) × ${p} generations: the ways m cells can lie, times the phases.`
+      : `This rule changes how many are alive, so a start on n cells comes back within 2<sup>n</sup> × ${p} generations: all the grid's states, times the phases.`)
+    + (L ? ` Here, ${fmt(L.alive.length)} cells${keeps ? `, ${fmt(L.seedAlive)} alive` : ''}: at most ${bigWords(B.log).replace(/\^(.*)/, '<sup>$1</sup>')}. `
+      + (L.stable ? `This start comes back at gen ${fmt(L.stable.P)}.` : `This start: not back by gen ${fmt(Math.max(L.reached ?? 0, backSearch.life === L ? backSearch.gen : 0))} (Find its return to the start searches on).`) : '') + '</p>';
   const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood): `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
     + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
-    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div></div>`;
+    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
@@ -7408,11 +7416,12 @@ function lifeTrack(gen) {
 // generation, however far (no generations kept); at most its states × its phases, 2^n × p, or with a rule keeping its
 // live cells (Billiard balls, Single rotation, Swirl), C(n, m) × p (m alive)
 const blockBack = (L, a, gen) => gen > 0 && gen % L.margolus.turns.length === 0 && a.every((v, t) => v === L.seed[t]);
-function blockBound(L) {  // its log10
-  const n = L.alive.length, m = L.seedAlive, p = Math.log10(L.margolus.turns.length), keeps = L.margolus.to.every((v, st) => ringAlive(v) === ringAlive(st));
+const blockKeeps = (to) => to.every((v, st) => ringAlive(v) === ringAlive(st));  // (each block as many alive after)
+function blockBound(L, to = L.margolus.to, phases = L.margolus.turns.length) {  // its log10
+  const n = L.alive.length, m = L.seedAlive, keeps = blockKeeps(to);
   let c = 0;
   if (keeps) for (let i = 0; i < Math.min(m, n - m); i++) c += Math.log10((n - i) / (i + 1));
-  return { keeps, log: (keeps ? c : n * Math.LOG10E * Math.LN2) + p };
+  return { keeps, log: (keeps ? c : n * Math.LOG10E * Math.LN2) + Math.log10(phases) };
 }
 const bigWords = (log) => (log < 15 ? fmt(Math.round(10 ** log)) : `10^${fmt(Math.floor(log))}`);
 // the search for its return, past the generations played: the start stepped on its own, in slices (Find its return)
