@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.893';
+const VERSION = '0.1.894';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6731,7 +6731,7 @@ function planeShape(kind, W) {
   while (core.length < 2) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-6) core.push(byFar[core.length]); }
   const inside = new Set(cs.flatMap((P, t) => (out.has(t) ? [] : P.map((p) => pointKey(p)))));
   const walls = dead.filter((t) => cs[t].some((p) => inside.has(pointKey(p)))).map((t) => [t % row, Math.floor(t / row)]);
-  return shapeMemo.set(key, { dead, walls, core: core.map((t) => cs[t]) }).get(key);
+  return shapeMemo.set(key, { dead, walls, core: core.map((t) => cs[t]), o, corner: hex ? th + Math.PI / 6 : null }).get(key);  // (o: its middle; corner: a hexagon's corner's way)
 }
 // its grid's side: as many cells in it as a disc of diameter side's (π side² / 4 squares' worth, as a grid that never
 // repeats in a circle), the grid grown round it
@@ -8228,13 +8228,22 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOT
 let sliceMemo = null;
 const wallSlices = (K) => walk.plane && !walk.plane.torus && K !== 2 && K !== 4 && K > 1;
 function planeSlices(K) {
-  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${K}|${turn}`;
+  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${K}|${turn}|${plane.round}|${plane.hexagon}`;
   if (sliceMemo?.key === key) return sliceMemo;
-  // as seen (turned, see planeTurn), from red's, its middle up and to the left (½ a slice left of straight up), clockwise
-  const b = planeBounds(), mid = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2], from = -Math.PI / 2 - (2 * Math.PI) / K, round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  // as seen (turned, see planeTurn), from red's, its middle up and to the left (½ a slice left of straight up), clockwise;
+  // in a circle or a hexagon: round its own middle, slices of one angle each (a hexagon's from a corner: on 3, 6 or 12
+  // colours, each a triangle's or two), their edges a hair before (a cell on one, the same slice's all round); else as
+  // many cells in each, round the grid's frame's middle
+  const shape = planeShape(kind, W) ?? (APERIODIC[kind] && plane.round ? { o: [(W - 1) / 2, (W - 1) / 2] } : null), slice = (2 * Math.PI) / K;
+  const b = planeBounds(), mid = shape ? turnPoint(shape.o, turn) : [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
+  let from = -Math.PI / 2 - slice;
+  if (shape?.corner != null) { const c = shape.corner + turn; from = c + Math.round((from - c) / (Math.PI / 3)) * (Math.PI / 3); }
+  if (shape) from -= 1e-6;
+  const round = (a) => (((a - from) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
   const at = Array.from({ length: n }, (_, t) => turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)), angle = at.map(([u, v]) => round(Math.atan2(v - mid[1], u - mid[0])));
-  const order = [...angle.keys()].sort((p, q) => angle[p] - angle[q]), part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
-  order.forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
+  const part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
+  if (shape) angle.forEach((a, t) => { part[t] = Math.min(K - 1, Math.floor(a / slice)); });
+  else [...angle.keys()].sort((p, q) => angle[p] - angle[q]).forEach((t, k) => { part[t] = Math.floor((k * K) / n); });
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
   // its slices' middles bunch up), the cell nearest each
   const spots = Array.from({ length: K }, (_, i) => {
