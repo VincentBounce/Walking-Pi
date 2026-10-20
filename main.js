@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.922';
+const VERSION = '0.1.924';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6644,19 +6644,13 @@ function renderPlaneRow() {
   $('edgeTorus').classList.toggle('active', planeTorus(kind));
   $('edgeTorus').classList.toggle('switch', planeTorus(kind));  // (on: a click still changes it)
   $('edgeTorus').disabled = !!APERIODIC[kind];  // (a grid that never repeats: never a torus)
-  // its outline, the four always there, those it cannot have greyed: a grid that never repeats, a circle (Ammann's, an
-  // octagon); a six-fold one, a hexagon with walls, a rhombus on a torus (a click on one, the other's torus); another slanted
-  // one, a rhombus or cut as a square; the others their square
-  const A = !!APERIODIC[kind], slanted = !!RECTS[`${kind}Rect`], hexagon = hexagonFits(kind) && !MODES[$('mode').value].margolus;
-  const squared = !A && !hexagon && (!slanted || plane.rect);
-  const oct = kind === 'ammann';  // (its natural outline an octagon, in Circle's place)
-  $('patchRound').querySelector('span').textContent = oct ? 'Octagon' : 'Circle';
-  $('patchRound').querySelector('svg').innerHTML = ICONS[oct ? 'wallsOctagon' : 'wallsRound'];
-  for (const [id, can, on] of [['patchRound', A, A], ['patchHex', hexagon, hexagon && !planeTorus(kind)], ['patchRhombus', !A && slanted, hexagon ? planeTorus(kind) : !A && slanted && !plane.rect],
-    ['patchSquare', !A && !hexagon, squared]]) {
-    $(id).disabled = !can;
-    $(id).classList.toggle('active', on);
-  }
+  // its outline, one button, the next it has a click: a grid that never repeats, its circle (Ammann's octagon); a six-fold one,
+  // a hexagon with walls or a rhombus on a torus; another slanted one, a rhombus or cut as a square; the others their square
+  const [now, all] = outlineOf(kind), [name, pic] = OUTLINES[now];
+  $('outlineBtn').querySelector('span').textContent = name;
+  $('outlineBtn').querySelector('svg').innerHTML = ICONS[pic];
+  $('outlineBtn').disabled = all.length < 2;
+  $('outlineBtn').classList.toggle('switch', all.length > 1);  // (a click changes it, as Torus: no gold of its own)
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -11709,17 +11703,23 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
     compute(true);
   });
 }
-// the outline: a six-fold grid's hexagon (walls) or rhombus (a torus); another slanted grid's rhombus or square (rect), kept
-// from grid to grid
-for (const [id, set, pic] of [['patchRound', {}, 'wallsRound'], ['patchHex', { torus: false }, 'wallsHex'],
-  ['patchRhombus', { rect: false }, 'wallsRhombus'], ['patchSquare', { rect: true }, 'walls']]) {
-  $(id).querySelector('svg').innerHTML = ICONS[pic];
-  $(id).addEventListener('click', () => {
-    const was = { ...plane };
-    Object.assign(plane, set, id === 'patchRhombus' && hexagonFits(MODES[$('mode').value].plane) ? { torus: true } : {});
-    if (Object.keys(plane).some((k) => plane[k] !== was[k])) compute(true);
-  });
+// the outline a grid has: [the one now, all of them in turn]; each its name and its picture
+const OUTLINES = { circle: ['Circle', 'wallsRound'], octagon: ['Octagon', 'wallsOctagon'], hexagon: ['Hexagon', 'wallsHex'], rhombus: ['Rhombus', 'wallsRhombus'], square: ['Square', 'walls'] };
+function outlineOf(kind) {
+  if (APERIODIC[kind]) return kind === 'ammann' ? ['octagon', ['octagon']] : ['circle', ['circle']];
+  if (hexagonFits(kind) && !MODES[$('mode').value].margolus) return [planeTorus(kind) ? 'rhombus' : 'hexagon', ['hexagon', 'rhombus']];
+  if (RECTS[`${kind}Rect`]) return [plane.rect ? 'square' : 'rhombus', ['rhombus', 'square']];
+  return ['square', ['square']];
 }
+// a click: the next (a six-fold grid's hexagon its walls, its rhombus its torus; another's rhombus or square, kept from grid to grid)
+$('outlineBtn').addEventListener('click', () => {
+  const kind = MODES[$('mode').value].plane, [now, all] = outlineOf(kind), next = all[(all.indexOf(now) + 1) % all.length];
+  if (next === now) return;
+  if (next === 'hexagon') plane.torus = false;
+  else if (now === 'hexagon') plane.torus = true;
+  else plane.rect = next === 'square';
+  compute(true);
+});
 $('edgeTorus').querySelector('svg').innerHTML = ICONS.torus;  // a torus or walls: on, off
 $('edgeTorus').addEventListener('click', () => { plane.torus = !plane.torus; compute(true); });
 for (const b of $('lifeStartTabs').children) {

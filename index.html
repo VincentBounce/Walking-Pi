@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261107l">
+  <link rel="stylesheet" href="style.css?v=20261107n">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -43,20 +43,18 @@
           </div>
           <select id="sphereF" hidden></select>
         </div>
-        <div id="planeRow" hidden>  <!-- Life on the plane: its outline, its size, a torus or not -->
+        <div id="planeRow" hidden>  <!-- Life on the plane: its outline and a torus or not, its size -->
           <div id="planeEdges" class="nav-shapes">
             <div class="block-label">Outline</div>
-            <div class="tile-group" id="contourTiles"><button id="patchRound" type="button" title="Walls in a circle: the cells nearest the middle (round a centre of its turns)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Circle</span></button><button id="patchHex" type="button" title="Walls in a hexagon: the cells of a six-fold grid round a centre of its turns"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Hexagon</span></button><button id="patchRhombus" type="button" title="The slanted grid as it is: a rhombus"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Rhombus</span></button><button id="patchSquare" type="button" title="A square: the grid cut as one (a slanted one: its cells moved, the same neighbours)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Square</span></button></div>
+            <button id="outlineBtn" type="button" title="The grid's outline: a click, the next it has (its natural one, a rhombus, a square)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Circle</span></button>
+            <button id="edgeTorus" type="button" title="A torus: the grid's edges glued, left to right and top to bottom (what leaves on one side comes back on the other); else walls"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Torus</span></button>
           </div>
           <div class="block-label">Size</div>
-          <div class="size-row">  <!-- a torus or walls (a tile, as the others), then the size -->
-            <div class="nav-shapes"><button id="edgeTorus" type="button" title="A torus: the grid's edges glued, left to right and top to bottom (what leaves on one side comes back on the other); else walls"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"></svg><span>Torus</span></button></div>
-            <div class="stepper">
+          <div class="stepper">
             <button id="planeDown" title="Smaller grid">−</button>
             <span id="planeLabel"></span>
             <button id="planeUp" title="Bigger grid">+</button>
             </div>
-          </div>
         </div>
         <div id="sphereRow" hidden>
           <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover to see them all" hidden>
@@ -653,6 +651,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261107l"></script>
+  <script src="main.js?v=20261107n"></script>
 </body>
 </html>
