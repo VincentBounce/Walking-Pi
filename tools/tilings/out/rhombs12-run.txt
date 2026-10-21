@@ -1,0 +1,10 @@
+rhombs12 103448 rules 1249 candidates 262s
+rhombs12 done 816s
+  B39/S0238       0.371  T 725 (406–1963) spread 0.44 plateau 0.32 at200 9% ash 2.53% osc 67%
+  B39/S3457/C4    0.324  T 698 (332–1430) spread 0.41 plateau 0.44 at200 9.5% ash 2.13% osc 33%
+  B38/S023        0.254  T 563 (360–1155) spread 0.34 plateau 0.39 at200 8.2% ash 2.3% osc 50%
+  B348/S0345/C5   0.233  T 789 (301–2819) spread 0.61 plateau 0.51 at200 12.2% ash 2.93% osc 42%
+  B38/S0239       0.183  T 600 (308–1326) spread 0.45 plateau 0.28 at200 10.2% ash 2.56% osc 75%
+  B39/S2356/C4    0.181  T 957 (379–2142) spread 0.43 plateau 0.49 at200 10.6% ash 1.95% osc 17%
+  B378/S0345/C3   0.177  T 532 (272–963) spread 0.42 plateau 0.41 at200 11% ash 2.53% osc 33%
+  B3/S0139        0.172  T 1017 (423–1868) spread 0.45 plateau 0.59 at200 11.9% ash 4.94% osc 100%

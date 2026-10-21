@@ -1392,3 +1392,13 @@ Found on Dual 314, tried on the others in the app itself: walls, ⌀ 32, soups o
 | Flowers 3 to 8, Rings 7 to 12 | at peace after 150 to 480 |
 
 In the menu where it is a war (the first 15), with these numbers; taken out of the others.
+
+## ❄ Rhombs 12: de Bruijn's twelvefold
+
+De Bruijn's multigrid (1981) with 6 families of lines 30° apart, all moved by ½ (never three through a point; the whole twelvefold round the middle, a star of 12 thin rhombi there): squares and 30° and 60° rhombi, never repeating (Ammann's is the same with 4 families: one function, DEBRUIJN, for both). In a dodecagon, its sides along the tiles'; 12 colours of 152 cells each at ⌀ 48. Searched as the others (103,448 rules):
+
+| Rule | Score | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|
+| [**Rhombs 12 Life B39/S0238**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs12&r=B39/S0238&s=48&pop=random.30.7) | 0.371 | 406–1,963 | 2.53 % | 67 % |
+| [**Rhombs 12 embers B39/S3457/C4**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs12&r=B39/S3457/C4&s=48&pop=random.30.7) | 0.324 | 332–1,430 | 2.13 % | 33 % |
+| B38/S023 | 0.254 | 360–1,155 | 2.3 % | 50 % |
