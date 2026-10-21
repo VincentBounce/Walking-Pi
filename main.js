@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.928';
+const VERSION = '0.1.929';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1454,9 +1454,10 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
   }));
 }
 // A switch, every one alike (Torus, Square; as System and Trail): a standard tile (.nav-shapes button), its picture and its
-// name fixed whatever its state: gold on (active, and switch: a click still changes it), plain off, greyed when it cannot be
+// name fixed whatever its state: gold on (active, and switch: a click still changes it), plain off; greyed when it cannot be
+// changed, gold still if on (Walls on a grid that never repeats: always walls)
 const switchTile = (b, pic, click) => { b.querySelector('svg').innerHTML = ICONS[pic]; b.addEventListener('click', click); };
-const setSwitch = (b, can, on) => { b.disabled = !can; b.classList.toggle('active', can && on); b.classList.toggle('switch', can && on); };
+const setSwitch = (b, can, on) => { b.disabled = !can; b.classList.toggle('active', on); b.classList.toggle('switch', can && on); };
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
 const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
 const trailOn = () => $('lifeTrail').checked && trailApplies();
@@ -1466,7 +1467,7 @@ const trailButton = $('lifeTrailButton');  // kept: it goes after Life's looks, 
 function renderTrailButton() {
   const b = trailButton, on = $('lifeTrail').checked, sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
   b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1])}${sq(3, LIFE_ALIVE)}</svg><span>Trail</span>`;  // up the diagonal
-  setSwitch(b, trailApplies(), on);
+  setSwitch(b, trailApplies(), on && trailApplies());  // (not for these looks: off)
 }
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
@@ -1760,6 +1761,7 @@ const ICONS = (() => {
     zoneFace: '<rect class="f" x="4" y="4" width="16" height="16" rx="2"/>',  // a whole face
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
+    bricks: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',  // Walls: a brick wall
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
@@ -6636,11 +6638,11 @@ function renderPlaneRow() {
   $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  setSwitch($('edgeTorus'), !APERIODIC[kind], planeTorus(kind));  // (a grid that never repeats: never a torus)
+  setSwitch($('edgeWalls'), !APERIODIC[kind], !planeTorus(kind));  // (a grid that never repeats: always walls, greyed on)
   // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
   // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)
   const cut = !!RECTS[`${kind}Rect`] && !hexagonFits(kind);
-  setSwitch($('squareBtn'), cut, plane.rect);
+  setSwitch($('squareBtn'), cut, cut ? plane.rect : !APERIODIC[kind] && !hexagonFits(kind));  // (a grid of squares already: greyed on)
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -7276,6 +7278,9 @@ const RULE_ICONS = {
   'B25/S034/C4': '.....,..o..,.+o+.,..+..,.....',
   'B25/S0346/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 9's)
   'B346/S2356': '.o...,oo.o.,...oo,.o.o.,..o..',  // (Hex battle: fronts)
+  'B3/S02358': '.o...,oo.o.,...oo,.o.o.,..o..',  // (Rhombitri battle)
+  'B346/S01458': 'o...o,.o.o.,.....,.o.o.,o...o',  // (Dual 314 war: thin)
+  'B39/S023': '.....,.o.o.,..o..,.o.o.,.....',  // (Penrose twinkles: oscillators)
   'B346/S0124': 'o...o,.o.o.,.....,.o.o.,o...o',  // (Hex war: thin)
   'B2/S034/C4': '.....,..o..,.+o+.,..+..,.....',
   'B257/S0346/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 12's)
@@ -11696,7 +11701,7 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 // the switches (a standard tile, see setSwitch): a click turns them on or off
 switchTile($('squareBtn'), 'walls', () => { plane.rect = !plane.rect; compute(true); });  // a slanted grid cut as a square
 
-switchTile($('edgeTorus'), 'torus', () => { plane.torus = !plane.torus; compute(true); });  // a torus or walls
+switchTile($('edgeWalls'), 'bricks', () => { plane.torus = !plane.torus; compute(true); });  // walls, or a torus (off)
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
