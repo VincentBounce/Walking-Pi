@@ -1340,3 +1340,17 @@ Their first searches ran on square patches; the app plays them in a circle now (
 |  |  | [B345/S0239](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B345/S0239&s=48&pop=random.30.7) | 0.145 | 446–1,299 | 3.88 % | 83 % |
 | Flower 8 | Flower 8 Life B345/S0239 · Flower 8 sparks B36/S3457 | [B346/S0238](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B346/S0238&s=48&pop=random.30.7) | 0.184 | 317–1,052 | 3.59 % | 42 % |
 |  |  | [B25/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B25/S0345/C5&s=48&pop=random.30.7) | 0.126 | 244–1,568 | 3.16 % | 33 % |
+
+## ⚔ Battles on the natural rhombi, by climbing (night of 2026-10-21)
+
+From each grid's rules (the menu's, Hex battle's and Hex war's, Life's), in a hexagon of ⌀ 32, 3 and 6 colours as the app plays them (soups of 35 %, 3 each, their median): the 6 best kept, each changed by a digit (one more or one fewer in B or in S), 4 rounds (Rhombitri 470 rules, Kisrhombille 385, Dual 314 266). A battle: the generations with two colours alive, × its balance; thinly alive only (1 to 12 %); counts of 10 and more left out (a digit a count). Not in the menu yet:
+
+| Grid | Rule | 3 colours | 6 colours |
+|---|---|---|---|
+| Dual 314 | [**B346/S01458**](https://vincentbounce.github.io/Walking-Pi/#w=life2dDual314&r=B346/S01458&k=6&s=32&e=1&pop=random.35.1) | 1,324 generations, balance 0.64, 1.4 % alive | 978, 0.59, 1.3 % (in the app: still 6 colours… 2 or more at 1,500) |
+| Dual 314 | B3468/S01458 | 1,500 (the cap), 0.53, 9.1 % | 1,013, 0.54, 1.1 % |
+| Dual 314 | B37/S23568 | 1,420, 0.51, 7.7 % | 1,001, 0.39, 2.5 % |
+| Rhombitri | [**B3/S02358**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombitri&r=B3/S02358&k=6&s=32&e=1&pop=random.35.1) | 465, 0.62, 5.4 % | 397, 0.48, 5.9 % |
+| Rhombitri | B3/S02359 | 511, 0.39, 3.6 % | 506, 0.48, 6.4 % |
+| Rhombitri | B3459/S23 | 280, 0.69, 9.8 % | 615, 0.40, 10.5 % |
+| Kisrhombille | B3/S169 | 142, 0.52, 7.8 % | 254, 0.41, 9.6 % (none long: its 16 neighbours) |
