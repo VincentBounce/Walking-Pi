@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.970';
+const VERSION = '0.1.971';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8677,7 +8677,7 @@ function huntParts(r, K) {
   const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
-  return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
+  return spots.map((d) => (pairs ? [...lifePatch(r, centreCells(d)), ...lifePatch(r, centreCells(d.map((v) => -v)))] : lifePatch(r, centreCells(d))));  // round the open cells nearest each spot (in pairs, its opposite too)
 }
 // A solid's face of cell t (a cube with pits: the face its pit is in, by the largest of its coordinates; the
 // sphere of hexagons: its icosahedron's face it is in, see hexFaces); null without faces (the plane, a torus).
@@ -8687,7 +8687,7 @@ function faceOf(t = 0) {
   if (walk.plane || !g || g.torus) return null;
   if (g.perFace) return Math.floor(t / g.perFace / facesPer());
   if (MODES[$('mode').value].sphere === 'hexsphere') return hexFaces(g)[t];
-  if (!g.floors) return null;
+  if (!g.floors && !g.cubic) return null;  // (the pits', Menger's sponge's: by the largest of its coordinates)
   const c = g.cen.subarray(3 * t, 3 * t + 3), ax = [0, 1, 2].reduce((m, d) => (Math.abs(c[d]) > Math.abs(c[m]) ? d : m), 0);
   return 2 * ax + (c[ax] < 0 ? 1 : 0);
 }
@@ -8708,16 +8708,16 @@ const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
 // (a spot on a corner, as near several: one each)
 function faceParts(K) {
   const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K], used = new Set();
-  const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3);
-  return spots.map((d) => {
-    const dir = d ? unit(d) : cen(centreCells()[0]);
+  const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3), pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors || g.cubic);  // (3 colours on the cube: 2 opposite faces each, as huntParts)
+  const faceAt = (dir) => {
     let f = -1, top = -Infinity;
     for (let t = 0; t < g.n; t++) { const h = faceOf(t), x = dot3(cen(t), dir); if (h >= 0 && !used.has(h) && x > top) { top = x; f = h; } }
     used.add(f);
     const part = [];
     if (f >= 0) for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && faceOf(t) === f) part.push(t);  // (no face left: none)
     return part;
-  });
+  };
+  return spots.map((d) => { const dir = d ? unit(d) : cen(centreCells()[0]); return pairs ? [...faceAt(dir), ...faceAt(dir.map((v) => -v))] : faceAt(dir); });
 }
 const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneRadius(zone), K));
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
