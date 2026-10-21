@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.953';
+const VERSION = '0.1.954';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7470,7 +7470,7 @@ function blockTutorial(option, to) {
       + (L.stable ? `This start comes back at gen ${fmt(L.stable.P)}.` : `This start: not back by gen ${fmt(Math.max(L.reached ?? 0, backSearch.life === L ? backSearch.gen : 0))} (Find its return to the start searches on).`) : '') + '</p>';
   const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood)`}: `
+    + `<h3>${option.dataset.name} <code>${option.value.replace(/,/g, ',<wbr>')}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood)`}: `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
     + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`;

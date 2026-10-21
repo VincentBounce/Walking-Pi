@@ -540,7 +540,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: hidden; cursor: auto; background: var(--bg); color: var(--text); }
 .tut-body { position: absolute; inset: 0; overflow: auto; padding: 20px 24px 24px; }  /* what scrolls, under its buttons (pinned to the top right) */
 .tut-body > h3, .tut-body > h3 + p:not(.number-digits) { margin-right: 96px; }  /* (beside the buttons) */
-.tut-body > h3 code { overflow-wrap: anywhere; }  /* (a block rule's 64 numbers: on as many lines) */
+.tut-body > h3 code { overflow-wrap: anywhere; }  /* (a long rule: on as many lines; a block rule's numbers, after its commas, see blockTutorial) */
 .rule-tuto h3 { margin: 0 96px 6px 0; font-size: 18px; }  /* (beside the buttons) */ .rule-tuto h3 code { font-size: 14px; color: var(--muted); margin-left: 6px; }
 .rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); } .rule-tuto h4 code { margin-left: 8px; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); }
 .rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
