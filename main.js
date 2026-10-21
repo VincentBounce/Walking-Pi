@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.934';
+const VERSION = '0.1.935';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8839,10 +8839,22 @@ function laidChoices(centred, any = false) {  // any: the first one of each colo
 }
 
 /* ---- 9.2 Patches ----------------------------------------------------------------------------- */
+// The plane's middle cells: those nearest its middle, all as near (a grid that never repeats: its circle's middle, as its core;
+// in a hexagon, its centre of turns; else its frame's middle: an even side of squares, the 4 round a corner), the wall's none
+let centreMemo = null;
+function planeCentre() {
+  const { kind, W, row } = walk.plane, key = `${kind}|${W}|${walk.plane.torus}`;
+  if (centreMemo?.key === key) return centreMemo.cells;
+  const n = row * W, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row))), wall = new Set(walk.geo.walls);
+  const box = (d) => mids.reduce(([a, b], m) => [Math.min(a, m[d]), Math.max(b, m[d])], [Infinity, -Infinity]).reduce((a, b) => (a + b) / 2);
+  const o = APERIODIC[kind] ? [(W - 1) / 2, (W - 1) / 2] : planeShape(kind, W)?.o ?? [box(0), box(1)], far = mids.map(([u, v], t) => (wall.has(t) ? Infinity : Math.hypot(u - o[0], v - o[1])));
+  const best = far.reduce((a, b) => Math.min(a, b), Infinity), cells = [...far.keys()].filter((t) => far[t] < best + 1e-6);
+  return (centreMemo = { key, cells }).cells;
+}
 // The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
 // else the tile that faces the default camera
 function patchCentre() {
-  if (walk.plane) { const { W, row } = walk.plane; return (W >> 1) * row + (row >> 1); }  // the plane: its middle cell
+  if (walk.plane) return planeCentre()[0];  // the plane: its middle cell
   const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
   if (g.mobius || g.cairo || (g.torus && (g.kite || g.tiling || g.sides === 3))) return centreCells()[0];
   if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
@@ -8896,7 +8908,7 @@ function sheetNearest(u, v, upto = walk.geo.n) {
 // 2 × 2 squares); on a solid, the open cells nearest a direction (the front, else a colour's spot)
 function centreCells(d) {
   const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
-  if (walk.plane) { const { W, row, kind } = walk.plane; return kind === 'square' && W % 2 === 0 && row % 2 === 0 ? four(W / 2, row / 2, row) : [patchCentre()]; }
+  if (walk.plane) return planeCentre();
   if (g.mobius) return mobiusNearest(mobiusMiddle(g), g.W / 2);  // the middle of the face in view
   if (g.cairo || (g.torus && (g.kite || g.tiling || g.sides === 3))) return sheetNearest(g.nu / 2, g.nv / 2);
   if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
