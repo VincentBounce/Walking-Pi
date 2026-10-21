@@ -1354,3 +1354,14 @@ From each grid's rules (the menu's, Hex battle's and Hex war's, Life's), in a he
 | Rhombitri | B3/S02359 | 511, 0.39, 3.6 % | 506, 0.48, 6.4 % |
 | Rhombitri | B3459/S23 | 280, 0.69, 9.8 % | 615, 0.40, 10.5 % |
 | Kisrhombille | B3/S169 | 142, 0.52, 7.8 % | 254, 0.41, 9.6 % (none long: its 16 neighbours) |
+
+## ◺ The pinwheel (Conway and Radin, 1994)
+
+A right triangle, its legs 1 and 2, cut in 5 of itself √5 smaller, again and again: it never repeats, its tiles turned every way (round as a disc, in a circle). Not edge to edge: a corner on another's side kept as a corner of that side too (its neighbours by a shared corner, 7 to 14 a tile inside). Searched as the others (tools/tilings/search.js, 103,448 rules, 4 workers): the highest scores against Life of all the grids.
+
+| Rule | Score | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|
+| [**Pinwheel Life B378/S0167**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B378/S0167&s=48&pop=random.30.7) | 0.759 | 338–1,448 | 2.96 % | all |
+| [**Pinwheel sparks B369/S017**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B369/S017&s=48&pop=random.30.7) | 0.745 | 427–2,164 | 2.93 % | 92 % |
+| B3/S015 | 0.679 | 315–1,360 | 3.25 % | 92 % |
+| B378/S0168 | 0.575 | 301–1,218 | 3.1 % | 92 % |

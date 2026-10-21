@@ -1,0 +1,10 @@
+pinwheel 103448 rules 894 candidates 332s
+pinwheel done 655s
+  B378/S0167      0.759  T 775 (338–1448) spread 0.46 plateau 0.42 at200 9.8% ash 2.96% osc 100%
+  B369/S017       0.745  T 877 (427–2164) spread 0.46 plateau 0.46 at200 9.5% ash 2.93% osc 92%
+  B3/S015         0.679  T 604 (315–1360) spread 0.45 plateau 0.42 at200 8.9% ash 3.25% osc 92%
+  B378/S0168      0.575  T 564 (301–1218) spread 0.4 plateau 0.44 at200 8.5% ash 3.1% osc 92%
+  B36/S0179       0.543  T 576 (345–1304) spread 0.39 plateau 0.41 at200 9.2% ash 3.07% osc 100%
+  B39/S015        0.532  T 728 (489–2180) spread 0.43 plateau 0.39 at200 10.8% ash 3.1% osc 100%
+  B36/S017        0.527  T 714 (410–1598) spread 0.36 plateau 0.41 at200 9.7% ash 3.02% osc 92%
+  B379/S0167      0.492  T 565 (311–786) spread 0.34 plateau 0.44 at200 7.1% ash 2.99% osc 100%
