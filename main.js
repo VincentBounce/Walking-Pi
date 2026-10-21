@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.933';
+const VERSION = '0.1.934';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1455,17 +1455,20 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
 // button, its picture over its name (html: both as one), fixed whatever its state; a click, once. Its states: on (gold) or off,
 // greyed when it cannot be clicked (gold still if on: Walls on a grid that never repeats); a small triangle in its corner,
 // if marked (a count of colours whose battles can bring a colour back); again: on, a click on it still does something (a zone
-// draws another start, a shape's switches walls and a torus): its hover gold
-const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, again = false, click = null }) => {
+// draws another start, a shape's switches walls and a torus): its hover gold; turn: its picture turned by so many degrees (a
+// second state a click again gives: a torus's tiles turned)
+const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, again = false, turn = 0, click = null }) => {
   const b = document.createElement('button');
   b.type = 'button';
   if (id) b.id = id;
   b.title = title;
   b.innerHTML = html ?? `${pic}<span>${text}</span>`;
   if (click) b.addEventListener('click', click);
-  return setTile(b, { on, can, mark, again });
+  return setTile(b, { on, can, mark, again, turn });
 };
-const setTile = (b, { on = false, can = true, mark = false, again = false }) => {
+const setTile = (b, { on = false, can = true, mark = false, again = false, turn = 0 }) => {
+  const pic = b.querySelector('svg');
+  if (pic) pic.style.transform = turn ? `rotate(${turn}deg)` : '';
   b.disabled = !can;
   b.classList.toggle('active', on);
   b.classList.toggle('mark', mark && can);
@@ -2417,10 +2420,11 @@ function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
   for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) for (let k = 0; k < m; k++) polys.push(tilingAt(kind, i * m + k, j).map((p) => tilingWorld(kind, p)));
   const c = tilingWorld(kind, [0.5, 0.5]), r = Math.sqrt(Math.abs(TILINGS[kind].basis[0][0] * TILINGS[kind].basis[1][1] - TILINGS[kind].basis[0][1] * TILINGS[kind].basis[1][0]) / m) * 1.6;
-  const far = (P) => { const q = [0, 1].map((d) => P.reduce((sum, p) => sum + p[d], 0) / P.length); return Math.hypot(q[0] - c[0], q[1] - c[1]); };
-  const near = kind === 'capitalI' ? [...polys].sort((P, Q) => far(P) - far(Q)).slice(0, 4) : polys.filter((P) => far(P) < r);  // (Capital I's: 4 tiles, enough)
-  const s = 10 / Math.max(...near.flat().map(([x, y]) => Math.max(Math.abs(x - c[0]), Math.abs(y - c[1]))));
-  return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - c[0]) * s).toFixed(1)} ${(12 - (y - c[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');
+  const far = (P, o = c) => { const q = [0, 1].map((d) => P.reduce((sum, p) => sum + p[d], 0) / P.length); return Math.hypot(q[0] - o[0], q[1] - o[1]); };
+  const few = { capitalI: [4, c], truncsquare: [5, tilingWorld(kind, [0, 0])] }[kind];  // (Capital I's: 4 tiles; Octagons': an octagon and its 4 squares)
+  const near = few ? [...polys].sort((P, Q) => far(P, few[1]) - far(Q, few[1])).slice(0, few[0]) : polys.filter((P) => far(P) < r);
+  const o = few?.[1] ?? c, s = 10 / Math.max(...near.flat().map(([x, y]) => Math.max(Math.abs(x - o[0]), Math.abs(y - o[1]))));  // (round its middle)
+  return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - o[0]) * s).toFixed(1)} ${(12 - (y - o[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');
 }
 for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(kind);
 // The 2D grids by their natural shape: none repeating (round walls), a square lattice (quarter turns), a lattice of 60°
@@ -2601,7 +2605,7 @@ function setAntRule(w, rule) {
 function renderModePicker() {
   const w = $('mode').value, [kind, space, shape, rule] = NAV[w];
   modeTab = modeTabOf();
-  const button = (html, active, go, title = '') => tile({ html, title, on: active, click: go });
+  const button = (html, active, go, title = '', more = {}) => tile({ html, title, on: active, click: go, ...more });
   // at the top: Walk, Ant, Life (while a gallery setup is only shown on hover, the one in use)
   const shownKind = NAV[galleryBefore?.w]?.[0] ?? kind;
   $('modeTabs').replaceChildren(galleryTab(), ...NAV_KINDS.map(([k, pic]) => {
@@ -2661,10 +2665,7 @@ function renderModePicker() {
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name);
-      b.classList.toggle('switch', f === here && turns);
-      const surface = MODES[same(f)].sphere, r = tilesTurn(f === here && isTurned ? TURNED[surface] : surface);
-      if (r) b.querySelector('.icon').style.transform = `rotate(${-r}deg)`;  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
+      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
     }));
   }
