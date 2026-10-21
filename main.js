@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.936';
+const VERSION = '0.1.938';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6235,8 +6235,9 @@ const PINWHEEL = (() => {
     let tris = [[[0, 0], [2 * L, 0], [0, L]]];  // a tile: its right angle's corner, its long leg's end, its short leg's
     for (let k = 0; k < n; k++) tris = tris.flatMap(([R, P, Q]) => {
       const d = [Q[0] - P[0], Q[1] - P[1]], t = ((R[0] - P[0]) * d[0] + (R[1] - P[1]) * d[1]) / (d[0] ** 2 + d[1] ** 2), H = [P[0] + t * d[0], P[1] + t * d[1]];
-      const Mr = mid(H, R), Mp = mid(H, P), Mh = mid(R, P);  // (H: the altitude's foot; the part R H P in 4 round its middle)
-      return [[H, R, Q], [H, Mp, Mr], [Mr, Mh, R], [Mp, P, Mh], [Mh, Mr, Mp]];
+      const Mr = mid(H, R), Mp = mid(H, P), Mh = mid(R, P);  // (H: the altitude's foot; the part R H P in 4: its corners at R and P,
+      // and the rectangle between cut along H Mh, its two the mirror of the others: both hands, its turns ever more)
+      return [[H, R, Q], [Mr, Mh, R], [Mp, P, Mh], [Mr, Mh, H], [Mp, H, Mh]];
     });
     // the corners on another's side: each side's, in its order (a grid of unit cells over the corners, the ones near a side)
     const at = new Map(), cell = ([x, y]) => `${Math.floor(x)},${Math.floor(y)}`;
