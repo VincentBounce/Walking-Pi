@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261108e">
+  <link rel="stylesheet" href="style.css?v=20261108f">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -397,7 +397,7 @@
             <option value="B3/S23" data-name="Life">■▲ B3/S23 — Life (2 states)</option>
             <option value="B45/S345/C4" data-name="Sparse">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
             <option value="B34/S2/C4" data-name="Brink">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">▲ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">▲ B346/S01458 — a long war in its walls: 2 colours 668 to 983 generations till one is left; 3 colours 1,353 to 1,855 generations till one is left</option>
             <option value="B2/S345/C4" data-name="Star Wars">■ B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
             <option value="B2/S/C3" data-name="Brian's Brain">■ B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
             <option value="B2/S2/C25" data-name="Faders">■ B2/S2/C25 — Faders, by Rudy Rucker and John Walker: Life crossed with Brian's Brain, sparks wandering in long fading trails, still going after 3,000 generations (25 states)</option>
@@ -423,7 +423,7 @@
             <option value="B3/S2-i34q" data-name="tlife">■ B3/S2-i34q — tlife: Life but for two ways of surviving (Hensel's letters), its T-tetromino a ship</option>
             <option value="B2i34c/S2-i3" data-name="Salad">■ B2i34c/S2-i3 — Salad: close to Life, many small ships (Hensel's letters)</option>
             <option value="B2-a/S12" data-name="Just Friends">■ B2-a/S12 — Just Friends: mazes of lines, ships of 3 cells escaping (Hensel's letters)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">■ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">■ B346/S01458 — a long war in its walls: 2 colours 1,326 to 1,421 generations till one is left, 1 of 3 soups still at war at 2,000; 4 colours 1,643 to 1,656 generations till one is left, 1 of 3 soups still at war at 2,000</option>
             <option value="B24/S346/C4" data-name="Cairo Wars">⬠ B24/S346/C4 — never settles: sparks and gliders of 9 cells (4 states)</option>
             <option value="B23/S6/C3" data-name="Cairo gliders">⬠ B23/S6/C3 — gliders of 6 cells, soups last 2,000 generations (3 states)</option>
             <option value="B2347/S35/C3" data-name="Long Cairo">⬠ B2347/S35/C3 — soups last 5,000 generations, gliders of 8 cells (3 states)</option>
@@ -434,7 +434,7 @@
             <option value="B36/S1258" data-name="Kite gliders">◆ B36/S1258 — a glider of 4 cells (period 16); soups settle after about 300 generations (2 states)</option>
             <option value="B35/S123/C5" data-name="Kite swarm">◆ B35/S123/C5 — gliders of 9 cells everywhere (period 6); soups never settle, about 7 % alive (5 states)</option>
             <option value="B3/S1247" data-name="Long kites">◆ B3/S1247 — soups last about 900 generations, down to a few still lifes (2 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">◆ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">◆ B346/S01458 — a long war in its walls: 2 colours 828 to 954 generations till one is left, 1 of 3 soups still at war at 2,000; 3 colours 1,218 to 1,352 generations till one is left</option>
             <option value="B245/S134/C5" data-name="Hat comets">🎩 B245/S134/C5 — as Comets on hexagons: soups end anywhere from 500 to 3,700 generations (5 states)</option>
             <option value="B257/S367" data-name="Hat bats">🎩 B257/S367 — Life-like on hats, its patterns like bats: a plateau as Life's, soups settling after 900 to 3,500 generations, oscillators in every ash (2 states)</option>
             <option value="B3/S023" data-name="Penrose Life">✧ B3/S023 — Life with lone cells surviving, on Penrose's rhombi: soups settling after 170 to 1,460 generations, oscillators in most of their ash (2 states)</option>
@@ -442,23 +442,23 @@
             <option value="B39/S023" data-name="Penrose twinkles">✧ B39/S023 — the most Life-like in a circle: soups settling after 362 to 1,361 generations (2.18 % alive at the end), oscillators in half of their ash (2 states)</option>
             <option value="B37/S016" data-name="Pinwheel Life">◺ B37/S016 — the most Life-like of all the grids (score 0.90): soups settling after 407 to 2,016 generations (2.41 % alive at the end), oscillators in all their ash (2 states)</option>
             <option value="B389/S0168" data-name="Pinwheel sparks">◺ B389/S0168 — soups settling after 240 to 2,567 generations (2.36 % alive at the end), oscillators in most of their ash (2 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✧ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✧ B346/S01458 — a long war in its walls: 5 colours 1,353 to 1,844 generations till one is left</option>
             <option value="B25/S357" data-name="Spectre Life">✺ B25/S357 — the most Life-like found on spectres: soups settling after 370 to 1,750 generations, oscillators in all their ash (2 states)</option>
             <option value="B23/S036/C4" data-name="Spectre sparks">✺ B23/S036/C4 — a lasting chaos, about 5 % alive: soups settling after 270 to 2,240 generations (4 states)</option>
             <option value="B24/S456/C4" data-name="Long florets">✿ B24/S456/C4 — soups ending anywhere from 500 to over 6,000 generations (4 states)</option>
             <option value="B26/S3578/C3" data-name="Floret Life">✿ B26/S3578/C3 — Life-like on floret pentagons: a plateau as Life's, soups settling after 300 to 2,100 generations, oscillators in all their ash (3 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✿ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✿ B346/S01458 — a long war in its walls: 2 colours 987 to 1,275 generations till one is left; 3 colours 763 to 1,645 generations till one is left</option>
             <option value="B367/S015" data-name="Rhombille Life">◇ B367/S015 — soups settling after 360 to 1,050 generations, oscillators in all their ash (2 states)</option>
             <option value="B358/S0237/C4" data-name="Rhombille sparks">◇ B358/S0237/C4 — a plateau as Life's, soups settling after 170 to 1,500 generations (4 states)</option>
             <option value="B2/S28/C8" data-name="Rhombille trails">◇ B2/S28/C8 — ships of period 3 with long trails, three kinds; soups simmer for thousands of generations, then end in them going round (8 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">◇ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">◇ B346/S01458 — a long war in its walls: 2 colours 1,376 to 1,670 generations till one is left, 1 of 3 soups still at war at 2,000; 3 colours 1,450 generations till one is left, 2 of 3 soups still at war at 2,000</option>
             <option value="B279/S069/C4" data-name="Rhombitri Life">✳ B279/S069/C4 — the most Life-like of the new tilings: a plateau as Life's, soups settling after 640 to 3,700 generations, oscillators in all their ash (4 states)</option>
             <option value="B3/S02358" data-name="Rhombitri battle">✳ B3/S02358 — a battle: in a hexagon, 3 or 6 colours stay in contact some 400 to 450 generations, about even</option>
             <option value="B29/S067/C4" data-name="Long rhombitri">✳ B29/S067/C4 — soups ending anywhere from 500 to over 6,000 generations (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✳ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✳ B346/S01458 — a long war in its walls: 2 colours 1,329 to 1,651 generations till one is left, 1 of 3 soups still at war at 2,000; 3 colours 1,294 generations till one is left, 2 of 3 soups still at war at 2,000</option>
             <option value="B38/S1369" data-name="Snub Life">✶ B38/S1369 — soups settling after 550 to 1,900 generations, oscillators in nearly all their ash (2 states)</option>
             <option value="B359/S0146/C3" data-name="Snub embers">✶ B359/S0146/C3 — busier: about 10 % alive in the chaos, soups settling after 280 to 1,250 generations (3 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✶ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✶ B346/S01458 — a long war in its walls: 2 colours, all 3 soups still at war at 2,000; 3 colours, all 3 soups still at war at 2,000</option>
             <option value="B345/S0236" data-name="I Life">⌶ B345/S0236 — the best found with 6 neighbours: soups settling after 180 to 410 generations (2 states)</option>
             <option value="B2/S24/C8" data-name="I trails">⌶ B2/S24/C8 — a ship of period 3 trailing its fading cells; soups end in such ships within a few dozen generations (8 states)</option>
             <option value="B28/S28" data-name="Pythagoras Life">◰ B28/S28 — soups settling after 430 to 4,400 generations, oscillators in all their ash (2 states)</option>
@@ -467,77 +467,62 @@
             <option value="B25/S157/C5" data-name="Prismatic Life">⌂ B25/S157/C5 — soups settling after 400 to 3,200 generations, oscillators in all their ash (5 states)</option>
             <option value="B245/S16/C5" data-name="Long prisms">⌂ B245/S16/C5 — soups ending anywhere from 130 to over 6,000 generations (5 states)</option>
             <option value="B2/S1/C8" data-name="Prism trails">⌂ B2/S1/C8 — comets of 5 cells and their trails, period 4, out of nearly every start; soups break up into them within a hundred generations (8 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">⌂ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B37/S1" data-name="Tetrakis Life">◩ B37/S1 — soups settling after 470 to over 6,000 generations (2 states)</option>
             <option value="B3/S278" data-name="Tetrakis embers">◩ B3/S278 — soups settling after 580 to 3,800 generations, oscillators in all their ash (2 states)</option>
             <option value="B34/S23/C12" data-name="Tetrakis trails">◩ B34/S23/C12 — the first ships on tetrakis triangles: a dozen kinds, period 3, trailing their fading cells; soups last thousands of generations (12 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">◩ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">◩ B346/S01458 — a long war in its walls: 2 colours 1,071 to 1,983 generations till one is left; 4 colours 907 generations till one is left, 2 of 3 soups still at war at 2,000</option>
             <option value="B356/S6789/C5" data-name="Kisrhombille Life">◬ B356/S6789/C5 — a plateau as Life's, soups settling after 180 to 1,430 generations, oscillators in all their ash (5 states)</option>
             <option value="B38/S169/C3" data-name="Long kisrhombille">◬ B38/S169/C3 — soups ending anywhere from 170 to over 6,000 generations (3 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">◬ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">◬ B346/S01458 — a long war in its walls: 2 colours 1,532 to 1,916 generations till one is left, 1 of 3 soups still at war at 2,000; 3 colours 864 to 1,456 generations till one is left</option>
             <option value="B24/S0345/C4" data-name="Stein sparks">✦ B24/S0345/C4 — the most Life-like on Stein's pentagon, though far from Life: soups settling after 210 to 920 generations, an oscillator of period 14 (4 states)</option>
             <option value="B34/S2357" data-name="Stein blinkers">✦ B34/S2357 — two states, soups settling after 200 to 570 generations, blinkers in almost every end</option>
             <option value="B349/S0134/C5" data-name="Kagome Life">✡ B349/S0134/C5 — soups settling after 485 to 1,428 generations (4.21 % alive at the end), an oscillator of 10 cells, period 5 and a methuselah of 6 cells: 355 (5 states)</option>
             <option value="B348/S0134/C5" data-name="Kagome embers">✡ B348/S0134/C5 — soups settling after 513 to 1,722 generations (4.24 % alive at the end), an oscillator of 10 cells, period 5 and a methuselah of 9 cells: 498 (5 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✡ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✡ B346/S01458 — a long war in its walls: 2 colours 255 to 1,224 generations till one is left; 3 colours 836 to 1,758 generations till one is left</option>
             <option value="B278/S2" data-name="Octagon Life">❖ B278/S2 — soups settling after 359 to 5,735 generations (0.57 % alive at the end), an oscillator of 2 cells, period 2 (2 states)</option>
             <option value="B27/S28" data-name="Octagon chimes">❖ B27/S28 — soups settling after 473 to 2,464 generations (0.57 % alive at the end), an oscillator of 2 cells, period 2 (2 states)</option>
             <option value="B359/S0148/C3" data-name="Snub square Life">✠ B359/S0148/C3 — soups settling after 265 to 1,638 generations (4.75 % alive at the end), an oscillator of 4 cells, period 3 and a methuselah of 12 cells: 341 (3 states)</option>
             <option value="B367/S1289/C3" data-name="Snub square fuses">✠ B367/S1289/C3 — soups settling after 350 to 1,924 generations (2.43 % alive at the end), a methuselah of 12 cells: 1,715 (3 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✠ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✠ B346/S01458 — a long war in its walls: 2 colours, all 3 soups still at war at 2,000; 4 colours 1,851 generations till one is left, 2 of 3 soups still at war at 2,000</option>
             <option value="B245/S2378/C5" data-name="Big rhombitri gliders">❃ B245/S2378/C5 — soups settling after 241 to 3,464 generations (1.48 % alive at the end), a ship of 25 cells, period 8 and an oscillator of 9 cells, period 12 (5 states)</option>
             <option value="B27/S1389/C3" data-name="Big rhombitri Life">❃ B27/S1389/C3 — soups settling after 302 to 3,739 generations (1.13 % alive at the end), a ship of 6 cells, period 4 and an oscillator of 11 cells, period 6 (3 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❃ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B246/S0467/C5" data-name="Dual 56 gliders">❋ B246/S0467/C5 — soups settling after 236 to over 6,000 generations (2.24 % alive at the end), a ship of 10 cells, period 10 (5 states)</option>
             <option value="B25/S046/C5" data-name="Dual 56 ships">❋ B25/S046/C5 — soups settling after 228 to 3,603 generations (2.32 % alive at the end), a ship of 10 cells, period 10 (5 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❋ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">❋ B346/S01458 — a long war in its walls: 2 colours 456 to 1,118 generations till one is left; 3 colours 637 to 1,052 generations till one is left</option>
             <option value="B258/S0456/C4" data-name="Dual 314 gliders">❉ B258/S0456/C4 — soups settling after 296 to 2,584 generations (2.92 % alive at the end), a ship of 5 cells, period 8 and a methuselah of 9 cells: 190 (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❉ B346/S01458 — a long war: in a hexagon, 3 or 6 colours fight some 1,000 to 1,300 generations, even, thinly spread</option>
+            <option value="B346/S01458" data-name="Long-lasting war">❉ B346/S01458 — a long war in its walls: 2 colours 753 generations till one is left, the others at peace; 3 colours 1,325 generations till one is left, the others at peace</option>
             <option value="B25/S0456/C4" data-name="Dual 314 ships">❉ B25/S0456/C4 — soups settling after 296 to 1,721 generations (2.95 % alive at the end), a ship of 5 cells, period 8 and a methuselah of 9 cells: 190 (4 states)</option>
             <option value="B236/S046/C4" data-name="Dual 16 gliders">❁ B236/S046/C4 — soups settling after 361 to 2,560 generations (1.56 % alive at the end), ships of 7 cells, period 10, and of 12, period 5 (4 states)</option>
             <option value="B237/S056/C4" data-name="Dual 16 ships">❁ B237/S056/C4 — soups settling after 407 to 4,433 generations (1.79 % alive at the end), ships of 7 cells, period 10 (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❁ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B238/S0457/C5" data-name="Dodecagon Life">❂ B238/S0457/C5 — soups settling after 395 to 5,518 generations (1.12 % alive at the end), an oscillator of 10 cells, period 30 and a methuselah of 7 cells: 699 (5 states)</option>
             <option value="B235/S0457/C5" data-name="Dodecagon sparks">❂ B235/S0457/C5 — soups settling after 243 to 1,249 generations (1.01 % alive at the end), an oscillator of 10 cells, period 30 and a methuselah of 7 cells: 791 (5 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❂ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B368/S3457" data-name="Flower 5 Life">✾ B368/S3457 — soups settling after 289 to 3,046 generations (1.72 % alive at the end), oscillators in all their ash</option>
             <option value="B2/S0345/C5" data-name="Flower 5 sparks">✾ B2/S0345/C5 — soups settling after 203 to over 6,000 generations (3.56 % alive at the end), oscillators in half their ash (5 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✾ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B345/S0238" data-name="Flower 6 Life">❀ B345/S0238 — soups settling after 311 to 1,397 generations (4.14 % alive at the end), oscillators in all their ash</option>
             <option value="B27/S0345/C5" data-name="Flower 6 embers">❀ B27/S0345/C5 — soups settling after 275 to 1,274 generations (3.3 % alive at the end), oscillators in 75 % of their ash (5 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❀ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B36/S3457" data-name="Flower 7 Life">✽ B36/S3457 — soups settling after 420 to 1,864 generations (1.84 % alive at the end), oscillators in all their ash</option>
             <option value="B278/S0345/C5" data-name="Flower 7 embers">✽ B278/S0345/C5 — soups settling after 184 to 1,805 generations (3.25 % alive at the end), oscillators in 75 % of their ash (5 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✽ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B37/S0345" data-name="Flower 3 Life">✸ B37/S0345 — soups settling after 116 to 1,189 generations (3.16 % alive at the end), oscillators in all their ash</option>
             <option value="B345/S023" data-name="Flower 3 sparks">✸ B345/S023 — soups settling after 236 to 781 generations (4.25 % alive at the end), oscillators in 83 % of their ash</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✸ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B345/S0457" data-name="Flower 4 Life">✷ B345/S0457 — soups settling after 121 to 774 generations (3.02 % alive at the end), oscillators in all their ash</option>
             <option value="B257/S034/C4" data-name="Flower 4 embers">✷ B257/S034/C4 — soups settling after 146 to over 6,000 generations (3.27 % alive at the end), no oscillator in their ash (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✷ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B345/S0239" data-name="Flower 8 Life">✹ B345/S0239 — soups settling after 419 to 1,430 generations (3.56 % alive at the end), oscillators in 58 % of their ash</option>
             <option value="B36/S3457" data-name="Flower 8 sparks">✹ B36/S3457 — soups settling after 312 to 2,417 generations (1.35 % alive at the end), oscillators in all their ash</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✹ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B2/S0345/C5" data-name="Ring 7 sparks">❇ B2/S0345/C5 — soups settling after 156 to over 6,000 generations (3.3 % alive at the end), oscillators in 67 % of their ash (5 states)</option>
             <option value="B267/S0346/C4" data-name="Ring 7 embers">❇ B267/S0346/C4 — soups settling after 351 to 1,100 generations (3.22 % alive at the end), no oscillator in their ash (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❇ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B267/S0346/C4" data-name="Ring 8 embers">✲ B267/S0346/C4 — soups settling after 324 to 1,505 generations (3.13 % alive at the end), no oscillator in their ash (4 states)</option>
             <option value="B25/S034/C4" data-name="Ring 8 sparks">✲ B25/S034/C4 — soups settling after 237 to 3,691 generations (3.13 % alive at the end), no oscillator in their ash (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✲ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B25/S0346/C4" data-name="Ring 9 embers">✻ B25/S0346/C4 — soups settling after 272 to 3,741 generations (3.42 % alive at the end), no oscillator in their ash (4 states)</option>
             <option value="B2/S034/C4" data-name="Ring 9 sparks">✻ B2/S034/C4 — soups settling after 305 to 2,929 generations (3.27 % alive at the end), no oscillator in their ash (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✻ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B2/S0345/C5" data-name="Ring 12 sparks">❈ B2/S0345/C5 — soups settling after 439 to over 6,000 generations (3.71 % alive at the end), oscillators in 58 % of their ash (5 states)</option>
             <option value="B257/S0346/C4" data-name="Ring 12 embers">❈ B257/S0346/C4 — soups settling after 355 to 3,188 generations (3.25 % alive at the end), no oscillator in their ash (4 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">❈ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="B356/S0345/C4" data-name="Ammann Life">✵ B356/S0345/C4 — soups settling after 336 to 1,174 generations (2.56 % alive at the end), oscillators in 25 % of their ash (4 states)</option>
             <option value="B38/S013" data-name="Ammann blinkers">✵ B38/S013 — soups settling after 316 to 1,261 generations (4.83 % alive at the end), oscillators in 100 % of their ash (2 states)</option>
-            <option value="B346/S01458" data-name="Long-lasting war">✵ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
+            <option value="B346/S01458" data-name="Long-lasting war">✵ B346/S01458 — a long war in its walls: 2 colours 993 to 1,907 generations till one is left; 4 colours 1,622 to 1,742 generations till one is left, 1 of 3 soups still at war at 2,000</option>
             <option value="B247/S034/C4" data-name="Type 15 Life">⬟ B247/S034/C4 — the most Life-like on the 15th pentagon: soups settling after 270 to 2,600 generations, oscillators in most ends (4 states)</option>
             <option value="B256/S67" data-name="Type 15 classic">⬟ B256/S67 — two states only, soups settling after 420 to 1,900 generations, oscillators in every end</option>
             <option value="B24/S13/C12" data-name="Type 15 trails">⬟ B24/S13/C12 — ships of period 14 with trails of a dozen stages, five kinds; soups end in them within about 150 generations (12 states)</option>
             <option value="B34/S23" data-name="Cairo Life">⬠ B34/S23 — Life-like on Cairo pentagons (7 neighbours): settles after a few hundred generations</option>
-            <option value="B346/S01458" data-name="Long-lasting war">⬠ B346/S01458 — a long war, found on Dual 314 (3 or 6 colours fighting some 1,000 to 1,300 generations there, even): here as it comes</option>
             <option value="custom">Custom…</option>
           </select>
         </label>
@@ -683,6 +668,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261108e"></script>
+  <script src="main.js?v=20261108f"></script>
 </body>
 </html>

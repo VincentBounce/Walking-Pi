@@ -1365,3 +1365,30 @@ A right triangle, its legs 1 and 2, cut in 5 of itself √5 smaller (the altitud
 | [**Pinwheel sparks B389/S0168**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B389/S0168&s=48&pop=random.30.7) | 0.788 | 240–2,567 | 2.36 % | 83 % |
 | B379/S0178 | 0.772 | 321–1,387 | 2.53 % | all |
 | B389/S0169 | 0.675 | 246–1,656 | 2.5 % | 92 % |
+
+## ⚔ Long-lasting war B346/S01458, measured on every grid
+
+Found on Dual 314, tried on the others in the app itself: walls, ⌀ 32, soups of 35 %, colours as many as fair (3, else 2 or 4; Penrose 5), 3 soups each, up to 2,000 generations. w: one colour left at that generation; p: the colours at peace, frozen side by side, from that one; 2,000+: still at war.
+
+| Grid | Colours: its 3 soups |
+|---|---|
+| Squares | 2: 2,000+ · 1,326 w · 1,421 w — 4: 1,656 w · 1,643 w · 2,000+ |
+| Triangles | 2: 668 w · 983 w · 963 w — 3: 1,526 w · 1,855 w · 1,353 w |
+| Kites | 2: 2,000+ · 954 w · 828 w — 3: 1,218 w · 1,352 w · 1,299 w |
+| Penrose | 5: 1,388 w · 1,353 w · 1,844 w |
+| Ammann | 2: 1,907 w · 1,238 w · 993 w — 4: 1,742 w · 2,000+ · 1,622 w |
+| Rhombille | 2: 1,376 w · 1,670 w · 2,000+ — 3: 2,000+ · 1,450 w · 2,000+ |
+| Rhombitri | 2: 1,651 w · 1,329 w · 2,000+ — 3: 2,000+ · 2,000+ · 1,294 w |
+| Florets | 2: 1,270 w · 1,275 w · 987 w — 3: 1,645 w · 890 w · 763 w |
+| Snub | 2 and 3: all 2,000+ |
+| Tetrakis | 2: 1,071 w · 1,983 w · 1,560 w — 4: 2,000+ · 2,000+ · 907 w |
+| Kisrhombille | 2: 1,916 w · 1,532 w · 2,000+ — 3: 1,456 w · 864 w · 1,036 w |
+| Trihex | 2: 1,224 w · 255 w · 990 w — 3: 836 w · 857 w · 1,758 w |
+| Snub square | 2: all 2,000+ — 4: 2,000+ · 1,851 w · 2,000+ |
+| Dual 56 | 2: 934 w · 1,118 w · 456 w — 3: 637 w · 862 w · 1,052 w |
+| Dual 314 | 2: 753 w · 1,030 p · 1,027 p — 3: 1,325 w · 1,327 p · 935 p |
+| Cairo, Prismatic, Dodecagons, Dual 16 | at peace after 250 to 560 |
+| Big rhombitri | at peace after 32 to 49 |
+| Flowers 3 to 8, Rings 7 to 12 | at peace after 150 to 480 |
+
+In the menu where it is a war (the first 15), with these numbers; taken out of the others.
