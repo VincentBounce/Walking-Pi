@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.940';
+const VERSION = '0.1.941';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7248,7 +7248,7 @@ function renderColours() {
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
 // birth, let survive) and the states, and the rule as text
-const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '◺': 14, '✺': 7, '✵': 12, '❀': 8, '✾': 8, '✽': 10, '✸': 7, '✷': 7, '✹': 11, '❇': 7, '✲': 7, '✻': 7, '❈': 7 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
+const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '◺': 17, '✺': 7, '✵': 12, '❀': 8, '✾': 8, '✽': 10, '✸': 7, '✷': 7, '✹': 11, '❇': 7, '✲': 7, '✻': 7, '❈': 7 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
@@ -7303,8 +7303,8 @@ const RULE_ICONS = {
   'B3/S02358': '.o...,oo.o.,...oo,.o.o.,..o..',  // (Rhombitri battle)
   'B346/S01458': 'o...o,.o.o.,.....,.o.o.,o...o',  // (Dual 314 war: thin)
   'B39/S023': '.....,.o.o.,..o..,.o.o.,.....',  // (Penrose twinkles: oscillators)
-  'B378/S0167': '.....,.o.o.,..o..,.o.o.,.....',  // (Pinwheel Life: oscillators)
-  'B369/S017': '.....,..o..,.o.o.,..o..,.....',  // (Pinwheel sparks)
+  'B37/S016': '.....,.o.o.,..o..,.o.o.,.....',  // (Pinwheel Life: oscillators)
+  'B389/S0168': '.....,..o..,.o.o.,..o..,.....',  // (Pinwheel sparks)
   'B346/S0124': 'o...o,.o.o.,.....,.o.o.,o...o',  // (Hex war: thin)
   'B2/S034/C4': '.....,..o..,.+o+.,..+..,.....',
   'B257/S0346/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 12's)

@@ -1357,11 +1357,11 @@ From each grid's rules (the menu's, Hex battle's and Hex war's, Life's), in a he
 
 ## ◺ The pinwheel (Conway and Radin, 1994)
 
-A right triangle, its legs 1 and 2, cut in 5 of itself √5 smaller, again and again: it never repeats, its tiles turned every way (round as a disc, in a circle). Not edge to edge: a corner on another's side kept as a corner of that side too (its neighbours by a shared corner, 7 to 14 a tile inside). Searched as the others (tools/tilings/search.js, 103,448 rules, 4 workers): the highest scores against Life of all the grids.
+A right triangle, its legs 1 and 2, cut in 5 of itself √5 smaller (the altitude to its hypotenuse; the larger part's corners at its two ends, and the rectangle between cut along its other diagonal: two of the five the mirror of the others), again and again: it never repeats, its tiles turned ever more ways (round as a disc, in a circle). Not edge to edge: a corner on another's side kept as a corner of that side too (its neighbours by a shared corner, 9 to 17 a tile inside). Searched as the others (tools/tilings/search.js, 103,448 rules, 4 workers): the highest scores against Life of all the grids.
 
 | Rule | Score | Soups settle after | Alive at the end | Oscillators in the ash |
 |---|---|---|---|---|
-| [**Pinwheel Life B378/S0167**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B378/S0167&s=48&pop=random.30.7) | 0.759 | 338–1,448 | 2.96 % | all |
-| [**Pinwheel sparks B369/S017**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B369/S017&s=48&pop=random.30.7) | 0.745 | 427–2,164 | 2.93 % | 92 % |
-| B3/S015 | 0.679 | 315–1,360 | 3.25 % | 92 % |
-| B378/S0168 | 0.575 | 301–1,218 | 3.1 % | 92 % |
+| [**Pinwheel Life B37/S016**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B37/S016&s=48&pop=random.30.7) | 0.897 | 407–2,016 | 2.41 % | all |
+| [**Pinwheel sparks B389/S0168**](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B389/S0168&s=48&pop=random.30.7) | 0.788 | 240–2,567 | 2.36 % | 83 % |
+| B379/S0178 | 0.772 | 321–1,387 | 2.53 % | all |
+| B389/S0169 | 0.675 | 246–1,656 | 2.5 % | 92 % |
