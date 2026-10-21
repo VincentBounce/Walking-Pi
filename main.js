@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.952';
+const VERSION = '0.1.953';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7437,16 +7437,25 @@ function blockTutorial(option, to) {
   const inView = (ps) => ps.some((p) => p[0] < corner[0] + reach && p[1] < corner[1] + reach && p[0] > corner[0] - m && p[1] > corner[1] - m);
   const shown = [...Array(W * row).keys()].filter((t) => poly(t) && inView(poly(t)));
   const wall = torus ? [] : planeWalls(kind, W).map(([x, y]) => planeCorners(kind, x, y)).filter(inView);
-  const outlineOf = (cells) => {
-    const sides = cells.flatMap((t) => poly(t).map((p, j, ps) => [p, ps[(j + 1) % ps.length]]));
+  const outlineOf = (polys) => {
+    const sides = polys.flatMap((ps) => ps.map((p, j) => [p, ps[(j + 1) % ps.length]]));
     const keyOf = ([a, b]) => [at(a), at(b)].sort().join(' '), count = new Map();
     for (const e of sides) count.set(keyOf(e), (count.get(keyOf(e)) ?? 0) + 1);
     return sides.filter((e) => count.get(keyOf(e)) === 1).map(([a, b]) => `M${a.join(',')}L${b.join(',')}`).join('');  // (its rim: sides not shared, either way round)
   };
   const phase = (blocks) => {
-    const near = [];  // (its blocks in the patch, whole or cut by the picture's edge)
-    for (let i = 0; i < blocks.length; i += k) { const cells = [...blocks.subarray(i, i + k)]; if (cells.some((t) => patch.includes(t))) near.push(cells); }
-    const framed = near.sort((u, v) => Math.hypot(...centreOf(u).map((x, d) => x - corner[d])) - Math.hypot(...centreOf(v).map((x, d) => x - corner[d]))).slice(0, 3);  // (the 3 nearest the corner, each its own rim)
+    // its blocks in the patch, each whole: on a torus, its cells across the sheet's edge brought next to the others (drawn
+    // in the sky), as their polygons
+    const near = [], o = mid(0), per = torus ? [[row, 0], [0, W]].map(([x, y]) => cellMiddle(kind, x, y).map((v, d) => v - o[d])) : [];
+    const shifts = torus ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [0, 1].map((d) => i * per[0][d] + j * per[1][d]))) : [[0, 0]];
+    for (let i = 0; i < blocks.length; i += k) {
+      const cells = [...blocks.subarray(i, i + k)], ref = cells.find((t) => patch.includes(t));
+      if (ref === undefined) continue;
+      near.push(cells.map((t) => { const [dx, dy] = shifts.reduce((b, sh) => (Math.hypot(mid(t)[0] + sh[0] - mid(ref)[0], mid(t)[1] + sh[1] - mid(ref)[1]) < Math.hypot(mid(t)[0] + b[0] - mid(ref)[0], mid(t)[1] + b[1] - mid(ref)[1]) ? sh : b));
+        return poly(t).map(([x, y]) => [x + dx, y + dy]); }));
+    }
+    const far = (ps) => Math.hypot(...[0, 1].map((d) => ps.flat().reduce((a, p) => a + p[d], 0) / ps.flat().length - corner[d]));
+    const framed = near.sort((u, v) => far(u) - far(v)).slice(0, 3);  // (the 3 nearest the corner, each its own rim)
     return `<svg viewBox="${corner[0] - m} ${corner[1] - m} ${span} ${span}"><defs><linearGradient id="tutSky" x2="0" y2="1"><stop offset="0" stop-color="#c3d7f2"/><stop offset="1" stop-color="#f0d9e2"/></linearGradient></defs>`
       + `<rect x="${corner[0] - m}" y="${corner[1] - m}" width="${span}" height="${span}" fill="url(#tutSky)"/>${wall.length ? `<path d="${wall.map((c) => `M${c.map((p) => p.join(',')).join('L')}Z`).join('')}" fill="${LIFE_WALL}"/>` : ''}`  // (the wall one shape: no seams between its cells)
       + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${framed.map(outlineOf).join('')}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (3 blocks framed)
