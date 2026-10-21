@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.975';
+const VERSION = '0.1.976';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7580,7 +7580,7 @@ function blockTutorial(option, to) {
 const tutorialKey = (option) => `${$('mode').value} ${option.value} ${option.dataset.name} ${lifeColours} ${plane.torus}`
   + (walk.life?.margolus ? ` ${walk.life.alive.length} ${walk.life.seedAlive} ${walk.life.stable?.P}` : '');
 // a tiling of several shapes: a bubble each (the cell and its neighbours, its name and how many), the one shown lit
-const tutShape = { mode: null, at: 0 };
+const tutShape = { mode: null, at: 0 }, tutLetters = { on: false };  // (Letters: their page instead of the rule's, see ruleTutorial)
 function shapeBubbles(kinds, c, corners, count, area, shapeOf, own) {  // own: the tile's own name (a hat, a spectre)
   const names = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon', 9: 'nonagon', 10: 'decagon', 12: 'dodecagon' };
   const quad = (P) => { const [a, b, d] = [P[0], P[1], P[3]], u = [b[0] - a[0], b[1] - a[1]], v = [d[0] - a[0], d[1] - a[1]]; return Math.abs(u[0] * v[0] + u[1] * v[1]) < 1e-3 * Math.hypot(...u) * Math.hypot(...v) ? 'square' : 'rhombus'; };
@@ -7693,16 +7693,22 @@ function ruleTutorial(option) {
       + `${[...ties.filter((p) => gone(p) === 1), ...ties.filter((p) => gone(p) !== 1)].map((p) => card(p, gone(p) === 1 ? 'the colour missing' : 'no birth')).join('')}</div>`;
   }
   const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
-  // on squares, Hensel's letters, for a rule of one's own (B2a/S23…): where 1 to 4 live neighbours sit (c corners, e edges…),
-  // 5 to 7 the same with the live and the dead swapped
-  function hensel() {
-    if (kind !== 'square') return '';
-    const at = iso === 'hensel' ? ring : [...withoutCells(planeNeighbours(kind, W, false, true), dead).ring.subarray(8 * c, 8 * c + 8)];
-    const rows = [1, 2, 3, 4].map((k) => HENSEL_LETTERS[k].map((x) => {
-      const m = Array.from({ length: 256 }, (_, m) => m).find((m) => ofCount(m) === k && henselClass(m) === x);
-      return `<figure><div>${cell(UNLIT, new Set(at.filter((_, q) => (m >> q) & 1)))}</div><figcaption>${k}${x}</figcaption></figure>`;
-    }).join('')).join('');
-    return `<h4>Letters</h4><p>Hensel's, for a rule of your own (B2a/S23, B3-k…): where the live neighbours sit round the square, each count its letters (c corners, e edges, then their ways together); 5 to 7 as 3 to 1 with the live and the dead swapped (5c: all but 3c).</p><div class="tut-row">${rows}</div>`;
+  // the grid's letters, for a rule of one's own, on a page of their own (Letters): Hensel's on squares (where 1 to 4 live
+  // neighbours sit; 5 to 7 the same, live and dead swapped), Callahan's on hexagons (2 to 4), the flowers' v (those by a
+  // corner only); each drawn round the cell
+  const lettersOf2 = kind === 'square' ? 'hensel' : baseOf(kind) === 'hex' ? 'hex' : ROSETTES[kind] ? 'vertex' : null;
+  function lettersPage() {
+    const card = (live, name) => `<figure><div>${cell(UNLIT, new Set(live))}</div><figcaption>${name}</figcaption></figure>`;
+    if (lettersOf2 === 'vertex') {
+      const figs = Array.from({ length: around.length }, (_, k) => k + 1).flatMap((k) => (ways(k).length > 1 ? ways(k).map((j) => card([...tips.slice(0, j), ...sides.slice(0, k - j)], `${k}v${j}`)) : []));
+      return `<h3>Letters</h3><p>On the flowers and the rings, a rule of your own can tell its live neighbours apart: after a count, v and how many of them touch the cell by a corner only, not a side (B25v08: born with 2, with 5 when none of them touch it by a corner only, or with 8).</p><div class="tut-row">${figs.join('')}</div>`;
+    }
+    const R = lettersOf2 === 'hensel' ? 8 : 6, at = [...withoutCells(planeNeighbours(kind, W, false, true), dead).ring.subarray(R * c, R * c + R)];
+    const of = lettersOf2 === 'hensel' ? (k) => HENSEL_LETTERS[k] : (k) => (k >= 2 && k <= 4 ? ['o', 'm', 'p'] : []), classOf2 = lettersOf2 === 'hensel' ? henselClass : (m) => hexClass(m).toLowerCase();
+    const figs = [1, 2, 3, 4].flatMap((k) => of(k).map((x) => { const m = Array.from({ length: 1 << R }, (_, m) => m).find((m) => ofCount(m) === k && classOf2(m) === x); return m === undefined ? '' : card(at.filter((_, q) => (m >> q) & 1), `${k}${x}`); }));
+    return lettersOf2 === 'hensel'
+      ? `<h3>Letters</h3><p>Hensel's, for a rule of your own on squares (B2a/S23, B3-k…): where the live neighbours sit round the square, each count its letters (c corners, e edges, then their ways together); 5 to 7 as 3 to 1 with the live and the dead swapped (5c: all but 3c).</p><div class="tut-row">${figs.join('')}</div>`
+      : `<h3>Letters</h3><p>Callahan's, for a rule of your own on hexagons (B2o/S2m34…): where 2, 3 or 4 live neighbours sit round the hexagon: o side by side, m one apart, p across (3p every other one; 4: as 2, the dead ones).</p><div class="tut-row">${figs.join('')}</div>`;
   }
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   // a dying stage's ✝ (white on the cells nearer the live colour on a light page, as on the grid's)
@@ -7710,13 +7716,14 @@ function ruleTutorial(option) {
     const s = stages.indexOf(centre) + 1, light = document.documentElement.dataset.theme === 'light';
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
-  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${option.value !== 'custom' && option.text.includes(' — ') ? `<p>${option.text.split(' — ').slice(1).join(' — ').replace(/^./, (c) => c.toUpperCase())}.</p>` : ''}${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+  $('ruleTuto').innerHTML = `<div class="tut-tools">${lettersOf2 ? `<button type="button" class="tut-letters${tutLetters.on ? ' active' : ''}" title="The letters of this grid, for a rule of your own">Letters</button>` : ''}<button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">${tutLetters.on && lettersOf2 ? lettersPage() + '</div>' : ''}`
+    + (tutLetters.on && lettersOf2 ? '' : `<h3>${option.dataset.name} <code>${option.value}</code></h3>${option.value !== 'custom' && option.text.includes(' — ') ? `<p>${option.text.split(' — ').slice(1).join(' — ').replace(/^./, (c) => c.toUpperCase())}.</p>` : ''}${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
-    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + hensel() + '</div>';
+    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + '</div>');
   for (const f of $('ruleTuto').querySelectorAll('.tut-shapes figure')) f.addEventListener('click', () => { tutShape.at = Number(f.dataset.at); ruleTutorial(option); });
+  $('ruleTuto').querySelector('.tut-letters')?.addEventListener('click', () => { tutLetters.on = !tutLetters.on; ruleTutorial(option); });
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
