@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.927';
+const VERSION = '0.1.928';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1761,13 +1761,6 @@ const ICONS = (() => {
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
-    wallsRound: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/>',  // walls in a circle
-    wallsHex: '<path d="M7.5 4.2h9L21 12l-4.5 7.8h-9L3 12z"/><path d="M9.8 8.1h4.4L16.5 12l-2.3 3.9H9.8L7.5 12z"/>',  // in a hexagon
-    wallsOctagon: '<path d="M8.5 3.5h7l5 5v7l-5 5h-7l-5-5v-7z"/><path d="M10.3 7.8h3.4l2.5 2.5v3.4l-2.5 2.5h-3.4l-2.5-2.5v-3.4z"/>',  // in an octagon (Ammann's)
-    wallsRhombus: '<path d="M2.5 18.5L8 5.5h13.5L16 18.5z"/><path d="M7.3 15.2L10 8.8h6.7L14 15.2z"/>',  // in a rhombus (the slanted grid's own)
-    // a slanted grid as it is (a rhombus), or as a rectangle
-    rhombus: pathEl('M22 19L16 5H2L8 19Z'),
-    rectangle: '<rect x="3" y="5" width="18" height="14" rx="1"/>',
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
     // numbers

@@ -1313,3 +1313,30 @@ Every rule on hexagons with B starting at 2 or 3 (up to 3 digits) and S up to 4 
 | B346/S1245 | 349, 0.66, 6.0 % | 397, 0.63, 2.1 % |
 | B346/S1346 | 309, 0.74, 2.8 % | 235, 0.67, 1.4 % |
 | Life B3/S23, for comparison | 27, 0.73 | 27, 0.70 |
+
+## 🌗 The grids that never repeat, searched again in a circle (night of 2026-10-21)
+
+Their first searches ran on square patches; the app plays them in a circle now (Ammann in an octagon). The same search again (tools/tilings/search.js, every B / S / C up to their most neighbours, 4 workers; the square patches' logs kept in tools/tilings/out/square-patches), its two best by score against Life beside the two rules in the menu (in the new top 8: its place). Not in the menu yet:
+
+| Grid | In the menu | Best in a circle | Score | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|---|---|
+| Penrose | Penrose Life B3/S023 · Penrose stars B39/S0239 (8th, 0.199) | [B39/S023](https://vincentbounce.github.io/Walking-Pi/#w=life2dPenrose&r=B39/S023&s=48&pop=random.30.7) | 0.476 | 362–1,361 | 2.18 % | 50 % |
+|  |  | [B368/S1245/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dPenrose&r=B368/S1245/C5&s=48&pop=random.30.7) | 0.354 | 368–1,670 | 2.84 % | 25 % |
+| Spectre | Spectre Life B25/S357 · Spectre sparks B23/S036/C4 | [B25/S356](https://vincentbounce.github.io/Walking-Pi/#w=life2dSpectre&r=B25/S356&s=48&pop=random.30.7) | 0.152 | 524–1,723 | 1.12 % | all |
+|  |  | [B236/S0356/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dSpectre&r=B236/S0356/C4&s=48&pop=random.30.7) | 0.122 | 275–2,003 | 3.96 % | none |
+| Ammann (octagon) | Ammann Life B356/S0345/C4 · Ammann blinkers B38/S013 (8th, 0.125) | [B456/S2456](https://vincentbounce.github.io/Walking-Pi/#w=life2dAmmann&r=B456/S2456&s=48&pop=random.30.7) | 0.296 | 274–over 6,000 | 4.25 % | 83 % |
+|  |  | [B39/S0138](https://vincentbounce.github.io/Walking-Pi/#w=life2dAmmann&r=B39/S0138&s=48&pop=random.30.7) | 0.27 | 385–1,486 | 5.11 % | all |
+| Hats | Hat comets B245/S134/C5 · Hat bats B257/S367 | [B2/S0345/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dHat&r=B2/S0345/C4&s=48&pop=random.30.7) | 0.294 | 212–2,953 | 3.99 % | 75 % |
+|  |  | [B267/S35](https://vincentbounce.github.io/Walking-Pi/#w=life2dHat&r=B267/S35&s=48&pop=random.30.7) | 0.157 | 419–1,440 | 0.72 % | all |
+| Flower 3 | Flower 3 Life B37/S0345 (8th, 0.096) · Flower 3 sparks B345/S023 | [B267/S0346/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower3&r=B267/S0346/C4&s=48&pop=random.30.7) | 0.21 | 313–5,421 | 3.02 % | none |
+|  |  | [B2/S034/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower3&r=B2/S034/C4&s=48&pop=random.30.7) | 0.142 | 384–4,428 | 3.19 % | none |
+| Flower 4 | Flower 4 Life B345/S0457 · Flower 4 embers B257/S034/C4 | [B37/S0345](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower4&r=B37/S0345&s=48&pop=random.30.7) | 0.362 | 165–1,067 | 3.33 % | all |
+|  |  | [B37/S3457](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower4&r=B37/S3457&s=48&pop=random.30.7) | 0.29 | 204–2,120 | 2.41 % | all |
+| Flower 5 | Flower 5 Life B368/S3457 · Flower 5 sparks B2/S0345/C5 | [B378/S0345](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower5&r=B378/S0345&s=48&pop=random.30.7) | 0.288 | 137–758 | 3.59 % | all |
+|  |  | [B27/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower5&r=B27/S0345/C5&s=48&pop=random.30.7) | 0.247 | 199–over 6,000 | 3.36 % | 67 % |
+| Flower 6 | Flower 6 Life B345/S0238 (4th, 0.089) · Flower 6 embers B27/S0345/C5 | [B345/S023](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower&r=B345/S023&s=48&pop=random.30.7) | 0.391 | 271–1,190 | 3.76 % | 92 % |
+|  |  | [B2/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower&r=B2/S0345/C5&s=48&pop=random.30.7) | 0.212 | 356–3,177 | 3.42 % | 75 % |
+| Flower 7 | Flower 7 Life B36/S3457 · Flower 7 embers B278/S0345/C5 | [B258/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B258/S0345/C5&s=48&pop=random.30.7) | 0.149 | 179–over 6,000 | 3.39 % | 58 % |
+|  |  | [B345/S0239](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B345/S0239&s=48&pop=random.30.7) | 0.145 | 446–1,299 | 3.88 % | 83 % |
+| Flower 8 | Flower 8 Life B345/S0239 · Flower 8 sparks B36/S3457 | [B346/S0238](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B346/S0238&s=48&pop=random.30.7) | 0.184 | 317–1,052 | 3.59 % | 42 % |
+|  |  | [B25/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B25/S0345/C5&s=48&pop=random.30.7) | 0.126 | 244–1,568 | 3.16 % | 33 % |
