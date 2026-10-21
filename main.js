@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.948';
+const VERSION = '0.1.949';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7239,7 +7239,8 @@ const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5:
 // 1), on a torus any (its blocks); on a
 // solid, its fair spots (see SOLID_COLOURS); on a torus, blocks that divide it; on a Möbius strip, any
 const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, penrose: 5, hat: 1, spectre: 1, pinwheel: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
-const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g));  // (twice a fair count: each part halved)
+// (twice a fair count: each part halved, 2 4 giving 8, 5 10, 3 6 12; 3 without 6, thrice: 9, each third in 3)
+const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g)) || (K === 9 && colourFairOwn(3, g) && !colourFairOwn(6, g));
 const colourFairOwn = (K, g) => {
   const mode = MODES[$('mode').value], kind = mode?.plane;
   if (K === 1) return true;
