@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.931';
+const VERSION = '0.1.932';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1441,33 +1441,41 @@ function tileGroup(buttons) {
 }
 function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon per value, above its name
   box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
+    const click = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); };
+    if (pictures) return tile({ pic: icon(pictures[o.value]), text: o.text, on: o.value === sel.value, can: !o.disabled, click });
     const b = document.createElement('button');
-    if (pictures) b.innerHTML = `${icon(pictures[o.value])}<span>${o.text}</span>`;
-    else b.textContent = o.text;
+    b.textContent = o.text;
     b.classList.toggle('active', o.value === sel.value);
     b.disabled = o.disabled;
-    b.addEventListener('click', () => {
-      sel.value = o.value;
-      sel.dispatchEvent(new Event('change'));
-    });
+    b.addEventListener('click', click);
     return b;
   }));
 }
-// A switch, every one alike (Torus, Square; as System and Trail): a standard tile (.nav-shapes button), its picture and its
-// name fixed whatever its state: gold on (active, and switch: a click still changes it), plain off; greyed when it cannot be
-// changed, gold still if on (Walls on a grid that never repeats: always walls)
-const switchTile = (b, pic, click) => { b.querySelector('svg').innerHTML = ICONS[pic]; b.addEventListener('click', click); };
-const setSwitch = (b, can, on) => { b.disabled = !can; b.classList.toggle('active', on); b.classList.toggle('switch', can && on); };
+// A tile, every one alike (the shapes, the colours, the looks, the zones, Walls, Square, Trail, the sky, the themes): a square
+// button, its picture over its name (html: both as one), fixed whatever its state; a click, once. Its states: on (gold) or off,
+// greyed when it cannot be clicked (gold still if on: Walls on a grid that never repeats); a small triangle in its corner,
+// if marked (a count of colours whose battles can bring a colour back)
+const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, click = null }) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  if (id) b.id = id;
+  b.title = title;
+  b.innerHTML = html ?? `${pic}<span>${text}</span>`;
+  if (click) b.addEventListener('click', click);
+  return setTile(b, { on, can, mark });
+};
+const setTile = (b, { on = false, can = true, mark = false }) => { b.disabled = !can; b.classList.toggle('active', on); b.classList.toggle('mark', mark && can); return b; };
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
 const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
 const trailOn = () => $('lifeTrail').checked && trailApplies();
-// Trail as a switch (see setSwitch): its picture a live cell with its comet of fading Ink behind; greyed for Activity and dying
-// stages
-const trailButton = $('lifeTrailButton');  // kept: it goes after Life's looks, in their row (see renderColorButtons)
+// Trail, a tile turned on and off (see tile): its picture a live cell with its comet of fading Ink behind; greyed for Activity
+// and dying stages
+let trailButton = null;  // kept: it goes after Life's looks, in their row (see renderColorButtons)
 function renderTrailButton() {
-  const b = trailButton, on = $('lifeTrail').checked, sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
-  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1])}${sq(3, LIFE_ALIVE)}</svg><span>Trail</span>`;  // up the diagonal
-  setSwitch(b, trailApplies(), on && trailApplies());  // (not for these looks: off)
+  const sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
+  trailButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1])}${sq(3, LIFE_ALIVE)}</svg>`, text: 'Trail', id: 'lifeTrailButton',  // up the diagonal
+    title: 'Trail: a dead cell fades through Ink for a few generations (States and Age)', click: () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); } });
+  setTile(trailButton, { on: $('lifeTrail').checked && trailApplies(), can: trailApplies() });  // (not for these looks: off)
 }
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 function renderColorButtons() {
@@ -1478,16 +1486,8 @@ function renderColorButtons() {
   const names = L ? { mono: 'States', gradient: 'Age', digit: 'Activity' } : { gradient: 'Rainbow', cells: 'Rainbow', visits: 'Heatmap', digit: 'Directions' };
   const picture = (v) => (L ? lifeLookPicture(v) : cellModePicture(v === 'gradient' ? 'cells' : v));
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
-  const buttons = looks.map((o) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.title = o.text;
-    b.innerHTML = `${picture(o.value)}<span>${names[o.value]}</span>`;
-    b.classList.toggle('active', o.value === sel.value);
-    b.disabled = o.disabled;
-    b.addEventListener('click', () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); });
-    return b;
-  });
+  const buttons = looks.map((o) => tile({ pic: picture(o.value), text: names[o.value], title: o.text, on: o.value === sel.value, can: !o.disabled,
+    click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
   box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
@@ -1501,12 +1501,9 @@ function lifeLookPicture(look) {
 }
 // square rings, hot inside (a heatmap, Life's activity)
 const heatRings = (g) => `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;
-// the sky, a switch before the themes (see setSwitch): named after the theme (Dawn on a light page, Twilight on a dark one), its
-// picture the sky; shown where there is a sky (see updateDisplayMenu)
-const skyButton = document.createElement('button');
-skyButton.type = 'button';
-skyButton.title = 'The background: a sky in the page\'s tone, or plain';
-skyButton.addEventListener('click', () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); });
+// the sky, a tile before the themes, on or off (see tile): named after the theme (Dawn on a light page, Twilight on a dark one),
+// its picture the sky; shown where there is a sky (see updateDisplayMenu)
+const skyButton = tile({ title: 'The background: a sky in the page\'s tone, or plain', click: () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); } });
 const renderSkyButtons = () => {
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', on = $('sky').value === 'sky';
   const name = theme === 'light' ? 'Dawn' : 'Twilight';
@@ -1515,7 +1512,7 @@ const renderSkyButtons = () => {
   const deep = { light: [[0, '#7fa7de'], [0.5, '#c6b8e6'], [0.8, '#eea3b6'], [1, '#f39a68']], dark: [[0, '#0a1a4a'], [0.45, '#2c3f8f'], [0.75, '#6b3f8e'], [1, '#c8644f']] }[theme];
   skyButton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="skyPicture" x1="0" y1="0" x2="0" y2="1">${deep.map(([f, c]) => `<stop offset="${f}" stop-color="${c}"/>`).join('')}</linearGradient></defs>`
     + `<rect x="2" y="2" width="20" height="20" rx="2" fill="url(#skyPicture)" stroke="var(--border)"/></svg><span>${name}</span>`;
-  setSwitch(skyButton, true, on);
+  setTile(skyButton, { on });
   $('themeButtons').prepend(skyButton);  // first, before the themes
 };
 
@@ -1786,6 +1783,10 @@ const ICONS = (() => {
   };
 })();
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+// the plane's outline: Square (a slanted grid cut as a square) and Walls (else a torus), on or off
+$('planeEdges').append(
+  tile({ pic: icon('walls'), text: 'Square', id: 'squareBtn', title: 'A slanted grid cut as a square (its cells moved, the same neighbours); off: as it is, a rhombus', click: () => { plane.rect = !plane.rect; compute(true); } }),
+  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }));
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
 
@@ -2592,15 +2593,7 @@ function setAntRule(w, rule) {
 function renderModePicker() {
   const w = $('mode').value, [kind, space, shape, rule] = NAV[w];
   modeTab = modeTabOf();
-  const button = (html, active, go, title = '') => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = html;
-    b.title = title;
-    b.classList.toggle('active', active);
-    b.addEventListener('click', go);
-    return b;
-  };
+  const button = (html, active, go, title = '') => tile({ html, title, on: active, click: go });
   // at the top: Walk, Ant, Life (while a gallery setup is only shown on hover, the one in use)
   const shownKind = NAV[galleryBefore?.w]?.[0] ?? kind;
   $('modeTabs').replaceChildren(galleryTab(), ...NAV_KINDS.map(([k, pic]) => {
@@ -6638,20 +6631,15 @@ function renderPlaneRow() {
   $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  setSwitch($('edgeWalls'), !APERIODIC[kind], !planeTorus(kind));  // (a grid that never repeats: always walls, greyed on)
+  setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
   // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
   // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)
   const cut = !!RECTS[`${kind}Rect`] && !hexagonFits(kind);
-  setSwitch($('squareBtn'), cut, cut ? plane.rect : !APERIODIC[kind] && !hexagonFits(kind));  // (a grid of squares already: greyed on)
+  setTile($('squareBtn'), { can: cut, on: cut ? plane.rect : !APERIODIC[kind] && !hexagonFits(kind) });  // (a grid of squares already: greyed on)
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = `${icon(SYMMETRIES[y][0])}<span>${SYMMETRIES[y][1]}</span>`;
-    b.classList.toggle('active', y === symmetryOf(kind));
-    b.addEventListener('click', () => { plane.sym = y; reseedStart(); });
-    return b;
+    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), click: () => { plane.sym = y; reseedStart(); } });
   }));
   $('startDraw').hidden = plane.start !== 'draw';
   // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
@@ -7120,13 +7108,8 @@ let blockColours = 1;
 function renderBlockColours() {
   $('blockColourRow').hidden = !MODES[$('mode').value].margolus;
   $('blockColourRow').replaceChildren(...BLOCK_COLOURS.map((k) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = `${colourBlock(k)}<span>${k === 1 ? '1 colour' : `${k} colours`}</span>`;
-    b.title = k === 1 ? 'One colour' : `Each cell of the start one of ${k} colours at random, carried along by the blocks`;
-    b.classList.toggle('active', k === blockColours);
-    b.addEventListener('click', () => { if (k !== blockColours) { blockColours = k; compute(); } });
-    return b;
+    return tile({ pic: colourBlock(k), text: k === 1 ? '1 colour' : `${k} colours`, title: k === 1 ? 'One colour' : `Each cell of the start one of ${k} colours at random, carried along by the blocks`,
+      on: k === blockColours, click: () => { if (k !== blockColours) { blockColours = k; compute(); } } });
   }));
 }
 const ruleColours = () => lifeColours;
@@ -7209,19 +7192,10 @@ const colourMissing = (K) => {
 };
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
-  $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = `${colourBlock(k)}<span>${COLOUR_STEP_NAMES[k]}</span>`;
-    b.title = `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`;
+  $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
+    title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
+    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; compute(); } } })));
 
-    b.classList.toggle('active', k === lifeColours);
-    b.classList.toggle('switch', k === lifeColours);  // (picked: a click shows how it works, as a rule's)
-    b.disabled = !coloursFit(k);
-    b.classList.toggle('missing', !b.disabled && colourMissing(k));  // (its corner's mark)
-    b.addEventListener('click', () => { if (k === lifeColours) { $('watchRule').click(); return; } lifeColours = k; compute(); });
-    return b;
-  }));
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
@@ -11606,7 +11580,6 @@ $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPoin
 $('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
-trailButton.addEventListener('click', () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
 $('showGrid').addEventListener('change', () => { needsFull = true; });
@@ -11699,10 +11672,7 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
     compute(true);
   });
 }
-// the switches (a standard tile, see setSwitch): a click turns them on or off
-switchTile($('squareBtn'), 'walls', () => { plane.rect = !plane.rect; compute(true); });  // a slanted grid cut as a square
 
-switchTile($('edgeWalls'), 'bricks', () => { plane.torus = !plane.torus; compute(true); });  // walls, or a torus (off)
 for (const b of $('lifeStartTabs').children) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
@@ -11728,21 +11698,15 @@ $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; rende
 $('huntBtn').addEventListener('click', huntClick);
 $('backBtn').addEventListener('click', () => searchBack(backSearch.life !== walk.life));
 $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, name, words]]) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.innerHTML = `<i class="goal-mark">${mark}</i><span>${name}</span>`;
+  const b = tile({ pic: `<i class="goal-mark">${mark}</i>`, text: name, title: words, click: () => pickGoal(goal) });
   b.dataset.goal = goal;
-  b.title = words;
-  b.addEventListener('click', () => pickGoal(goal));
   return b;
 }));
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
-  const b = document.createElement('button');
-  b.type = 'button';
+  const b = tile({ pic: pic ? icon(pic) : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame)
   b.dataset.zone = zone;
-  b.innerHTML = `${pic ? icon(pic) : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.')}<span>${name}</span>`;  // Famous: a glider (centred: in a frame)
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
@@ -11822,7 +11786,7 @@ function applyTheme() {
   try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
   $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)));  // Light | Dark, then System
-  setSwitch([...$('themeButtons').children].find((b) => b.textContent === 'System'), true, t === 'system');  // (a switch: see setSwitch)
+  setTile([...$('themeButtons').children].find((b) => b.textContent === 'System'), { on: t === 'system' });
   renderSkyButtons();  // the sky's switch back before them (the buttons were all made again)
   if (document.documentElement.dataset.theme === theme && MONO === PALETTES[theme].mono) return;
   document.documentElement.dataset.theme = theme;
@@ -11998,18 +11962,11 @@ function renderAreaModes() {
   const picture = (look) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7L11 3L20 6L19 17L9 21L3 15Z" fill="${look === 'empty' ? 'none' : c}"`
     + `${look === 'light' ? ' fill-opacity="0.35"' : ''} stroke="${GRADIENT[Math.round(0.2 * (BANDS - 1))]}" stroke-width="2" stroke-linejoin="round"/></svg>`;  // a closed loop
   $('areaModes').replaceChildren(tileGroup(AREA_MODES.map(([look, name, title]) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.title = title;
-    b.innerHTML = `${picture(look)}<span>${name}</span>`;
-    b.classList.toggle('active', look === now);
-    b.disabled = off || (look === 'light' && !light);
-    b.addEventListener('click', () => {
+    return tile({ pic: picture(look), text: name, title, on: look === now, can: !(off || (look === 'light' && !light)), click: () => {
       $('fillAreas').checked = look !== 'empty';
       $('fillTranslucent').checked = look === 'light';
       $('fillAreas').dispatchEvent(new Event('change'));
-    });
-    return b;
+    } });
   })));
 }
 // The looks of a 2D walk on cells, as square buttons: an ant's states in Ink or Amber; Path, the rainbow
@@ -12043,16 +12000,8 @@ function renderCellModes(mode) {
   if ($('cellModes').hidden) return;
   // an ant: all six; a walk in 2D: Path, Rainbow, Directions, Heatmap; on a surface: Path, Rainbow, Heatmap
   const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber' && (shows('cells') || look !== 'digit'))), now = cellModeOf(mode);
-  const button = ([look, name, title]) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.title = title;
-    b.innerHTML = `${cellModePicture(look)}<span>${name}</span>`;
-    b.classList.toggle('active', look === now);
-    b.disabled = (!mode.cells && !['cells', 'digit'].includes(look)) || (look === 'visits' && !useful('visits'));  // (along the lines: Rainbow, Directions, its line's colours)
-    b.addEventListener('click', () => pickCellMode(look));
-    return b;
-  };
+  const button = ([look, name, title]) => tile({ pic: cellModePicture(look), text: name, title, on: look === now,
+    can: !((!mode.cells && !['cells', 'digit'].includes(look)) || (look === 'visits' && !useful('visits'))), click: () => pickCellMode(look) });  // (along the lines: Rainbow, Directions, its line's colours)
   // joined in one frame (see tileGroup); an ant's states in one, before the walk's looks in another
   const ants = ['ink', 'amber'], groups = [looks.filter(([look]) => ants.includes(look)), looks.filter(([look]) => !ants.includes(look))].filter((g) => g.length);
   $('cellModes').replaceChildren(...groups.map((g) => (g.length > 1 ? tileGroup(g.map(button)) : button(g[0]))));
