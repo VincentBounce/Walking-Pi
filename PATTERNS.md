@@ -1402,3 +1402,13 @@ De Bruijn's multigrid (1981) with 6 families of lines 30° apart, all moved by �
 | [**Rhombs 12 Life B39/S0238**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs12&r=B39/S0238&s=48&pop=random.30.7) | 0.371 | 406–1,963 | 2.53 % | 67 % |
 | [**Rhombs 12 embers B39/S3457/C4**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs12&r=B39/S3457/C4&s=48&pop=random.30.7) | 0.324 | 332–1,430 | 2.13 % | 33 % |
 | B38/S023 | 0.254 | 360–1,155 | 2.3 % | 50 % |
+
+## ✽ The flowers' letters: by a side or by a corner only
+
+On the flowers a pentagon's neighbours touch it either by a side or by a corner only. A rule can tell them apart: after a count, `v` and the numbers (0 to 3) of its live neighbours that touch by a corner only (`5v0`: 5 live ones, none of them by a corner only; `6v12`: 6, one or two of them by a corner only; a count without `v`, whatever they are). `v`, not Hensel's letters (a, c… already said where the live ones sit on squares and hexagons). Searched from each flower's best rules, every letter added or taken away one at a time (12 soups each, scored as the others): three flowers gain, Flowers 3, 5 and 6 don't.
+
+| Rule | Score | Without letters | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|---|
+| [**Flower 8 letters B36v129/S3457v2**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B36v129/S3457v2&s=48&pop=random.30.7) | 0.472 | B346/S0238 0.184 | 93–1,878 | 2.04 % | 100 % |
+| [**Flower 4 letters B345/S023v01**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower4&r=B345/S023v01&s=48&pop=random.30.7) | 0.444 | B37/S0345 0.362 | 232–918 | 4.17 % | 100 % |
+| [**Flower 7 letters B25v08/S0345/C5**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B25v08/S0345/C5&s=48&pop=random.30.7) | 0.311 | B258/S0345/C5 0.149 | 124–6,000+ | 4.08 % | 75 % |

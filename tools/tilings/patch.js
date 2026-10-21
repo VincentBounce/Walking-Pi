@@ -46,12 +46,13 @@ export function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  /
 export function patchGrid(h, W) {
   const n = W * W, by = new Map(), start = new Int32Array(n + 1), list = [], k = ([x, y]) => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`, dead = new Set(h.dead);
   h.polys.forEach((p, t) => p.forEach((q) => { (by.get(k(q)) ?? by.set(k(q), []).get(k(q))).push(t); }));
+  const side = [];  // (each neighbour by a side, two corners or more shared, or by a corner only: the flowers' letters)
   for (let t = 0; t < n; t++) {
-    const around = new Set();
-    if (!dead.has(t)) for (const q of h.polys[t]) for (const u of by.get(k(q))) if (u !== t && !dead.has(u)) around.add(u);
+    const around = new Map();
+    if (!dead.has(t)) for (const q of h.polys[t]) for (const u of by.get(k(q))) if (u !== t && !dead.has(u)) around.set(u, (around.get(u) ?? 0) + 1);
     start[t] = list.length;
-    list.push(...[...around].sort((a, b) => a - b));
+    for (const u of [...around.keys()].sort((a, b) => a - b)) { list.push(u); side.push(around.get(u) >= 2 ? 1 : 0); }
   }
   start[n] = list.length;
-  return { W, row: W, n, start, list: Int32Array.from(list), per: 1 };
+  return { W, row: W, n, start, list: Int32Array.from(list), side: Uint8Array.from(side), per: 1 };
 }

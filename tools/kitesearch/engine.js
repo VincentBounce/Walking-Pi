@@ -5,24 +5,26 @@
 //   deno run --allow-read --allow-write famous.js rules.json famous.json && deno run --allow-read --allow-write pick.js
 //   deno run --allow-read --allow-write traces.js rules.json 24 12 traces.json && deno run --allow-read --allow-write rank.js traces.json   soups followed, scored against Life's
 // The engine: a soup until it repeats, small starts and what they leave, a pattern alone (a ship: back moved)
+// a rule's counts: B and S by c live neighbours and k of them by a corner only (c·4 + k); a digit alone, any k; a digit and
+// letters (a, b, c, d: 0, 1, 2, 3 by a corner), those k only (the flowers' letters: B3a, born with 3 all by a side)
 const parse = (rule) => {
-  const m = rule.match(/B(\d*)\/S(\d*)(?:\/C(\d+))?/), B = new Uint8Array(10), S = new Uint8Array(10);
-  for (const c of m[1]) B[+c] = 1;
-  for (const c of m[2]) S[+c] = 1;
+  const m = rule.match(/B([\da-d]*)\/S([\da-d]*)(?:\/C(\d+))?/), B = new Uint8Array(40), S = new Uint8Array(40);
+  for (const [X, text] of [[B, m[1]], [S, m[2]]]) for (const [, d, ls] of text.matchAll(/(\d)([a-d]*)/g)) for (let k = 0; k < 4; k++) if (!ls || ls.includes('abcd'[k])) X[4 * d + k] = 1;
   return { B, S, C: Number(m[3] ?? 2) };
 };
 let seed = 1;
 const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
-function step(a, b, start, list, B, S, C) {
+function step(a, b, start, list, B, S, C, side = null) {  // side: each neighbour by a side (1) or a corner only (0)
   let pop = 0, any = 0;
   const n = a.length;
   for (let t = 0; t < n; t++) {
     const s = a[t];
     let v;
     if (s === 0 || s === 1) {
-      let c = 0;
-      for (let q = start[t]; q < start[t + 1]; q++) if (a[list[q]] === 1) c++;
-      v = s === 0 ? B[c] : S[c] ? 1 : C > 2 ? 2 : 0;
+      let c = 0, k = 0;
+      for (let q = start[t]; q < start[t + 1]; q++) if (a[list[q]] === 1) { c++; if (side && !side[q]) k++; }
+      const i = 4 * c + Math.min(k, 3);
+      v = s === 0 ? B[i] : S[i] ? 1 : C > 2 ? 2 : 0;
     } else v = s + 1 < C ? s + 1 : 0;
     b[t] = v;
     if (v === 1) pop++;
@@ -39,7 +41,7 @@ function soup(G, rule, d = 0.35, gens = 1500) {
   const seen = new Map();
   let maxRho = 0, rho = 0, T = gens, period = 0, end = 'running';
   for (let g = 1; g <= gens; g++) {
-    const [pop, any] = step(a, b, G.start, G.list, B, S, C);
+    const [pop, any] = step(a, b, G.start, G.list, B, S, C, G.side);
     [a, b] = [b, a];
     rho = pop / n;
     if (g > 30) maxRho = Math.max(maxRho, rho);
@@ -86,7 +88,7 @@ function behaviour(G, rule, cells, gens = 120) {
   for (const [x, y, s] of cells) a[((oy + y) % G.W) * G.row + ((ox + x) % G.row)] = s;
   const first = normal(G, a, [...a.keys()].filter((t) => a[t]));
   for (let g = 1; g <= gens; g++) {
-    const [, any] = step(a, b, G.start, G.list, B, S, C);
+    const [, any] = step(a, b, G.start, G.list, B, S, C, G.side);
     [a, b] = [b, a];
     if (!any) return null;
     const live = [...a.keys()].filter((t) => a[t]);
@@ -114,7 +116,7 @@ function seeds(G, rule, trials = 40, from = 0, r = 3, w = 3, d = 0.5, gens = 600
     const seen = new Map();
     let life = gens, big = false;
     for (let g = 1; g <= gens; g++) {
-      const [pop, any] = step(a, b, G.start, G.list, B, S, C);
+      const [pop, any] = step(a, b, G.start, G.list, B, S, C, G.side);
       [a, b] = [b, a];
       if (!any) { life = g; break; }
       if (pop > 0.2 * n) { big = true; break; }
@@ -143,7 +145,7 @@ function trace(G, rule, seedv, d = 0.3, gens = 6000, at = [100, 200, 300, 500, 8
   const seen = new Map(), pops = {};
   let T = gens, period = 0, end = 'running', rho = 0;
   for (let g = 1; g <= gens; g++) {
-    const [pop, any] = step(a, b, G.start, G.list, B, S, C);
+    const [pop, any] = step(a, b, G.start, G.list, B, S, C, G.side);
     [a, b] = [b, a];
     rho = pop / n;
     if (at.includes(g)) pops[g] = rho;
@@ -184,7 +186,7 @@ function settle(G, rule, cells, cap = 20000) {
   };
   const edge = () => { for (let t = 0; t < n; t++) { if (!a[t]) continue; const x = t % G.row, y = Math.floor(t / G.row); if (y < 3 || y >= G.W - 3 || x < 3 * per || x >= G.row - 3 * per) return true; } return false; };
   for (let g = 1; g <= cap; g++) {
-    const [, any] = step(a, b, G.start, G.list, B, S, C);
+    const [, any] = step(a, b, G.start, G.list, B, S, C, G.side);
     [a, b] = [b, a];
     if (!any) return { end: 'dies', T: g, ships };
     if (g % 10 === 0) {

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.944';
+const VERSION = '0.1.945';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5641,20 +5641,26 @@ function parseBlocks(text) {
 }
 function parseRule(text) {
   if (/^\s*M/i.test(text)) return parseBlocks(text);
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZ-]*)\/S([\dOMPCEKAINYQJRTWZ-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV-]*)\/S([\dOMPCEKAINYQJRTWZV-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
-  // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these
-  const hex = /[OMP]/.test(m[1] + m[2]), hensel = /[A-Z-]/.test((m[1] + m[2]).replace(/[OMP]/g, ''));
-  if (hex && hensel) return null;
+  // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
+  // counts of the live ones by a corner only (0 to 3: 5v0, all 5 by a side; 3v01, none or one by a corner), the others by a
+  // side (the flowers', see sideOf)
+  const hex = /[OMP]/.test(m[1] + m[2]), vertex = /V/.test(m[1] + m[2]), hensel = /[A-Z-]/.test((m[1] + m[2]).replace(/[OMPV]/g, ''));
+  if (hex + hensel + vertex > 1) return null;
   // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration),
   // apart from the states C (alive, the dying stages, dead). A cell: 0 dead, k alive of colour k (1 … K),
   // k + K × s dying of colour k at stage s (1 … C − 2). A start has live cells only: one digit a cell in
   // base K + 1 (one colour: in base C, its dying stages too)
-  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = hex ? 'hex' : hensel ? 'hensel' : false;
+  const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = hex ? 'hex' : hensel ? 'hensel' : vertex ? 'vertex' : false;
   if (C < 2 || C > 25 || colours > LIFE_COLOURS.length || colours * (C - 1) > 255) return null;  // (a cell's state a byte)
   const ring = hensel ? 8 : 6, classOf = hensel ? (mask) => henselClass(mask).toUpperCase() : hexClass;
   const table = (spec) => {
     const a = new Uint8Array(16 + (1 << ring));  // by the count, and by 16 + the mask of where they sit
+    if (vertex) {  // (by 16 + 4 × the count + those by a corner only)
+      for (const [, d, ks] of spec.matchAll(/(\d)(?:V([0-3]+))?/g)) for (let k = 0; k < 4; k++) if (!ks || ks.includes(k)) a[16 + 4 * d + k] = 1;
+      return a;
+    }
     for (const [, d, not, letters] of spec.matchAll(/(\d)(-?)([A-Z]*)/g)) {
       if (!letters) a[+d] = 1;
       for (let mask = 0; mask < 1 << ring; mask++) {
@@ -6535,13 +6541,13 @@ function buildLifePlane(seq) {
   fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
   let rule = lifeRuleNow() || parseRule('B3/S23');
-  if (rule.iso && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares
+  if (rule.iso && rule.iso !== 'vertex' && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares (v: any plane)
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
-  walk.life = { nbr, ring: rule.iso ? nbr.ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
+  walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(kind, W, planeTorus(kind)), to: rule.margolus } : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
@@ -6739,6 +6745,15 @@ function renderPlaneRow() {
 }
 // A grid's wall (dead edges): the cells just outside it that touch one of its cells, a cell thick whatever the tiling (its
 // rhombus's or lattice cell's row round it, kept where it touches); once a grid
+// each neighbour of each cell (as nbr lists them) by a side, 1 (two corners or more shared), or by a corner only, 0: the
+// flowers' letters (see parseRule)
+function sideOf(kind, W, nbr) {
+  const row = planeRow(kind, W), at = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row)));  // (its own size: walk.plane not yet it)
+  const corners = Array.from({ length: row * W }, (_, t) => new Set(at(t).map((p) => pointKey(p))));
+  const side = new Uint8Array(nbr.list.length);
+  for (let t = 0; t < row * W; t++) for (let q = nbr.start[t]; q < nbr.start[t + 1]; q++) { let shared = 0; for (const k of corners[nbr.list[q]]) shared += corners[t].has(k); side[q] = shared >= 2 ? 1 : 0; }
+  return side;
+}
 // A six-fold grid with walls in a hexagon (its natural outline: rings of cells round its middle), not a torus: its cells
 // whose middle is out of it, of the wall (never alive), and those of them touching a live one, drawn as the wall; round a centre of its turns (a cell's
 // middle, corner or side's middle that its cells round turn onto) the nearest its middle, the biggest that keeps the
@@ -7244,7 +7259,8 @@ const colourMissing = (K) => {
   const r = parseRule(ruleBody($('lifeRule').value));
   if (K < 3 || !r) return false;
   const bits = (m) => m.toString(2).replace(/0/g, '').length;
-  const counts = r.iso ? [...Array(1 << (r.iso === 'hensel' ? 8 : 6)).keys()].filter((m) => r.B[16 + m]).map(bits) : [...Array(16).keys()].filter((c) => r.B[c]);
+  const counts = r.iso === 'vertex' ? [...Array(16).keys()].filter((c) => [0, 1, 2, 3].some((k) => r.B[16 + 4 * c + k]))  // (any of its ways)
+    : r.iso ? [...Array(1 << (r.iso === 'hensel' ? 8 : 6)).keys()].filter((m) => r.B[16 + m]).map(bits) : [...Array(16).keys()].filter((c) => r.B[c]);
   return counts.some((c) => c >= K - 1 && c % (K - 1) === 0);
 };
 function renderColours() {
@@ -7322,6 +7338,9 @@ const RULE_ICONS = {
   'B346/S0124': 'o...o,.o.o.,.....,.o.o.,o...o',  // (Hex war: thin)
   'B2/S034/C4': '.....,..o..,.+o+.,..+..,.....',
   'B257/S0346/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 12's)
+  'B25v08/S0345/C5': '.....,..o..,.+o+.,..+..,.....',  // (the flowers' letters)
+  'B345/S023v01': '.....,.o.o.,..o..,.o.o.,.....',
+  'B36v129/S3457v2': '.....,.o.o.,..o..,.o.o.,.....',
   'B345/S0238': '.....,.o.o.,..o..,.o.o.,.....',  // (Flower: its ash oscillating)
   'B27/S0345/C5': '.....,..o..,.+o+.,..+..,.....',
   'B356/S0345/C4': '.o.o.,o+.+o,..o..,o+.+o,.o.o.',
@@ -7500,10 +7519,15 @@ function ruleTutorial(option) {
     + `<polygon points="${points(c)}" fill="none" stroke-width="${side / 22}" class="tut-centre"/></svg>`;  // (its frame on top: the neighbours' sides hid it in part)
   // the cases: each count of live neighbours; a rule with letters (Hensel's on squares, Callahan's on hexagons), each
   // count split into its letters, where they sit (its live ones: an arrangement of that letter round the ring)
-  const iso = rule.iso, R = iso === 'hensel' ? 8 : 6, ring = iso ? [...nb.ring.subarray(R * c, R * c + R)] : null, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
-  const lettersOf = (k) => (iso === 'hensel' ? HENSEL_LETTERS[k] : iso && k >= 2 && k <= 4 ? ['o', 'm', 'p'] : []), classOf = (m) => (iso === 'hensel' ? henselClass(m) : hexClass(m).toLowerCase());
+  const iso = rule.iso, R = iso === 'hensel' ? 8 : 6, ring = iso === 'hex' || iso === 'hensel' ? [...nb.ring.subarray(R * c, R * c + R)] : null, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
+  // (the flowers' letters: its neighbours by a side, by a corner only; v and how many of the live ones by a corner, those it can have)
+  const mine = new Set(corners(c).map((p) => pointKey(p))), bySide = (u) => corners(u).filter((p) => mine.has(pointKey(p))).length >= 2;
+  const sides = around.filter(bySide), tips = around.filter((u) => !bySide(u));
+  const ways = (k) => [0, 1, 2, 3].filter((j) => j <= tips.length && k - j >= 0 && k - j <= sides.length);
+  const lettersOf = (k) => (iso === 'vertex' ? (ways(k).length > 1 ? ways(k).map((j) => `v${j}`) : []) : iso === 'hensel' ? HENSEL_LETTERS[k] : iso && k >= 2 && k <= 4 ? ['o', 'm', 'p'] : []), classOf = (m) => (iso === 'hensel' ? henselClass(m) : hexClass(m).toLowerCase());
   const cases = Array.from({ length: around.length + 1 }, (_, k) => k).flatMap((k) => (lettersOf(k).length ? lettersOf(k) : ['']).map((x) => {
     if (!iso) return { k, x, live: new Set(around.slice(0, k)), on: (table) => table[k] === 1 };
+    if (iso === 'vertex') { const j = x ? Number(x.slice(1)) : ways(k)[0]; return { k, x, live: new Set([...tips.slice(0, j), ...sides.slice(0, k - j)]), on: (table) => table[16 + 4 * k + j] === 1 }; }
     const m = Array.from({ length: 1 << R }, (_, m) => m).find((m) => ofCount(m) === k && (!x || classOf(m) === x));
     return { k, x, live: new Set(ring.filter((_, q) => (m >> q) & 1)), on: (table) => table[16 + m] === 1 };
   }));
@@ -7540,7 +7564,7 @@ function ruleTutorial(option) {
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
@@ -7700,10 +7724,13 @@ function renderRuleSection() {
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
   const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡';
   const hensel = mark === '■';  // (your own on squares: always with Hensel's letters)
-  const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : []);
+  const vertex = !!ROSETTES[PLANE_OF_MARK[mark]];  // (on a flower or a ring: v, how many of the live ones by a corner only, 0 to 2)
+  const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : vertex && c ? ['v0', 'v1', 'v2'].slice(0, Math.min(c, 2) + 1) : []);
   const all = (c) => (lettersOf(c).length ? lettersOf(c) : ['']);  // a count without letters: one, ''
   const classOf = (m) => (hex ? hexClass(m).toLowerCase() : henselClass(m)), R = hex ? 6 : 8, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
-  const letters = (table) => Array.from({ length: N + 1 }, (_, c) => new Set(all(c).filter((x) => (rule.iso
+  const letters = (table) => Array.from({ length: N + 1 }, (_, c) => new Set(all(c).filter((x) => (rule.iso === 'vertex' ? table[16 + 4 * c + (x ? Number(x[1]) : 0)] === 1
+    : !rule.iso && vertex ? table[c] === 1
+    : rule.iso
     ? Array.from({ length: 1 << R }, (_, m) => m).some((m) => table[16 + m] && ofCount(m) === c && (x === '' || classOf(m) === x))
     : table[c] === 1))));
   const write = (B, S, C) => {
@@ -7711,13 +7738,14 @@ function renderRuleSection() {
       const ls = all(c), off = ls.filter((x) => !on.has(x));
       if (!on.size) return '';
       if (!off.length) return c;
+      if (vertex) return `${c}v${ls.filter((x) => on.has(x)).map((x) => x[1]).join('')}`;  // (v and the counts by a corner)
       return hensel && off.length < on.size ? `${c}-${off.join('')}` : c + ls.filter((x) => on.has(x)).join('');  // Hensel's "-": all but these
     }).join('');
     return `B${part(B)}/S${part(S)}${C > 2 ? `/C${C}` : ''}`;
   };
   const B = letters(rule.B), S = letters(rule.S);
   const WHERE = { o: 'side by side', m: 'one cell apart', p: 'opposite' };
-  const said = (c, x) => (hensel ? `${c} live neighbours, Hensel's ${x}`
+  const said = (c, x) => (vertex ? `${c} live neighbours, ${x[1]} of them by a corner only, the others by a side` : hensel ? `${c} live neighbours, Hensel's ${x}`
     : `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`);
   for (const [id, set, cls] of [['ruleBirth', B, 'birth'], ['ruleSurvive', S, 'survive']]) {
     const chip = (text, on, title, click) => {
@@ -7752,7 +7780,7 @@ function fitRuleToShape() {
   ruleFittedTo = w;
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
-  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
+  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? !!mode.plane : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
   const kindFits = mode.margolus ? parseRule(rule)?.k === BLOCKS[mode.plane].k : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
@@ -7963,7 +7991,7 @@ for (const [kind, mark] of Object.entries(BLOCK_MARKS)) {  // each grid's rules,
   }
 }
 function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, ring = L.ring, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
+  const L = walk.life, { start, list } = L.nbr, ring = L.ring, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const changes = L.born + L.dead, born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
@@ -7983,6 +8011,10 @@ function lifeStep() {
       if (ring) {  // where the live neighbours sit around it (6 round a hexagon, 8 round a square)
         for (let q = 0; q < R; q++) { const v = ring[R * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; } }
         c += 16;
+      } else if (side) {  // the flowers' letters: the live ones by a corner only, apart (see parseRule)
+        let k = 0;
+        for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; if (!side[q]) k++; } }
+        c = 16 + 4 * c + Math.min(k, 3);
       } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; } }
       if (was) now = L.S[c] ? was : C > 2 ? was + K : 0;
       else if (!L.B[c]) now = 0;
@@ -8075,7 +8107,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, goal, swaps = true } = e.data;  // goal: one colour's (see HUNT_GOALS); dense: a start's density, drawn between these
+    const { n, start, list, ring, side, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, goal, swaps = true } = e.data;  // goal: one colour's (see HUNT_GOALS); dense: a start's density, drawn between these
     const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K, R = ring ? ring.length / n : 0;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
@@ -8087,6 +8119,10 @@ function huntWorker() {
       if (ring) {
         for (let q = 0; q < R; q++) { const v = ring[R * t + q]; if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; } }
         c += 16;
+      } else if (side) {  // (the flowers' letters, as lifeStep's)
+        let k = 0;
+        for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (live(v)) { c++; around[v]++; if (!side[q]) k++; } }
+        c = 16 + 4 * c + Math.min(k, 3);
       } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (live(v)) { c++; around[v]++; } }
       if (was) return S[c] ? was : C > 2 ? was + K : 0;
       if (!B[c]) return 0;
@@ -8104,7 +8140,7 @@ function huntWorker() {
     // the cells changed and their neighbours are worked out (all of them where a cell with no live
     // neighbour is born: B0). The fingerprint of a state (two Zobrist hashes, a value per cell and state)
     // and the pairs of neighbours alive in two colours are kept up to date from the changes alone.
-    const everyCell = B[0] || (ring && B[16]), all_ = Int32Array.from({ length: n }, (_, t) => t);
+    const everyCell = B[0] || ((ring || side) && B[16]), all_ = Int32Array.from({ length: n }, (_, t) => t);
     const zob = (t, v, seed) => { let h = Math.imul((t * 64 + v) ^ seed, 0x9e3779b1); h = Math.imul(h ^ (h >>> 15), 0x85ebca6b); return (h ^ (h >>> 13)) >>> 0; };
     const odd = (x, y) => live(x) && live(y) && x !== y;  // two colours side by side
     const mark = new Uint32Array(n);
@@ -8669,7 +8705,7 @@ function huntClick() {
       hunt.status = `${all ? `${fmt(n)} / ${fmt(all)}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
       renderHunt();
     };
-    w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, B: L.B, S: L.S, C: L.C, K,
+    w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, side: L.side, B: L.B, S: L.S, C: L.C, K,
                     cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), dense: DENSITY, all, choices,
                     cap: K === 1 ? 50000 : 4000, part, parts, goal: K === 1 ? hunt.goal : null });
     return w;
