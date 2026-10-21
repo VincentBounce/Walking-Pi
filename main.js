@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.957';
+const VERSION = '0.1.958';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7433,7 +7433,7 @@ function blockTutorial(option, to) {
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
   // each set at the grid's upper left corner (its 16 cells nearest it; past its edges, its wall as on the grid and the
   // sky): a block of it framed, the nearest the corner
-  const torus = planeTorus(kind), { turns: edged } = blocksOf(torus), at = (p) => pointKey(p);
+  const torus = planeTorus(kind), { turns: edged, sides: crossOf } = blocksOf(torus), at = (p) => pointKey(p);
   const corner = [...Array(W * row).keys()].filter((t) => poly(t)).flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
   const far = (p) => Math.max(p[0] - corner[0], p[1] - corner[1]);
   const patch = [...Array(W * row).keys()].filter((t) => poly(t)).sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
@@ -7448,21 +7448,23 @@ function blockTutorial(option, to) {
     return sides.filter((e) => count.get(keyOf(e)) === 1).map(([a, b]) => `M${a.join(',')}L${b.join(',')}`).join('');  // (its rim: sides not shared, either way round)
   };
   const phase = (blocks) => {
-    // its blocks in the patch, each whole: on a torus, its cells across the sheet's edge brought next to the others (drawn
-    // in the sky), as their polygons
+    // its blocks in the patch (Ising: a square and its 4 sides), each whole: on a torus, its cells across the sheet's edge
+    // brought next to the others (drawn in the sky), with their polygons
     const near = [], o = mid(0), per = torus ? [[row, 0], [0, W]].map(([x, y]) => cellMiddle(kind, x, y).map((v, d) => v - o[d])) : [];
     const shifts = torus ? [-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => [0, 1].map((d) => i * per[0][d] + j * per[1][d]))) : [[0, 0]];
     for (let i = 0; i < blocks.length; i += k) {
-      const cells = [...blocks.subarray(i, i + k)], ref = cells.find((t) => patch.includes(t));
+      const cells = ising ? [blocks[i], ...crossOf[blocks[i]]] : [...blocks.subarray(i, i + k)], ref = cells.find((t) => patch.includes(t));
       if (ref === undefined) continue;
-      near.push(cells.map((t) => { const [dx, dy] = shifts.reduce((b, sh) => (Math.hypot(mid(t)[0] + sh[0] - mid(ref)[0], mid(t)[1] + sh[1] - mid(ref)[1]) < Math.hypot(mid(t)[0] + b[0] - mid(ref)[0], mid(t)[1] + b[1] - mid(ref)[1]) ? sh : b));
-        return poly(t).map(([x, y]) => [x + dx, y + dy]); }));
+      near.push({ cells, ps: cells.map((t) => { const [dx, dy] = shifts.reduce((b, sh) => (Math.hypot(mid(t)[0] + sh[0] - mid(ref)[0], mid(t)[1] + sh[1] - mid(ref)[1]) < Math.hypot(mid(t)[0] + b[0] - mid(ref)[0], mid(t)[1] + b[1] - mid(ref)[1]) ? sh : b));
+        return poly(t).map(([x, y]) => [x + dx, y + dy]); }) });
     }
     const far = (ps) => Math.hypot(...[0, 1].map((d) => ps.flat().reduce((a, p) => a + p[d], 0) / ps.flat().length - corner[d]));
-    const framed = near.sort((u, v) => far(u) - far(v)).slice(0, 3);  // (the 3 nearest the corner, each its own rim)
+    const cen = (P) => [0, 1].map((d) => P.reduce((t, q) => t + q[d], 0) / P.length), area = (P) => Math.abs(P.reduce((t, q, i) => t + q[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * q[1], 0) / 2);
+    const framed = [];  // (the 3 nearest the corner, apart, each its own rim)
+    for (const b of near.sort((u, v) => far(u.ps) - far(v.ps))) if (framed.length < 3 && !framed.some((f) => (ising ? f.ps.some((p) => b.ps.some((q) => Math.hypot(...[0, 1].map((d) => cen(p)[d] - cen(q)[d])) < 1.5 * Math.sqrt(area(p)))) : f.cells.some((t) => b.cells.includes(t))))) framed.push(b);  // (Ising's crosses: not touching, not even by a corner)
     return `<svg viewBox="${corner[0] - m} ${corner[1] - m} ${span} ${span}"><defs><linearGradient id="tutSky" x2="0" y2="1"><stop offset="0" stop-color="#c3d7f2"/><stop offset="1" stop-color="#f0d9e2"/></linearGradient></defs>`
       + `<rect x="${corner[0] - m}" y="${corner[1] - m}" width="${span}" height="${span}" fill="url(#tutSky)"/>${wall.length ? `<path d="${wall.map((c) => `M${c.map((p) => p.join(',')).join('L')}Z`).join('')}" fill="${LIFE_WALL}"/>` : ''}`  // (the wall one shape: no seams between its cells)
-      + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${framed.map(outlineOf).join('')}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (3 blocks framed)
+      + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${framed.map((f) => outlineOf(f.ps)).join('')}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (3 blocks framed)
   };
   // its max period: it runs back, so a start comes back to itself (no lead-in), at most after its states × its phases;
   // here, on the grid built, and this start's, if known (see blockBack)
