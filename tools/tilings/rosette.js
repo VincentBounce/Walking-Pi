@@ -99,11 +99,44 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
     if (!stack.length) throw new Error('rosette: stuck');
     return tiles.map((t) => t.P);  // (round a hole: the hole first)
   };
+  // Sugimoto's own construction (his Figure 4), no search, any n: the tiles in pairs mirrored on their side DE (his
+  // Octa-units), in wedges of rows of 1, 2, 3… pairs (a pair to the next along DE, e; a row to the next e / 2 along and H
+  // across, H the heights of B and C over DE); a wedge's first pair from the one before by its A mirrored, turned 120°/q (q
+  // = n, or m / 3 round a hole of m: the same pentagon); a flower, 3 wedges a turn of n from its star (B in the middle); a
+  // ring, its m wedges round the point that step keeps, its hole a regular m-gon. As the search's (its tiles where they were)
+  const direct = (R) => {
+    const q = hole ? n / 3 : n, [, , , D, E] = P0, e = len(D, E), a = Math.atan2(E[1] - D[1], E[0] - D[0]), ca = Math.cos(a), sa = Math.sin(a);
+    let L = P0.map(([x, y]) => [(x - D[0]) * ca + (y - D[1]) * sa, -(x - D[0]) * sa + (y - D[1]) * ca]);
+    if (L[1][1] < 0) L = L.map(([x, y]) => [x, -y]);  // (B above DE)
+    const H = L[1][1] + L[2][1], t = (2 * Math.PI) / (3 * q), ct = Math.cos(t), st = Math.sin(t), [ax, ay] = [L[0][0], -L[0][1]];
+    const d = (1 - ct) ** 2 + st ** 2, keep = [((1 - ct) * ax - st * ay) / d, (st * ax + (1 - ct) * ay) / d];  // (the point the step keeps)
+    const S = hole ? n : q, per = hole ? 1 : 3, start = hole ? keep.map((v) => -v) : L[1].map((v) => -v), out = [];
+    const pairs = [L, L.map(([x, y]) => [x, -y])];
+    for (let k = 0; k < S; k++) {
+      const g = (2 * Math.PI * k) / S;
+      let o = [Math.cos(g) * start[0] - Math.sin(g) * start[1], Math.sin(g) * start[0] + Math.cos(g) * start[1]], f = g;
+      for (let w = 0; w < per; w++) {
+        const cf = Math.cos(f), sf = Math.sin(f), at = ([x, y]) => [o[0] + cf * x - sf * y, o[1] + sf * x + cf * y];
+        for (let r = 0; r * H < R + 2 * H + Math.hypot(...o); r++) for (let i = 0; i <= r; i++) {
+          const p = at([(i - r / 2) * e, -r * H]);
+          if (Math.hypot(...p) < R + 3) for (const T of pairs) out.push(T.map(([x, y]) => at([x + (i - r / 2) * e, y - r * H])));
+        }
+        o = at([ax, ay]); f += t;
+      }
+    }
+    // as the search's: its star's side BC along x; round a hole, the hole first, its corners where the search's were
+    const turn = hole ? Math.PI / n - Math.PI / 2 - (() => { const r = 1 / (2 * Math.sin(Math.PI / n)), c = out.flat().find((p) => Math.abs(Math.hypot(...p) - r) < 1e-6); return Math.atan2(c[1], c[0]); })()
+      : -Math.atan2(out[0][2][1] - out[0][1][1], out[0][2][0] - out[0][1][0]);
+    const T = ([x, y]) => [Math.cos(turn) * x - Math.sin(turn) * y, Math.sin(turn) * x + Math.cos(turn) * y], tiles = out.map((P) => P.map(T));
+    if (!hole) return tiles;
+    const r = 1 / (2 * Math.sin(Math.PI / n));
+    return [[...Array(n).keys()].map((k) => [r * Math.cos(((2 * k + 1) * Math.PI) / n - Math.PI / 2), r * Math.sin(((2 * k + 1) * Math.PI) / n - Math.PI / 2)]), ...tiles];
+  };
   const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % 5][1] - P[(i + 1) % 5][0] * p[1], 0) / 2), U = 1 / Math.sqrt(area(P0));  // (a tile a square unit)
   const cache = {};
   return (W) => cache[W] ??= (() => {
     const R = (0.525 * W * Math.SQRT2 + 5) / U;  // (round the W² tiles' square, its walls too)
-    const items = grow(R).map((P, i) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p), dead: hole && i === 0 }; });  // (the hole: a cell of the wall)
+    const items = (seed ? grow(R) : direct(R)).map((P, i) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p), dead: hole && i === 0 }; });  // (the hole: a cell of the wall)
     return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle)
   })();
 }
