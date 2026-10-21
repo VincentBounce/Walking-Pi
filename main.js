@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.966';
+const VERSION = '0.1.967';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -12574,6 +12574,7 @@ for (const b of document.querySelectorAll('[data-icon]')) b.insertAdjacentHTML('
 play(false);  // the Play button with its icon
 seedCurated();
 fillSetupList();
-const linked = parseHash();  // a link with a setup opens that setup; otherwise the default one
+// a link with a setup opens that setup; otherwise Life, the first tab: 6 colours at war on the cube
+const linked = parseHash() ?? { w: 'lifeCube', s: '48', r: 'B3/S23', k: '6', pop: 'random.49.8259995' };
 if (!linked || !applySetup(linked)) compute();
 showPane(false);
