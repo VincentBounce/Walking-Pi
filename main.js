@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.963';
+const VERSION = '0.1.964';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5605,9 +5605,10 @@ function cellNeighbours(cStart, cList, nv, sides = 0) {
     }
   }
   start[n] = m;
-  let ring = null;
+  let ring = null, more = null;
   if (sides) {
     ring = new Int32Array(sides * n).fill(-1);
+    const extra = sides === 8 ? Array.from({ length: 8 * n }, () => null) : null;  // (a corner of more cells than 4: its others)
     const across = (t, a, b) => {  // the other cell on side a–b
       for (let j = vStart[a]; j < vStart[a + 1]; j++) { const u = vList[j]; if (u === t) continue; for (let i = cStart[u]; i < cStart[u + 1]; i++) if (cList[i] === b) return u; }
       return -1;
@@ -5620,13 +5621,21 @@ function cellNeighbours(cStart, cList, nv, sides = 0) {
       const side = [0, 1, 2, 3].map((q) => across(t, c(q), c(q + 1)));
       for (let q = 0; q < 4; q++) {
         ring[8 * t + AT[2 * q + 1]] = side[q];
-        let corner = -1, count = 0;
-        for (let j = vStart[c(q)]; j < vStart[c(q) + 1]; j++) { const u = vList[j]; if (u !== t && !side.includes(u)) { corner = u; count++; } }
-        if (count === 1) ring[8 * t + AT[2 * q]] = corner;
+        // its corner's: the cell across it, or round a fold (a cube's corner: none; Menger's sponge's, a pit's rim: 2 or
+        // more, the slot alive when one of them is, see lifeStep)
+        const across = [];
+        for (let j = vStart[c(q)]; j < vStart[c(q) + 1]; j++) { const u = vList[j]; if (u !== t && !side.includes(u)) across.push(u); }
+        if (across.length) ring[8 * t + AT[2 * q]] = across[0];
+        if (across.length > 1) extra[8 * t + AT[2 * q]] = across.slice(1);
       }
     }
+    if (extra?.some((x) => x)) {
+      const st = new Int32Array(8 * n + 1), li = [];
+      extra.forEach((x, i) => { if (x) li.push(...x); st[i + 1] = li.length; });
+      more = { start: st, list: Int32Array.from(li) };
+    }
   }
-  return { start, list: list.slice(0, m), ring };
+  return { start, list: list.slice(0, m), ring, more };
 }
 // A surface's: its tiles' corners (a repeated one, a pentagon's of the hexagon sphere, once; a wall: none). On
 // hexagons, their ring (Callahan's letters); on squares, sides 8 asked (Hensel's)
@@ -5790,7 +5799,7 @@ function buildLife(seq, mode) {
   const seed = surfaceSeed(seq, g.n, rule.C, rule.colours);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr, ring: rule.iso ? ring : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
+  walk.life = { nbr, ring: rule.iso ? ring : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -8175,7 +8184,7 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, ring = L.ring, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
+  const L = walk.life, { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const changes = L.born + L.dead, born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
@@ -8193,7 +8202,11 @@ function lifeStep() {
       let c = 0;
       around.fill(0);
       if (ring) {  // where the live neighbours sit around it (6 round a hexagon, 8 round a square)
-        for (let q = 0; q < R; q++) { const v = ring[R * t + q]; if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; } }
+        for (let q = 0; q < R; q++) {
+          let v = ring[R * t + q];
+          if (more && !(v >= 0 && a[v] && a[v] <= K)) for (let i = more.start[R * t + q]; i < more.start[R * t + q + 1]; i++) if (a[more.list[i]] && a[more.list[i]] <= K) { v = more.list[i]; break; }  // (round a fold: any of its)
+          if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; }
+        }
         c += 16;
       } else if (side) {  // the flowers' letters: the live ones by a corner only, apart (see parseRule)
         let k = 0;
@@ -8291,7 +8304,7 @@ function huntWorker() {
     return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
   };
   self.onmessage = (e) => {
-    const { n, start, list, ring, side, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, goal, swaps = true } = e.data;  // goal: one colour's (see HUNT_GOALS); dense: a start's density, drawn between these
+    const { n, start, list, ring, more, side, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, goal, swaps = true } = e.data;  // goal: one colour's (see HUNT_GOALS); dense: a start's density, drawn between these
     const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K, R = ring ? ring.length / n : 0;
     // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
     const next = (a, t, gen, born) => {
@@ -8301,7 +8314,11 @@ function huntWorker() {
       let c = 0;
       around.fill(0);
       if (ring) {
-        for (let q = 0; q < R; q++) { const v = ring[R * t + q]; if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; } }
+        for (let q = 0; q < R; q++) {
+          let v = ring[R * t + q];
+          if (more && !(v >= 0 && live(a[v]))) for (let i = more.start[R * t + q]; i < more.start[R * t + q + 1]; i++) if (live(a[more.list[i]])) { v = more.list[i]; break; }
+          if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; }
+        }
         c += 16;
       } else if (side) {  // (the flowers' letters, as lifeStep's)
         let k = 0;
@@ -8890,7 +8907,7 @@ function huntClick() {
       hunt.status = `${all ? `${fmt(n)} / ${fmt(all)}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
       renderHunt();
     };
-    w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, side: L.side, B: L.B, S: L.S, C: L.C, K,
+    w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, more: L.ringMore, side: L.side, B: L.B, S: L.S, C: L.C, K,
                     cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), dense: DENSITY, all, choices,
                     cap: K === 1 ? 50000 : 4000, part, parts, goal: K === 1 ? hunt.goal : null });
     return w;
