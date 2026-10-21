@@ -518,6 +518,10 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   .panel { width: auto; max-height: 45vh; border-right: 0; border-bottom: 1px solid var(--border); }
   .stage { min-height: 55vh; }
   .hint { display: none; }
+  /* folded, the player alone: ⏮, a step back and Play (a tap opens it all), the grid in sight */
+  .stage-bar:not(:focus-within) > :not(.player-controls), .stage-bar:not(:focus-within) #digitsRow,
+  .stage-bar:not(:focus-within) #step, .stage-bar:not(:focus-within) #end { display: none; }
+  .stage-bar:not(:focus-within) { width: auto; }
 }
 
 /* Save, the first of Treasures' icons: yellow, its star filled, while the setup in view is one of them */
