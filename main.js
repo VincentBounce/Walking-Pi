@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.971';
+const VERSION = '0.1.973';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2359,7 +2359,7 @@ const NAV = {
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
   life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
-  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Menger', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
   lifeMobius: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeMobiusHex: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''],
@@ -2445,7 +2445,7 @@ const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natura
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
-  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', Menger: 'menger', 'Klein bottle': 'klein' };
+  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', Sponge: 'menger', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
@@ -7699,7 +7699,7 @@ function ruleTutorial(option) {
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3>${option.value !== 'custom' && option.text.includes(' — ') ? `<p>${option.text.split(' — ').slice(1).join(' — ').replace(/^./, (c) => c.toUpperCase())}.</p>` : ''}${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
@@ -8709,12 +8709,13 @@ const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
 function faceParts(K) {
   const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K], used = new Set();
   const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3), pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors || g.cubic);  // (3 colours on the cube: 2 opposite faces each, as huntParts)
+  const face = Int16Array.from({ length: g.n }, (_, t) => faceOf(t) ?? -1);  // (each cell's, once)
   const faceAt = (dir) => {
     let f = -1, top = -Infinity;
-    for (let t = 0; t < g.n; t++) { const h = faceOf(t), x = dot3(cen(t), dir); if (h >= 0 && !used.has(h) && x > top) { top = x; f = h; } }
+    for (let t = 0; t < g.n; t++) { const h = face[t]; if (h >= 0 && !used.has(h)) { const x = dot3(cen(t), dir); if (x > top) { top = x; f = h; } } }
     used.add(f);
     const part = [];
-    if (f >= 0) for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && faceOf(t) === f) part.push(t);  // (no face left: none)
+    if (f >= 0) for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && face[t] === f) part.push(t);  // (no face left: none)
     return part;
   };
   return spots.map((d) => { const dir = d ? unit(d) : cen(centreCells()[0]); return pairs ? [...faceAt(dir), ...faceAt(dir.map((v) => -v))] : faceAt(dir); });
