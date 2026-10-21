@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.974';
+const VERSION = '0.1.975';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7366,15 +7366,16 @@ const colourFairOwn = (K, g) => {
   if (g?.nu) { const [u, v] = torusBlocks(K, g); return g.nu % u === 0 && g.nv % v === 0; }
   return false;
 };
-// a count of colours whose battles can bring a colour back: the rule's birth with c live neighbours, c a multiple of K − 1
-// (as many of each of K − 1 colours: a tie, the one missing born, see lifeStep); with letters, any of theirs with c
+// a count of colours whose battles can bring a colour back: the rule's birth with c live neighbours that K − 1 colours can share
+// with a tie for the most (the one missing born, see lifeStep): each at least one, the e = c − (K − 1) left over not 1 (2 of 3
+// colours: e even); with letters, any of theirs with c
 const colourMissing = (K) => {
   const r = parseRule(ruleBody($('lifeRule').value));
   if (K < 3 || !r) return false;
   const bits = (m) => m.toString(2).replace(/0/g, '').length;
   const counts = r.iso === 'vertex' ? [...Array(16).keys()].filter((c) => [0, 1, 2, 3].some((k) => r.B[16 + 4 * c + k]))  // (any of its ways)
     : r.iso ? [...Array(1 << (r.iso === 'hensel' ? 8 : 6)).keys()].filter((m) => r.B[16 + m]).map(bits) : [...Array(16).keys()].filter((c) => r.B[c]);
-  return counts.some((c) => c >= K - 1 && c % (K - 1) === 0);
+  return counts.some((c) => c >= K - 1 && (K === 3 ? (c - 2) % 2 === 0 : c - (K - 1) !== 1));
 };
 function renderColours() {
   renderBlockColours();  // (blocks: theirs)
@@ -7692,6 +7693,17 @@ function ruleTutorial(option) {
       + `${[...ties.filter((p) => gone(p) === 1), ...ties.filter((p) => gone(p) !== 1)].map((p) => card(p, gone(p) === 1 ? 'the colour missing' : 'no birth')).join('')}</div>`;
   }
   const part = (L) => `<code>${option.value.split('/').find((x) => x[0] === L) ?? ''}</code>`;  // a section's part of the rule (B…, S…, C…)
+  // on squares, Hensel's letters, for a rule of one's own (B2a/S23…): where 1 to 4 live neighbours sit (c corners, e edges…),
+  // 5 to 7 the same with the live and the dead swapped
+  function hensel() {
+    if (kind !== 'square') return '';
+    const at = iso === 'hensel' ? ring : [...withoutCells(planeNeighbours(kind, W, false, true), dead).ring.subarray(8 * c, 8 * c + 8)];
+    const rows = [1, 2, 3, 4].map((k) => HENSEL_LETTERS[k].map((x) => {
+      const m = Array.from({ length: 256 }, (_, m) => m).find((m) => ofCount(m) === k && henselClass(m) === x);
+      return `<figure><div>${cell(UNLIT, new Set(at.filter((_, q) => (m >> q) & 1)))}</div><figcaption>${k}${x}</figcaption></figure>`;
+    }).join('')).join('');
+    return `<h4>Letters</h4><p>Hensel's, for a rule of your own (B2a/S23, B3-k…): where the live neighbours sit round the square, each count its letters (c corners, e edges, then their ways together); 5 to 7 as 3 to 1 with the live and the dead swapped (5c: all but 3c).</p><div class="tut-row">${rows}</div>`;
+  }
   const after = rule.C > 2 ? dying(1) : UNLIT, stages = Array.from({ length: rule.C - 2 }, (_, s) => dying(s + 1));
   // a dying stage's ✝ (white on the cells nearer the live colour on a light page, as on the grid's)
   function tomb(centre) {
@@ -7703,7 +7715,7 @@ function ruleTutorial(option) {
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
-    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + '</div>';
+    + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + hensel() + '</div>';
   for (const f of $('ruleTuto').querySelectorAll('.tut-shapes figure')) f.addEventListener('click', () => { tutShape.at = Number(f.dataset.at); ruleTutorial(option); });
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
