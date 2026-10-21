@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.969';
+const VERSION = '0.1.970';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3883,6 +3883,7 @@ function mengerMesh(L) {
   };
   const mesh = finishMesh(verts, quads, 4, L, out);
   mesh.concave = true;
+  mesh.cubic = true;  // (the cube's turns: 3 colours, 2 opposite faces each)
   return (meshCache[key] = mesh);
 }
 
@@ -8672,7 +8673,7 @@ function huntParts(r, K) {
   }
   const spots = K === 1 ? null : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K].map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   // 3 colours on the cube: 2 opposite faces each (its face's axis, either way)
-  const pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors), near = (d, c) => (pairs ? Math.abs(dot3(d, c)) : dot3(d, c));
+  const pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors || g.cubic), near = (d, c) => (pairs ? Math.abs(dot3(d, c)) : dot3(d, c));
   const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
