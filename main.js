@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.943';
+const VERSION = '0.1.944';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2433,7 +2433,7 @@ function tilingIcon(kind) {
 for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(kind);
 // The 2D grids by their natural shape: none repeating (round walls), a square lattice (quarter turns), a lattice of 60°
 // rhombi (sixth turns), else a parallelogram (half turns only); each its title
-const SHAPE_GROUPS = [['Circles (walls only)', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
+const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
                       ['Natural rhombi', (k) => [3, 6].includes(TILINGS[k]?.turns ?? PATTERN_TURNS[k])], ['Parallelograms', () => true]];
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
@@ -5716,7 +5716,9 @@ function startColours(seed) {
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); for (const t of walk.geo.walls ?? []) seed[t] = 0; lifeStart = { zone: hunt.zone }; return; }  // (none on the wall's cells)
   if (K === 1) return;
-  huntParts(0, K).forEach((part, i) => { for (const t of part) if (seed[t]) seed[t] = i + 1; });
+  const coloured = new Uint8Array(seed.length);
+  huntParts(0, K).forEach((part, i) => { for (const t of part) { coloured[t] = 1; if (seed[t]) seed[t] = i + 1; } });
+  for (let t = 0; t < seed.length; t++) if (!coloured[t]) seed[t] = 0;  // (no one's: the cells on its slices' lines, see planeSlices)
 }
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
@@ -7154,7 +7156,7 @@ const lifeMark = (mode) => (mode.margolus ? BLOCK_MARKS[mode.plane] : mode.plane
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
-let lifeColours = 1;
+let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed in one place (see huntParts)
 // Blocks' colours: 1, or 2, 4, 8 drawn at random over the start's cells, each cell's carried along by the blocks (see
 // blockStep): a picture only, one population (no civilisations, no battles)
 const BLOCK_COLOURS = [1, 2, 4, 8];
@@ -7177,10 +7179,10 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
   const preset = [...$('lifePreset').options].find((o) => o.value === rule);
   $('lifePreset').value = preset ? rule : 'custom';
 }
-// The colours, as blocks: one (black), or 2, 3, 4, 5, 6, 7, 8, 9, 12 civilisations, each block its colours in
+// The colours, as blocks: one (black), or 2, 3, 4, 5, 6, 7, 8, 9, 10, 12 civilisations, each block its colours in
 // a cols × rows grid; a block greyed when the figure has no fair spots for that many (see coloursFit)
-const COLOUR_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12];
-const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 5: [5, 1], 6: [3, 2], 7: [7, 1], 8: [4, 2], 9: [3, 3], 12: [4, 3] };
+const COLOUR_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
+const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 5: [5, 1], 6: [3, 2], 7: [7, 1], 8: [4, 2], 9: [3, 3], 10: [5, 2], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
 // ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3
 function torusBlocks(K, g = walk.geo) {
@@ -7216,13 +7218,14 @@ const colourBlock = (k) => {
   const [cols, rows] = COLOUR_GRID[k], cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
   return `<svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" aria-hidden="true">${cs.map((c, i) => `<rect x="${i % cols}" y="${Math.floor(i / cols)}" width="1" height="1" fill="${c}"/>`).join('')}</svg>`;
 };
-const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5: 'Quintet', 6: 'Sextet', 7: 'Septet', 8: 'Octet', 9: 'Nonet', 12: 'Dozen' };  // one colour, then battles
+const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5: 'Quintet', 6: 'Sextet', 7: 'Septet', 8: 'Octet', 9: 'Nonet', 10: 'Decet', 12: 'Dozen' };  // one colour, then battles
 // the counts of colours fair on the figure, every colour's part a copy of the others': on the plane, those its turns n share
 // with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
 // 1), on a torus any (its blocks); on a
 // solid, its fair spots (see SOLID_COLOURS); on a torus, blocks that divide it; on a Möbius strip, any
 const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, penrose: 5, hat: 1, spectre: 1, pinwheel: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
-const colourFair = (K, g = walk.geo) => {
+const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g));  // (twice a fair count: each part halved)
+const colourFairOwn = (K, g) => {
   const mode = MODES[$('mode').value], kind = mode?.plane;
   if (K === 1) return true;
   if (kind && (planeTorus(kind) || kind === 'hat' || kind === 'spectre' || kind === 'pinwheel')) return true;  // (a torus: blocks of its side, see colourW, all alike; a hat's or a spectre's circle, as many cells each, see planeSlices)
@@ -7248,7 +7251,10 @@ function renderColours() {
   renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
-    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; compute(); } } })));
+    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; compute(); } } })),
+    // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
+    tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[0, 5, 2, 7, 3, 1, 6, 4, 4, 6, 1, 3, 7, 2, 5, 0].map((c, i) => `<rect x="${i % 4}" y="${Math.floor(i / 4)}" width="1" height="1" fill="${LIFE_COLOURS[c]}"/>`).join('')}</svg>`, text: 'Mixed',
+      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
 
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
@@ -8295,7 +8301,7 @@ const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 5: '5 fifths', 6: '6 sixths', 7: '7 sevenths', 8: '8 eighths', 9: '9 ninths', 12: '12 twelfths' };
+const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 5: '5 fifths', 6: '6 sixths', 7: '7 sevenths', 8: '8 eighths', 9: '9 ninths', 10: '10 tenths', 12: '12 twelfths' };
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
 // cells apart): on the plane, their patches touch round the middle; the others' sit at fair spots
 const NEAR_RULES = ['B3678/S34678', 'B34/S123/C3', 'B2/S34', 'B24/S35', 'B2o/S2m34', 'B34/S23', 'B2/S24/C3', 'B23/S6/C3'];
@@ -8391,6 +8397,11 @@ function planeFrame() {
   });
 }
 function huntParts(r, K) {
+  if (colourMix && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
+    const parts = Array.from({ length: K }, () => []);
+    for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(plane.seed + 7, t) * K)].push(t);
+    return parts;
+  }
   const L = walk.life, g = walk.geo, n = L.alive.length, [cols, rows] = COLOUR_GRID[K], open = (t) => L.nbr.start[t] < L.nbr.start[t + 1];
   const parts = Array.from({ length: K }, () => []);
   if (walk.plane) {
@@ -9095,6 +9106,7 @@ function getSetup() {
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && (mode.margolus ? blockColours : lifeColours) > 1) s.k = mode.margolus ? blockColours : lifeColours;
+  if (mode.life && !mode.margolus && lifeColours > 1 && colourMix) s.mx = 1;  // (Mixed)
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
@@ -9150,6 +9162,7 @@ function applySetup(s) {
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
+    colourMix = Number(s.mx) === 1;
     if (MODES[s.w].margolus) blockColours = BLOCK_COLOURS.includes(Number(s.k)) ? Number(s.k) : 1;  // (blocks: their cells' colours, k= too)
     setRuleText(ruleBody(s.r));
   }
