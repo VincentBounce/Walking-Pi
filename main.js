@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.932';
+const VERSION = '0.1.933';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1454,17 +1454,24 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
 // A tile, every one alike (the shapes, the colours, the looks, the zones, Walls, Square, Trail, the sky, the themes): a square
 // button, its picture over its name (html: both as one), fixed whatever its state; a click, once. Its states: on (gold) or off,
 // greyed when it cannot be clicked (gold still if on: Walls on a grid that never repeats); a small triangle in its corner,
-// if marked (a count of colours whose battles can bring a colour back)
-const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, click = null }) => {
+// if marked (a count of colours whose battles can bring a colour back); again: on, a click on it still does something (a zone
+// draws another start, a shape's switches walls and a torus): its hover gold
+const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, again = false, click = null }) => {
   const b = document.createElement('button');
   b.type = 'button';
   if (id) b.id = id;
   b.title = title;
   b.innerHTML = html ?? `${pic}<span>${text}</span>`;
   if (click) b.addEventListener('click', click);
-  return setTile(b, { on, can, mark });
+  return setTile(b, { on, can, mark, again });
 };
-const setTile = (b, { on = false, can = true, mark = false }) => { b.disabled = !can; b.classList.toggle('active', on); b.classList.toggle('mark', mark && can); return b; };
+const setTile = (b, { on = false, can = true, mark = false, again = false }) => {
+  b.disabled = !can;
+  b.classList.toggle('active', on);
+  b.classList.toggle('mark', mark && can);
+  b.classList.toggle('switch', again && on && can);
+  return b;
+};
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
 const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
 const trailOn = () => $('lifeTrail').checked && trailApplies();
@@ -2410,7 +2417,8 @@ function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
   for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) for (let k = 0; k < m; k++) polys.push(tilingAt(kind, i * m + k, j).map((p) => tilingWorld(kind, p)));
   const c = tilingWorld(kind, [0.5, 0.5]), r = Math.sqrt(Math.abs(TILINGS[kind].basis[0][0] * TILINGS[kind].basis[1][1] - TILINGS[kind].basis[0][1] * TILINGS[kind].basis[1][0]) / m) * 1.6;
-  const near = polys.filter((P) => { const q = [0, 1].map((d) => P.reduce((sum, p) => sum + p[d], 0) / P.length); return Math.hypot(q[0] - c[0], q[1] - c[1]) < r; });
+  const far = (P) => { const q = [0, 1].map((d) => P.reduce((sum, p) => sum + p[d], 0) / P.length); return Math.hypot(q[0] - c[0], q[1] - c[1]); };
+  const near = kind === 'capitalI' ? [...polys].sort((P, Q) => far(P) - far(Q)).slice(0, 4) : polys.filter((P) => far(P) < r);  // (Capital I's: 4 tiles, enough)
   const s = 10 / Math.max(...near.flat().map(([x, y]) => Math.max(Math.abs(x - c[0]), Math.abs(y - c[1]))));
   return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - c[0]) * s).toFixed(1)} ${(12 - (y - c[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');
 }
@@ -2620,7 +2628,7 @@ function renderModePicker() {
       plane.torus = !plane.torus;
       compute(true);
     }, sh);
-    if (again) { b.classList.add('switch'); b.title = plane.torus ? 'A torus (a click: walls)' : 'Walls (a click: a torus)'; }
+    if (again) { setTile(b, { on: true, again }); b.title = plane.torus ? 'A torus (a click: walls)' : 'Walls (a click: a torus)'; }
     return b;
   })];
   }));
@@ -8477,8 +8485,7 @@ function renderHunt() {
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
   for (const b of $('huntZones').children) {
-    b.classList.toggle('active', b.dataset.zone === hunt.zone);
-    b.disabled = busy || !fits[b.dataset.zone];
+    setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true });  // (picked: a click draws another start)
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
