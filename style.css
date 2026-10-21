@@ -540,9 +540,10 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .rule-tuto { position: absolute; inset: 0; z-index: 5; overflow: hidden; cursor: auto; background: var(--bg); color: var(--text); }
 .tut-body { position: absolute; inset: 0; overflow: auto; padding: 20px 24px 24px; }  /* what scrolls, under its buttons (pinned to the top right) */
 .tut-body > h3, .tut-body > h3 + p:not(.number-digits) { margin-right: 96px; }  /* (beside the buttons) */
+.tut-body code { color: var(--text); font-weight: 700; text-transform: none; letter-spacing: 0; }  /* the rule itself, wherever: black and bold (the labels grey) */
 .tut-body > h3 code { overflow-wrap: anywhere; }  /* (a long rule: on as many lines; a block rule's numbers, after its commas, see blockTutorial) */
-.rule-tuto h3 { margin: 0 96px 6px 0; font-size: 18px; }  /* (beside the buttons) */ .rule-tuto h3 code { font-size: 14px; color: var(--muted); margin-left: 6px; }
-.rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); } .rule-tuto h4 code { margin-left: 8px; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.rule-tuto h3 { margin: 0 96px 6px 0; font-size: 18px; }  /* (beside the buttons) */ .rule-tuto h3 code { font-size: 14px; margin-left: 6px; }
+.rule-tuto h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); } .rule-tuto h4 code { margin-left: 8px; font-size: 13px; }
 .rule-tuto p { margin: 0; font-size: 13px; color: var(--muted); max-width: 640px; }
 .tut-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .tut-row figure { margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }  /* as wide as its cells: they never wrap, its words never widen it */
