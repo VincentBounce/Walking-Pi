@@ -1347,7 +1347,7 @@ From each grid's rules (the menu's, Hex battle's and Hex war's, Life's), in a he
 
 | Grid | Rule | 3 colours | 6 colours |
 |---|---|---|---|
-| Dual 314 | [**B346/S01458**](https://vincentbounce.github.io/Walking-Pi/#w=life2dDual314&r=B346/S01458&k=6&s=32&e=1&pop=random.35.1) | 1,324 generations, balance 0.64, 1.4 % alive | 978, 0.59, 1.3 % (in the app: still 6 colours… 2 or more at 1,500) |
+| Dual 314 | [**B346/S01458**](https://vincentbounce.github.io/Walking-Pi/#w=life2dDual314&r=B346/S01458&k=6&s=32&e=1&pop=random.35.1) | 1,324 generations, balance 0.64, 1.4 % alive | 978, 0.59, 1.3 % (in the app: 2 colours or more still alive at 1,500) |
 | Dual 314 | B3468/S01458 | 1,500 (the cap), 0.53, 9.1 % | 1,013, 0.54, 1.1 % |
 | Dual 314 | B37/S23568 | 1,420, 0.51, 7.7 % | 1,001, 0.39, 2.5 % |
 | Rhombitri | [**B3/S02358**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombitri&r=B3/S02358&k=6&s=32&e=1&pop=random.35.1) | 465, 0.62, 5.4 % | 397, 0.48, 5.9 % |
