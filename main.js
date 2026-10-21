@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.947';
+const VERSION = '0.1.948';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8549,7 +8549,7 @@ const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
 const huntOn = () => !!walk.life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
-  const K = walk.life.colours, key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}|${walk.life.colours === 1 ? hunt.goal : ''}`;
+  const K = walk.life.colours, key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}|${walk.life.colours === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
   if (hunt.fitKey === key) return hunt.fits;
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
