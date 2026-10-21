@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.973';
+const VERSION = '0.1.974';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8677,7 +8677,7 @@ function huntParts(r, K) {
   const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
-  return spots.map((d) => (pairs ? [...lifePatch(r, centreCells(d)), ...lifePatch(r, centreCells(d.map((v) => -v)))] : lifePatch(r, centreCells(d))));  // round the open cells nearest each spot (in pairs, its opposite too)
+  return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
 }
 // A solid's face of cell t (a cube with pits: the face its pit is in, by the largest of its coordinates; the
 // sphere of hexagons: its icosahedron's face it is in, see hexFaces); null without faces (the plane, a torus).
@@ -8708,7 +8708,7 @@ const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
 // (a spot on a corner, as near several: one each)
 function faceParts(K) {
   const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K], used = new Set();
-  const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3), pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors || g.cubic);  // (3 colours on the cube: 2 opposite faces each, as huntParts)
+  const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3);
   const face = Int16Array.from({ length: g.n }, (_, t) => faceOf(t) ?? -1);  // (each cell's, once)
   const faceAt = (dir) => {
     let f = -1, top = -Infinity;
@@ -8718,7 +8718,7 @@ function faceParts(K) {
     if (f >= 0) for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && face[t] === f) part.push(t);  // (no face left: none)
     return part;
   };
-  return spots.map((d) => { const dir = d ? unit(d) : cen(centreCells()[0]); return pairs ? [...faceAt(dir), ...faceAt(dir.map((v) => -v))] : faceAt(dir); });
+  return spots.map((d) => faceAt(d ? unit(d) : cen(centreCells()[0])));  // (a face a colour: 3 colours on the cube, 3 of its 6, unlike a soup's (2 opposite each): not Wild)
 }
 const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneRadius(zone), K));
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
