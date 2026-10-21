@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.968';
+const VERSION = '0.1.969';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7381,7 +7381,7 @@ function renderColours() {
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
     on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; compute(); } } })),
     // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
-    tile({ pic: `<svg viewBox="0 0 8 8" aria-hidden="true"><rect width="8" height="8" fill="${LIFE_ALIVE}"/>${[[1, 1], [5, 1], [3, 2], [6, 3], [1, 4], [4, 5], [2, 6], [6, 6]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[i]}"/>`).join('')}</svg>`, text: 'Mixed',
+    tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
       title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
 
 }
