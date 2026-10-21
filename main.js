@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.967';
+const VERSION = '0.1.968';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7452,6 +7452,7 @@ const RULE_ICONS = {
   'B257/S0346/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 12's)
   'B25v08/S0345/C5': '.....,..o..,.+o+.,..+..,.....',  // (the flowers' letters)
   'B248/S0348/C4': '.....,..o..,.+o+.,..+..,.....',  // (Mirror 7's)
+  'B347/S2/C3': '..o..,.o+o.,o+.+o,.o+o.,..o..',  // (Sponge wanderers: a bloom spreading)
   'B24/S0346/C4': '.....,..o..,.+o+.,..+..,.....',
   'B36v129/S3457v2': '.....,.o.o.,..o..,.o.o.,.....',
   'B345/S0238': '.....,.o.o.,..o..,.o.o.,.....',  // (Flower: its ash oscillating)
