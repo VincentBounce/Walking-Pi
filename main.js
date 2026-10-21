@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.951';
+const VERSION = '0.1.952';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7444,12 +7444,12 @@ function blockTutorial(option, to) {
     return sides.filter((e) => count.get(keyOf(e)) === 1).map(([a, b]) => `M${a.join(',')}L${b.join(',')}`).join('');  // (its rim: sides not shared, either way round)
   };
   const phase = (blocks) => {
-    const whole = [];
-    for (let i = 0; i < blocks.length; i += k) { const cells = [...blocks.subarray(i, i + k)]; if (cells.every((t) => patch.includes(t))) whole.push(cells); }
-    const framed = whole.sort((u, v) => Math.hypot(...centreOf(u).map((x, d) => x - corner[d])) - Math.hypot(...centreOf(v).map((x, d) => x - corner[d])))[0] ?? [];
+    const near = [];  // (its blocks in the patch, whole or cut by the picture's edge)
+    for (let i = 0; i < blocks.length; i += k) { const cells = [...blocks.subarray(i, i + k)]; if (cells.some((t) => patch.includes(t))) near.push(cells); }
+    const framed = near.sort((u, v) => Math.hypot(...centreOf(u).map((x, d) => x - corner[d])) - Math.hypot(...centreOf(v).map((x, d) => x - corner[d]))).slice(0, 3);  // (the 3 nearest the corner, each its own rim)
     return `<svg viewBox="${corner[0] - m} ${corner[1] - m} ${span} ${span}"><defs><linearGradient id="tutSky" x2="0" y2="1"><stop offset="0" stop-color="#c3d7f2"/><stop offset="1" stop-color="#f0d9e2"/></linearGradient></defs>`
       + `<rect x="${corner[0] - m}" y="${corner[1] - m}" width="${span}" height="${span}" fill="url(#tutSky)"/>${wall.length ? `<path d="${wall.map((c) => `M${c.map((p) => p.join(',')).join('L')}Z`).join('')}" fill="${LIFE_WALL}"/>` : ''}`  // (the wall one shape: no seams between its cells)
-      + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${outlineOf(framed)}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (a block framed)
+      + `${shown.map((t) => shape(t, UNLIT)).join('')}<path d="${framed.map(outlineOf).join('')}" fill="none" stroke-width="${side / 30}" class="tut-centre"/></svg>`;  // (3 blocks framed)
   };
   // its max period: it runs back, so a start comes back to itself (no lead-in), at most after its states × its phases;
   // here, on the grid built, and this start's, if known (see blockBack)
