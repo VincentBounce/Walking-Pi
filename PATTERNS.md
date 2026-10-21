@@ -1412,3 +1412,23 @@ On the flowers a pentagon's neighbours touch it either by a side or by a corner 
 | [**Flower 8 letters B36v129/S3457v2**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B36v129/S3457v2&s=48&pop=random.30.7) | 0.472 | B346/S0238 0.184 | 93–1,878 | 2.04 % | 100 % |
 | [Flower 4 letters B345/S023v01](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower4&r=B345/S023v01&s=48&pop=random.30.7) | 0.444 | B37/S0345 0.362 | 232–918 | 4.17 % | 100 % |
 | [**Flower 7 letters B25v08/S0345/C5**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B25v08/S0345/C5&s=48&pop=random.30.7) | 0.311 | B258/S0345/C5 0.149 | 124–6,000+ | 4.08 % | 75 % |
+
+## ⟐ Stellated blocks: lattice gases (Tim Tyler's cell-auto.com)
+
+On [cell-auto.com/isometric](https://cell-auto.com/isometric/), Tim Tyler's isometric neighbourhoods: the Margolus one (squares, blocks of 4), the Q*Bert one (hexagons, blocks of 3 round a corner: already the hexagons' blocks here; its rule on his page is **Single rotation**, a lone cell turned a step round its block, the others kept, able to compute anything as the billiard balls) and the stellated ones, where the blocks stay put and each cell is first swapped with the one across its side away from the block's corner (the next block's facing it), then the block's rule: particles flying from block to block. A rule of them ends with `*`.
+
+| Rule | Grid | What it does |
+|---|---|---|
+| [**FHP gas**](https://vincentbounce.github.io/Walking-Pi/#w=blocks2dTri&r=M0,8,16,24,32,40,48,56,1,18,17,25,33,41,49,57,2,10,36,26,34,21,50,58,3,11,19,27,35,43,51,59,4,12,20,28,9,44,52,60,5,13,42,29,37,45,53,61,6,14,22,30,38,46,54,62,7,15,23,31,39,47,55,63*&s=48) | Triangles, in hexagons of 6 (the Star of David neighbourhood) | Frisch, Hasslacher and Pomeau's (1986): particles fly straight on, two head on turn a sixth of a turn, three a third apart go back where they came from; on a large scale, a fluid (Navier–Stokes) |
+| [**HPP gas**](https://vincentbounce.github.io/Walking-Pi/#w=blocks2dTetrakis&r=M0,4,8,12,1,10,9,13,2,6,5,14,3,7,11,15*&s=48) | Tetrakis, in squares of 4 (the isometric von Neumann neighbourhood) | Hardy, de Pazzis and Pomeau's (1973): the same on squares, two head on turn a quarter |
+
+Both keep their particles and run back (a permutation of each block's states). Morita and Ueno's universal rules on the isometric von Neumann neighbourhood: their pages are gone (the link on cell-auto.com no longer answers), not added.
+
+## ❊ Mirror 7: the mirrored 7-fold rosette
+
+From Wikimedia's [Pentagonal tiling with 7-fold rotational symmetry](https://commons.wikimedia.org/wiki/File:Pentagonal_tiling_with_7-fold_rotational_symmetry.svg): one pentagon, a house (a 1 × 4 sin(180°/7) rectangle under a triangle of sides 2, its top 360°/7), 7 round the middle, then in 14 cones round it (along the 7 axes through a tile and the 7 between), rows across them, j tiles pointing in then j pointing out, their tops between the next row's; mirrored along each axis, unlike the flowers' spiral. Built from that rule (HOUSES, any n): its 168 tiles as drawn, all found again. Searched as the others (103,448 rules, then their letters): nothing Life-like, its best far below the other flowers'.
+
+| Rule | Score | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|
+| [Mirror 7 embers B248/S0348/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dMirror7&r=B248/S0348/C4&s=48&pop=random.30.7) | 0.023 | 158–668 | 3.45 % | 0 % |
+| [Mirror 7 sparks B24/S0346/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dMirror7&r=B24/S0346/C4&s=48&pop=random.30.7) | 0.009 | 226–609 | 3.53 % | 0 % |

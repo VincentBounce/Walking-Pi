@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.949';
+const VERSION = '0.1.951';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1061,6 +1061,7 @@ const MODES = {
   blocks2dTri: { base: 2, lattice: 'tri', life: true, plane: 'tri', margolus: true, where: 'a grid of triangles in blocks of 6 (hexagons) round a corner, 3 sets of corners in turn' },
   blocks2dHex: { base: 2, lattice: 'hex', life: true, plane: 'hex', margolus: true, where: 'a grid of hexagons in blocks of 3 round a corner, 2 sets of corners in turn' },
   blocks2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', margolus: true, where: 'a grid of Cairo pentagons in blocks of 4 round a corner, its 2 kinds of corners in turn' },
+  blocks2dTetrakis: { base: 2, lattice: 'tetrakis', life: true, plane: 'tetrakis', margolus: true, where: 'a grid of triangles in squares of 4, each triangle first swapped with the one across its outer side (the isometric von Neumann neighbourhood, stellated)' },
   life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
   life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
   life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons' },
@@ -1072,6 +1073,7 @@ const MODES = {
   life2dRhombs12: { base: 2, lattice: 'rhombs12', life: true, plane: 'rhombs12', where: 'a patch of squares and 30° and 60° rhombi (de Bruijn\'s, never repeating, twelvefold)' },
   life2dFlower: { base: 2, lattice: 'flower', life: true, plane: 'flower', where: "a patch of Hirschhorn's flower (one pentagon, six-fold round its middle, never repeating)" },
   life2dFlower5: { base: 2, lattice: 'flower5', life: true, plane: 'flower5', where: "a patch of the 5-fold rosette (Sugimoto's pentagon, five-fold round its middle, never repeating)" },
+  life2dMirror7: { base: 2, lattice: 'mirror7', life: true, plane: 'mirror7', where: 'a patch of the mirrored 7-fold rosette (houses: a rectangle under a triangle, in rows round its middle, never repeating)' },
   life2dFlower7: { base: 2, lattice: 'flower7', life: true, plane: 'flower7', where: "a patch of the 7-fold rosette (Sugimoto's pentagon, seven-fold round its middle, never repeating)" },
   life2dFlower3: { base: 2, lattice: 'flower3', life: true, plane: 'flower3', where: "a patch of the 3-fold rosette (Sugimoto's pentagon, 3-fold round its middle, never repeating)" },
   life2dFlower4: { base: 2, lattice: 'flower4', life: true, plane: 'flower4', where: "a patch of the 4-fold rosette (Sugimoto's pentagon, 4-fold round its middle, never repeating)" },
@@ -1700,6 +1702,7 @@ const ICONS = (() => {
       return pathEl(`M12 12L${pt(a)}L${pt([a[0] + b[0], a[1] + b[1]])}L${pt(b)}Z`); }).join(''),  // Ammann–Beenker's star: 8 rhombi round a point
     flower: pathEl('M12.0 12.0L17.3 12.0L22.3 10.2L19.7 5.6L14.7 7.4ZM12.0 12.0L14.7 7.4L15.6 2.1L10.3 2.1L9.3 7.4ZM12.0 12.0L9.3 7.4L5.3 4.0L2.6 8.6L6.7 12.0ZM12.0 12.0L6.7 12.0L1.7 13.8L4.3 18.4L9.3 16.6ZM12.0 12.0L9.3 16.6L8.4 21.9L13.7 21.9L14.7 16.6ZM12.0 12.0L14.7 16.6L18.7 20.0L21.4 15.4L17.3 12.0Z'),  // Hirschhorn's flower: its middle's six pentagons
     flower5: pathEl('M12.0 12.0L10.3 6.9L6.8 2.9L3.0 8.0L6.6 12.0ZM12.0 12.0L6.6 12.0L1.7 14.2L5.4 19.3L10.3 17.1ZM12.0 12.0L10.3 17.1L10.9 22.4L16.9 20.5L16.3 15.2ZM12.0 12.0L16.3 15.2L21.6 16.3L21.6 10.0L16.3 8.8ZM12.0 12.0L16.3 8.8L19.0 4.2L13.0 2.2L10.3 6.9Z'),  // the 5-fold rosette: its middle's five pentagons
+    mirror7: pathEl('M12.0 8.4L13.5 5.2L13.5 3.4L10.5 3.4L10.5 5.2ZM12.0 12.0L14.8 9.8L15.6 8.2L12.8 6.8L12.0 8.4ZM16.3 3.0L13.5 5.2L12.8 6.8L15.6 8.2L16.3 6.6ZM14.8 9.8L18.3 9.0L19.7 7.9L17.7 5.4L16.3 6.6ZM12.0 12.0L15.5 12.8L17.2 12.4L16.5 9.4L14.8 9.8ZM21.7 9.8L18.3 9.0L16.5 9.4L17.2 12.4L19.0 12.0ZM15.5 12.8L18.3 15.0L20.0 15.4L20.7 12.4L19.0 12.0ZM12.0 12.0L13.5 15.2L14.9 16.3L16.9 13.9L15.5 12.8ZM19.8 18.2L18.3 15.0L16.9 13.9L14.9 16.3L16.3 17.4ZM13.5 15.2L13.5 18.8L14.3 20.4L17.1 19.0L16.3 17.4ZM12.0 12.0L10.5 15.2L10.5 17.0L13.5 17.0L13.5 15.2ZM12.0 22.0L13.5 18.8L13.5 17.0L10.5 17.0L10.5 18.8ZM10.5 15.2L7.7 17.4L6.9 19.0L9.7 20.4L10.5 18.8ZM12.0 12.0L8.5 12.8L7.1 13.9L9.1 16.3L10.5 15.2ZM4.2 18.2L7.7 17.4L9.1 16.3L7.1 13.9L5.7 15.0ZM8.5 12.8L5.0 12.0L3.3 12.4L4.0 15.4L5.7 15.0ZM12.0 12.0L9.2 9.8L7.5 9.4L6.8 12.4L8.5 12.8ZM2.3 9.8L5.0 12.0L6.8 12.4L7.5 9.4L5.7 9.0ZM9.2 9.8L7.7 6.6L6.3 5.4L4.3 7.9L5.7 9.0ZM12.0 12.0L12.0 8.4L11.2 6.8L8.4 8.2L9.2 9.8ZM7.7 3.0L7.7 6.6L8.4 8.2L11.2 6.8L10.5 5.2Z'),  // Mirror 7's middle: its 7 houses round it, 14 more
     flower7: pathEl('M12.0 12.0L8.7 7.8L4.3 4.9L2.3 9.0L6.7 12.0ZM12.0 12.0L6.7 12.0L1.6 13.6L3.6 17.7L8.7 16.2ZM12.0 12.0L8.7 16.2L6.7 21.1L11.2 22.1L13.2 17.2ZM12.0 12.0L13.2 17.2L15.8 21.8L19.4 18.9L16.8 14.3ZM12.0 12.0L16.8 14.3L22.0 15.1L22.0 10.5L16.8 9.7ZM12.0 12.0L16.8 9.7L20.7 6.1L17.1 3.2L13.2 6.8ZM12.0 12.0L13.2 6.8L12.8 1.5L8.3 2.6L8.7 7.8Z'),  // the 7-fold: its seven
     flower3: pathEl('M12.0 12.0L14.8 7.2L13.8 1.7L5.4 6.5L6.4 12.0ZM12.0 12.0L6.4 12.0L2.1 15.6L10.5 20.4L14.8 16.8ZM12.0 12.0L14.8 16.8L20.0 18.7L20.0 9.1L14.8 7.2Z'),  // the 3-fold rosette: its middle's pentagons
     flower4: pathEl('M12.0 12.0L12.0 6.6L9.3 1.9L3.8 7.3L6.6 12.0ZM12.0 12.0L6.6 12.0L1.9 14.7L7.3 20.2L12.0 17.4ZM12.0 12.0L12.0 17.4L14.7 22.1L20.2 16.7L17.4 12.0ZM12.0 12.0L17.4 12.0L22.1 9.3L16.7 3.8L12.0 6.6Z'),  // the 4-fold rosette: its middle's pentagons
@@ -2301,8 +2304,8 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', triTorusGrid: 'torus', hexTorusGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dPinwheel: 'pinwheel', life2dSpectre: 'spectre', life2dAmmann: 'ammann', life2dRhombs12: 'rhombs12', life2dFlower: 'flower', life2dFlower5: 'flower5', life2dFlower7: 'flower7', life2dFlower3: 'flower3', life2dFlower4: 'flower4', life2dFlower8: 'flower8', life2dRing7: 'ring7', life2dRing8: 'ring8', life2dRing9: 'ring9', life2dRing12: 'ring12', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
-  life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
+  life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dPinwheel: 'pinwheel', life2dSpectre: 'spectre', life2dAmmann: 'ammann', life2dRhombs12: 'rhombs12', life2dFlower: 'flower', life2dFlower5: 'flower5', life2dFlower7: 'flower7', life2dMirror7: 'mirror7', life2dFlower3: 'flower3', life2dFlower4: 'flower4', life2dFlower8: 'flower8', life2dRing7: 'ring7', life2dRing8: 'ring8', life2dRing9: 'ring9', life2dRing12: 'ring12', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
+  life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', blocks2dTetrakis: 'tetrakis', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
@@ -2351,8 +2354,8 @@ const NAV = {
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
-  life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
-  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
+  life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
@@ -2404,7 +2407,7 @@ MODE_ICONS.lifePits = 'walls';
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Flower 3', 1, 'Rhombs 12'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Ring 7', 1, 'Flower 8'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 12', 1, 'Ring 9'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Flower 3', 1, 'Rhombs 12'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Mirror 7', 1, 'Flower 8'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 12', 1, 'Ring 9'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -2436,7 +2439,7 @@ for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(ki
 const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
                       ['Rhombus torus · Walled hexagon', (k) => [3, 6].includes(TILINGS[k]?.turns ?? PATTERN_TURNS[k])], ['Parallelograms', () => true]];
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
-const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
+const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
   Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
@@ -5633,11 +5636,11 @@ const HENSEL_LETTERS = Array.from({ length: 9 }, (_, c) => (c === 0 || c === 8 ?
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 // A block rule (Margolus's, see planeBlocks): M and the new state of each of a block's 2^k (its k cells' bits in turn
-// round its corner), a permutation of them, so reversible: its inverse runs it back
+// round its corner), a permutation of them, so reversible: its inverse runs it back; a * after, stellated (see STARS)
 function parseBlocks(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^M(\d+(?:,\d+)*)$/), to = m && m[1].split(',').map(Number), k = to && Math.log2(to.length);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^M(\d+(?:,\d+)*)(\*?)$/), to = m && m[1].split(',').map(Number), k = to && Math.log2(to.length);
   if (!to || !Number.isInteger(k) || k < 2 || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(to.length).keys()]}`) return null;
-  return { margolus: Uint8Array.from(to), k, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}` };
+  return { margolus: Uint8Array.from(to), k, stars: !!m[2], B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}${m[2]}` };
 }
 function parseRule(text) {
   if (/^\s*M/i.test(text)) return parseBlocks(text);
@@ -5782,7 +5785,7 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 // the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
-const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128], hat: [16, 24, 32, 48, 64, 128], penrose: [16, 24, 32, 48, 64, 128], pinwheel: [16, 24, 32, 48, 64], spectre: [16, 24, 32, 48, 64, 128], ammann: [16, 24, 32, 48, 64, 128], rhombs12: [16, 24, 32, 48, 64, 128], flower: [16, 24, 32, 48, 64], flower5: [16, 24, 32, 48, 64], flower7: [16, 24, 32, 48, 64], flower3: [16, 24, 32, 48, 64], flower4: [16, 24, 32, 48, 64], flower8: [16, 24, 32, 48, 64], ring7: [16, 24, 32, 48, 64], ring8: [16, 24, 32, 48, 64], ring9: [16, 24, 32, 48, 64], ring12: [16, 24, 32, 48, 64] };
+const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128], hat: [16, 24, 32, 48, 64, 128], penrose: [16, 24, 32, 48, 64, 128], pinwheel: [16, 24, 32, 48, 64], spectre: [16, 24, 32, 48, 64, 128], ammann: [16, 24, 32, 48, 64, 128], rhombs12: [16, 24, 32, 48, 64, 128], flower: [16, 24, 32, 48, 64], flower5: [16, 24, 32, 48, 64], flower7: [16, 24, 32, 48, 64], mirror7: [16, 24, 32, 48, 64], flower3: [16, 24, 32, 48, 64], flower4: [16, 24, 32, 48, 64], flower8: [16, 24, 32, 48, 64], ring7: [16, 24, 32, 48, 64], ring8: [16, 24, 32, 48, 64], ring9: [16, 24, 32, 48, 64], ring12: [16, 24, 32, 48, 64] };
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
@@ -5972,7 +5975,7 @@ const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]))
 // triangles turned by half a turn is itself (Cairo pentagons: none of their own)
 const SYMMETRIES = { none: ['symNone', 'None', ''], mirror: ['symMirror', 'Mirror', 'mirrored'], rotate: ['symRotate', 'Rotate', 'turning'],
                      kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic'], half: ['symHalf', 'Half turn', 'turned by half a turn'] };
-const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'], kite: ['none'], hat: ['none'], penrose: ['none'], pinwheel: ['none'], spectre: ['none'], ammann: ['none'], rhombs12: ['none'], flower: ['none'], flower5: ['none'], flower7: ['none'], flower3: ['none'], flower4: ['none'], flower8: ['none'], ring7: ['none'], ring8: ['none'], ring9: ['none'], ring12: ['none'] };
+const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'], kite: ['none'], hat: ['none'], penrose: ['none'], pinwheel: ['none'], spectre: ['none'], ammann: ['none'], rhombs12: ['none'], flower: ['none'], flower5: ['none'], flower7: ['none'], mirror7: ['none'], flower3: ['none'], flower4: ['none'], flower8: ['none'], ring7: ['none'], ring8: ['none'], ring9: ['none'], ring12: ['none'] };
 for (const kind of Object.keys(TILINGS)) PLANE_SYMMETRIES[kind] = ['none'];
 const symmetryOf = (kind) => (PLANE_SYMMETRIES[kind].includes(plane.sym) ? plane.sym : 'none');
 // a cell and its copies under the grid's symmetry (index y × row + x)
@@ -5991,7 +5994,7 @@ const ROOT3_2 = Math.sqrt(3) / 2;
 // sizes, see SIZE_LADDERS), its cells regular: triangles 2 a rhombus, Cairo pentagons 2 a square (an even side, so
 // that it wraps round), kites 6 a rhombus (on triangles twice as big)
 const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penrose's rhombi never wrap round: they never repeat
-const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, flower: 1, flower5: 1, flower7: 1, flower3: 1, flower4: 1, flower8: 1, ring7: 1, ring8: 1, ring9: 1, ring12: 1 };
+const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, ring7: 1, ring8: 1, ring9: 1, ring12: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
 const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
@@ -6402,10 +6405,34 @@ function ROSETTE(n, seed = null, hole = false) {  // hole: round a regular n-gon
     return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle)
   })();
 }
+/* A mirrored rosette (Wikimedia: Pentagonal_tiling_with_7-fold_rotational_symmetry.svg): a house, a 1 × b rectangle under a
+ * triangle of sides 2, its top 360°/n (b = 4 sin(180°/n)); round the middle 2n cones, along the n axes through a tile and the n
+ * between, in rows across them: j tiles pointing in, then j pointing out, their tops between the next row's (the rows a
+ * period 2 + h apart, h the triangle's height; the cones between, 2 tan(90°/n) wide: as much as b a period); on the n axes
+ * between, all 2 further out. Each long side's middle a corner (the next row's corners meet it there). As the rosettes: its
+ * W² tiles nearest its middle, each a square unit */
+function HOUSES(n) {
+  const t = Math.PI / n, b = 4 * Math.sin(t), h = 2 * Math.cos(t), P = 2 + h, U = 1 / Math.sqrt(b + (b * h) / 2);  // (a tile a square unit)
+  const house = (x0, y, out) => (out  // (along its axis, x0 its near end: in, its top there; out, its rectangle)
+    ? [[x0 + 1 + h, y], [x0 + 1 + h / 2, y - b / 4], [x0 + 1, y - b / 2], [x0, y - b / 2], [x0, y + b / 2], [x0 + 1, y + b / 2], [x0 + 1 + h / 2, y + b / 4]]
+    : [[x0, y], [x0 + h / 2, y + b / 4], [x0 + h, y + b / 2], [x0 + h + 1, y + b / 2], [x0 + h + 1, y - b / 2], [x0 + h, y - b / 2], [x0 + h / 2, y - b / 4]]);
+  const cache = {};
+  return (W) => cache[W] ??= (() => {
+    const J = Math.ceil((0.525 * W * Math.SQRT2 + 5) / U / P) + 2, items = [];  // (rows enough round the W² tiles' square)
+    for (let k = 0; k < 2 * n; k++) {
+      const c = Math.cos(k * t), s = Math.sin(k * t), off = k % 2 ? 0 : 2;  // (on the axes through a tile, from the middle)
+      for (let j = 1; j <= J; j++) for (const out of [false, true]) for (let i = 0; i < j; i++) {
+        const p = house(off + (j - 1) * P + (out ? h + 1 : 0), (i - (j - 1) / 2) * b, out).map(([x, y]) => [(c * x - s * y) * U, (s * x + c * y) * U]);
+        items.push({ p, m: [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length) });
+      }
+    }
+    return discPatch(items, W, (it) => it.p, [0, 0]);
+  })();
+}
 // the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 3-, 4-, 5-, 7- and 8-fold (from their stars), the
 // 7- and 8-fold rings (round a hole)
 const FLOWER_SEED = [[[0.0,0.0],[1.0,0.0],[1.9396926208,0.3420201433],[1.4396926208,1.2080455471],[0.5,0.8660254038]],[[1.0,0.0],[1.7660444431,-0.6427876097],[2.7057370639,-0.984807753],[2.8793852416,-0.0],[1.9396926208,0.3420201433]],[[2.2057370639,-1.8508331568],[2.3793852416,-2.8356409098],[3.3793852416,-2.8356409098],[3.2057370639,-1.8508331568],[2.7057370639,-0.984807753]],[[2.8793852416,0.0],[2.7057370639,0.984807753],[2.2057370639,1.8508331568],[1.4396926208,1.2080455471],[1.9396926208,0.3420201433]],[[2.7057370639,-0.984807753],[3.2057370639,-1.8508331568],[4.1454296847,-1.5088130135],[3.6454296847,-0.6427876097],[2.8793852416,0.0]],[[2.8793852416,-0.0],[3.6454296847,-0.6427876097],[4.4114741278,0.0],[3.6454296847,0.6427876097],[2.7057370639,0.984807753]],[[4.4114741278,0.0],[5.4114741278,0.0],[6.3511667486,0.3420201433],[5.8511667486,1.2080455471],[4.9114741278,0.8660254038]],[[4.4114741278,0.0],[3.6454296847,-0.6427876097],[4.1454296847,-1.5088130135],[4.9114741278,-0.8660254038],[5.4114741278,0.0]],[[4.9114741278,0.8660254038],[5.8511667486,1.2080455471],[6.6172111917,1.8508331568],[5.8511667486,2.4936207665],[5.0851223055,1.8508331568]],[[4.1454296847,1.5088130135],[3.6454296847,0.6427876097],[4.4114741278,-0.0],[4.9114741278,0.8660254038],[5.0851223055,1.8508331568]],[[4.1454296847,-1.5088130135],[5.0851223055,-1.8508331568],[6.0851223055,-1.8508331568],[5.9114741278,-0.8660254038],[4.9114741278,-0.8660254038]],[[4.9114741278,-0.8660254038],[5.9114741278,-0.8660254038],[6.8511667486,-0.5240052605],[6.3511667486,0.3420201433],[5.4114741278,0.0]],[[4.1454296847,-1.5088130135],[3.2057370639,-1.8508331568],[3.3793852416,-2.8356409098],[4.3190778624,-2.4936207665],[5.0851223055,-1.8508331568]],[[4.3190778624,-2.4936207665],[5.2587704831,-2.8356409098],[6.2587704831,-2.8356409098],[6.0851223055,-1.8508331568],[5.0851223055,-1.8508331568]],[[3.3793852416,-2.8356409098],[4.1454296847,-3.4784285195],[5.0851223055,-3.8204486628],[5.2587704831,-2.8356409098],[4.3190778624,-2.4936207665]],[[7.0248149263,-1.5088130135],[6.0851223055,-1.8508331568],[6.2587704831,-2.8356409098],[7.1984631039,-2.4936207665],[7.964507547,-1.8508331568]],[[6.8511667486,-0.5240052604],[5.9114741278,-0.8660254038],[6.0851223055,-1.8508331568],[7.0248149263,-1.5088130135],[7.7908593694,-0.8660254038]],[[6.2587704831,-2.8356409098],[5.2587704831,-2.8356409098],[5.0851223055,-3.8204486629],[6.0851223055,-3.8204486628],[7.0248149263,-3.4784285195]],[[7.1172111917,0.984807753],[6.3511667486,0.3420201433],[6.8511667486,-0.5240052605],[7.6172111917,0.1187823492],[8.1172111917,0.984807753]],[[6.6172111917,1.8508331568],[5.8511667486,1.2080455471],[6.3511667486,0.3420201433],[7.1172111917,0.984807753],[7.6172111917,1.8508331568]],[[6.3511667486,3.3596461703],[5.8511667486,2.4936207665],[6.6172111917,1.8508331568],[7.1172111917,2.7168585606],[7.2908593694,3.7016663136]]];
-const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, FLOWER_SEED)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)],
+const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, FLOWER_SEED)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)], mirror7: [7, HOUSES(7)],
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
@@ -6548,7 +6575,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(kind, W, planeTorus(kind)), to: rule.margolus } : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(kind, W, planeTorus(kind), rule.stars), to: rule.margolus } : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
                 paint: MODES[current.mode].margolus && blockColours > 1 ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
@@ -6621,7 +6648,7 @@ function planeReseed() {
   autoplay();
   syncLink();
 }
-const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons', kite: 'kites', hat: 'hats', penrose: 'rhombi', pinwheel: 'triangles', spectre: 'spectres', ammann: 'squares and rhombi', rhombs12: 'squares and rhombi', flower: 'pentagons', flower5: 'pentagons', flower7: 'pentagons', flower3: 'pentagons', flower4: 'pentagons', flower8: 'pentagons', ring7: 'pentagons', ring8: 'pentagons', ring9: 'pentagons', ring12: 'pentagons' };
+const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons', kite: 'kites', hat: 'hats', penrose: 'rhombi', pinwheel: 'triangles', spectre: 'spectres', ammann: 'squares and rhombi', rhombs12: 'squares and rhombi', flower: 'pentagons', flower5: 'pentagons', flower7: 'pentagons', mirror7: 'pentagons', flower3: 'pentagons', flower4: 'pentagons', flower8: 'pentagons', ring7: 'pentagons', ring8: 'pentagons', ring9: 'pentagons', ring12: 'pentagons' };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 // the description's lead: how the cells start, on which grid
 // a zone of the hunt, a random start in it, in words
@@ -6640,7 +6667,7 @@ function planeLead(number) {
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
-  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
+  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
@@ -6677,7 +6704,7 @@ function renderPlaneRow() {
     $('startDraw').hidden = !surfaceDraw;
     if (!surfaceDraw) return;
     // a surface: the rule's patterns on its grid, greyed (they cannot be drawn here: Famous lays them)
-    const cells = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '◺': 'pinwheel', '✺': 'spectre', '✵': 'ammann', '❄': 'rhombs12', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '❈': 'ring12', ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [t.mark, k])) }[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
+    const cells = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '◺': 'pinwheel', '✺': 'spectre', '✵': 'ammann', '❄': 'rhombs12', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '❊': 'mirror7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '❈': 'ring12', ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [t.mark, k])) }[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
     for (const b of $('brushCards').children) {
       const p = DRAW_BY_ID.get(b.dataset.brush);
       b.hidden = !(p[1] === cells && p[2].includes(rule));
@@ -6879,7 +6906,7 @@ function drawPlaneGrid() {
 // cell; hexagons and triangles as polygons, one path a colour
 let planeCanvas = null, planeImage = null, planeColours = null;
 // A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
-const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, flower: 1, flower5: 1, flower7: 1, flower3: 1, flower4: 1, flower8: 1, ring7: 1, ring8: 1, ring9: 1, ring12: 1 };
+const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, ring7: 1, ring8: 1, ring9: 1, ring12: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
 const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
@@ -7167,7 +7194,7 @@ function drawLifePlane() {
 const SURFACE_CELLS = { cube: '■', pits: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
 for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = SURFACE_CELLS[`${mobiusOf(kind)}Turned`] = t.mark;
-const lifeMark = (mode) => (mode.margolus ? BLOCK_MARKS[mode.plane] : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', flower: '❀', flower5: '✾', flower7: '✽', flower3: '✸', flower4: '✷', flower8: '✹', ring7: '❇', ring8: '✲', ring9: '✻', ring12: '❈' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
+const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', ring7: '❇', ring8: '✲', ring9: '✻', ring12: '❈' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
@@ -7277,7 +7304,7 @@ function renderColours() {
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
 // birth, let survive) and the states, and the rule as text
-const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '◺': 17, '✺': 7, '✵': 12, '❄': 12, '❀': 8, '✾': 8, '✽': 10, '✸': 7, '✷': 7, '✹': 11, '❇': 7, '✲': 7, '✻': 7, '❈': 7 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
+const NEIGHBOURS = { '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '◺': 17, '✺': 7, '✵': 12, '❄': 12, '❀': 8, '✾': 8, '✽': 10, '❊': 10, '✸': 7, '✷': 7, '✹': 11, '❇': 7, '✲': 7, '✻': 7, '❈': 7 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
@@ -7340,6 +7367,8 @@ const RULE_ICONS = {
   'B2/S034/C4': '.....,..o..,.+o+.,..+..,.....',
   'B257/S0346/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 12's)
   'B25v08/S0345/C5': '.....,..o..,.+o+.,..+..,.....',  // (the flowers' letters)
+  'B248/S0348/C4': '.....,..o..,.+o+.,..+..,.....',  // (Mirror 7's)
+  'B24/S0346/C4': '.....,..o..,.+o+.,..+..,.....',
   'B36v129/S3457v2': '.....,.o.o.,..o..,.o.o.,.....',
   'B345/S0238': '.....,.o.o.,..o..,.o.o.,.....',  // (Flower: its ash oscillating)
   'B27/S0345/C5': '.....,..o..,.+o+.,..+..,.....',
@@ -7369,13 +7398,13 @@ const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-h
 // How a rule works, in place of the grid (a click on the rule picked; again, or the cross, closes it): a cell of the grid's
 // shape and its neighbours, the live ones in colour, for each count it is born with, survives with, dies with; its
 // dying stages after. The cell the most neighbours have (its counts all drawn), on a patch of its plane grid
-const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '◺': 'pinwheel', '✺': 'spectre', '✵': 'ammann', '❄': 'rhombs12', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '❈': 'ring12' };
+const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '◺': 'pinwheel', '✺': 'spectre', '✵': 'ammann', '❄': 'rhombs12', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '❊': 'mirror7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '❈': 'ring12' };
 // How a block rule works (see ruleTutorial): the grid's sets of blocks in turn, on a piece of it (each block its own tint),
 // then a block's states and the one each turns into, one of each turned the same (the rule turns with its block), those
 // changing then those kept, by their live cells; the state before shown a moment, fading
 function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be)
-  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), { k, turns } = planeBlocks(kind, W, false);
+  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), stars = !!parseRule(option.value)?.stars, { k, turns } = planeBlocks(kind, W, false, stars);
   if (to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
   // a block of the first set, the nearest the grid's middle, as the picture of a block
@@ -7400,7 +7429,7 @@ function blockTutorial(option, to) {
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
   // each set at the grid's upper left corner (its 16 cells nearest it; past its edges, its wall as on the grid and the
   // sky): a block of it framed, the nearest the corner
-  const torus = planeTorus(kind), { turns: edged } = planeBlocks(kind, W, torus), at = (p) => pointKey(p);
+  const torus = planeTorus(kind), { turns: edged } = planeBlocks(kind, W, torus, stars), at = (p) => pointKey(p);
   const corner = [...Array(W * row).keys()].filter((t) => poly(t)).flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
   const far = (p) => Math.max(p[0] - corner[0], p[1] - corner[1]);
   const patch = [...Array(W * row).keys()].filter((t) => poly(t)).sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
@@ -7432,7 +7461,7 @@ function blockTutorial(option, to) {
       + (L.stable ? `This start comes back at gen ${fmt(L.stable.P)}.` : `This start: not back by gen ${fmt(Math.max(L.reached ?? 0, backSearch.life === L ? backSearch.gen : 0))} (Find its return to the start searches on).`) : '') + '</p>';
   const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood): `
+    + `<h3>${option.dataset.name} <code>${option.value}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood)`}: `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
     + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`;
@@ -7781,7 +7810,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? !!mode.plane : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = mode.margolus ? parseRule(rule)?.k === BLOCKS[mode.plane].k : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
+  const kindFits = mode.margolus ? parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[mode.plane]?.k : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
@@ -7903,8 +7932,12 @@ const BLOCKS = {
   hex: { k: 3, set: ([i, j]) => `${mod(i, 3)},${mod(j, 3)}`, turn: ['1,0', '0,1'], lattice: () => { const o = cellMiddle('hex', 0, 0), c = planeCorners('hex', 0, 0); return [o, ...[0, 1].map((q) => [c[q][0] - o[0], c[q][1] - o[1]])]; } },
   cairo: { k: 4, set: null, turn: ['0', '1'] },
 };
-function planeBlocks(kind, W, torus) {
-  const B = BLOCKS[baseOf(kind)], row = planeRow(kind, W), corners = new Map();  // (a rectangle's: its grid's blocks, its own cells)
+// stellated (Tim Tyler's, cell-auto.com; its rule ends with *): one set of blocks, each cell first swapped with the one across its side away from
+// its block's corner (its block's neighbour facing it), then the block's rule: particles that fly from block to block, a
+// lattice gas (FHP's on triangles, HPP's on the tetrakis squares)
+const STARS = { tri: { k: 6, set: BLOCKS.tri.set, lattice: BLOCKS.tri.lattice, turn: ['0'] }, tetrakis: { k: 4, set: null, turn: ['0'], mark: '⧆' } };  // (a rule of them: M…*, see parseBlocks)
+function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)]) {
+  const B = (stars ? STARS : BLOCKS)[baseOf(kind)], row = planeRow(kind, W), corners = new Map();  // (a rectangle's: its grid's blocks, its own cells)
   // (a torus: its two turns round, W rectangles of a rectangle's; a point brought onto its sheet, once)
   const o = cellMiddle(kind, 0, 0), P = !torus ? null : RECTS[kind] ? RECTS[kind].basis.map(([x, y]) => [W * x, W * y]) : [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]);
   const D = P && P[0][0] * P[1][1] - P[0][1] * P[1][0];
@@ -7917,13 +7950,14 @@ function planeBlocks(kind, W, torus) {
     const pts = planeCorners(kind, t % row, Math.floor(t / row));
     if (!pts) continue;
     const m = cellMiddle(kind, t % row, Math.floor(t / row));
-    for (const q of pts) {
-      const key = pointKey(home(q));
-      if (!corners.has(key)) corners.set(key, { at: q, cells: [] });
+    pts.forEach((q, i) => {
+      const key = pointKey(home(q)), [u, v] = [pts.at(i - 1), pts[(i + 1) % pts.length]].map((p) => [p[0] - q[0], p[1] - q[1]]);
+      if (!corners.has(key)) corners.set(key, { at: q, cells: [], turn: 0 });
       corners.get(key).cells.push([t, Math.atan2(m[1] - q[1], m[0] - q[0])]);  // (its turn round the corner, as the cell sees it)
-    }
+      corners.get(key).turn += Math.acos((u[0] * v[0] + u[1] * v[1]) / Math.hypot(...u) / Math.hypot(...v));  // (its angle there, a convex cell's)
+    });
   }
-  const full = [...corners.values()].filter((c) => c.cells.length === B.k);
+  const full = [...corners.values()].filter((c) => c.cells.length === B.k && Math.abs(c.turn - 2 * Math.PI) < 1e-6);  // (whole round it: not cut by walls)
   let setOf;
   if (B.set) {
     const [lo, e1, e2] = B.lattice(), d = e1[0] * e2[1] - e1[1] * e2[0];
@@ -7944,13 +7978,26 @@ function planeBlocks(kind, W, torus) {
   const turns = B.turn.map((set) => Int32Array.from(full.filter((c) => setOf(c) === set).flatMap((c) => c.cells.sort((x, y) => x[1] - y[1]).map(([t]) => t))));
   // each cell in one block of a set at most (a torus of a size the sets do not fit round: its blocks as on walls)
   const once = turns.every((blocks) => new Set(blocks).size === blocks.length);
-  return torus && !once ? { ...planeBlocks(kind, W, false), wraps: false } : { k: B.k, turns, wraps: torus };
+  if (torus && !once) return { ...planeBlocks(kind, W, false, stars), wraps: false };
+  // stellated: each cell's partner, the one across its side away from its block's corner (none, by walls: itself)
+  let move = null;
+  if (stars) {
+    const across = new Map();
+    for (const c of full) if (setOf(c) === B.turn[0]) for (const [t] of c.cells) {
+      const side = planeCorners(kind, t % row, Math.floor(t / row)).map((q) => pointKey(home(q))).filter((q) => q !== pointKey(home(c.at))).sort().join(' ');
+      (across.get(side) ?? across.set(side, []).get(side)).push(t);
+    }
+    move = Int32Array.from({ length: W * row }, (_, t) => t);
+    for (const [u, v] of across.values()) if (v !== undefined) { move[u] = v; move[v] = u; }
+  }
+  return { k: B.k, turns, wraps: torus, move };
 }
 // A generation of a block rule: the blocks of its set in turn (see planeBlocks), each block's state to its rule's; a cell
 // in no whole block (by walls) as it is
 // paint: each cell's colour (or none), carried along: a block's live cells' colours, in turn round it, to its live cells
 // after, again from the first when there are more (none before: each keeps its own)
-function blockStep({ k, turns, to }, a, b, g, paint = null) {
+function blockStep({ k, turns, to, move }, a, b, g, paint = null) {
+  if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
   const blocks = turns[g % turns.length], cs = [];
   b.set(a);
   for (let i = 0; i < blocks.length; i += k) {
@@ -7978,17 +8025,34 @@ const RING_RULES = [
   ['Swirl', () => true, 'a block of one turned a step round, one of one empty cell a step the other way', (st, k) => (ringAlive(st) === 1 ? ringTurn(st, 1, k) : ringAlive(st) === k - 1 ? ringTurn(st, -1, k) : st), 'oo..o,....o,.....,o....,o..oo'],
 ];
 const BLOCK_MARKS = { square: '▣', tri: '⟐', hex: '⬣', cairo: '⌬' };  // (the rules' menu, by grid: marks of their own)
+for (const [kind, mark] of Object.entries(BLOCK_MARKS)) BLOCKS[kind].mark = mark;
 const BLOCK_FIRST = { square: 'Tron', cairo: 'Tron' };  // a grid's first rule (its rule at first), else the list's
+const BLOCK_WORDS = { 'hex|Single rotation': ": Tim Tyler's Q*Bert neighbourhood (cell-auto.com), able to compute anything, as the billiard balls" };  // (a rule known on a grid by a name of its own)
 for (const [kind, mark] of Object.entries(BLOCK_MARKS)) {  // each grid's rules, as Life's (see renderRuleSection), before Custom…
   const k = BLOCKS[kind].k, first = (r) => (r[0] === BLOCK_FIRST[kind] ? 0 : 1);
   for (const [name, fits, words, rule, art] of [...RING_RULES].sort((a, b) => first(a) - first(b))) {
     if (!fits(k)) continue;
     const value = `M${Array.from({ length: 1 << k }, (_, st) => rule(st, k)).join(',')}`;
     RULE_ICONS[value] = art;
-    const option = new Option(`${mark} ${value} — ${words}`, value);
+    const option = new Option(`${mark} ${value} — ${words}${BLOCK_WORDS[`${kind}|${name}`] ?? ''}`, value);
     option.dataset.name = name;
     $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
   }
+}
+// the stellated grids' rules, on the cells come in across (a cell j: a particle come in from that side, its way the one across):
+// FHP's (Frisch, Hasslacher and Pomeau, 1986) and HPP's (Hardy, de Pazzis and Pomeau, 1973) lattice gases: the particles fly
+// on to the far side; two head on turned a step (a sixth of a turn, a quarter); FHP's, three a third apart back the way they came
+const STAR_RULES = [
+  ['FHP gas', 6, 'particles flying on, two head on turned a sixth of a turn, three a third apart back where they came from: a fluid', (st, k) => (ringAlive(st) === 2 && ringTurn(st, k / 2, k) === st ? ringTurn(st, 1, k) : ringAlive(st) === 3 && ringTurn(st, 2, k) === st ? st : ringTurn(st, k / 2, k)), '..o..,.o.o.,o...o,.o.o.,..o..'],
+  ['HPP gas', 4, 'particles flying on, two head on turned a quarter of a turn: a gas', (st, k) => (ringAlive(st) === 2 && ringTurn(st, k / 2, k) === st ? ringTurn(st, 1, k) : ringTurn(st, k / 2, k)), 'o...o,.....,..o..,.....,o...o'],
+];
+for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words, rule, art] of STAR_RULES) {
+  if (size !== k) continue;
+  const mark = (BLOCKS[kind] ?? STARS[kind]).mark, value = `M${Array.from({ length: 1 << k }, (_, st) => rule(st, k)).join(',')}*`;
+  RULE_ICONS[value] = art;
+  const option = new Option(`${mark} ${value} — ${words}`, value);
+  option.dataset.name = name;
+  $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
