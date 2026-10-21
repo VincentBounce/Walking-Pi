@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.954';
+const VERSION = '0.1.955';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7404,7 +7404,7 @@ const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cai
 // changing then those kept, by their live cells; the state before shown a moment, fading
 function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be)
-  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), stars = !!parseRule(option.value)?.stars, { k, turns } = planeBlocks(kind, W, false, stars);
+  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), stars = !!parseRule(option.value)?.stars, { k, turns, move } = planeBlocks(kind, W, false, stars);
   if (to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
   // a block of the first set, the nearest the grid's middle, as the picture of a block
@@ -7462,6 +7462,13 @@ function blockTutorial(option, to) {
   };
   // its max period: it runs back, so a start comes back to itself (no lead-in), at most after its states × its phases;
   // here, on the grid built, and this start's, if known (see blockBack)
+  // stellated: where a block's cells come from, the next blocks' cells facing it (Tyler's domain), then its own (its co-domain)
+  const across = !stars ? '' : (() => {
+    const from = ring.map((t) => move[t]), ps = [...ring, ...from].flatMap(poly), x0 = Math.min(...ps.map((p) => p[0])), x1 = Math.max(...ps.map((p) => p[0])), y0 = Math.min(...ps.map((p) => p[1])), y1 = Math.max(...ps.map((p) => p[1]));
+    const w = Math.max(x1 - x0, y1 - y0), mx = (x0 + x1 - w) / 2, my = (y0 + y1 - w) / 2, near = [...Array(W * row).keys()].filter((t) => poly(t) && poly(t).some(([x, y]) => x > mx && x < mx + w && y > my && y < my + w));
+    const pic = (lit) => `<svg viewBox="${mx - pad} ${my - pad} ${w + 2 * pad} ${w + 2 * pad}">${near.map((t) => shape(t, lit.includes(t) ? LIFE_ALIVE : UNLIT)).join('')}</svg>`;
+    return `<h4>Across</h4><div class="tut-row"><figure><div>${pic(from)}<span>→</span>${pic(ring)}</div><figcaption>each generation, the cells facing a block come into it, then its rule</figcaption></figure></div>`;
+  })();
   const L = walk.life?.margolus ? walk.life : null, p = turns.length, keeps = blockKeeps(to), B = L && blockBound(L, to, p);
   const maxPeriod = `<h4>Max period</h4><p>It runs back, so on a finite grid any start comes back to itself, with no lead-in: its period is the generation it does, a multiple of its ${p} phases. `
     + (keeps ? `This rule keeps the live cells (each block as many alive after), so a start of m alive cells on n comes back within C(n, m) × ${p} generations: the ways m cells can lie, times the phases.`
@@ -7472,7 +7479,7 @@ function blockTutorial(option, to) {
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value.replace(/,/g, ',<wbr>')}</code></h3><p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood)`}: `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
-    + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`} generations</figcaption></figure>`).join('')}</div>`
+    + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 1 ? 'every generation' : turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`}${turns.length === 1 ? '' : ' generations'}</figcaption></figure>`).join('')}</div>${across}`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
