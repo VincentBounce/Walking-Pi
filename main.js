@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.929';
+const VERSION = '0.1.930';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1700,7 +1700,7 @@ const ICONS = (() => {
     ring9: pathEl('M13.7 7.8L10.7 7.8L9.2 5.2L9.7 2.3L14.2 4.9ZM15.9 9.7L13.7 7.8L14.2 4.9L16.4 3.0L18.2 7.8ZM10.7 7.8L8.4 9.7L5.6 8.7L4.1 6.1L9.2 5.2ZM16.4 12.6L15.9 9.7L18.2 7.8L21.2 7.8L19.4 12.6ZM8.4 9.7L7.9 12.6L5.1 13.6L2.3 12.6L5.6 8.7ZM7.9 12.6L9.4 15.2L7.9 17.8L5.1 18.8L5.1 13.6ZM15.0 15.2L16.4 12.6L19.4 12.6L21.7 14.5L17.2 17.1ZM9.4 15.2L12.2 16.2L12.7 19.1L11.2 21.7L7.9 17.8ZM12.2 16.2L15.0 15.2L17.2 17.1L17.7 20.0L12.7 19.1Z'),  // the 9-fold ring: its hole's 9 pentagons
     ring12: pathEl('M13.3 7.1L10.7 7.2L10.7 4.6L12.0 2.3L14.6 4.9ZM8.4 8.4L7.2 10.7L4.9 9.4L3.6 7.2L7.1 6.2ZM10.7 7.2L8.4 8.4L7.1 6.2L7.1 3.6L10.7 4.6ZM15.6 8.4L13.3 7.2L14.6 4.9L16.9 3.6L17.8 7.2ZM7.1 10.7L7.1 13.3L4.6 13.3L2.3 12.0L4.9 9.4ZM16.9 10.7L15.6 8.4L17.8 7.2L20.4 7.2L19.4 10.7ZM7.1 13.3L8.4 15.6L6.2 16.8L3.6 16.9L4.6 13.3ZM16.9 13.3L16.9 10.7L19.4 10.7L21.7 12.0L19.1 14.6ZM8.4 15.6L10.7 16.9L9.4 19.1L7.2 20.4L6.2 16.9ZM13.3 16.9L15.6 15.6L16.9 17.8L16.9 20.4L13.3 19.4ZM15.6 15.6L16.9 13.3L19.1 14.6L20.4 16.8L16.9 17.8ZM10.7 16.9L13.3 16.9L13.3 19.4L12.0 21.7L9.4 19.1Z'),  // the 12-fold ring: its hole's 12 pentagons
     spectre: pathEl('M6 15L10 15L12 18.5L15.5 16.5L15.5 12.5L19.5 12.5L21.5 9L18 7L14.5 9L12.5 5.5L8.5 5.5L4.5 5.5L2.5 9L6 11Z'),  // the Spectre
-    penrose: pathEl('M12 3L18.5 7.7L12 12L5.5 7.7Z') + pathEl('M12 12L18.5 7.7L16 15.3Z') + pathEl('M12 12L16 15.3L12 21L8 15.3Z') + pathEl('M12 12L8 15.3L5.5 7.7Z'),  // Penrose's rhombi round a point
+    penrose: pathEl('M8.3 7.9L2.3 9.8L6.0 14.9L12.0 13.0ZM15.7 7.9L12.0 2.8L8.3 7.9L12.0 13.0ZM15.7 7.9L21.7 9.8L18.0 14.9L12.0 13.0ZM6.0 14.9L6.0 21.2L12.0 19.3L12.0 13.0ZM12.0 19.3L18.0 21.2L18.0 14.9L12.0 13.0Z'),  // Penrose's star: the 5 big rhombi at its middle
     hat: pathEl('M7.2 13.4L2.5 16.1L4.1 18.9L10.4 18.9L12 16.1L16.8 18.9L21.5 16.1L19.9 13.4L16.8 13.4L16.8 7.9L12 5.1L10.4 7.9L7.2 7.9Z'),  // the hat monotile
     kites: pathEl(pathOf(hex)) + hex.map((p, i) => pathEl(seg([12, 12], [(p[0] + hex[(i + 1) % 6][0]) / 2, (p[1] + hex[(i + 1) % 6][1]) / 2]))).join(''),  // a hexagon cut in 6 kites
     cube: cube(false),
@@ -7424,10 +7424,11 @@ function ruleTutorial(option) {
   // its cells' kinds: by their shape (its true corners' sides and angles, mirrored or turned the same) and their count of neighbours (the
   // same shape may have several, by where it lies: Stein's pentagon 7, 6 or 5), of the cells all round by others (each corner
   // a whole turn of cells: its neighbours all there), the wall's left out; the one shown picked by its bubble (tutShape), at
-  // first the one with the most neighbours, the one nearest the middle of each
+  // first the one with the most neighbours, the one nearest the middle of each (a cell by the wall left out: its picture would
+  // miss the wall's cell)
   const count = (t) => nb.start[t + 1] - nb.start[t], area = (P) => Math.abs(P.reduce((a, p, i) => a + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) / 2);
   const n = row * W, wall = new Set(dead), turnAt = new Map(), all = Array.from({ length: n }, (_, t) => corners(t));
-  for (const P of all) {
+  for (const P of all.filter((P, t) => !wall.has(t))) {  // (the live cells only: one by the wall not all round)
     const o = Math.sign(P.reduce((a, p, i) => a + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0));
     P.forEach((p, i) => { const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]); turnAt.set(pointKey(p), (turnAt.get(pointKey(p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a)); });
   }
