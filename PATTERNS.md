@@ -1410,5 +1410,5 @@ On the flowers a pentagon's neighbours touch it either by a side or by a corner 
 | Rule | Score | Without letters | Soups settle after | Alive at the end | Oscillators in the ash |
 |---|---|---|---|---|---|
 | [**Flower 8 letters B36v129/S3457v2**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B36v129/S3457v2&s=48&pop=random.30.7) | 0.472 | B346/S0238 0.184 | 93–1,878 | 2.04 % | 100 % |
-| [**Flower 4 letters B345/S023v01**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower4&r=B345/S023v01&s=48&pop=random.30.7) | 0.444 | B37/S0345 0.362 | 232–918 | 4.17 % | 100 % |
+| [Flower 4 letters B345/S023v01](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower4&r=B345/S023v01&s=48&pop=random.30.7) | 0.444 | B37/S0345 0.362 | 232–918 | 4.17 % | 100 % |
 | [**Flower 7 letters B25v08/S0345/C5**](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B25v08/S0345/C5&s=48&pop=random.30.7) | 0.311 | B258/S0345/C5 0.149 | 124–6,000+ | 4.08 % | 75 % |
