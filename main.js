@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.956';
+const VERSION = '0.1.957';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5636,14 +5636,17 @@ const HENSEL_LETTERS = Array.from({ length: 9 }, (_, c) => (c === 0 || c === 8 ?
 // stages), 3 for two civilisations (two: true). On hexagons, Callahan's letters ("B2o/S2m34") tell
 // where the neighbours sit (iso: true): the tables are then indexed by 16 + the 6-bit mask of them.
 // A block rule (Margolus's, see planeBlocks): M and the new state of each of a block's 2^k (its k cells' bits in turn
-// round its corner), a permutation of them, so reversible: its inverse runs it back; a * after, stellated (see STARS)
+// round its corner), a permutation of them, so reversible: its inverse runs it back; a * after, stellated (see STARS); /4 after,
+// on squares, Tyler's Square-4: their 4 sets of corners in turn round a square (Margolus's 2: a corner, the one across); Q2R,
+// the Ising model (see isingOf)
 function parseBlocks(text) {
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^M(\d+(?:,\d+)*)(\*?)$/), to = m && m[1].split(',').map(Number), k = to && Math.log2(to.length);
+  if (/^Q2R$/i.test(text.trim())) return { margolus: new Uint8Array(0), k: 4, ising: true, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: 'Q2R' };
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^M(\d+(?:,\d+)*)(\*|\/4)?$/), to = m && m[1].split(',').map(Number), k = to && Math.log2(to.length);
   if (!to || !Number.isInteger(k) || k < 2 || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(to.length).keys()]}`) return null;
-  return { margolus: Uint8Array.from(to), k, stars: !!m[2], B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}${m[2]}` };
+  return { margolus: Uint8Array.from(to), k, stars: m[2] === '*', four: m[2] === '/4', B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}${m[2] ?? ''}` };
 }
 function parseRule(text) {
-  if (/^\s*M/i.test(text)) return parseBlocks(text);
+  if (/^\s*(M|Q2R)/i.test(text)) return parseBlocks(text);
   const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV-]*)\/S([\dOMPCEKAINYQJRTWZV-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
@@ -6575,7 +6578,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? { ...planeBlocks(kind, W, planeTorus(kind), rule.stars), to: rule.margolus } : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
                 paint: MODES[current.mode].margolus && blockColours > 1 ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
@@ -7404,8 +7407,9 @@ const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cai
 // changing then those kept, by their live cells; the state before shown a moment, fading
 function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be)
-  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), stars = !!parseRule(option.value)?.stars, { k, turns, move } = planeBlocks(kind, W, false, stars);
-  if (to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
+  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
+  const blocksOf = (torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four)), { k, turns, move } = blocksOf(false);  // (Ising: its squares, a colour a phase)
+  if (!ising && to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
   // a block of the first set, the nearest the grid's middle, as the picture of a block
   const all = [...Array(W * row).keys()].filter((t) => poly(t)).map(mid), g = [0, 1].map((d) => all.reduce((a, p) => a + p[d], 0) / all.length);
@@ -7429,7 +7433,7 @@ function blockTutorial(option, to) {
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
   // each set at the grid's upper left corner (its 16 cells nearest it; past its edges, its wall as on the grid and the
   // sky): a block of it framed, the nearest the corner
-  const torus = planeTorus(kind), { turns: edged } = planeBlocks(kind, W, torus, stars), at = (p) => pointKey(p);
+  const torus = planeTorus(kind), { turns: edged } = blocksOf(torus), at = (p) => pointKey(p);
   const corner = [...Array(W * row).keys()].filter((t) => poly(t)).flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
   const far = (p) => Math.max(p[0] - corner[0], p[1] - corner[1]);
   const patch = [...Array(W * row).keys()].filter((t) => poly(t)).sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
@@ -7469,6 +7473,11 @@ function blockTutorial(option, to) {
     const pic = (lit) => `<svg viewBox="${mx - pad} ${my - pad} ${w + 2 * pad} ${w + 2 * pad}">${near.map((t) => shape(t, lit.includes(t) ? LIFE_ALIVE : UNLIT)).join('')}</svg>`;
     return `<h4>Across</h4><div class="tut-row"><figure><div>${pic(from)}<span>→</span>${pic(ring)}</div><figcaption>each generation, the cells facing a block come into it, then its rule</figcaption></figure></div>`;
   })();
+  // Ising: a square and its 4 sides, 2 of them alive (turned over), else (kept)
+  const plus = (around, was, now) => { const at = [[1, 0], [0, 1], [2, 1], [1, 2]], sq = (x, y, f) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${f}" stroke="var(--border)" stroke-width="0.04"/>`;
+    const one = (c) => `<svg viewBox="-0.1 -0.1 3.2 3.2">${at.map(([x, y], i) => sq(x, y, i < around ? LIFE_ALIVE : UNLIT)).join('')}${sq(1, 1, c ? LIFE_ALIVE : UNLIT)}</svg>`;
+    return `<figure><div>${one(was)}<span>→</span>${one(now)}</div><figcaption>${around} alive round it: ${was === now ? 'kept' : 'turned over'}</figcaption></figure>`; };
+  const cases = ising ? `<h4>Changing</h4><div class="tut-row">${plus(2, 1, 0)}${plus(2, 0, 1)}</div><h4>Kept</h4><div class="tut-row">${[0, 1, 3, 4].map((c) => plus(c, 1, 1)).join('')}</div>` : '';
   const L = walk.life?.margolus ? walk.life : null, p = turns.length, keeps = blockKeeps(to), B = L && blockBound(L, to, p);
   const maxPeriod = `<h4>Max period</h4><p>It runs back, so on a finite grid any start comes back to itself, with no lead-in: its period is the generation it does, a multiple of its ${p} phases. `
     + (keeps ? `This rule keeps the live cells (each block as many alive after), so a start of m alive cells on n comes back within C(n, m) × ${p} generations: the ways m cells can lie, times the phases.`
@@ -7477,10 +7486,11 @@ function blockTutorial(option, to) {
       + (L.stable ? `This start comes back at gen ${fmt(L.stable.P)}.` : `This start: not back by gen ${fmt(Math.max(L.reached ?? 0, backSearch.life === L ? backSearch.gen : 0))} (Find its return to the start searches on).`) : '') + '</p>';
   const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
-    + `<h3>${option.dataset.name} <code>${option.value.replace(/,/g, ',<wbr>')}</code></h3>${BLOCK_WORDS[`${kind}|${option.dataset.name}`] ? `<p>${BLOCK_WORDS[`${kind}|${option.dataset.name}`].slice(2)}.</p>` : ''}<p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (Margolus's neighbourhood)`}: `
+    + `<h3>${option.dataset.name} <code>${option.value.replace(/,/g, ',<wbr>')}</code></h3>${BLOCK_WORDS[`${kind}|${option.dataset.name}`] ? `<p>${BLOCK_WORDS[`${kind}|${option.dataset.name}`].slice(2)}.</p>` : ''}${ising ? `<p>The Ising model of a magnet (Vichniac's Q2R, 1984; Tim Tyler's cell-auto.com): the squares a checkerboard, its two colours in turn, a generation each; a square of the colour's turn turned over when just 2 of its 4 side neighbours are alive, else kept. Turned over or not, as many sides between alive and dead (its energy kept), and the colour not turning stays as it is: so it runs back.${edges}</p>`
+      + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${['even', 'odd'][j]} generations</figcaption></figure>`).join('')}</div>${cases}${maxPeriod}</div>` : ''}${ising ? '' : `<p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (${R?.four ? "Tim Tyler's Square-4: Margolus's, its corners 4 sets in turn round a square" : "Margolus's neighbourhood"})`}: `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
-    + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 1 ? 'every generation' : turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd'][j]} of 3`}${turns.length === 1 ? '' : ' generations'}</figcaption></figure>`).join('')}</div>${across}`
-    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`;
+    + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 1 ? 'every generation' : turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd', '4th'][j]} of ${turns.length}`}${turns.length === 1 ? '' : ' generations'}</figcaption></figure>`).join('')}</div>${across}`
+    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`}`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
@@ -7826,7 +7836,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? !!mode.plane : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = mode.margolus ? parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[mode.plane]?.k : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
+  const kindFits = mode.margolus ? (parseRule(rule)?.ising || parseRule(rule)?.four ? mode.plane === 'square' : parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[mode.plane]?.k) : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
@@ -7900,7 +7910,7 @@ function lifeTrack(gen) {
 // generation, however far (no generations kept); at most its states × its phases, 2^n × p, or with a rule keeping its
 // live cells (Billiard balls, Single rotation, Swirl), C(n, m) × p (m alive)
 const blockBack = (L, a, gen) => gen > 0 && gen % L.margolus.turns.length === 0 && a.every((v, t) => v === L.seed[t]);
-const blockKeeps = (to) => to.every((v, st) => ringAlive(v) === ringAlive(st));  // (each block as many alive after)
+const blockKeeps = (to) => to.length > 0 && to.every((v, st) => ringAlive(v) === ringAlive(st));  // (each block as many alive after)
 function blockBound(L, to = L.margolus.to, phases = L.margolus.turns.length) {  // its log10
   const n = L.alive.length, m = L.seedAlive, keeps = blockKeeps(to);
   let c = 0;
@@ -7952,8 +7962,8 @@ const BLOCKS = {
 // its block's corner (its block's neighbour facing it), then the block's rule: particles that fly from block to block, a
 // lattice gas (FHP's on triangles, HPP's on the tetrakis squares)
 const STARS = { tri: { k: 6, set: BLOCKS.tri.set, lattice: BLOCKS.tri.lattice, turn: ['0'] }, tetrakis: { k: 4, set: null, turn: ['0'], mark: '⧆' } };  // (a rule of them: M…*, see parseBlocks)
-function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)]) {
-  const B = (stars ? STARS : BLOCKS)[baseOf(kind)], row = planeRow(kind, W), corners = new Map();  // (a rectangle's: its grid's blocks, its own cells)
+function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false) {
+  const B = four ? { ...BLOCKS.square, turn: ['0,0', '1,0', '1,1', '0,1'] } : (stars ? STARS : BLOCKS)[baseOf(kind)], row = planeRow(kind, W), corners = new Map();  // (a rectangle's: its grid's blocks, its own cells)
   // (a torus: its two turns round, W rectangles of a rectangle's; a point brought onto its sheet, once)
   const o = cellMiddle(kind, 0, 0), P = !torus ? null : RECTS[kind] ? RECTS[kind].basis.map(([x, y]) => [W * x, W * y]) : [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((m) => [m[0] - o[0], m[1] - o[1]]);
   const D = P && P[0][0] * P[1][1] - P[0][1] * P[1][0];
@@ -7994,7 +8004,7 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)]) {
   const turns = B.turn.map((set) => Int32Array.from(full.filter((c) => setOf(c) === set).flatMap((c) => c.cells.sort((x, y) => x[1] - y[1]).map(([t]) => t))));
   // each cell in one block of a set at most (a torus of a size the sets do not fit round: its blocks as on walls)
   const once = turns.every((blocks) => new Set(blocks).size === blocks.length);
-  if (torus && !once) return { ...planeBlocks(kind, W, false, stars), wraps: false };
+  if (torus && !once) return { ...planeBlocks(kind, W, false, stars, four), wraps: false };
   // stellated: each cell's partner, the one across its side away from its block's corner (none, by walls: itself)
   let move = null;
   if (stars) {
@@ -8012,7 +8022,21 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)]) {
 // in no whole block (by walls) as it is
 // paint: each cell's colour (or none), carried along: a block's live cells' colours, in turn round it, to its live cells
 // after, again from the first when there are more (none before: each keeps its own)
-function blockStep({ k, turns, to, move }, a, b, g, paint = null) {
+// The Ising model, Vichniac's Q2R (1984; Tyler's cell-auto.com/ising): squares on a checkerboard, its two colours in turn, a
+// square turned over when just 2 of its 4 side neighbours are alive (its energy the same either way: the walls between
+// alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
+function isingOf(kind, W) {
+  const row = planeRow(kind, W), torus = planeTorus(kind), turns = [[], []], sides = [];
+  for (let t = 0; t < row * W; t++) {
+    const x = t % row, y = Math.floor(t / row);
+    turns[(x + y) % 2].push(t);
+    sides.push([[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => (torus ? [mod(x + dx, row), mod(y + dy, W)] : [x + dx, y + dy]))
+      .filter(([u, v]) => u >= 0 && u < row && v >= 0 && v < W).map(([u, v]) => u + v * row));
+  }
+  return { ising: true, k: 1, turns: turns.map((c) => Int32Array.from(c)), sides, to: new Uint8Array(0), wraps: torus };
+}
+function blockStep({ k, turns, to, move, ising, sides }, a, b, g, paint = null) {
+  if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
   const blocks = turns[g % turns.length], cs = [];
   b.set(a);
@@ -8054,6 +8078,17 @@ for (const [kind, mark] of Object.entries(BLOCK_MARKS)) {  // each grid's rules,
     option.dataset.name = name;
     $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
   }
+}
+// on squares, more: Tyler's Square-4 (its blocks' 4 sets in turn round a square, /4) for the billiard balls and the critters; the
+// Ising model (Q2R, see isingOf)
+for (const [name, words, value, art] of [
+  ...RING_RULES.filter(([name]) => name === 'Billiard balls' || name === 'Critters').map(([name, , words, rule, art]) => [`${name}, 4 phases`, `${words}; Tim Tyler's Square-4, its blocks' 4 sets of corners in turn round a square`, `M${Array.from({ length: 16 }, (_, st) => rule(st, 4)).join(',')}/4`, art]),
+  ['Ising', "the Ising model of a magnet (Vichniac's Q2R): a checkerboard, its colours in turn, a square turned over when just 2 of its 4 sides are alive; the walls between alive and dead as long, ever", 'Q2R', 'oo...,ooo..,.ooo.,..ooo,...oo'],
+]) {
+  RULE_ICONS[value] = art;
+  const option = new Option(`${BLOCK_MARKS.square} ${value} — ${words}`, value);
+  option.dataset.name = name;
+  $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 // the stellated grids' rules, on the cells come in across (a cell j: a particle come in from that side, its way the one across):
 // FHP's (Frisch, Hasslacher and Pomeau, 1986) and HPP's (Hardy, de Pazzis and Pomeau, 1973) lattice gases: the particles fly

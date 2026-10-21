@@ -1432,3 +1432,10 @@ From Wikimedia's [Pentagonal tiling with 7-fold rotational symmetry](https://com
 |---|---|---|---|---|
 | [Mirror 7 embers B248/S0348/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dMirror7&r=B248/S0348/C4&s=48&pop=random.30.7) | 0.023 | 158–668 | 3.45 % | 0 % |
 | [Mirror 7 sparks B24/S0346/C4](https://vincentbounce.github.io/Walking-Pi/#w=life2dMirror7&r=B24/S0346/C4&s=48&pop=random.30.7) | 0.009 | 226–609 | 3.53 % | 0 % |
+
+## ▣ Ising (Q2R) and Square-4, on squares (Tim Tyler's cell-auto.com)
+
+| Rule | What it does |
+|---|---|
+| [**Ising** `Q2R`](https://vincentbounce.github.io/Walking-Pi/#w=blocks2d&r=Q2R&s=48) | The Ising model of a magnet, Vichniac's Q2R (1984), on Tyler's [cell-auto.com/ising](https://cell-auto.com/ising/) (a Java applet, gone): the squares a checkerboard, its two colours in turn, a square turned over when just 2 of its 4 side neighbours are alive. The walls between alive and dead keep their length (its energy), whatever happens: domains that wander and wriggle, and it runs back |
+| [**Billiard balls, 4 phases**](https://vincentbounce.github.io/Walking-Pi/#w=blocks2d&r=M0,4,8,3,1,10,6,7,2,9,5,11,12,13,14,15/4&s=48), **Critters, 4 phases** | Tyler's [Square-4](https://cell-auto.com/neighbourhood/square4/index.html): Margolus's blocks, their 4 sets of corners in turn round a square (Margolus's: 2, a corner and the one across); a rule of them ends with `/4` |
