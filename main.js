@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1033';
+const VERSION = '0.1.1034';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10637,7 +10637,7 @@ function towardViewer(x, y, z) {
 // The light: from the top left, in front, turning with the view (a lamp on the camera's shoulder);
 // a tile is darkened by SHADE as it turns away from it, with a white glint where it faces half-way
 // between the light and the viewer (LIGHT_GLINT at most, as the shaders' lit)
-const LIGHT_GLINT = 0.22, LIGHT_SHINE = 24;
+const LIGHT_GLINT = 0.22, LIGHT_SHINE = 24, SHADOW_SIZE = 2048;  // SHADOW_SIZE: the shadows' texture (see glShadows)
 function lightDir() {
   const l = [0, 1, 2].map((d) => -0.45 * cam.r[d] + 0.55 * cam.u[d] + 0.7 * cam.v[d]), m = Math.hypot(...l);
   return l.map((x) => x / m);
@@ -11089,22 +11089,40 @@ vec3 toScreen(vec3 p) {  // pixels on the stage, and the depth towards the viewe
   if (uPersp.w > 0.0) { float k = uPersp.w / (uPersp.w - t); X = uCC.x + (X - uCC.x) * k; Y = uCC.y + (Y - uCC.y) * k; }
   return vec3(uView.y + X * uView.x, uView.z + Y * uView.x, t);
 }
-uniform vec3 uL, uH; uniform float uShade;
-vec3 lit(vec3 col, vec3 n) {  // as tileLight: the normal turned to the viewer, darkened away from the light, a glint
-  if (dot(n, uV) < 0.0) n = -n;
-  return col * (1.0 - uShade * (1.0 - max(0.0, dot(n, uL)))) + ${LIGHT_GLINT} * pow(max(0.0, dot(n, uH)), ${LIGHT_SHINE}.0);
-}
 vec4 clipOf(vec3 s, float bias) {
   return vec4(s.x / uScreen.x * 2.0 - 1.0, 1.0 - s.y / uScreen.y * 2.0, clamp(-s.z / uDepth - bias, -1.0, 1.0), 1.0);
 }`;
+// The light (after GL_PROJECT), as tileLight: the normal turned to the viewer, darkened away from the light, a glint;
+// vDark what stays in the shadow, vLit what the light adds, vSh where the point falls in the shadows' texture (see glShadows)
+const GL_LIGHT = `
+uniform vec3 uL, uH, uLx, uLy; uniform float uShade, uLr; out vec3 vDark, vLit, vSh;
+vec3 lightSpace(vec3 p) { return vec3(dot(p, uLx), dot(p, uLy), -dot(p, uL)) / uLr; }  // seen from the light, within ±1
+void light(vec3 col, vec3 n, vec3 p) {
+  if (dot(n, uV) < 0.0) n = -n;
+  vDark = col * (1.0 - uShade);
+  vLit = col * uShade * max(0.0, dot(n, uL)) + ${LIGHT_GLINT} * pow(max(0.0, dot(n, uH)), ${LIGHT_SHINE}.0);
+  vSh = lightSpace(p) * 0.5 + 0.5;
+}`;
+// the share of the light a pixel gets: 9 looks round it in the shadows' texture, each softened by the hardware's compare
+const GL_SHADOWED = `#version 300 es
+precision highp float; precision highp sampler2DShadow; in vec3 vDark, vLit, vSh; uniform sampler2DShadow uShadow; out vec4 o;
+void main() {
+  float t = 1.0 / ${SHADOW_SIZE}.0, s = 0.0;
+  for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) s += texture(uShadow, vec3(vSh.xy + vec2(i, j) * t, vSh.z - 2.0 * t));
+  o = vec4(vDark + vLit * s / 9.0, 1.0);
+}`;
 const GL_SHADERS = {
   tile: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform vec4 uPlain; out vec3 vCol;${GL_PROJECT}
+in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform vec4 uPlain;${GL_PROJECT}${GL_LIGHT}
 void main() {
-  vCol = lit(uPlain.a > 0.0 ? uPlain.rgb : aCol, aNrm);  // uPlain: the back of an open sheet
+  light(uPlain.a > 0.0 ? uPlain.rgb : aCol, aNrm, aPos);  // uPlain: the back of an open sheet
   gl_Position = clipOf(toScreen(aPos), 0.0);
-}`, `#version 300 es
-precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+}`, GL_SHADOWED],
+  // the depths seen from the light (see glShadows): a tile's corner, or a cube's at its point
+  depth: [`#version 300 es
+in vec3 aPos; in vec3 aAt;${GL_PROJECT}${GL_LIGHT}
+void main() { gl_Position = vec4(lightSpace(aPos + aAt), 1.0); }`, `#version 300 es
+precision mediump float; void main() {}`],
   edge: [`#version 300 es
 in vec3 aPos; in vec3 aNrm; in vec3 aNrm2; uniform float uBias; uniform bool uBoth; out float vFacing;${GL_PROJECT}
 void main() {  // an edge whose two tiles are both turned away is not drawn (the back of an open sheet, or of a strip's
@@ -11131,12 +11149,11 @@ void main() {
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // the cubes of a 3D walk on cells (see glCubes): a unit cube around each point, shaded as the tiles
   cube: [`#version 300 es
-in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol; out vec3 vCol;${GL_PROJECT}
+in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol;${GL_PROJECT}${GL_LIGHT}
 void main() {
-  vCol = lit(aCol, aNrm);
+  light(aCol, aNrm, aAt + aCorner);
   gl_Position = clipOf(toScreen(aAt + aCorner), 0.0);
-}`, `#version 300 es
-precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
+}`, GL_SHADOWED],
   // flat drawings, 2D walks and projected 3D walks (see glFlat): world (x, y) → pixels by uView (scale, ox, oy)
   flatPath: [`#version 300 es
 in vec2 aQuad; in vec2 aA; in vec2 aB; in float aKey; uniform float uN, uWidth, uFrom, uPeriod; uniform int uColour; uniform vec3 uView; uniform vec2 uScreen; uniform sampler2D uGrad, uPal; out vec3 vCol;
@@ -11264,9 +11281,40 @@ function glView(gl, p, depth) {
   gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
   gl.uniform2f(u('uScreen'), cw, ch);
   gl.uniform1f(u('uDepth'), depth);
-  const L = lightDir();
+  // the light, and its view for the shadows: across it, over the ball round the origin that holds what is drawn
+  const L = lightDir(), x = cam.r.map((r, d) => r - L[d] * (cam.r[0] * L[0] + cam.r[1] * L[1] + cam.r[2] * L[2])), m = Math.hypot(...x);
+  const lx = x.map((v) => v / m), ly = [L[1] * lx[2] - L[2] * lx[1], L[2] * lx[0] - L[0] * lx[2], L[0] * lx[1] - L[1] * lx[0]];
   gl.uniform3fv(u('uL'), L); gl.uniform3fv(u('uH'), halfway(L)); gl.uniform1f(u('uShade'), SHADE);
+  gl.uniform3fv(u('uLx'), lx); gl.uniform3fv(u('uLy'), ly); gl.uniform1f(u('uLr'), depth / 4);
+  gl.uniform1i(u('uShadow'), 1);
   return u;
+}
+// The shadows: the depths of what the light sees (draw draws it with the program depth), in a
+// texture on unit 1 (SHADOW_SIZE square), which the tiles and cubes then compare their own depths from the light with
+function glShadows(depth, draw) {
+  const S = GLS, { gl } = S;
+  if (!S.shadow) {
+    const tex = gl.createTexture(), fb = gl.createFramebuffer();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, SHADOW_SIZE, SHADOW_SIZE);
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],
+      [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE], [gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, tex, 0);
+    S.shadow = { tex, fb };
+  }
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);  // not read while it is written
+  gl.bindFramebuffer(gl.FRAMEBUFFER, S.shadow.fb);
+  gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS);
+  gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4);  // a lit face does not shadow itself
+  glView(gl, S.prog.depth, depth);
+  draw(gl.getAttribLocation(S.prog.depth, 'aPos'), gl.getAttribLocation(S.prog.depth, 'aAt'));
+  gl.disable(gl.POLYGON_OFFSET_FILL);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex);
+  gl.activeTexture(gl.TEXTURE0);
 }
 function glSurface(palette, levelOf, path) {
   const S = glSetup();
@@ -11322,6 +11370,13 @@ function glSurface(palette, levelOf, path) {
     for (let q = 0; q < k; q++) col.set(c, 3 * (k * t + q));
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, S.col); gl.bufferData(gl.ARRAY_BUFFER, col, gl.DYNAMIC_DRAW);
+  const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
+  glShadows(depth, (aPos) => {  // every tile, both its sides
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan);
+    gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
+    gl.disableVertexAttribArray(aPos);
+  });
   // the frame, the projection and the view
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clearColor(0, 0, 0, 0);
@@ -11330,7 +11385,6 @@ function glSurface(palette, levelOf, path) {
   gl.depthFunc(gl.LEQUAL);
   // the grid lines, then the path, pulled towards the viewer by a share of a tile (not of the solid:
   // on a big one, a fixed share let lines on the faces just behind an edge show through)
-  const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
   const edgeBias = (0.07 * tileSize) / depth, pathBias = (0.15 * tileSize) / depth;
   const uniforms = (p) => glView(gl, p, depth);
   const attrib = (p, name, buffer, size, type = gl.FLOAT, normalized = false, stride = 0, offset = 0, divisor = 0) => {
@@ -11622,13 +11676,21 @@ function glCubes(to) {
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeCol); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
     S.keys.cubes = walk.wx; S.keys.cubesMode = mode;
   }
+  // the depths: no point is further than twice the walk's reach from the perspective's centre
+  const depth = 4 * (walk.maxDist[n] + 2);
+  glShadows(depth, (aPos, aAt) => {
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.cube); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 24, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeAt); gl.enableVertexAttribArray(aAt); gl.vertexAttribPointer(aAt, 3, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribDivisor(aAt, 1);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, shape.triangles.length / 6, to + 1);
+    gl.vertexAttribDivisor(aAt, 0); gl.disableVertexAttribArray(aAt); gl.disableVertexAttribArray(aPos);
+  });
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);  // a later visit paints over
-  // the depths: no point is further than twice the walk's reach from the perspective's centre
-  glView(gl, prog.cube, 4 * (walk.maxDist[n] + 2));
+  glView(gl, prog.cube, depth);
   const attrib = (name, buffer, size, type, normalized, stride, offset, divisor) => {
     const loc = gl.getAttribLocation(prog.cube, name);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
