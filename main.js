@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1032';
+const VERSION = '0.1.1033';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -697,7 +697,7 @@ const PALETTES = {
           unlit: '#1f2630', trail: '#6b7f99', fade: '#c98f1f', alive: '#e6edf3', edge: 'rgba(255, 255, 255, 0.25)', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
   light: { light: 48, digits: ['#2f5bea', '#e8438a', '#e0a100', '#13a8a2', '#7c4dff', '#5fa82a', '#f0702a', '#c03fe0'], grey: '#6e7781', mono: '#bf8700',
            directions: { '←': '#2f5bea', '↑': '#e0a100', '→': '#e8438a', '↓': '#13a8a2', '↖': '#5fa82a', '↗': '#c03fe0', '↘': '#f0702a', '↙': '#7c4dff', '⊙': '#e5484d', '⊗': '#1aa3d6' },
-           unlit: '#eef1f5', trail: '#7d8896', fade: '#c98a10', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.18, fadeEdges: true, tileLift: 0.22 },
+           unlit: '#eef1f5', trail: '#7d8896', fade: '#c98a10', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.35, fadeEdges: true, tileLift: 0.22 },
 };
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], LIFE_FADE = [], DIRECTION_COLOURS = {};
 // Life's colours (civilisations), as bright as the walks' rainbow in each theme (its saturation and
@@ -10634,6 +10634,20 @@ function towardViewer(x, y, z) {
   const v = cam.v;
   return x * v[0] + y * v[1] + z * v[2];
 }
+// The light: from the top left, in front, turning with the view (a lamp on the camera's shoulder);
+// a tile is darkened by SHADE as it turns away from it, with a white glint where it faces half-way
+// between the light and the viewer (LIGHT_GLINT at most, as the shaders' lit)
+const LIGHT_GLINT = 0.22, LIGHT_SHINE = 24;
+function lightDir() {
+  const l = [0, 1, 2].map((d) => -0.45 * cam.r[d] + 0.55 * cam.u[d] + 0.7 * cam.v[d]), m = Math.hypot(...l);
+  return l.map((x) => x / m);
+}
+const halfway = (L) => { const h = L.map((x, d) => x + cam.v[d]), m = Math.hypot(...h); return h.map((x) => x / m); };
+// [darkness ∈ [0, 1], glint] of a unit normal facing the viewer, by the light L and the half-way H
+function tileLight(nx, ny, nz, L, H) {
+  const diff = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]), h = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]);
+  return [1 - diff, LIGHT_GLINT * h ** LIGHT_SHINE];
+}
 // Is a plane (outward normal n through point p) facing us? Orthographic: n points towards the
 // viewer. Perspective: n points towards the camera position, seen from p.
 function planeVisible(n, p) {
@@ -10980,10 +10994,10 @@ function edgeAlpha(sh) {
   const px = walk.R * sh.cellSize * view.scale;
   return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 50));  // as faint at every surface's usual size, stronger zoomed in
 }
-function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an rgb() string
-  const key = `${colour}|${shade}|${SHADE}`;
+function shaded(colour, shade, glint) {  // colour darkened by shade ∈ [0, 1], with a glint of white, as an rgb() string
+  const key = `${colour}|${shade}|${glint}|${SHADE}`;
   if (!shadeCache.has(key)) {
-    const k = 1 - SHADE * shade, [r, g, b] = rgbOf(colour).map((v) => Math.round(v * k));
+    const k = 1 - SHADE * shade, [r, g, b] = rgbOf(colour).map((v) => Math.min(255, Math.round(v * k + 255 * glint)));
     shadeCache.set(key, `rgb(${r}, ${g}, ${b})`);
   }
   return shadeCache.get(key);
@@ -10995,7 +11009,7 @@ function shaded(colour, shade) {  // colour darkened by shade ∈ [0, 1], as an 
 function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
   const R = walk.R, P = walk.persp, n = walk.geo.n;
   const { scale: s, ox, oy } = view, proj = projector();
-  const dir = cam.v;  // towards the viewer
+  const dir = cam.v, L = lightDir(), H = halfway(L);  // towards the viewer; the light
   const eye = P ? dir.map((v, d) => P.c[d] + v * P.D) : null;
   const twoSided = twoSidedNow();
   const visible = [];
@@ -11011,11 +11025,11 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
   ctx.strokeStyle = `rgba(${EDGE_RGB.join(', ')}, ${edgeAlpha(sh)})`;
   for (const [, t] of visible) {
     const level = levelOf(t);
-    let toward = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]);
-    if (twoSided) toward = Math.abs(toward);  // the back of a tile is lit like its front
+    const f = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]) < 0 ? -1 : 1;  // the back of a tile is lit like its front
+    const [dark, glint] = tileLight(f * sh.nrm[3 * t], f * sh.nrm[3 * t + 1], f * sh.nrm[3 * t + 2], L, H);
     // 64 shades: fine enough that a tile's colour turns smoothly with the view (8 made visible
     // jumps of about 7 % in brightness), coarse enough to keep the cache of shaded colours small
-    ctx.fillStyle = shaded(level ? palette[level] : UNLIT, Math.round((1 - Math.max(0, toward)) * 64) / 64);
+    ctx.fillStyle = shaded(level ? palette[level] : UNLIT, Math.round(dark * 64) / 64, Math.round(glint * 64) / 64);
     ctx.beginPath();
     const corners = [];  // on the screen
     for (let q = 0; q < k; q++) {
@@ -11075,15 +11089,19 @@ vec3 toScreen(vec3 p) {  // pixels on the stage, and the depth towards the viewe
   if (uPersp.w > 0.0) { float k = uPersp.w / (uPersp.w - t); X = uCC.x + (X - uCC.x) * k; Y = uCC.y + (Y - uCC.y) * k; }
   return vec3(uView.y + X * uView.x, uView.z + Y * uView.x, t);
 }
+uniform vec3 uL, uH; uniform float uShade;
+vec3 lit(vec3 col, vec3 n) {  // as tileLight: the normal turned to the viewer, darkened away from the light, a glint
+  if (dot(n, uV) < 0.0) n = -n;
+  return col * (1.0 - uShade * (1.0 - max(0.0, dot(n, uL)))) + ${LIGHT_GLINT} * pow(max(0.0, dot(n, uH)), ${LIGHT_SHINE}.0);
+}
 vec4 clipOf(vec3 s, float bias) {
   return vec4(s.x / uScreen.x * 2.0 - 1.0, 1.0 - s.y / uScreen.y * 2.0, clamp(-s.z / uDepth - bias, -1.0, 1.0), 1.0);
 }`;
 const GL_SHADERS = {
   tile: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform bool uTwoSided; uniform float uShade; uniform vec4 uPlain; out vec3 vCol;${GL_PROJECT}
+in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform vec4 uPlain; out vec3 vCol;${GL_PROJECT}
 void main() {
-  float toward = dot(aNrm, uV); if (uTwoSided) toward = abs(toward);
-  vCol = (uPlain.a > 0.0 ? uPlain.rgb : aCol) * (1.0 - uShade * (1.0 - max(0.0, toward)));  // uPlain: the back of an open sheet
+  vCol = lit(uPlain.a > 0.0 ? uPlain.rgb : aCol, aNrm);  // uPlain: the back of an open sheet
   gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
@@ -11113,9 +11131,9 @@ void main() {
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
   // the cubes of a 3D walk on cells (see glCubes): a unit cube around each point, shaded as the tiles
   cube: [`#version 300 es
-in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol; uniform float uShade; out vec3 vCol;${GL_PROJECT}
+in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol; out vec3 vCol;${GL_PROJECT}
 void main() {
-  vCol = aCol * (1.0 - uShade * (1.0 - abs(dot(aNrm, uV))));
+  vCol = lit(aCol, aNrm);
   gl_Position = clipOf(toScreen(aAt + aCorner), 0.0);
 }`, `#version 300 es
 precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 1.0); }`],
@@ -11246,6 +11264,8 @@ function glView(gl, p, depth) {
   gl.uniform3f(u('uView'), view.scale, view.ox, view.oy);
   gl.uniform2f(u('uScreen'), cw, ch);
   gl.uniform1f(u('uDepth'), depth);
+  const L = lightDir();
+  gl.uniform3fv(u('uL'), L); gl.uniform3fv(u('uH'), halfway(L)); gl.uniform1f(u('uShade'), SHADE);
   return u;
 }
 function glSurface(palette, levelOf, path) {
@@ -11328,8 +11348,6 @@ function glSurface(palette, levelOf, path) {
   // back of an open sheet plain; the corners of a torus are listed against its normals (shapeSign)
   // a Klein bottle, one-sided: both sides of each tile, in its colours
   const open = g.torus && !g.mobius && !g.klein && sh.m < 1, front = shapeSign(g) < 0 ? gl.FRONT : gl.BACK, back = front === gl.BACK ? gl.FRONT : gl.BACK;
-  gl.uniform1i(u('uTwoSided'), open || g.klein ? 1 : 0);
-  gl.uniform1f(u('uShade'), SHADE);
   gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
   attrib(prog.tile, 'aPos', S.pos, 3);
   attrib(prog.tile, 'aNrm', S.nrm, 3);
@@ -11610,8 +11628,7 @@ function glCubes(to) {
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);  // a later visit paints over
   // the depths: no point is further than twice the walk's reach from the perspective's centre
-  const u = glView(gl, prog.cube, 4 * (walk.maxDist[n] + 2));
-  gl.uniform1f(u('uShade'), SHADE);
+  glView(gl, prog.cube, 4 * (walk.maxDist[n] + 2));
   const attrib = (name, buffer, size, type, normalized, stride, offset, divisor) => {
     const loc = gl.getAttribLocation(prog.cube, name);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
