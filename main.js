@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1006';
+const VERSION = '0.1.1007';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3765,7 +3765,8 @@ function triStepper(kind) {
 /* Tiled surfaces. A mesh lists each tile's vertices counterclockwise seen from outside
  * (poly[sides·t + k]); nbr[sides·t + k] is the tile across edge k (vertex k to vertex k + 1)
  * and nbrEdge[…] the index of that same edge in the neighbour. */
-const meshCache = {};
+// meshCache: the last 16 built kept (a long visit of many surfaces and sizes filled the page's memory)
+const meshCache = new Proxy({}, { set(o, k, v) { delete o[k]; o[k] = v; const keys = Object.keys(o); if (keys.length > 16) delete o[keys[0]]; return true; } });
 
 // Shared vertex store: points are merged when equal
 function vertexStore() {
@@ -6729,8 +6730,9 @@ function iconPatterns(kind, N) {
   iconPatternMemo = { key, patterns };
   return patterns;
 }
-// whether an icon N cells wide fits whole at each colour's spot (its square all laid), as Centered's patterns
-const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours; if (!patternsOn() || (walk.plane && APERIODIC[kind])) return false; const box = iconPatterns(kind, N).box; return Array.from({ length: K }, (_, i) => patternAt(i, K, box).length === box.length).every(Boolean); };
+// whether an icon N cells wide fits whole at each colour's spot (its square all laid), as Centered's patterns (Sierpiński's:
+// its corners' patterns only, see cornerChoices)
+const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours; if (!patternsOn() || (walk.plane && APERIODIC[kind]) || walk.geo.sphere === 'sierpinski' || MODES[$('mode').value].sphere === 'sierpinski') return false; const box = iconPatterns(kind, N).box; return Array.from({ length: K }, (_, i) => patternAt(i, K, box).length === box.length).every(Boolean); };
 function iconChoices(N) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
@@ -8420,7 +8422,7 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  if (L.paint && cur % 64 === 0 && a.length <= 65536 && !L.marks.has(cur)) L.marks.set(cur, [a.slice(), L.paint.slice()]);  // (blocks' colours: a mark every 64, see lifeBack)
+  if (L.paint && cur % 64 === 0 && 2 * a.length * (L.marks.size + 1) <= 3e7 && !L.marks.has(cur)) L.marks.set(cur, [a.slice(), L.paint.slice()]);  // (blocks' colours: a mark every 64, 30 MB at most, see lifeBack)
   if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {

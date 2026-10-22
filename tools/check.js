@@ -180,7 +180,7 @@ async function deep(fail, from, only) {
   };
   const all = (only ?? Object.keys(MODES)).filter((m) => MODES[m].life && [...$('mode').options].some((o) => o.value === m));
   for (const w of all.slice(Math.max(0, all.indexOf(from)))) {
-    localStorage.walkingDeep = w;
+    localStorage.walkingDeep = `${w} ${Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1e6)} MB`;  // (the page's memory too)
     location.hash = `w=${w}`;
     await look(`${w} from its link`, 900);
     if ($('mode').value !== w) fail(`${w}: the link opened ${$('mode').value}`);
