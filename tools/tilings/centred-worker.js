@@ -7,11 +7,12 @@ import { HOUSES } from './houses.js';
 import { RHOMBS14 } from './ammann.js';
 const patches = {};
 const patchOf = (kind, W) => patches[kind] ??= (kind === 'pinwheel' ? PINWHEEL(W) : kind === 'mirror7' ? HOUSES(7)(W) : kind === 'rhombs14' ? RHOMBS14(W) : ROSETTES[kind][1](W));
-self.onmessage = ({ data: { kind, rule, W, trials, from } }) => {
+self.onmessage = ({ data: { kind, rule, W, trials, from, at = [0, 0] } }) => {  // at: where the starts are, from the middle (colours: away from it)
   const h = patchOf(kind, W), G = patchGrid(h, W), n = G.n, o = (W - 1) / 2;
   const mid = h.polys.map((p) => [p.reduce((s, q) => s + q[0], 0) / p.length - o, p.reduce((s, q) => s + q[1], 0) / p.length - o]);
   const r = mid.map(([x, y]) => Math.hypot(x, y)), dead = new Set(h.dead), live = (t) => !dead.has(t) && G.start[t] < G.start[t + 1];
-  const core = [...Array(n).keys()].filter(live).sort((u, v) => r[u] - r[v]).slice(0, 30), far = W / 2 - 5;  // (the 30 nearest the middle: round a ring's hole too)
+  const d = mid.map(([x, y]) => Math.hypot(x - at[0], y - at[1]));
+  const core = [...Array(n).keys()].filter(live).sort((u, v) => d[u] - d[v]).slice(0, 30), far = W / 2 - 5;  // (the 30 nearest it: round a ring's hole too)
   const { B, S, C } = parse(rule.replace(/v([0-3]+)/gi, (_, d) => [...d].map((k) => 'abcd'[k]).join('')));  // (the app's v0… as the engine's a…)
   let seed = 977 + from;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
@@ -38,7 +39,7 @@ self.onmessage = ({ data: { kind, rule, W, trials, from } }) => {
     if (T >= 200 && (!meth || T > meth.T)) meth = { T, cells: start.map((t) => [+mid[t][0].toFixed(3), +mid[t][1].toFixed(3), 1]) };
     if (period >= 2) {
       const cells = [...Array(n).keys()].filter((t) => a[t]);
-      if (cells.every((t) => r[t] < 6) && (!osc || cells.length < osc.cells.length)) osc = { period, cells: cells.map((t) => [+mid[t][0].toFixed(3), +mid[t][1].toFixed(3), a[t]]) };
+      if (cells.every((t) => d[t] < 5) && (!osc || cells.length < osc.cells.length)) osc = { period, cells: cells.map((t) => [+mid[t][0].toFixed(3), +mid[t][1].toFixed(3), a[t]]) };
     }
   }
   self.postMessage({ osc, meth, spread });

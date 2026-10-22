@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261109t">
+  <link rel="stylesheet" href="style.css?v=20261109u">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -431,6 +431,7 @@
             <option value="B2-a/S12" data-name="Just Friends">■ B2-a/S12 — Just Friends: mazes of lines, ships of 3 cells escaping (Hensel's letters)</option>
             <option value="B346/S01458" data-name="Long-lasting war">■ B346/S01458 — a long war in its walls: 2 colours 1,326 to 1,421 generations till one is left, 1 of 3 soups still at war at 2,000; 4 colours 1,643 to 1,656 generations till one is left, 1 of 3 soups still at war at 2,000</option>
             <option value="B347/S2/C3" data-name="Sponge wanderers">■ B347/S2/C3 — found on Menger's sponge: a bloom grows to a tenth of it and wanders on, still moving after 2,000 generations at 3 to 8 % alive, never filling it; a soup falls to 5 % and never stops (3 states)</option>
+            <option value="B3478/S2/C3" data-name="Sponge bloomers">■ B3478/S2/C3 — found on Menger's sponge, Sponge wanderers born with 8 too: a bloom spreads to a tenth of it more often, still moving after 2,000 generations at 4 to 6 % alive (3 states)</option>
             <option value="B24/S346/C4" data-name="Cairo Wars">⬠ B24/S346/C4 — never settles: sparks and gliders of 9 cells (4 states)</option>
             <option value="B23/S6/C3" data-name="Cairo gliders">⬠ B23/S6/C3 — gliders of 6 cells, soups last 2,000 generations (3 states)</option>
             <option value="B2347/S35/C3" data-name="Long Cairo">⬠ B2347/S35/C3 — soups last 5,000 generations, gliders of 8 cells (3 states)</option>
@@ -685,6 +686,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261109t"></script>
+  <script src="main.js?v=20261109u"></script>
 </body>
 </html>
