@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1007';
+const VERSION = '0.1.1008';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6732,7 +6732,7 @@ function iconPatterns(kind, N) {
 }
 // whether an icon N cells wide fits whole at each colour's spot (its square all laid), as Centered's patterns (Sierpiński's:
 // its corners' patterns only, see cornerChoices)
-const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours; if (!patternsOn() || (walk.plane && APERIODIC[kind]) || walk.geo.sphere === 'sierpinski' || MODES[$('mode').value].sphere === 'sierpinski') return false; const box = iconPatterns(kind, N).box; return Array.from({ length: K }, (_, i) => patternAt(i, K, box).length === box.length).every(Boolean); };
+const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours; if (!patternsOn() || (walk.plane && APERIODIC[kind]) || walk.geo.sphere === 'sierpinski' || MODES[$('mode').value].sphere === 'sierpinski') return false; const box = iconPatterns(kind, N).box; const laid = Array.from({ length: K }, (_, i) => patternAt(i, K, box).map((c) => c[0])); return laid.every((cs) => new Set(cs).size === box.length) && new Set(laid.flat()).size >= 0.95 * K * box.length; };  // (all of it on cells of its own, a small torus would lay it over itself; the colours' apart, but for a row of their margins)
 function iconChoices(N) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
