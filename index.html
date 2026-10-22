@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261112m">
+  <link rel="stylesheet" href="style.css?v=20261112q">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -592,7 +592,7 @@
       <div id="hint" class="hint"></div>
       <div id="ruleTuto" class="rule-tuto" hidden></div>  <!-- how the rule picked works, in place of the grid (see ruleTutorial) -->
       <div id="animBar" class="stage-box stage-bar" tabindex="-1" aria-label="What is walked, animation and stats">  <!-- (tabindex: on a touch screen, a tap on it opens it) -->
-        <div class="bar-title"><span id="barNum" class="bar-num"></span><span id="barLoop" class="bar-chip loop" hidden></span><span id="barBase" class="bar-chip"></span><span id="rankTitles" class="rank-titles" hidden><span>Alive</span><span title="Its live cells summed over the generations, by how many, till it settles or loops (its size while it lives)">Mean</span><span>Born</span><span>Died</span><span>Ever alive</span></span><span id="seekCount" class="seek-count"></span></div>  <!-- a battle: the ranking's column titles, on the rule's line (folded: Alive) -->
+        <div class="bar-title"><span id="barNum" class="bar-num"></span><span id="barRule" class="bar-chip" hidden></span><span id="barLoop" class="bar-chip loop" hidden></span><span id="barBase" class="bar-chip"></span><span id="rankTitles" class="rank-titles" hidden><span>Alive</span><span title="Its live cells summed over the generations, by how many, till it settles or loops (its size while it lives)">Mean</span><span>Born</span><span>Died</span><span>Ever alive</span></span><span id="seekCount" class="seek-count"></span></div>  <!-- a battle: the ranking's column titles, on the rule's line (folded: Alive) -->
         <div id="ranking" class="ranking" hidden></div>  <!-- a battle: the colours ranked by live cells, those died out last -->
         <div id="gauges" class="ranking gauges" hidden></div>  <!-- one colour: alive, born, died, ever alive, peak -->
         <div class="stage-more">  <!-- shown on hover, between the title and the Play row -->
@@ -700,8 +700,8 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261112m"></script>
-  <script src="emoji.js?v=20261112m"></script>
-  <script src="main.js?v=20261112m"></script>
+  <script src="pixelarticons.js?v=20261112q"></script>
+  <script src="emoji.js?v=20261112q"></script>
+  <script src="main.js?v=20261112q"></script>
 </body>
 </html>

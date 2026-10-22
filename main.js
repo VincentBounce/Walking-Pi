@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1029';
+const VERSION = '0.1.1030';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1303,9 +1303,14 @@ function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
   $('barNum').innerHTML = withIcons(shownSym);
   $('barNum').title = formulaInUse;
+  // a creature (an ant, a turmite, the worm): its name and what it turns by, its rule in a chip (as a block rule's)
+  const w = $('mode').value, creature = MODES[w].worm || MODES[w].turmite || ANTS[w];
+  $('barRule').hidden = !creature;
+  $('barBase').hidden = false;
+  if (creature) { const R = creatureRules(w); $('barNum').textContent = `${walkName(w)} · ${R.byDigits ? `by the digits of ${shownSym}` : 'by its rule'}`; $('barRule').textContent = R.now; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
-  $('barBase').parentElement.classList.remove('life');
+  $('barBase').parentElement.classList.toggle('life', !!creature);  // (a creature laid out as Life's: its title, its chips under it)
   if (colours) base = colours;  // its chips, one per colour
   $('barLoop').hidden = mode.life || !(walk.loop || walk.wormEnd);
   $('ruleChips').replaceChildren();
