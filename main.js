@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1013';
+const VERSION = '0.1.1014';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8170,7 +8170,8 @@ function fitRuleToShape() {
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
-  L.marks = new Map();  // (blocks' colours: marks to go back from, see lifeBack)
+  L.paintLog = [];  // (blocks' colours: those each generation took away, see lifeBack)
+  L.logBytes = 0;
   if (L.paint && blockPicture) L.paint.set(blockPicture.idx);  // (an emoji's colours)
   else if (L.paint) for (let t = 0; t < L.paint.length; t++) L.paint[t] = 1 + Math.floor(cellRandom(plane.seed + 7, t) * blockColours);  // (blocks: at random, the same each time)
   for (let t = 0; t < L.alive.length; t++) {
@@ -8367,8 +8368,8 @@ function isingOf(kind, W) {
 // billiard balls, the gases, Critters: their colours back exactly by the inverse; else from a mark, see lifeBack)
 const ones = (v) => { let c = 0; for (; v; v &= v - 1) c++; return c; };
 const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; return { flips, keeps: to.every((n, st) => ones(flips ? full ^ n : n) === ones(st)) }; };
-// back: run backwards (a, the generation after b; see lifeBack)
-function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null, back = false) {
+// back: run backwards (a, the generation after b; see lifeBack); log: each cell whose colour changes, and the one it had
+function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null, back = false, log = null) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
   const blocks = turns[g % turns.length], cs = [], odd = flips && g % 2 === 1 ? 1 : 0, even = flips && g % 2 === 0 ? 1 : 0, sa = back ? even : odd, sb = back ? odd : even;  // (each side shown negative or not: generation g odd, g + 1 even, or back)
@@ -8380,7 +8381,7 @@ function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint =
     const n = to[st];
     for (let j = 0, m = 0; j < k; j++) {
       b[blocks[i + j]] = (n >> j) & 1;
-      if (paint && cs.length && ((n >> j) & 1) ^ sb) paint[blocks[i + j]] = cs[m++ % cs.length];
+      if (paint && cs.length && ((n >> j) & 1) ^ sb) { const t = blocks[i + j], c = cs[m++ % cs.length]; if (log && paint[t] !== c) log.push(t, paint[t]); paint[t] = c; }
     }
   }
 }
@@ -8451,8 +8452,11 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  if (L.paint && !L.margolus.keeps && cur % 64 === 0 && 2 * a.length * (L.marks.size + 1) <= 3e7 && !L.marks.has(cur)) L.marks.set(cur, [a.slice(), L.paint.slice()]);  // (blocks' colours: a mark every 64, 30 MB at most, see lifeBack)
-  if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
+  // (blocks' colours, a rule that does not keep its cells' count: the colours each generation takes away, logged to give back, see
+  // lifeBack; 64 MB at most)
+  const log = L.paint && !L.margolus.keeps && !L.paintLog[gen - 1] && L.logBytes < 6.4e7 ? [] : null;
+  if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint, false, log);
+  if (log) { L.paintLog[gen - 1] = Int32Array.from(log); L.logBytes += 4 * log.length; }
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -8550,10 +8554,10 @@ function lifeBack() {
   if (M.ising) blockStep(M, a, b, g);
   else {
     M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length));
-    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, L.paint, true);
+    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, M.keeps ? L.paint : null, true);  // (colours: the inverse's, a rule that keeps its cells' count; else its log)
     if (M.move) {
       const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; });
-      if (L.paint) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
+      if (L.paint && M.keeps) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
     }
   }
   let born = 0, dead = 0;
@@ -8565,13 +8569,8 @@ function lifeBack() {
     L.age[t] = b[t] ? 1 : 0;
     if (L.activity[t]) L.activity[t]--;
   }
-  const mark = L.paint && !M.keeps && L.marks.get(g - (g % 64));
-  if (mark) {  // the colours: again from the mark before (a rule that does not keep its cells' count mixes them up going back)
-    let x = mark[0].slice(), y = new Uint8Array(x.length);
-    const p = mark[1].slice();
-    for (let k = g - (g % 64); k < g; k++) { blockStep(M, x, y, k, p); [x, y] = [y, x]; }
-    L.paint.set(p);
-  }
+  const log = L.paint && !M.keeps && L.paintLog[g];  // (the colours this generation took away, given back)
+  if (log) for (let q = log.length - 2; q >= 0; q -= 2) L.paint[log[q]] = log[q + 1];
   for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
   L.alive = b;
   L.next = a;
