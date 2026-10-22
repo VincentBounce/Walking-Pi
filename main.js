@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1000';
+const VERSION = '0.1.1001';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9102,7 +9102,7 @@ function pickZone(zone) {
   hunt.status = '';
   plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
-  plane.icons = [Math.floor(Math.random() * ICON_NAMES.length)];  // (an Icon zone: one at random, for all the colours)
+  plane.icons = Array.from({ length: walk.life.colours }, () => Math.floor(Math.random() * ICON_NAMES.length));  // (an Icon zone: one at random a colour, as the hunt draws them)
   if (zone === 'full') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
