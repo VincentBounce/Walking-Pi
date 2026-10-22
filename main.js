@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1020';
+const VERSION = '0.1.1021';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1846,8 +1846,7 @@ const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"
 // the plane's outline: Square (a slanted grid cut as a square) and Walls (else a torus), on or off
 $('planeEdges').append(
   tile({ pic: icon('walls'), text: 'Square', id: 'squareBtn', title: 'A slanted grid cut as a square (its cells moved, the same neighbours); off: as it is, a rhombus', click: () => { plane.rect = !plane.rect; compute(true); } }),
-  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }),
-  tile({ pic: icon('menger'), text: 'Carpet', id: 'carpetBtn', title: "Sierpiński's carpet: the square cut in 9, the middle one a hole of walls, again in each of the 8 left, down to holes of one cell (Menger's sponge in 2D)", click: () => { plane.carpet = !plane.carpet; compute(true); } }));
+  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }));
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
 
@@ -5916,7 +5915,7 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
+const plane = { side: 48, torus: true, rect: false, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -6127,7 +6126,7 @@ for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.lengt
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
 const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
 // blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
-const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : carpetOn(kind) && shaped(kind) ? carpetW(side) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
+const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
 // colours in blocks (on a torus, or 2 and 4 with walls along the edges: see huntParts), cols × rows of them: the nearest side
 // they divide (12, 4 × 3: a multiple of 12), every colour as many cells
 const colourW = (kind, W) => {
@@ -6666,10 +6665,27 @@ function cellRandom(seed, i) {
 // A drawing on the grid: painted on a canvas of its own (paint(ctx, S, box): its cells' middles' box, 80 % of it the room
 // to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
 // drawing, and, an emoji's colours, on its darker half
-function drawnCells(kind, W, row, paint, colours = false) {  // colours: each cell's colour where the drawing is (see blockPicture)
-  const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);  // (a grid that never repeats: its patch's own, the grid not built yet)
-  const turn = planeTurn(kind), n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)));  // (as the grid is seen, turned: upright)
+// a grid's cells as a drawing sees them, once a grid: their middles (as the grid is seen, turned: upright; a grid that never
+// repeats, its patch's own, the grid not built yet), their box, and for the dithering their reading order (top down, left to
+// right) and the 6 nearest after each
+let drawnMemo = null;
+function drawnGrid(kind, W, row) {
+  const key = `${kind}|${W}|${row}`;
+  if (drawnMemo?.key === key) return drawnMemo;
+  const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);
+  const turn = planeTurn(kind), n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)));
   const real = mids.filter((m) => Number.isFinite(m[0])), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
+  const order = [...mids.keys()].sort((p, q) => mids[p][1] - mids[q][1] || mids[p][0] - mids[q][0]), rank = new Int32Array(n), bins = new Map(), bin = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`;
+  order.forEach((t, r) => { rank[t] = r; (bins.get(bin(...mids[t])) ?? bins.set(bin(...mids[t]), []).get(bin(...mids[t]))).push(t); });
+  const next = mids.map(([x, y], t) => {
+    const d = (u) => Math.hypot(mids[u][0] - x, mids[u][1] - y), near = [];
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const u of bins.get(bin(x + 2 * i, y + 2 * j)) ?? []) if (rank[u] > rank[t] && d(u) < 2.5) near.push(u);
+    return near.sort((p, q) => d(p) - d(q) || rank[p] - rank[q]).slice(0, 6);
+  });
+  return (drawnMemo = { key, n, mids, x0, x1, y0, y1, order, next });
+}
+function drawnCells(kind, W, row, paint, colours = false) {  // colours: each cell's colour where the drawing is (see blockPicture)
+  const { n, mids, x0, x1, y0, y1, order, next } = drawnGrid(kind, W, row);
   const S = Math.min(4096, Math.max(400, 4 * Math.ceil(Math.max(x1 - x0, y1 - y0)))), cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
   cv.width = cv.height = S;
   ctx.fillStyle = '#000';
@@ -6681,13 +6697,9 @@ function drawnCells(kind, W, row, paint, colours = false) {  // colours: each ce
   // right), each its ink (how dark, how opaque) and the error carried to it, alive from a half; an eighth of its error to each
   // of the 6 nearest after it (on squares, Atkinson's own: 2 on the right, 3 below, 1 two below), three quarters in all
   const ink = Float64Array.from(mids, (p) => { if (!Number.isFinite(p[0])) return 0; const i = at(p); return (px[i + 3] / 255) * (1 - lum(i) / 255); }), out = new Uint8Array(n);
-  const order = [...mids.keys()].sort((p, q) => mids[p][1] - mids[q][1] || mids[p][0] - mids[q][0]), rank = new Int32Array(n), bins = new Map(), bin = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`;
-  order.forEach((t, r) => { rank[t] = r; (bins.get(bin(...mids[t])) ?? bins.set(bin(...mids[t]), []).get(bin(...mids[t]))).push(t); });
   for (const t of order) {
     out[t] = ink[t] >= 0.5 ? 1 : 0;
-    const e = (ink[t] - out[t]) / 8, [x, y] = mids[t], d = (u) => Math.hypot(mids[u][0] - x, mids[u][1] - y), next = [];
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const u of bins.get(bin(x + 2 * i, y + 2 * j)) ?? []) if (rank[u] > rank[t] && d(u) < 2.5) next.push(u);
-    for (const u of next.sort((p, q) => d(p) - d(q) || rank[p] - rank[q]).slice(0, 6)) ink[u] += e;
+    for (const u of next[t]) ink[u] += (ink[t] - out[t]) / 8;
   }
   return out;
 }
@@ -6695,19 +6707,19 @@ function drawnCells(kind, W, row, paint, colours = false) {  // colours: each ce
 // (its ink, found on a draft: an emoji's picture has a margin of its own, its box as the font says it larger; as big as the
 // grid's box holds it, in its middle)
 const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S, { x0, x1, y0, y1, scale }) => {
-  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 100px system-ui, sans-serif';
+  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 50px system-ui, sans-serif';
   dc.font = font;
-  const D = 400, w = Math.ceil(dc.measureText(text).width) + 300;
+  const D = 200, w = Math.ceil(dc.measureText(text).width) + 150;
   draft.width = w; draft.height = D;
   dc.font = font;  // (a canvas sized again: its font too)
-  dc.fillText(text, 150, 250);  // (100 px, room all round)
+  dc.fillText(text, 75, 125);  // (50 px, room all round)
   const px = dc.getImageData(0, 0, w, D).data;
   let l = w, r = -1, t = D, b = -1;
   for (let y = 0; y < D; y++) for (let x = 0; x < w; x++) if (px[4 * (y * w + x) + 3] > 32) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
   if (r < 0) return;  // (nothing drawn)
   const f = Math.min(((x1 - x0 + 1) * scale) / (r - l + 1), ((y1 - y0 + 1) * scale) / (b - t + 1));
-  ctx.font = `bold ${100 * f}px system-ui, sans-serif`;
-  ctx.fillText(text, S / 2 + (150 - (l + r + 1) / 2) * f, S / 2 + (250 - (t + b + 1) / 2) * f);
+  ctx.font = `bold ${50 * f}px system-ui, sans-serif`;
+  ctx.fillText(text, S / 2 + (75 - (l + r + 1) / 2) * f, S / 2 + (125 - (t + b + 1) / 2) * f);
 }, colours);
 // Emoji: the one picked (plane.emoji), as Text draws it, in its colours if any (see blockPicture)
 const emojiCells = () => { const { kind, W, row } = walk.plane; return blockPicture ? blockPicture.idx.map((c) => (c ? 1 : 0)) : textCells(kind, W, row, plane.emoji); };
@@ -6949,13 +6961,12 @@ function planeLead(number) {
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells`, text: `“${plane.text}” drawn` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
-  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : carpetOn(kind) ? "with dead edges, holed as Sierpiński's carpet" : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
+  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
   plane.rect = Number(s.o) === 1;
-  plane.carpet = Number(s.cp) === 1;
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
@@ -7010,8 +7021,6 @@ function renderPlaneRow() {
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
-  $('carpetBtn').hidden = kind !== 'square' || !!MODES[$('mode').value].margolus;
-  setTile($('carpetBtn'), { can: !planeTorus(kind), on: carpetOn(kind) && !planeTorus(kind) });  // (squares with walls)
   // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
   // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)
   const cut = !!RECTS[`${kind}Rect`] && !hexagonFits(kind);
@@ -7079,27 +7088,11 @@ function sideOf(kind, W, nbr) {
 // middle, corner or side's middle that its cells round turn onto) the nearest its middle, the biggest that keeps the
 // grid's edge out of it by a cell's width: { dead, walls: [[x, y], …] }, else null. Its cells
 // as the whole grid's (patterns, symmetry and hunts the same); a cut by a distance: cells as far, all in or all out
-const shapeMemo = new Map(), shaped = (kind) => (hexagonFits(kind) || carpetOn(kind)) && !planeTorus(kind) && !MODES[$('mode').value]?.margolus;  // (a six-fold grid with walls: always a hexagon)
-// Sierpiński's carpet (Carpet, squares with walls): the square cut in 9, the middle one a hole, again in each of the 8
-// left, down to holes of one cell (its side 3^L times 1, 2, 4 or 8: see carpetW); the holes' cells of the wall
-const carpetOn = (kind) => plane.carpet && kind === 'square';
-const carpetW = (side) => [27, 54, 81, 108, 162, 216, 243, 324, 486, 648, 729, 972, 1458, 1944, 2187].reduce((a, b) => (Math.abs(Math.log(b / side)) < Math.abs(Math.log(a / side)) ? b : a));
-function carpetShape(W) {
-  const hole = (x, y) => { for (let s = W / 3; s >= 1 && Number.isInteger(s); s /= 3) if (Math.floor(x / s) % 3 === 1 && Math.floor(y / s) % 3 === 1) return true; return false; };
-  const dead = [], walls = [...planeWalls('square', W)], o = [(W - 1) / 2, (W - 1) / 2];
-  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) if (hole(x, y)) {
-    dead.push(y * W + x);
-    if ([-1, 0, 1].some((u) => [-1, 0, 1].some((v) => x + u >= 0 && x + u < W && y + v >= 0 && y + v < W && !hole(x + u, y + v)))) walls.push([x, y]);
-  }
-  // its core: the cells round the middle hole's corners
-  const s = W / 3, core = [[s - 1, s - 1], [2 * s, s - 1], [s - 1, 2 * s], [2 * s, 2 * s]].map(([x, y]) => planeCorners('square', x, y));
-  return { dead, walls, core, o, corner: Math.PI / 4 };
-}
+const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind) && !MODES[$('mode').value]?.margolus;  // (a six-fold grid with walls: always a hexagon)
 function planeShape(kind, W) {
   if (!shaped(kind)) return null;
-  const key = `${kind}|${W}${carpetOn(kind) ? '|carpet' : ''}`;
+  const key = `${kind}|${W}`;
   if (shapeMemo.has(key)) return shapeMemo.get(key);
-  if (carpetOn(kind)) return shapeMemo.set(key, carpetShape(W)).get(key);
   const row = planeRow(kind, W), n = row * W, mids = [], cs = [];
   for (let t = 0; t < n; t++) { cs.push(planeCorners(kind, t % row, Math.floor(t / row))); mids.push(cellMiddle(kind, t % row, Math.floor(t / row))); }
   const box = (d) => mids.reduce(([a, b], m) => [Math.min(a, m[d]), Math.max(b, m[d])], [Infinity, -Infinity]).reduce((a, b) => (a + b) / 2), c0 = [box(0), box(1)], far = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
@@ -9057,6 +9050,10 @@ const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneR
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
+  if (hunt.zone === 'emoji') {  // (every emoji drawn, once drawn: see emojiChoices)
+    const m = emojiMemo?.done && emojiMemo.key === `${walk.plane.kind}|${walk.plane.W}|${walk.plane.row}|${walk.plane.torus}` ? emojiMemo : null;
+    return { cells: [], copies: [], choices: m ? m.choices : null, perColour: m ? m.list.length : EMOJIS.length, density: 0, all: m ? m.list.length : EMOJIS.length };
+  }
   if (famousZone(hunt.zone) || iconSize(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
     const choices = iconSize(hunt.zone) ? iconChoices(iconSize(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
@@ -9131,8 +9128,8 @@ function renderHunt() {
     : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
     : z === 'face' ? `Random cells on ${K === 1 ? 'a face' : 'each colour’s face'}, ${d} % of ${fmt(perColour)}`
     : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
-  const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
-    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' || z === 'emoji' ? 'soups at random' : 'starts at random';
+  const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'emoji' ? ' emoji' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
+    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' ? 'soups at random' : 'starts at random';
   const zone = shown + (sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}` : '') + (life ? ` · Hunt: ${hunts}` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
@@ -9175,7 +9172,8 @@ function renderHunt() {
 function playHuntResult(r) {
   if (hunt.worker) stopHunt();  // a result played: the hunt stops there
   hunt.picked = huntId(r);
-  if (iconSize(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }  // (icons: by their names, pop=icon24.star.heart)
+  if (iconSize(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }
+  if (hunt.zone === 'emoji' && r.pick && emojiMemo?.done) { plane.emoji = emojiMemo.list[r.pick[0]]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }  // (its emoji, by name)  // (icons: by their names, pop=icon24.star.heart)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
 }
@@ -9232,6 +9230,7 @@ function huntClick() {
     if (r) { playHuntResult(r); play(true); }
     return;
   }
+  if (hunt.zone === 'emoji' && !emojiChoices().done) return;  // (Emoji: all of them drawn first, see emojiChoices)
   // as many workers as the computer has cores (one left for the page), on and on until stopped (or, few
   // enough starts, each with every parts-th of them); their best merged
   const L = walk.life, { cells, copies, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
@@ -9883,7 +9882,6 @@ function getSetup() {
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
-    if (carpetOn(mode.plane) && !plane.torus) s.cp = 1;  // (Sierpiński's carpet)
     if (mode.margolus) s.g = plane.gens;  // (a reversible one's generations)
     s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
@@ -9968,7 +9966,8 @@ function applyPendingView() {
     $('autoRotate').checked = g.autoRotate;
     Object.assign(cam, g.cam);
     if (walk.is3d) project();
-    if (!walk.sphere) {  // the 2D bounds of the walk again (a surface's are the fixed solid, as in rotateView)
+    if (walk.plane) bounds = planeBounds();  // (Life's grid: its own frame, as restart gives it)
+    else if (!walk.sphere) {  // the 2D bounds of the walk again (a surface's are the fixed solid, as in rotateView)
       const done = cur;
       cur = 0;
       bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -12613,20 +12612,43 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   return b;
 }));
 // Emoji: an emoji at random, one this browser draws (in colours: a missing one is a box of one colour)
+let drawsMemo = null;
+function emojiDrawn(e) {
+  drawsMemo ??= (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 24; const ctx = cv.getContext('2d', { willReadFrequently: true }); ctx.font = '20px system-ui, sans-serif'; ctx.textBaseline = 'middle'; return ctx; })();
+  const ctx = drawsMemo;
+  ctx.clearRect(0, 0, 24, 24);
+  ctx.fillText(e, 0, 12);
+  const px = ctx.getImageData(0, 0, 24, 24).data;
+  for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) > 40) return true;
+  return false;
+}
 function randomEmoji() {
-  const cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
-  cv.width = cv.height = 24;
-  ctx.font = '20px system-ui, sans-serif';
-  ctx.textBaseline = 'middle';
-  for (let tries = 0; ; tries++) {
-    const e = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-    ctx.clearRect(0, 0, 24, 24);
-    ctx.fillText(e, 0, 12);
-    const px = ctx.getImageData(0, 0, 24, 24).data;
-    let colourful = false;
-    for (let i = 0; i < px.length && !colourful; i += 4) colourful = px[i + 3] > 128 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) > 40;
-    if (colourful || tries >= 20) return e;
-  }
+  for (let tries = 0; ; tries++) { const e = EMOJIS[Math.floor(Math.random() * EMOJIS.length)]; if (emojiDrawn(e) || tries >= 20) return e; }
+}
+// Emoji's hunt: every emoji this browser draws, each a choice (as Icon's), drawn 40 at a time (the page alive between), once
+// a grid; then the hunt, all of them tried
+let emojiMemo = null;
+function emojiChoices() {
+  const { kind, W, row } = walk.plane, key = `${kind}|${W}|${row}|${walk.plane.torus}`;
+  if (emojiMemo?.key === key) return emojiMemo;
+  const m = (emojiMemo = { key, list: [], choices: [[]], done: false });
+  let i = 0;
+  const step = () => {
+    if (emojiMemo !== m) return;  // (another grid meanwhile)
+    for (const end = Math.min(EMOJIS.length, i + 40); i < end; i++) {
+      if (!emojiDrawn(EMOJIS[i])) continue;
+      const cs = [];
+      textCells(kind, W, row, EMOJIS[i]).forEach((v, t) => { if (v) cs.push(t, 1); });
+      if (cs.length) { m.list.push(EMOJIS[i]); m.choices[0].push(Int32Array.from(cs)); }
+    }
+    m.done = i >= EMOJIS.length;
+    hunt.status = m.done ? '' : `Drawing the emoji: ${fmt(i)} / ${fmt(EMOJIS.length)}`;
+    if (!m.done) setTimeout(step, 0);
+    else if (hunt.zone === 'emoji') huntClick();  // (then the hunt, if still asked for)
+    renderHunt();
+  };
+  step();
+  return m;
 }
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {

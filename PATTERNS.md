@@ -1495,9 +1495,9 @@ Famous and Centered on these grids are now these (one colour; with colours, none
 
 **Growers and corners**: [Sierpiński growers B34/S1346](https://vincentbounce.github.io/Walking-Pi/#w=lifeSierpinski&s=4&r=B34/S1346&pop=seed.30.1) (tools/tilings/seedgrow.js 4 sierpinski, 16,896 rules): a bloom of about 40 cells grows to 420–450 and keeps moving, 300 alive after 2,000 generations (B34/S0356/C3 grows further, to 780). Patterns at its 4 outer corners (tools/tilings/corner.js: small starts of the 33 cells nearest a corner, level 4), Famous and Centered on it: Sierpiński Life, an oscillator of period 2 (4 cells) and a methuselah of 332 generations (20 cells); embers, period 5 (3 cells) and 159 generations; growers, period 6 (3 cells) and a 9-cell seed that keeps spreading. Its letters (tools/tilings/letters.js) change nothing; many states (states.js): no ships.
 
-## ▣ A cube's frame (3D) and Sierpiński's carpet (2D)
+## ▣ A cube's frame (3D)
 
-[Life on a cube's frame](https://vincentbounce.github.io/Walking-Pi/#w=lifeFrame&s=9&r=B389/S23): Menger's sponge's first step, its 12 edges as wide as its holes, each of the 20 cubes left m × m × m squares (72 m² squares). Life-like, more than any other surface searched (tools/tilings/search.js frame, 103,448 rules): Frame Life B389/S23 0.857, Frame keepers B39/S2389 0.849, B3/S238 0.816 (oscillators in all their ash). [Sierpiński's carpet](https://vincentbounce.github.io/Walking-Pi/#w=life2d&s=64&e=1&cp=1&r=B3/S23): Carpet on the squares with walls, the holes walls, the side 27, 54, 81…
+[Life on a cube's frame](https://vincentbounce.github.io/Walking-Pi/#w=lifeFrame&s=9&r=B389/S23): Menger's sponge's first step, its 12 edges as wide as its holes, each of the 20 cubes left m × m × m squares (72 m² squares). Life-like, more than any other surface searched (tools/tilings/search.js frame, 103,448 rules): Frame Life B389/S23 0.857, Frame keepers B39/S2389 0.849, B3/S238 0.816 (oscillators in all their ash).
 
 ## ✼ ✥ Flowers 9 and 10
 
