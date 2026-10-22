@@ -1469,3 +1469,18 @@ Now that the rings are built as Sugimoto builds them (no search to get stuck), t
 |---|---|---|---|---|
 | [**Ring 10 embers B26/S034/C4**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRing10&r=B26/S034/C4&s=48&pop=random.30.7) | 0.222 | 235–2,337 | 3.16 % | 0 % |
 | [**Ring 10 sparks B27/S0345/C5**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRing10&r=B27/S0345/C5&s=48&pop=random.30.7) | 0.218 | 218–6,000+ | 3.27 % | 67 % |
+
+## ◺ ✽ ❇ Patterns at the middle of the grids that never repeat (night of 2026-10-22)
+
+Pinwheel, the flowers, the rings, Mirror 7 and Rhombs 14 had no famous patterns (Famous's RLEs say a pattern by its lattice; these grids have none). Now a pattern there is its cells' middles as offsets from the patch's middle, laid at the middle, turned as the figure turns (one colour). Found by tools/tilings/centred.js: for each menu rule, 2,400 small random starts of the 30 cells nearest the middle (half of them alive) on a ⌀ 48 patch, up to 3,000 generations; kept, the smallest oscillator they settle into, the longest-lived start (200 generations at least) and the smallest start that reaches the walls. Each checked in the app (period, last generation, the walls reached).
+
+| Grid | Oscillators | Methuselahs | Spreading |
+|---|---|---|---|
+| Pinwheel | p2 (3 cells), both rules | — | both rules, 8 cells |
+| Flower 3 | p2, p4 | **711 generations** (B345/S023, 16 cells), 201 (B37/S0345) | — |
+| Flowers 4 to 8 | p2 to p8 | — | the rules with dying stages |
+| Rings 7 to 12 | Ring 7: p4, p5 | — | all, 8 cells |
+| Mirror 7 | — | — | both, 8 cells |
+| Rhombs 14 | p2 (3 cells), p8 | 259 generations (B378/S023) | both |
+
+Famous and Centered on these grids are now these (one colour; with colours, none yet). The pinwheel's patch moves with its size: its patterns lay at ⌀ 48 only.
