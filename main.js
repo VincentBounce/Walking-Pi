@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1027';
+const VERSION = '0.1.1028';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -12101,20 +12101,11 @@ function updateStats() {
     $('end').innerHTML = $('end').dataset.shown = jump;
     $('end').title = endless ? `${fmt(LIFE_JUMP)} generations ahead (E)` : 'Jump to end (E)';
   }
-  // the progress: a slider to go to any step (none for the Game of Life, which has no end; a reversible one's, back and
-  // forth, its generations)
+  // the step and the last: folded, at the top on the right; open, under the curve (its slider, see drawActivity); none for
+  // the Game of Life, which has no end (a reversible one's: its generations)
   const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !walk.life) || blocks, far = seekFar();
-  $('seek').parentElement.hidden = !finite;  // its whole line
-  $('seekCountOpen').hidden = !finite;  // (open, the count under the curve)
-  if (finite) {
-    $('seek').max = far;
-    if (document.activeElement !== $('seek')) $('seek').value = cur;
-    $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
-    // as wide as its widest value, so the slider keeps its width: digits 1ch each (tabular), commas and
-    // the " / " much narrower
-    const digits = String(far).length, commas = fmt(far).length - digits;
-    $('seekCount').style.minWidth = `${2 * digits + 0.7 * commas + 1.6}ch`;
-  }
+  $('seekCount').hidden = $('seekCountOpen').hidden = !finite;
+  if (finite) $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
   if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
   document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
   document.querySelector('.stage-bar .stats').hidden = !!walk.life;  // Life: bubbles instead (lifeChips)
@@ -12454,7 +12445,6 @@ function seekTo(v) {
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
   statsDirty = true;
 }
-$('seek').addEventListener('input', () => seekTo(Number($('seek').value)));
 // the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a reversible one's; Life's runs on)
 const seekCurve = (e) => {
   const far = seekFar();

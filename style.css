@@ -480,8 +480,9 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
 .player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
 .player-side .seek-count { margin-top: -4px; }  /* the step, just under the slider */
-.stage-bar:hover .seek-row { display: none; }  /* open, the activity curve is the slider (see drawActivity) */
-@media (hover: none) { .stage-bar:focus-within .seek-row { display: none; } }
+.bar-title .seek-count { position: absolute; top: 12px; right: 12px; }  /* folded: the step at the card's top right; open, under the curve (its slider) */
+.stage-bar:hover .bar-title .seek-count { display: none; }
+@media (hover: none) { .stage-bar:focus-within .bar-title .seek-count { display: none; } }
 .stage-bar:not(:hover) .player-side { display: none; }
 .player-main:has(#reverse:not([hidden])) { width: 360px; }  /* Play backwards (a reversible one's), left of Play: the row as much wider */
 .stage-bar:not(:hover):has(#reverse:not([hidden])) { width: 386px; }  /* (folded; open, as wide as ever) */
@@ -500,8 +501,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .speed-stepper input, .speed-stepper button { height: 32px; }  /* as high as the buttons beside */
 .speed-stepper input { color: var(--text); font-weight: 400; }
 /* the steps, on their own line above the buttons; the speed after ⏭, between a turtle and a rabbit */
-.stage-bar .seek-row { margin: 0 0 8px; gap: 10px; }
-#seek { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); }
 .speed-icon { flex: none; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
 .seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
