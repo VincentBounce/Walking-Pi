@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1011';
+const VERSION = '0.1.1012';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6667,7 +6667,7 @@ function cellRandom(seed, i) {
 // drawing, and, an emoji's colours, on its darker half
 function drawnCells(kind, W, row, paint, colours = false) {  // colours: each cell's colour where the drawing is (see blockPicture)
   const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);  // (a grid that never repeats: its patch's own, the grid not built yet)
-  const n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : cellMiddle(kind, t % row, Math.floor(t / row))));
+  const turn = planeTurn(kind), n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)));  // (as the grid is seen, turned: upright)
   const real = mids.filter((m) => Number.isFinite(m[0])), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
   const S = Math.min(4096, Math.max(400, 4 * Math.ceil(Math.max(x1 - x0, y1 - y0)))), cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
   cv.width = cv.height = S;
@@ -6691,13 +6691,13 @@ function drawnCells(kind, W, row, paint, colours = false) {  // colours: each ce
   return out;
 }
 // Text: a word or an emoji drawn as big as fits in the middle of the grid
-const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S) => {
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+// (its ink, as measured, as big as the grid's box holds it, in its middle)
+const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S, { x0, x1, y0, y1, scale }) => {
   ctx.font = `bold 100px system-ui, sans-serif`;
-  const m = ctx.measureText(text), big = Math.min((0.8 * S * 100) / Math.max(1, m.width), 0.8 * S);
-  ctx.font = `bold ${big}px system-ui, sans-serif`;
-  ctx.fillText(text, S / 2, S / 2);
+  const m = ctx.measureText(text), l = m.actualBoundingBoxLeft, r = m.actualBoundingBoxRight, up = m.actualBoundingBoxAscent, down = m.actualBoundingBoxDescent;
+  const f = Math.min(((x1 - x0 + 1) * scale) / Math.max(1, l + r), ((y1 - y0 + 1) * scale) / Math.max(1, up + down));
+  ctx.font = `bold ${100 * f}px system-ui, sans-serif`;
+  ctx.fillText(text, S / 2 + ((l - r) / 2) * f, S / 2 + ((up - down) / 2) * f);
 }, colours);
 // Reversible, Text: an emoji in its own colours, every cell of it alive, each its colour carried along by the blocks (as
 // blockColours', see blockStep; the rules that keep their cells' count bring them back whole): its colours to 255 at most
@@ -6842,7 +6842,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, flips: rule.margolus[0] === rule.margolus.length - 1 }) : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
                 paint: MODES[current.mode].margolus && !rule.ising && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (Q2R's cells turn over where they are: no colour to carry)  // (blocks: each cell's colour, see blockColours)
@@ -8363,11 +8363,15 @@ function isingOf(kind, W) {
   return { ising: true, k: 1, turns: turns.map((c) => Int32Array.from(c)), sides, to: new Uint8Array(0), wraps: torus };
 }
 // flips: a rule that turns an empty block full (Critters, Tron), shown negative every other generation (see negative): a
-// cell's colour goes with the cells shown alive
-function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null) {
+// cell's colour goes with the cells shown alive; keeps: each block as many cells shown alive after as before (the
+// billiard balls, the gases, Critters: their colours back exactly by the inverse; else from a mark, see lifeBack)
+const ones = (v) => { let c = 0; for (; v; v &= v - 1) c++; return c; };
+const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; return { flips, keeps: to.every((n, st) => ones(flips ? full ^ n : n) === ones(st)) }; };
+// back: run backwards (a, the generation after b; see lifeBack)
+function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null, back = false) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
-  const blocks = turns[g % turns.length], cs = [], sa = flips && g % 2 === 1 ? 1 : 0, sb = flips && g % 2 === 0 ? 1 : 0;  // (each side shown negative or not)
+  const blocks = turns[g % turns.length], cs = [], odd = flips && g % 2 === 1 ? 1 : 0, even = flips && g % 2 === 0 ? 1 : 0, sa = back ? even : odd, sb = back ? odd : even;  // (each side shown negative or not: generation g odd, g + 1 even, or back)
   b.set(a);
   for (let i = 0; i < blocks.length; i += k) {
     let st = 0;
@@ -8440,7 +8444,7 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  if (L.paint && cur % 64 === 0 && 2 * a.length * (L.marks.size + 1) <= 3e7 && !L.marks.has(cur)) L.marks.set(cur, [a.slice(), L.paint.slice()]);  // (blocks' colours: a mark every 64, 30 MB at most, see lifeBack)
+  if (L.paint && !L.margolus.keeps && cur % 64 === 0 && 2 * a.length * (L.marks.size + 1) <= 3e7 && !L.marks.has(cur)) L.marks.set(cur, [a.slice(), L.paint.slice()]);  // (blocks' colours: a mark every 64, 30 MB at most, see lifeBack)
   if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
@@ -8539,7 +8543,7 @@ function lifeBack() {
   if (M.ising) blockStep(M, a, b, g);
   else {
     M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length));
-    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, L.paint);
+    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, L.paint, true);
     if (M.move) {
       const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; });
       if (L.paint) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
@@ -8554,7 +8558,7 @@ function lifeBack() {
     L.age[t] = b[t] ? 1 : 0;
     if (L.activity[t]) L.activity[t]--;
   }
-  const mark = L.paint && L.marks.get(g - (g % 64));
+  const mark = L.paint && !M.keeps && L.marks.get(g - (g % 64));
   if (mark) {  // the colours: again from the mark before (a rule that does not keep its cells' count mixes them up going back)
     let x = mark[0].slice(), y = new Uint8Array(x.length);
     const p = mark[1].slice();
@@ -9093,7 +9097,9 @@ function renderHunt() {
   $('huntGoals').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
+  $('emojiZone').hidden = !walk.plane;  // (Text: the plane's)
   for (const b of $('huntZones').children) {
+    if (!b.dataset.zone) continue;  // (Emoji: a Text start)
     setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true });  // (picked: a click draws another start)
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
@@ -9893,7 +9899,7 @@ function applySetup(s) {
     const rule = s.r.slice(6).trim();
     if (antByDigits) antDigitRules[s.w] = antDigitTurnsOf(s.w, rule) ? rule.toUpperCase() : ANTS[s.w].digitPresets[0];
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
-  } else if (s.r) {
+  } else if (s.r || MODES[s.w].life) {  // (Life: its size and start without a rule too, the grid's first then)
     if (MODES[s.w].plane) planeFromSetup(s);
     else {  // a surface's start: a soup (none said: one), or its digits
       const [kind, a, b] = String(s.pop ?? 'random').split('.');
@@ -9901,11 +9907,10 @@ function applySetup(s) {
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
       if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
     }
-    ruleFittedTo = s.w;  // a link's rule as it is
-    lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
+    lifeColours = Number(s.k) || (s.r && parseRule(s.r)?.colours) || 1;  // k=, or an old link's "/Immigration"
     colourMix = Number(s.mx) === 1;
     if (MODES[s.w].margolus) blockColours = BLOCK_COLOURS.includes(Number(s.k)) ? Number(s.k) : 1;  // (blocks: their cells' colours, k= too)
-    setRuleText(ruleBody(s.r));
+    if (s.r) { ruleFittedTo = s.w; setRuleText(ruleBody(s.r)); }  // a link's rule as it is
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
   // changes (as picking a walk does); within a tab, what was chosen stays
@@ -12576,7 +12581,25 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
   return b;
-}));
+}), tile({ pic: pixelIcon('.o.o.,.....,o...o,.ooo.,.....'), text: 'Emoji', id: 'emojiZone', title: "An emoji at random, of Unicode's 1,923 (Emoji 18.0), drawn as Text (pop=text.🦊): a click, another", click: () => pickEmoji() }));
+// Emoji: Text with an emoji at random, one this browser draws (in colours: a missing one is a box of one colour)
+function randomEmoji() {
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
+  cv.width = cv.height = 24;
+  ctx.font = '20px system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  for (let tries = 0; ; tries++) {
+    const e = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    ctx.clearRect(0, 0, 24, 24);
+    ctx.fillText(e, 0, 12);
+    const px = ctx.getImageData(0, 0, 24, 24).data;
+    let colourful = false;
+    for (let i = 0; i < px.length && !colourful; i += 4) colourful = px[i + 3] > 128 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) > 40;
+    if (colourful || tries >= 20) return e;
+  }
+}
+function pickEmoji() { plane.start = 'text'; plane.text = randomEmoji(); cleared = null; compute(true); }
+$('textTiles').append(tile({ pic: pixelIcon('.o.o.,.....,o...o,.ooo.,.....'), text: 'Emoji', title: 'Another emoji at random', click: () => pickEmoji() }));
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
