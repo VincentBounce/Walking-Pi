@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1030';
+const VERSION = '0.1.1032';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1589,11 +1589,11 @@ function syncDigitsStepper() {
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
   // a walk that loops uses only the digits of its first round on a surface (see buildGridWalk), of 8 rounds
   // in 2D and 3D: more would change nothing
-  const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal();
-  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} digits max ${L.drift ? '→' : '↻'}`
-    : L ? `${fmt(n)} digits` : total === null ? `${fmt(n)} digits` : total <= n ? `all ${fmt(total)} digits` : `${fmt(n)} of ${fmt(total)}`;
+  const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal(), unit = readsDigits() ? 'digits' : 'steps';  // (a creature by its rule: steps, no digit read)
+  $('digitsLabel').value = size ? `${fmt(size)} digits (p)` : L && n >= total ? `${fmt(total)} ${unit} max ${L.drift ? '→' : '↻'}`
+    : L ? `${fmt(n)} ${unit}` : total === null ? `${fmt(n)} ${unit}` : total <= n ? `all ${fmt(total)} ${unit}` : `${fmt(n)} of ${fmt(total)}`;
   $('digitsLabel').title = size ? 'The size of the random prime p, in decimal digits: 100 to 2,000, then Enter (it is walked whole)'
-    : 'Type a number of digits, from 10 to 50,000,000, then Enter';
+    : `Type a number of ${unit}, from 10 to 50,000,000, then Enter`;
   // − goes below what is walked: the whole number's own length when it is shorter than the count
   $('digitsDown').disabled = Math.min(n, total ?? n) <= steps[0];
   $('digitsUp').disabled = n >= steps.at(-1) || (total !== null && total <= n);
@@ -2577,29 +2577,22 @@ function familyOf(w) {
 // whether the number's digits are read: not by an ant by colour, nor by Life but for a start by the digits (the number
 // then neither shown nor in the link: x= is the number followed, the cells' start is pop= and p=)
 const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MODES[w].worm && !worm.byDigits) && !(MODES[w].life && plane.start !== 'digits');
-// An ant's sections, as Life's: Start, by its rule (an ant by colour, a worm by its rule) or by the digits (a turmite by
-// its rule only), the square ant's cells drawn; Rule, its creature (see renderModePicker), then its rules as cards, its
+// A creature's sections, as Life's: Start, by its rule or by the digits (a turmite by its rule only); Rule, its creature (see renderModePicker), then its rules as cards, its
 // rule and its words (see creatureRules), then your own, its rule typed
 let antRowMode = null, antCustomOpen = false;  // (the mode they were last shown for; the Custom rule card clicked)
 function renderAntRow() {
   const w = $('mode').value, m = MODES[w], ant = NAV[w][0] === 'Ant';
   $('digitsSection').hidden = !readsDigits(w);
-  $('populationRow').hidden = w !== 'antSquare';
-  if (m.plane) drawing = plane.start === 'draw';  // Life on the plane draws in its Draw start
-  else if (w !== 'antSquare' || antRowMode !== w) drawing = false;  // the square ant draws once asked, there (not from Life's Draw)
+  drawing = !!m.plane && plane.start === 'draw';  // Life on the plane draws in its Draw start
   if (antRowMode !== w) antCustomOpen = false;
   antRowMode = w;
   stage.classList.toggle('drawing', drawing);
-  $('drawCells').checked = drawing;
-  $('clearCells').hidden = !drawing;  // while drawing only
-  $('clearCells').disabled = !population.size;
   $('antStartSection').hidden = $('antRuleSection').hidden = !ant;
   if (!ant) return;
-  if (m.turmite) antByDigits = false;  // (by its rule only)
+  if (m.turmite) antByDigits = false;  // (by its rule only: its Digits greyed)
   const R = creatureRules(w);
-  $('antStartTabs').hidden = !!m.turmite;
-  $('antStartSection').hidden = !!m.turmite && $('populationRow').hidden;
-  $('antByRule').textContent = m.worm ? 'Rule' : 'Colours';
+  $('antByDigits').disabled = !!m.turmite;
+  $('antRuleTitle').textContent = R.byDigits ? 'Turns' : 'Rule';  // (Digits: a turn per digit, not a rule of colours)
   $('antByRule').classList.toggle('active', !R.byDigits);
   $('antByDigits').classList.toggle('active', !!R.byDigits);
   const card = (pic, name, words, active, go) => {
@@ -3293,7 +3286,7 @@ function cairoStepper(spiral = false) {
   };
 }
 
-/* A population: the cells coloured before the first step (drawn by hand, for the square ant), key(x, y)
+/* A population: Life's cells drawn by hand (its Draw start), key(x, y)
  * → its colour (1 and up; 0, the background, is not kept). In a link as Golly's multi-state RLE, the
  * format of LifeWiki: "X,Y:rle", (X, Y) the top left cell from the start, then its rows, each a run of
  * cells, "." none, "A"… "X" colours 1… 24 ("pA"… beyond), a count before a run of more than one,
@@ -3407,14 +3400,13 @@ const antColours = (w) => (MODES[w].turmite ? turmiteOf(turmite.rule).C : MODES[
 // the cell it is now on was first walked; cells, how many it walked; next(), the colour the cell it is
 // on would take. Its cells in one map, each its first step × 16 + its colour (12 colours at most)
 // inner: the walk it goes through the cells with (a turn → [the cell it comes to, …]); here: its first cell
-// pop: the cells coloured before the first step (see population), each as it is until the ant comes
-function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0), pop = null) {
+function antStepper(w, inner = ANTS[w].inner(), here = key(0, 0)) {
   const A = ANTS[w], turns = antTurnsOf(w, antRules[w]), k = antByDigits ? 2 : turns.length;
   const words = turnWords(antDigitRules[w]);
   // by the digits: the turn digit g gives on a cell of colour c (mirrored on a dark one), as its index in the rule
   const took = (g, c) => (c ? words.indexOf(MIRROR[words[g]]) : g);
   let n = 0;
-  const colourOf = (cell) => (pop?.get(cell) ?? 0) % k;
+  const colourOf = () => 0;  // (every cell blank at first)
   const cells = new Map([[here, colourOf(here)]]);
   const step = (g) => {
     const v = cells.get(here), c = v % 16;
@@ -3515,7 +3507,7 @@ const STEPPERS = {
     };
   },
   cairo: () => cairoStepper(),
-  antSquare: () => antStepper('antSquare', undefined, undefined, population),
+  antSquare: () => antStepper('antSquare'),
   turmite: () => turmiteStepper(),
   antTri: () => antStepper('antTri'),
   worm: (digits) => wormStepper(digits),
@@ -9896,7 +9888,6 @@ function getSetup() {
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
   if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
   if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
-  if (w === 'antSquare' && population.size) s.p = populationRle(population);
   if (championCode) s.ch = championCode;
   return s;
 }
@@ -9926,7 +9917,6 @@ function applySetup(s) {
     if (!worm.byDigits && wormRuleOf(s.r)) worm.rule = wormRuleOf(s.r).join(' ');
   } else if (s.r && MODES[s.w].antOf) {
     antByDigits = s.r.startsWith('digits');
-    population = populationOf(s.p);
     const rule = s.r.slice(6).trim();
     if (antByDigits) antDigitRules[s.w] = antDigitTurnsOf(s.w, rule) ? rule.toUpperCase() : ANTS[s.w].digitPresets[0];
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
@@ -11657,23 +11647,6 @@ function tilePath(ctx, x, y) {
   ctx.lineTo(X(pts[0][0]), Y(pts[0][1]));  // back to the first corner: closePath slows a path of many tiles down more and more
 }
 
-// The population's cells (see population), under the walk, in the ant's colours by state; the ant's
-// own cells cover them as it walks
-function drawPopulation() {
-  if (!walk.ant || current?.mode !== 'antSquare' || !population.size) return;
-  const ctx = layers.fill, byColour = new Map();
-  for (const [k, c] of population) {
-    const col = c % walk.ant;
-    if (col) (byColour.get(col) ?? byColour.set(col, []).get(col)).push(k);
-  }
-  for (const [col, ks] of byColour) {
-    ctx.beginPath();
-    for (const k of ks) { const [x, y] = cellXY(k); tilePath(ctx, x, y); }
-    ctx.fillStyle = rampColour(col, walk.ant);
-    ctx.fill();
-  }
-}
-
 // Visits: the cell of every point and the most visits of any cell over the whole walk, which fixes
 // the log scale once, so a painted cell only changes colour when the walk comes back to it
 let visitData = null;  // { cell, max, seen } for the current walk
@@ -12346,7 +12319,6 @@ function tick(now = performance.now()) {
     if (flat && drawn !== cur) { drawn = cur; statsDirty = true; }
   }
   if (!flat && fillOn()) drawFill(cur);  // each region when it closes, under the path
-  if (needsFull) drawPopulation();
   if (!flat && walk.n && drawn < cur) {
     drawSegments(drawn, cur);
     drawn = cur;
@@ -12540,16 +12512,8 @@ function recentre() {
   fitNow();
 }
 stage.addEventListener('dblclick', () => { if (!drawing) recentre(); });  // drawing: a double click is two cells
-// Draw cells (the square ant): a click on a cell gives it its next colour, back to none, and the walk is
-// built again from that population; a drag still pans
+// Life's Draw start: a click on a cell draws (see the pointerup below); a drag still pans
 let drawing = false, drawFrom = null;
-$('drawCells').addEventListener('change', () => {
-  drawing = $('drawCells').checked;
-  if (drawing) $('autoFit').checked = false;  // the view stays where the cells are drawn
-  stage.classList.toggle('drawing', drawing);
-  renderAntRow();
-});
-$('clearCells').addEventListener('click', () => { population = new Map(); compute(true); });
 // Life on the plane: the grid's size and edges (built again), its start (the cells only, but by the digits)
 for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
   $(id).addEventListener('click', () => {
@@ -12646,10 +12610,9 @@ function emojiChoices() {
 }
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
-  if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
+  if (!drawFrom || !walk.plane || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
   const r = stage.getBoundingClientRect();
   const [wx, wy] = turnPoint([(e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale], walk.plane ? -planeTurn() : 0);
-  const x = Math.round(wx), y = Math.round(wy);
   if (walk.plane) {  // Life: alive, then each dying state, back to dead; inside the grid only
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, wx, wy);
     if (!cell) return;
@@ -12662,11 +12625,7 @@ stage.addEventListener('pointerup', (e) => {
       if (c) population.set(k, c); else population.delete(k);
     }
     planeReseed();
-    return;
   }
-  const k = key(x, y), c = ((population.get(k) ?? 0) + 1) % (walk.ant || 2);
-  if (c) population.set(k, c); else population.delete(k);
-  compute(true);
 });
 
 document.addEventListener('keydown', (e) => {
