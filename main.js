@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.995';
+const VERSION = '0.1.996';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10070,7 +10070,8 @@ const reversible = () => !walk.life || !!walk.life.margolus;
 function reverse(on) {
   reversing = on && reversible() && cur > 0;
   if (reversing) play(false);
-  $('reverse').innerHTML = icon(reversing ? 'pause' : 'reverse');
+  const shown = reversing ? 'pause' : 'reverse';
+  if ($('reverse').dataset.shown !== shown) $('reverse').innerHTML = icon($('reverse').dataset.shown = shown);  // (only when it changes: a click on it kept)
   $('reverse').classList.toggle('on', reversing);
 }
 
@@ -12134,7 +12135,7 @@ function tick(now = performance.now()) {
     acc -= k;
     if (k > 0 && playing) advanceTo(cur + k);
     if (k > 0 && reversing && walk.life) { for (let i = 0; i < k && cur > 0; i++) lifeBack(); statsDirty = true; if (!cur) reverse(false); }
-    else if (k > 0 && reversing) { const v = Math.max(0, cur - k); restart(); advanceTo(v); needsFull = true; reverse(v > 0); }  // (a walk: drawn again, up to there)
+    else if (k > 0 && reversing) { walkBack(Math.max(0, cur - k)); if (!cur) reverse(false); }
   }
   includeBox();
   if (walk.n && !walk.sphere && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow (a surface's frame is fixed)
@@ -12275,9 +12276,19 @@ $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) se
 // go to step v: back from the start, forward from where it is
 // the slider's end: a walk's last step, a reversible one's last generation; Life's, none (0)
 const seekFar = () => (walk.life && !walk.life.margolus ? 0 : walk.n);
+// A walk back to step v: its steps after taken off (the tiles' visits), drawn again up to there, the view kept as it is
+function walkBack(v) {
+  for (let i = cur; i > v; i--) {
+    if (walk.stepTiles) for (const t of [walk.stepTiles[2 * i - 2], walk.stepTiles[2 * i - 1]]) walk.visits[t]--;
+    else if (walk.sphere) walk.visits[walk.tile[i]]--;
+  }
+  cur = v;
+  needsFull = statsDirty = true;
+}
 function seekTo(v) {
   play(false);
   reverse(false);
+  if (v < cur && !walk.life) { walkBack(v); return; }  // (a walk: back without starting again, the view kept)
   if (v < cur && walk.life?.margolus && cur - v <= v) { while (cur > v) lifeBack(); needsFull = true; }  // (a reversible one: back by its rule, when nearer than its start)
   if (v < cur) restart();
   advanceTo(v);
