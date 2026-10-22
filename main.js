@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1001';
+const VERSION = '0.1.1002';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6686,30 +6686,44 @@ const textCells = (kind, W, row, text) => drawnCells(kind, W, row, (ctx, S) => {
   ctx.fillText(text, S / 2, S / 2);
 });
 // Icon 12, 24, 48: Pixelarticons' (pixelarticons.js), N cells wide: their 24 × 24 pixels a cell each, 2 × 2 each (48), or
-// halved (12: a cell alive where 2 of its 4 pixels are); in the middle of each colour's part (its cells' middles' mean),
-// a cell alive where its middle falls on a pixel, in its colour: each colour's choices, every icon (as Famous's, see
-// huntPlan), and the one of plane.seed
-let iconMemo = null;
-function iconChoices(N) {
-  const { kind, W, row } = walk.plane, K = walk.life.colours, key = `${N}|${kind}|${W}|${K}|${colourMix}|${walk.plane.torus}`;
-  if (iconMemo?.key === key) return iconMemo.choices;
-  const P = N === 12 ? 12 : 24, k = N / P;
-  const choices = huntParts(0, K).map((part, i) => {
-    const mids = part.map((t) => cellMiddle(kind, t % row, Math.floor(t / row))), mid = [0, 1].map((d) => mids.reduce((s, m) => s + m[d], 0) / mids.length);
-    const x0 = Math.floor(mid[0]) + 0.5 - (P / 2) * k, y0 = Math.floor(mid[1]) + 0.5 - (P / 2) * k;
-    const under = part.map((t, j) => [t, Math.floor((mids[j][0] - x0) / k), Math.floor((mids[j][1] - y0) / k)]).filter(([, x, y]) => x >= 0 && y >= 0 && x < P && y < P);  // (its cells under the icon, and their pixel)
-    return ICON_BITS.map((b64) => {
-      const bits = atob(b64), on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0;
-      const pixel = N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
-      return Int32Array.from(under.filter(([, x, y]) => pixel(x, y)).flatMap(([t]) => [t, i + 1]));
-    });
+// halved (12: a cell alive where 2 of its 4 pixels are). An icon as a pattern of the grid's cells (iconPatterns: the cells
+// of a patch of its plane grid whose middles fall on its pixels, as Draw's patterns after orientPattern), laid as Centered
+// lays them (patternAt: at each colour's spot, on the plane or a surface): each colour's choices, every icon (as Famous's,
+// see huntPlan), whole ones only; and those of plane.icons
+let iconMemo = null, iconPatternMemo = null;
+function iconPatterns(kind, N) {
+  const key = `${kind}|${N}`;
+  if (iconPatternMemo?.key === key) return iconPatternMemo.patterns;
+  const P = N === 12 ? 12 : 24, k = N / P, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
+  for (let y = -R; y <= R; y++) for (let x = -R * per; x <= R * per; x++) {  // (a patch round cell 0: the cells under the icon, and their pixel)
+    const m = cellMiddle(kind, x, y), px = Math.floor((m[0] - o[0] - 0.5) / k + P / 2), py = Math.floor((m[1] - o[1] - 0.5) / k + P / 2);
+    if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
+  }
+  const box = (() => { const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1])); return under.map(([x, y]) => [x - dx, y - dy, 1]); })();  // (all its cells: whether it fits)
+  const patterns = ICON_BITS.map((b64) => {
+    const bits = atob(b64), on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0;
+    const pixel = N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
+    const cells = under.filter(([, , px, py]) => pixel(px, py)), dx = Math.floor(Math.min(...cells.map((c) => c[0])) / per) * per, dy = Math.min(...cells.map((c) => c[1]));
+    return cells.map(([x, y]) => [x - dx, y - dy, 1]);  // (moved by whole lattice steps: its cells' shapes kept)
   });
+  patterns.box = box;
+  iconPatternMemo = { key, patterns };
+  return patterns;
+}
+// whether an icon N cells wide fits whole at each colour's spot (its square all laid), as Centered's patterns
+const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours; if (!patternsOn() || (walk.plane && APERIODIC[kind])) return false; const box = iconPatterns(kind, N).box; return Array.from({ length: K }, (_, i) => patternAt(i, K, box).length === box.length).every(Boolean); };
+function iconChoices(N) {
+  const K = walk.life.colours, kind = patternKind(), key = `${N}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
+  if (iconMemo?.key === key) return iconMemo.choices;
+  const patterns = iconFits(N) ? iconPatterns(kind, N) : [];
+  const choices = Array.from({ length: K }, (_, i) => patterns.map((cells) => Int32Array.from(patternAt(i, K, cells).flatMap(([t, v]) => [t, K > 1 ? i + 1 + K * (v - 1) : v]))));
   iconMemo = { key, choices };
   return choices;
 }
 function iconCells(N) {
   const seed = new Uint8Array(walk.life.seed.length);
-  iconChoices(N).forEach((c, i) => { const f = c[plane.icons[i] ?? plane.icons[0]] ?? c[0]; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; });
+  while (plane.icons.length < walk.life.colours) plane.icons.push(Math.floor(Math.random() * ICON_NAMES.length));  // (more colours than icons said: one at random each)
+  iconChoices(N).forEach((c, i) => { const f = c[plane.icons[i]] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; });
   return seed;
 }
 // the cells' states at generation 0, as plane says
@@ -6868,7 +6882,7 @@ function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
-  if (iconSize(zone)) return `${K === 1 || plane.icons.length === 1 ? `${K === 1 ? 'The icon' : 'Each colour the icon'} “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
+  if (iconSize(zone)) return `${K === 1 ? `The icon “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.slice(0, K).map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
@@ -8352,7 +8366,8 @@ for (const [name, words, value, art] of [
   RULE_ICONS[value] = art;
   const option = new Option(`${BLOCK_MARKS.square} ${value} — ${words}`, value);
   option.dataset.name = name;
-  $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
+  const second = [...$('lifePreset').options].filter((o) => o.text.startsWith(BLOCK_MARKS.square))[1];  // (Ising: second, after Tron)
+  $('lifePreset').insertBefore(option, name === 'Ising' ? second : $('lifePreset').querySelector('option[value="custom"]'));
 }
 // the stellated grids' rules, on the cells come in across (a cell j: a particle come in from that side, its way the one across):
 // FHP's (Frisch, Hasslacher and Pomeau, 1986) and HPP's (Hardy, de Pazzis and Pomeau, 1973) lattice gases: the particles fly
@@ -8984,7 +8999,7 @@ function huntFits() {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'face' && faceOf() === null) return [zone, false];
-    if (iconSize(zone)) return [zone, !!walk.plane && zoneParts('full', K).every((p) => p.length >= iconSize(zone) ** 2)];  // (a part as big as the icon)
+    if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];  // (as Centered: whole at each spot)
     if (!r && zone !== 'face') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
@@ -9264,6 +9279,7 @@ const tileCorners = (g, t) => {  // (a Möbius strip's back: its front's, turned
   return Array.from({ length: g.sides }, (_, q) => { const u = g.uv[2 * (g.sides * s + q)], v = g.uv[2 * (g.sides * s + q) + 1]; return back ? [u, g.W - v] : [u, v]; });
 };
 function sheetPatternAt(spot, cells) {
+  if (!cells.length) return [];  // (an icon with no cell at that size)
   const g = walk.geo, kind = patternKind(), unitsOf = sheetUnits(g, kind), { key, at } = sheetIndex(g);
   const pts = cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y)));
   const mid = [0, 1].map((d) => pts.reduce((sum, p) => sum + p[d], 0) / pts.length);
@@ -9747,6 +9763,8 @@ function decodeCells(code, n) {
 // a random start's word in a link: random (the soup), or its zone's (spark … jungle, realm, famous), with its density
 // and seed (pop=bloom.30.7); a zone from a link's word, else none
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase().replace(/ /g, '') : 'random');  // (Icon 24: icon24)
+// a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart)
+const zonePop = () => (iconSize(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => ICON_NAMES[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
@@ -9764,11 +9782,11 @@ function getSetup() {
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     if (carpetOn(mode.plane) && !plane.torus) s.cp = 1;  // (Sierpiński's carpet)
     if (mode.margolus) s.g = plane.gens;  // (a reversible one's generations)
-    s.pop = plane.start === 'random' ? (iconSize(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.map((i) => ICON_NAMES[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`) : plane.start === 'text' ? `text.${plane.text}` : plane.start;
+    s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
-  if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : `${zoneWord()}.${plane.density}.${plane.seed}`;  // a surface's start
+  if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : zonePop();  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
   if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
   if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
@@ -9812,6 +9830,7 @@ function applySetup(s) {
       const [kind, a, b] = String(s.pop ?? 'random').split('.');
       plane.start = kind === 'random' || zoneOfWord(kind) ? 'random' : 'digits';
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
+      if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
     }
     ruleFittedTo = s.w;  // a link's rule as it is
     lifeColours = Number(s.k) || parseRule(s.r)?.colours || 1;  // k=, or an old link's "/Immigration"
