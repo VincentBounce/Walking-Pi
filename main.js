@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.997';
+const VERSION = '0.1.998';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6661,11 +6661,12 @@ function cellRandom(seed, i) {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 // A drawing on the grid: painted on a canvas of its own (paint(ctx, S, box): its cells' middles' box, 80 % of it the room
-// to fill; at), a cell alive where its middle falls on the drawing, and, an emoji's colours, on its darker half
+// to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
+// drawing, and, an emoji's colours, on its darker half
 function drawnCells(kind, W, row, paint) {
   const n = row * W, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row)));
   const [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...mids.map((m) => m[d])), Math.max(...mids.map((m) => m[d]))]);
-  const S = 400, cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
+  const S = Math.min(4096, Math.max(400, 4 * Math.ceil(Math.max(x1 - x0, y1 - y0)))), cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
   cv.width = cv.height = S;
   ctx.fillStyle = '#000';
   paint(ctx, S, { x0, x1, y0, y1, at: (x, y) => [(x - (x0 + x1) / 2) * scale + S / 2, (y - (y0 + y1) / 2) * scale + S / 2], scale });
@@ -6683,17 +6684,22 @@ const textCells = (kind, W, row, text) => drawnCells(kind, W, row, (ctx, S) => {
   ctx.font = `bold ${big}px system-ui, sans-serif`;
   ctx.fillText(text, S / 2, S / 2);
 });
-// Icon: one of Pixelarticons' (pixelarticons.js, plane.seed's), in the middle, each of its 24 × 24 pixels k × k cells of the
-// grid (as big as fits in 80 % of it), its edges between the cells' middles
-function iconCells() {
-  const { kind, W, row } = walk.plane, bits = atob(ICON_BITS[plane.seed % ICON_BITS.length]);
-  return drawnCells(kind, W, row, (ctx, S, { x0, x1, y0, y1, at, scale }) => {
-    const k = Math.max(1, Math.floor((0.8 * Math.min(x1 - x0, y1 - y0)) / 24)), cx = Math.floor((x0 + x1) / 2) + 0.5, cy = Math.floor((y0 + y1) / 2) + 0.5;
-    for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) if (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) {
-      const [u, v] = at(cx + (x - 12) * k, cy + (y - 12) * k);
-      ctx.fillRect(u, v, k * scale, k * scale);
-    }
+// Icon 12, 24, 48: one of Pixelarticons' (pixelarticons.js, plane.seed's), N cells wide: its 24 × 24 pixels a cell each,
+// 2 × 2 each (48), or halved (12: a cell alive where 2 of its 4 pixels are); in the middle of each colour's part (its
+// cells' middles' mean), its edges between the cells' middles, only on its part's cells, in its colour
+function iconCells(N) {
+  const { kind, W, row } = walk.plane, K = walk.life.colours, bits = atob(ICON_BITS[plane.seed % ICON_BITS.length]), seed = new Uint8Array(row * W);
+  const on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0, P = N === 12 ? 12 : 24, k = N / P;
+  const pixel = N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
+  huntParts(0, K).forEach((part, i) => {
+    const mid = [0, 1].map((d) => part.reduce((s, t) => s + cellMiddle(kind, t % row, Math.floor(t / row))[d], 0) / part.length);
+    const cx = Math.floor(mid[0]) + 0.5, cy = Math.floor(mid[1]) + 0.5, mine = new Set(part);
+    const drawn = drawnCells(kind, W, row, (ctx, S, { at, scale }) => {
+      for (let y = 0; y < P; y++) for (let x = 0; x < P; x++) if (pixel(x, y)) { const [u, v] = at(cx + (x - P / 2) * k, cy + (y - P / 2) * k); ctx.fillRect(u, v, k * scale, k * scale); }
+    });
+    for (let t = 0; t < drawn.length; t++) if (drawn[t] && mine.has(t)) seed[t] = i + 1;
   });
+  return seed;
 }
 // the cells' states at generation 0, as plane says
 // a grid's cells of the wall (a rosette's hole): out of every cell's neighbours, none of their own (never alive, see lifeStep)
@@ -6851,7 +6857,7 @@ function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
-  if (zone === 'icon') return `The icon “${ICON_NAMES[plane.seed % ICON_NAMES.length]}” (Pixelarticons)`;
+  if (iconSize(zone)) return `${K === 1 ? 'The icon' : 'Each colour the icon'} “${ICON_NAMES[plane.seed % ICON_NAMES.length]}” (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
@@ -8734,9 +8740,10 @@ const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], ra
                      full: ['zoneAll', 'Wild'],
                      patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
                      centred: [null, 'Centered'],  // the same, each at its colour's spot
-                     icon: [null, 'Icon'],  // one of Pixelarticons' icons, at random (the plane, one colour; see iconCells)
+                     icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon48: [null, 'Icon 48'],  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (the plane; see iconCells)
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
+const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0);  // (an icon's width in cells)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
@@ -8964,7 +8971,7 @@ function huntFits() {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'face' && faceOf() === null) return [zone, false];
-    if (zone === 'icon') return [zone, !!walk.plane && K === 1];
+    if (iconSize(zone)) return [zone, !!walk.plane && zoneParts('full', K).every((p) => p.length >= iconSize(zone) ** 2)];  // (a part as big as the icon)
     if (!r && zone !== 'face') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
@@ -9060,7 +9067,7 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
-  if (hunt.zone === 'icon') return iconCells();
+  if (iconSize(hunt.zone)) return iconCells(iconSize(hunt.zone));
   if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'face') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
@@ -9724,8 +9731,8 @@ function decodeCells(code, n) {
 /* ---- 10.2 The setup object ------------------------------------------------------------------- */
 // a random start's word in a link: random (the soup), or its zone's (spark … jungle, realm, famous), with its density
 // and seed (pop=bloom.30.7); a zone from a link's word, else none
-const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase() : 'random');
-const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase() === w);
+const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase().replace(/ /g, '') : 'random');  // (Icon 24: icon24)
+const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
   if (!mode.life) s.d = $('digits').value;
@@ -12454,11 +12461,11 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, 
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
-  const b = tile({ pic: pic ? icon(pic) : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : zone === 'icon' ? '.....,.o.o.,.....,o...o,.ooo.' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face
+  const b = tile({ pic: pic ? icon(pic) : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : iconSize(zone) ? '.....,.o.o.,.....,o...o,.ooo.' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face
   b.dataset.zone = zone;
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
-    : zone === 'icon' ? 'An icon at random in the middle, one of the 1,036 of Pixelarticons (MIT), its pixels alive: a click, another'
+    : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : zone === 'face' ? 'A whole face of the solid for each colour: random starts on it' : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
