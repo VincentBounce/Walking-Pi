@@ -414,7 +414,9 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
 .ranking { position: relative; margin: 0 0 8px; font-size: 12px; font-variant-numeric: tabular-nums; }  /* a battle: a row a colour, re-sorted as it goes */
 .ranking .rank-row { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
-.gauges .gauge-row { height: 18px; display: grid; grid-template-columns: 64px minmax(0, 1fr) 110px; align-items: center; gap: 6px; }  /* one colour: fixed rows */
+.gauges:not([hidden]) { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(110px, max-content); grid-auto-rows: 18px; align-items: center; column-gap: 6px; }  /* one colour: fixed rows, one set of columns (a figure as wide as it needs, on one line) */
+.gauges .gauge-row { display: contents; }
+.gauges .rank-num { white-space: nowrap; }
 .gauges .gauge-row > span:first-child { color: var(--muted); }
 .ranking .rank-cell { display: none; white-space: nowrap; text-align: right; }
 #ranking .rank-cell:nth-child(4) { display: block; }  /* folded: the table's alive column only */

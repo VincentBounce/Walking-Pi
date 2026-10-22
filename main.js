@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1005';
+const VERSION = '0.1.1006';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8137,12 +8137,13 @@ function renderRuleSection() {
 let ruleFittedTo = null;
 function fitRuleToShape() {
   const w = $('mode').value, mode = MODES[w];
-  if (!mode.life || ruleFittedTo === w) return;
-  ruleFittedTo = w;
+  if (!mode.life) return;
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? !!mode.plane : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
   const kindFits = mode.margolus ? (parseRule(rule)?.ising || parseRule(rule)?.four ? mode.plane === 'square' : parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[mode.plane]?.k) : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
+  if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
+  ruleFittedTo = w;
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
   const fit = options.find((o) => o.text.includes(lifeMark(mode)));
   if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
