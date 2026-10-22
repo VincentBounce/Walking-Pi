@@ -477,8 +477,8 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
 .player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
 .player-side .seek-count { margin-top: -4px; }  /* the step, just under the slider */
-.stage-bar:not(.blocks):hover .seek-row { display: none; }  /* open, the activity curve is the slider (see drawActivity); a reversible one's, its slider kept */
-@media (hover: none) { .stage-bar:not(.blocks):focus-within .seek-row { display: none; } }
+.stage-bar:hover .seek-row { display: none; }  /* open, the activity curve is the slider (see drawActivity) */
+@media (hover: none) { .stage-bar:focus-within .seek-row { display: none; } }
 .stage-bar:not(:hover) .player-side { display: none; }
 @media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }

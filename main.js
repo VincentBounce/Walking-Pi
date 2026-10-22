@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.990';
+const VERSION = '0.1.991';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11716,7 +11716,7 @@ let curveOf = null;  // a walk's columns, once per walk and width
 function drawActivity() {
   const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
   if (!W) return;  // folded (drawn again when the card opens)
-  cv.classList.toggle('seek', !walk.life);
+  cv.classList.toggle('seek', !walk.life || !!walk.life.margolus);
   if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
   const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -11732,8 +11732,8 @@ function drawActivity() {
   let series, n;
   if (walk.life) {
     const T = walk.life.trace;
-    n = T.alive.length;
-    series = [[columns(n, (i) => T.alive[i]), accent]];
+    n = walk.life.margolus ? Math.max(T.alive.length, seekFar() + 1) : T.alive.length;  // (a reversible one's: as its slider, the generations not yet played flat)
+    series = [[columns(n, (i) => T.alive[i] ?? 0), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
     n = walk.n + 1;
@@ -11746,7 +11746,7 @@ function drawActivity() {
     for (let f = 0; f <= 1; f += 0.125) rainbow.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]);
     series = [[curveOf.c, rainbow]];
   }
-  const at = Math.min(W - 1, Math.floor((Math.min(cur, n - 1) * W) / n));
+  const c = Math.min(cur, n - 1), at = Math.min(W - 1, n < W ? Math.ceil(((c + 1) * W) / n) - 1 : Math.floor((c * W) / n));  // (fewer steps than columns: the step shown, all its columns)
   const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;
   for (const [c, colour] of series) {
     const y = (x) => H - 1 - (c[x] / top) * (H - 3);
@@ -11845,10 +11845,9 @@ function updateStats() {
   }
   // the progress: a slider to go to any step (none for the Game of Life, which has no end; a reversible one's, back and
   // forth, as far as it went, LIFE_JUMP at least)
-  const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !walk.life) || blocks, far = blocks ? Math.max(LIFE_JUMP, walk.life.reached ?? 0) : walk.n;
+  const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !walk.life) || blocks, far = seekFar();
   $('seek').parentElement.hidden = !finite;  // its whole line
-  $('seekCountOpen').hidden = !finite || blocks;  // (open, the count under the curve; a reversible one's, its slider's)
-  $('animBar').classList.toggle('blocks', blocks);  // (open too: its curve is no slider)
+  $('seekCountOpen').hidden = !finite;  // (open, the count under the curve)
   if (finite) {
     $('seek').max = far;
     if (document.activeElement !== $('seek')) $('seek').value = cur;
@@ -12171,6 +12170,8 @@ $('speedLabel').addEventListener('input', () => { $('speedLabel').value = $('spe
 $('speedLabel').addEventListener('blur', updateSpeedLabel);  // "50 steps/s" again
 $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) setSpeed(Number($('speedLabel').value)); });
 // go to step v: back from the start, forward from where it is
+// the slider's end: a walk's last step; a reversible one's, as far as it went, LIFE_JUMP at least; Life's, none (0)
+const seekFar = () => (walk.life?.margolus ? Math.max(LIFE_JUMP, walk.life.reached ?? 0) : walk.life ? 0 : walk.n);
 function seekTo(v) {
   play(false);
   if (v < cur) restart();
@@ -12179,11 +12180,12 @@ function seekTo(v) {
   statsDirty = true;
 }
 $('seek').addEventListener('input', () => seekTo(Number($('seek').value)));
-// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's; Life's runs on)
+// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a reversible one's; Life's runs on)
 const seekCurve = (e) => {
-  if (walk.life || !Number.isFinite(walk.n) || !walk.n) return;
+  const far = seekFar();
+  if (!Number.isFinite(far) || !far) return;
   const r = $('activity').getBoundingClientRect();
-  seekTo(Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * walk.n));
+  seekTo(Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * far));
 };
 $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
