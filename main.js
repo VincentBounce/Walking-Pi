@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1023';
+const VERSION = '0.1.1025';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6125,8 +6125,9 @@ const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penros
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
 const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
-// blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
-const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
+// blocks: the nearest size their sets fit round on a torus (else a cell in two blocks of a set at the seam: the rule broken),
+// with walls too (the same grid either way)
+const planeW = (kind, side) => (MODES[$('mode').value]?.margolus ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
 // colours in blocks (on a torus, or 2 and 4 with walls along the edges: see huntParts), cols × rows of them: the nearest side
 // they divide (12, 4 × 3: a multiple of 12), every colour as many cells
 const colourW = (kind, W) => {
@@ -6969,21 +6970,17 @@ function planeFromSetup(s) {
   plane.rect = Number(s.o) === 1;
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
-  plane.sym = SYMMETRIES[s.y] ? s.y : SYMMETRIES[kind] ? kind : 'none';  // y=, or an old link's "mirror.30.7"
-  if (kind === 'random' || SYMMETRIES[kind] || zoneOfWord(kind)) {
+  plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
+  if (kind === 'random' || zoneOfWord(kind)) {
     plane.start = 'random';
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
     if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
     if (hunt.zone === 'emoji') plane.emoji = String(s.pop).slice(6) || '🙂';  // (pop=emoji.🦊)
-  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' || kind === 'text' ? kind : 'random';
+  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
-  if (plane.start === 'pattern') {  // an old link's pattern: drawn in the middle
-    plane.start = 'draw';
-    population = new Map(orientPattern('square', (DRAW_BY_ID.get(a) ?? DRAW_BY_ID.get('acorn'))[4], 0, false).map(([x, y]) => [key(x + (plane.side >> 1), y + (plane.side >> 1)), 1]));
-  }
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
@@ -7499,7 +7496,7 @@ for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] =
 const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
-// ("/Immigration", "/Colours4"), which old links may still carry
+// ("/Immigration", "/Colours4", see lifeRuleNow)
 let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed in one place (see huntParts)
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
@@ -9866,7 +9863,7 @@ function getSetup() {
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && !mode.margolus && lifeColours > 1) s.k = lifeColours;
   if (mode.life && !mode.margolus && lifeColours > 1 && colourMix) s.mx = 1;  // (Mixed)
-  if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
+  if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
@@ -9921,7 +9918,7 @@ function applySetup(s) {
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
       if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
     }
-    lifeColours = Number(s.k) || (s.r && parseRule(s.r)?.colours) || 1;  // k=, or an old link's "/Immigration"
+    lifeColours = Number(s.k) || 1;
     colourMix = Number(s.mx) === 1;
     if (s.r) { ruleFittedTo = s.w; setRuleText(ruleBody(s.r)); }  // a link's rule as it is
   }
