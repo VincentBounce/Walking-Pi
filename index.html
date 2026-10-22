@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261109x">
+  <link rel="stylesheet" href="style.css?v=20261109y">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -405,6 +405,8 @@
             <option value="B45/S345/C4" data-name="Sparse">▲ B45/S345/C4 — lasting sparse activity (4 states)</option>
             <option value="B34/S2/C4" data-name="Brink">▲ B34/S2/C4 — on the edge of extinction (4 states)</option>
             <option value="B346/S01458" data-name="Long-lasting war">▲ B346/S01458 — a long war in its walls: 2 colours 668 to 983 generations till one is left; 3 colours 1,353 to 1,855 generations till one is left</option>
+            <option value="B45/S1246" data-name="Sierpiński Life">▲ B45/S1246 — found on Sierpiński's tetrahedron: soups settling after 328 to over 6,000 generations (4.1 % alive at the end), oscillators in 83 % of their ash</option>
+            <option value="B35/S0139/C4" data-name="Sierpiński embers">▲ B35/S0139/C4 — found on Sierpiński's tetrahedron: soups settling after 380 to 908 generations (3.54 % alive at the end), oscillators in 58 % of their ash (4 states)</option>
             <option value="B2/S345/C4" data-name="Star Wars">■ B2/S345/C4 — Star Wars, square-grid classic (4 states)</option>
             <option value="B2/S/C3" data-name="Brian's Brain">■ B2/S/C3 — Brian's Brain, permanent chaos (3 states)</option>
             <option value="B2/S2/C25" data-name="Faders">■ B2/S2/C25 — Faders, by Rudy Rucker and John Walker: Life crossed with Brian's Brain, sparks wandering in long fading trails, still going after 3,000 generations (25 states)</option>
@@ -687,6 +689,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261109x"></script>
+  <script src="main.js?v=20261109y"></script>
 </body>
 </html>
