@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1025';
+const VERSION = '0.1.1026';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6125,9 +6125,8 @@ const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penros
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
 const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind])));
-// blocks: the nearest size their sets fit round on a torus (else a cell in two blocks of a set at the seam: the rule broken),
-// with walls too (the same grid either way)
-const planeW = (kind, side) => (MODES[$('mode').value]?.margolus ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
+// blocks on a torus: the nearest size their sets fit round (else a cell in two blocks of a set at the seam: the rule broken)
+const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(kind) ? blockWrapW(kind, sideW(kind, side)) : shaped(kind) ? shapeW(kind, sideW(kind, side)) : colourW(kind, sideW(kind, side)));
 // colours in blocks (on a torus, or 2 and 4 with walls along the edges: see huntParts), cols × rows of them: the nearest side
 // they divide (12, 4 × 3: a multiple of 12), every colour as many cells
 const colourW = (kind, W) => {
@@ -6666,15 +6665,15 @@ function cellRandom(seed, i) {
 // A drawing on the grid: painted on a canvas of its own (paint(ctx, S, box): its cells' middles' box, 80 % of it the room
 // to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
 // drawing, and, an emoji's colours, on its darker half
-// a grid's cells as a drawing sees them, once a grid: their middles (as the grid is seen, turned: upright; a grid that never
-// repeats, its patch's own, the grid not built yet), their box, and for the dithering their reading order (top down, left to
+// a grid's cells as a drawing sees them, once a grid: their middles (a grid that never repeats, its patch's own, the grid
+// not built yet), their box, and for the dithering their reading order (top down, left to
 // right) and the 6 nearest after each
 let drawnMemo = null;
 function drawnGrid(kind, W, row) {
   const key = `${kind}|${W}|${row}`;
   if (drawnMemo?.key === key) return drawnMemo;
   const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);
-  const turn = planeTurn(kind), n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : turnPoint(cellMiddle(kind, t % row, Math.floor(t / row)), turn)));
+  const n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : cellMiddle(kind, t % row, Math.floor(t / row))));
   const real = mids.filter((m) => Number.isFinite(m[0])), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
   const order = [...mids.keys()].sort((p, q) => mids[p][1] - mids[q][1] || mids[p][0] - mids[q][0]), rank = new Int32Array(n), bins = new Map(), bin = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`;
   order.forEach((t, r) => { rank[t] = r; (bins.get(bin(...mids[t])) ?? bins.set(bin(...mids[t]), []).get(bin(...mids[t]))).push(t); });
@@ -6872,6 +6871,7 @@ function buildLifePlane(seq) {
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
                 paint: MODES[current.mode].margolus && carriesColours(rule) && blockPicture ? new Uint8Array(n) : null };  // (blocks: an emoji's colours, see carriesColours)
+  if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see blockStep)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -7085,7 +7085,7 @@ function sideOf(kind, W, nbr) {
 // middle, corner or side's middle that its cells round turn onto) the nearest its middle, the biggest that keeps the
 // grid's edge out of it by a cell's width: { dead, walls: [[x, y], …] }, else null. Its cells
 // as the whole grid's (patterns, symmetry and hunts the same); a cut by a distance: cells as far, all in or all out
-const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind) && !MODES[$('mode').value]?.margolus;  // (a six-fold grid with walls: always a hexagon)
+const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind);  // (a six-fold grid with walls: always a hexagon)
 function planeShape(kind, W) {
   if (!shaped(kind)) return null;
   const key = `${kind}|${W}`;
@@ -7501,7 +7501,16 @@ let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed 
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
 const negative = (L) => !!L.margolus?.flips && cur % 2 === 1;
-const shownCells = (L) => (negative(L) ? L.alive.map((v) => (v ? 0 : 1)) : L.alive);
+// the cells in a block (of any phase): the only ones shown negative (a wall's, out of every block, as they are); skipped,
+// each phase's others of them (by a wall)
+function blockCells(M, n) {
+  if (M.cells) return M.cells;
+  const c = new Uint8Array(n);
+  for (const turn of M.turns) for (const t of turn) c[t] = 1;
+  c.skipped = M.turns.map((turn) => { const here = new Set(turn); return [...c.keys()].filter((t) => c[t] && !here.has(t)); });
+  return (M.cells = c);
+}
+const shownCells = (L) => { if (!negative(L)) return L.alive; const c = blockCells(L.margolus, L.alive.length); return L.alive.map((v, t) => (c[t] ? (v ? 0 : 1) : v)); };
 const blockPalette = () => blockPicture.pal;  // (an emoji's own, see pictureOf)
 const ruleColours = () => lifeColours;
 const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d+)$/i, '');  // births, survivals (and dying stages), no colours
@@ -8291,9 +8300,10 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
     const dx = x - o[0], dy = y - o[1], u = (dx * P[1][1] - dy * P[1][0]) / D, v = (P[0][0] * dy - P[0][1] * dx) / D, fu = u - Math.floor(u + 1e-9), fv = v - Math.floor(v + 1e-9);
     return [o[0] + fu * P[0][0] + fv * P[1][0], o[1] + fu * P[0][1] + fv * P[1][1]];
   };
+  const dead = new Set(torus ? [] : planeDead(kind, W) ?? []);  // (a hexagon's wall: its cells in no block, never alive)
   for (let t = 0; t < W * row; t++) {
     const pts = planeCorners(kind, t % row, Math.floor(t / row));
-    if (!pts) continue;
+    if (!pts || dead.has(t)) continue;
     const m = cellMiddle(kind, t % row, Math.floor(t / row));
     pts.forEach((q, i) => {
       const key = pointKey(home(q)), [u, v] = [pts.at(i - 1), pts[(i + 1) % pts.length]].map((p) => [p[0] - q[0], p[1] - q[1]]);
@@ -8363,7 +8373,7 @@ const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; 
 // never move: black and white
 const carriesColours = (rule) => !!rule?.margolus && !rule.ising && blockKind(rule.margolus).keeps;
 // back: run backwards (a, the generation after b; see lifeBack)
-function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null, back = false) {
+function blockStep({ k, turns, to, move, ising, sides, flips, cells }, a, b, g, paint = null, back = false) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
   const blocks = turns[g % turns.length], cs = [], odd = flips && g % 2 === 1 ? 1 : 0, even = flips && g % 2 === 0 ? 1 : 0, sa = back ? even : odd, sb = back ? odd : even;  // (each side shown negative or not: generation g odd, g + 1 even, or back)
@@ -8378,6 +8388,7 @@ function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint =
       if (paint && ((n >> j) & 1) ^ sb) paint[blocks[i + j]] = cs[m++];
     }
   }
+  if (flips) for (const t of cells.skipped[g % turns.length]) b[t] = a[t] ? 0 : 1;  // (a cell this phase leaves out, by a wall: turned over, as its block would, so shown as it is)
 }
 // The block rules, on a ring of k cells (the same on every grid with blocks of k, each turned as its block): their
 // name, the blocks they fit, their words, the state a state turns into, their picture
@@ -8508,12 +8519,12 @@ function lifeStep() {
     }
   }
   if (L.margolus?.flips) {  // (every other generation shown negative: its cells shown alive, born and died, see negative)
-    const sa = gen % 2 === 0 ? 1 : 0, sb = 1 - sa;  // (a: generation gen − 1, b: gen)
+    const sa = gen % 2 === 0 ? 1 : 0, sb = 1 - sa, c = blockCells(L.margolus, a.length);  // (a: generation gen − 1, b: gen)
     let born = 0, dead = 0;
-    for (let t = 0; t < a.length; t++) { const x = (a[t] ? 1 : 0) ^ sa, y = (b[t] ? 1 : 0) ^ sb; if (y && !x) born++; else if (x && !y) dead++; }
+    alive = 0;
+    for (let t = 0; t < a.length; t++) { const x = (a[t] ? 1 : 0) ^ (sa & c[t]), y = (b[t] ? 1 : 0) ^ (sb & c[t]); if (y && !x) born++; else if (x && !y) dead++; alive += y; }
     L.born = born0 + born;
     L.dead = dead0 + dead;
-    if (sb) alive = a.length - alive;
   }
   L.alive = b;
   L.next = a;
@@ -8551,9 +8562,9 @@ function lifeBack() {
     }
   }
   let born = 0, dead = 0;
-  const sa = M.flips && cur % 2 === 1 ? 1 : 0, sb = M.flips ? 1 - sa : 0;  // (shown negative every other generation, see negative)
+  const sa = M.flips && cur % 2 === 1 ? 1 : 0, sb = M.flips ? 1 - sa : 0, c = M.flips ? blockCells(M, a.length) : null;  // (shown negative every other generation, see negative)
   for (let t = 0; t < a.length; t++) {
-    const x = (a[t] ? 1 : 0) ^ sa, y = (b[t] ? 1 : 0) ^ sb;
+    const x = (a[t] ? 1 : 0) ^ (sa & (c?.[t] ?? 0)), y = (b[t] ? 1 : 0) ^ (sb & (c?.[t] ?? 0));
     if (x === y) { if (b[t]) L.age[t] = Math.max(1, L.age[t] - 1); if (a[t] === b[t]) continue; }
     else if (x) born++; else dead++;  // (forth: born, died)
     L.age[t] = b[t] ? 1 : 0;
