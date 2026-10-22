@@ -24,7 +24,8 @@ const DEBRUIJN = (N) => {
     return discPatch(items, W, (h) => h.p, [0, 0], (x, y) => Math.max(...e.map(([a, b]) => Math.abs(a * x + b * y))));
   })();
 };
-const AMMANN = DEBRUIJN(4), RHOMBS12 = DEBRUIJN(6);
+const AMMANN = DEBRUIJN(4), RHOMBS12 = DEBRUIJN(6), RHOMBS14 = DEBRUIJN(7);
 export const ammannGrid = (W) => patchGrid(AMMANN(W), W);
 export const rhombs12Grid = (W) => patchGrid(RHOMBS12(W), W);
-export { AMMANN, RHOMBS12 };
+export const rhombs14Grid = (W) => patchGrid(RHOMBS14(W), W);
+export { AMMANN, RHOMBS12, RHOMBS14 };

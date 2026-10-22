@@ -1449,3 +1449,23 @@ From Wikimedia's [Pentagonal tiling with 7-fold rotational symmetry](https://com
 Sugimoto's own construction (arXiv 2005.08470, his Figure 4), read off the tilings our search had grown and checked against them: the pentagons go in pairs mirrored on their side DE (his Octa-units); the pairs in wedges of rows of 1, 2, 3… (a pair to the next along DE by e; a row to the next by e/2 along and H across, H the heights of B and C over DE); a wedge's first pair from the one before by the step "to its A mirrored, turned 120°/q". A flower of n turns: 3 wedges from its star (B in the middle), turned n times. A ring of m: the pentagon of a flower of q = m/3 turns, its m wedges round the point that step keeps, its hole a regular m-gon. It gives back, tile for tile, the flowers of 3, 4, 5, 7, 8 and the rings of 7, 8, 9, 12 the search had found; at every corner inside, the angles a whole turn for the flowers of 3 to 20 and the rings of 7 to 20 (Ring 10 too, the search's dead end); about 15 ms instead of a search. Hirschhorn's flower (6) is another tiling: still grown from its middle as drawn.
 
 **Sponge wanderers [B347/S2/C3](https://vincentbounce.github.io/Walking-Pi/#w=lifeMenger&s=3&r=B347/S2/C3&pop=bloom.35.2)**: searched for on the sponge itself from a bloom (tools/tilings/seedgrow.js: 16,896 rules, B3 and up, level 3), the ones that grow at least 3 times, never past 15 %, end under 8 %, moving the longest: the only one moving on after 2,000 generations from all 3 blooms (a bloom of ~65 cells to 1,700–2,260, 6–7 % at the end). A soup falls to 5–6 % and never stops; a seed of a dozen cells dies, as most do in Life. The soup searches' best (B379/S013/C5 and the like) die from a bloom; B3/S23 and the B2 rules fill a third of it.
+
+**Sponge wanderers with letters (night of 2026-10-22)**: Hensel's letters now work on the sponge round its folds; every letter added to or taken from B347/S2/C3 (102 rules, 2 blooms each, 1,500 generations, in the app): none better. A letter more in B1 or B2 fills a third of it, one less in B3 or B4 dies. Without letters, B3478/S2/C3 spread from 2 blooms of 4 where B347/S2/C3 spread from 1: too few to swap them; kept.
+
+## ❅ Rhombs 14: de Bruijn's fourteenfold
+
+DEBRUIJN(7): 7 families of lines, all moved by ½, three kinds of rhombi, a star of 14 thin ones at its middle; in a 14-gon. Searched as the others (103,448 rules):
+
+| Rule | Score | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|
+| [**Rhombs 14 Life B378/S023**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs14&r=B378/S023&s=48&pop=random.30.7) | 0.216 | 509–2,221 | 1.75 % | 75 % |
+| [**Rhombs 14 embers B389/S1345/C5**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs14&r=B389/S1345/C5&s=48&pop=random.30.7) | 0.289 | 276–1,644 | 2.7 % | 25 % |
+
+## ✴ Ring 10
+
+Now that the rings are built as Sugimoto builds them (no search to get stuck), the ring round a decagonal hole. Searched as the others (22,168 rules):
+
+| Rule | Score | Soups settle after | Alive at the end | Oscillators in the ash |
+|---|---|---|---|---|
+| [**Ring 10 embers B26/S034/C4**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRing10&r=B26/S034/C4&s=48&pop=random.30.7) | 0.222 | 235–2,337 | 3.16 % | 0 % |
+| [**Ring 10 sparks B27/S0345/C5**](https://vincentbounce.github.io/Walking-Pi/#w=life2dRing10&r=B27/S0345/C5&s=48&pop=random.30.7) | 0.218 | 218–6,000+ | 3.27 % | 67 % |
