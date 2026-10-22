@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1003';
+const VERSION = '0.1.1004';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6699,12 +6699,12 @@ function iconPatterns(kind, N) {
     const m = cellMiddle(kind, x, y), px = Math.floor((m[0] - o[0] - 0.5) / k + P / 2), py = Math.floor((m[1] - o[1] - 0.5) / k + P / 2);
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
-  const box = (() => { const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1])); return under.map(([x, y]) => [x - dx, y - dy, 1]); })();  // (all its cells: whether it fits)
-  const patterns = ICON_BITS.map((b64) => {
+  const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1]));  // (moved by whole lattice steps: its cells' shapes kept)
+  const box = under.map(([x, y]) => [x - dx, y - dy, 1]);  // its square: all its cells, laid as one (see iconChoices)
+  const patterns = ICON_BITS.map((b64) => {  // each icon: its cells' places in the square
     const bits = atob(b64), on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0;
     const pixel = N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
-    const cells = under.filter(([, , px, py]) => pixel(px, py)), dx = Math.floor(Math.min(...cells.map((c) => c[0])) / per) * per, dy = Math.min(...cells.map((c) => c[1]));
-    return cells.map(([x, y]) => [x - dx, y - dy, 1]);  // (moved by whole lattice steps: its cells' shapes kept)
+    return under.flatMap(([, , px, py], j) => (pixel(px, py) ? [j] : []));
   });
   patterns.box = box;
   iconPatternMemo = { key, patterns };
@@ -6716,7 +6716,10 @@ function iconChoices(N) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
   const patterns = iconFits(N) ? iconPatterns(kind, N) : [];
-  const choices = Array.from({ length: K }, (_, i) => patterns.map((cells) => Int32Array.from(patternAt(i, K, cells).flatMap(([t, v]) => [t, K > 1 ? i + 1 + K * (v - 1) : v]))));
+  const choices = Array.from({ length: K }, (_, i) => {  // (the square laid once at the colour's spot, centred, each icon its cells of it)
+    const laid = patterns.length ? patternAt(i, K, patterns.box) : [];
+    return patterns.map((js) => Int32Array.from(js.flatMap((j) => [laid[j][0], i + 1])));
+  });
   iconMemo = { key, choices };
   return choices;
 }
