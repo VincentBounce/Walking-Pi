@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1008';
+const VERSION = '0.1.1009';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6830,7 +6830,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus }) : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, flips: rule.margolus[0] === rule.margolus.length - 1 }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
                 paint: MODES[current.mode].margolus && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
@@ -7420,7 +7420,7 @@ function drawLifePlane() {
   const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[31 - level(a + 1, 65)]);  // the rainbow backwards: warm newborns, cold old cells
   const byActivity = colour === 'digit' ? Uint32Array.from({ length: Math.min(L.maxActivity, 65535) + 1 }, (_, v) => (v ? grad[level(v + 1, L.maxActivity + 1)] : 0)) : null;
   const byDying = Uint32Array.from({ length: L.C }, (_, st) => (st < 2 ? 0 : trail[Math.min(trail.length - 1, Math.round(((st - 1) / (L.C - 1)) * trail.length))]));
-  const { alive: a, age, activity, died } = L, fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
+  const { age, activity, died } = L, a = shownCells(L), fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
   for (let t = 0; t < n; t++) {
     const st = a[t];
     px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
@@ -7484,6 +7484,10 @@ let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed 
 // Blocks' colours: 1, or 2, 4, 8 drawn at random over the start's cells, each cell's carried along by the blocks (see
 // blockStep): a picture only, one population (no civilisations, no battles)
 const BLOCK_COLOURS = [1, 2, 4, 8];
+// a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
+// Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
+const negative = (L) => !!L.margolus?.flips && cur % 2 === 1;
+const shownCells = (L) => (negative(L) ? L.alive.map((v) => (v ? 0 : 1)) : L.alive);
 const blockPalette = () => blockPicture?.pal ?? LIFE_COLOURS.slice(0, blockColours);  // (an emoji's own, see pictureOf)
 let blockColours = 1;
 function renderBlockColours() {
@@ -8346,19 +8350,21 @@ function isingOf(kind, W) {
   }
   return { ising: true, k: 1, turns: turns.map((c) => Int32Array.from(c)), sides, to: new Uint8Array(0), wraps: torus };
 }
-function blockStep({ k, turns, to, move, ising, sides }, a, b, g, paint = null) {
+// flips: a rule that turns an empty block full (Critters, Tron), shown negative every other generation (see negative): a
+// cell's colour goes with the cells shown alive
+function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
-  const blocks = turns[g % turns.length], cs = [];
+  const blocks = turns[g % turns.length], cs = [], sa = flips && g % 2 === 1 ? 1 : 0, sb = flips && g % 2 === 0 ? 1 : 0;  // (each side shown negative or not)
   b.set(a);
   for (let i = 0; i < blocks.length; i += k) {
     let st = 0;
     cs.length = 0;
-    for (let j = 0; j < k; j++) if (a[blocks[i + j]]) { st |= 1 << j; if (paint) cs.push(paint[blocks[i + j]]); }
+    for (let j = 0; j < k; j++) { if (a[blocks[i + j]]) st |= 1 << j; if (paint && (a[blocks[i + j]] ? 1 : 0) ^ sa) cs.push(paint[blocks[i + j]]); }
     const n = to[st];
     for (let j = 0, m = 0; j < k; j++) {
       b[blocks[i + j]] = (n >> j) & 1;
-      if (paint && cs.length && (n >> j) & 1) paint[blocks[i + j]] = cs[m++ % cs.length];
+      if (paint && cs.length && ((n >> j) & 1) ^ sb) paint[blocks[i + j]] = cs[m++ % cs.length];
     }
   }
 }
@@ -8484,6 +8490,14 @@ function lifeStep() {
       L.died[t] = L.gen;
     }
   }
+  if (L.margolus?.flips) {  // (every other generation shown negative: its cells shown alive, born and died, see negative)
+    const sa = gen % 2 === 0 ? 1 : 0, sb = 1 - sa;  // (a: generation gen − 1, b: gen)
+    let born = 0, dead = 0;
+    for (let t = 0; t < a.length; t++) { const x = (a[t] ? 1 : 0) ^ sa, y = (b[t] ? 1 : 0) ^ sb; if (y && !x) born++; else if (x && !y) dead++; }
+    L.born = born0 + born;
+    L.dead = dead0 + dead;
+    if (sb) alive = a.length - alive;
+  }
   L.alive = b;
   L.next = a;
   L.aliveCount = alive;
@@ -8520,9 +8534,11 @@ function lifeBack() {
     }
   }
   let born = 0, dead = 0;
+  const sa = M.flips && cur % 2 === 1 ? 1 : 0, sb = M.flips ? 1 - sa : 0;  // (shown negative every other generation, see negative)
   for (let t = 0; t < a.length; t++) {
-    if (a[t] === b[t]) { if (b[t]) L.age[t] = Math.max(1, L.age[t] - 1); continue; }
-    if (a[t]) born++; else dead++;  // (forth: born, died)
+    const x = (a[t] ? 1 : 0) ^ sa, y = (b[t] ? 1 : 0) ^ sb;
+    if (x === y) { if (b[t]) L.age[t] = Math.max(1, L.age[t] - 1); if (a[t] === b[t]) continue; }
+    else if (x) born++; else dead++;  // (forth: born, died)
     L.age[t] = b[t] ? 1 : 0;
     if (L.activity[t]) L.activity[t]--;
   }
@@ -10643,12 +10659,13 @@ function drawSphere() {
       palette = [null, ...civ, ...LIFE_FADE];
       levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono' && L.paint) {  // blocks: each cell its colour, then the trail of the dead
-      const pal = blockPalette();
+      const pal = blockPalette(), A = shownCells(L);
       palette = [null, ...pal, ...LIFE_FADE, LIFE_ALIVE];  // (a cell born with no colour, an emoji's background: alive's)
-      levelOf = (t) => (L.alive[t] ? L.paint[t] || palette.length - 1 : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? pal.length + L.gen - L.died[t] : 0);
+      levelOf = (t) => (A[t] ? L.paint[t] || palette.length - 1 : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? pal.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono') {
+      const A = shownCells(L);
       palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
-      levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
+      levelOf = (t) => (A[t] === 1 ? 1 : A[t] ? 1 + dyingShade(A[t])
         : trailOn() && L.C === 2 && L.gen - L.died[t] <= LIFE_TRAIL.length ? 1 + L.gen - L.died[t] : 0);  // the trail after death (Trail)
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
       levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
