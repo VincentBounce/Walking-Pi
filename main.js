@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.986';
+const VERSION = '0.1.987';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1116,7 +1116,7 @@ const MODES = {
                 where: 'the surface of a cube with a pit in each face' },
   lifeMenger: { base: 2, lattice: 'sphere', sphere: 'menger', life: true, perspective: true,
                 where: "the surface of Menger's sponge (its holes down to one square)" },
-  lifeSierpinski: { base: 2, lattice: 'sphere', sphere: 'sierpinski', life: true, perspective: true,
+  lifeSierpinski: { base: 2, lattice: 'sphere', sphere: 'sierpinski', life: true,
                 where: "the surface of Sierpiński's tetrahedron (its tetrahedra meeting at their corners)" },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
                 where: 'a tetrahedron of triangles' },
@@ -2366,7 +2366,7 @@ const NAV = {
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dRhombs14: ['Life', '2D', 'Rhombs 14', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing10: ['Life', '2D', 'Ring 10', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
   life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
-  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeSierpinski: ['Life', 'Surfaces', 'Sierpiński', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
   lifeMobius: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeMobiusHex: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''],
@@ -2375,7 +2375,7 @@ const NAV = {
   kleinWalk: ['Walk', 'Surfaces', 'Klein bottle', 'Turtle', 'cells'], kleinHexWalk: ['Walk', 'Surfaces', 'Klein bottle', 'Turtle', 'cells'],
   kleinTriWalk: ['Walk', 'Surfaces', 'Klein bottle', 'Turtle', 'cells'], kleinCairoWalk: ['Walk', 'Surfaces', 'Klein bottle', 'Turtle', 'cells'],
   lifeKlein: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeKleinHex: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''],
-  lifeKleinTri: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeKleinCairo: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
+  lifeKleinTri: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeKleinCairo: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeTetra: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''], lifeSierpinski: ['Life', 'Surfaces', 'Sierpiński', 'Life', ''],
   lifeOcta: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeStella: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''],
   lifeDodeca: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeIcosa: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''], lifeKiteTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
