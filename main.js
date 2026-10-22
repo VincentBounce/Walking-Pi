@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.998';
+const VERSION = '0.1.999';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6684,21 +6684,31 @@ const textCells = (kind, W, row, text) => drawnCells(kind, W, row, (ctx, S) => {
   ctx.font = `bold ${big}px system-ui, sans-serif`;
   ctx.fillText(text, S / 2, S / 2);
 });
-// Icon 12, 24, 48: one of Pixelarticons' (pixelarticons.js, plane.seed's), N cells wide: its 24 × 24 pixels a cell each,
-// 2 × 2 each (48), or halved (12: a cell alive where 2 of its 4 pixels are); in the middle of each colour's part (its
-// cells' middles' mean), its edges between the cells' middles, only on its part's cells, in its colour
-function iconCells(N) {
-  const { kind, W, row } = walk.plane, K = walk.life.colours, bits = atob(ICON_BITS[plane.seed % ICON_BITS.length]), seed = new Uint8Array(row * W);
-  const on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0, P = N === 12 ? 12 : 24, k = N / P;
-  const pixel = N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
-  huntParts(0, K).forEach((part, i) => {
-    const mid = [0, 1].map((d) => part.reduce((s, t) => s + cellMiddle(kind, t % row, Math.floor(t / row))[d], 0) / part.length);
-    const cx = Math.floor(mid[0]) + 0.5, cy = Math.floor(mid[1]) + 0.5, mine = new Set(part);
-    const drawn = drawnCells(kind, W, row, (ctx, S, { at, scale }) => {
-      for (let y = 0; y < P; y++) for (let x = 0; x < P; x++) if (pixel(x, y)) { const [u, v] = at(cx + (x - P / 2) * k, cy + (y - P / 2) * k); ctx.fillRect(u, v, k * scale, k * scale); }
+// Icon 12, 24, 48: Pixelarticons' (pixelarticons.js), N cells wide: their 24 × 24 pixels a cell each, 2 × 2 each (48), or
+// halved (12: a cell alive where 2 of its 4 pixels are); in the middle of each colour's part (its cells' middles' mean),
+// a cell alive where its middle falls on a pixel, in its colour: each colour's choices, every icon (as Famous's, see
+// huntPlan), and the one of plane.seed
+let iconMemo = null;
+function iconChoices(N) {
+  const { kind, W, row } = walk.plane, K = walk.life.colours, key = `${N}|${kind}|${W}|${K}|${colourMix}|${walk.plane.torus}`;
+  if (iconMemo?.key === key) return iconMemo.choices;
+  const P = N === 12 ? 12 : 24, k = N / P;
+  const choices = huntParts(0, K).map((part, i) => {
+    const mids = part.map((t) => cellMiddle(kind, t % row, Math.floor(t / row))), mid = [0, 1].map((d) => mids.reduce((s, m) => s + m[d], 0) / mids.length);
+    const x0 = Math.floor(mid[0]) + 0.5 - (P / 2) * k, y0 = Math.floor(mid[1]) + 0.5 - (P / 2) * k;
+    const under = part.map((t, j) => [t, Math.floor((mids[j][0] - x0) / k), Math.floor((mids[j][1] - y0) / k)]).filter(([, x, y]) => x >= 0 && y >= 0 && x < P && y < P);  // (its cells under the icon, and their pixel)
+    return ICON_BITS.map((b64) => {
+      const bits = atob(b64), on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0;
+      const pixel = N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
+      return Int32Array.from(under.filter(([, x, y]) => pixel(x, y)).flatMap(([t]) => [t, i + 1]));
     });
-    for (let t = 0; t < drawn.length; t++) if (drawn[t] && mine.has(t)) seed[t] = i + 1;
   });
+  iconMemo = { key, choices };
+  return choices;
+}
+function iconCells(N) {
+  const seed = new Uint8Array(walk.life.seed.length);
+  for (const c of iconChoices(N)) { const f = c[plane.seed % c.length]; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   return seed;
 }
 // the cells' states at generation 0, as plane says
@@ -8938,8 +8948,8 @@ const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneR
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
-  if (famousZone(hunt.zone)) {
-    const choices = patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
+  if (famousZone(hunt.zone) || iconSize(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
+    const choices = iconSize(hunt.zone) ? iconChoices(iconSize(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
   }
   zoneParts(hunt.zone, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
@@ -9002,7 +9012,7 @@ function renderHunt() {
   }
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
   const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells found by a hunt, from a link · pick a zone to hunt in`
-    : (famousZone(hunt.zone) ? `${fmt(perColour)} patterns, ways${hunt.zone === 'centred' ? '' : ' and places'} a colour`
+    : (iconSize(hunt.zone) ? `${fmt(perColour)} icons${K > 1 ? ' a colour' : ''}` : famousZone(hunt.zone) ? `${fmt(perColour)} patterns, ways${hunt.zone === 'centred' ? '' : ' and places'} a colour`
       : `${all ? '' : `${fmt(Math.max(1, Math.round(DENSITY[0] * perColour)))}–${fmt(Math.max(1, Math.round(DENSITY[1] * perColour)))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
       + (all ? ` · ${fmt(all)} starts, all to try` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
