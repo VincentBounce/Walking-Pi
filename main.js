@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1012';
+const VERSION = '0.1.1013';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8421,8 +8421,7 @@ for (const [name, words, value, art] of [
   RULE_ICONS[value] = art;
   const option = new Option(`${BLOCK_MARKS.square} ${value} — ${words}`, value);
   option.dataset.name = name;
-  const second = [...$('lifePreset').options].filter((o) => o.text.startsWith(BLOCK_MARKS.square))[1];  // (Ising: second, after Tron)
-  $('lifePreset').insertBefore(option, name === 'Ising' ? second : $('lifePreset').querySelector('option[value="custom"]'));
+  $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 // the stellated grids' rules, on the cells come in across (a cell j: a particle come in from that side, its way the one across):
 // FHP's (Frisch, Hasslacher and Pomeau, 1986) and HPP's (Hardy, de Pazzis and Pomeau, 1973) lattice gases: the particles fly
@@ -8438,6 +8437,14 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
   const option = new Option(`${mark} ${value} — ${words}`, value);
   option.dataset.name = name;
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
+}
+// each grid's block rules in this order (its first: the one it starts with), before Custom
+const BLOCK_ORDER = { square: ['Tron', 'Ising', 'Critters', 'Swirl', 'Billiard balls, 4 phases', 'Critters, 4 phases', 'Billiard balls', 'Single rotation'],
+                      tri: ['FHP gas', 'Critters', 'Tron', 'Billiard balls', 'Single rotation', 'Swirl'], hex: ['Swirl', 'Tron', 'Single rotation'],
+                      cairo: ['Tron', 'Critters', 'Swirl', 'Billiard balls', 'Single rotation'] };
+for (const [kind, names] of Object.entries(BLOCK_ORDER)) {
+  const mine = [...$('lifePreset').options].filter((o) => o.text.startsWith(`${BLOCK_MARKS[kind]} `));
+  for (const name of names) { const o = mine.find((x) => x.dataset.name === name); if (o) $('lifePreset').insertBefore(o, $('lifePreset').querySelector('option[value="custom"]')); }
 }
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
