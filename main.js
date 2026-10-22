@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.999';
+const VERSION = '0.1.1000';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5914,7 +5914,8 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, text: 'π', start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, text: 'π', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
+                start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -6708,7 +6709,7 @@ function iconChoices(N) {
 }
 function iconCells(N) {
   const seed = new Uint8Array(walk.life.seed.length);
-  for (const c of iconChoices(N)) { const f = c[plane.seed % c.length]; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
+  iconChoices(N).forEach((c, i) => { const f = c[plane.icons[i] ?? plane.icons[0]] ?? c[0]; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; });
   return seed;
 }
 // the cells' states at generation 0, as plane says
@@ -6867,7 +6868,7 @@ function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
-  if (iconSize(zone)) return `${K === 1 ? 'The icon' : 'Each colour the icon'} “${ICON_NAMES[plane.seed % ICON_NAMES.length]}” (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', at its spot'}`;
+  if (iconSize(zone)) return `${K === 1 || plane.icons.length === 1 ? `${K === 1 ? 'The icon' : 'Each colour the icon'} “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
@@ -6894,6 +6895,7 @@ function planeFromSetup(s) {
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
+    if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -8754,6 +8756,7 @@ const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], ra
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0);  // (an icon's width in cells)
+const iconIndex = (name) => Math.max(0, ICON_NAMES.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
@@ -9056,6 +9059,7 @@ function renderHunt() {
 function playHuntResult(r) {
   if (hunt.worker) stopHunt();  // a result played: the hunt stops there
   hunt.picked = huntId(r);
+  if (iconSize(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }  // (icons: by their names, pop=icon24.star.heart)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
 }
@@ -9098,6 +9102,7 @@ function pickZone(zone) {
   hunt.status = '';
   plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
+  plane.icons = [Math.floor(Math.random() * ICON_NAMES.length)];  // (an Icon zone: one at random, for all the colours)
   if (zone === 'full') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
@@ -9759,7 +9764,7 @@ function getSetup() {
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     if (carpetOn(mode.plane) && !plane.torus) s.cp = 1;  // (Sierpiński's carpet)
     if (mode.margolus) s.g = plane.gens;  // (a reversible one's generations)
-    s.pop = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start === 'text' ? `text.${plane.text}` : plane.start;
+    s.pop = plane.start === 'random' ? (iconSize(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.map((i) => ICON_NAMES[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`) : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
