@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.984';
+const VERSION = '0.1.985';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1116,6 +1116,8 @@ const MODES = {
                 where: 'the surface of a cube with a pit in each face' },
   lifeMenger: { base: 2, lattice: 'sphere', sphere: 'menger', life: true, perspective: true,
                 where: "the surface of Menger's sponge (its holes down to one square)" },
+  lifeSierpinski: { base: 2, lattice: 'sphere', sphere: 'sierpinski', life: true, perspective: true,
+                where: "the surface of Sierpiński's tetrahedron (its tetrahedra meeting at their corners)" },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
                 where: 'a tetrahedron of triangles' },
   lifeOcta:   { base: 2, lattice: 'sphere', sphere: 'octa', perspective: true, life: true,
@@ -1783,6 +1785,7 @@ const ICONS = (() => {
     // Life's grid edges: walls, a square in a frame
     bricks: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',  // Walls: a brick wall
     walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
+    sierpinski: '<path d="M12 3L21 19H3Z"/><path d="M7.5 11L16.5 11L12 19Z"/><path d="M9.75 7L14.25 7L12 11Z" fill="currentColor"/><path d="M5.25 15L9.75 15L7.5 19Z" fill="currentColor"/><path d="M14.25 15L18.75 15L16.5 19Z" fill="currentColor"/>',  // Sierpiński's triangle: its holes, its corners' small ones
     menger: '<rect x="3.5" y="3.5" width="17" height="17"/><rect x="9.2" y="9.2" width="5.6" height="5.6"/><path d="M5.6 5.6h1.6v1.6h-1.6zM11.2 5.6h1.6v1.6h-1.6zM16.8 5.6h1.6v1.6h-1.6zM5.6 11.2h1.6v1.6h-1.6zM16.8 11.2h1.6v1.6h-1.6zM5.6 16.8h1.6v1.6h-1.6zM11.2 16.8h1.6v1.6h-1.6zM16.8 16.8h1.6v1.6h-1.6z"/>',  // Menger's sponge: a face, its hole and the 8 next ones
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
@@ -2363,7 +2366,7 @@ const NAV = {
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dRhombs14: ['Life', '2D', 'Rhombs 14', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing10: ['Life', '2D', 'Ring 10', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
   life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
-  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
+  lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeSierpinski: ['Life', 'Surfaces', 'Sierpiński', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeHexTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeCairoTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTriTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   cairoTorusWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
   lifeMobius: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeMobiusHex: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''],
@@ -2410,6 +2413,7 @@ for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && M
 for (const w of Object.keys(MODES)) if (MODES[w].pivot || MODES[w].parity) MODE_ICONS[w] = MODES[w].pivot ? 'pivot' : 'walk2d';
 MODE_ICONS.lifePits = 'walls';
 MODE_ICONS.lifeMenger = 'menger';
+MODE_ICONS.lifeSierpinski = 'sierpinski';
 // in each shape's rules: Turtle, then Pivot and Parity, then the others as they come; among the shapes,
 // Cairo right after Squares, Hexagons before Triangles, the Klein bottle after the Möbius strip, the
 // Sphere before the Tetrahedron
@@ -2449,7 +2453,7 @@ const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natura
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Rhombs 14': 'rhombs14', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 10': 'ring10', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
-  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', Sponge: 'menger', 'Klein bottle': 'klein' };
+  Dodecahedron: 'dodecahedron', Sphere: 'icosahedron', Pits: 'walls', Sponge: 'menger', 'Sierpiński': 'sierpinski', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
@@ -3891,6 +3895,34 @@ function mengerMesh(L) {
   return (meshCache[key] = mesh);
 }
 
+/* Sierpiński's tetrahedron: a tetrahedron cut into the 4 at its corners, half as big (the middle's octahedron taken away),
+ * again in each, L times: 4^L tetrahedra meeting at their corners only. Its surface: each one's 4 faces, each cut into 3 × 3
+ * triangles (9 a face: a cell its neighbours on its own face, and round the corners its tetrahedra share), each facing
+ * away from its own tetrahedron. Concave: drawn tile by tile */
+function sierpinskiMesh(L) {
+  const key = `sierpinski${L}`;
+  if (meshCache[key]) return meshCache[key];
+  let tets = [POLYHEDRA.tetra.P];
+  for (let k = 0; k < L; k++) tets = tets.flatMap((T) => T.map((a) => T.map((b) => [0, 1, 2].map((d) => (a[d] + b[d]) / 2))));  // (each corner's: its edges' middles from it)
+  const { verts, add } = vertexStore(), tris = [], f = 3;
+  for (const T of tets) {
+    const m = [0, 1, 2].map((d) => (T[0][d] + T[1][d] + T[2][d] + T[3][d]) / 4);
+    for (const skip of [0, 1, 2, 3]) {
+      let [A, B, C] = T.filter((_, i) => i !== skip);
+      const nr = cross(B.map((v, d) => v - A[d]), C.map((v, d) => v - A[d]));
+      if (nr[0] * (A[0] - m[0]) + nr[1] * (A[1] - m[1]) + nr[2] * (A[2] - m[2]) < 0) [B, C] = [C, B];  // (facing away from its tetrahedron)
+      const at = ([i, j]) => add(...[0, 1, 2].map((d) => (A[d] * (f - i - j) + B[d] * i + C[d] * j) / f));
+      for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
+        tris.push([[i, j], [i + 1, j], [i, j + 1]].map(at));
+        if (i + j < f - 1) tris.push([[i + 1, j], [i + 1, j + 1], [i, j + 1]].map(at));
+      }
+    }
+  }
+  const mesh = finishMesh(verts, tris, 3, L, null);  // (as listed: each facing away from its own tetrahedron)
+  mesh.concave = true;
+  return (meshCache[key] = mesh);
+}
+
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
  * tetrahedron (4 faces, corners shared by 3 triangles instead of 6), octahedron (8 faces,
@@ -4535,7 +4567,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'menger', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
+const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'menger', 'sierpinski', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
   ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (torusSheets(k).turned ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
 
 function shapeAt(g, m) {
@@ -4704,6 +4736,7 @@ const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           tiles: (n) => 6 * n * n, unit: 'squares' },
   pits: { mesh: cubePits, radius: (n) => n / 2, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares' },
+  sierpinski: { mesh: sierpinskiMesh, radius: (L) => (3 * 2 ** L) / (2 * Math.SQRT2), least: 3, most: 5, tiles: (L) => 36 * 4 ** L, unit: 'triangles' },  // Sierpiński's tetrahedron: its steps L, 4^L tetrahedra, 36 triangles each (edge 1)
   menger: { mesh: mengerMesh, radius: (L) => 3 ** L / 2, least: 2, most: 3, tiles: (L) => 2 * 20 ** L + 4 * 8 ** L, unit: 'squares' },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
@@ -4842,7 +4875,7 @@ function gridSize(kind, f) {
   return [h, Math.round((cells / h) * 10) / 10, cells, unit];  // (a strip of teeth: its rows not all alike, on average, to a tenth)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
-const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : kind === 'menger' ? `Level ${f}` : `Edge ${fmt(f)}`; };  // (a circle: its diameter; Menger's sponge: its steps)
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : kind === 'menger' || kind === 'sierpinski' ? `Level ${f}` : `Edge ${fmt(f)}`; };  // (a circle: its diameter; Menger's sponge: its steps)
 const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
 // A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
@@ -7280,7 +7313,7 @@ function drawLifePlane() {
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
-const SURFACE_CELLS = { cube: '■', pits: '■', menger: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
+const SURFACE_CELLS = { cube: '■', pits: '■', menger: '■', sierpinski: '▲', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
                         cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆' };
 for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = SURFACE_CELLS[`${mobiusOf(kind)}Turned`] = t.mark;
 const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
@@ -7325,7 +7358,7 @@ function torusBlocks(K, g = walk.geo) {
 // middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
 // edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
 // its halves or quarters
-const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3, 4, 6], menger: [2, 3, 4, 6, 8, 12], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
+const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3, 4, 6], menger: [2, 3, 4, 6, 8, 12], sierpinski: [2, 4, 6], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
                         icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_COLOURS[k];  // kites: the triangles' solids
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
@@ -8583,6 +8616,7 @@ const SOLID_SPOTS = {
   cube: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),
   pits: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
   menger: () => SOLID_SPOTS.cube(),
+  sierpinski: () => SOLID_SPOTS.tetra(),
   octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: TETRA4, 6: AXES, 8: CORNERS8, 12: EDGES12 }),
   tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
   stella: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 6: AXES, 8: CORNERS8 }),

@@ -1486,3 +1486,7 @@ Pinwheel, the flowers, the rings, Mirror 7 and Rhombs 14 had no famous patterns 
 Famous and Centered on these grids are now these (one colour; with colours, none yet). The pinwheel's patch moves with its size: its patterns lay at ⌀ 48 only.
 
 **With colours**: the same search 6 from the middle (centred.js off): a copy a colour, turned 360°/K round the middle, the same cells by the figure's turns (K dividing them: not the pinwheel). Methuselahs there: Flower 6 B345/S0238 1,258 generations, Flower 3 B345/S023 564, Flower 8 B345/S0239 380, Flower 5 B368/S3457 335, Flower 7 B36/S3457 242, Rhombs 14 B378/S023 216. **Sponge bloomers B3478/S2/C3** in the squares' rules (Sponge wanderers born with 8 too).
+
+## ▲ Sierpiński's tetrahedron (3D)
+
+[Life on Sierpiński's tetrahedron](https://vincentbounce.github.io/Walking-Pi/#w=lifeSierpinski&s=4): a tetrahedron cut into the 4 at its corners, half as big, L times (4^L tetrahedra meeting at their corners only); each one's faces cut into 3 × 3 triangles, each facing away from its own tetrahedron. Level 3, 4 or 5: 2,304, 9,216 or 36,864 triangles, 9 to 12 neighbours each (a corner shared by two tetrahedra: their cells there neighbours). The triangles' rules; colours as the tetrahedron's (2, 4, 6). The deep check (tools/check.js deep) run the night before, on every grid: 2,850 checks, none failed.
