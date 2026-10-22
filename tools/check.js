@@ -1,6 +1,7 @@
 // Walking Pi's self-check, run in the page (it uses the app's own functions) before a commit:
 //   await import(`/tools/check.js?${Date.now()}`); await walkingCheck();   // the meshes, a few seconds
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
+//   await walkingCheck({ deep: true });                                    // every grid's rules (yours too), How it works, colours, zones, smallest size: a night's
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
 // said; the grids that never repeat, their walls closed; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count.
@@ -153,9 +154,61 @@ async function crawl(fail) {
   return checked;
 }
 
-window.walkingCheck = async ({ crawl: andCrawl = false } = {}) => {
+// The deep crawl (a night's): every grid of Life and Reversible from its link, then on each: every rule of its menu and one of
+// your own (B36/S23; blocks: their menu's), each with How it works (and its Letters page); every colour (and Mixed); every zone of
+// Hunt; its smallest size; 30 generations played. No error anywhere (a click's included), the link's mode the one shown
+async function deep(fail) {
+  const wait = (ms) => new Promise((go) => setTimeout(go, ms)), errors = [];
+  const onError = (e) => errors.push(e.message);
+  window.addEventListener('error', onError);
+  let checked = 0;
+  const look = async (what, ms = 350) => {
+    await wait(ms);
+    checked++;
+    if (errors.length) fail(`${what}: ${errors.splice(0).join(' / ')}`);
+  };
+  const play = (what) => { try { for (let g = 0; g < 30; g++) lifeStep(); } catch (e) { fail(`${what}: playing: ${e.message}`); } };
+  const how = async (what) => {  // its How it works, then its Letters, closed again
+    $('watchRule').click();
+    await look(`${what} How it works`);
+    const letters = document.querySelector('.tut-letters');
+    if (letters) { letters.click(); await look(`${what} Letters`); document.querySelector('.tut-letters')?.click(); await wait(100); }
+    if (!$('ruleTuto').hidden) $('ruleTuto').querySelector('.tut-close')?.click();
+  };
+  for (const w of Object.keys(MODES).filter((m) => MODES[m].life && [...$('mode').options].some((o) => o.value === m))) {
+    location.hash = `w=${w}`;
+    await look(`${w} from its link`, 900);
+    if ($('mode').value !== w) fail(`${w}: the link opened ${$('mode').value}`);
+    for (let i = 0; i < $('ruleCards').children.length; i++) {
+      const b = $('ruleCards').children[i], name = b.querySelector('.mode-name')?.textContent ?? '';
+      if (/Custom/.test(name)) continue;
+      b.click();
+      await look(`${w} rule ${name}`, 500);
+      play(`${w} rule ${name}`);
+      if (i < 2) await how(`${w} rule ${name}`);  // (How it works: the first two, and your own)
+    }
+    if (!MODES[w].margolus) {  // (blocks: their rules tables of their own size, all in the menu)
+      $('lifeRule').value = 'B36/S23';
+      $('lifeRule').dispatchEvent(new Event('change'));
+      await look(`${w} a rule of your own`, 500);
+      play(`${w} a rule of your own`);
+      await how(`${w} a rule of your own`);
+    }
+    for (const b of [...$('colourBlocks').children].filter((x) => !x.disabled)) { b.click(); await look(`${w} colours ${b.textContent.trim()}`); }
+    if (!$('huntRow').hidden) for (const b of [...$('huntZones').children].filter((x) => !x.disabled && !x.hidden)) { b.click(); await look(`${w} zone ${b.textContent.trim()}`); }
+    const down = MODES[w].plane ? $('planeDown') : $('sizeDown');
+    for (let k = 0; k < 12 && !down.disabled; k++) { down.click(); await wait(250); }
+    await look(`${w} smallest`, 500);
+    play(`${w} smallest`);
+  }
+  window.removeEventListener('error', onError);
+  return checked;
+}
+
+window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false } = {}) => {
   const failures = [], fail = (s) => failures.push(s);
   let checked = checkMeshes(fail);
   if (andCrawl) checked += await crawl(fail);
+  if (andDeep) checked += await deep(fail);
   return { ok: !failures.length, failures, checked };
 };

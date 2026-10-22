@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.982';
+const VERSION = '0.1.984';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9234,19 +9234,32 @@ const CENTRED = {
     ['B389/S1345/C5', 'Oscillator', [[-0.853,0.68,1],[-3.453,1.663,3],[-1.916,0.923,2],[-1.326,1.663,1],[-2.39,1.906,1],[-3.453,2.754,4],[-2.39,2.996,1],[-1.326,2.754,1]], 'period 8 · 8 cells'],
     ['B389/S1345/C5', 'Seed', [[1.063,0.243,1],[-0.853,0.68,1],[1.063,-0.243,1],[0.853,0.68,1],[-0.473,2.074,1],[2.127,0,1],[1.326,1.663,1],[1.916,0.923,1],[0.473,-2.074,1],[-1.326,2.754,1]], 'keeps spreading · 10 cells']],
 };
-// with colours (K dividing its turns): those found 6 from the middle (CENTRED_OFF), a copy a colour, turned 360°/K round it
-function centredChoices(kind, K, rule, mine, any) {
-  const { W, row } = walk.plane, o = (W - 1) / 2, at = new Map(), key = (x, y) => `${Math.round(x * 20)},${Math.round(y * 20)}`, n = figureTurns(kind), out = Array.from({ length: K }, () => []);
+// with colours (K dividing its turns): those found 6 from the middle (CENTRED_OFF), a copy a colour, in its slice
+function centredChoices(kind, K, rule, mine, any, centred = true) {
+  const { W, row } = walk.plane, o = (W - 1) / 2, n = figureTurns(kind), out = Array.from({ length: K }, () => []);
   if (K > 1 && n % K) return out;
-  for (let t = 0; t < W * row; t++) { const m = cellMiddle(kind, t % row, Math.floor(t / row)); at.set(key(m[0] - o, m[1] - o), t); }
+  // the cell whose middle is at a place, within 0.05 (its middles by squares of 0.1: the 9 round a place looked in)
+  const box = new Map(), mid = [], sq = (x, y) => `${Math.floor(x * 10)},${Math.floor(y * 10)}`;
+  for (let t = 0; t < W * row; t++) { const m = cellMiddle(kind, t % row, Math.floor(t / row)); mid[t] = [m[0] - o, m[1] - o]; (box.get(sq(...mid[t])) ?? box.set(sq(...mid[t]), []).get(sq(...mid[t]))).push(t); }
+  const at = { get: (x, y) => { for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const t of box.get(sq(x + i / 10, y + j / 10)) ?? []) if (Math.hypot(mid[t][0] - x, mid[t][1] - y) < 0.05) return t; } };
   const laid = (cells, a, i) => {  // (its cells turned by a, in colour i's states; none if one falls off)
     const c = Math.cos(a), s = Math.sin(a), cs = [];
-    for (const [x, y, v] of cells) { const t = at.get(key(c * x - s * y, s * x + c * y)); if (t === undefined) return null; cs.push(t, K > 1 ? i + 1 + K * (v - 1) : v); }
+    for (const [x, y, v] of cells) { const t = at.get(c * x - s * y, s * x + c * y); if (t === undefined) return null; cs.push(t, K > 1 ? i + 1 + K * (v - 1) : v); }
     return Int32Array.from(cs);
   };
-  for (const [, , cells] of ((K > 1 ? CENTRED_OFF : CENTRED)[kind] ?? []).filter((p) => mine || p[0] === rule)) for (let k = 0; k < n / K; k++) {
-    const per = Array.from({ length: K }, (_, i) => laid(cells, (2 * Math.PI * k) / n + (2 * Math.PI * i) / K, i));
-    if (per.every(Boolean)) { per.forEach((cs, i) => out[i].push(cs)); if (any) break; }
+  // (colours: each copy turned onto its colour's slice, as near its middle line as the figure's turns allow, see planeSlices;
+  // one colour: every way the figure turns)
+  const mids = K > 1 && centred ? planeSlices(K).spots.map((t) => { const m = cellMiddle(kind, t % row, Math.floor(t / row)); return Math.atan2(m[1] - o, m[0] - o); }) : null, step = (2 * Math.PI) / n;
+  // Famous (not centred): all of them, the middle's and those off it, every way the figure turns them, each copy whole in its
+  // colour's part
+  const parts = !centred ? huntParts(0, K).map((p) => new Set(p)) : null, inPart = (cs, i) => !parts || cs.every((t, j) => j % 2 || parts[i].has(t));
+  const sets = centred ? [(K > 1 ? CENTRED_OFF : CENTRED)[kind]] : [CENTRED[kind], CENTRED_OFF[kind]];
+  for (const [, , cells] of sets.flatMap((x) => x ?? []).filter((p) => mine || p[0] === rule)) {
+    const own = Math.atan2(cells.reduce((a, c) => a + c[1], 0), cells.reduce((a, c) => a + c[0], 0));  // (its way from the middle)
+    for (let k = 0; k < (centred && K > 1 ? 1 : n); k++) {
+      const per = Array.from({ length: K }, (_, i) => laid(cells, centred && K > 1 ? Math.round((mids[i] - own) / step) * step : k * step + (2 * Math.PI * i) / K, i));
+      if (per.every((cs, i) => cs && inPart(cs, i))) { per.forEach((cs, i) => out[i].push(cs)); if (any) break; }
+    }
   }
   return out;
 }
@@ -9262,7 +9275,7 @@ function patternChoices(centred = false) {  // (once a grid, its colours and rul
 function laidChoices(centred, any = false) {  // any: the first one of each colour only (whether there are some)
   const L = walk.life, g = walk.geo, K = L.colours, kind = patternKind(), rule = L.ruleText, [cols, rows] = COLOUR_GRID[K], F = !centred && famousGrid();
   const mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
-  if (walk.plane && APERIODIC[kind]) return centredChoices(kind, K, rule, mine, any);
+  if (walk.plane && APERIODIC[kind]) return centredChoices(kind, K, rule, mine, any, centred);
   // (centred: a rectangle's room and its patterns' spans in its grid's lattice cells, as on that grid)
   const R = RECTS[kind], cellsAcross = R ? Math.min(...R.basis.map((v) => Math.hypot(...v))) / Math.hypot(...latticeStep(R.base)) : 1, pk = R ? R.base : kind, pper = PER_RHOMBUS[pk] ?? 1;
   const span = (rle, t, f) => { const cs = orientPattern(pk, rle, t, f); return Math.max(...cs.map((c) => Math.floor(c[0] / pper)), ...cs.map((c) => c[1])) + 1; };
