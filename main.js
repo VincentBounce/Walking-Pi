@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1010';
+const VERSION = '0.1.1011';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6666,17 +6666,29 @@ function cellRandom(seed, i) {
 // to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
 // drawing, and, an emoji's colours, on its darker half
 function drawnCells(kind, W, row, paint, colours = false) {  // colours: each cell's colour where the drawing is (see blockPicture)
-  const n = row * W, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row)));
-  const [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...mids.map((m) => m[d])), Math.max(...mids.map((m) => m[d]))]);
+  const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);  // (a grid that never repeats: its patch's own, the grid not built yet)
+  const n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : cellMiddle(kind, t % row, Math.floor(t / row))));
+  const real = mids.filter((m) => Number.isFinite(m[0])), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
   const S = Math.min(4096, Math.max(400, 4 * Math.ceil(Math.max(x1 - x0, y1 - y0)))), cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
   cv.width = cv.height = S;
   ctx.fillStyle = '#000';
   paint(ctx, S, { x0, x1, y0, y1, at: (x, y) => [(x - (x0 + x1) / 2) * scale + S / 2, (y - (y0 + y1) / 2) * scale + S / 2], scale });
   const px = ctx.getImageData(0, 0, S, S).data, at = ([x, y]) => 4 * (Math.min(S - 1, Math.max(0, Math.round((y - (y0 + y1) / 2) * scale + S / 2))) * S + Math.min(S - 1, Math.max(0, Math.round((x - (x0 + x1) / 2) * scale + S / 2))));
   const lum = (i) => 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2];
-  if (colours) return mids.map((p) => { const i = at(p); return px[i + 3] > 128 ? [px[i], px[i + 1], px[i + 2]] : null; });
-  const inked = mids.map((p) => at(p)).filter((i) => px[i + 3] > 128).map(lum).sort((a, b) => a - b), cut = Math.max(1, inked[Math.floor(inked.length / 2)] ?? 0);  // (black text: all of it; an emoji: its darker half)
-  return Uint8Array.from(mids, (p) => { const i = at(p); return px[i + 3] > 128 && lum(i) <= cut ? 1 : 0; });
+  if (colours) return mids.map((p) => { if (!Number.isFinite(p[0])) return null; const i = at(p); return px[i + 3] > 128 ? [px[i], px[i + 1], px[i + 2]] : null; });
+  // black and white, dithered as Atkinson's (the first Macintosh): the cells in reading order (their middles, top down, left to
+  // right), each its ink (how dark, how opaque) and the error carried to it, alive from a half; an eighth of its error to each
+  // of the 6 nearest after it (on squares, Atkinson's own: 2 on the right, 3 below, 1 two below), three quarters in all
+  const ink = Float64Array.from(mids, (p) => { if (!Number.isFinite(p[0])) return 0; const i = at(p); return (px[i + 3] / 255) * (1 - lum(i) / 255); }), out = new Uint8Array(n);
+  const order = [...mids.keys()].sort((p, q) => mids[p][1] - mids[q][1] || mids[p][0] - mids[q][0]), rank = new Int32Array(n), bins = new Map(), bin = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`;
+  order.forEach((t, r) => { rank[t] = r; (bins.get(bin(...mids[t])) ?? bins.set(bin(...mids[t]), []).get(bin(...mids[t]))).push(t); });
+  for (const t of order) {
+    out[t] = ink[t] >= 0.5 ? 1 : 0;
+    const e = (ink[t] - out[t]) / 8, [x, y] = mids[t], d = (u) => Math.hypot(mids[u][0] - x, mids[u][1] - y), next = [];
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const u of bins.get(bin(x + 2 * i, y + 2 * j)) ?? []) if (rank[u] > rank[t] && d(u) < 2.5) next.push(u);
+    for (const u of next.sort((p, q) => d(p) - d(q) || rank[p] - rank[q]).slice(0, 6)) ink[u] += e;
+  }
+  return out;
 }
 // Text: a word or an emoji drawn as big as fits in the middle of the grid
 const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S) => {
