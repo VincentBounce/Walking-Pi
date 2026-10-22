@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1018';
+const VERSION = '0.1.1019';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9113,19 +9113,27 @@ function renderHunt() {
 
   const K = walk.life.colours, { cells, perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? 'the longest battle' : { longest: 'the longest life', dies: 'the longest death', peak: 'the highest peak', cover: 'the fastest to reach all cells' }[hunt.goal];
-  $('huntGoals').hidden = K > 1 || !!walk.life.margolus;
+  $('huntGoals').hidden = $('huntModeLabel').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
   for (const b of $('huntZones').children) {
     setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true });  // (picked: a click draws another start)
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
-  // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
-  const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells found by a hunt, from a link · pick a zone to hunt in`
-    : hunt.zone === 'emoji' ? `${plane.emoji} · ${fmt(walk.life.seedAlive)} alive / ${fmt(walk.life.seed.length)} cells`
-    : (iconSize(hunt.zone) ? `${fmt(perColour)} icons${K > 1 ? ' a colour' : ''}` : famousZone(hunt.zone) ? `${fmt(perColour)} patterns, ways${hunt.zone === 'centred' ? '' : ' and places'} a colour`
-      : `${all ? '' : `${fmt(Math.max(1, Math.round(DENSITY[0] * perColour)))}–${fmt(Math.max(1, Math.round(DENSITY[1] * perColour)))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
-      + (all ? ` · ${fmt(all)} starts, all to try` : '');
+  // one line under the button: what the zone has put on the grid, and (Life) what a hunt will try; how far it got while it
+  // runs, what it found after
+  const L = walk.life, life = !L.margolus, d = plane.density, z = hunt.zone, N = iconSize(z), r = zoneRadius(z), names = plane.icons.slice(0, K).map((i) => `“${ICON_NAMES[i]}”`).join(', ');
+  const shown = z === 'custom' ? `A start ${life ? 'found by a hunt, ' : ''}from a link (${fmt(L.seedAlive)} cells)`
+    : z === 'emoji' ? `Emoji ${plane.emoji}, as big as the grid · ${fmt(L.seedAlive)} cells alive${life ? '' : L.paint ? ' · in its colours' : ' · black & white'}`
+    : N ? (K === 1 ? `Icon ${names}, ${N} cells wide` : `Icons ${names}, ${N} cells wide, one a colour`)
+    : z === 'patterns' ? `${K === 1 ? 'A pattern' : 'Patterns'} of the rule, anywhere${K > 1 ? ', one a colour' : ''} (${fmt(perColour)} ways and places)`
+    : z === 'centred' ? `${K === 1 ? 'A pattern of the rule, in the middle' : "Patterns of the rule, each at its colour's spot"} (${fmt(perColour)} of them)`
+    : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
+    : z === 'face' ? `Random cells on ${K === 1 ? 'a face' : 'each colour’s face'}, ${d} % of ${fmt(perColour)}`
+    : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
+  const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
+    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' || z === 'emoji' ? 'soups at random' : 'starts at random';
+  const zone = shown + (sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}` : '') + (life ? ` · Hunt: ${hunts}` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start found by a hunt, from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
