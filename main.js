@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.980';
+const VERSION = '0.1.981';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7724,7 +7724,7 @@ function ruleTutorial(option) {
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
   $('ruleTuto').innerHTML = `<div class="tut-tools">${lettersOf2 ? `<button type="button" class="tut-letters${tutLetters.on ? ' active' : ''}" title="The letters of this grid, for a rule of your own">Letters</button>` : ''}<button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">${tutLetters.on && lettersOf2 ? lettersPage() + '</div>' : ''}`
-    + (tutLetters.on && lettersOf2 ? '' : `<h3>${option.dataset.name} <code>${option.value}</code></h3>${option.value !== 'custom' && option.text.includes(' — ') ? `<p>${option.text.split(' — ').slice(1).join(' — ').replace(/^./, (c) => c.toUpperCase())}.</p>` : ''}${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
+    + (tutLetters.on && lettersOf2 ? '' : `<h3>${option.dataset.name} <code>${option.value}</code></h3>${option.value !== 'custom' && option.text?.includes(' — ') ? `<p>${option.text.split(' — ').slice(1).join(' — ').replace(/^./, (c) => c.toUpperCase())}.</p>` : ''}${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, area, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
