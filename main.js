@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1017';
+const VERSION = '0.1.1018';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7720,7 +7720,7 @@ const RULE_ICONS = {
   'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.', 'B2/S34': '.....,.o.o.,..o..,.o.o.,.....',
   'B24/S346/C4': '+o...,.+o..,..+o.,.....,...+o', 'B23/S6/C3': '.....,.o+..,o+o+.,.+o..,.....', 'B2347/S35/C3': 'o.o.o,.+.+.,o.o.o,.+.+.,o.o.o',
 };
-const pixelIcon = (art) => `<svg class="icon rule-icon" viewBox="0 0 5 5" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
+const pixelIcon = (art, box = 5) => `<svg class="icon rule-icon" viewBox="${(5 - box) / 2} ${(5 - box) / 2} ${box} ${box}" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
   .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`;
 // How a rule works, in place of the grid (a click on the rule picked; again, or the cross, closes it): a cell of the grid's
 // shape and its neighbours, the live ones in colour, for each count it is born with, survives with, dies with; its
@@ -8851,14 +8851,14 @@ const huntId = (r) => `${r.T}|${r.end}`;
 // The zones: patches of radius 1 to 6 round each spot (Spark … Meadow), the whole grid (Wild), the rule's
 // patterns (Famous); their random starts each as dense as drawn between 10 and 70 % (the records often
 // come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
-const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
+const HUNT_ZONES = { icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon48: [null, 'Icon 48'],  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (see iconCells)
+                     emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
+                     radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      face: ['zoneFace', 'Realm'],  // a whole face of a solid (see faceParts)
                      full: ['zoneAll', 'Wild'],
                      patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
                      centred: [null, 'Centered'],  // the same, each at its colour's spot
-                     icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon48: [null, 'Icon 48'],  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (the plane; see iconCells)
-                     emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0);  // (an icon's width in cells)
@@ -12591,7 +12591,8 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, 
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
-  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : iconSize(zone) ? '.....,.o.o.,.....,o...o,.ooo.' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face
+  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : iconSize(zone) ? pixelIcon('.....,.o.o.,.....,o...o,.ooo.', { 12: 9, 24: 7, 48: 5 }[iconSize(zone)])
+    : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face, as big as its size
   b.dataset.zone = zone;
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
