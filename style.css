@@ -480,6 +480,9 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .stage-bar:hover .seek-row { display: none; }  /* open, the activity curve is the slider (see drawActivity) */
 @media (hover: none) { .stage-bar:focus-within .seek-row { display: none; } }
 .stage-bar:not(:hover) .player-side { display: none; }
+.stage-bar:not(:hover) #reverse { display: none; }  /* Play backwards (a reversible one's): open only, right of ⏭, the row as much wider */
+.stage-bar:hover .player-main:has(#reverse:not([hidden])) { width: 360px; }
+@media (hover: none) { .stage-bar:focus-within #reverse { display: inline-flex; } .stage-bar:focus-within .player-main:has(#reverse:not([hidden])) { width: 360px; } }
 @media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }
 .stage-bar .progress { margin: 0 0 8px; }
@@ -499,7 +502,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .speed-icon { flex: none; width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
 .seek-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }  /* as wide as its widest value (see updateStats) */
-.stage-bar #play.on { background: var(--accent); color: var(--accent-text); }
+.stage-bar #play.on, .stage-bar #reverse.on { background: var(--accent); color: var(--accent-text); }
 .hint {
   position: absolute;
   right: 12px;
@@ -520,7 +523,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   .hint { display: none; }
   /* folded, the player alone: ⏮, a step back and Play (a tap opens it all), the grid in sight */
   .stage-bar:not(:focus-within) > :not(.player-controls), .stage-bar:not(:focus-within) #digitsRow,
-  .stage-bar:not(:focus-within) #step, .stage-bar:not(:focus-within) #end { display: none; }
+  .stage-bar:not(:focus-within) #step, .stage-bar:not(:focus-within) #end, .stage-bar:not(:focus-within) #reverse { display: none; }
   .stage-bar:not(:focus-within) { width: auto; }
 }
 

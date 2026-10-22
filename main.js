@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.992';
+const VERSION = '0.1.993';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1238,7 +1238,7 @@ const walk = {
 
 let cur = 0;        // steps taken so far
 let drawn = 0;      // steps already drawn on the path layer
-let playing = false;
+let playing = false, reversing = false;  // reversing: a reversible one played backwards (see lifeBack)
 let acc = 0;
 let needsFull = true;
 let statsDirty = true;
@@ -1834,6 +1834,7 @@ const ICONS = (() => {
     end: pathEl('M18.5 5V19') + pathEl('M5 5L15 12L5 19Z', 'f'),
     back: '<rect class="f" x="15.5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M13 5L4 12L13 19Z', 'f'),
     step: '<rect class="f" x="5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M11 5L20 12L11 19Z', 'f'),
+    reverse: pathEl('M17 4.5L4.5 12L17 19.5Z', 'f'),  // Play backwards: Play turned round
     star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
     check: pathEl('M5 12.5L10 17.5L19 7'),
     copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/>' + pathEl('M15.5 8.5V5.5A2 2 0 0 0 13.5 3.5H5.5A2 2 0 0 0 3.5 5.5V13.5A2 2 0 0 0 5.5 15.5H8.5'),
@@ -8395,6 +8396,40 @@ function lifeStep() {
   lifeTrack(gen);
 }
 
+// A reversible one a generation back: its blocks' rule run backwards (the inverse of their permutation on the same blocks,
+// then the cells moved back across, stellated; Q2R, the same half step again: its other half unchanged), its counts set
+// back (the trace's)
+function lifeBack() {
+  const L = walk.life, M = L.margolus, a = L.alive, b = L.next, g = cur - 1, K = L.colours;
+  if (M.ising) blockStep(M, a, b, g);
+  else {
+    M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length));
+    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, L.paint);
+    if (M.move) {
+      const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; });
+      if (L.paint) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
+    }
+  }
+  let born = 0, dead = 0;
+  for (let t = 0; t < a.length; t++) {
+    if (a[t] === b[t]) { if (b[t]) L.age[t] = Math.max(1, L.age[t] - 1); continue; }
+    if (a[t]) born++; else dead++;  // (forth: born, died)
+    L.age[t] = b[t] ? 1 : 0;
+    if (L.activity[t]) L.activity[t]--;
+  }
+  for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
+  L.alive = b;
+  L.next = a;
+  L.born -= born;
+  L.dead -= dead;
+  L.bornNow = born;
+  L.deadNow = dead;
+  L.gen--;
+  cur--;
+  L.aliveCount = L.trace.alive[cur];
+  L.byColour = L.trace.by[cur] ?? L.byColour;
+}
+
 /* ==============================================================================================
  * PART 9 — THE HUNT
  * ==============================================================================================
@@ -10000,8 +10035,16 @@ function advanceTo(target) {
 const lifeEnded = () => { const s = walk.life?.stable; return !!s && (s.extinct || s.P === 1) && cur === s.T; };
 function play(on) {
   playing = on && walk.n > 0 && cur < walk.n && !lifeEnded();
+  if (playing) reverse(false);
   $('play').innerHTML = playing ? `${icon('pause')} Pause` : `${icon('play')} Play`;
   $('play').classList.toggle('on', playing);
+}
+// Play backwards (a reversible one's, ◀ by Play): back to its start, a generation at a time, by its rule run backwards
+function reverse(on) {
+  reversing = on && !!walk.life?.margolus && cur > 0;
+  if (reversing) play(false);
+  $('reverse').innerHTML = icon(reversing ? 'pause' : 'reverse');
+  $('reverse').classList.toggle('on', reversing);
 }
 
 // A new walk is shown complete at once; Play replays it from the start
@@ -10032,6 +10075,7 @@ function fitWhole() {
 // Life: a run plays as soon as it is set up (Autoplay, off at first), unless cells are being drawn
 const autoplay = () => { if (walk.life && !drawing && $('autoPlay').checked) play(true); };
 function restart() {
+  if (reversing) reverse(false);
   faced = false;
   cur = 0;
   drawn = 0;
@@ -11857,6 +11901,8 @@ function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
   $('back').disabled = cur === 0 || (!!walk.life && !walk.life.margolus);  // (a block rule: reversible, back as forth)
+  $('reverse').hidden = !walk.life?.margolus;  // (played backwards: a reversible one's)
+  $('reverse').disabled = cur === 0;
   $('step').disabled = cur >= walk.n || lifeEnded();
   $('end').disabled = cur >= walk.n || (!Number.isFinite(walk.n) && !!walk.life?.stable);  // a Game of Life's end known: there already (or in its loop)
   // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so
@@ -12052,11 +12098,12 @@ function tick(now = performance.now()) {
       rotateView(screenTurn(...axis));
     }
   }
-  if (playing) {
+  if (playing || reversing) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
     acc -= k;
-    if (k > 0) advanceTo(cur + k);
+    if (k > 0 && playing) advanceTo(cur + k);
+    if (k > 0 && reversing) { for (let i = 0; i < k && cur > 0; i++) lifeBack(); statsDirty = true; if (!cur) reverse(false); }
   }
   includeBox();
   if (walk.n && !walk.sphere && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow (a surface's frame is fixed)
@@ -12178,7 +12225,8 @@ $('play').addEventListener('click', () => {
   if (cur >= walk.n || lifeEnded()) restart();  // at the end: from the start again
   play(!playing);
 });
-$('step').addEventListener('click', () => { play(false); advanceTo(cur + 1); });
+$('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
+$('reverse').addEventListener('click', () => reverse(!reversing));
 $('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing
   const wasPlaying = playing;
   restart();
@@ -12197,6 +12245,8 @@ $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) se
 const seekFar = () => (walk.life && !walk.life.margolus ? 0 : walk.n);
 function seekTo(v) {
   play(false);
+  reverse(false);
+  if (v < cur && walk.life?.margolus && cur - v <= v) { while (cur > v) lifeBack(); needsFull = true; }  // (a reversible one: back by its rule, when nearer than its start)
   if (v < cur) restart();
   advanceTo(v);
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
