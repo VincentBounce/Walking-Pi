@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1028';
+const VERSION = '0.1.1029';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1307,12 +1307,12 @@ function describe(base, available) {
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
   $('barBase').parentElement.classList.remove('life');
   if (colours) base = colours;  // its chips, one per colour
-  $('barLoop').hidden = mode.life || !walk.loop;
+  $('barLoop').hidden = mode.life || !(walk.loop || walk.wormEnd);
   $('ruleChips').replaceChildren();
   if (!mode.life) {
     const from = walk.loop?.from;
-    $('barLoop').textContent = `${fmt(walk.loop?.period ?? walk.n)} digits ${walk.loop?.drift ? '→' : '↻'}${from ? ` from step ${fmt(from)}` : ''}`;  // a round
-    $('barLoop').title = from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
+    $('barLoop').textContent = walk.wormEnd ? `✝ dies at step ${fmt(walk.n)}` : `${fmt(walk.loop?.period ?? walk.n)} digits ${walk.loop?.drift ? '→' : '↻'}${from ? ` from step ${fmt(from)}` : ''}`;  // a round; a worm's end
+    $('barLoop').title = walk.wormEnd ? loopText() : from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
     const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
@@ -7792,13 +7792,17 @@ function blockTutorial(option, to) {
       : `This rule changes how many are alive, so a start on n cells comes back within 2<sup>n</sup> × ${p} generations: all the grid's states, times the phases.`)
     + (L ? ` Here, ${fmt(L.alive.length)} cells${keeps ? `, ${fmt(L.seedAlive)} alive` : ''}: at most ${bigWords(B.log).replace(/\^(.*)/, '<sup>$1</sup>')}. `
       + (L.stable ? `This start comes back at gen ${fmt(L.stable.P)}.` : `This start: not back by gen ${fmt(Math.max(L.reached ?? 0, backSearch.life === L ? backSearch.gen : 0))} (Find its return to the start searches on).`) : '') + '</p>';
-  const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
+  const flips = !ising && blockKind(to).flips, full = (1 << k) - 1;
+  const edges = torus ? ` On a torus its blocks go on round its edges (its size one they fit round).` : flips ? ` On walls, a cell in no whole block (along them) is turned over that generation, as a block would be: shown as it is.` : ` On walls, a cell in no whole block (along them) stays as it is that generation.`;
+  // a rule that turns an empty block full (Critters, Tron): as it is shown, every other generation negative
+  const shownPair = (st) => `<figure><div>${block(st)}<span>→</span>${block(full ^ to[st], st)}</div><figcaption>${alive(st)} alive${alive(full ^ to[st]) !== alive(st) ? ` → ${alive(full ^ to[st])}` : ''}</figcaption></figure>`;
+  const asShown = !flips ? '' : `<h4>As shown</h4><p>It turns an empty block full, so every other generation is shown negative (its dead cells drawn alive), as Margolus showed Critters: the picture stays the same way round${blockKind(to).keeps ? ', and each block keeps as many cells alive, each its colour' : ''}. A block, then as the next generation shows it:</p><div class="tut-row">${states.map(shownPair).join('')}</div>`;
   $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value.replace(/,/g, ',<wbr>')}</code></h3>${BLOCK_WORDS[`${kind}|${option.dataset.name}`] ? `<p>${BLOCK_WORDS[`${kind}|${option.dataset.name}`].slice(2)}.</p>` : ''}${ising ? `<p>The Ising model of a magnet (Vichniac's Q2R, 1984; Tim Tyler's cell-auto.com): the squares a checkerboard, its two colours in turn, a generation each; a square of the colour's turn turned over when just 2 of its 4 side neighbours are alive, else kept. Turned over or not, as many sides between alive and dead (its energy kept), and the colour not turning stays as it is: so it runs back.${edges}</p>`
       + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${['even', 'odd'][j]} generations</figcaption></figure>`).join('')}</div>${cases}${maxPeriod}</div>` : ''}${ising ? '' : `<p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (${R?.four ? "Tim Tyler's Square-4: Margolus's, its corners 4 sets in turn round a square" : "Margolus's neighbourhood"})`}: `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
     + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 1 ? 'every generation' : turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd', '4th'][j]} of ${turns.length}`}${turns.length === 1 ? '' : ' generations'}</figcaption></figure>`).join('')}</div>${across}`
-    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${maxPeriod}</div>`}`;
+    + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${asShown}${maxPeriod}</div>`}`;
   $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
   $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
 }
