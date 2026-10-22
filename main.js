@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.993';
+const VERSION = '0.1.994';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11900,7 +11900,10 @@ function renderRanking(L) {
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
-  $('back').disabled = cur === 0 || (!!walk.life && !walk.life.margolus);  // (a block rule: reversible, back as forth)
+  $('back').hidden = !!walk.life && !walk.life.margolus;  // (Life: never back; a block rule: reversible, back as forth)
+  $('back').disabled = cur === 0;
+  $('jump10k').hidden = Number.isFinite(walk.n);  // (Life: 10,000 generations ahead too)
+  $('jump10k').disabled = !!walk.life?.stable;
   $('reverse').hidden = !walk.life?.margolus;  // (played backwards: a reversible one's)
   $('reverse').disabled = cur === 0;
   $('step').disabled = cur >= walk.n || lifeEnded();
@@ -12227,6 +12230,7 @@ $('play').addEventListener('click', () => {
 });
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
+$('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 $('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing
   const wasPlaying = playing;
   restart();
