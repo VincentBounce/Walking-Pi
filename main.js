@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1002';
+const VERSION = '0.1.1003';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11887,7 +11887,7 @@ function drawActivity() {
   let series, n;
   if (walk.life) {
     const T = walk.life.trace;
-    n = walk.life.margolus ? Math.max(T.alive.length, seekFar() + 1) : T.alive.length;  // (a reversible one's: as its slider, the generations not yet played flat)
+    n = walk.life.margolus ? Math.max(T.alive.length, seekFar() + 1) : Math.min(T.alive.length, cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, up to the one shown: those worked out ahead, to find a loop, not drawn)
     series = [[columns(n, (i) => T.alive[i] ?? 0), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
