@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1022';
+const VERSION = '0.1.1023';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6724,7 +6724,7 @@ const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, r
 // Emoji: the one picked (plane.emoji), as Text draws it, in its colours if any (see blockPicture)
 const emojiCells = () => { const { kind, W, row } = walk.plane; return blockPicture ? blockPicture.idx.map((c) => (c ? 1 : 0)) : textCells(kind, W, row, plane.emoji); };
 // Reversible, Text: an emoji in its own colours, every cell of it alive, each its colour carried along by the blocks (as
-// blockColours', see blockStep; the rules that keep their cells' count bring them back whole): its colours to 255 at most
+// see blockStep; the rules that keep their cells' count bring them back whole): its colours to 255 at most
 // (each of r, g, b to 8 levels, else 4), { pal, idx } (idx: a cell's colour, 1 on; 0, dead); null for one colour (a text)
 let blockPicture = null;
 function pictureOf(kind, W, row, text) {
@@ -6870,7 +6870,7 @@ function buildLifePlane(seq) {
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
-                paint: MODES[current.mode].margolus && carriesColours(rule) && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (see carriesColours)  // (blocks: each cell's colour, see blockColours)
+                paint: MODES[current.mode].margolus && carriesColours(rule) && blockPicture ? new Uint8Array(n) : null };  // (blocks: an emoji's colours, see carriesColours)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -7501,22 +7501,11 @@ const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.pl
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4"), which old links may still carry
 let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed in one place (see huntParts)
-// Blocks' colours: 1, or 2, 4, 8 drawn at random over the start's cells, each cell's carried along by the blocks (see
-// blockStep): a picture only, one population (no civilisations, no battles)
-const BLOCK_COLOURS = [1, 2, 4, 8];
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
 const negative = (L) => !!L.margolus?.flips && cur % 2 === 1;
 const shownCells = (L) => (negative(L) ? L.alive.map((v) => (v ? 0 : 1)) : L.alive);
-const blockPalette = () => blockPicture?.pal ?? LIFE_COLOURS.slice(0, blockColours);  // (an emoji's own, see pictureOf)
-let blockColours = 1;
-function renderBlockColours() {
-  $('blockColourRow').hidden = !MODES[$('mode').value].margolus || !carriesColours(parseRule(ruleBody($('lifeRule').value)));  // (see carriesColours)
-  $('blockColourRow').replaceChildren(...BLOCK_COLOURS.map((k) => {
-    return tile({ pic: colourBlock(k), text: k === 1 ? '1 colour' : `${k} colours`, title: k === 1 ? 'One colour' : `Each cell of the start one of ${k} colours at random, carried along by the blocks`,
-      on: k === blockColours, click: () => { if (k !== blockColours) { blockColours = k; compute(); } } });
-  }));
-}
+const blockPalette = () => blockPicture.pal;  // (an emoji's own, see pictureOf)
 const ruleColours = () => lifeColours;
 const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d+)$/i, '');  // births, survivals (and dying stages), no colours
 const lifeRuleNow = () => {
@@ -7600,7 +7589,6 @@ const colourMissing = (K) => {
   return counts.some((c) => c >= K - 1 && (K === 3 ? (c - 2) % 2 === 0 : c - (K - 1) !== 1));
 };
 function renderColours() {
-  renderBlockColours();  // (blocks: theirs)
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
     on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; compute(); } } })),
@@ -8179,8 +8167,7 @@ function fitRuleToShape() {
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
-  if (L.paint && blockPicture) L.paint.set(blockPicture.idx);  // (an emoji's colours)
-  else if (L.paint) for (let t = 0; t < L.paint.length; t++) L.paint[t] = 1 + Math.floor(cellRandom(plane.seed + 7, t) * blockColours);  // (blocks: at random, the same each time)
+  if (L.paint) L.paint.set(blockPicture.idx);  // (an emoji's colours)
   for (let t = 0; t < L.alive.length; t++) {
     const live = L.alive[t] > 0 && L.alive[t] <= L.colours;
     L.age[t] = L.ever[t] = live ? 1 : 0;
@@ -8375,7 +8362,7 @@ function isingOf(kind, W) {
 // billiard balls, the gases, Critters: their cells carry their colours, back by the inverse)
 const ones = (v) => { let c = 0; for (; v; v &= v - 1) c++; return c; };
 const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; return { flips, keeps: to.every((n, st) => ones(flips ? full ^ n : n) === ones(st)) }; };
-// a block rule whose cells carry colours (an emoji's, blockColours'): one that keeps them; Tron makes and unmakes cells, Q2R's
+// a block rule whose cells carry colours (an emoji's): one that keeps them; Tron makes and unmakes cells, Q2R's
 // never move: black and white
 const carriesColours = (rule) => !!rule?.margolus && !rule.ising && blockKind(rule.margolus).keeps;
 // back: run backwards (a, the generation after b; see lifeBack)
@@ -9877,7 +9864,7 @@ function getSetup() {
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
-  if (mode.life && (mode.margolus ? blockColours : lifeColours) > 1) s.k = mode.margolus ? blockColours : lifeColours;
+  if (mode.life && !mode.margolus && lifeColours > 1) s.k = lifeColours;
   if (mode.life && !mode.margolus && lifeColours > 1 && colourMix) s.mx = 1;  // (Mixed)
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "pattern.acorn", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
@@ -9936,7 +9923,6 @@ function applySetup(s) {
     }
     lifeColours = Number(s.k) || (s.r && parseRule(s.r)?.colours) || 1;  // k=, or an old link's "/Immigration"
     colourMix = Number(s.mx) === 1;
-    if (MODES[s.w].margolus) blockColours = BLOCK_COLOURS.includes(Number(s.k)) ? Number(s.k) : 1;  // (blocks: their cells' colours, k= too)
     if (s.r) { ruleFittedTo = s.w; setRuleText(ruleBody(s.r)); }  // a link's rule as it is
   }
   // the display is not part of a setup: it takes the defaults of the walk mode's tab, when the tab
