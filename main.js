@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1009';
+const VERSION = '0.1.1010';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6767,7 +6767,7 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
   else if (plane.start === 'text') {
-    blockPicture = MODES[$('mode').value].margolus ? pictureOf(kind, W, row, plane.text) : null;  // (Reversible: an emoji in its colours)
+    blockPicture = MODES[$('mode').value].margolus && !parseRule(ruleBody($('lifeRule').value))?.ising ? pictureOf(kind, W, row, plane.text) : null;  // (Reversible: an emoji in its colours, carried by the cells; Q2R's never move, they turn over where they are: none)
     const on = blockPicture?.idx ?? textCells(kind, W, row, plane.text);
     for (let t = 0; t < n; t++) seed[t] = on[t] ? 1 : 0;
   }
@@ -6833,7 +6833,7 @@ function buildLifePlane(seq) {
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, flips: rule.margolus[0] === rule.margolus.length - 1 }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
-                paint: MODES[current.mode].margolus && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
+                paint: MODES[current.mode].margolus && !rule.ising && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (Q2R's cells turn over where they are: no colour to carry)  // (blocks: each cell's colour, see blockColours)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -7491,7 +7491,7 @@ const shownCells = (L) => (negative(L) ? L.alive.map((v) => (v ? 0 : 1)) : L.ali
 const blockPalette = () => blockPicture?.pal ?? LIFE_COLOURS.slice(0, blockColours);  // (an emoji's own, see pictureOf)
 let blockColours = 1;
 function renderBlockColours() {
-  $('blockColourRow').hidden = !MODES[$('mode').value].margolus;
+  $('blockColourRow').hidden = !MODES[$('mode').value].margolus || !!parseRule(ruleBody($('lifeRule').value))?.ising;  // (Q2R: its cells never move, no colour carried)
   $('blockColourRow').replaceChildren(...BLOCK_COLOURS.map((k) => {
     return tile({ pic: colourBlock(k), text: k === 1 ? '1 colour' : `${k} colours`, title: k === 1 ? 'One colour' : `Each cell of the start one of ${k} colours at random, carried along by the blocks`,
       on: k === blockColours, click: () => { if (k !== blockColours) { blockColours = k; compute(); } } });
