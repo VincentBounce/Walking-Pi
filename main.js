@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1004';
+const VERSION = '0.1.1005';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6664,7 +6664,7 @@ function cellRandom(seed, i) {
 // A drawing on the grid: painted on a canvas of its own (paint(ctx, S, box): its cells' middles' box, 80 % of it the room
 // to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
 // drawing, and, an emoji's colours, on its darker half
-function drawnCells(kind, W, row, paint) {
+function drawnCells(kind, W, row, paint, colours = false) {  // colours: each cell's colour where the drawing is (see blockPicture)
   const n = row * W, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row)));
   const [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...mids.map((m) => m[d])), Math.max(...mids.map((m) => m[d]))]);
   const S = Math.min(4096, Math.max(400, 4 * Math.ceil(Math.max(x1 - x0, y1 - y0)))), cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
@@ -6673,18 +6673,37 @@ function drawnCells(kind, W, row, paint) {
   paint(ctx, S, { x0, x1, y0, y1, at: (x, y) => [(x - (x0 + x1) / 2) * scale + S / 2, (y - (y0 + y1) / 2) * scale + S / 2], scale });
   const px = ctx.getImageData(0, 0, S, S).data, at = ([x, y]) => 4 * (Math.min(S - 1, Math.max(0, Math.round((y - (y0 + y1) / 2) * scale + S / 2))) * S + Math.min(S - 1, Math.max(0, Math.round((x - (x0 + x1) / 2) * scale + S / 2))));
   const lum = (i) => 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2];
+  if (colours) return mids.map((p) => { const i = at(p); return px[i + 3] > 128 ? [px[i], px[i + 1], px[i + 2]] : null; });
   const inked = mids.map((p) => at(p)).filter((i) => px[i + 3] > 128).map(lum).sort((a, b) => a - b), cut = Math.max(1, inked[Math.floor(inked.length / 2)] ?? 0);  // (black text: all of it; an emoji: its darker half)
   return Uint8Array.from(mids, (p) => { const i = at(p); return px[i + 3] > 128 && lum(i) <= cut ? 1 : 0; });
 }
 // Text: a word or an emoji drawn as big as fits in the middle of the grid
-const textCells = (kind, W, row, text) => drawnCells(kind, W, row, (ctx, S) => {
+const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S) => {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `bold 100px system-ui, sans-serif`;
   const m = ctx.measureText(text), big = Math.min((0.8 * S * 100) / Math.max(1, m.width), 0.8 * S);
   ctx.font = `bold ${big}px system-ui, sans-serif`;
   ctx.fillText(text, S / 2, S / 2);
-});
+}, colours);
+// Reversible, Text: an emoji in its own colours, every cell of it alive, each its colour carried along by the blocks (as
+// blockColours', see blockStep; the rules that keep their cells' count bring them back whole): its colours to 255 at most
+// (each of r, g, b to 8 levels, else 4), { pal, idx } (idx: a cell's colour, 1 on; 0, dead); null for one colour (a text)
+let blockPicture = null;
+function pictureOf(kind, W, row, text) {
+  const rgb = textCells(kind, W, row, text, true);
+  for (const levels of [8, 4]) {
+    const q = (v) => Math.round((v / 255) * (levels - 1)), keys = new Map(), pal = [], idx = new Uint8Array(rgb.length);
+    rgb.forEach((c, t) => {
+      if (!c) return;
+      const k = c.map(q).join();
+      if (!keys.has(k)) { keys.set(k, keys.size + 1); pal.push(`#${c.map((v) => Math.round((q(v) * 255) / (levels - 1)).toString(16).padStart(2, '0')).join('')}`); }
+      idx[t] = keys.get(k);
+    });
+    if (pal.length <= 255) return pal.length > 1 ? { pal, idx } : null;
+  }
+  return null;
+}
 // Icon 12, 24, 48: Pixelarticons' (pixelarticons.js), N cells wide: their 24 × 24 pixels a cell each, 2 × 2 each (48), or
 // halved (12: a cell alive where 2 of its 4 pixels are). An icon as a pattern of the grid's cells (iconPatterns: the cells
 // of a patch of its plane grid whose middles fall on its pixels, as Draw's patterns after orientPattern), laid as Centered
@@ -6745,7 +6764,11 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   // drawn copied to all of them
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
-  else if (plane.start === 'text') { const on = textCells(kind, W, row, plane.text); for (let t = 0; t < n; t++) seed[t] = on[t]; }
+  else if (plane.start === 'text') {
+    blockPicture = MODES[$('mode').value].margolus ? pictureOf(kind, W, row, plane.text) : null;  // (Reversible: an emoji in its colours)
+    const on = blockPicture?.idx ?? textCells(kind, W, row, plane.text);
+    for (let t = 0; t < n; t++) seed[t] = on[t] ? 1 : 0;
+  }
   else if (plane.start === 'random') {
     const p = plane.density / 100;
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
@@ -6796,6 +6819,7 @@ function buildLifePlane(seq) {
   if (MODES[current.mode].margolus) lifeColours = 1;  // (blocks: one colour)
   fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
+  blockPicture = null;  // (planeSeed: an emoji's, Reversible)
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && rule.iso !== 'vertex' && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares (v: any plane)
     rule = parseRule('B3/S23');
@@ -6807,7 +6831,7 @@ function buildLifePlane(seq) {
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
-                paint: MODES[current.mode].margolus && blockColours > 1 ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
+                paint: MODES[current.mode].margolus && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (blocks: each cell's colour, see blockColours)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -7387,7 +7411,7 @@ function drawLifePlane() {
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
-  const painted = L.paint ? [0, ...LIFE_COLOURS.slice(0, blockColours).map(pack)] : null;  // (blocks: each cell its colour)
+  const painted = L.paint ? [0, ...blockPalette().map(pack)] : null;  // (blocks: each cell its colour)
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
@@ -7399,7 +7423,7 @@ function drawLifePlane() {
     const st = a[t];
     px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? (painted ? painted[L.paint[t]] : alive) : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+      : colour === 'mono' ? (st === 1 ? (painted ? painted[L.paint[t]] || alive : alive) : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
       : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
@@ -7458,6 +7482,7 @@ let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed 
 // Blocks' colours: 1, or 2, 4, 8 drawn at random over the start's cells, each cell's carried along by the blocks (see
 // blockStep): a picture only, one population (no civilisations, no battles)
 const BLOCK_COLOURS = [1, 2, 4, 8];
+const blockPalette = () => blockPicture?.pal ?? LIFE_COLOURS.slice(0, blockColours);  // (an emoji's own, see pictureOf)
 let blockColours = 1;
 function renderBlockColours() {
   $('blockColourRow').hidden = !MODES[$('mode').value].margolus;
@@ -8126,7 +8151,9 @@ function fitRuleToShape() {
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
-  if (L.paint) for (let t = 0; t < L.paint.length; t++) L.paint[t] = 1 + Math.floor(cellRandom(plane.seed + 7, t) * blockColours);  // (blocks: at random, the same each time)
+  L.marks = new Map();  // (blocks' colours: marks to go back from, see lifeBack)
+  if (L.paint && blockPicture) L.paint.set(blockPicture.idx);  // (an emoji's colours)
+  else if (L.paint) for (let t = 0; t < L.paint.length; t++) L.paint[t] = 1 + Math.floor(cellRandom(plane.seed + 7, t) * blockColours);  // (blocks: at random, the same each time)
   for (let t = 0; t < L.alive.length; t++) {
     const live = L.alive[t] > 0 && L.alive[t] <= L.colours;
     L.age[t] = L.ever[t] = live ? 1 : 0;
@@ -8392,6 +8419,7 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
+  if (L.paint && cur % 64 === 0 && a.length <= 65536 && !L.marks.has(cur)) L.marks.set(cur, [a.slice(), L.paint.slice()]);  // (blocks' colours: a mark every 64, see lifeBack)
   if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
@@ -8494,6 +8522,13 @@ function lifeBack() {
     if (a[t]) born++; else dead++;  // (forth: born, died)
     L.age[t] = b[t] ? 1 : 0;
     if (L.activity[t]) L.activity[t]--;
+  }
+  const mark = L.paint && L.marks.get(g - (g % 64));
+  if (mark) {  // the colours: again from the mark before (a rule that does not keep its cells' count mixes them up going back)
+    let x = mark[0].slice(), y = new Uint8Array(x.length);
+    const p = mark[1].slice();
+    for (let k = g - (g % 64); k < g; k++) { blockStep(M, x, y, k, p); [x, y] = [y, x]; }
+    L.paint.set(p);
   }
   for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
   L.alive = b;
@@ -10605,8 +10640,9 @@ function drawSphere() {
       palette = [null, ...civ, ...LIFE_FADE];
       levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono' && L.paint) {  // blocks: each cell its colour, then the trail of the dead
-      palette = [null, ...LIFE_COLOURS.slice(0, blockColours), ...LIFE_FADE];
-      levelOf = (t) => (L.alive[t] ? L.paint[t] : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? blockColours + L.gen - L.died[t] : 0);
+      const pal = blockPalette();
+      palette = [null, ...pal, ...LIFE_FADE, LIFE_ALIVE];  // (a cell born with no colour, an emoji's background: alive's)
+      levelOf = (t) => (L.alive[t] ? L.paint[t] || palette.length - 1 : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? pal.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono') {
       palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
       levelOf = (t) => (L.alive[t] === 1 ? 1 : L.alive[t] ? 1 + dyingShade(L.alive[t])
