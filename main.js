@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1015';
+const VERSION = '0.1.1017';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1835,6 +1835,7 @@ const ICONS = (() => {
     back: '<rect class="f" x="15.5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M13 5L4 12L13 19Z', 'f'),
     step: '<rect class="f" x="5" y="5" width="3.5" height="14" rx="1"/>' + pathEl('M11 5L20 12L11 19Z', 'f'),
     reverse: pathEl('M17 4.5L4.5 12L17 19.5Z', 'f'),  // Play backwards: Play turned round
+    smiley: '<circle cx="12" cy="12" r="9"/>' + pathEl('M8 14.5Q12 18 16 14.5') + '<circle class="f" cx="9" cy="10" r="1.2"/><circle class="f" cx="15" cy="10" r="1.2"/>',  // Emoji: a smiling face
     star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
     check: pathEl('M5 12.5L10 17.5L19 7'),
     copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/>' + pathEl('M15.5 8.5V5.5A2 2 0 0 0 13.5 3.5H5.5A2 2 0 0 0 3.5 5.5V13.5A2 2 0 0 0 5.5 15.5H8.5'),
@@ -5915,7 +5916,7 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, text: 'π', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
+const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -6691,14 +6692,25 @@ function drawnCells(kind, W, row, paint, colours = false) {  // colours: each ce
   return out;
 }
 // Text: a word or an emoji drawn as big as fits in the middle of the grid
-// (its ink, as measured, as big as the grid's box holds it, in its middle)
+// (its ink, found on a draft: an emoji's picture has a margin of its own, its box as the font says it larger; as big as the
+// grid's box holds it, in its middle)
 const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S, { x0, x1, y0, y1, scale }) => {
-  ctx.font = `bold 100px system-ui, sans-serif`;
-  const m = ctx.measureText(text), l = m.actualBoundingBoxLeft, r = m.actualBoundingBoxRight, up = m.actualBoundingBoxAscent, down = m.actualBoundingBoxDescent;
-  const f = Math.min(((x1 - x0 + 1) * scale) / Math.max(1, l + r), ((y1 - y0 + 1) * scale) / Math.max(1, up + down));
+  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 100px system-ui, sans-serif';
+  dc.font = font;
+  const D = 400, w = Math.ceil(dc.measureText(text).width) + 300;
+  draft.width = w; draft.height = D;
+  dc.font = font;  // (a canvas sized again: its font too)
+  dc.fillText(text, 150, 250);  // (100 px, room all round)
+  const px = dc.getImageData(0, 0, w, D).data;
+  let l = w, r = -1, t = D, b = -1;
+  for (let y = 0; y < D; y++) for (let x = 0; x < w; x++) if (px[4 * (y * w + x) + 3] > 32) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
+  if (r < 0) return;  // (nothing drawn)
+  const f = Math.min(((x1 - x0 + 1) * scale) / (r - l + 1), ((y1 - y0 + 1) * scale) / (b - t + 1));
   ctx.font = `bold ${100 * f}px system-ui, sans-serif`;
-  ctx.fillText(text, S / 2 + ((l - r) / 2) * f, S / 2 + ((up - down) / 2) * f);
+  ctx.fillText(text, S / 2 + (150 - (l + r + 1) / 2) * f, S / 2 + (250 - (t + b + 1) / 2) * f);
 }, colours);
+// Emoji: the one picked (plane.emoji), as Text draws it, in its colours if any (see blockPicture)
+const emojiCells = () => { const { kind, W, row } = walk.plane; return blockPicture ? blockPicture.idx.map((c) => (c ? 1 : 0)) : textCells(kind, W, row, plane.emoji); };
 // Reversible, Text: an emoji in its own colours, every cell of it alive, each its colour carried along by the blocks (as
 // blockColours', see blockStep; the rules that keep their cells' count bring them back whole): its colours to 255 at most
 // (each of r, g, b to 8 levels, else 4), { pal, idx } (idx: a cell's colour, 1 on; 0, dead); null for one colour (a text)
@@ -6840,6 +6852,7 @@ function buildLifePlane(seq) {
     $('lifePreset').value = rule.text;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
+  if (plane.start === 'random' && hunt.zone === 'emoji' && MODES[current.mode].margolus && carriesColours(rule)) blockPicture = pictureOf(kind, W, row, plane.emoji);  // (Emoji: in its colours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
@@ -6923,6 +6936,7 @@ function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
+  if (zone === 'emoji') return `The emoji ${plane.emoji} (Unicode)`;
   if (iconSize(zone)) return `${K === 1 ? `The icon “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.slice(0, K).map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
@@ -6951,6 +6965,7 @@ function planeFromSetup(s) {
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
     if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
+    if (hunt.zone === 'emoji') plane.emoji = String(s.pop).slice(6) || '🙂';  // (pop=emoji.🦊)
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -8843,6 +8858,7 @@ const HUNT_ZONES = { radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], ra
                      patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
                      centred: [null, 'Centered'],  // the same, each at its colour's spot
                      icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon48: [null, 'Icon 48'],  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (the plane; see iconCells)
+                     emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0);  // (an icon's width in cells)
@@ -9074,7 +9090,8 @@ function huntFits() {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'face' && faceOf() === null) return [zone, false];
-    if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];  // (as Centered: whole at each spot)
+    if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];
+    if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
     if (!r && zone !== 'face') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
@@ -9099,14 +9116,13 @@ function renderHunt() {
   $('huntGoals').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
-  $('emojiZone').hidden = !walk.plane;  // (Text: the plane's)
   for (const b of $('huntZones').children) {
-    if (!b.dataset.zone) continue;  // (Emoji: a Text start)
     setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true });  // (picked: a click draws another start)
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
   // one line under the button: the zone before a hunt, how far it got while it runs, what it found after
   const zone = hunt.zone === 'custom' ? `${fmt(walk.life.seedAlive)} cells found by a hunt, from a link · pick a zone to hunt in`
+    : hunt.zone === 'emoji' ? `${plane.emoji} · ${fmt(walk.life.seedAlive)} alive / ${fmt(walk.life.seed.length)} cells`
     : (iconSize(hunt.zone) ? `${fmt(perColour)} icons${K > 1 ? ' a colour' : ''}` : famousZone(hunt.zone) ? `${fmt(perColour)} patterns, ways${hunt.zone === 'centred' ? '' : ' and places'} a colour`
       : `${all ? '' : `${fmt(Math.max(1, Math.round(DENSITY[0] * perColour)))}–${fmt(Math.max(1, Math.round(DENSITY[1] * perColour)))} alive / `}${fmt(perColour)} cells${K > 1 ? ' a colour' : ''}${sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}, ${fmt(cells.length)} chosen` : ''}`)
       + (all ? ` · ${fmt(all)} starts, all to try` : '');
@@ -9173,6 +9189,7 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
+  if (hunt.zone === 'emoji') return emojiCells();
   if (iconSize(hunt.zone)) return iconCells(iconSize(hunt.zone));
   if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'face') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
@@ -9189,6 +9206,7 @@ function zoneSeed() {
   return seed;
 }
 function pickZone(zone) {
+  if (zone === 'emoji') { hunt.zone = zone; hunt.top = []; hunt.status = ''; plane.emoji = randomEmoji(); compute(true); return; }  // (built again: its colours, see blockPicture)
   hunt.zone = zone;
   hunt.top = [];
   hunt.status = '';
@@ -9841,7 +9859,7 @@ function decodeCells(code, n) {
 // and seed (pop=bloom.30.7); a zone from a link's word, else none
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase().replace(/ /g, '') : 'random');  // (Icon 24: icon24)
 // a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart)
-const zonePop = () => (iconSize(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => ICON_NAMES[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
+const zonePop = () => (lifeStart?.zone === 'emoji' ? `emoji.${plane.emoji}` : iconSize(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => ICON_NAMES[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
@@ -12573,18 +12591,19 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, 
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
-  const b = tile({ pic: pic ? icon(pic) : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : iconSize(zone) ? '.....,.o.o.,.....,o...o,.ooo.' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face
+  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : iconSize(zone) ? '.....,.o.o.,.....,o...o,.ooo.' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face
   b.dataset.zone = zone;
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
+    : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : zone === 'face' ? 'A whole face of the solid for each colour: random starts on it' : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
   return b;
-}), tile({ pic: pixelIcon('.o.o.,.....,o...o,.ooo.,.....'), text: 'Emoji', id: 'emojiZone', title: "An emoji at random, of Unicode's 1,923 (Emoji 18.0), drawn as Text (pop=text.🦊): a click, another", click: () => pickEmoji() }));
-// Emoji: Text with an emoji at random, one this browser draws (in colours: a missing one is a box of one colour)
+}));
+// Emoji: an emoji at random, one this browser draws (in colours: a missing one is a box of one colour)
 function randomEmoji() {
   const cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
   cv.width = cv.height = 24;
@@ -12600,8 +12619,6 @@ function randomEmoji() {
     if (colourful || tries >= 20) return e;
   }
 }
-function pickEmoji() { plane.start = 'text'; plane.text = randomEmoji(); cleared = null; compute(true); }
-$('textTiles').append(tile({ pic: pixelIcon('.o.o.,.....,o...o,.ooo.,.....'), text: 'Emoji', title: 'Another emoji at random', click: () => pickEmoji() }));
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !(current.mode === 'antSquare' || walk.plane) || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
