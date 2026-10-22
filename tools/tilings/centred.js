@@ -6,7 +6,7 @@
 // lived start (a methuselah, 200 generations at least) and the smallest that reaches the walls (it keeps spreading). Their cells as their middles' offsets from the patch's middle. Out: out/centred.json
 const N = Number(Deno.args[0] ?? 4), only = Deno.args[2], off = Deno.args[1] === 'off', W = 43, file = off ? 'centred-off.json' : 'centred.json';  // (off: 6 from the middle, for colours: a copy a colour turned round it)  // (the app's W for ⌀ 48: the pinwheel's middle moves with W)
 const html = Deno.readTextFileSync(new URL('../../index.html', import.meta.url));
-const MARKS = { '◺': 'pinwheel', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '✴': 'ring10', '❈': 'ring12', '❊': 'mirror7', '❅': 'rhombs14' };
+const MARKS = { '◺': 'pinwheel', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '✼': 'flower9', '✥': 'flower10', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '✴': 'ring10', '❈': 'ring12', '❊': 'mirror7', '❅': 'rhombs14' };
 const jobs = [];
 for (const [, rule, mark] of html.matchAll(/<option value="([^"]+)" data-name="[^"]*">(\S+) /g)) if (MARKS[mark] && /^B/.test(rule) && (!only || MARKS[mark] === only)) jobs.push([MARKS[mark], rule]);
 const workers = Array.from({ length: N }, () => new Worker(new URL('./centred-worker.js', import.meta.url).href, { type: 'module' }));

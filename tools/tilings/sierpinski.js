@@ -19,5 +19,6 @@ export function sierpinskiGrid(L) {
     for (const u of [...around.keys()].sort((a, b) => a - b)) { list.push(u); side.push(around.get(u) >= 2 ? 1 : 0); }
   }
   start[N] = list.length;
-  return { W: 1, row: N, n: N, start, list: Int32Array.from(list), side: Uint8Array.from(side), per: 1 };
+  const mids = tris.map((Q) => [0, 1, 2].map((d) => Q.reduce((m, k) => m + Number(k.split(',')[d]) / 1e6, 0) / 3));  // (each one's middle)
+  return { W: 1, row: N, n: N, start, list: Int32Array.from(list), side: Uint8Array.from(side), per: 1, mids };
 }

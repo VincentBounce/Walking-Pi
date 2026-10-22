@@ -156,8 +156,9 @@ async function crawl(fail) {
 
 // The deep crawl (a night's): every grid of Life and Reversible from its link, then on each: every rule of its menu and one of
 // your own (B36/S23; blocks: their menu's), each with How it works (and its Letters page); every colour (and Mixed); every zone of
-// Hunt; its smallest size; 30 generations played. No error anywhere (a click's included), the link's mode the one shown
-async function deep(fail) {
+// Hunt; its smallest size; 30 generations played. No error anywhere (a click's included), the link's mode the one shown.
+// only: those grids alone; from: the grid it starts at (after a crash: localStorage.walkingDeep holds the one it was on, and its failures so far)
+async function deep(fail, from, only) {
   const wait = (ms) => new Promise((go) => setTimeout(go, ms)), errors = [];
   const onError = (e) => errors.push(e.message);
   window.addEventListener('error', onError);
@@ -175,7 +176,9 @@ async function deep(fail) {
     if (letters) { letters.click(); await look(`${what} Letters`); document.querySelector('.tut-letters')?.click(); await wait(100); }
     if (!$('ruleTuto').hidden) $('ruleTuto').querySelector('.tut-close')?.click();
   };
-  for (const w of Object.keys(MODES).filter((m) => MODES[m].life && [...$('mode').options].some((o) => o.value === m))) {
+  const all = (only ?? Object.keys(MODES)).filter((m) => MODES[m].life && [...$('mode').options].some((o) => o.value === m));
+  for (const w of all.slice(Math.max(0, all.indexOf(from)))) {
+    localStorage.walkingDeep = w;
     location.hash = `w=${w}`;
     await look(`${w} from its link`, 900);
     if ($('mode').value !== w) fail(`${w}: the link opened ${$('mode').value}`);
@@ -205,10 +208,10 @@ async function deep(fail) {
   return checked;
 }
 
-window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false } = {}) => {
-  const failures = [], fail = (s) => failures.push(s);
+window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, from, only } = {}) => {
+  const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
   let checked = checkMeshes(fail);
   if (andCrawl) checked += await crawl(fail);
-  if (andDeep) checked += await deep(fail);
+  if (andDeep) checked += await deep(fail, from, only);
   return { ok: !failures.length, failures, checked };
 };
