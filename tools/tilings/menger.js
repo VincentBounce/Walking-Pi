@@ -1,8 +1,10 @@
 // Menger's sponge as main.js builds it (mengerMesh: its surface's squares, a square per side of a cell kept facing one
-// taken away), and its grid for the searches: each square's neighbours, the squares sharing a corner with it
-export function mengerGrid(L) {
-  const n = 3 ** L, kept = (x, y, z) => {
+// taken away), and its grid for the searches: each square's neighbours, the squares sharing a corner with it; its cells
+// m × m × m squares (the frame: L = 1)
+export function mengerGrid(L, m = 1) {
+  const n = 3 ** L * m, kept = (x, y, z) => {
     if (Math.min(x, y, z) < 0 || Math.max(x, y, z) >= n) return false;
+    [x, y, z] = [x, y, z].map((v) => Math.floor(v / m));
     for (let k = 0; k < L; k++, x = Math.floor(x / 3), y = Math.floor(y / 3), z = Math.floor(z / 3)) if ((x % 3 === 1) + (y % 3 === 1) + (z % 3 === 1) >= 2) return false;
     return true;
   };
