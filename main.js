@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.994';
+const VERSION = '0.1.995';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5914,7 +5914,7 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 48, torus: true, rect: false, carpet: false, gens: 2000, text: 'π', start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -6660,6 +6660,25 @@ function cellRandom(seed, i) {
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
+// Text: a word or an emoji drawn as big as fits in the middle of the grid (its cells' middles' box, 80 % of it), on a
+// canvas of its own; a cell alive where its middle falls on the drawing, and, an emoji's colours, on its darker half
+function textCells(kind, W, row, text) {
+  const n = row * W, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row)));
+  const [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...mids.map((m) => m[d])), Math.max(...mids.map((m) => m[d]))]);
+  const S = 400, cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
+  cv.width = cv.height = S;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold 100px system-ui, sans-serif`;
+  const m = ctx.measureText(text), big = Math.min((0.8 * S * 100) / Math.max(1, m.width), 0.8 * S);
+  ctx.font = `bold ${big}px system-ui, sans-serif`;
+  ctx.fillStyle = '#000';
+  ctx.fillText(text, S / 2, S / 2);
+  const px = ctx.getImageData(0, 0, S, S).data, at = ([x, y]) => 4 * (Math.min(S - 1, Math.max(0, Math.round((y - (y0 + y1) / 2) * scale + S / 2))) * S + Math.min(S - 1, Math.max(0, Math.round((x - (x0 + x1) / 2) * scale + S / 2))));
+  const lum = (i) => 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2];
+  const inked = mids.map((p) => at(p)).filter((i) => px[i + 3] > 128).map(lum).sort((a, b) => a - b), cut = Math.max(1, inked[Math.floor(inked.length / 2)] ?? 0);  // (black text: all of it; an emoji: its darker half)
+  return Uint8Array.from(mids, (p) => { const i = at(p); return px[i + 3] > 128 && lum(i) <= cut ? 1 : 0; });
+}
 // the cells' states at generation 0, as plane says
 // a grid's cells of the wall (a rosette's hole): out of every cell's neighbours, none of their own (never alive, see lifeStep)
 function withoutCells(nb, dead) {
@@ -6676,6 +6695,7 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   // drawn copied to all of them
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
+  else if (plane.start === 'text') { const on = textCells(kind, W, row, plane.text); for (let t = 0; t < n; t++) seed[t] = on[t]; }
   else if (plane.start === 'random') {
     const p = plane.density / 100;
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
@@ -6825,7 +6845,7 @@ function planeLead(number) {
   if (lifeStart?.zone) return `${zoneWords(lifeStart.zone)}${sym ? `, ${sym},` : ''} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}`;
-  const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
+  const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells`, text: `“${plane.text}” drawn` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
   return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : carpetOn(kind) ? "with dead edges, holed as Sierpiński's carpet" : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
@@ -6841,7 +6861,8 @@ function planeFromSetup(s) {
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
-  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' ? kind : 'random';
+  } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'pattern' || kind === 'text' ? kind : 'random';
+  if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
   if (plane.start === 'pattern') {  // an old link's pattern: drawn in the middle
     plane.start = 'draw';
@@ -6858,11 +6879,13 @@ function renderPlaneRow() {
     b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
     b.disabled = false;
     if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
+    b.hidden = b.dataset.start === 'text' && !kind;  // (Text: on the plane)
   }
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
   if (!kind) {
     $('symmetryRow').hidden = true;
     $('startDraw').hidden = !surfaceDraw;
+    $('startText').hidden = true;
     if (!surfaceDraw) return;
     // a surface: the rule's patterns on its grid, greyed (they cannot be drawn here: Famous lays them)
     const cells = { '■': 'square', '▲': 'tri', '⬡': 'hex', '⬠': 'cairo', '◆': 'kite', '🎩': 'hat', '✧': 'penrose', '◺': 'pinwheel', '✺': 'spectre', '✵': 'ammann', '❄': 'rhombs12', '❅': 'rhombs14', '❀': 'flower', '✾': 'flower5', '✽': 'flower7', '❊': 'mirror7', '✸': 'flower3', '✷': 'flower4', '✹': 'flower8', '✼': 'flower9', '✥': 'flower10', '❇': 'ring7', '✲': 'ring8', '✻': 'ring9', '✴': 'ring10', '❈': 'ring12', ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [t.mark, k])) }[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
@@ -6894,6 +6917,8 @@ function renderPlaneRow() {
     return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), click: () => { plane.sym = y; reseedStart(); } });
   }));
   $('startDraw').hidden = plane.start !== 'draw';
+  $('startText').hidden = plane.start !== 'text';
+  $('startTextInput').value = plane.text;
   // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
   const rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? ''), mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
   const fits = (p) => p[0] === 'cell' || (p[1] === baseOf(kind) && (mine || p[2].includes(rule)));  // the rule's patterns; your own rule: all the grid's
@@ -9697,7 +9722,7 @@ function getSetup() {
     if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     if (carpetOn(mode.plane) && !plane.torus) s.cp = 1;  // (Sierpiński's carpet)
     if (mode.margolus) s.g = plane.gens;  // (a reversible one's generations)
-    s.pop = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start;
+    s.pop = plane.start === 'random' ? `${zoneWord()}.${plane.density}.${plane.seed}` : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
   }
@@ -10039,9 +10064,11 @@ function play(on) {
   $('play').innerHTML = playing ? `${icon('pause')} Pause` : `${icon('play')} Play`;
   $('play').classList.toggle('on', playing);
 }
-// Play backwards (a reversible one's, ◀ by Play): back to its start, a generation at a time, by its rule run backwards
+// Play backwards (◀ by Play): back to its start, a step at a time; a reversible one by its rule run backwards, a walk
+// drawn again up to the step before (Life: none, it cannot go back)
+const reversible = () => !walk.life || !!walk.life.margolus;
 function reverse(on) {
-  reversing = on && !!walk.life?.margolus && cur > 0;
+  reversing = on && reversible() && cur > 0;
   if (reversing) play(false);
   $('reverse').innerHTML = icon(reversing ? 'pause' : 'reverse');
   $('reverse').classList.toggle('on', reversing);
@@ -11904,7 +11931,7 @@ function updateStats() {
   $('back').disabled = cur === 0;
   $('jump10k').hidden = Number.isFinite(walk.n);  // (Life: 10,000 generations ahead too)
   $('jump10k').disabled = !!walk.life?.stable;
-  $('reverse').hidden = !walk.life?.margolus;  // (played backwards: a reversible one's)
+  $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur === 0;
   $('step').disabled = cur >= walk.n || lifeEnded();
   $('end').disabled = cur >= walk.n || (!Number.isFinite(walk.n) && !!walk.life?.stable);  // a Game of Life's end known: there already (or in its loop)
@@ -12106,7 +12133,8 @@ function tick(now = performance.now()) {
     const k = Math.floor(acc);
     acc -= k;
     if (k > 0 && playing) advanceTo(cur + k);
-    if (k > 0 && reversing) { for (let i = 0; i < k && cur > 0; i++) lifeBack(); statsDirty = true; if (!cur) reverse(false); }
+    if (k > 0 && reversing && walk.life) { for (let i = 0; i < k && cur > 0; i++) lifeBack(); statsDirty = true; if (!cur) reverse(false); }
+    else if (k > 0 && reversing) { const v = Math.max(0, cur - k); restart(); advanceTo(v); needsFull = true; reverse(v > 0); }  // (a walk: drawn again, up to there)
   }
   includeBox();
   if (walk.n && !walk.sphere && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow (a surface's frame is fixed)
@@ -12372,6 +12400,7 @@ for (const b of $('lifeStartTabs').children) {
     plane.start = b.dataset.start; cleared = null; compute(true);
   });
 }
+$('startTextInput').addEventListener('change', () => { plane.text = $('startTextInput').value.trim() || 'π'; compute(true); });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {

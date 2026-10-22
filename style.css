@@ -482,7 +482,8 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 @media (hover: none) { .stage-bar:focus-within .seek-row { display: none; } }
 .stage-bar:not(:hover) .player-side { display: none; }
 .player-main:has(#reverse:not([hidden])) { width: 360px; }  /* Play backwards (a reversible one's), left of Play: the row as much wider */
-.stage-bar:has(#reverse:not([hidden])) { width: 386px; }
+.stage-bar:not(:hover):has(#reverse:not([hidden])) { width: 386px; }  /* (folded; open, as wide as ever) */
+@media (hover: none) { .stage-bar:focus-within:has(#reverse:not([hidden])) { width: 680px; } }
 @media (hover: none) { .stage-bar:focus-within .player-side { display: flex; } }
 .stage-bar .stepper { margin: 0 0 8px; }
 .stage-bar .progress { margin: 0 0 8px; }

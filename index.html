@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261110g">
+  <link rel="stylesheet" href="style.css?v=20261110h">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -351,7 +351,10 @@
       <section id="startSection" hidden>  <!-- Life: how the cells start (the plane), or the hunt for a lasting start (the surfaces) -->
         <h2 data-icon="play">Start<button id="copyRle" class="head-btn" data-icon="copy" type="button">Copy RLE</button></h2>  <!-- the generation shown, as Golly's and LifeWiki's RLE (the plane) -->
         <div id="lifeStartRow" hidden>  <!-- Life on the plane: how the cells start -->
-          <div id="lifeStartTabs" class="choice-row"><button type="button" data-start="random">Hunt</button><button type="button" data-start="draw">Draw</button><button type="button" data-start="digits">Digits</button></div>
+          <div id="lifeStartTabs" class="choice-row"><button type="button" data-start="random">Hunt</button><button type="button" data-start="draw">Draw</button><button type="button" data-start="digits">Digits</button><button type="button" data-start="text">Text</button></div>
+          <div id="startText" class="start-panel" hidden>  <!-- Text: a word or an emoji drawn on the grid, its dark pixels alive -->
+            <span class="field"><input id="startTextInput" class="custom" type="text" value="π" autocomplete="off" spellcheck="false" maxlength="24" title="A word, a letter or an emoji, then Enter"><button class="enter" type="button" tabindex="-1" title="Draw it (Enter)">↵</button></span>
+          </div>
           <div id="startDraw" class="start-panel">  <!-- Draw: a brush (a cell, or a pattern turned as chosen), in a colour or the eraser -->
             <div id="brushCards" class="mode-list rule-cards" role="listbox"></div>
             <p id="drawNote" class="caption" hidden>No known patterns for this rule on this grid</p>  <!-- a surface, a rule with none -->
@@ -701,6 +704,6 @@
     </div>
   </main>
 
-  <script src="main.js?v=20261110g"></script>
+  <script src="main.js?v=20261110h"></script>
 </body>
 </html>
