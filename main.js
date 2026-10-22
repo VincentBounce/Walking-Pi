@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.989';
+const VERSION = '0.1.990';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8060,7 +8060,7 @@ function lifeReset() {
   L.loopMin = new Float64Array(L.colours + 1).fill(Infinity);  // (a colour the same all round: its count exact, no ≈)
   L.loopMax = new Float64Array(L.colours + 1);
   L.loopAvg = null;
-  L.trace = { alive: [L.seedAlive], change: [0], by: [L.seedByColour] };  // each generation's live cells (each colour's too) and births + deaths (see drawActivity)
+  L.trace = { alive: [L.seedAlive], by: [L.seedByColour] };  // each generation's live cells (each colour's too; see drawActivity)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -8290,7 +8290,7 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
 function lifeStep() {
   const L = walk.life, { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
-  const changes = L.born + L.dead, born0 = L.born, dead0 = L.dead;  // before this generation
+  const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
   if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
   let alive = 0, dying = 0;
@@ -8366,7 +8366,6 @@ function lifeStep() {
   L.trace.alive[gen] = alive;
   L.trace.by[gen] = byColour;
   for (let k = 1; k <= K; k++) L.sumBy[k] += byColour[k];
-  L.trace.change[gen] = L.born + L.dead - changes;
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
   L.bornMax = Math.max(L.bornMax, L.bornNow);  // the fastest so far (the gauges' scale)
@@ -11710,7 +11709,7 @@ const STAT_LABELS = {
 };
 
 // The activity, under the stats: a walk's distance from its start, step by step; a Game of Life's live
-// cells and its changes (births and deaths, grey), generation by generation: chaos, then calm. A column of
+// cells, generation by generation. A column of
 // pixels shows the highest value in it; up to the step shown filled under it (the light gold of a choice
 // picked), a walk's steps still to come faint
 let curveOf = null;  // a walk's columns, once per walk and width
@@ -11722,7 +11721,7 @@ function drawActivity() {
   const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  const accent = css.getPropertyValue('--accent'), muted = css.getPropertyValue('--muted');
+  const accent = css.getPropertyValue('--accent');
   // a column's highest value; fewer steps than columns: each column the step under it (no gaps, a comb)
   const columns = (n, value) => {
     const c = new Float64Array(W);
@@ -11734,7 +11733,7 @@ function drawActivity() {
   if (walk.life) {
     const T = walk.life.trace;
     n = T.alive.length;
-    series = [[columns(n, (i) => T.change[i]), muted], [columns(n, (i) => T.alive[i]), accent]];
+    series = [[columns(n, (i) => T.alive[i]), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
     n = walk.n + 1;
@@ -11748,19 +11747,18 @@ function drawActivity() {
     series = [[curveOf.c, rainbow]];
   }
   const at = Math.min(W - 1, Math.floor((Math.min(cur, n - 1) * W) / n));
-  const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;  // one scale: the changes against the live cells
+  const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;
   for (const [c, colour] of series) {
     const y = (x) => H - 1 - (c[x] / top) * (H - 3);
-    if (colour !== muted) {  // filled up to the step shown (Life's live cells in gold, a walk in its rainbow, faint)
-      ctx.fillStyle = colour === accent ? 'rgba(240, 180, 41, 0.22)' : colour;
-      ctx.globalAlpha = colour === accent ? 1 : 0.22;
-      ctx.beginPath();
-      ctx.moveTo(0, H);
-      for (let x = 0; x <= at; x++) ctx.lineTo(x + 0.5, y(x));
-      ctx.lineTo(at + 1, H);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
+    // filled up to the step shown (Life's live cells in gold, a walk in its rainbow, faint)
+    ctx.fillStyle = colour === accent ? 'rgba(240, 180, 41, 0.22)' : colour;
+    ctx.globalAlpha = colour === accent ? 1 : 0.22;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= at; x++) ctx.lineTo(x + 0.5, y(x));
+    ctx.lineTo(at + 1, H);
+    ctx.fill();
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = colour;
     ctx.lineWidth = 1.5;
     for (const [from, to, alpha] of [[0, at, 1], [at, W - 1, 0.3]]) {
