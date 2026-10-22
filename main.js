@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1014';
+const VERSION = '0.1.1015';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6779,7 +6779,7 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
   else if (plane.start === 'text') {
-    blockPicture = MODES[$('mode').value].margolus && !parseRule(ruleBody($('lifeRule').value))?.ising ? pictureOf(kind, W, row, plane.text) : null;  // (Reversible: an emoji in its colours, carried by the cells; Q2R's never move, they turn over where they are: none)
+    blockPicture = MODES[$('mode').value].margolus && carriesColours(parseRule(ruleBody($('lifeRule').value))) ? pictureOf(kind, W, row, plane.text) : null;  // (Reversible: an emoji in its colours, carried by the cells, see carriesColours)
     const on = blockPicture?.idx ?? textCells(kind, W, row, plane.text);
     for (let t = 0; t < n; t++) seed[t] = on[t] ? 1 : 0;
   }
@@ -6845,7 +6845,7 @@ function buildLifePlane(seq) {
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
-                paint: MODES[current.mode].margolus && !rule.ising && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (Q2R's cells turn over where they are: no colour to carry)  // (blocks: each cell's colour, see blockColours)
+                paint: MODES[current.mode].margolus && carriesColours(rule) && (blockColours > 1 || blockPicture) ? new Uint8Array(n) : null };  // (see carriesColours)  // (blocks: each cell's colour, see blockColours)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -7437,7 +7437,7 @@ function drawLifePlane() {
     const st = a[t];
     px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? (painted ? painted[L.paint[t]] || alive : alive) : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+      : colour === 'mono' ? (st === 1 ? (painted ? painted[L.paint[t]] : alive) : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
       : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
@@ -7503,7 +7503,7 @@ const shownCells = (L) => (negative(L) ? L.alive.map((v) => (v ? 0 : 1)) : L.ali
 const blockPalette = () => blockPicture?.pal ?? LIFE_COLOURS.slice(0, blockColours);  // (an emoji's own, see pictureOf)
 let blockColours = 1;
 function renderBlockColours() {
-  $('blockColourRow').hidden = !MODES[$('mode').value].margolus || !!parseRule(ruleBody($('lifeRule').value))?.ising;  // (Q2R: its cells never move, no colour carried)
+  $('blockColourRow').hidden = !MODES[$('mode').value].margolus || !carriesColours(parseRule(ruleBody($('lifeRule').value)));  // (see carriesColours)
   $('blockColourRow').replaceChildren(...BLOCK_COLOURS.map((k) => {
     return tile({ pic: colourBlock(k), text: k === 1 ? '1 colour' : `${k} colours`, title: k === 1 ? 'One colour' : `Each cell of the start one of ${k} colours at random, carried along by the blocks`,
       on: k === blockColours, click: () => { if (k !== blockColours) { blockColours = k; compute(); } } });
@@ -8072,7 +8072,8 @@ function renderRuleSection() {
     const picked = o.value === now && !customOpen;
     b.classList.toggle('active', picked);
     b.classList.toggle('switch', picked);  // (picked: a click shows how it works, see ruleTutorial)
-    b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}</span>`
+    const bw = MODES[$('mode').value].margolus && !carriesColours(parseRule(o.value));  // (a block rule its cells carry no colour on: black and white)
+    b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}${bw ? ' · B&amp;W' : ''}</span>`
       + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
     b.addEventListener('click', () => {
       if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
@@ -8170,8 +8171,6 @@ function fitRuleToShape() {
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
-  L.paintLog = [];  // (blocks' colours: those each generation took away, see lifeBack)
-  L.logBytes = 0;
   if (L.paint && blockPicture) L.paint.set(blockPicture.idx);  // (an emoji's colours)
   else if (L.paint) for (let t = 0; t < L.paint.length; t++) L.paint[t] = 1 + Math.floor(cellRandom(plane.seed + 7, t) * blockColours);  // (blocks: at random, the same each time)
   for (let t = 0; t < L.alive.length; t++) {
@@ -8365,11 +8364,14 @@ function isingOf(kind, W) {
 }
 // flips: a rule that turns an empty block full (Critters, Tron), shown negative every other generation (see negative): a
 // cell's colour goes with the cells shown alive; keeps: each block as many cells shown alive after as before (the
-// billiard balls, the gases, Critters: their colours back exactly by the inverse; else from a mark, see lifeBack)
+// billiard balls, the gases, Critters: their cells carry their colours, back by the inverse)
 const ones = (v) => { let c = 0; for (; v; v &= v - 1) c++; return c; };
 const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; return { flips, keeps: to.every((n, st) => ones(flips ? full ^ n : n) === ones(st)) }; };
-// back: run backwards (a, the generation after b; see lifeBack); log: each cell whose colour changes, and the one it had
-function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null, back = false, log = null) {
+// a block rule whose cells carry colours (an emoji's, blockColours'): one that keeps them; Tron makes and unmakes cells, Q2R's
+// never move: black and white
+const carriesColours = (rule) => !!rule?.margolus && !rule.ising && blockKind(rule.margolus).keeps;
+// back: run backwards (a, the generation after b; see lifeBack)
+function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint = null, back = false) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
   const blocks = turns[g % turns.length], cs = [], odd = flips && g % 2 === 1 ? 1 : 0, even = flips && g % 2 === 0 ? 1 : 0, sa = back ? even : odd, sb = back ? odd : even;  // (each side shown negative or not: generation g odd, g + 1 even, or back)
@@ -8381,7 +8383,7 @@ function blockStep({ k, turns, to, move, ising, sides, flips }, a, b, g, paint =
     const n = to[st];
     for (let j = 0, m = 0; j < k; j++) {
       b[blocks[i + j]] = (n >> j) & 1;
-      if (paint && cs.length && ((n >> j) & 1) ^ sb) { const t = blocks[i + j], c = cs[m++ % cs.length]; if (log && paint[t] !== c) log.push(t, paint[t]); paint[t] = c; }
+      if (paint && ((n >> j) & 1) ^ sb) paint[blocks[i + j]] = cs[m++];
     }
   }
 }
@@ -8452,11 +8454,7 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  // (blocks' colours, a rule that does not keep its cells' count: the colours each generation takes away, logged to give back, see
-  // lifeBack; 64 MB at most)
-  const log = L.paint && !L.margolus.keeps && !L.paintLog[gen - 1] && L.logBytes < 6.4e7 ? [] : null;
-  if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint, false, log);
-  if (log) { L.paintLog[gen - 1] = Int32Array.from(log); L.logBytes += 4 * log.length; }
+  if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -8554,10 +8552,10 @@ function lifeBack() {
   if (M.ising) blockStep(M, a, b, g);
   else {
     M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length));
-    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, M.keeps ? L.paint : null, true);  // (colours: the inverse's, a rule that keeps its cells' count; else its log)
+    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, L.paint, true);
     if (M.move) {
       const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; });
-      if (L.paint && M.keeps) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
+      if (L.paint) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
     }
   }
   let born = 0, dead = 0;
@@ -8569,8 +8567,6 @@ function lifeBack() {
     L.age[t] = b[t] ? 1 : 0;
     if (L.activity[t]) L.activity[t]--;
   }
-  const log = L.paint && !M.keeps && L.paintLog[g];  // (the colours this generation took away, given back)
-  if (log) for (let q = log.length - 2; q >= 0; q -= 2) L.paint[log[q]] = log[q + 1];
   for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
   L.alive = b;
   L.next = a;
@@ -10683,8 +10679,8 @@ function drawSphere() {
       levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono' && L.paint) {  // blocks: each cell its colour, then the trail of the dead
       const pal = blockPalette(), A = shownCells(L);
-      palette = [null, ...pal, ...LIFE_FADE, LIFE_ALIVE];  // (a cell born with no colour, an emoji's background: alive's)
-      levelOf = (t) => (A[t] ? L.paint[t] || palette.length - 1 : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? pal.length + L.gen - L.died[t] : 0);
+      palette = [null, ...pal, ...LIFE_FADE];
+      levelOf = (t) => (A[t] ? L.paint[t] : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? pal.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono') {
       const A = shownCells(L);
       palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
