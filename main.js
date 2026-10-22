@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1026';
+const VERSION = '0.1.1027';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6666,15 +6666,15 @@ function cellRandom(seed, i) {
 // to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
 // drawing, and, an emoji's colours, on its darker half
 // a grid's cells as a drawing sees them, once a grid: their middles (a grid that never repeats, its patch's own, the grid
-// not built yet), their box, and for the dithering their reading order (top down, left to
+// not built yet), the box of those not of a wall (a hexagon's: the drawing as big as it), and for the dithering their reading order (top down, left to
 // right) and the 6 nearest after each
 let drawnMemo = null;
 function drawnGrid(kind, W, row) {
-  const key = `${kind}|${W}|${row}`;
+  const key = `${kind}|${W}|${row}|${planeTorus(kind)}`;
   if (drawnMemo?.key === key) return drawnMemo;
   const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);
   const n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : cellMiddle(kind, t % row, Math.floor(t / row))));
-  const real = mids.filter((m) => Number.isFinite(m[0])), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
+  const wall = new Set(planeDead(kind, W) ?? []), real = mids.filter((m, t) => Number.isFinite(m[0]) && !wall.has(t)), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
   const order = [...mids.keys()].sort((p, q) => mids[p][1] - mids[q][1] || mids[p][0] - mids[q][0]), rank = new Int32Array(n), bins = new Map(), bin = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`;
   order.forEach((t, r) => { rank[t] = r; (bins.get(bin(...mids[t])) ?? bins.set(bin(...mids[t]), []).get(bin(...mids[t]))).push(t); });
   const next = mids.map(([x, y], t) => {
