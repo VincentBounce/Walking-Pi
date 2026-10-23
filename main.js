@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1064';
+const VERSION = '0.1.1065';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9145,7 +9145,7 @@ function huntPlan() {
 // the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
 // another kind), else the start chosen
 const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
-const huntOn = () => !!walk.life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);
+const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
   const K = walk.life.colours, key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}|${walk.life.colours === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)

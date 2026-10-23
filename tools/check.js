@@ -1,6 +1,7 @@
 // Walking Pi's self-check, run in the page (it uses the app's own functions) before a commit:
 //   await import(`/tools/check.js?${Date.now()}`); await walkingCheck();   // the meshes, a few seconds
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
+//   await walkingCheck({ fuzz: 400, seed: 7 });                            // 400 actions at random, menu to menu (transitions, smallest sizes)
 //   await walkingCheck({ deep: true });                                    // every grid's rules (yours too), How it works, colours, zones, smallest size: a night's
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
@@ -103,21 +104,26 @@ function checkMeshes(fail) {
   return checked;
 }
 
-async function crawl(fail) {
-  const wait = (ms) => new Promise((go) => setTimeout(go, ms)), errors = [];
-  const onError = (e) => errors.push(e.message);
+// after an action: no error, the link's mode the one shown, a surface's cells as many as said (the crawl's, the fuzz's)
+const wait = (ms) => new Promise((go) => setTimeout(go, ms));
+function checker(fail) {
+  const errors = [], onError = (e) => errors.push(e.message);
   window.addEventListener('error', onError);
-  const tabs = () => [...document.querySelectorAll('#modeTabs [role=tab]')].filter((b) => !/Gallery/.test(b.textContent));  // (Life, Reversible, Ant, Walk)
-  let checked = 0;
-  const look = async (what) => {
-    await wait(450);
-    checked++;
+  const c = { checked: 0, stop: () => window.removeEventListener('error', onError) };
+  c.look = async (what, ms = 450) => {
+    await wait(ms);
+    c.checked++;
     const w = $('mode').value, hashW = (location.hash.match(/w=([^&]*)/) ?? [])[1], said = Number(($('sizeLabel').innerText.match(/([\d,]+)\s+[a-z]+\s*$/i) ?? [])[1]?.replace(/,/g, ''));
     const n = MODES[w].sphere && !MODES[w].plane ? walk.geo?.n : null;
-    if (errors.length) fail(`${what} → ${w}: ${errors.splice(0).join(' / ')}`);
-    if (hashW !== w) fail(`${what} → ${w}: the link says ${hashW}`);
-    if (n && said && said !== n) fail(`${what} → ${w}: ${n} cells, said ${said}`);
+    const bad = [errors.length && errors.splice(0).join(' / '), hashW !== w && `the link says ${hashW}`, n && said && said !== n && `${n} cells, said ${said}`].filter(Boolean);
+    if (bad.length) fail(`${what} → ${w}: ${bad.join('; ')}`);
+    return !bad.length;
   };
+  return c;
+}
+async function crawl(fail) {
+  const C = checker(fail), look = C.look;
+  const tabs = () => [...document.querySelectorAll('#modeTabs [role=tab]')].filter((b) => !/Gallery/.test(b.textContent));  // (Life, Reversible, Ant, Walk)
   for (let ti = 0; ti < tabs().length; ti++) {
     tabs()[ti].click();
     await look(`tab ${tabs()[ti].textContent.trim()}`);
@@ -152,8 +158,42 @@ async function crawl(fail) {
       }
     }
   }
-  window.removeEventListener('error', onError);
-  return checked;
+  C.stop();
+  return C.checked;
+}
+
+// The fuzz: count actions at random, as a visitor would go from menu to menu (seeded: a failure comes back with its seed): a
+// tab, 2D or 3D, a shape, a tiling, colours, a zone, a rule, a start, a look, the smallest size (often), a size up, a few
+// steps, a short play, the link loaded again (not back in the history: it can leave the page); after each, the crawl's checks; a failure told with the
+// actions that led to it
+async function fuzz(fail, count, seedv) {
+  const C = checker(fail);
+  let sd = seedv >>> 0 || 1;
+  const rnd = () => ((sd = (Math.imul(sd, 1103515245) + 12345) >>> 0) / 4294967296), pick = (a) => a[Math.floor(rnd() * a.length)];
+  const shown = (sel) => [...document.querySelectorAll(sel)].filter((b) => !b.disabled && b.offsetParent !== null && !b.closest('[hidden]'));
+  const clickIn = (sel) => () => { const b = pick(shown(sel)); if (!b) return null; b.click(); return `${sel.split(' ')[0]} ${b.textContent.trim().slice(0, 24)}`; };
+  const actions = [
+    [3, clickIn('#modeTabs [role=tab]')], [2, clickIn('#navSpace button')], [4, clickIn('#navShapes button')], [2, clickIn('#torusTiles button')],
+    [2, clickIn('#navRules button, #antCreatures button')], [2, clickIn('#colourBlocks button')], [2, clickIn('#huntZones button')], [2, clickIn('#ruleCards button')],
+    [1, clickIn('#lifeStartTabs button, #antStartTabs button')], [1, clickIn('#cellModes button, #colorButtons button, #areaModes button, #symmetryTiles button')],
+    [3, () => { const down = shown('#sizeDown, #planeDown')[0]; if (!down) return null; for (let k = 0; k < 14 && !down.disabled; k++) down.click(); return 'smallest'; }],
+    [1, () => { const up = shown('#sizeUp, #planeUp')[0]; if (!up) return null; up.click(); return 'size up'; }],
+    [2, () => { const b = shown('#step')[0]; if (!b) return null; for (let k = 0; k < 3; k++) b.click(); return '3 steps'; }],
+    [1, async () => { const b = shown('#play')[0]; if (!b) return null; b.click(); await wait(400); if (shown('#play')[0]) shown('#play')[0].click(); return 'play'; }],
+    [1, () => { const h = location.hash; location.hash = ''; location.hash = h; return 'link again'; }],
+  ];
+  const total = actions.reduce((s, a) => s + a[0], 0), trail = [];
+  for (let i = 0; i < count; i++) {
+    let r = rnd() * total, act = actions[0][1];
+    for (const [w, f] of actions) { if ((r -= w) < 0) { act = f; break; } }
+    const what = await act();
+    if (!what) continue;
+    trail.push(what);
+    if (trail.length > 8) trail.shift();
+    if (!(await C.look(`fuzz #${i} (seed ${seedv}) ${trail.join(' › ')}`, 300))) trail.length = 0;
+  }
+  C.stop();
+  return C.checked;
 }
 
 // The deep crawl (a night's): every grid of Life and Reversible from its link, then on each: every rule of its menu and one of
@@ -210,10 +250,11 @@ async function deep(fail, from, only) {
   return checked;
 }
 
-window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, from, only } = {}) => {
+window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
   let checked = checkMeshes(fail);
   if (andCrawl) checked += await crawl(fail);
+  if (actions) checked += await fuzz(fail, actions, seed);
   if (andDeep) checked += await deep(fail, from, only);
   return { ok: !failures.length, failures, checked };
 };
