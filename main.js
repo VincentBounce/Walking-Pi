@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1059';
+const VERSION = '0.1.1060';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3940,9 +3940,11 @@ function cuboctaMesh(f) {
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore(), tiles = [];
   const at = (A, B, C, i, j) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * i + (C[d] - A[d]) * j) / f));
-  for (const [x, y, z] of AXES) {  // a square: from its corner A, along to B and to D
+  const flipped = [];  // (each square's: its rows and columns, seen from outside, mirrored; see patternAt)
+  for (const [x, y, z] of AXES) {  // a square: from its corner A, along to B (its rows) and to D (its columns)
     const ax = [x, y, z].findIndex((v) => v), o = [x, y, z], u = [0, 1, 2].map((d) => +(d === (ax + 1) % 3)), v = [0, 1, 2].map((d) => +(d === (ax + 2) % 3));
     const A = o.map((c, d) => c - u[d]), B = o.map((c, d) => c + v[d]), D = o.map((c, d) => c - v[d]);  // (o − u, o + v, o − v: its corners round it)
+    flipped.push(dot3(cross(D.map((c, d) => c - A[d]), B.map((c, d) => c - A[d])), o) > 0);
     for (let i = 0; i < f; i++) for (let j = 0; j < f; j++) {
       const P = (a, b) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * a + (D[d] - A[d]) * b) / f));
       tiles.push([P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]);
@@ -3956,7 +3958,7 @@ function cuboctaMesh(f) {
       if (i + j < f - 1) { const t2 = [at(A, B, C, i + 1, j), at(A, B, C, i + 1, j + 1), at(A, B, C, i, j + 1)]; tiles.push([...t2, t2[2]]); }
     }
   }
-  return (meshCache[key] = finishMesh(verts, tiles, 4, f));
+  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped }));  // (its squares first, f² cells each, as AXES)
 }
 
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
@@ -7701,6 +7703,7 @@ const RULE_ICONS = {
   'B3/S278': 'oo.oo,.....,ooooo,.o.o.,.o.o.',
   'B356/S6789/C5': '.o.o.,+...+,.+.+.,oo.oo,..o..',
   'B38/S169/C3': 'ooooo,.....,o.o.o,..o..,..+..',
+  'B3v1235v23/S123v012/C5': '..o..,.ooo.,o+.+o,.....,.o.o.', 'B3/S123v0257/C5': '.....,.o+o.,.+.+.,.o+o.,.....', 'B34v1236/S0127/C4': '..o..,.o+o.,o+.+o,.o+o.,..o..',  // (Kite ships, embers, glow)
   'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
@@ -9336,7 +9339,8 @@ const triFace = (sphere, K, i) => (colouring(sphere, K)?.faces ? patchSpots(sphe
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
-  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K))
+    || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
@@ -9364,6 +9368,14 @@ function patternAt(i, K, cells) {
     const face = d ? g.faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(g.faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
     for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
+    return out;
+  }
+  if (MODES[$('mode').value].sphere === 'cubocta') {  // the cuboctahedron: on its square at the colour's spot (see patternsOn), as the cube's
+    const d = K === 1 ? AXES[3] : unit(patchSpots('cubocta', K)[i]), f = AXES.findIndex((a) => dot3(a, d) > 1 - 1e-9), m = g.size >> 1;
+    for (const [x, y, v] of cells) {
+      const r = m + y - (h >> 1), c0 = m + x - (w >> 1), c = g.flipped[f] ? g.size - 1 - c0 : c0;
+      if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([f * g.size * g.size + r * g.size + c, v]);
+    }
     return out;
   }
   const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
