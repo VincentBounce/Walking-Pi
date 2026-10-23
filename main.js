@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1062';
+const VERSION = '0.1.1063';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7714,7 +7714,7 @@ const RULE_ICONS = {
   'B3/S278': 'oo.oo,.....,ooooo,.o.o.,.o.o.',
   'B356/S6789/C5': '.o.o.,+...+,.+.+.,oo.oo,..o..',
   'B38/S169/C3': 'ooooo,.....,o.o.o,..o..,..+..',
-  'B3v1235v23/S123v012/C5': '..o..,.ooo.,o+.+o,.....,.o.o.', 'B3/S123v0257/C5': '.....,.o+o.,.+.+.,.o+o.,.....', 'B34v1236/S0127/C4': '..o..,.o+o.,o+.+o,.o+o.,..o..',  // (Kite ships, embers, glow)
+  'B3v1235v23/S123v012/C5': '..o..,.ooo.,o+.+o,.....,.o.o.', 'B3/S123v0257/C5': '.....,.o+o.,.+.+.,.o+o.,.....', 'B34v1236/S0127/C4': '..o..,.o+o.,o+.+o,.o+o.,..o..', 'B2v01.3v234/S08/C5': 'oo...,o+...,..+..,...+o,...oo',  // (Kite ships, embers, glow, wake)
   'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
@@ -8124,8 +8124,11 @@ function renderRuleSection() {
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
   const rule = parseRule(now) ?? parseRule('B3/S23'), N = NEIGHBOURS[mark], hex = mark === '⬡';
   const hensel = mark === '■';  // (your own on squares: always with Hensel's letters)
-  const vertex = !!ROSETTES[PLANE_OF_MARK[mark]];  // (on a flower or a ring: v, how many of the live ones by a corner only, 0 to 2)
-  const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : vertex && c ? ['v0', 'v1', 'v2'].slice(0, Math.min(c, 2) + 1) : []);
+  // (on a flower or a ring: v, how many of the live ones by a corner only, 0 to 2; on kites, 0 to 3 or more, a kite having 4
+  // neighbours by a side and 5 by a corner: the ways a count can be, letters where it has two or more)
+  const kites = mark === '◆', vertex = !!ROSETTES[PLANE_OF_MARK[mark]] || kites;
+  const kiteWays = (c) => { const ks = [0, 1, 2, 3].filter((k) => (k < 3 ? k <= c && k >= c - 4 : c >= 3)); return ks.length > 1 ? ks.map((k) => `v${k}`) : []; };
+  const lettersOf = (c) => (hex ? (c >= 2 && c <= 4 ? ['o', 'm', 'p'] : []) : hensel ? HENSEL_LETTERS[c] : kites ? kiteWays(c) : vertex && c ? ['v0', 'v1', 'v2'].slice(0, Math.min(c, 2) + 1) : []);
   const all = (c) => (lettersOf(c).length ? lettersOf(c) : ['']);  // a count without letters: one, ''
   const classOf = (m) => (hex ? hexClass(m).toLowerCase() : henselClass(m)), R = hex ? 6 : 8, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
   const letters = (table) => Array.from({ length: N + 1 }, (_, c) => new Set(all(c).filter((x) => (rule.iso === 'vertex' ? table[16 + 4 * c + (x ? Number(x[1]) : 0)] === 1
@@ -8145,7 +8148,7 @@ function renderRuleSection() {
   };
   const B = letters(rule.B), S = letters(rule.S);
   const WHERE = { o: 'side by side', m: 'one cell apart', p: 'opposite' };
-  const said = (c, x) => (vertex ? `${c} live neighbours, ${x[1]} of them by a corner only, the others by a side` : hensel ? `${c} live neighbours, Hensel's ${x}`
+  const said = (c, x) => (vertex ? `${c} live neighbours, ${kites && x[1] === '3' ? '3 or more' : x[1]} of them by a corner only, the others by a side` : hensel ? `${c} live neighbours, Hensel's ${x}`
     : `${c} live neighbours, ${c === 3 ? { o: 'in a row', m: 'two side by side, one apart', p: 'every other one' }[x] : `${c === 4 ? 'the 2 dead ones ' : ''}${WHERE[x]}`}`);
   for (const [id, set, cls] of [['ruleBirth', B, 'birth'], ['ruleSurvive', S, 'survive']]) {
     const chip = (text, on, title, click) => {
