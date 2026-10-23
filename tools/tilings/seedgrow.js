@@ -1,8 +1,8 @@
 // Rules that grow from a seed and keep moving, without filling the grid: deno run --allow-read --allow-write seedgrow.js
-// [workers] [menger|sierpinski]. On Menger's sponge (level 3) or Sierpiński's tetrahedron (level 4): a bloom (the cells within 4 steps
+// [workers]. On Menger's sponge (level 3): a bloom (the cells within 4 steps
 // of a middle one, 35 % alive) followed; stage 1, 600 generations, 2 seeds, stage 2 (the best 200) 2,000 generations, 3 seeds:
 // how long it keeps changing, how high it goes, where it ends. Out: out/name-grow.json
-const N = Number(Deno.args[0] ?? 4), name = Deno.args[1] ?? 'menger', L = name === 'sierpinski' ? 4 : 3, n = name === 'sierpinski' ? 9216 : 18048;
+const N = Number(Deno.args[0] ?? 4), name = 'menger', L = 3, n = 18048;
 
 const subsets = (arr, max) => { const o = [[]]; for (const x of arr) { const m = o.length; for (let i = 0; i < m; i++) if (o[i].length < max) o.push([...o[i], x]); } return o; };
 const Bs = subsets([4, 5, 6, 7, 8, 9], 2).map((r) => [3, ...r].join(''));  // (B2: they fill it, chaos)

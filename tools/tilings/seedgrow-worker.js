@@ -1,10 +1,9 @@
 // seedgrow.js's worker: a list of rules, each bloom followed (see seedgrow.js)
 import { mengerGrid } from './menger.js';
-import { sierpinskiGrid } from './sierpinski.js';
 import { parse, step } from '../kitesearch/engine.js';
 const grids = {};
 self.onmessage = ({ data: { rules, name = 'menger', L, gens, seeds = 3 } }) => {
-  const G = grids[`${name}${L}`] ??= (name === 'sierpinski' ? sierpinskiGrid : mengerGrid)(L), n = G.n, out = [];
+  const G = grids[`${name}${L}`] ??= mengerGrid(L), n = G.n, out = [];
   // the middle: a cell, then rings by steps
   const ring = new Int32Array(n).fill(-1), q = [Math.floor(n / 2)]; ring[q[0]] = 0;
   for (let i = 0; i < q.length; i++) for (let k = G.start[q[i]]; k < G.start[q[i] + 1]; k++) { const u = G.list[k]; if (ring[u] < 0) { ring[u] = ring[q[i]] + 1; q.push(u); } }
