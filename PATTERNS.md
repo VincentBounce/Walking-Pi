@@ -1531,3 +1531,27 @@ Famous and Centered on these grids are now these (one colour; with colours, none
 ## ✼ ✥ Flowers 9 and 10
 
 Sugimoto's direct construction (see the flowers above), 9- and 10-fold. tools/tilings/search.js: [Flower 9 embers B278/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower9&s=48&r=B278/S0345/C5) 0.502 (Flower 7 embers' rule), Flower 9 Life B369/S3457 0.346; [Flower 10 embers B279/S0345/C5](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower10&s=48&r=B279/S0345/C5) 0.286, Flower 10 Life B368/S3457 0.204 (Flower 5 Life's rule).
+
+## ⚔ Turnarounds on the other grids (2026-10-24)
+
+turns.js (tools/kitesearch) on any grid: `deno run --allow-read --allow-write turns.js name 40000` (kite, a tiling of tilings.json, cairo, a flower or ring). Rules drawn with the letters the grid allows (by a corner only: those its cells can have), soups on ~1,500 cells, battles on ~3,500 (tori; the flowers: their two halves), the same filters as on kites; Life on 64 × 64 squares the reference (3 turnarounds, 90 %, from 41 %, 1,261 generations). About 37,000 rules a grid, 330 to 590 Life-like, 13 to 91 turning as Life does. Out: turns-name.json.
+
+| Grid | Rule | Turnarounds | At least one | Comeback from | Battle (generations) | Life-like score | Links |
+|---|---|--:|--:|--:|--:|--:|---|
+| Cairo | **B2v02.3v1/S156v2** | 3 | 90 % | 36 % | 704 | 0.10 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dCairo&r=B2v02.3v1/S156v2&k=2&s=64&pop=random.35.7) |
+| Cairo | **B2v0.3v01/S1v1.2/C3** | 9 | 100 % | 31 % | 976 | 0 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dCairo&r=B2v0.3v01/S1v1.2/C3&k=2&s=64&pop=random.35.7) |
+| Rhombitri | **B2v0145v1236/S08/C3** | 4 | 100 % | 39 % | 548 | 0.38 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombitri&r=B2v0145v1236/S08/C3&k=2&s=64&pop=random.35.7) |
+| Rhombitri | **B246v3/S045/C5** | 4 | 80 % | 42 % | 514 | 0.38 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombitri&r=B246v3/S045/C5&k=2&s=64&pop=random.35.7) |
+| Rhombitri | **B2v14/S03v14v0236v0128v3/C3** | 4 | 90 % | 39 % | 678 | 0.21 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombitri&r=B2v14/S03v14v0236v0128v3/C3&k=2&s=64&pop=random.35.7) |
+| Flower | **B2v0256/S235** | 6 | 100 % | 28 % | 1345 | 0.59 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
+| Flower | **B2v0245v123/S2v02.3v0125v3** | 8 | 90 % | 31 % | 673 | 0.06 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower&r=B2v0245v123/S2v02.3v0125v3&k=2&s=64&pop=random.35.7) |
+| Flower 5 | **B2v0256/S235** | 6 | 100 % | 36 % | 1744 | 0.07 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower5&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
+| Flower 7 | **B2v0256/S235** | 6 | 100 % | 38 % | 1987 | 0.63 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
+| Flower 8 | **B2v1.3/S0146/C4** | 3 | 90 % | 41 % | 725 | 0.57 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B2v1.3/S0146/C4&k=2&s=64&pop=random.35.7) |
+| Flower 8 | **B2v0256/S235** | 3 | 100 % | 34 % | 3,000+ | 0.43 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
+| Tetrakis | **B2v14v2/S23v238** | 3 | 90 % | 41 % | 760 | 0.48 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B2v14v2/S23v238&k=2&s=64&pop=random.35.7) |
+| Tetrakis | **B3v23/S056** | 3 | 80 % | 27 % | 628 | 0.21 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B3v23/S056&k=2&s=64&pop=random.35.7) |
+| Tetrakis | **B3/S23 (Life)** | 4 | 100 % | 43 % | 806 | 0 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B3/S23&k=2&s=64&pop=random.35.7) |
+
+B2v0256/S235 (born with 2, none or both by a corner only, or with 5 or 6; surviving with 2, 3 or 5) comes first on Flower, 5 and 7: 6 turnarounds a battle, twice Life’s, and the most Life-like found on Flower 7 (0.63). Conway’s B3/S23 dies in 50 to 70 generations on Cairo, Rhombitri and the flowers.
+

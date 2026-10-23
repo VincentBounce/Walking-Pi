@@ -20,6 +20,11 @@ self.onmessage = ({ data }) => {
   if (task === 'behaviour') out = behaviour(G(W), rule, cells, opts ?? 400);
   if (task === 'settle') out = data.starts.map((cs) => settle(G(W), rule, cs, opts ?? 20000));
   if (task === 'revive') out = data.seeds.map((sd) => revive(G(W), rule, data.ships, sd, ...(opts ?? [])));
+  if (task === 'ways') {  // for each count of live neighbours d, the k by a corner only (0…3, 3 or more) some cell can have
+    const g = G(W), most = [];
+    for (let t = 0; t < g.n; t++) { let s = 0, k = 0; for (let q = g.start[t]; q < g.start[t + 1]; q++) if (g.side[q]) s++; else k++; most.push([s, k]); }
+    out = Array.from({ length: 10 }, (_, d) => [0, 1, 2, 3].filter((k) => most.some(([s, c]) => (k < 3 ? k <= c && d - k <= s && k <= d : c >= 3 && d >= 3 && d - 3 >= 0 && Math.max(3, d - s) <= Math.min(d, c)))));
+  }
   if (task === 'battle') out = data.seeds.map((sd) => battle(G(W), rule, sd, ...(opts ?? [])));
   self.postMessage({ id, out });
 };

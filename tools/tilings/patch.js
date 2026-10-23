@@ -54,5 +54,7 @@ export function patchGrid(h, W) {
     for (const u of [...around.keys()].sort((a, b) => a - b)) { list.push(u); side.push(around.get(u) >= 2 ? 1 : 0); }
   }
   start[n] = list.length;
-  return { W, row: W, n, start, list: Int32Array.from(list), side: Uint8Array.from(side), per: 1 };
+  const x = h.polys.map((p) => p.reduce((s, q) => s + q[0], 0) / p.length), half = [...x].sort((a, b) => a - b)[n >> 1];
+  const left = Uint8Array.from(x, (v) => (v < half ? 1 : 0));  // (the left half, for a battle's colours)
+  return { W, row: W, n, start, list: Int32Array.from(list), side: Uint8Array.from(side), per: 1, left };
 }

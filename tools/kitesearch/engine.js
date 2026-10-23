@@ -267,8 +267,8 @@ function revive(G, rule, ships, seedv, tries = 2, d = 0.3, cap = 6000) {
   }
   return out;
 }
-// A battle of 2 colours, as the app plays them (see lifeStep): a soup at d, colour 1 in the left half of the torus, 2 in the
-// right; a newborn takes the colour most of its live neighbours have, a tie none; a dying cell keeps its colour (states
+// A battle of 2 colours, as the app plays them (see lifeStep): a soup at d, colour 1 in the left half of the torus (of a
+// patch: G.left), 2 in the right; a newborn takes the colour most of its live neighbours have, a tie none; a dying cell keeps its colour (states
 // k + 2s). Followed till one colour is left (or none), the grid repeats, or gens: the lead's changes (a colour ahead by
 // margin of the live ones, then the other: the turnarounds), the lowest share the colour ahead at the end had since
 // generation 50 (its comeback), how long
@@ -276,7 +276,7 @@ function battle(G, rule, seedv, d = 0.35, gens = 3000, margin = 0.1) {
   const { B, S, C } = parse(rule), n = G.n, last = 2 * (C - 1);
   seed = seedv;
   let a = new Uint8Array(n), b = new Uint8Array(n);
-  for (let t = 0; t < n; t++) if (rnd() < d) a[t] = t % G.row < G.row / 2 ? 1 : 2;
+  for (let t = 0; t < n; t++) if (rnd() < d) a[t] = (G.left ? G.left[t] : t % G.row < G.row / 2) ? 1 : 2;
   const seen = new Map(), low = [1, 1, 1];
   let lead = 0, swaps = 0, T = gens, end = 'running', p1 = 0, p2 = 0;
   for (let g = 1; g <= gens; g++) {
