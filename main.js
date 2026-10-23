@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1055';
+const VERSION = '0.1.1056';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8862,15 +8862,17 @@ const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const realmOnFaces = () => !!SOLID_SPOTS[MODES[$('mode').value].sphere];  // (a solid: Realm its faces, see realmParts)
 const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadius()) : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-// Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots), its faces dealt out
-// whole; none (greyed) for the counts of spots (its corners, its edges, the stella's tips and hollows): a face cut.
+// Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots); none (greyed) where a
+// patch is on a corner or an edge (the stella's tips and hollows): a face cut.
 // Elsewhere (the plane, a torus, a strip), the colours' patches as wide as they go (see realmRadius). Null: greyed
 function realmParts(K) {
   if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
   if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
   const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), col = colouring(sphere, K);
-  if (!col?.faces) return null;
-  const faces = col.patch, parts = faces.map(() => []);
+  // (each colour's patch face: faces dealt out whole, its patch's; spots, the face whose middle its patch's spot is, if all are)
+  const faces = !col ? [] : col.faces ? col.patch : col.patch.map((i) => mids.findIndex((m) => dot3(unit(m), unit(col.items[i])) > 1 - 1e-9));
+  if (!faces.length || faces.includes(-1)) return null;
+  const parts = faces.map(() => []);
   for (let t = 0; t < g.n; t++) {  // (a cell by the face its middle faces most; as near two: none, as Wild's)
     if (L.nbr.start[t] === L.nbr.start[t + 1]) continue;  // (a wall's)
     const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), v = mids.map((m) => faceDot(m, c)), top = Math.max(...v);
@@ -8941,7 +8943,7 @@ const FACE_GROUPS = {
   octa: { 2: ['00001111', '06'], 4: ['00112233', '0257', '01232301', '0725'], 8: ['01234567', '01234567'] },
   icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '0245g8iace', '01234567893210489567', '01b3ehi7f9'] },
   dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0248'], 6: ['001122334455', '03478b', '011023324554', '01468a'], 12: ['0123456789ab', '0123456789ab'] },
-  cubocta: { 2: ['01010100010111', '6d'] },
+  cubocta: { 2: ['01010100010111', '6d'], 7: ['00112234566543', '024dcb9'] },
 };
 const SPOT_PAIRS = {
   tetra: { 3: ['010212', '013', '001122', '024'] },
