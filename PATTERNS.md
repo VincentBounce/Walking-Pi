@@ -1071,6 +1071,17 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 | B3/S23v0124v027/C3 | 3 | 0.18 | 694 (267–2,311) | 0.28 | 11.5 % | 2.3 % | 100 % | – | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3/S23v0124v027/C3&s=64&pop=random.35.7) |
 | B2v15/S026v2/C4 | 4 | 0.14 | 929 (401–4,131) | 0.52 | 4.3 % | 1.2 % | 25 % | p3, 6 cells (many) | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B2v15/S026v2/C4&s=64&pop=random.35.7) |
 
+**A fourth search: waking a frozen zone up, as Life does** (tools/kitesearch/revive.js). A soup run till it repeats (its ash), then one of the rule's ships flown at it; how long till it repeats again, free ships taken away. Life on 64 × 64 squares, a glider: median 65 generations, 13 % of them 300 or more. On kites, 161,389 rules (with letters or not), 1,624 Life-like, 542 with ships:
+
+| Rule | Wakes up (median) | 300 or more | Life-like score | Links |
+|---|--:|--:|--:|---|
+| **B35/S2356/C4** (Kite drifters) | 104 | 13 % | 0 (its soups thin out from the start) | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B35/S2356/C4&s=64&pop=random.35.7) |
+| B3v1235v23/S123v012/C5 (Kite ships) | 30 | 13 % | 0.33 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3v1235v23/S123v012/C5&s=64&pop=random.35.7) |
+| B2ab3cd4/S08/C5 | 332 | 50 % | 0.06 | (its letters not written as the app reads them: 2v01 then 3v23) |
+| B2ab37/S0/C5 | 472 | 57 % | 0.02 | (idem) |
+
+The long wakers are sparse worlds (under 1 % alive at the end, surviving with 0 neighbours only), not Life's; the Life-like ones wake up for a few dozen generations: no kite rule found yet does both as Life.
+
 <br>
 
 ## 🎩 Life on hats: the tile that never repeats

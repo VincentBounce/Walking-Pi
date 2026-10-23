@@ -2,8 +2,11 @@
 // Kite rules (as letters.js draws them: with letters or not, B 1 to 3 digits from 2 to 7, S up to 5 from 0 to 8, 2 to 5
 // states), their soups (stage1's test: the Life-like ones), their small starts (stage2's: the ones with ships), then for
 // each: 8 soups on 24 × 24 rhombi, each run till it repeats, 2 of its ships flown at its ash (see engine.js, revive): how
-// long till it repeats again. Life the same on 64 × 64 squares, a glider. Out: revive.json, the best as the app writes them
+// long till it repeats again. Life the same on 64 × 64 squares, a glider. Those that wake up for long (median at Life's or
+// more) followed too (12 soups, scored against Life as rank.js does): ranked by both, the Life-like score times the wake-up
+// over Life's (at most 2). Out: revive.json, the best as the app writes them
 import { pool } from './pool.js';
+import { stats as traceStats, score } from './stats.js';
 const N = Number(Deno.args[0] ?? 60000), P = pool(9), t0 = Date.now(), log = (...a) => console.error(Math.round((Date.now() - t0) / 1000) + 's', ...a);
 let seed = 4242;
 const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296);
@@ -32,9 +35,15 @@ const life = (await P.call(P.workers[0], { task: 'seeds', W: -64, rule: 'B3/S23'
 const lifeRuns = await P.call(P.workers[0], { task: 'revive', W: -64, rule: 'B3/S23', ships: life, seeds });
 P.close();
 const L = stats(lifeRuns.filter(Boolean));
+// the ones that wake up as long as Life at least: how Life-like they are otherwise
+const P2 = pool(9), awake = out.filter((r) => r.med >= L.med), tseeds = Array.from({ length: 12 }, (_, k) => 101 + 7919 * k);
+i = 0;
+await Promise.all(P2.workers.map(async (w) => { while (i < awake.length) { const r = awake[i++]; r.life = +score(traceStats((await P2.call(w, { task: 'traces', W: 24, rules: [r.rule], seeds: tseeds }))[0])).toFixed(3); r.both = +(r.life * Math.min(2, r.med / L.med)).toFixed(3); } }));
+P2.close();
+log('followed', awake.length);
 const app = (rule) => rule.replace(/(\d)([a-d]+)/g, (_, d, ls) => `${d}v${[...ls].map((l) => 'abcd'.indexOf(l)).join('')}`);
-out.sort((p, q) => q.med - p.med || q.long - p.long);
+out.sort((p, q) => (q.both ?? -1) - (p.both ?? -1) || q.med - p.med);
 console.log(`Life (glider in its ash, 64 × 64): median ${L?.med} · 3rd quarter ${L?.q3} · ≥ 300: ${Math.round(100 * (L?.long ?? 0))} % · endless ${L?.endless} of ${L?.n}`);
-for (const r of out.slice(0, 30)) console.log(`${app(r.rule).padEnd(28)} median ${String(r.med).padEnd(5)} q3 ${String(r.q3).padEnd(5)} ≥300 ${String(Math.round(100 * r.long)).padEnd(3)}% endless ${r.endless}/${r.n} · ships ${r.ships.map((s) => `p${s.period}·${s.cells.length}`).join(' ')}`);
+for (const r of out.slice(0, 30)) console.log(`${app(r.rule).padEnd(28)} both ${String(r.both ?? '–').padEnd(6)} Life-like ${String(r.life ?? '–').padEnd(6)} median ${String(r.med).padEnd(5)} q3 ${String(r.q3).padEnd(5)} ≥300 ${String(Math.round(100 * r.long)).padEnd(3)}% endless ${r.endless}/${r.n} · ships ${r.ships.map((s) => `p${s.period}·${s.cells.length}`).join(' ')}`);
 Deno.writeTextFileSync(new URL('./revive.json', import.meta.url), JSON.stringify({ life: L, rules: out.slice(0, 60).map((r) => ({ ...r, app: app(r.rule) })) }));
 log('done');
