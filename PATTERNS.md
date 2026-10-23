@@ -1082,6 +1082,21 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 
 The long wakers are sparse worlds (under 1 % alive at the end, surviving with 0 neighbours only), not Life's; the Life-like ones wake up for a few dozen generations: no kite rule found yet does both as Life.
 
+**A fifth search: turnarounds in battles, as Life has them** (tools/kitesearch/turns.js). Battles of 2 colours as the app plays them (a newborn the colour most of its live neighbours have, a tie none), each colour a soup in its half of a torus of 3,456 kites, 10 battles a rule: how often the lead changes hands (by 10 % of the live ones), how low the colour ahead at the end had fallen, how long. 101,418 rules, 1,054 Life-like; 199 turning as Life does (3 to 12 times: more is noise, two colours swinging round a half; at least once in 8 battles of 10; 500 generations or more), ranked by their Life-like score:
+
+| Rule | Turnarounds (median) | At least one | Comeback from | Battle (generations) | Life-like score | Links |
+|---|--:|--:|--:|--:|--:|---|
+| Life (64 × 64 squares) | 3 | 90 % | 41 % | 1,261 | – |  |
+| **B3v012/S0234v3** | 6 | 90 % | 37 % | 558 | 0.40 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3v012/S0234v3&k=2&s=64&pop=random.35.7) |
+| **B3/S12v1.3** | 4 | 90 % | 38 % | 668 | 0.37 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3/S12v1.3&k=2&s=64&pop=random.35.7) |
+| B34v15/S0126v3/C3 | 3 | 90 % | 41 % | 736 | 0.28 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B34v15/S0126v3/C3&k=2&s=64&pop=random.35.7) |
+| B3/S23567/C4 | 4 | 90 % | 36 % | 732 | 0.21 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3/S23567/C4&k=2&s=64&pop=random.35.7) |
+| B35/S123/C5 (Kite swarm) | 4 | 90 % | 40 % | 2,205 | 0 |  |
+| B35/S2356/C4 (Kite drifters) | 3 | 80 % | 42 % | 772 | 0 |  |
+| B2v01.37/S0/C5 (Kite waves) | 0 | 40 % | 61 % | 198 (always won) | 0.02 |  |
+
+B3v012/S0234v3 (2 states, born with 3 of which none to 2 by a corner) is the most Life-like found on kites, and turns battles round twice as often as Life.
+
 <br>
 
 ## 🎩 Life on hats: the tile that never repeats

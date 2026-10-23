@@ -1,8 +1,9 @@
 // Battles of 2 colours with turnarounds, as Life has them: deno run --allow-read --allow-write turns.js [rules]
 // Kite rules drawn as revive.js draws them (with letters or not), their soups (the Life-like ones), then for each 10
 // battles on 24 × 24 rhombi (see engine.js, battle): how often the lead changes hands, how low the colour ahead at the end
-// had fallen (its comeback), how long. Life the same on 64 × 64 squares as the reference. The Life-like ones among the best
-// followed too (scored against Life as rank.js does). Out: turns.json, the best as the app writes them
+// had fallen (its comeback), how long. Life the same on 64 × 64 squares as the reference. Those turning as Life does (3 to 12
+// times: more is noise, two colours swinging round a half; at least once in 8 battles of 10; 500 generations or more)
+// followed too (scored against Life as rank.js does), ranked by it. Out: turns.json, the best as the app writes them
 import { pool } from './pool.js';
 import { stats as traceStats, score } from './stats.js';
 const N = Number(Deno.args[0] ?? 100000), P = pool(9), t0 = Date.now(), log = (...a) => console.error(Math.round((Date.now() - t0) / 1000) + 's', ...a);
@@ -25,12 +26,13 @@ const out = [];
 i = 0;
 await Promise.all(P.workers.map(async (w) => { while (i < good.length) { const rule = good[i++]; out.push(sum(rule, await P.call(w, { task: 'battle', W: 24, rule, seeds }))); } }));
 const life = sum('B3/S23', await P.call(P.workers[0], { task: 'battle', W: -64, rule: 'B3/S23', seeds }));
-// the best by turnarounds: how Life-like they are otherwise
-out.sort((p, q) => q.swaps - p.swaps || q.anySwap - p.anySwap || p.comeback - q.comeback);
-const best = out.slice(0, 60), tseeds = Array.from({ length: 12 }, (_, k) => 101 + 7919 * k);
+// those turning as Life does: how Life-like they are otherwise
+const best = out.filter((r) => r.swaps >= 3 && r.swaps <= 12 && r.anySwap >= 0.8 && r.T >= 500), tseeds = Array.from({ length: 12 }, (_, k) => 101 + 7919 * k);
 i = 0;
 await Promise.all(P.workers.map(async (w) => { while (i < best.length) { const r = best[i++]; r.life = +score(traceStats((await P.call(w, { task: 'traces', W: 24, rules: [r.rule], seeds: tseeds }))[0])).toFixed(3); } }));
 P.close();
+best.sort((p, q) => q.life - p.life);
+log('turning as Life', best.length);
 const app = (rule) => rule.replace(/(\d)([a-d]+)(?=([0-3])?)/g, (_, d, ls, next) => `${d}v${[...ls].map((l) => 'abcd'.indexOf(l)).join('')}${next ? '.' : ''}`);  // (as the app writes them)
 const line = (r) => `${app(r.rule).padEnd(28)} turnarounds ${String(r.swaps).padEnd(3)} (≥1 in ${String(Math.round(100 * r.anySwap)).padEnd(3)}%) comeback from ${String(Math.round(100 * r.comeback)).padEnd(3)}% · ${r.T} gens, ${r.won} of 10 won · Life-like ${r.life ?? '–'}`;
 console.log('Life (64 × 64):', line(life));
