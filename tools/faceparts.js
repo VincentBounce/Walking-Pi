@@ -1,8 +1,8 @@
 // The solids' colourings dealt out by their faces or spots (see FACE_GROUPS and SPOT_PAIRS in main.js): in the page's
 // console, after loading this file,
 //   faceParts()  → the two tables, as main.js has them
-// FACE_GROUPS: for each solid of FACE_MIDDLES (cube, tetra, octa, icosa, dodeca) and each count K of colours that divides
-// its faces: its faces in K groups, each in one piece (faces sharing an edge), all alike (a turn of the solid takes one to
+// FACE_GROUPS: for each solid of FACE_MIDDLES (cube, tetra, octa, icosa, dodeca, cuboctahedron) and each count K of colours
+// that divides its faces (the cuboctahedron's 6 squares and 8 triangles: 2 only, 3 squares and 4 triangles each): its faces in K groups, each in one piece (faces sharing an edge), all alike (a turn of the solid takes one to
 // another, and the turns that keep the partition take any group to any other); of these, the one the most turns keep,
 // then the fewest edges between groups. Where K is half its faces and each face has one opposite: also its mirror, each
 // colour two opposite faces.
@@ -57,8 +57,8 @@ window.faceParts = () => {
   };
   const opposites = (dirs) => { const o = dirs.map((d) => dirs.findIndex((e) => dot3(d, e) < -1 + 1e-9)); return o.includes(-1) ? null : o.map((j, i) => [i, j]).filter(([i, j]) => i < j); };
   const faces = {}, spots = {};
-  for (const solid of ['cube', 'tetra', 'octa', 'icosa', 'dodeca']) {
-    const mids = FACE_MIDDLES[solid](), F = mids.length, adj = nearest(mids), perms = permsOf(turnsOf(solid), mids);
+  for (const solid of ['cube', 'tetra', 'octa', 'icosa', 'dodeca', 'cubocta']) {
+    const mids = FACE_MIDDLES[solid]().map(unit), F = mids.length, adj = nearest(mids), perms = permsOf(turnsOf(solid), mids);
     faces[solid] = {};
     for (let K = 2; K <= 12; K++) {
       if (F % K) continue;

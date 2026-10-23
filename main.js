@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1054';
+const VERSION = '0.1.1055';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8873,7 +8873,7 @@ function realmParts(K) {
   const faces = col.patch, parts = faces.map(() => []);
   for (let t = 0; t < g.n; t++) {  // (a cell by the face its middle faces most; as near two: none, as Wild's)
     if (L.nbr.start[t] === L.nbr.start[t + 1]) continue;  // (a wall's)
-    const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), v = mids.map((m) => dot3(m, c)), top = Math.max(...v);
+    const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), v = mids.map((m) => faceDot(m, c)), top = Math.max(...v);
     if (v.filter((x) => x > top - 1e-9).length === 1) parts[faces.indexOf(v.indexOf(top))]?.push(t);
   }
   return parts;
@@ -8925,7 +8925,9 @@ for (const k of ['tetra', 'octa', 'icosa', 'stella', 'dodeca']) SOLID_SPOTS[`${k
 // a solid's faces' middles, as directions (its polyhedron's: the sphere of hexagons, the icosahedron's, its pentagons at its
 // corners; the dodecahedron's pentagons, the icosahedron's corners; the stella's, none: its spots are its tips and hollows)
 const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + POLYHEDRA[k].P[v][d], 0))));
-const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [], cubocta: () => [] };
+// (a face's middle on it, not as a direction: m · p / m · m is 1 on its plane, its faces of two sizes the cuboctahedron's)
+const faceDot = (m, p) => dot3(m, p) / dot3(m, m);
+const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [], cubocta: () => [...AXES, ...CORNERS8.map((c) => c.map((v) => (2 * v) / 3))] };
 const FACE_BASE = { pits: 'cube', frame: 'cube', menger: 'cube', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa', stellaKite: 'stella', dodecaKite: 'dodeca' };
 for (const [k, of] of Object.entries(FACE_BASE)) FACE_MIDDLES[k] = FACE_MIDDLES[of];
 // A solid's colourings (made by tools/faceparts.js), each item's colour (base 36), each colour's patch item:
@@ -8939,6 +8941,7 @@ const FACE_GROUPS = {
   octa: { 2: ['00001111', '06'], 4: ['00112233', '0257', '01232301', '0725'], 8: ['01234567', '01234567'] },
   icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '0245g8iace', '01234567893210489567', '01b3ehi7f9'] },
   dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0248'], 6: ['001122334455', '03478b', '011023324554', '01468a'], 12: ['0123456789ab', '0123456789ab'] },
+  cubocta: { 2: ['01010100010111', '6d'] },
 };
 const SPOT_PAIRS = {
   tetra: { 3: ['010212', '013', '001122', '024'] },
@@ -9075,11 +9078,11 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
   // more, by the cell's own middle; a cell on an edge, a corner (as near two faces or more), as near spots of two colours
   // or more: theirs if they all have the same, else no one's, as on the plane's lines between slices (the parts all alike)
   const mids = K === 1 ? [] : FACE_MIDDLES[sphere]();
-  const colourOf = (items, colour, d) => { const v = items.map((x) => dot3(x, d)), top = Math.max(...v), cs = new Set(v.flatMap((x, k) => (x > top - 1e-9 ? [colour[k]] : []))); return cs.size === 1 ? [...cs][0] : -1; };
+  const colourOf = (items, colour, d) => { const v = items.map((x) => faceDot(x, d)), top = Math.max(...v), cs = new Set(v.flatMap((x, k) => (x > top - 1e-9 ? [colour[k]] : []))); return cs.size === 1 ? [...cs][0] : -1; };
   const nearestSpot = (t) => {
     const c = up(t);
     if (col.faces) return colourOf(mids, col.colour, c);
-    const v = mids.map((m) => dot3(m, c)), top = Math.max(...v), f = v.filter((x) => x > top - 1e-9).length === 1 ? v.indexOf(top) : -1;
+    const v = mids.map((m) => faceDot(m, c)), top = Math.max(...v), f = v.filter((x) => x > top - 1e-9).length === 1 ? v.indexOf(top) : -1;
     const k = f < 0 ? -1 : colourOf(col.items, col.colour, mids[f]);
     return k >= 0 ? k : colourOf(col.items, col.colour, c);
   };
