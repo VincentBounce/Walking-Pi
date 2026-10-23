@@ -1,4 +1,4 @@
-import { soup, seeds, behaviour, trace, settle, revive } from './engine.js';
+import { soup, seeds, behaviour, trace, settle, revive, battle } from './engine.js';
 import { grid, squareGrid } from './kite.js';
 import { hatGrid } from './hat.js';
 import { tilingGrid } from '../tilings/grid.js';
@@ -20,5 +20,6 @@ self.onmessage = ({ data }) => {
   if (task === 'behaviour') out = behaviour(G(W), rule, cells, opts ?? 400);
   if (task === 'settle') out = data.starts.map((cs) => settle(G(W), rule, cs, opts ?? 20000));
   if (task === 'revive') out = data.seeds.map((sd) => revive(G(W), rule, data.ships, sd, ...(opts ?? [])));
+  if (task === 'battle') out = data.seeds.map((sd) => battle(G(W), rule, sd, ...(opts ?? [])));
   self.postMessage({ id, out });
 };

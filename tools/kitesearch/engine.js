@@ -267,4 +267,44 @@ function revive(G, rule, ships, seedv, tries = 2, d = 0.3, cap = 6000) {
   }
   return out;
 }
-export { parse, step, soup, seeds, behaviour, components, normal, trace, settle, revive };
+// A battle of 2 colours, as the app plays them (see lifeStep): a soup at d, colour 1 in the left half of the torus, 2 in the
+// right; a newborn takes the colour most of its live neighbours have, a tie none; a dying cell keeps its colour (states
+// k + 2s). Followed till one colour is left (or none), the grid repeats, or gens: the lead's changes (a colour ahead by
+// margin of the live ones, then the other: the turnarounds), the lowest share the colour ahead at the end had since
+// generation 50 (its comeback), how long
+function battle(G, rule, seedv, d = 0.35, gens = 3000, margin = 0.1) {
+  const { B, S, C } = parse(rule), n = G.n, last = 2 * (C - 1);
+  seed = seedv;
+  let a = new Uint8Array(n), b = new Uint8Array(n);
+  for (let t = 0; t < n; t++) if (rnd() < d) a[t] = t % G.row < G.row / 2 ? 1 : 2;
+  const seen = new Map(), low = [1, 1, 1];
+  let lead = 0, swaps = 0, T = gens, end = 'running', p1 = 0, p2 = 0;
+  for (let g = 1; g <= gens; g++) {
+    p1 = p2 = 0;
+    for (let t = 0; t < n; t++) {
+      const was = a[t];
+      let now;
+      if (was > 2) now = was + 2 <= last ? was + 2 : 0;
+      else {
+        let c = 0, k = 0, c1 = 0, c2 = 0;
+        for (let q = G.start[t]; q < G.start[t + 1]; q++) { const v = a[G.list[q]]; if (v === 1 || v === 2) { c++; if (v === 1) c1++; else c2++; if (G.side && !G.side[q]) k++; } }
+        const i = 4 * c + Math.min(k, 3);
+        if (was) now = S[i] ? was : C > 2 ? was + 2 : 0;
+        else now = !B[i] ? 0 : c1 > c2 ? 1 : c2 > c1 ? 2 : 0;
+      }
+      b[t] = now;
+      if (now === 1) p1++; else if (now === 2) p2++;
+    }
+    [a, b] = [b, a];
+    if (!p1 || !p2) { T = g; end = p1 || p2 ? 'won' : 'dies'; break; }
+    const share = p1 / (p1 + p2);
+    if (share > 0.5 + margin / 2) { if (lead === 2) swaps++; lead = 1; } else if (share < 0.5 - margin / 2) { if (lead === 1) swaps++; lead = 2; }
+    if (g >= 50) { low[1] = Math.min(low[1], share); low[2] = Math.min(low[2], 1 - share); }
+    const h = hash(a);
+    if (seen.has(h) && g - seen.get(h) <= 100) { T = g; end = 'settles'; break; }
+    seen.set(h, g);
+  }
+  const ahead = p1 > p2 ? 1 : p2 > p1 ? 2 : 0;
+  return { T, end, swaps, comeback: ahead ? +low[ahead].toFixed(3) : null };
+}
+export { parse, step, soup, seeds, behaviour, components, normal, trace, settle, revive, battle };
