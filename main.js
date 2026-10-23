@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1040';
+const VERSION = '0.1.1041';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9024,8 +9024,15 @@ function huntParts(r, K) {
   }
   const own = K === 1 ? null : solidSpots(MODES[$('mode').value].sphere)[K], spots = own?.map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   const near = (d, c) => (own?.paired ? Math.abs(dot3(d, c)) : dot3(d, c));  // (paired: 2 opposite spots each, see solidSpots)
-  // (a cell as near two spots or more: no one's, as on the plane's lines between slices: the parts all alike)
-  const nearestSpot = (t) => { const c = up(t), v = spots.map((d) => near(d, c)), top = Math.max(...v); return v.filter((x) => x > top - 1e-9).length > 1 ? -1 : v.indexOf(top); };
+  // a cell by its face's middle (the one its own middle faces most, see FACE_MIDDLES), so that a face nearer one spot
+  // goes to it whole (the tetrahedron's Duel: 2 faces each); a face as near two spots or more, by the cell's own
+  // middle; a cell as near two spots or more: no one's, as on the plane's lines between slices (the parts all alike)
+  const mids = K === 1 ? [] : FACE_MIDDLES[MODES[$('mode').value].sphere]();
+  const only = (v) => { const top = Math.max(...v); return v.filter((x) => x > top - 1e-9).length > 1 ? -1 : v.indexOf(top); };
+  const nearestSpot = (t) => {
+    const c = up(t), f = mids.length ? only(mids.map((m) => dot3(m, c))) : -1, k = f < 0 ? -1 : only(spots.map((d) => near(d, mids[f])));
+    return k >= 0 ? k : only(spots.map((d) => near(d, c)));
+  };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
   return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
