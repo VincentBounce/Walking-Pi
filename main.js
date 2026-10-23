@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1038';
+const VERSION = '0.1.1039';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8854,11 +8854,12 @@ const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const zoneRadius = (zone) => (zone === 'realm' ? realmRadius() : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 // Realm's radius: the colours' patches (see huntParts) grown a step at a time while each has cells of its own and none
-// meets another's; 0 in one colour, or Mixed (one patch: nothing to stop it, the whole grid, Wild). Once a grid, rule, view
+// meets another's; 0 in one colour, or Mixed (one patch: nothing to stop it, the whole grid, Wild), or on a solid whose
+// spots are not its faces' middles (its corners, its edges: patches across them, not good-looking). Once a grid, rule, view
 let realmMemo = null;
 function realmRadius() {
-  const L = walk.life, K = L?.colours;
-  if (!L || K === 1 || colourMix) return 0;
+  const L = walk.life, K = L?.colours, sphere = MODES[$('mode').value].sphere;
+  if (!L || K === 1 || colourMix || (SOLID_SPOTS[sphere] && !spotsOnFaces(sphere, K))) return 0;
   const key = `${$('mode').value}|${L.seed.length}|${K}|${walk.plane?.torus}|${L.ruleText}|${walk.plane ? planeTurn() : ''}`;
   if (realmMemo?.key === key) return realmMemo.r;
   const apart = (parts) => parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0);
@@ -8895,6 +8896,12 @@ const SOLID_SPOTS = {
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
+// a solid's faces' middles, as directions (its polyhedron's: the sphere of hexagons, the icosahedron's, its pentagons
+// at its corners; the dodecahedron's pentagons, the icosahedron's corners; the stella's, none: its spots are its tips and the hollows between them); whether a count's spots are all
+const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + POLYHEDRA[k].P[v][d], 0))));
+const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [] };
+for (const [k, of] of Object.entries({ pits: 'cube', frame: 'cube', menger: 'cube', sierpinski: 'tetra', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa' })) FACE_MIDDLES[k] = FACE_MIDDLES[of];
+const spotsOnFaces = (sphere, K) => { const f = FACE_MIDDLES[sphere](); return solidSpots(sphere)[K].every((d) => f.some((m) => dot3(unit(d), m) > 1 - 1e-9)); };
 // A solid's spots, and half as many colours where a count's spots go in opposite pairs (the cube's 6 faces: 3, the
 // icosahedron's 12 corners: 6), each colour two opposite spots (paired: the first of each pair, a cell to its nearest by
 // either way): its turns that swap the spots swap the pairs, the parts as alike
