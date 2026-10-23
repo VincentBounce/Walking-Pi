@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1046';
+const VERSION = '0.1.1047';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8898,8 +8898,9 @@ const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const CORNERS8 = [[1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1], [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1]];
 const TETRA4 = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
 const EDGES12 = [[1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0], [1, 0, 1], [1, 0, -1], [-1, 0, 1], [-1, 0, -1], [0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]];
-const ICO = () => POLYHEDRA.icosa.P, nearest3 = (d) => [...ICO()].sort((p, q) => dot3(q, d) / Math.hypot(...q) - dot3(p, d) / Math.hypot(...p)).slice(0, 3);
-const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: [ICO()[0], ICO()[11], ICO()[5]], 4: TETRA4, 8: CORNERS8, 12: ICO() });
+// (3 round a face's axis d: of its 4 rings of 3, the second, 117° apart, not the first, round the face, 63°)
+const ICO = () => POLYHEDRA.icosa.P, around3 = (d) => [...ICO()].sort((p, q) => dot3(q, d) / Math.hypot(...q) - dot3(p, d) / Math.hypot(...p)).slice(3, 6);
+const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: around3([1, 1, 1]), 4: TETRA4, 8: CORNERS8, 12: ICO() });
 const SOLID_SPOTS = {
   cube: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (2: opposite corners, 3 whole faces each)
   pits: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
@@ -8909,7 +8910,7 @@ const SOLID_SPOTS = {
   octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (4: its faces' opposite pairs)
   tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
   stella: () => ({ 2: AXES.slice(0, 2), 4: TETRA4, 6: AXES, 8: CORNERS8 }),  // (2: its hollows ±x, the halves cut along its edges, 4 whole tips each)
-  dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
+  dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: around3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
@@ -9319,7 +9320,7 @@ TRI_FACES.icosa = () => ({ ...TRI_FACES.octa(), 4: TETRA4 });  // the icosahedro
 for (const k of ['tetra', 'octa', 'icosa']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]();
 // the dodecahedron: a pentagon's 5 triangles (cut from its middle, as the plane's), the pattern in its
 // first; the stella: a tip's 3 triangles, the pattern in the one most facing it
-TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 12: ICO() });
+TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: around3([1, 1, 1]), 12: ICO() });
 TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
