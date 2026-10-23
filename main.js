@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1050';
+const VERSION = '0.1.1051';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8851,14 +8851,11 @@ const HUNT_ZONES = { icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon4
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere the widest patches (see realmParts)
                      full: ['zoneAll', 'Wild'],
-                     mirror: ['zoneAll', 'Wild mirror'],  // Wild's twin (a click again): each colour's two parts opposite (see colouring)
+                     mirror: ['zoneAll', 'Mirror'],  // Wild with each colour's two parts opposite (see colouring)
                      centred: [null, 'Famous'],  // the rule's patterns, each at its colour's spot (see patternChoices)
-                     patterns: [null, 'Famous anywhere'],  // its twin: the same, mixed, anywhere in each colour's part
+                     patterns: [null, 'Anywhere'],  // the same, mixed, anywhere in each colour's part
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
-// a zone and its twin, one tile (a click again on it, lit, the other): Wild and Wild mirror, Famous and Famous anywhere
-const ZONE_TWINS = { mirror: 'full', patterns: 'centred' };
-const twinOf = (zone) => Object.keys(ZONE_TWINS).find((z) => ZONE_TWINS[z] === zone);
 const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0);  // (an icon's width in cells)
 const iconIndex = (name) => Math.max(0, ICON_NAMES.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
@@ -9164,10 +9161,8 @@ function renderHunt() {
   $('huntGoals').hidden = $('huntModeLabel').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
-  for (const b of $('huntZones').children) {  // (a tile with a twin: lit for either, named after the one picked)
-    const zone = b.dataset.zone, twin = twinOf(zone), on = hunt.zone === zone || (!!twin && hunt.zone === twin);
-    setTile(b, { on, can: !busy && (!!fits[zone] || (!!twin && !!fits[twin])), again: true });  // (picked: a click draws another start)
-    if (twin) b.querySelector('span').textContent = HUNT_ZONES[hunt.zone === twin ? twin : zone][1];
+  for (const b of $('huntZones').children) {
+    setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true });  // (picked: a click draws another start)
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
   // one line under the button: what the zone has put on the grid, and (Life) what a hunt will try; how far it got while it
@@ -12696,22 +12691,21 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, 
 }));
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
-$('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).filter(([zone]) => !ZONE_TWINS[zone]).map(([zone, [pic, name]]) => {
+$('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
   const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : iconSize(zone) ? pixelIcon('.....,.o.o.,.....,o...o,.ooo.', { 12: 9, 24: 7, 48: 5 }[iconSize(zone)])
     : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face, as big as its size
   b.dataset.zone = zone;
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link'
-    : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored; a click again: Famous anywhere, each anywhere in its colour's part"
+    : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
+    : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
+    : zone === 'mirror' ? "Mirror: Wild, the whole grid, random soups, each colour's two parts opposite (a solid where a colour has two faces or spots)"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
-    : 'Wild: the whole grid, random soups; a click again: Wild mirror, where a colour has two parts (a solid), the two opposite';
+    : 'Wild: the whole grid, random soups (a colour with two parts: side by side)';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
-  b.addEventListener('click', () => {  // (lit: its twin, if it fits; else the one that fits, the first first)
-    const twin = twinOf(zone), fits = huntFits(), on = hunt.zone === zone || hunt.zone === twin;
-    pickZone(!twin ? zone : on ? (hunt.zone === zone ? (fits[twin] ? twin : zone) : fits[zone] ? zone : twin) : fits[zone] ? zone : twin);
-  });
+  b.addEventListener('click', () => pickZone(zone));
   return b;
 }));
 // Emoji: an emoji at random, one this browser draws (in colours: a missing one is a box of one colour)
