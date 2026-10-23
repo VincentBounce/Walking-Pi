@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1044';
+const VERSION = '0.1.1045';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8928,14 +8928,25 @@ function patchSpots(sphere, K) {
   return f.some((x) => dot3(x, m) < -1 + 1e-9) ? [m, m.map((v) => -v)] : spots;
 }
 // A solid's spots, and half as many colours where a count's spots go in opposite pairs (the cube's 6 faces: 3, the
-// icosahedron's 12 corners: 6), each colour two opposite spots (paired: the first of each pair, a cell to its nearest by
-// either way): its turns that swap the spots swap the pairs, the parts as alike
+// icosahedron's 12 corners: 6), each colour two of them. Spots on its faces: two faces side by side (an edge between
+// them; beside: the second of each, a cell to the nearer of the two), the first pairing found; else two opposite spots
+// (paired: the first of each pair, a cell to its nearest by either way): its turns that swap the spots swap the pairs
 function solidSpots(sphere) {
-  const own = SOLID_SPOTS[sphere](), all = { ...own };
+  const own = SOLID_SPOTS[sphere](), all = { ...own }, f = FACE_MIDDLES[sphere]();
   for (const [k, spots] of Object.entries(own)) {
     const u = spots.map(unit), opposite = u.map((d) => u.findIndex((e) => dot3(d, e) < -1 + 1e-9));
     if (k / 2 < 2 || own[k / 2] || opposite.includes(-1)) continue;
-    all[k / 2] = Object.assign(spots.filter((_, i) => opposite[i] > i), { paired: true });
+    const close = Math.max(...u.flatMap((d, i) => u.filter((_, j) => j !== i).map((e) => dot3(d, e)))), mate = u.map(() => -1);
+    const match = () => {  // (each spot with one beside it, all of them)
+      const i = mate.indexOf(-1);
+      if (i < 0) return true;
+      for (let j = i + 1; j < u.length; j++) if (mate[j] < 0 && dot3(u[i], u[j]) > close - 1e-9) { mate[i] = j; mate[j] = i; if (match()) return true; mate[i] = mate[j] = -1; }
+      return false;
+    };
+    if (u.every((d) => f.some((m) => dot3(d, m) > 1 - 1e-9)) && match()) {
+      const firsts = u.map((_, i) => i).filter((i) => mate[i] > i);
+      all[k / 2] = Object.assign(firsts.map((i) => spots[i]), { beside: firsts.map((i) => spots[mate[i]]) });
+    } else all[k / 2] = Object.assign(spots.filter((_, i) => opposite[i] > i), { paired: true });
   }
   return all;
 }
@@ -9048,15 +9059,15 @@ function huntParts(r, K) {
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
   const own = K === 1 ? null : solidSpots(MODES[$('mode').value].sphere)[K], spots = own?.map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
-  const near = (d, c) => (own?.paired ? Math.abs(dot3(d, c)) : dot3(d, c));  // (paired: 2 opposite spots each, see solidSpots)
+  const beside = own?.beside?.map(unit), near = (k, c) => (own?.paired ? Math.abs(dot3(spots[k], c)) : beside ? Math.max(dot3(spots[k], c), dot3(beside[k], c)) : dot3(spots[k], c));  // (2 spots each, see solidSpots)
   // a cell by its face's middle (the one its own middle faces most, see FACE_MIDDLES), so that a face nearer one spot
   // goes to it whole (the tetrahedron's Duel: 2 faces each); a face as near two spots or more, by the cell's own
   // middle; a cell as near two spots or more: no one's, as on the plane's lines between slices (the parts all alike)
   const mids = K === 1 ? [] : FACE_MIDDLES[MODES[$('mode').value].sphere]();
   const only = (v) => { const top = Math.max(...v); return v.filter((x) => x > top - 1e-9).length > 1 ? -1 : v.indexOf(top); };
   const nearestSpot = (t) => {
-    const c = up(t), f = mids.length ? only(mids.map((m) => dot3(m, c))) : -1, k = f < 0 ? -1 : only(spots.map((d) => near(d, mids[f])));
-    return k >= 0 ? k : only(spots.map((d) => near(d, c)));
+    const c = up(t), f = mids.length ? only(mids.map((m) => dot3(m, c))) : -1, k = f < 0 ? -1 : only(spots.map((_, i) => near(i, mids[f])));
+    return k >= 0 ? k : only(spots.map((_, i) => near(i, c)));
   };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
