@@ -2,7 +2,7 @@
 // console, after loading this file,
 //   faceParts()  → the two tables, as main.js has them
 // FACE_GROUPS: for each solid of FACE_MIDDLES (cube, tetra, octa, icosa, dodeca, cuboctahedron) and each count K of colours
-// that divides its faces (the cuboctahedron's 6 squares and 8 triangles: 2, 3 squares and 4 triangles each; 7, two opposite faces each): its faces in K groups, each in one piece (faces sharing an edge), all alike (a turn of the solid takes one to
+// that divides its faces (the cuboctahedron's 6 squares and 8 triangles: 2, 3 squares and 4 triangles each; 7, two side by side each): its faces in K groups, each in one piece (faces sharing an edge), all alike (a turn of the solid takes one to
 // another, and the turns that keep the partition take any group to any other); of these, the one the most turns keep,
 // then the fewest edges between groups. Where K is half its faces and each face has one opposite: also its mirror, each
 // colour two opposite faces.
@@ -90,7 +90,24 @@ window.faceParts = () => {
       };
       grow([0]);
       const pairs = 2 * K === F ? opposites(mids) : null;
-      if (!best) { if (pairs) faces[solid][K] = written(mids, adj, pairs); continue; }  // (no piece alike: each colour two opposite faces, the cuboctahedron's 7)
+      if (!best && pairs) {  // (no piece alike, the cuboctahedron's 7: each colour two faces side by side, the most by an edge, then
+        // touching by a corner (faces apart less than a right angle), the pairing the most turns keep; its mirror, two opposite)
+        const mate = mids.map(() => -1), close = Math.max(...adj.map((a, f) => dot3(mids[f], mids[a[0]])));
+        let side = null;
+        const match = () => {
+          const f = mate.indexOf(-1);
+          if (f < 0) {
+            const parts = mids.map((_, g) => g).filter((g) => mate[g] > g).map((g) => [g, mate[g]]), edges = parts.filter(([g, h]) => dot3(mids[g], mids[h]) > close - 1e-9).length, keep = keptBy(perms, parts).length;
+            if (!side || edges > side.edges || (edges === side.edges && keep > side.keep)) side = { parts, edges, keep };
+            return;
+          }
+          for (let g = 0; g < F; g++) if (g !== f && mate[g] < 0 && dot3(mids[f], mids[g]) > 1e-9) { mate[f] = g; mate[g] = f; match(); mate[f] = mate[g] = -1; }
+        };
+        match();
+        faces[solid][K] = [...written(mids, adj, side.parts), ...written(mids, adj, pairs)];
+        continue;
+      }
+      if (!best) continue;
       faces[solid][K] = [...written(mids, adj, best.parts), ...(pairs ? written(mids, adj, pairs) : [])];
     }
   }
