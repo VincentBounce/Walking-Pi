@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1060';
+const VERSION = '0.1.1061';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -965,7 +965,7 @@ const MODES = {
   antHex: { get base() { return antBase('antHex'); }, lattice: 'hex', cells: true, fill: false, antOf: 'hexTurtle', get rule() { return antRuleText('antHex'); } },
   antCairo: { get base() { return antBase('antCairo'); }, lattice: 'cairo', cells: true, fill: false, antOf: 'cairo', get rule() { return antRuleText('antCairo'); } },
   // on a surface: the ant on the cells of its walk there, which keep their colours (turns: as the walk's)
-  antCube: { get base() { return antBase('antCube'); }, lattice: 'sphere', cells: true, sphere: 'cube', initial: 48, turns: [3, 2, 1],
+  antCube: { get base() { return antBase('antCube'); }, lattice: 'sphere', cells: true, sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
              fill: false, antOf: 'cubeFlat', get rule() { return antRuleText('antCube'); } },
   antHexSphere: { get base() { return antBase('antHexSphere'); }, lattice: 'sphere', cells: true, sphere: 'hexsphere', turns: [-2, 2], round: true,
                   fill: false, antOf: 'hexSphereWalk', get rule() { return antRuleText('antHexSphere'); } },
@@ -981,19 +981,19 @@ const MODES = {
               rule: 'along a spiral of hexagons: <b>1</b> draw the step, <b>0</b> move without drawing' },
   tetraLR:  { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'tetraGrid', sphere: 'tetra', initial: 48, turns: [2, 1],
               rule: 'on a tetrahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
-  torusWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'torusGrid', sphere: 'torus', initial: 48, turns: [3, 2, 1], round: true,
+  torusWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'torusGrid', sphere: 'torus', initial: 48, turns: [3, 2, 1], perspective: true, round: true,
               rule: 'on a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  triTorusWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'triTorusGrid', sphere: 'tritorus', initial: 48, turns: [2, 1], round: true,
+  triTorusWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'triTorusGrid', sphere: 'tritorus', initial: 48, turns: [2, 1], perspective: true, round: true,
                   rule: 'on a torus of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // Cairo pentagons: out through one of the 4 other edges, edge k + 1 the sharpest right (as the 2D walk)
-  cairoTorusWalk: { base: 4, arrows: '↙↖↗↘', lattice: 'sphere', cells: true, sphere: 'cairotorus', initial: 32, turns: [4, 3, 2, 1], round: true,
+  cairoTorusWalk: { base: 4, arrows: '↙↖↗↘', lattice: 'sphere', cells: true, sphere: 'cairotorus', initial: 32, turns: [4, 3, 2, 1], perspective: true, round: true,
                     rule: 'on a torus of Cairo pentagons: out through one of its 4 other edges, <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right' },
   // hexagons: entering through edge k, edge k + 1 is a sharp right, k + 2 right, k + 3 straight on
-  hexTorusWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'hexTorusGrid', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], round: true,
+  hexTorusWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'hexTorusGrid', sphere: 'hextorus', initial: 48, turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                   rule: 'on a torus of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  mobiusWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'mobiusGrid', sphere: 'mobius', turns: [3, 2, 1], round: true,
+  mobiusWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'mobiusGrid', sphere: 'mobius', turns: [3, 2, 1], perspective: true, round: true,
                 rule: 'on a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
-  mobiusHexWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'mobiusHexGrid', sphere: 'mobiusHex', turns: [5, 4, 3, 2, 1], round: true,
+  mobiusHexWalk: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', cells: true, twin: 'mobiusHexGrid', sphere: 'mobiusHex', turns: [5, 4, 3, 2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of hexagons: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
   // a Klein bottle (its tube a figure 8 crossing itself): on cells, as the torus's walks
   kleinWalk: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, sphere: 'klein', turns: [3, 2, 1], round: true,
@@ -1004,11 +1004,11 @@ const MODES = {
                   rule: 'on a Klein bottle of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   kleinCairoWalk: { base: 4, arrows: '↙↖↗↘', lattice: 'sphere', cells: true, sphere: 'kleinCairo', turns: [4, 3, 2, 1], round: true,
                     rule: 'on a Klein bottle of Cairo pentagons: out through one of its 4 other edges, <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right' },
-  mobiusCairoWalk: { base: 4, arrows: '↙↖↗↘', lattice: 'sphere', cells: true, sphere: 'mobiusCairo', turns: [4, 3, 2, 1], round: true,
+  mobiusCairoWalk: { base: 4, arrows: '↙↖↗↘', lattice: 'sphere', cells: true, sphere: 'mobiusCairo', turns: [4, 3, 2, 1], perspective: true, round: true,
                      rule: 'on a Möbius strip of Cairo pentagons: out through one of its 4 other edges, <b>0</b> sharp left, <b>1</b> left, <b>2</b> right, <b>3</b> sharp right (over its edge, onto the face behind)' },
-  mobiusTriWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], round: true,
+  mobiusTriWalk: { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'mobiusTriGrid', sphere: 'mobiusTri', turns: [2, 1], perspective: true, round: true,
                    rule: 'on a Möbius strip of triangles: exit through the <b>0</b> left or <b>1</b> right edge (over its edge, onto the face behind)' },
-  cubeFlat: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'cubeGrid', ant: 'antCube', sphere: 'cube', initial: 48, turns: [3, 2, 1],
+  cubeFlat: { base: 3, arrows: '←↑→', lattice: 'sphere', cells: true, twin: 'cubeGrid', ant: 'antCube', sphere: 'cube', initial: 48, turns: [3, 2, 1], perspective: true,
               rule: 'on the surface of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
   octaLR:   { base: 2, arrows: '↖↗', lattice: 'sphere', cells: true, twin: 'octaGrid', sphere: 'octa', initial: 48, turns: [2, 1],
               rule: 'on an octahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
@@ -1023,19 +1023,19 @@ const MODES = {
               rule: 'on an icosahedron of triangles: exit through the <b>0</b> left or <b>1</b> right edge' },
   // along the grid: from corner to corner, turning by these angles (degrees, left positive), or as close
   // to them as the edges at a corner allow
-  torusGrid: { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'torusWalk', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], round: true,
+  torusGrid: { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'torusWalk', sphere: 'torus', grid: true, initial: 48, turns: [90, 0, -90], perspective: true, round: true,
                rule: 'along the edges of a torus of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right' },
-  triTorusGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'triTorusWalk', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], round: true,
+  triTorusGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'triTorusWalk', sphere: 'tritorus', grid: true, initial: 48, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                   rule: 'along the edges of a torus of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right' },
-  hexTorusGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'hexTorusWalk', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], round: true,
+  hexTorusGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'hexTorusWalk', sphere: 'hextorus', grid: true, initial: 48, turns: [60, -60], perspective: true, round: true,
                   rule: 'along the edges of a torus of hexagons: <b>0</b> turn left, <b>1</b> turn right' },
-  mobiusGrid: { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'mobiusWalk', sphere: 'mobius', grid: true, turns: [90, 0, -90], round: true,
+  mobiusGrid: { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'mobiusWalk', sphere: 'mobius', grid: true, turns: [90, 0, -90], perspective: true, round: true,
                 rule: 'along the edges of a Möbius strip of squares: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (over its edge, onto the face behind)' },
-  mobiusHexGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'mobiusHexWalk', sphere: 'mobiusHex', grid: true, turns: [60, -60], round: true,
+  mobiusHexGrid: { base: 2, arrows: '↖↗', lattice: 'sphere', twin: 'mobiusHexWalk', sphere: 'mobiusHex', grid: true, turns: [60, -60], perspective: true, round: true,
                    rule: 'along the edges of a Möbius strip of hexagons: <b>0</b> turn left, <b>1</b> turn right (over its edge, onto the face behind)' },
-  mobiusTriGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'mobiusTriWalk', sphere: 'mobiusTri', grid: true, turns: [120, 60, 0, -60, -120], round: true,
+  mobiusTriGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'mobiusTriWalk', sphere: 'mobiusTri', grid: true, turns: [120, 60, 0, -60, -120], perspective: true, round: true,
                    rule: 'along the edges of a Möbius strip of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (over its edge, onto the face behind)' },
-  cubeGrid:  { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'cubeFlat', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90],
+  cubeGrid:  { base: 3, arrows: '←↑→', lattice: 'sphere', twin: 'cubeFlat', sphere: 'cube', grid: true, initial: 48, turns: [90, 0, -90], perspective: true,
                rule: 'along the edges of the squares of a cube: <b>0</b> turn left, <b>1</b> straight on, <b>2</b> turn right (at a corner of the cube, the nearest edge)' },
   tetraGrid: { base: 5, arrows: '↙↖↑↗↘', lattice: 'sphere', twin: 'tetraLR', sphere: 'tetra', grid: true, initial: 48, turns: [120, 60, 0, -60, -120],
                rule: 'along the edges of a tetrahedron of triangles: <b>0</b> sharp left, <b>1</b> left, <b>2</b> straight, <b>3</b> right, <b>4</b> sharp right (at a corner of the solid, the nearest edge)' },
@@ -1087,38 +1087,38 @@ const MODES = {
   life2dRing9: { base: 2, lattice: 'ring9', life: true, plane: 'ring9', where: "a patch of the 9-fold ring (Sugimoto's pentagon round a regular 9-gon left empty, never repeating)" },
   life2dRing12: { base: 2, lattice: 'ring12', life: true, plane: 'ring12', where: "a patch of the 12-fold ring (Sugimoto's pentagon round a regular 12-gon left empty, never repeating)" },
   life2dSpectre: { base: 2, lattice: 'spectre', life: true, plane: 'spectre', where: 'a patch of spectres, the tile that never repeats and is never turned over' },
-  lifeKiteTorus: { base: 2, lattice: 'sphere', sphere: 'kitetorus', life: true, round: true, where: 'a torus of kites' },
-  lifeMobiusKite: { base: 2, lattice: 'sphere', sphere: 'mobiusKite', life: true, round: true,
+  lifeKiteTorus: { base: 2, lattice: 'sphere', sphere: 'kitetorus', life: true, perspective: true, round: true, where: 'a torus of kites' },
+  lifeMobiusKite: { base: 2, lattice: 'sphere', sphere: 'mobiusKite', life: true, perspective: true, round: true,
                     where: 'a Möbius strip of kites (both faces, over its edge onto the one behind)' },
   lifeKleinKite: { base: 2, lattice: 'sphere', sphere: 'kleinKite', life: true, round: true, where: 'a Klein bottle of kites' },
-  lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, round: true,
+  lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
-  lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, round: true,
+  lifeHexTorus: { base: 2, lattice: 'sphere', sphere: 'hextorus', life: true, perspective: true, round: true,
                   where: 'a torus of hexagons' },
-  lifeTriTorus: { base: 2, lattice: 'sphere', sphere: 'tritorus', life: true, round: true,
+  lifeTriTorus: { base: 2, lattice: 'sphere', sphere: 'tritorus', life: true, perspective: true, round: true,
                   where: 'a torus of triangles' },
-  lifeCairoTorus: { base: 2, lattice: 'sphere', sphere: 'cairotorus', life: true, round: true,
+  lifeCairoTorus: { base: 2, lattice: 'sphere', sphere: 'cairotorus', life: true, perspective: true, round: true,
                     where: 'a torus of Cairo pentagons' },
   // a Möbius strip: its two faces one surface, over its edge onto the face behind (2 colours: a face each)
-  lifeMobius: { base: 2, lattice: 'sphere', sphere: 'mobius', life: true, round: true,
+  lifeMobius: { base: 2, lattice: 'sphere', sphere: 'mobius', life: true, perspective: true, round: true,
                 where: 'a Möbius strip of squares (both faces, over its edge onto the one behind)' },
-  lifeMobiusHex: { base: 2, lattice: 'sphere', sphere: 'mobiusHex', life: true, round: true,
+  lifeMobiusHex: { base: 2, lattice: 'sphere', sphere: 'mobiusHex', life: true, perspective: true, round: true,
                    where: 'a Möbius strip of hexagons (both faces, over its edge onto the one behind)' },
   lifeKlein: { base: 2, lattice: 'sphere', sphere: 'klein', life: true, round: true, where: 'a Klein bottle of squares' },
   lifeKleinHex: { base: 2, lattice: 'sphere', sphere: 'kleinHex', life: true, round: true, where: 'a Klein bottle of hexagons' },
   lifeKleinTri: { base: 2, lattice: 'sphere', sphere: 'kleinTri', life: true, round: true, where: 'a Klein bottle of triangles' },
   lifeKleinCairo: { base: 2, lattice: 'sphere', sphere: 'kleinCairo', life: true, round: true, where: 'a Klein bottle of Cairo pentagons' },
-  lifeMobiusCairo: { base: 2, lattice: 'sphere', sphere: 'mobiusCairo', life: true, round: true,
+  lifeMobiusCairo: { base: 2, lattice: 'sphere', sphere: 'mobiusCairo', life: true, perspective: true, round: true,
                      where: 'a Möbius strip of Cairo pentagons (both faces, over its edge onto the one behind)' },
-  lifeMobiusTri: { base: 2, lattice: 'sphere', sphere: 'mobiusTri', life: true, round: true,
+  lifeMobiusTri: { base: 2, lattice: 'sphere', sphere: 'mobiusTri', life: true, perspective: true, round: true,
                    where: 'a Möbius strip of triangles (both faces, over its edge onto the one behind)' },
-  lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true,
+  lifeCube:   { base: 2, lattice: 'sphere', sphere: 'cube', life: true, perspective: true,
                 where: 'the surface of a cube' },
-  lifePits:   { base: 2, lattice: 'sphere', sphere: 'pits', life: true,
+  lifePits:   { base: 2, lattice: 'sphere', sphere: 'pits', life: true, perspective: true,
                 where: 'the surface of a cube with a pit in each face' },
-  lifeMenger: { base: 2, lattice: 'sphere', sphere: 'menger', life: true,
+  lifeMenger: { base: 2, lattice: 'sphere', sphere: 'menger', life: true, perspective: true,
                 where: "the surface of Menger's sponge (its holes down to one square)" },
-  lifeFrame:  { base: 2, lattice: 'sphere', sphere: 'frame', life: true,
+  lifeFrame:  { base: 2, lattice: 'sphere', sphere: 'frame', life: true, perspective: true,
                 where: "the surface of a cube's frame (its edges as wide as its holes)" },
   lifeTetra:  { base: 2, lattice: 'sphere', sphere: 'tetra', life: true,
                 where: 'a tetrahedron of triangles' },
@@ -1138,20 +1138,20 @@ const MODES = {
                 where: 'an icosahedron of triangles' },
   lifeHexSphere: { base: 2, lattice: 'sphere', sphere: 'hexsphere', life: true, round: true,
                    where: 'a sphere of hexagons (its 12 pentagons are walls)' },
-  cubeRel:  { base: 5, arrows: '←⊙↑⊗→', lattice: 'cube', twin: 'cubeRelCells',
+  cubeRel:  { base: 5, arrows: '←⊙↑⊗→', lattice: 'cube', twin: 'cubeRelCells', perspective: true,
               rule: 'in 3D cubes, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
-  cubeFixed: { base: 6, arrows: '↑→⊙↓←⊗', lattice: 'cube', twin: 'cubeFixedCells',
+  cubeFixed: { base: 6, arrows: '↑→⊙↓←⊗', lattice: 'cube', twin: 'cubeFixedCells', perspective: true,
               rule: 'in 3D cubes: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
-  diag: { base: 8, lattice: 'cube', twin: 'diagCells',
+  diag: { base: 8, lattice: 'cube', twin: 'diagCells', perspective: true,
           rule: 'along the diagonals of the cubes, to one of their 8 corners (the 3 bits of each digit the signs of east, north and up): <b>0</b> SW down, <b>1</b> SW up, <b>2</b> NW down, <b>3</b> NW up, <b>4</b> SE down, <b>5</b> SE up, <b>6</b> NE down, <b>7</b> NE up' },
-  diamond: { base: 3, arrows: '↖↑↗', lattice: 'cube',
+  diamond: { base: 3, arrows: '↖↑↗', lattice: 'cube', perspective: true,
              rule: 'along the bonds of a diamond, as a polymer chain: <b>0</b> gauche left, <b>1</b> trans (the zigzag goes on), <b>2</b> gauche right' },
   // the same steps from cell to cell (their centres make the same lattice), the cells coloured (see glCubes)
-  cubeRelCells: { base: 5, arrows: '←⊙↑⊗→', lattice: 'cube', cells: true, twin: 'cubeRel',
+  cubeRelCells: { base: 5, arrows: '←⊙↑⊗→', lattice: 'cube', cells: true, twin: 'cubeRel', perspective: true,
               rule: 'from cube to cube, relative to your heading: <b>0</b> turn left, <b>1</b> up, <b>2</b> straight, <b>3</b> down, <b>4</b> turn right' },
-  cubeFixedCells: { base: 6, arrows: '↑→⊙↓←⊗', lattice: 'cube', cells: true, twin: 'cubeFixed',
+  cubeFixedCells: { base: 6, arrows: '↑→⊙↓←⊗', lattice: 'cube', cells: true, twin: 'cubeFixed', perspective: true,
               rule: 'from cube to cube: <b>0</b> north, <b>1</b> east, <b>2</b> up, <b>3</b> south, <b>4</b> west, <b>5</b> down' },
-  diagCells: { base: 8, lattice: 'cube', cells: true, twin: 'diag', shape: 'truncOcta',
+  diagCells: { base: 8, lattice: 'cube', cells: true, twin: 'diag', shape: 'truncOcta', perspective: true,
                rule: 'from truncated octahedron to truncated octahedron (they fill space), through a hexagon (the 3 bits of each digit the signs of east, north and up): <b>0</b> SW down, <b>1</b> SW up, <b>2</b> NW down, <b>3</b> NW up, <b>4</b> SE down, <b>5</b> SE up, <b>6</b> NE down, <b>7</b> NE up' },
   // Pivot: 0 a step straight on, 1 a turn on the spot by a notch clockwise (pivot: the notches of a whole
   // turn), with no step: the turtle of the L-systems (F and +). Thue–Morse on triangles draws Koch's
@@ -1173,9 +1173,9 @@ const MODES = {
                rule: 'along the lines of a triangle grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (60°)' },
   hexParityCells: { base: 2, arrows: '↑→', lattice: 'hex', cells: true, parity: 6, steps: 'hexFixedCells',
                     rule: 'from cell to cell of a hexagon grid: <b>0</b> step forward, <b>1</b> step forward then turn right at an odd digit, left at an even one (60°)' },
-  cubesPivot: { base: 3, arrows: '↑→⊙', lattice: 'cube', twin: 'cubesPivotCells', pivot: 4,
+  cubesPivot: { base: 3, arrows: '↑→⊙', lattice: 'cube', twin: 'cubesPivotCells', perspective: true, pivot: 4,
                 rule: 'in 3D cubes: <b>0</b> step forward, <b>1</b> turn right on the spot, <b>2</b> turn up on the spot' },
-  cubesPivotCells: { base: 3, arrows: '↑→⊙', lattice: 'cube', cells: true, twin: 'cubesPivot', pivot: 4,
+  cubesPivotCells: { base: 3, arrows: '↑→⊙', lattice: 'cube', cells: true, twin: 'cubesPivot', perspective: true, pivot: 4,
                      rule: 'from cube to cube: <b>0</b> step forward, <b>1</b> turn right on the spot, <b>2</b> turn up on the spot' },
   hexPivotCells: { base: 2, arrows: '↑→', lattice: 'hex', cells: true, pivot: 6, steps: 'hexFixedCells',
                    rule: 'from cell to cell of a hexagon grid: <b>0</b> step forward, <b>1</b> turn right on the spot (60°)' },
@@ -2436,13 +2436,13 @@ for (const [kind, t] of Object.entries(TILINGS)) {
   NAV[tilingMode(kind)] = ['Life', '2D', t.name, 'Life', ''];
   if (MOBIUS_TILINGS.includes(kind)) {  // on a Möbius strip (see tilingStrip)
     const m = `lifeMobius${kind[0].toUpperCase()}${kind.slice(1)}`;
-    MODES[m] = { base: 2, lattice: 'sphere', sphere: mobiusOf(kind), life: true, round: true, where: `a Möbius strip of ${t.where.replace(/^a grid of /, '')} (both faces, over its edge onto the one behind)` };
+    MODES[m] = { base: 2, lattice: 'sphere', sphere: mobiusOf(kind), life: true, perspective: true, round: true, where: `a Möbius strip of ${t.where.replace(/^a grid of /, '')} (both faces, over its edge onto the one behind)` };
     MODE_ICONS[m] = 'mobius';
     NAV[m] = ['Life', 'Surfaces', 'Möbius strip', 'Life', ''];
   }
   if (!t.torus) continue;  // and on a torus (see tilingTorusMesh)
   const w = `lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`;
-  MODES[w] = { base: 2, lattice: 'sphere', sphere: `${kind}torus`, life: true, round: true, where: `a torus of ${t.where.replace(/^a grid of /, '')}` };
+  MODES[w] = { base: 2, lattice: 'sphere', sphere: `${kind}torus`, life: true, perspective: true, round: true, where: `a torus of ${t.where.replace(/^a grid of /, '')}` };
   MODE_ICONS[w] = 'torus';
   NAV[w] = ['Life', 'Surfaces', 'Torus', 'Life', ''];
 }
@@ -4741,6 +4741,16 @@ $('shapeM').addEventListener('input', () => {
   Object.assign(sh, shapeAt(walk.geo, m), { target: m });
   applyShape();
 });
+$('shapeM').addEventListener('change', () => {
+  const m = Number($('shapeM').value);
+  if (m !== 0 && m !== 1) return;
+  $('perspective').checked = perspectiveFor(MODES[$('mode').value], m);
+  $('perspective').dispatchEvent(new Event('change'));
+});
+
+// The perspective a surface starts with, in its form m: the walk mode's, but none on a solid
+// inflated (a ball is seen whole without it)
+const perspectiveFor = (mode, m) => !!mode.perspective && !(m === 1 && SOLIDS.includes(mode.sphere));
 // One animation frame of the change of shape (about 0.7 s from flat to round)
 function morphStep(dt) {
   const sh = walk.shape;
@@ -9976,7 +9986,7 @@ function applySetup(s) {
   // changes (as picking a walk does); within a tab, what was chosen stays
   if (modeTabOf() !== displayTab) displayDefaults();
   $('fillAreas').checked = String(s.fa ?? 1) !== '0';  // the one display choice kept: it changes what is drawn
-  $('perspective').checked = false;  // (off at first, everywhere)
+  $('perspective').checked = perspectiveFor(MODES[s.w], MODES[s.w].round ? 1 : 0);
   Object.assign(cam, CAM0);
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
@@ -13085,10 +13095,10 @@ $('mode').addEventListener('change', () => {
     $('digits').value = TAB_DIGITS[modeTabOf()] ?? 20000;
     displayDefaults();
   }
-  // the form of the view belongs to the walk mode: no perspective at first, the camera's starting angle
+  // the form of the view belongs to the walk mode: its perspective, the camera's starting angle
   // (auto-fit may have turned it to follow a walker) and its flat or round form (see initShape)
   // come back with every new mode
-  $('perspective').checked = false;  // (off at first, everywhere)
+  $('perspective').checked = perspectiveFor(MODES[$('mode').value], MODES[$('mode').value].round ? 1 : 0);
   Object.assign(cam, CAM0);
   $('autoFit').checked = true;  // a new walk is shown framed, whatever the view did before
   $('startNo').value = 1;
