@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1037';
+const VERSION = '0.1.1038';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5843,7 +5843,7 @@ function startColours(seed) {
   const K = walk.life.colours;
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
-  const fits = huntFits(), r = hunt.zone === 'face' ? Infinity : zoneRadius(hunt.zone);
+  const fits = huntFits(), r = hunt.zone === 'realm' ? Infinity : zoneRadius(hunt.zone);
   if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [8, 7, 6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? 'full';
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); for (const t of walk.geo.walls ?? []) seed[t] = 0; lifeStart = { zone: hunt.zone }; return; }  // (none on the wall's cells)
@@ -6945,7 +6945,6 @@ for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
-  if (zone === 'face') return K === 1 ? 'Random cells on a face' : 'Each colour random cells on its face';
   if (zone === 'emoji') return `The emoji ${plane.emoji} (Unicode)`;
   if (iconSize(zone)) return `${K === 1 ? `The icon “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.slice(0, K).map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
@@ -8829,7 +8828,7 @@ const HUNT_GOALS = { longest: ['∞', 'Longest', 'The start that lasts longest, 
 const peakHunt = () => walk.life.colours === 1 && (hunt.goal === 'peak' || hunt.goal === 'cover');  // (a zone's: the whole grid a soup full already)
 function pickGoal(goal) {
   hunt.goal = goal;
-  if (!huntFits()[hunt.zone]) pickZone([8, 7, 6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => huntFits()[z]) ?? 'face');  // (Peak: not Wild)
+  if (!huntFits()[hunt.zone]) pickZone([8, 7, 6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => huntFits()[z]) ?? 'radius1');  // (Peak: not Wild)
   hunt.top = [];
   hunt.status = '';
   renderHunt();
@@ -8843,7 +8842,7 @@ const HUNT_ZONES = { icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon4
                      emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
                      radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
-                     face: ['zoneFace', 'Realm'],  // a whole face of a solid (see faceParts)
+                     realm: ['zoneFace', 'Realm'],  // the widest patches round the spots, as far as they go without meeting (see realmRadius)
                      full: ['zoneAll', 'Wild'],
                      patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
                      centred: [null, 'Centered'],  // the same, each at its colour's spot
@@ -8853,7 +8852,24 @@ const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0)
 const iconIndex = (name) => Math.max(0, ICON_NAMES.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
-const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
+const zoneRadius = (zone) => (zone === 'realm' ? realmRadius() : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
+// Realm's radius: the colours' patches (see huntParts) grown a step at a time while each has cells of its own and none
+// meets another's; 0 in one colour, or Mixed (one patch: nothing to stop it, the whole grid, Wild). Once a grid, rule, view
+let realmMemo = null;
+function realmRadius() {
+  const L = walk.life, K = L?.colours;
+  if (!L || K === 1 || colourMix) return 0;
+  const key = `${$('mode').value}|${L.seed.length}|${K}|${walk.plane?.torus}|${L.ruleText}|${walk.plane ? planeTurn() : ''}`;
+  if (realmMemo?.key === key) return realmMemo.r;
+  const apart = (parts) => parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0);
+  let r = 0, size = 0;
+  for (;;) {
+    const parts = huntParts(r + 1, K), cells = parts.reduce((sum, p) => sum + p.length, 0);
+    if (!apart(parts) || cells === size) break;  // (met; or grown no more: each patch its whole piece of the grid)
+    r++; size = cells;
+  }
+  return (realmMemo = { key, r }).r;
+}
 const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 5: '5 fifths', 6: '6 sixths', 7: '7 sevenths', 8: '8 eighths', 9: '9 ninths', 10: '10 tenths', 12: '12 twelfths' };
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
 // cells apart): on the plane, their patches touch round the middle; the others' sit at fair spots
@@ -9007,48 +9023,9 @@ function huntParts(r, K) {
   if (K === 1) return [lifePatch(r)];
   return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
 }
-// A solid's face of cell t (a cube with pits: the face its pit is in, by the largest of its coordinates; the
-// sphere of hexagons: its icosahedron's face it is in, see hexFaces); null without faces (the plane, a torus).
-// Without t: whether there are faces
-function faceOf(t = 0) {
-  const g = walk.geo;
-  if (walk.plane || !g || g.torus) return null;
-  if (g.perFace) return Math.floor(t / g.perFace / facesPer());
-  if (MODES[$('mode').value].sphere === 'hexsphere') return hexFaces(g)[t];
-  if (!g.floors && !g.cubic) return null;  // (the pits', Menger's sponge's: by the largest of its coordinates)
-  const c = g.cen.subarray(3 * t, 3 * t + 3), ax = [0, 1, 2].reduce((m, d) => (Math.abs(c[d]) > Math.abs(c[m]) ? d : m), 0);
-  return 2 * ax + (c[ax] < 0 ? 1 : 0);
-}
-// the sphere of hexagons: each cell's face of its icosahedron, the one its middle is nearest; a cell on an edge or
-// a corner (as near two faces): in none (-1), every face as big (once a grid)
-function hexFaces(g) {
-  if (g.hexFaces) return g.hexFaces;
-  const { P, faces } = POLYHEDRA.icosa, dirs = faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + P[v][d], 0)))), walls = new Set(g.walls);
-  return (g.hexFaces = Int8Array.from({ length: g.n }, (_, t) => {
-    if (walls.has(t)) return -1;  // (the 12 pentagons, at its corners)
-    const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), near = dirs.map((d) => dot3(d, c)), best = Math.max(...near);
-    return near.filter((x) => x > best - 1e-9).length > 1 ? -1 : near.indexOf(best);
-  }));
-}
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
-// Each colour's face: the one in front (one colour), else the face nearest its spot not taken by a colour before
-// (a spot on a corner, as near several: one each)
-function faceParts(K) {
-  const g = walk.geo, spots = K === 1 ? [null] : solidSpots(MODES[$('mode').value].sphere)[K], used = new Set();
-  const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3);
-  const face = Int16Array.from({ length: g.n }, (_, t) => faceOf(t) ?? -1);  // (each cell's, once)
-  const faceAt = (dir) => {
-    let f = -1, top = -Infinity;
-    for (let t = 0; t < g.n; t++) { const h = face[t]; if (h >= 0 && !used.has(h)) { const x = dot3(cen(t), dir); if (x > top) { top = x; f = h; } } }
-    used.add(f);
-    const part = [];
-    if (f >= 0) for (let t = 0; t < g.n; t++) if (walk.life.nbr.start[t] < walk.life.nbr.start[t + 1] && face[t] === f) part.push(t);  // (no face left: none)
-    return part;
-  };
-  return spots.map((d) => faceAt(d ? unit(d) : cen(centreCells()[0])));  // (a face a colour: 3 colours on the cube, 3 of its 6, unlike a soup's (2 opposite each): not Wild)
-}
-const zoneParts = (zone, K) => (zone === 'face' ? faceParts(K) : huntParts(zoneRadius(zone), K));
+const zoneParts = (zone, K) => huntParts(zoneRadius(zone), K);
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
 // zone and all its copies, of which only the first of each cell's copies is chosen, the others copied
 // from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
@@ -9093,10 +9070,10 @@ function huntFits() {
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
-    if (zone === 'face' && faceOf() === null) return [zone, false];
+    if (zone === 'realm' && !r) return [zone, false];  // (one colour, Mixed: greyed)
     if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
-    if (!r && zone !== 'face') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
+    if (!r) return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
@@ -9133,7 +9110,6 @@ function renderHunt() {
     : z === 'patterns' ? `${K === 1 ? 'A pattern' : 'Patterns'} of the rule, anywhere${K > 1 ? ', one a colour' : ''} (${fmt(perColour)} ways and places)`
     : z === 'centred' ? `${K === 1 ? 'A pattern of the rule, in the middle' : "Patterns of the rule, each at its colour's spot"} (${fmt(perColour)} of them)`
     : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
-    : z === 'face' ? `Random cells on ${K === 1 ? 'a face' : 'each colour’s face'}, ${d} % of ${fmt(perColour)}`
     : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
   const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'emoji' ? ' emoji' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
     : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' ? 'soups at random' : 'starts at random';
@@ -9204,7 +9180,7 @@ function stopHunt() {
 function zoneSeed() {
   if (hunt.zone === 'emoji') return emojiCells();
   if (iconSize(hunt.zone)) return iconCells(iconSize(hunt.zone));
-  if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'face') return null;  // (Found: the link's, once)
+  if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone)) return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
   if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
@@ -12655,8 +12631,8 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
-    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
-    : zone === 'face' ? 'A whole face of the solid for each colour: random starts on it' : 'The whole grid: random soups';
+    : zone === 'realm' ? "Realm: each colour's patch as wide as it goes without meeting another's, random starts in it (two colours or more)"
+    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot` : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
   return b;
