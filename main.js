@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1039';
+const VERSION = '0.1.1040';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8891,7 +8891,7 @@ const SOLID_SPOTS = {
   sierpinski: () => SOLID_SPOTS.tetra(),
   octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (4: its faces' opposite pairs)
   tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
-  stella: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 6: AXES, 8: CORNERS8 }),
+  stella: () => ({ 2: AXES.slice(0, 2), 4: TETRA4, 6: AXES, 8: CORNERS8 }),  // (2: its hollows ±x, the halves cut along its edges, 4 whole tips each)
   dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
