@@ -56,7 +56,7 @@ for (const r of top) {
   r.oscs = fs.filter((f) => f.kind === 'osc').length;
 }
 P.close();
-const app = (rule) => rule.replace(/(\d)([a-d]+)/g, (_, d, ls) => `${d}v${[...ls].map((l) => 'abcd'.indexOf(l)).join('')}`);
+const app = (rule) => rule.replace(/(\d)([a-d]+)(?=([0-3])?)/g, (_, d, ls, next) => `${d}v${[...ls].map((l) => 'abcd'.indexOf(l)).join('')}${next ? '.' : ''}`);  // (as the app writes them: a "." before a count 0 to 3)
 for (const r of top) console.log(`${app(r.rule).padEnd(28)} ${String(r.score).padEnd(6)} T ${r.Tmed} (${r.Tmin}–${r.Tmax}) plateau ${r.plateau} at200 ${r.at200}% ash ${r.ash}% osc ${(100 * r.osc).toFixed(0)}% | ships ${r.ships.map((s) => `p${s.period}·${s.cells}×${s.count}`).join(' ') || '–'} | explode ${(100 * r.explode).toFixed(0)}%`);
 Deno.writeTextFileSync(new URL('./letters.json', import.meta.url), JSON.stringify(top.map((r) => ({ ...r, app: app(r.rule) }))));
 log('done');

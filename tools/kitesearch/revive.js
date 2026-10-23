@@ -41,7 +41,7 @@ i = 0;
 await Promise.all(P2.workers.map(async (w) => { while (i < awake.length) { const r = awake[i++]; r.life = +score(traceStats((await P2.call(w, { task: 'traces', W: 24, rules: [r.rule], seeds: tseeds }))[0])).toFixed(3); r.both = +(r.life * Math.min(2, r.med / L.med)).toFixed(3); } }));
 P2.close();
 log('followed', awake.length);
-const app = (rule) => rule.replace(/(\d)([a-d]+)/g, (_, d, ls) => `${d}v${[...ls].map((l) => 'abcd'.indexOf(l)).join('')}`);
+const app = (rule) => rule.replace(/(\d)([a-d]+)(?=([0-3])?)/g, (_, d, ls, next) => `${d}v${[...ls].map((l) => 'abcd'.indexOf(l)).join('')}${next ? '.' : ''}`);  // (as the app writes them: a "." before a count 0 to 3)
 out.sort((p, q) => (q.both ?? -1) - (p.both ?? -1) || q.med - p.med);
 console.log(`Life (glider in its ash, 64 × 64): median ${L?.med} · 3rd quarter ${L?.q3} · ≥ 300: ${Math.round(100 * (L?.long ?? 0))} % · endless ${L?.endless} of ${L?.n}`);
 for (const r of out.slice(0, 30)) console.log(`${app(r.rule).padEnd(28)} both ${String(r.both ?? '–').padEnd(6)} Life-like ${String(r.life ?? '–').padEnd(6)} median ${String(r.med).padEnd(5)} q3 ${String(r.q3).padEnd(5)} ≥300 ${String(Math.round(100 * r.long)).padEnd(3)}% endless ${r.endless}/${r.n} · ships ${r.ships.map((s) => `p${s.period}·${s.cells.length}`).join(' ')}`);

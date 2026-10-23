@@ -1060,7 +1060,7 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 
 <p align="center">⁂</p>
 
-**A third search: the flowers' letters on kites** (tools/kitesearch/letters.js). A rule can tell a kite's live neighbours apart: after a count, v and how many of them touch it by a corner only (0 to 3, 3 for 3 or more; a kite has 4 neighbours by a side, 5 by a corner): B3v12 is born with 3 live neighbours of which 1 or 2 by a corner. 60,000 rules with letters drawn at random (B 1 to 3 digits from 2 to 7, S up to 5 from 0 to 8, 2 to 5 states; a tenth of them from the kites' known rules, whose lettered forms mostly die out: letters make births rarer), their soups on a torus of 1,536 kites, 537 Life-like; those followed (12 soups on 3,456 kites) and scored against Life as above; the best 40 tried with 36 small starts for ships. The known rules on the same score: Kite simmer 0.29, Kite marathon 0.04, Kite Life 0.03, the others under 0.01. Only the rules the app reads as written: after a count with letters, a count 0 to 3 would be read as more letters.
+**A third search: the flowers' letters on kites** (tools/kitesearch/letters.js). A rule can tell a kite's live neighbours apart: after a count, v and how many of them touch it by a corner only (0 to 3, 3 for 3 or more; a kite has 4 neighbours by a side, 5 by a corner): B3v12 is born with 3 live neighbours of which 1 or 2 by a corner. 60,000 rules with letters drawn at random (B 1 to 3 digits from 2 to 7, S up to 5 from 0 to 8, 2 to 5 states; a tenth of them from the kites' known rules, whose lettered forms mostly die out: letters make births rarer), their soups on a torus of 1,536 kites, 537 Life-like; those followed (12 soups on 3,456 kites) and scored against Life as above; the best 40 tried with 36 small starts for ships. The known rules on the same score: Kite simmer 0.29, Kite marathon 0.04, Kite Life 0.03, the others under 0.01. After a count with letters, a "." before a count 0 to 3 (B2v01.3: 2 with none or one by a corner, then 3).
 
 | Rule | States | Score | Settles (median, range) | Plateau | Alive at 200 | Ash | Ends with oscillators | Ships | Links |
 |---|--:|--:|---|---|---|---|---|---|---|
@@ -1077,8 +1077,8 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 |---|--:|--:|--:|---|
 | **B35/S2356/C4** (Kite drifters) | 104 | 13 % | 0 (its soups thin out from the start) | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B35/S2356/C4&s=64&pop=random.35.7) |
 | B3v1235v23/S123v012/C5 (Kite ships) | 30 | 13 % | 0.33 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3v1235v23/S123v012/C5&s=64&pop=random.35.7) |
-| B2ab3cd4/S08/C5 | 332 | 50 % | 0.06 | (its letters not written as the app reads them: 2v01 then 3v23) |
-| B2ab37/S0/C5 | 472 | 57 % | 0.02 | (idem) |
+| B2v01.3v234/S08/C5 | 332 | 50 % | 0.06 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B2v01.3v234/S08/C5&s=64&pop=random.35.7) |
+| B2v01.37/S0/C5 | 472 | 57 % | 0.02 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B2v01.37/S0/C5&s=64&pop=random.35.7) |
 
 The long wakers are sparse worlds (under 1 % alive at the end, surviving with 0 neighbours only), not Life's; the Life-like ones wake up for a few dozen generations: no kite rule found yet does both as Life.
 

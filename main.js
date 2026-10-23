@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1061';
+const VERSION = '0.1.1062';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5773,10 +5773,11 @@ function parseBlocks(text) {
 }
 function parseRule(text) {
   if (/^\s*(M|Q2R)/i.test(text)) return parseBlocks(text);
-  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV-]*)\/S([\dOMPCEKAINYQJRTWZV-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV.-]*)\/S([\dOMPCEKAINYQJRTWZV.-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
-  // counts of the live ones by a corner only (0 to 3: 5v0, all 5 by a side; 3v01, none or one by a corner), the others by a
+  // counts of the live ones by a corner only (0 to 3: 5v0, all 5 by a side; 3v01, none or one by a corner; a "." ends them before
+  // a count 0 to 3: 2v01.3, 2 with none or one by a corner, then 3, any), the others by a
   // side (the flowers', see sideOf)
   const hex = /[OMP]/.test(m[1] + m[2]), vertex = /V/.test(m[1] + m[2]), hensel = /[A-Z-]/.test((m[1] + m[2]).replace(/[OMPV]/g, ''));
   if (hex + hensel + vertex > 1) return null;
@@ -8139,7 +8140,7 @@ function renderRuleSection() {
       if (!off.length) return c;
       if (vertex) return `${c}v${ls.filter((x) => on.has(x)).map((x) => x[1]).join('')}`;  // (v and the counts by a corner)
       return hensel && off.length < on.size ? `${c}-${off.join('')}` : c + ls.filter((x) => on.has(x)).join('');  // Hensel's "-": all but these
-    }).join('');
+    }).filter((x) => x !== '').reduce((t, x) => t + (vertex && /v\d+$/.test(t) && /^[0-3]/.test(String(x)) ? '.' : '') + x, '');  // (v's counts ended by "." before a count 0 to 3)
     return `B${part(B)}/S${part(S)}${C > 2 ? `/C${C}` : ''}`;
   };
   const B = letters(rule.B), S = letters(rule.S);
