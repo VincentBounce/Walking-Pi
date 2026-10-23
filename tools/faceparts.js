@@ -3,8 +3,9 @@
 // For each solid of FACE_MIDDLES (cube, tetra, octa, icosa, dodeca) and each count K of colours that divides its faces:
 // its faces in K groups, each in one piece (faces sharing an edge), all alike (a turn of the solid takes one to another,
 // and the turns that keep the partition take any group to any other); of these, the one the most turns keep, then the
-// fewest edges between groups. Each group's patch face: of the faces nearest its middle, the ones that set the patches
-// furthest apart (the nearest two as far as can be, then all of them). Colours by their groups' smallest face.
+// fewest edges between groups. Each group's patch face: of the faces nearest its middle, the ones that touch the fewest
+// (an edge between two), then set the patches furthest apart (the nearest two as far as can be, then all of them; no
+// draughtboard on the icosahedron: at most 8 of its faces touch none). Colours by their groups' smallest face.
 window.faceParts = () => {
   const table = {};
   for (const solid of ['cube', 'tetra', 'octa', 'icosa', 'dodeca']) {
@@ -56,7 +57,7 @@ window.faceParts = () => {
       grow([0]);
       if (!best) continue;
       const parts = best.parts.map((p) => p.slice().sort((x, y) => x - y)).sort((p, q) => p[0] - q[0]);
-      // the patch faces: of each group's faces nearest its middle, the choice that sets them furthest apart
+      // the patch faces: of each group's faces nearest its middle, the choice where the fewest touch, then furthest apart
       const options = parts.map((p) => {
         const c = unit([0, 1, 2].map((d) => p.reduce((s, f) => s + mids[f][d], 0))), top = Math.max(...p.map((f) => dot3(mids[f], c)));
         return p.filter((f) => dot3(mids[f], c) > top - 1e-9);
@@ -64,8 +65,10 @@ window.faceParts = () => {
       let patch = null, score = null;
       const choose = (i, at) => {
         if (i === options.length) {
-          const dots = at.flatMap((f, a) => at.slice(a + 1).map((g) => dot3(mids[f], mids[g]))), sc = [Math.max(-1, ...dots), dots.reduce((x, y) => x + y, 0)];
-          if (!score || sc[0] < score[0] - 1e-9 || (sc[0] < score[0] + 1e-9 && sc[1] < score[1] - 1e-9)) { score = sc; patch = at.slice(); }
+          const dots = at.flatMap((f, a) => at.slice(a + 1).map((g) => dot3(mids[f], mids[g])));
+          const sc = [at.reduce((n, f, a) => n + at.slice(a + 1).filter((g) => adj[f].includes(g)).length, 0), Math.max(-1, ...dots), dots.reduce((x, y) => x + y, 0)];
+          const k = score ? sc.findIndex((x, i) => Math.abs(x - score[i]) > 1e-9) : 0;  // (the first that differs decides)
+          if (!score || (k >= 0 && sc[k] < score[k])) { score = sc; patch = at.slice(); }
           return;
         }
         for (const f of options[i]) choose(i + 1, [...at, f]);
