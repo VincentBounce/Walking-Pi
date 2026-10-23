@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1049';
+const VERSION = '0.1.1050';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5835,7 +5835,7 @@ function lifeReseed() {
   L.seed.set(surfaceSeed(walk.digits, L.seed.length, L.C, L.colours));
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   startColours(L.seed);
-  setLifeSeed(L.seed.slice(), null);
+  setLifeSeed(L.seed.slice(), lifeStart?.zone === 'mirror' ? lifeStart : null);
 }
 // A start as the Start says, once the grid is built: in Hunt, a soup's colours each in its part of the
 // grid (see huntParts)
@@ -5851,6 +5851,7 @@ function startColours(seed) {
   const coloured = new Uint8Array(seed.length);
   huntParts(0, K).forEach((part, i) => { for (const t of part) { coloured[t] = 1; if (seed[t]) seed[t] = i + 1; } });
   for (let t = 0; t < seed.length; t++) if (!coloured[t]) seed[t] = 0;  // (no one's: the cells on its slices' lines, see planeSlices)
+  lifeStart = hunt.zone === 'mirror' ? { zone: 'mirror' } : null;  // (Wild mirror: its link's word, see zoneWord; Wild: the soup's)
 }
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
@@ -6946,6 +6947,7 @@ function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'emoji') return `The emoji ${plane.emoji} (Unicode)`;
+  if (zone === 'mirror') return `Each colour a soup of its two opposite parts, ${d} % alive`;
   if (zone === 'realm' && !r) return 'Each colour random cells on its face';
   if (iconSize(zone)) return `${K === 1 ? `The icon “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.slice(0, K).map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
@@ -7535,8 +7537,12 @@ function torusBlocks(K, g = walk.geo) {
 // middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
 // edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
 // its halves or quarters
-// a solid's counts of colours: its faces dealt out whole (see faceGroups), and its fair spots for the others (see solidSpots)
-const solidCounts = (sphere) => (SOLID_SPOTS[sphere] ? [...new Set([...Object.keys(FACE_GROUPS[FACE_BASE[sphere] ?? sphere] ?? {}), ...Object.keys(solidSpots(sphere))])].map(Number).sort((a, b) => a - b) : null);
+// a solid's counts of colours: its faces dealt out whole, its spots paired, its spots (see colouring)
+const solidCounts = (sphere) => {
+  if (!SOLID_SPOTS[sphere]) return null;
+  const base = FACE_BASE[sphere] ?? sphere;
+  return [...new Set([FACE_GROUPS[base], SPOT_PAIRS[base], SOLID_SPOTS[sphere]()].flatMap((t) => Object.keys(t ?? {})))].map(Number).sort((a, b) => a - b);
+};
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
@@ -7562,7 +7568,7 @@ const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5:
 // the counts of colours fair on the figure, every colour's part a copy of the others': on the plane, those its turns n share
 // with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
 // 1), on a torus any (its blocks); on a
-// solid, its fair spots (see solidSpots); on a torus, blocks that divide it; on a Möbius strip, any
+// solid, its fair spots (see colouring); on a torus, blocks that divide it; on a Möbius strip, any
 const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, rhombs14: 14, penrose: 5, hat: 1, spectre: 1, pinwheel: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
 // (twice a fair count: each part halved, 2 4 giving 8, 5 10, 3 6 12; 3 without 6, thrice: 9, each third in 3)
 const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g)) || (K === 9 && colourFairOwn(3, g) && !colourFairOwn(6, g));
@@ -8845,10 +8851,14 @@ const HUNT_ZONES = { icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon4
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere the widest patches (see realmParts)
                      full: ['zoneAll', 'Wild'],
-                     patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
-                     centred: [null, 'Centered'],  // the same, each at its colour's spot
+                     mirror: ['zoneAll', 'Wild mirror'],  // Wild's twin (a click again): each colour's two parts opposite (see colouring)
+                     centred: [null, 'Famous'],  // the rule's patterns, each at its colour's spot (see patternChoices)
+                     patterns: [null, 'Famous anywhere'],  // its twin: the same, mixed, anywhere in each colour's part
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
+// a zone and its twin, one tile (a click again on it, lit, the other): Wild and Wild mirror, Famous and Famous anywhere
+const ZONE_TWINS = { mirror: 'full', patterns: 'centred' };
+const twinOf = (zone) => Object.keys(ZONE_TWINS).find((z) => ZONE_TWINS[z] === zone);
 const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0);  // (an icon's width in cells)
 const iconIndex = (name) => Math.max(0, ICON_NAMES.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
@@ -8861,9 +8871,9 @@ const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadi
 function realmParts(K) {
   if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
   if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
-  const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), fg = faceGroups(sphere, K);
-  if (!fg) return null;
-  const faces = fg.patch, parts = faces.map(() => []);
+  const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), col = colouring(sphere, K);
+  if (!col?.faces) return null;
+  const faces = col.patch, parts = faces.map(() => []);
   for (let t = 0; t < g.n; t++) {  // (a cell by the face its middle faces most; as near two: none, as Wild's)
     if (L.nbr.start[t] === L.nbr.start[t + 1]) continue;  // (a wall's)
     const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), v = mids.map((m) => dot3(m, c)), top = Math.max(...v);
@@ -8921,47 +8931,38 @@ const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f
 const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [] };
 const FACE_BASE = { pits: 'cube', frame: 'cube', menger: 'cube', sierpinski: 'tetra', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa' };
 for (const [k, of] of Object.entries(FACE_BASE)) FACE_MIDDLES[k] = FACE_MIDDLES[of];
-// A solid's faces dealt out whole, for each count of colours that divides them (made by tools/faceparts.js): each face's
-// colour (in FACE_MIDDLES' order, base 36), each colour's patch face. The groups in one piece, all alike, the partition
-// the most turns of the solid keep, then the fewest edges between colours; the patch faces as far apart as can be
+// A solid's colourings (made by tools/faceparts.js), each item's colour (base 36), each colour's patch item:
+// FACE_GROUPS, its faces (FACE_MIDDLES' order) dealt out whole, for each count that divides them: the groups in one piece,
+// all alike, the partition the most turns keep, then the fewest edges between colours; SPOT_PAIRS, its 2K spots (SOLID_SPOTS'
+// order) for K colours, two side by side each. The patches touching the fewest, then as far apart as can be. Where a
+// colour has two faces or spots, then its mirror: each colour's two opposite
 const FACE_GROUPS = {
-  cube: { 2: ['010101', '01'], 3: ['010212', '013'], 6: ['012345', '012345'] },
+  cube: { 2: ['010101', '01'], 3: ['010212', '013', '001122', '024'], 6: ['012345', '012345'] },
   tetra: { 2: ['0011', '02'], 4: ['0123', '0123'] },
-  octa: { 2: ['00001111', '06'], 4: ['00112233', '0257'], 8: ['01234567', '01234567'] },
-  icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '0245g8iace'] },
-  dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0248'], 6: ['001122334455', '03478b'], 12: ['0123456789ab', '0123456789ab'] },
+  octa: { 2: ['00001111', '06'], 4: ['00112233', '0257', '01232301', '0725'], 8: ['01234567', '01234567'] },
+  icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '0245g8iace', '01234567893210489567', '01b3ehi7f9'] },
+  dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0248'], 6: ['001122334455', '03478b', '011023324554', '01468a'], 12: ['0123456789ab', '0123456789ab'] },
 };
-// its colours' groups { group: each face's colour, patch: each colour's patch face }, or null (a count of spots, see solidSpots)
-function faceGroups(sphere, K) {
-  const t = FACE_GROUPS[FACE_BASE[sphere] ?? sphere]?.[K];
-  return t ? { group: [...t[0]].map((c) => parseInt(c, 36)), patch: [...t[1]].map((c) => parseInt(c, 36)) } : null;
-}
-// the patches' spots: the patch faces' middles (faces dealt out whole), else the colours' spots
-const patchSpots = (sphere, K) => { const fg = faceGroups(sphere, K); return fg ? fg.patch.map((f) => FACE_MIDDLES[sphere]()[f]) : solidSpots(sphere)[K]; };
-// A solid's spots, and half as many colours where a count's spots go in opposite pairs (the icosahedron's 12 corners: 6),
-// each colour two opposite spots (paired, a cell to its nearest by either way: its turns that swap the spots swap the
-// pairs), unless its faces deal that count out whole
-const spotsMemo = new Map();  // (per solid: its spots never change)
-function solidSpots(sphere) {
-  if (spotsMemo.has(sphere)) return spotsMemo.get(sphere);
-  const own = SOLID_SPOTS[sphere](), all = { ...own };
-  for (const [k, spots] of Object.entries(own)) {
-    const u = spots.map(unit), opposite = u.map((d) => u.findIndex((e) => dot3(d, e) < -1 + 1e-9));
-    if (k / 2 < 2 || own[k / 2] || faceGroups(sphere, k / 2) || opposite.includes(-1)) continue;
-    // each colour's first spot (its patch's, see patchSpots): of each pair, the one that sets the patches furthest apart
-    // (the nearest two as far as can be, then all of them)
-    const pairs = u.map((_, i) => i).filter((i) => opposite[i] > i);
-    let pick = null, score = null;
-    for (let m = 0; m < 1 << pairs.length; m++) {
-      const at = pairs.map((i, b) => ((m >> b) & 1 ? opposite[i] : i)), dots = at.flatMap((i, a) => at.slice(a + 1).map((j) => dot3(u[i], u[j])));
-      const sc = [Math.max(...dots), dots.reduce((x, y) => x + y, 0)];
-      if (!score || sc[0] < score[0] - 1e-9 || (sc[0] < score[0] + 1e-9 && sc[1] < score[1] - 1e-9)) { score = sc; pick = at; }
-    }
-    all[k / 2] = Object.assign(pick.map((i) => spots[i]), { paired: true });
+const SPOT_PAIRS = {
+  tetra: { 3: ['010212', '013', '001122', '024'] },
+  icosa: { 6: ['001122334455', '03478b', '011023324554', '01468a'] },
+  stella: { 3: ['010212', '013', '001122', '024'] },
+};
+// The colouring of a solid for K colours (mirror: each colour's two parts opposite): its items (directions: its faces'
+// middles, its spots), each item's colour, each colour's patch item; faces: its faces dealt out whole (Realm, Famous).
+// Else its own spots, one a colour. Null: none (no such count, no mirror)
+function colouring(sphere, K, mirror = false) {
+  const base = FACE_BASE[sphere] ?? sphere, f = FACE_GROUPS[base]?.[K], t = f ?? SPOT_PAIRS[base]?.[K], read = (str) => [...str].map((c) => parseInt(c, 36));
+  if (t) {
+    if (mirror && !t[2]) return null;
+    const [c, p] = mirror ? t.slice(2) : t;
+    return { items: f ? FACE_MIDDLES[sphere]() : SOLID_SPOTS[sphere]()[2 * K].map(unit), colour: read(c), patch: read(p), faces: !!f };
   }
-  spotsMemo.set(sphere, all);
-  return all;
+  const own = SOLID_SPOTS[sphere]?.()[K];
+  return own && !mirror ? { items: own.map(unit), colour: own.map((_, i) => i), patch: own.map((_, i) => i), faces: false } : null;
 }
+// the patches' spots: the colours' patch items
+const patchSpots = (sphere, K) => { const c = colouring(sphere, K); return c.patch.map((i) => c.items[i]); };
 // Each colour's part of the grid: radius r, a patch round each spot; else (r = 0) the whole grid,
 // each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
 // a rule whose colours must start side by side, touching patches round the middle); on a torus, a
@@ -9035,7 +9036,7 @@ function planeFrame() {
     across: RECTS[kind] ? (lc * W) / (W - 1) / Math.hypot(...latticeStep(RECTS[kind].base)) : xAcross ? row / per : W, down: RECTS[kind] ? (lr * W) / (W - 1) / Math.hypot(...latticeStep(RECTS[kind].base)) : xAcross ? W : row / per,  // (the cells, or lattice cells, along each: a share's step)
   });
 }
-function huntParts(r, K) {
+function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mirror, see colouring)
   if (colourMix && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
     const parts = Array.from({ length: K }, () => []);
     for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(plane.seed + 7, t) * K)].push(t);
@@ -9070,25 +9071,23 @@ function huntParts(r, K) {
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
-  const sphere = MODES[$('mode').value].sphere, fg = K === 1 ? null : faceGroups(sphere, K), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
-  const own = K === 1 || fg ? null : solidSpots(sphere)[K], spots = own?.map(unit), near = (k, c) => (own?.paired ? Math.abs(dot3(spots[k], c)) : dot3(spots[k], c));  // (paired: 2 opposite spots each)
+  const sphere = MODES[$('mode').value].sphere, col = K === 1 ? null : colouring(sphere, K, mirror && !r), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   // a cell by its face (the one its own middle faces most, see FACE_MIDDLES): faces dealt out whole, its face's colour;
-  // else its face's nearest spot, so that a face nearer one spot goes to it whole; a face as near two spots or more, by
-  // the cell's own middle; a cell as near two faces or spots or more: no one's, as on the plane's lines between slices
+  // else its face's nearest spot's, so that a face nearer one spot goes to it whole; a face as near spots of two colours or
+  // more, by the cell's own middle; a cell on an edge, a corner (as near two faces or more), as near spots of two colours
+  // or more: theirs if they all have the same, else no one's, as on the plane's lines between slices (the parts all alike)
   const mids = K === 1 ? [] : FACE_MIDDLES[sphere]();
-  const only = (v) => { const top = Math.max(...v); return v.filter((x) => x > top - 1e-9).length > 1 ? -1 : v.indexOf(top); };
+  const colourOf = (items, colour, d) => { const v = items.map((x) => dot3(x, d)), top = Math.max(...v), cs = new Set(v.flatMap((x, k) => (x > top - 1e-9 ? [colour[k]] : []))); return cs.size === 1 ? [...cs][0] : -1; };
   const nearestSpot = (t) => {
-    const c = up(t), f = mids.length ? only(mids.map((m) => dot3(m, c))) : -1;
-    if (fg) {  // (a cell on an edge or a corner: its faces' colour, when they all have the same)
-      const v = mids.map((m) => dot3(m, c)), top = Math.max(...v), colours = new Set(v.flatMap((x, k) => (x > top - 1e-9 ? [fg.group[k]] : [])));
-      return colours.size === 1 ? [...colours][0] : -1;
-    }
-    const k = f < 0 ? -1 : only(spots.map((_, i) => near(i, mids[f])));
-    return k >= 0 ? k : only(spots.map((_, i) => near(i, c)));
+    const c = up(t);
+    if (col.faces) return colourOf(mids, col.colour, c);
+    const v = mids.map((m) => dot3(m, c)), top = Math.max(...v), f = v.filter((x) => x > top - 1e-9).length === 1 ? v.indexOf(top) : -1;
+    const k = f < 0 ? -1 : colourOf(col.items, col.colour, mids[f]);
+    return k >= 0 ? k : colourOf(col.items, col.colour, c);
   };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
-  return patchSpots(sphere, K).map((d) => lifePatch(r, centreCells(unit(d))));  // round the open cells nearest each spot
+  return col.patch.map((i) => lifePatch(r, centreCells(col.items[i])));  // round the open cells nearest each spot
 }
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
@@ -9138,6 +9137,7 @@ function huntFits() {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
+    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && !!colouring(MODES[$('mode').value].sphere, K, true)];  // (a solid, two parts a colour)
     if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
@@ -9164,8 +9164,10 @@ function renderHunt() {
   $('huntGoals').hidden = $('huntModeLabel').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
   const fits = huntFits();
-  for (const b of $('huntZones').children) {
-    setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true });  // (picked: a click draws another start)
+  for (const b of $('huntZones').children) {  // (a tile with a twin: lit for either, named after the one picked)
+    const zone = b.dataset.zone, twin = twinOf(zone), on = hunt.zone === zone || (!!twin && hunt.zone === twin);
+    setTile(b, { on, can: !busy && (!!fits[zone] || (!!twin && !!fits[twin])), again: true });  // (picked: a click draws another start)
+    if (twin) b.querySelector('span').textContent = HUNT_ZONES[hunt.zone === twin ? twin : zone][1];
     if (b.dataset.zone === 'custom') b.hidden = hunt.zone !== 'custom';
   }
   // one line under the button: what the zone has put on the grid, and (Life) what a hunt will try; how far it got while it
@@ -9178,9 +9180,10 @@ function renderHunt() {
     : z === 'centred' ? `${K === 1 ? 'A pattern of the rule, in the middle' : "Patterns of the rule, each at its colour's spot"} (${fmt(perColour)} of them)`
     : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
     : z === 'realm' ? `Random cells on each colour's face, ${d} % of ${fmt(perColour)} each`
+    : z === 'mirror' ? `Each colour a soup of its two opposite parts, ${d} % alive`
     : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
   const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'emoji' ? ' emoji' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
-    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' ? 'soups at random' : 'starts at random';
+    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' || z === 'mirror' ? 'soups at random' : 'starts at random';
   const zone = shown + (sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}` : '') + (life ? ` · Hunt: ${hunts}` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
@@ -9271,7 +9274,7 @@ function pickZone(zone) {
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
   plane.icons = Array.from({ length: walk.life.colours }, () => Math.floor(Math.random() * ICON_NAMES.length));  // (an Icon zone: one at random a colour, as the hunt draws them)
   if (blockPicture) { compute(true); return; }  // (from an emoji's colours: built again, its colours gone)
-  if (zone === 'full') lifeReseed();  // the whole grid: a soup, in colours each in its part
+  if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
 }
@@ -9329,11 +9332,11 @@ for (const k of ['tetra', 'octa', 'icosa']) TRI_FACES[`${k}Kite`] = () => TRI_FA
 TRI_FACES.dodeca = () => ({});
 TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
 // colour i's face for its pattern, as a direction (null: none for this count)
-const triFace = (sphere, K, i) => (faceGroups(sphere, K) ? patchSpots(sphere, K)[i] : TRI_FACES[sphere]?.()[K]?.[i] ?? null);
+const triFace = (sphere, K, i) => (colouring(sphere, K)?.faces ? patchSpots(sphere, K)[i] : TRI_FACES[sphere]?.()[K]?.[i] ?? null);
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
-  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (m.sphere === 'sierpinski' && (K === 1 || !!faceGroups('sierpinski', K))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (m.sphere === 'sierpinski' && (K === 1 || !!colouring('sierpinski', K)?.faces)) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
@@ -12693,18 +12696,22 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, 
 }));
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
-$('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
+$('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).filter(([zone]) => !ZONE_TWINS[zone]).map(([zone, [pic, name]]) => {
   const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : iconSize(zone) ? pixelIcon('.....,.o.o.,.....,o...o,.ooo.', { 12: 9, 24: 7, 48: 5 }[iconSize(zone)])
     : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face, as big as its size
   b.dataset.zone = zone;
-  b.title = zone === 'custom' ? 'A start found by a hunt, from a link' : zone === 'patterns' ? "The rule's patterns, one for each colour anywhere in its part, turned or mirrored"
-    : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
+  b.title = zone === 'custom' ? 'A start found by a hunt, from a link'
+    : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored; a click again: Famous anywhere, each anywhere in its colour's part"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
-    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot` : 'The whole grid: random soups';
+    : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
+    : 'Wild: the whole grid, random soups; a click again: Wild mirror, where a colour has two parts (a solid), the two opposite';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
-  b.addEventListener('click', () => pickZone(zone));
+  b.addEventListener('click', () => {  // (lit: its twin, if it fits; else the one that fits, the first first)
+    const twin = twinOf(zone), fits = huntFits(), on = hunt.zone === zone || hunt.zone === twin;
+    pickZone(!twin ? zone : on ? (hunt.zone === zone ? (fits[twin] ? twin : zone) : fits[zone] ? zone : twin) : fits[zone] ? zone : twin);
+  });
   return b;
 }));
 // Emoji: an emoji at random, one this browser draws (in colours: a missing one is a box of one colour)
