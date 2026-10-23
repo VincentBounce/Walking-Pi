@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1043';
+const VERSION = '0.1.1044';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6946,6 +6946,7 @@ function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'emoji') return `The emoji ${plane.emoji} (Unicode)`;
+  if (zone === 'realm' && !r) return 'Each colour random cells on its face';
   if (iconSize(zone)) return `${K === 1 ? `The icon “${ICON_NAMES[plane.icons[0]]}”` : `The icons ${plane.icons.slice(0, K).map((i) => `“${ICON_NAMES[i]}”`).join(', ')}`} (Pixelarticons), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`;
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
@@ -8842,7 +8843,7 @@ const HUNT_ZONES = { icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon4
                      emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
                      radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
-                     realm: ['zoneFace', 'Realm'],  // the widest patches round the spots, as far as they go without meeting (see realmRadius)
+                     realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere the widest patches (see realmParts)
                      full: ['zoneAll', 'Wild'],
                      patterns: [null, 'Famous'],  // the rule's patterns, mixed, anywhere in each colour's part (see patternChoices)
                      centred: [null, 'Centered'],  // the same, each at its colour's spot
@@ -8852,14 +8853,30 @@ const iconSize = (zone) => (zone.startsWith('icon') ? Number(zone.slice(4)) : 0)
 const iconIndex = (name) => Math.max(0, ICON_NAMES.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
-const zoneRadius = (zone) => (zone === 'realm' ? realmRadius() : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-// Realm's radius: the colours' patches (see huntParts) grown a step at a time while each has cells of its own and none
-// meets another's; 0 in one colour, or Mixed (one patch: nothing to stop it, the whole grid, Wild), or on a solid whose
-// spots are not its faces' middles (its corners, its edges: patches across them, not good-looking). Once a grid, rule, view
+const realmOnFaces = () => !!SOLID_SPOTS[MODES[$('mode').value].sphere];  // (a solid: Realm its faces, see realmParts)
+const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadius()) : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
+// Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots); none (greyed) where the
+// spots are not its faces' middles (its corners, its edges, the stella's tips and hollows): a face cut, not good-looking.
+// Elsewhere (the plane, a torus, a strip), the colours' patches as wide as they go (see realmRadius). Null: greyed
+function realmParts(K) {
+  if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
+  if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
+  const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere]();
+  if (!spotsOnFaces(sphere, K)) return null;
+  const faces = patchSpots(sphere, K).map((d) => mids.findIndex((m) => dot3(unit(d), m) > 1 - 1e-9)), parts = faces.map(() => []);
+  for (let t = 0; t < g.n; t++) {  // (a cell by the face its middle faces most; as near two: none, as Wild's)
+    if (L.nbr.start[t] === L.nbr.start[t + 1]) continue;  // (a wall's)
+    const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), v = mids.map((m) => dot3(m, c)), top = Math.max(...v);
+    if (v.filter((x) => x > top - 1e-9).length === 1) parts[faces.indexOf(v.indexOf(top))]?.push(t);
+  }
+  return parts;
+}
+// Realm's radius off the solids: the colours' patches (see huntParts) grown a step at a time while each has cells of its own
+// and none meets another's. Once a grid, rule, view
 let realmMemo = null;
 function realmRadius() {
-  const L = walk.life, K = L?.colours, sphere = MODES[$('mode').value].sphere;
-  if (!L || K === 1 || colourMix || (SOLID_SPOTS[sphere] && !spotsOnFaces(sphere, K))) return 0;
+  const L = walk.life, K = L?.colours;
+  if (!L || K === 1 || colourMix) return 0;
   const key = `${$('mode').value}|${L.seed.length}|${K}|${walk.plane?.torus}|${L.ruleText}|${walk.plane ? planeTurn() : ''}`;
   if (realmMemo?.key === key) return realmMemo.r;
   const apart = (parts) => parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0);
@@ -9047,7 +9064,7 @@ function huntParts(r, K) {
 }
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
-const zoneParts = (zone, K) => huntParts(zoneRadius(zone), K);
+const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntParts(zoneRadius(zone), K));
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
 // zone and all its copies, of which only the first of each cell's copies is chosen, the others copied
 // from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
@@ -9092,10 +9109,10 @@ function huntFits() {
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
-    if (zone === 'realm' && !r) return [zone, false];  // (one colour, Mixed: greyed)
+    if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
     if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
-    if (!r) return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
+    if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
@@ -9132,6 +9149,7 @@ function renderHunt() {
     : z === 'patterns' ? `${K === 1 ? 'A pattern' : 'Patterns'} of the rule, anywhere${K > 1 ? ', one a colour' : ''} (${fmt(perColour)} ways and places)`
     : z === 'centred' ? `${K === 1 ? 'A pattern of the rule, in the middle' : "Patterns of the rule, each at its colour's spot"} (${fmt(perColour)} of them)`
     : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
+    : z === 'realm' ? `Random cells on each colour's face, ${d} % of ${fmt(perColour)} each`
     : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
   const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'emoji' ? ' emoji' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
     : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' ? 'soups at random' : 'starts at random';
@@ -9202,7 +9220,7 @@ function stopHunt() {
 function zoneSeed() {
   if (hunt.zone === 'emoji') return emojiCells();
   if (iconSize(hunt.zone)) return iconCells(iconSize(hunt.zone));
-  if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone)) return null;  // (Found: the link's, once)
+  if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'realm') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
   if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
@@ -12653,7 +12671,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'centred' ? "Famous centered: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
-    : zone === 'realm' ? "Realm: each colour's patch as wide as it goes without meeting another's, random starts in it (two colours or more)"
+    : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot` : 'The whole grid: random soups';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
   b.addEventListener('click', () => pickZone(zone));
