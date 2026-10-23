@@ -11,15 +11,15 @@ export function grid(W) {
     const k = key(u, v);
     (byCorner.get(k) ?? byCorner.set(k, []).get(k)).push(y * row + x);
   }
-  const start = new Int32Array(n + 1), list = [];
+  const start = new Int32Array(n + 1), list = [], side = [];  // side: each neighbour by a side (two corners shared, 1) or a corner only (0): the letters
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
-    const t = y * row + x, around = new Set();
-    for (const [u, v] of kiteCorners(x, y)) for (const c of byCorner.get(key(u, v))) if (c !== t) around.add(c);
+    const t = y * row + x, around = new Map();
+    for (const [u, v] of kiteCorners(x, y)) for (const c of byCorner.get(key(u, v))) if (c !== t) around.set(c, (around.get(c) ?? 0) + 1);
     start[t] = list.length;
-    list.push(...[...around].sort((a, b) => a - b));
+    for (const [c, shared] of [...around].sort((p, q) => p[0] - q[0])) { list.push(c); side.push(shared >= 2 ? 1 : 0); }
   }
   start[n] = list.length;
-  return { W, row, n, start, list: Int32Array.from(list) };
+  return { W, row, n, start, list: Int32Array.from(list), side: Uint8Array.from(side) };
 }
 // Squares (8 neighbours) on an N × N torus, for Life as the reference
 export function squareGrid(N) {
