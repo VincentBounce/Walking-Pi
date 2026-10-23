@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1058';
+const VERSION = '0.1.1059';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5847,6 +5847,13 @@ function startColours(seed) {
   for (let t = 0; t < seed.length; t++) if (!coloured[t]) seed[t] = 0;  // (no one's: the cells on its slices' lines, see planeSlices)
   lifeStart = hunt.zone === 'mirror' ? { zone: 'mirror' } : null;  // (Wild mirror: its link's word, see zoneWord; Wild: the soup's)
 }
+// a surface's cells' neighbours (as nbr lists them) by a side, 1 (two corners or more shared), or by a corner only, 0:
+// the flowers' letters (see sideOf, the plane's)
+function meshSide(g, nbr) {
+  const k = g.sides, corners = (t) => new Set(g.poly.subarray(k * t, k * t + k)), side = new Uint8Array(nbr.list.length);
+  for (let t = 0; t < g.n; t++) { const mine = corners(t); for (let q = nbr.start[t]; q < nbr.start[t + 1]; q++) { let shared = 0; for (const c of corners(nbr.list[q])) shared += mine.has(c); side[q] = shared >= 2 ? 1 : 0; } }
+  return side;
+}
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
   const { initial } = mode, kind = surfaceOf(mode);
@@ -5858,7 +5865,7 @@ function buildLife(seq, mode) {
   fitColours(g);  // as many colours as the surface has fair spots for
   let rule = lifeRuleNow() || parseRule('B3/S23');
   const ring = rule.iso === 'hensel' && lifeMark(mode) === '■' ? cornerNeighbours(g, 8).ring : rule.iso === 'hex' ? nbr.ring : null;
-  if (rule.iso && !ring) {  // Callahan's letters need hexagons, Hensel's squares
+  if (rule.iso && rule.iso !== 'vertex' && !ring) {  // Callahan's letters need hexagons, Hensel's squares (the flowers', any surface)
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
@@ -5867,7 +5874,7 @@ function buildLife(seq, mode) {
   const seed = surfaceSeed(seq, g.n, rule.C, rule.colours);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr, ring: rule.iso ? ring : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
+  walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   countSeed(walk.life);
@@ -6759,7 +6766,8 @@ function iconPatterns(kind, N) {
   return patterns;
 }
 // whether an icon N cells wide fits whole at each colour's spot (its square all laid), as Centered's patterns
-const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours; if (!patternsOn() || (walk.plane && APERIODIC[kind])) return false; const box = iconPatterns(kind, N).box; const laid = Array.from({ length: K }, (_, i) => patternAt(i, K, box).map((c) => c[0])); return laid.every((cs) => new Set(cs).size === box.length) && new Set(laid.flat()).size >= 0.95 * K * box.length; };  // (all of it on cells of its own, a small torus would lay it over itself; the colours' apart, but for a row of their margins)
+const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours, g = walk.geo; if (!patternsOn() || (walk.plane && APERIODIC[kind])) return false;
+  if (!walk.plane && !g.torus && N > (g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size)) return false; /* (wider than a face's room, as laidChoices': not tried) */ const box = iconPatterns(kind, N).box; const laid = Array.from({ length: K }, (_, i) => patternAt(i, K, box).map((c) => c[0])); return laid.every((cs) => new Set(cs).size === box.length) && new Set(laid.flat()).size >= 0.95 * K * box.length; };  // (all of it on cells of its own, a small torus would lay it over itself; the colours' apart, but for a row of their margins)
 function iconChoices(N) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
@@ -8157,7 +8165,7 @@ function fitRuleToShape() {
   if (!mode.life) return;
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
-  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? !!mode.plane : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
+  const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? true : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
   const kindFits = mode.margolus ? (parseRule(rule)?.ising || parseRule(rule)?.four ? mode.plane === 'square' : parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[mode.plane]?.k) : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
   if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
   ruleFittedTo = w;
