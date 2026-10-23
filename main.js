@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1045';
+const VERSION = '0.1.1046';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8931,7 +8931,9 @@ function patchSpots(sphere, K) {
 // icosahedron's 12 corners: 6), each colour two of them. Spots on its faces: two faces side by side (an edge between
 // them; beside: the second of each, a cell to the nearer of the two), the first pairing found; else two opposite spots
 // (paired: the first of each pair, a cell to its nearest by either way): its turns that swap the spots swap the pairs
+const spotsMemo = new Map();  // (per solid: its spots never change)
 function solidSpots(sphere) {
+  if (spotsMemo.has(sphere)) return spotsMemo.get(sphere);
   const own = SOLID_SPOTS[sphere](), all = { ...own }, f = FACE_MIDDLES[sphere]();
   for (const [k, spots] of Object.entries(own)) {
     const u = spots.map(unit), opposite = u.map((d) => u.findIndex((e) => dot3(d, e) < -1 + 1e-9));
@@ -8943,11 +8945,19 @@ function solidSpots(sphere) {
       for (let j = i + 1; j < u.length; j++) if (mate[j] < 0 && dot3(u[i], u[j]) > close - 1e-9) { mate[i] = j; mate[j] = i; if (match()) return true; mate[i] = mate[j] = -1; }
       return false;
     };
-    if (u.every((d) => f.some((m) => dot3(d, m) > 1 - 1e-9)) && match()) {
-      const firsts = u.map((_, i) => i).filter((i) => mate[i] > i);
-      all[k / 2] = Object.assign(firsts.map((i) => spots[i]), { beside: firsts.map((i) => spots[mate[i]]) });
-    } else all[k / 2] = Object.assign(spots.filter((_, i) => opposite[i] > i), { paired: true });
+    const beside = u.every((d) => f.some((m) => dot3(d, m) > 1 - 1e-9)) && match(), other = beside ? mate : opposite;
+    // each colour's first spot (its patch's, see patchSpots): of each pair, the one that sets the patches furthest apart (the
+    // nearest two as far as can be, then all of them: the octahedron's 4, every other face, 2 up and 2 down)
+    const pairs = u.map((_, i) => i).filter((i) => other[i] > i);
+    let pick = null, score = null;
+    for (let m = 0; m < 1 << pairs.length; m++) {
+      const at = pairs.map((i, b) => ((m >> b) & 1 ? other[i] : i)), dots = at.flatMap((i, a) => at.slice(a + 1).map((j) => dot3(u[i], u[j])));
+      const sc = [Math.max(...dots), dots.reduce((x, y) => x + y, 0)];
+      if (!score || sc[0] < score[0] - 1e-9 || (sc[0] < score[0] + 1e-9 && sc[1] < score[1] - 1e-9)) { score = sc; pick = at; }
+    }
+    all[k / 2] = Object.assign(pick.map((i) => spots[i]), beside ? { beside: pick.map((i) => spots[mate[i]]) } : { paired: true });
   }
+  spotsMemo.set(sphere, all);
   return all;
 }
 // Each colour's part of the grid: radius r, a patch round each spot; else (r = 0) the whole grid,
