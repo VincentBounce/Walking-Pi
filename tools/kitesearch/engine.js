@@ -208,4 +208,63 @@ function settle(G, rule, cells, cap = 20000) {
   }
   return { end: 'running', T: cap, ships };
 }
-export { parse, step, soup, seeds, behaviour, components, normal, trace, settle };
+// A frozen zone woken up: a soup run till it repeats (its ash), then one of the rule's ships set a few of its periods
+// upstream of a live cell of it, flying at it; how long till the grid repeats again (period ≤ 100), or cap (endless). From
+// generation 40 (it has hit), every 10: a ship flying alone (40 cells or fewer, nothing else within 12 steps) taken away, as
+// settle does, so that ships flying round the torus are not a reaction. ships: [{ cells, move }] as seeds finds them.
+// Life does it well: a glider in its ash, long reactions
+function revive(G, rule, ships, seedv, tries = 2, d = 0.3, cap = 6000) {
+  const { B, S, C } = parse(rule), n = G.n, per = G.per ?? 6;
+  seed = seedv;
+  let a = new Uint8Array(n).map(() => (rnd() < d ? 1 : 0)), b = new Uint8Array(n);
+  const known = new Map(), alone = (comp) => {  // (nothing else alive within 12 steps)
+    const mine = new Set(comp), dist = new Map(comp.map((t) => [t, 0])), queue = [...comp];
+    for (let q = 0; q < queue.length; q++) {
+      const t = queue[q], dd = dist.get(t);
+      if (dd >= 12) continue;
+      for (let j = G.start[t]; j < G.start[t + 1]; j++) { const u = G.list[j]; if (dist.has(u)) continue; if (a[u] && !mine.has(u)) return false; dist.set(u, dd + 1); queue.push(u); }
+    }
+    return true;
+  };
+  const run = (limit, strip = false) => {  // till the grid repeats (period ≤ 100): its generation, or limit; -1 if it dies or explodes
+    const seen = new Map();
+    for (let g = 1; g <= limit; g++) {
+      const [pop, any] = step(a, b, G.start, G.list, B, S, C, G.side);
+      [a, b] = [b, a];
+      if (!any || pop > 0.5 * n) return -1;
+      if (strip && g >= 40 && g % 10 === 0) for (const comp of components(G, a)) {
+        if (comp.length > 40 || !alone(comp)) continue;
+        const { cells: cs, key } = normal(G, a, comp);
+        if (!known.has(key)) known.set(key, behaviour(G, rule, cs, 120)?.kind === 'ship');
+        if (known.get(key)) { for (const t of comp) a[t] = 0; seen.clear(); }
+      }
+      const h = hash(a);
+      if (seen.has(h) && g - seen.get(h) <= 100) return seen.get(h);
+      seen.set(h, g);
+    }
+    return limit;
+  };
+  const frozen = run(4000, true);  // (its free ships taken away too: the ash alone)
+  if (frozen < 0 || frozen >= 4000) return null;
+  const ash = a.slice(), live = [...ash.keys()].filter((t) => ash[t] === 1), out = [];
+  if (!live.length) return null;
+  for (let k = 0; k < tries; k++) {
+    const ship = ships[k % ships.length], [dx, dy] = ship.move, w = Math.max(...ship.cells.map((c) => c[0])) + 1, h = Math.max(...ship.cells.map((c) => c[1])) + 1;
+    let placed = false;
+    for (let tryAt = 0; tryAt < 60 && !placed; tryAt++) {
+      const t = live[Math.floor(rnd() * live.length)], m = 2 + Math.floor(rnd() * 3);  // (2 to 4 of its periods before it)
+      const x0 = per * Math.floor((t % G.row - dx * m - w / 2) / per), y0 = Math.floor(t / G.row) - dy * m - (h >> 1);
+      const at = (x, y) => ((((y0 + y) % G.W) + G.W) % G.W) * G.row + ((((x0 + x) % G.row) + G.row) % G.row);
+      let free = true;  // (its box and a cell round it empty)
+      for (let y = -1; y <= h && free; y++) for (let x = -per; x < w + per && free; x++) if (ash[at(x, y)]) free = false;
+      if (!free) continue;
+      a = ash.slice();
+      for (const [x, y, st] of ship.cells) a[at(x, y)] = st;
+      placed = true;
+    }
+    if (!placed) continue;
+    out.push(run(cap, true));
+  }
+  return out;
+}
+export { parse, step, soup, seeds, behaviour, components, normal, trace, settle, revive };
