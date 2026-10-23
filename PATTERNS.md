@@ -1060,6 +1060,17 @@ Draw's patterns for the kites' rules, from 720 small starts each (a methuselah: 
 
 <p align="center">⁂</p>
 
+**A third search: the flowers' letters on kites** (tools/kitesearch/letters.js). A rule can tell a kite's live neighbours apart: after a count, v and how many of them touch it by a corner only (0 to 3, 3 for 3 or more; a kite has 4 neighbours by a side, 5 by a corner): B3v12 is born with 3 live neighbours of which 1 or 2 by a corner. 60,000 rules with letters drawn at random (B 1 to 3 digits from 2 to 7, S up to 5 from 0 to 8, 2 to 5 states; a tenth of them from the kites' known rules, whose lettered forms mostly die out: letters make births rarer), their soups on a torus of 1,536 kites, 537 Life-like; those followed (12 soups on 3,456 kites) and scored against Life as above; the best 40 tried with 36 small starts for ships. The known rules on the same score: Kite simmer 0.29, Kite marathon 0.04, Kite Life 0.03, the others under 0.01. Only the rules the app reads as written: after a count with letters, a count 0 to 3 would be read as more letters.
+
+| Rule | States | Score | Settles (median, range) | Plateau | Alive at 200 | Ash | Ends with oscillators | Ships | Links |
+|---|--:|--:|---|---|---|---|---|---|---|
+| **B3v1235v23/S123v012/C5** | 5 | 0.33 | 803 (362–2,045) | 0.65 | 7.9 % | 4.3 % | 50 % | p6, 9 to 14 cells (many) | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3v1235v23/S123v012/C5&s=64&pop=random.35.7) |
+| B3/S123v0257/C5 | 5 | 0.27 | 783 (362–1,652) | 0.50 | 10.5 % | 4.5 % | 42 % | – | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3/S123v0257/C5&s=64&pop=random.35.7) |
+| B34v1236/S0127/C4 | 4 | 0.25 | 574 (235–1,038) | 0.59 | 7.7 % | 4.1 % | 33 % | – | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B34v1236/S0127/C4&s=64&pop=random.35.7) |
+| **B3v124v01/S0235v28** | 2 | 0.20 | 536 (365–901) | 0.41 | 8.3 % | 2.7 % | 67 % | – | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3v124v01/S0235v28&s=64&pop=random.35.7) |
+| B3/S23v0124v027/C3 | 3 | 0.18 | 694 (267–2,311) | 0.28 | 11.5 % | 2.3 % | 100 % | – | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B3/S23v0124v027/C3&s=64&pop=random.35.7) |
+| B2v15/S026v2/C4 | 4 | 0.14 | 929 (401–4,131) | 0.52 | 4.3 % | 1.2 % | 25 % | p3, 6 cells (many) | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKite&r=B2v15/S026v2/C4&s=64&pop=random.35.7) |
+
 <br>
 
 ## 🎩 Life on hats: the tile that never repeats
