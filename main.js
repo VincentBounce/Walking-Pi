@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1047';
+const VERSION = '0.1.1048';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7535,8 +7535,8 @@ function torusBlocks(K, g = walk.geo) {
 // middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
 // edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
 // its halves or quarters
-// a solid's counts of colours: those of its fair spots (see solidSpots)
-const solidCounts = (sphere) => (SOLID_SPOTS[sphere] ? Object.keys(solidSpots(sphere)).map(Number) : null);
+// a solid's counts of colours: its faces dealt out whole (see faceGroups), and its fair spots for the others (see solidSpots)
+const solidCounts = (sphere) => (SOLID_SPOTS[sphere] ? [...new Set([...Object.keys(FACE_GROUPS[FACE_BASE[sphere] ?? sphere] ?? {}), ...Object.keys(solidSpots(sphere))])].map(Number).sort((a, b) => a - b) : null);
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
@@ -8855,15 +8855,15 @@ const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const realmOnFaces = () => !!SOLID_SPOTS[MODES[$('mode').value].sphere];  // (a solid: Realm its faces, see realmParts)
 const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadius()) : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
-// Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots); none (greyed) where the
-// spots are not its faces' middles (its corners, its edges, the stella's tips and hollows): a face cut, not good-looking.
+// Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots), its faces dealt out
+// whole; none (greyed) for the counts of spots (its corners, its edges, the stella's tips and hollows): a face cut.
 // Elsewhere (the plane, a torus, a strip), the colours' patches as wide as they go (see realmRadius). Null: greyed
 function realmParts(K) {
   if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
   if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
-  const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere]();
-  if (!spotsOnFaces(sphere, K)) return null;
-  const faces = patchSpots(sphere, K).map((d) => mids.findIndex((m) => dot3(unit(d), m) > 1 - 1e-9)), parts = faces.map(() => []);
+  const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), fg = faceGroups(sphere, K);
+  if (!fg) return null;
+  const faces = fg.patch, parts = faces.map(() => []);
   for (let t = 0; t < g.n; t++) {  // (a cell by the face its middle faces most; as near two: none, as Wild's)
     if (L.nbr.start[t] === L.nbr.start[t + 1]) continue;  // (a wall's)
     const c = unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3))), v = mids.map((m) => dot3(m, c)), top = Math.max(...v);
@@ -8900,63 +8900,64 @@ const TETRA4 = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
 const EDGES12 = [[1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0], [1, 0, 1], [1, 0, -1], [-1, 0, 1], [-1, 0, -1], [0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]];
 // (3 round a face's axis d: of its 4 rings of 3, the second, 117° apart, not the first, round the face, 63°)
 const ICO = () => POLYHEDRA.icosa.P, around3 = (d) => [...ICO()].sort((p, q) => dot3(q, d) / Math.hypot(...q) - dot3(p, d) / Math.hypot(...p)).slice(3, 6);
-const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: around3([1, 1, 1]), 4: TETRA4, 8: CORNERS8, 12: ICO() });
+// (the counts that divide its faces are dealt out whole instead, see FACE_GROUPS: these are the others)
+const ICOSA_SPOTS = () => ({ 3: around3([1, 1, 1]), 8: CORNERS8, 12: ICO() });
 const SOLID_SPOTS = {
-  cube: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (2: opposite corners, 3 whole faces each)
-  pits: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
+  cube: () => ({ 4: AXES.slice(0, 4), 8: CORNERS8, 12: EDGES12 }),
+  pits: () => ({ 4: AXES.slice(0, 4) }),  // the pits' floors
   frame: () => SOLID_SPOTS.cube(),
   menger: () => SOLID_SPOTS.cube(),
   sierpinski: () => SOLID_SPOTS.tetra(),
-  octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (4: its faces' opposite pairs)
-  tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
+  octa: () => ({ 3: [AXES[0], AXES[2], AXES[4]], 6: AXES, 12: EDGES12 }),
+  tetra: () => ({ 6: AXES }),
   stella: () => ({ 2: AXES.slice(0, 2), 4: TETRA4, 6: AXES, 8: CORNERS8 }),  // (2: its hollows ±x, the halves cut along its edges, 4 whole tips each)
-  dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: around3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
+  dodeca: () => ({}),
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
-// a solid's faces' middles, as directions (its polyhedron's: the sphere of hexagons, the icosahedron's, its pentagons
-// at its corners; the dodecahedron's pentagons, the icosahedron's corners; the stella's, none: its spots are its tips and the hollows between them); whether a count's spots are all
+// a solid's faces' middles, as directions (its polyhedron's: the sphere of hexagons, the icosahedron's, its pentagons at its
+// corners; the dodecahedron's pentagons, the icosahedron's corners; the stella's, none: its spots are its tips and hollows)
 const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + POLYHEDRA[k].P[v][d], 0))));
 const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [] };
-for (const [k, of] of Object.entries({ pits: 'cube', frame: 'cube', menger: 'cube', sierpinski: 'tetra', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa' })) FACE_MIDDLES[k] = FACE_MIDDLES[of];
-const spotsOnFaces = (sphere, K) => { const f = FACE_MIDDLES[sphere](); return patchSpots(sphere, K).every((d) => f.some((m) => dot3(unit(d), m) > 1 - 1e-9)); };
-// the patches' spots: the colours' (see solidSpots); in Duel, spots on corners or edges (the cube's, its 3 faces each round
-// a corner), the face nearest the first (its first, of several as near) and the face opposite, when the solid has one
-function patchSpots(sphere, K) {
-  const spots = solidSpots(sphere)[K], f = FACE_MIDDLES[sphere]();
-  if (K !== 2 || !f.length || spots.every((d) => f.some((m) => dot3(unit(d), m) > 1 - 1e-9))) return spots;
-  const m = f.reduce((b, x) => (dot3(x, unit(spots[0])) > dot3(b, unit(spots[0])) + 1e-9 ? x : b), f[0]);
-  return f.some((x) => dot3(x, m) < -1 + 1e-9) ? [m, m.map((v) => -v)] : spots;
+const FACE_BASE = { pits: 'cube', frame: 'cube', menger: 'cube', sierpinski: 'tetra', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa' };
+for (const [k, of] of Object.entries(FACE_BASE)) FACE_MIDDLES[k] = FACE_MIDDLES[of];
+// A solid's faces dealt out whole, for each count of colours that divides them (made by tools/faceparts.js): each face's
+// colour (in FACE_MIDDLES' order, base 36), each colour's patch face. The groups in one piece, all alike, the partition
+// the most turns of the solid keep, then the fewest edges between colours; the patch faces as far apart as can be
+const FACE_GROUPS = {
+  cube: { 2: ['010101', '01'], 3: ['010212', '013'], 6: ['012345', '012345'] },
+  tetra: { 2: ['0011', '02'], 4: ['0123', '0123'] },
+  octa: { 2: ['00001111', '06'], 4: ['00112233', '0257'], 8: ['01234567', '01234567'] },
+  icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '02456hibde'] },
+  dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0b38'], 6: ['001122334455', '03478b'], 12: ['0123456789ab', '0123456789ab'] },
+};
+// its colours' groups { group: each face's colour, patch: each colour's patch face }, or null (a count of spots, see solidSpots)
+function faceGroups(sphere, K) {
+  const t = FACE_GROUPS[FACE_BASE[sphere] ?? sphere]?.[K];
+  return t ? { group: [...t[0]].map((c) => parseInt(c, 36)), patch: [...t[1]].map((c) => parseInt(c, 36)) } : null;
 }
-// A solid's spots, and half as many colours where a count's spots go in opposite pairs (the cube's 6 faces: 3, the
-// icosahedron's 12 corners: 6), each colour two of them. Spots on its faces: two faces side by side (an edge between
-// them; beside: the second of each, a cell to the nearer of the two), the first pairing found; else two opposite spots
-// (paired: the first of each pair, a cell to its nearest by either way): its turns that swap the spots swap the pairs
+// the patches' spots: the patch faces' middles (faces dealt out whole), else the colours' spots
+const patchSpots = (sphere, K) => { const fg = faceGroups(sphere, K); return fg ? fg.patch.map((f) => FACE_MIDDLES[sphere]()[f]) : solidSpots(sphere)[K]; };
+// A solid's spots, and half as many colours where a count's spots go in opposite pairs (the icosahedron's 12 corners: 6),
+// each colour two opposite spots (paired, a cell to its nearest by either way: its turns that swap the spots swap the
+// pairs), unless its faces deal that count out whole
 const spotsMemo = new Map();  // (per solid: its spots never change)
 function solidSpots(sphere) {
   if (spotsMemo.has(sphere)) return spotsMemo.get(sphere);
-  const own = SOLID_SPOTS[sphere](), all = { ...own }, f = FACE_MIDDLES[sphere]();
+  const own = SOLID_SPOTS[sphere](), all = { ...own };
   for (const [k, spots] of Object.entries(own)) {
     const u = spots.map(unit), opposite = u.map((d) => u.findIndex((e) => dot3(d, e) < -1 + 1e-9));
-    if (k / 2 < 2 || own[k / 2] || opposite.includes(-1)) continue;
-    const close = Math.max(...u.flatMap((d, i) => u.filter((_, j) => j !== i).map((e) => dot3(d, e)))), mate = u.map(() => -1);
-    const match = () => {  // (each spot with one beside it, all of them)
-      const i = mate.indexOf(-1);
-      if (i < 0) return true;
-      for (let j = i + 1; j < u.length; j++) if (mate[j] < 0 && dot3(u[i], u[j]) > close - 1e-9) { mate[i] = j; mate[j] = i; if (match()) return true; mate[i] = mate[j] = -1; }
-      return false;
-    };
-    const beside = u.every((d) => f.some((m) => dot3(d, m) > 1 - 1e-9)) && match(), other = beside ? mate : opposite;
-    // each colour's first spot (its patch's, see patchSpots): of each pair, the one that sets the patches furthest apart (the
-    // nearest two as far as can be, then all of them: the octahedron's 4, every other face, 2 up and 2 down)
-    const pairs = u.map((_, i) => i).filter((i) => other[i] > i);
+    if (k / 2 < 2 || own[k / 2] || faceGroups(sphere, k / 2) || opposite.includes(-1)) continue;
+    // each colour's first spot (its patch's, see patchSpots): of each pair, the one that sets the patches furthest apart
+    // (the nearest two as far as can be, then all of them)
+    const pairs = u.map((_, i) => i).filter((i) => opposite[i] > i);
     let pick = null, score = null;
     for (let m = 0; m < 1 << pairs.length; m++) {
-      const at = pairs.map((i, b) => ((m >> b) & 1 ? other[i] : i)), dots = at.flatMap((i, a) => at.slice(a + 1).map((j) => dot3(u[i], u[j])));
+      const at = pairs.map((i, b) => ((m >> b) & 1 ? opposite[i] : i)), dots = at.flatMap((i, a) => at.slice(a + 1).map((j) => dot3(u[i], u[j])));
       const sc = [Math.max(...dots), dots.reduce((x, y) => x + y, 0)];
       if (!score || sc[0] < score[0] - 1e-9 || (sc[0] < score[0] + 1e-9 && sc[1] < score[1] - 1e-9)) { score = sc; pick = at; }
     }
-    all[k / 2] = Object.assign(pick.map((i) => spots[i]), beside ? { beside: pick.map((i) => spots[mate[i]]) } : { paired: true });
+    all[k / 2] = Object.assign(pick.map((i) => spots[i]), { paired: true });
   }
   spotsMemo.set(sphere, all);
   return all;
@@ -9069,20 +9070,25 @@ function huntParts(r, K) {
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
-  const own = K === 1 ? null : solidSpots(MODES[$('mode').value].sphere)[K], spots = own?.map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
-  const beside = own?.beside?.map(unit), near = (k, c) => (own?.paired ? Math.abs(dot3(spots[k], c)) : beside ? Math.max(dot3(spots[k], c), dot3(beside[k], c)) : dot3(spots[k], c));  // (2 spots each, see solidSpots)
-  // a cell by its face's middle (the one its own middle faces most, see FACE_MIDDLES), so that a face nearer one spot
-  // goes to it whole (the tetrahedron's Duel: 2 faces each); a face as near two spots or more, by the cell's own
-  // middle; a cell as near two spots or more: no one's, as on the plane's lines between slices (the parts all alike)
-  const mids = K === 1 ? [] : FACE_MIDDLES[MODES[$('mode').value].sphere]();
+  const sphere = MODES[$('mode').value].sphere, fg = K === 1 ? null : faceGroups(sphere, K), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
+  const own = K === 1 || fg ? null : solidSpots(sphere)[K], spots = own?.map(unit), near = (k, c) => (own?.paired ? Math.abs(dot3(spots[k], c)) : dot3(spots[k], c));  // (paired: 2 opposite spots each)
+  // a cell by its face (the one its own middle faces most, see FACE_MIDDLES): faces dealt out whole, its face's colour;
+  // else its face's nearest spot, so that a face nearer one spot goes to it whole; a face as near two spots or more, by
+  // the cell's own middle; a cell as near two faces or spots or more: no one's, as on the plane's lines between slices
+  const mids = K === 1 ? [] : FACE_MIDDLES[sphere]();
   const only = (v) => { const top = Math.max(...v); return v.filter((x) => x > top - 1e-9).length > 1 ? -1 : v.indexOf(top); };
   const nearestSpot = (t) => {
-    const c = up(t), f = mids.length ? only(mids.map((m) => dot3(m, c))) : -1, k = f < 0 ? -1 : only(spots.map((_, i) => near(i, mids[f])));
+    const c = up(t), f = mids.length ? only(mids.map((m) => dot3(m, c))) : -1;
+    if (fg) {  // (a cell on an edge or a corner: its faces' colour, when they all have the same)
+      const v = mids.map((m) => dot3(m, c)), top = Math.max(...v), colours = new Set(v.flatMap((x, k) => (x > top - 1e-9 ? [fg.group[k]] : [])));
+      return colours.size === 1 ? [...colours][0] : -1;
+    }
+    const k = f < 0 ? -1 : only(spots.map((_, i) => near(i, mids[f])));
     return k >= 0 ? k : only(spots.map((_, i) => near(i, c)));
   };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
-  return patchSpots(MODES[$('mode').value].sphere, K).map((d) => lifePatch(r, centreCells(unit(d))));  // round the open cells nearest each spot
+  return patchSpots(sphere, K).map((d) => lifePatch(r, centreCells(unit(d))));  // round the open cells nearest each spot
 }
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
@@ -9315,17 +9321,19 @@ function huntClick() {
 // icosahedron, the dodecahedron's pentagons and the stella's tips (each cut as the plane's triangles
 // are, f × f, see flatPolyhedron), a pattern on a face.
 const CUBE_FACES = [1, 2, 3, 4, 6];  // the cube: its colours on faces
-const TRI_FACES = { tetra: () => ({ 4: TETRA4.map((p) => p.map((v) => -v)) }), octa: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: solidSpots('octa')[4], 8: CORNERS8 }) };
-TRI_FACES.icosa = () => ({ ...TRI_FACES.octa(), 4: TETRA4 });  // the icosahedron's faces include the octahedron's directions (its 4: as a tetrahedron's)
+// the triangle faces of a count of spots (faces dealt out whole: their patch faces, see triFace)
+const TRI_FACES = { tetra: () => ({}), octa: () => ({}), icosa: () => ({ 8: CORNERS8 }) };
 for (const k of ['tetra', 'octa', 'icosa']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]();
 // the dodecahedron: a pentagon's 5 triangles (cut from its middle, as the plane's), the pattern in its
 // first; the stella: a tip's 3 triangles, the pattern in the one most facing it
-TRI_FACES.dodeca = () => ({ 2: ICOSA_SPOTS()[2], 3: around3([1, 1, 1]), 12: ICO() });
+TRI_FACES.dodeca = () => ({});
 TRI_FACES.stella = () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 });
+// colour i's face for its pattern, as a direction (null: none for this count)
+const triFace = (sphere, K, i) => (faceGroups(sphere, K) ? patchSpots(sphere, K)[i] : TRI_FACES[sphere]?.()[K]?.[i] ?? null);
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
-  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (m.sphere === 'sierpinski' && K <= 4) || (!!TRI_FACES[m.sphere] && (K === 1 || !!TRI_FACES[m.sphere]()[K])));
+  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K)) || (m.sphere === 'sierpinski' && (K === 1 || !!faceGroups('sierpinski', K))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
@@ -9348,7 +9356,7 @@ function patternAt(i, K, cells) {
     return out;
   }
   if (g.sides === 3 || g.kite) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle
-    const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(TRI_FACES[sphere]()[K][i]);
+    const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(triFace(sphere, K, i));
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = d ? g.faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(g.faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
