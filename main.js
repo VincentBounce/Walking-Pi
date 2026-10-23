@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1034';
+const VERSION = '0.1.1035';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1367,10 +1367,10 @@ function describe(base, available) {
 // step that closed them; or the tiles coloured by their visits (Heatmap, on cells only).
 const DISPLAY_BY_TAB = {
   '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],
-  '3D walks': ['colors', 'digit', 'grid', 'sky', 'autoRotate', 'perspective'],
-  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective'],
+  '3D walks': ['colors', 'digit', 'grid', 'sky', 'autoRotate', 'perspective', 'light'],
+  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective', 'light'],
   'Automata on the plane': ['colors', 'digit', 'mono', 'grid', 'sky'],
-  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective'],
+  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective', 'light'],
   '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
@@ -1381,7 +1381,7 @@ const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElemen
 const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Grid heads the box
-                 autoRotate: 'autoRotateRow', perspective: 'perspectiveRow' };
+                 autoRotate: 'autoRotateRow', perspective: 'perspectiveRow', light: 'lightRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   skyButton.hidden = $('skyRow').hidden;  // the sky's switch, among the themes
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
@@ -10634,11 +10634,13 @@ function towardViewer(x, y, z) {
   const v = cam.v;
   return x * v[0] + y * v[1] + z * v[2];
 }
-// The light: from the top left, in front, turning with the view (a lamp on the camera's shoulder);
-// a tile is darkened by SHADE as it turns away from it, with a white glint where it faces half-way
-// between the light and the viewer (LIGHT_GLINT at most, as the shaders' lit)
+// The light (Light checked): from the top left, in front, turning with the view (a lamp on the camera's shoulder),
+// with its shadows; a tile is darkened by SHADE as it turns away from it, with a white glint where it faces half-way
+// between the light and the viewer (glint(), as the shaders' light). Light unchecked: lit from the viewer, no glint, no shadows
 const LIGHT_GLINT = 0.22, LIGHT_SHINE = 24, SHADOW_SIZE = 2048;  // SHADOW_SIZE: the shadows' texture (see glShadows)
+const lamp = () => $('light').checked, glint = () => (lamp() ? LIGHT_GLINT : 0);
 function lightDir() {
+  if (!lamp()) return [...cam.v];
   const l = [0, 1, 2].map((d) => -0.45 * cam.r[d] + 0.55 * cam.u[d] + 0.7 * cam.v[d]), m = Math.hypot(...l);
   return l.map((x) => x / m);
 }
@@ -10646,7 +10648,7 @@ const halfway = (L) => { const h = L.map((x, d) => x + cam.v[d]), m = Math.hypot
 // [darkness ∈ [0, 1], glint] of a unit normal facing the viewer, by the light L and the half-way H
 function tileLight(nx, ny, nz, L, H) {
   const diff = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]), h = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]);
-  return [1 - diff, LIGHT_GLINT * h ** LIGHT_SHINE];
+  return [1 - diff, glint() * h ** LIGHT_SHINE];
 }
 // Is a plane (outward normal n through point p) facing us? Orthographic: n points towards the
 // viewer. Perspective: n points towards the camera position, seen from p.
@@ -11095,12 +11097,12 @@ vec4 clipOf(vec3 s, float bias) {
 // The light (after GL_PROJECT), as tileLight: the normal turned to the viewer, darkened away from the light, a glint;
 // vDark what stays in the shadow, vLit what the light adds, vSh where the point falls in the shadows' texture (see glShadows)
 const GL_LIGHT = `
-uniform vec3 uL, uH, uLx, uLy; uniform float uShade, uLr; out vec3 vDark, vLit, vSh;
+uniform vec3 uL, uH, uLx, uLy; uniform float uShade, uGlint, uLr; out vec3 vDark, vLit, vSh;
 vec3 lightSpace(vec3 p) { return vec3(dot(p, uLx), dot(p, uLy), -dot(p, uL)) / uLr; }  // seen from the light, within ±1
 void light(vec3 col, vec3 n, vec3 p) {
   if (dot(n, uV) < 0.0) n = -n;
   vDark = col * (1.0 - uShade);
-  vLit = col * uShade * max(0.0, dot(n, uL)) + ${LIGHT_GLINT} * pow(max(0.0, dot(n, uH)), ${LIGHT_SHINE}.0);
+  vLit = col * uShade * max(0.0, dot(n, uL)) + uGlint * pow(max(0.0, dot(n, uH)), ${LIGHT_SHINE}.0);
   vSh = lightSpace(p) * 0.5 + 0.5;
 }`;
 // the share of the light a pixel gets: 9 looks round it in the shadows' texture, each softened by the hardware's compare
@@ -11284,12 +11286,12 @@ function glView(gl, p, depth) {
   // the light, and its view for the shadows: across it, over the ball round the origin that holds what is drawn
   const L = lightDir(), x = cam.r.map((r, d) => r - L[d] * (cam.r[0] * L[0] + cam.r[1] * L[1] + cam.r[2] * L[2])), m = Math.hypot(...x);
   const lx = x.map((v) => v / m), ly = [L[1] * lx[2] - L[2] * lx[1], L[2] * lx[0] - L[0] * lx[2], L[0] * lx[1] - L[1] * lx[0]];
-  gl.uniform3fv(u('uL'), L); gl.uniform3fv(u('uH'), halfway(L)); gl.uniform1f(u('uShade'), SHADE);
+  gl.uniform3fv(u('uL'), L); gl.uniform3fv(u('uH'), halfway(L)); gl.uniform1f(u('uShade'), SHADE); gl.uniform1f(u('uGlint'), glint());
   gl.uniform3fv(u('uLx'), lx); gl.uniform3fv(u('uLy'), ly); gl.uniform1f(u('uLr'), depth / 4);
   gl.uniform1i(u('uShadow'), 1);
   return u;
 }
-// The shadows: the depths of what the light sees (draw draws it with the program depth), in a
+// The shadows: the depths of what the light sees (draw draws it with the program depth; nothing, Light unchecked), in a
 // texture on unit 1 (SHADOW_SIZE square), which the tiles and cubes then compare their own depths from the light with
 function glShadows(depth, draw) {
   const S = GLS, { gl } = S;
@@ -11310,7 +11312,7 @@ function glShadows(depth, draw) {
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS);
   gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4);  // a lit face does not shadow itself
   glView(gl, S.prog.depth, depth);
-  draw(gl.getAttribLocation(S.prog.depth, 'aPos'), gl.getAttribLocation(S.prog.depth, 'aAt'));
+  if (lamp()) draw(gl.getAttribLocation(S.prog.depth, 'aPos'), gl.getAttribLocation(S.prog.depth, 'aAt'));
   gl.disable(gl.POLYGON_OFFSET_FILL);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex);
@@ -12778,6 +12780,7 @@ for (const type of ['pointerdown', 'dblclick', 'wheel']) {
   $('animBar').addEventListener(type, (e) => e.stopPropagation());
   $('viewTools').addEventListener(type, (e) => e.stopPropagation());  // Inflate and the Display menu too
 }
+$('light').addEventListener('change', () => { needsFull = true; });
 $('perspective').addEventListener('change', () => {
   setPerspective();
   rotateView([0, 0, 0]);  // the projection again
