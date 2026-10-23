@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1042';
+const VERSION = '0.1.1043';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8901,7 +8901,15 @@ for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOT
 const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + POLYHEDRA[k].P[v][d], 0))));
 const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [] };
 for (const [k, of] of Object.entries({ pits: 'cube', frame: 'cube', menger: 'cube', sierpinski: 'tetra', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa' })) FACE_MIDDLES[k] = FACE_MIDDLES[of];
-const spotsOnFaces = (sphere, K) => { const f = FACE_MIDDLES[sphere](); return solidSpots(sphere)[K].every((d) => f.some((m) => dot3(unit(d), m) > 1 - 1e-9)); };
+const spotsOnFaces = (sphere, K) => { const f = FACE_MIDDLES[sphere](); return patchSpots(sphere, K).every((d) => f.some((m) => dot3(unit(d), m) > 1 - 1e-9)); };
+// the patches' spots: the colours' (see solidSpots); in Duel, spots on corners or edges (the cube's, its 3 faces each round
+// a corner), the face nearest the first (its first, of several as near) and the face opposite, when the solid has one
+function patchSpots(sphere, K) {
+  const spots = solidSpots(sphere)[K], f = FACE_MIDDLES[sphere]();
+  if (K !== 2 || !f.length || spots.every((d) => f.some((m) => dot3(unit(d), m) > 1 - 1e-9))) return spots;
+  const m = f.reduce((b, x) => (dot3(x, unit(spots[0])) > dot3(b, unit(spots[0])) + 1e-9 ? x : b), f[0]);
+  return f.some((x) => dot3(x, m) < -1 + 1e-9) ? [m, m.map((v) => -v)] : spots;
+}
 // A solid's spots, and half as many colours where a count's spots go in opposite pairs (the cube's 6 faces: 3, the
 // icosahedron's 12 corners: 6), each colour two opposite spots (paired: the first of each pair, a cell to its nearest by
 // either way): its turns that swap the spots swap the pairs, the parts as alike
@@ -9035,7 +9043,7 @@ function huntParts(r, K) {
   };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
-  return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
+  return patchSpots(MODES[$('mode').value].sphere, K).map((d) => lifePatch(r, centreCells(unit(d))));  // round the open cells nearest each spot
 }
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
@@ -9307,7 +9315,7 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
     return out;
   }
-  const dir = K === 1 ? AXES[3] : solidSpots('cube')[K][i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
+  const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
   if (g.floors) {  // the cube with pits: its pit's floor
     const a = g.floorSize, m = a >> 1;
     for (const [x, y, v] of cells) {
