@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1035';
+const VERSION = '0.1.1036';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7535,9 +7535,8 @@ function torusBlocks(K, g = walk.geo) {
 // middles (the cube: 2 opposite faces, 3 round a corner, 4 round its belt, 6 faces, 8 corners, 12
 // edges…); on a torus, a lattice of k blocks (a × b, each dividing its side); a grid with dead edges,
 // its halves or quarters
-const SOLID_COLOURS = { tetra: [2, 4, 6], cube: [2, 3, 4, 6, 8, 12], pits: [2, 3, 4, 6], frame: [2, 3, 4, 6, 8, 12], menger: [2, 3, 4, 6, 8, 12], sierpinski: [2, 4, 6], octa: [2, 3, 4, 6, 8, 12], stella: [2, 4, 6, 8], dodeca: [2, 3, 4, 12],
-                        icosa: [2, 3, 4, 8, 12], hexsphere: [2, 3, 4, 8, 12] };
-for (const k of ['tetra', 'octa', 'icosa']) SOLID_COLOURS[`${k}Kite`] = SOLID_COLOURS[k];  // kites: the triangles' solids
+// a solid's counts of colours: those of its fair spots (see solidSpots)
+const solidCounts = (sphere) => (SOLID_SPOTS[sphere] ? Object.keys(solidSpots(sphere)).map(Number) : null);
 function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   const mode = MODES[$('mode').value];
   if (k === 1) return true;
@@ -7546,7 +7545,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   if (mode.plane) {
     return true;  // its blocks (rounded down when they do not divide it, as on a torus); with dead edges, its halves, quarters, or slices round the middle (see planeSlices)
   }
-  if (SOLID_COLOURS[mode.sphere]) return SOLID_COLOURS[mode.sphere].includes(k);
+  if (solidCounts(mode.sphere)) return solidCounts(mode.sphere).includes(k);
   if (g?.mobius) return true;  // a Möbius strip: in turn along it (see huntParts)
   if (g?.nu) { const [u, v] = torusBlocks(k, g); return u <= g.nu && v <= g.nv; }  // a torus: its blocks (see torusBlocks)
   return false;
@@ -7563,7 +7562,7 @@ const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5:
 // the counts of colours fair on the figure, every colour's part a copy of the others': on the plane, those its turns n share
 // with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
 // 1), on a torus any (its blocks); on a
-// solid, its fair spots (see SOLID_COLOURS); on a torus, blocks that divide it; on a Möbius strip, any
+// solid, its fair spots (see solidSpots); on a torus, blocks that divide it; on a Möbius strip, any
 const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, rhombs14: 14, penrose: 5, hat: 1, spectre: 1, pinwheel: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
 // (twice a fair count: each part halved, 2 4 giving 8, 5 10, 3 6 12; 3 without 6, thrice: 9, each third in 3)
 const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g)) || (K === 9 && colourFairOwn(3, g) && !colourFairOwn(6, g));
@@ -7575,7 +7574,7 @@ const colourFairOwn = (K, g) => {
     const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'rhombs12', 'rhombs14', 'penrose'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
     return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
   }
-  if (SOLID_COLOURS[mode?.sphere]) return SOLID_COLOURS[mode.sphere].includes(K);
+  if (solidCounts(mode?.sphere)) return solidCounts(mode.sphere).includes(K);
   if (g?.mobius) return true;
   if (g?.nu) { const [u, v] = torusBlocks(K, g); return g.nu % u === 0 && g.nv % v === 0; }
   return false;
@@ -8868,8 +8867,8 @@ const EDGES12 = [[1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0], [1, 0, 1], [1, 
 const ICO = () => POLYHEDRA.icosa.P, nearest3 = (d) => [...ICO()].sort((p, q) => dot3(q, d) / Math.hypot(...q) - dot3(p, d) / Math.hypot(...p)).slice(0, 3);
 const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: [ICO()[0], ICO()[11], ICO()[5]], 4: TETRA4, 8: CORNERS8, 12: ICO() });
 const SOLID_SPOTS = {
-  cube: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),
-  pits: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
+  cube: () => ({ 2: AXES.slice(0, 2), 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),
+  pits: () => ({ 2: AXES.slice(0, 2), 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
   frame: () => SOLID_SPOTS.cube(),
   menger: () => SOLID_SPOTS.cube(),
   sierpinski: () => SOLID_SPOTS.tetra(),
@@ -8880,6 +8879,18 @@ const SOLID_SPOTS = {
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
+// A solid's spots, and half as many colours where a count's spots go in opposite pairs (the cube's 6 faces: 3, the
+// icosahedron's 12 corners: 6), each colour two opposite spots (paired: the first of each pair, a cell to its nearest by
+// either way): its turns that swap the spots swap the pairs, the parts as alike
+function solidSpots(sphere) {
+  const own = SOLID_SPOTS[sphere](), all = { ...own };
+  for (const [k, spots] of Object.entries(own)) {
+    const u = spots.map(unit), opposite = u.map((d) => u.findIndex((e) => dot3(d, e) < -1 + 1e-9));
+    if (k / 2 < 2 || own[k / 2] || opposite.includes(-1)) continue;
+    all[k / 2] = Object.assign(spots.filter((_, i) => opposite[i] > i), { paired: true });
+  }
+  return all;
+}
 // Each colour's part of the grid: radius r, a patch round each spot; else (r = 0) the whole grid,
 // each cell to its nearest spot. Spots: on the plane, the middles of a lattice of k blocks (or, for
 // a rule whose colours must start side by side, touching patches round the middle); on a torus, a
@@ -8988,9 +8999,8 @@ function huntParts(r, K) {
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
-  const spots = K === 1 ? null : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K].map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
-  // 3 colours on the cube: 2 opposite faces each (its face's axis, either way)
-  const pairs = K === 3 && g.sides === 4 && !g.kite && (g.perFace || g.floors || g.cubic), near = (d, c) => (pairs ? Math.abs(dot3(d, c)) : dot3(d, c));
+  const own = K === 1 ? null : solidSpots(MODES[$('mode').value].sphere)[K], spots = own?.map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
+  const near = (d, c) => (own?.paired ? Math.abs(dot3(d, c)) : dot3(d, c));  // (paired: 2 opposite spots each, see solidSpots)
   const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
   if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
@@ -9024,7 +9034,7 @@ const facesPer = () => (MODES[$('mode').value].sphere === 'dodeca' ? 5 : 1);
 // Each colour's face: the one in front (one colour), else the face nearest its spot not taken by a colour before
 // (a spot on a corner, as near several: one each)
 function faceParts(K) {
-  const g = walk.geo, spots = K === 1 ? [null] : SOLID_SPOTS[MODES[$('mode').value].sphere]()[K], used = new Set();
+  const g = walk.geo, spots = K === 1 ? [null] : solidSpots(MODES[$('mode').value].sphere)[K], used = new Set();
   const cen = (t) => g.cen.subarray(3 * t, 3 * t + 3);
   const face = Int16Array.from({ length: g.n }, (_, t) => faceOf(t) ?? -1);  // (each cell's, once)
   const faceAt = (dir) => {
@@ -9306,7 +9316,7 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
     return out;
   }
-  const dir = K === 1 ? AXES[3] : SOLID_SPOTS.cube()[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k]));  // the cube: its face
+  const dir = K === 1 ? AXES[3] : solidSpots('cube')[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k]));  // the cube: its face
   if (g.floors) {  // the cube with pits: its pit's floor
     const a = g.floorSize, m = a >> 1;
     for (const [x, y, v] of cells) {
