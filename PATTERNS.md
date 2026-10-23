@@ -1545,13 +1545,13 @@ turns.js (tools/kitesearch) on any grid: `deno run --allow-read --allow-write tu
 | Rhombitri | **B2v14/S03v14v0236v0128v3/C3** | 4 | 90 % | 39 % | 678 | 0.21 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombitri&r=B2v14/S03v14v0236v0128v3/C3&k=2&s=64&pop=random.35.7) |
 | Flower | **B2v0256/S235** | 6 | 100 % | 28 % | 1345 | 0.59 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
 | Flower | **B2v0245v123/S2v02.3v0125v3** | 8 | 90 % | 31 % | 673 | 0.06 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower&r=B2v0245v123/S2v02.3v0125v3&k=2&s=64&pop=random.35.7) |
-| Flower 5 | **B2v0256/S235** | 6 | 100 % | 36 % | 1744 | 0.07 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower5&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
-| Flower 7 | **B2v0256/S235** | 6 | 100 % | 38 % | 1987 | 0.63 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
+| Flower 5 | **B2v0256/S235** | 6 | 100 % | 36 % | 1744 | 0.07 | [alone](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower5&r=B2v0256/S235&s=64) |
+| Flower 7 | **B2v0256/S235** | 6 | 100 % | 38 % | 1987 | 0.63 | [alone](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower7&r=B2v0256/S235&s=64) |
 | Flower 8 | **B2v1.3/S0146/C4** | 3 | 90 % | 41 % | 725 | 0.57 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B2v1.3/S0146/C4&k=2&s=64&pop=random.35.7) |
 | Flower 8 | **B2v0256/S235** | 3 | 100 % | 34 % | 3,000+ | 0.43 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower8&r=B2v0256/S235&k=2&s=64&pop=random.35.7) |
 | Tetrakis | **B2v14v2/S23v238** | 3 | 90 % | 41 % | 760 | 0.48 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B2v14v2/S23v238&k=2&s=64&pop=random.35.7) |
 | Tetrakis | **B3v23/S056** | 3 | 80 % | 27 % | 628 | 0.21 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B3v23/S056&k=2&s=64&pop=random.35.7) |
 | Tetrakis | **B3/S23 (Life)** | 4 | 100 % | 43 % | 806 | 0 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B3/S23&k=2&s=64&pop=random.35.7) |
 
-B2v0256/S235 (born with 2, none or both by a corner only, or with 5 or 6; surviving with 2, 3 or 5) comes first on Flower, 5 and 7: 6 turnarounds a battle, twice Life’s, and the most Life-like found on Flower 7 (0.63). Conway’s B3/S23 dies in 50 to 70 generations on Cairo, Rhombitri and the flowers.
+B2v0256/S235 (born with 2, none or both by a corner only, or with 5 or 6; surviving with 2, 3 or 5) comes first on Flower, 5 and 7: 6 turnarounds a battle, twice Life’s, and the most Life-like found on Flower 7 (0.63). Conway’s B3/S23 dies in 50 to 70 generations on Cairo, Rhombitri and the flowers. Flowers 5 and 7 turn as a spiral (no mirror): the app deals them out in 5 or 7 colours, no duel (their halves not alike), so their links play the rule alone.
 
