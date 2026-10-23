@@ -15,9 +15,9 @@
 window.faceParts = () => {
   const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const nearest = (dirs) => { const close = Math.max(...dirs.flatMap((m, i) => dirs.filter((_, j) => j !== i).map((n) => dot3(m, n)))); return dirs.map((m, i) => dirs.map((n, j) => (i !== j && dot3(m, n) > close - 1e-9 ? j : -1)).filter((j) => j >= 0)); };
-  // the turns of a solid, as matrices: its face 0 and a neighbour to any face and a neighbour of it (the stella: the cube's)
+  // the turns of a solid, as matrices: its face 0 and a neighbour to any face and a neighbour of it (the stella's, the cuboctahedron's: the cube's)
   const turnsOf = (solid) => {
-    const mids = FACE_MIDDLES[solid === 'stella' ? 'cube' : solid](), adj = nearest(mids), frame = (a, b) => { const x = mids[a], y = unit(cross3(x, mids[b])); return [x, y, cross3(x, y)]; };
+    const mids = FACE_MIDDLES[['stella', 'cubocta'].includes(solid) ? 'cube' : solid](), adj = nearest(mids), frame = (a, b) => { const x = mids[a], y = unit(cross3(x, mids[b])); return [x, y, cross3(x, y)]; };
     const A = frame(0, adj[0][0]), out = [];
     for (let a = 0; a < mids.length; a++) for (const b of adj[a]) { const B = frame(a, b); out.push([0, 1, 2].map((i) => [0, 1, 2].map((j) => A.reduce((s, _, k) => s + B[k][i] * A[k][j], 0)))); }
     return out;
@@ -94,7 +94,7 @@ window.faceParts = () => {
       faces[solid][K] = [...written(mids, adj, best.parts), ...(pairs ? written(mids, adj, pairs) : [])];
     }
   }
-  for (const solid of ['cube', 'tetra', 'octa', 'icosa', 'dodeca', 'stella']) {
+  for (const solid of ['cube', 'tetra', 'octa', 'icosa', 'dodeca', 'stella', 'cubocta']) {
     const own = SOLID_SPOTS[solid]();
     for (const [n, list] of Object.entries(own)) {
       const K = n / 2, dirs = list.map(unit), pairs = opposites(dirs);
