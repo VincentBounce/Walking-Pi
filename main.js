@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1041';
+const VERSION = '0.1.1042';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8884,8 +8884,8 @@ const EDGES12 = [[1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0], [1, 0, 1], [1, 
 const ICO = () => POLYHEDRA.icosa.P, nearest3 = (d) => [...ICO()].sort((p, q) => dot3(q, d) / Math.hypot(...q) - dot3(p, d) / Math.hypot(...p)).slice(0, 3);
 const ICOSA_SPOTS = () => ({ 2: [ICO()[0], ICO()[0].map((v) => -v)], 3: [ICO()[0], ICO()[11], ICO()[5]], 4: TETRA4, 8: CORNERS8, 12: ICO() });
 const SOLID_SPOTS = {
-  cube: () => ({ 2: AXES.slice(0, 2), 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),
-  pits: () => ({ 2: AXES.slice(0, 2), 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
+  cube: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: AXES.slice(0, 4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (2: opposite corners, 3 whole faces each)
+  pits: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: AXES.slice(0, 4), 6: AXES }),  // the pits' floors
   frame: () => SOLID_SPOTS.cube(),
   menger: () => SOLID_SPOTS.cube(),
   sierpinski: () => SOLID_SPOTS.tetra(),
@@ -9307,7 +9307,7 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
     return out;
   }
-  const dir = K === 1 ? AXES[3] : solidSpots('cube')[K][i], f = AXES.findIndex((d) => d.every((v, k) => v === dir[k]));  // the cube: its face
+  const dir = K === 1 ? AXES[3] : solidSpots('cube')[K][i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
   if (g.floors) {  // the cube with pits: its pit's floor
     const a = g.floorSize, m = a >> 1;
     for (const [x, y, v] of cells) {
