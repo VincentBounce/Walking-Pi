@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1036';
+const VERSION = '0.1.1037';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8872,7 +8872,7 @@ const SOLID_SPOTS = {
   frame: () => SOLID_SPOTS.cube(),
   menger: () => SOLID_SPOTS.cube(),
   sierpinski: () => SOLID_SPOTS.tetra(),
-  octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 4: TETRA4, 6: AXES, 8: CORNERS8, 12: EDGES12 }),
+  octa: () => ({ 2: AXES.slice(0, 2), 3: [AXES[0], AXES[2], AXES[4]], 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (4: its faces' opposite pairs)
   tetra: () => ({ 2: AXES.slice(0, 2), 4: TETRA4.map((p) => p.map((v) => -v)), 6: AXES }),  // its faces face away from its corners
   stella: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 6: AXES, 8: CORNERS8 }),
   dodeca: () => ({ 2: ICOSA_SPOTS()[2], 3: nearest3([1, 1, 1]), 4: TETRA4, 12: ICO() }),
@@ -9001,8 +9001,9 @@ function huntParts(r, K) {
   }
   const own = K === 1 ? null : solidSpots(MODES[$('mode').value].sphere)[K], spots = own?.map(unit), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   const near = (d, c) => (own?.paired ? Math.abs(dot3(d, c)) : dot3(d, c));  // (paired: 2 opposite spots each, see solidSpots)
-  const nearestSpot = (t) => { const c = up(t); let best = 0; spots.forEach((d, k) => { if (near(d, c) > near(spots[best], c)) best = k; }); return best; };
-  if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)].push(t); return parts; }
+  // (a cell as near two spots or more: no one's, as on the plane's lines between slices: the parts all alike)
+  const nearestSpot = (t) => { const c = up(t), v = spots.map((d) => near(d, c)), top = Math.max(...v); return v.filter((x) => x > top - 1e-9).length > 1 ? -1 : v.indexOf(top); };
+  if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
   return spots.map((d) => lifePatch(r, centreCells(d)));  // round the open cells nearest each spot
 }
@@ -9276,8 +9277,8 @@ function huntClick() {
 // icosahedron, the dodecahedron's pentagons and the stella's tips (each cut as the plane's triangles
 // are, f × f, see flatPolyhedron), a pattern on a face.
 const CUBE_FACES = [1, 2, 3, 4, 6];  // the cube: its colours on faces
-const TRI_FACES = { tetra: () => ({ 4: TETRA4.map((p) => p.map((v) => -v)) }), octa: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: TETRA4, 8: CORNERS8 }) };
-TRI_FACES.icosa = TRI_FACES.octa;  // the icosahedron's faces include the octahedron's directions
+const TRI_FACES = { tetra: () => ({ 4: TETRA4.map((p) => p.map((v) => -v)) }), octa: () => ({ 2: [CORNERS8[0], CORNERS8[7]], 4: solidSpots('octa')[4], 8: CORNERS8 }) };
+TRI_FACES.icosa = () => ({ ...TRI_FACES.octa(), 4: TETRA4 });  // the icosahedron's faces include the octahedron's directions (its 4: as a tetrahedron's)
 for (const k of ['tetra', 'octa', 'icosa']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]();
 // the dodecahedron: a pentagon's 5 triangles (cut from its middle, as the plane's), the pattern in its
 // first; the stella: a tip's 3 triangles, the pattern in the one most facing it
