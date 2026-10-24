@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1156';
+const VERSION = '0.1.1157';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1602,28 +1602,35 @@ function renderColorButtons() {
 const PENTATONIC = [0, 2, 4, 7, 9], VOICES = [['square', 60], ['triangle', 48], ['square', 72], ['triangle', 36]];
 // Sound 2, its music by where the births are: each voice's note by the height on screen of the middle of its births (higher
 // up, higher), its place left to right in the speakers by theirs, sliding from its last note (a glider climbing, a rising
-// line); the cells seen only (a solid's front, as the camera turns). Sound and Sound 2: one at a time (to choose one)
+// line); the cells seen only (a solid's front, as the camera turns). Sound 3, a sequencer sweeping the screen: a line across
+// it left to right, 16 steps, a step every 125 ms; each live cell it meets a note, higher as it is higher up (10 rows, two
+// octaves), the 3 rows with most cells there, louder as they have more, left or right as the line is (its colour's voice:
+// the most there). Sound, 2 and 3: one at a time (to choose one)
 let music = null, soundButtons = null;  // music: its audio, its kind (1, 2), when it last played, each colour's births then, whether it died out, each voice's last note
-const SOUND_PIC = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/>${n === 1 ? '<path d="M16 9Q18 12 16 15M18.5 6.5Q22 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 16L18.5 11L21 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="21" cy="7" r="1.6" fill="currentColor"/>'}</svg>`;
+const SOUND_PIC = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/>${n === 1 ? '<path d="M16 9Q18 12 16 15M18.5 6.5Q22 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+  : n === 2 ? '<path d="M16 16L18.5 11L21 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="21" cy="7" r="1.6" fill="currentColor"/>'
+  : '<path d="M18.5 4V20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="15.5" y="7" width="2.4" height="2.4" fill="currentColor"/><rect x="19.5" y="13" width="2.4" height="2.4" fill="currentColor"/>'}</svg>`;
 function renderSoundButton() {
-  soundButtons ??= [1, 2].map((n) => tile({ pic: SOUND_PIC(n), text: n === 1 ? 'Sound' : 'Sound 2', id: n === 1 ? 'lifeSoundButton' : 'lifeSound2Button', toggle: true,
+  soundButtons ??= [1, 2, 3].map((n) => tile({ pic: SOUND_PIC(n), text: n === 1 ? 'Sound' : `Sound ${n}`, id: n === 1 ? 'lifeSoundButton' : `lifeSound${n}Button`, toggle: true,
     title: n === 1 ? 'Sound: the life plays its music, a note a generation (8-bit): higher as more are born, louder as more are alive; in colours, a voice each'
-      : 'Sound 2: the life plays its moves: a note a generation (8-bit), higher as its births are higher on screen, left or right in the speakers as they are, sliding as they move; in colours, a voice each',
-    click: () => { const was = music?.kind; music?.ctx.close(); music = was === n ? null : { kind: n, ctx: new AudioContext(), last: 0, by: [], over: false, notes: [] }; renderSoundButton(); } }));
+      : n === 2 ? 'Sound 2: the life plays its moves: a note a generation (8-bit), higher as its births are higher on screen, left or right in the speakers as they are, sliding as they move; in colours, a voice each'
+      : 'Sound 3: a sequencer sweeping the screen left to right (16 steps, 2 s round): each live cell it meets a note (8-bit), higher as the cell is higher up; in colours, the voice of the most there',
+    click: () => { const was = music?.kind; music?.ctx.close(); music = was === n ? null : { kind: n, ctx: new AudioContext(), last: 0, by: [], over: false, notes: [], col: 0 }; renderSoundButton(); } }));
   soundButtons.forEach((b, i) => setTile(b, { on: music?.kind === i + 1, can: true, byDefault: 'off' }));
 }
-// the births' middles, each colour's, on screen (−1 to 1 across the grid, up positive), the cells seen only; null: none
-function birthPlaces(L) {
-  const g = walk.geo, K = L.colours, a = L.next, b = L.alive, sum = Array.from({ length: K + 1 }, () => [0, 0, 0]);
-  const live = (v) => v > 0 && v <= K;
-  let place;
+// a cell's place on screen (−1 to 1 across the grid, up positive), null when not seen (a solid's back)
+function screenPlaces() {
+  const g = walk.geo;
   if (walk.plane) {
     const { kind, W, row } = walk.plane, o = cellMiddle(kind, 0, 0), e = cellMiddle(kind, row - 1, W - 1), mx = (o[0] + e[0]) / 2, my = (o[1] + e[1]) / 2, sx = Math.abs(e[0] - o[0]) / 2 || 1, sy = Math.abs(e[1] - o[1]) / 2 || 1;
-    place = (t) => { const m = cellMiddle(kind, t % row, Math.floor(t / row)); return [(m[0] - mx) / sx, -(m[1] - my) / sy]; };
-  } else {
-    const { r, u, v } = cam, x = g.extent || 1;
-    place = (t) => (g.nrm[3 * t] * v[0] + g.nrm[3 * t + 1] * v[1] + g.nrm[3 * t + 2] * v[2] < 0 ? null : [0, 1].map((k) => { const d = k ? u : r; return (g.cen[3 * t] * d[0] + g.cen[3 * t + 1] * d[1] + g.cen[3 * t + 2] * d[2]) / x; }));
+    return (t) => { const m = cellMiddle(kind, t % row, Math.floor(t / row)); return [(m[0] - mx) / sx, -(m[1] - my) / sy]; };
   }
+  const { r, u, v } = cam, x = g.extent || 1;
+  return (t) => (g.nrm[3 * t] * v[0] + g.nrm[3 * t + 1] * v[1] + g.nrm[3 * t + 2] * v[2] < 0 ? null : [0, 1].map((k) => { const d = k ? u : r; return (g.cen[3 * t] * d[0] + g.cen[3 * t + 1] * d[1] + g.cen[3 * t + 2] * d[2]) / x; }));
+}
+// the births' middles, each colour's, on screen (see screenPlaces); null: none
+function birthPlaces(L) {
+  const K = L.colours, a = L.next, b = L.alive, sum = Array.from({ length: K + 1 }, () => [0, 0, 0]), live = (v) => v > 0 && v <= K, place = screenPlaces();
   for (let t = 0; t < b.length; t++) if (live(b[t]) && !live(a[t])) { const p = place(t); if (p) { const s = sum[K === 1 ? 1 : b[t]]; s[0] += p[0]; s[1] += p[1]; s[2]++; } }
   return sum.map(([x, y, n]) => (n ? [x / n, y / n, n] : null));
 }
@@ -1646,6 +1653,22 @@ function lifeMusic(L) {
   if (K > 1) for (let k = 1; k <= K; k++) if (now - music.last >= 0.09 || music.by[k] === undefined) music.by[k] = L.bornBy[k];
   if (!L.aliveCount) { if (!music.over) for (let s = 9; s >= 0; s--) note(s, VOICES[0], now + 0.07 * (9 - s), 0.05); music.over = true; return; }  // (died out: down the scale)
   music.over = false;
+  if (music.kind === 3) {  // (Sound 3: the sweep, a step every 125 ms)
+    if (now - music.last < 0.125) return;
+    music.last = now;
+    const COLS = 16, ROWS = 10, col = music.col, place = screenPlaces(), rows = Array.from({ length: ROWS }, () => new Int32Array(K + 1));
+    music.col = (col + 1) % COLS;
+    for (let t = 0; t < L.alive.length; t++) {
+      const v = L.alive[t];
+      if (!(v > 0 && v <= K)) continue;
+      const p = place(t);
+      if (!p || Math.min(COLS - 1, Math.floor(((p[0] + 1) / 2) * COLS)) !== col) continue;
+      rows[Math.max(0, Math.min(ROWS - 1, Math.floor(((p[1] + 1) / 2) * ROWS)))][v]++;
+    }
+    const hits = rows.map((by, row) => [by.reduce((s, n) => s + n, 0), row, by.indexOf(Math.max(...by.slice(1)), 1)]).filter(([n]) => n).sort((a, b) => b[0] - a[0]).slice(0, 3);
+    hits.forEach(([n, row, k]) => note(row, VOICES[(k - 1) % VOICES.length].map((x, i) => (i ? 60 : x)), now, (0.03 + 0.05 * Math.min(1, n / 20)) / Math.sqrt(hits.length), ((col + 0.5) / COLS) * 2 - 1));
+    return;
+  }
   if (now - music.last < 0.09) return;
   music.last = now;
   const vol = (0.02 + 0.06 * Math.min(1, Math.sqrt((4 * L.aliveCount) / L.alive.length))), voices = by.map((b, k) => [b, k]).filter(([b, k]) => k && b > 0).sort((a, b) => b[0] - a[0]).slice(0, 4);
