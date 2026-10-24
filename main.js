@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1083';
+const VERSION = '0.1.1084';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4623,8 +4623,21 @@ function hexSolidMesh(solid, f) {
     };
     return tris.slice().sort((x, y) => angle(x) - angle(y));
   });
-  // each cell as many corners as the most (6; the stella's hollows 8), the last one repeated
-  const sides = Math.max(6, ...cells.map((c) => c.length)), mesh = finishMesh(Array.from(ico.cen), cells.map((c) => [...c, ...Array(sides - c.length).fill(c.at(-1))]), sides, f);  // the triangles' centres are the corners
+  // the corners: the triangles' centres; on a flat solid (not the sphere's icosahedron, its walks along these corners), its
+  // sides' middles too, so that a cell over the solid's edge folds on it (its side from one face's triangle to the other's
+  // through the edge's middle, not under it), listed from such a middle (its triangles drawn from there: each on its face)
+  const verts = Array.from(ico.cen), middles = new Map(), P = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
+  const plane = (t) => unit(cross(...[1, 2].map((q) => [0, 1, 2].map((d) => V[3 * ico.poly[3 * t + q] + d] - V[3 * ico.poly[3 * t] + d]))));
+  const middle = (v, w) => { const key = Math.min(v, w) * nv + Math.max(v, w); if (!middles.has(key)) { middles.set(key, verts.length / 3); verts.push(...[0, 1, 2].map((d) => (V[3 * v + d] + V[3 * w + d]) / 2)); } return middles.get(key); };
+  const outlines = solid === 'icosa' ? cells : cells.map((ring, v) => {
+    const L = ring.length, of = (t) => [0, 1, 2].map((q) => ico.poly[3 * t + q]);
+    const side = (i) => middle(v, of(ring[i]).find((w) => w !== v && of(ring[(i + 1) % L]).includes(w)));  // (the side between triangles i and i + 1)
+    const i0 = Math.max(0, ring.findIndex((t, i) => dot3(plane(t), plane(ring[(i + 1) % L])) < 1 - 1e-6));  // (a fold, if any)
+    return ring.flatMap((_, j) => [side((i0 + j) % L), ring[(i0 + j + 1) % L]]);
+  });
+  // each cell as many corners as the most (6; the stella's hollows 8; twice as many with the sides' middles), the last repeated
+  const sides = Math.max(...outlines.map((c) => c.length)), mesh = finishMesh(verts, outlines.map((c) => [...c, ...Array(sides - c.length).fill(c.at(-1))]), sides, f);
+  if (solid !== 'icosa') mesh.sideMiddles = true;  // (its own corners every other one: see cornerNeighbours)
   // a walk along its grid starts as the icosahedron's tile walk does: on triangle 0, come in
   // through its edge 0, so that the same digits draw the same path in both tabs
   mesh.gridStart = [0, ico.nbr[0]];
@@ -5834,12 +5847,12 @@ function cellNeighbours(cStart, cList, nv, sides = 0) {
 }
 // A surface's: its tiles' corners (a repeated one, a pentagon's of the hexagon sphere, once; a wall: none). On
 // hexagons, their ring (Callahan's letters); on squares, sides 8 asked (Hensel's)
-function cornerNeighbours(g, sides = g.sides === 6 ? 6 : 0) {
+function cornerNeighbours(g, sides = g.sides === 6 || g.sideMiddles ? 6 : 0) {
   const key = `life${sides}`;
   if (g[key]) return g[key];
-  const k = g.sides, wall = new Set(g.walls), cStart = new Int32Array(g.n + 1), cList = [];
+  const k = g.sides, wall = new Set(g.walls), cStart = new Int32Array(g.n + 1), cList = [], own = g.sideMiddles ? 2 : 1;  // (a solid of hexagons: its sides' middles not)
   for (let t = 0; t < g.n; t++) {
-    if (!wall.has(t)) for (let j = 0; j < k; j++) { const v = g.poly[k * t + j]; if (v !== g.poly[k * t + ((j + 1) % k)]) cList.push(v); }
+    if (!wall.has(t)) for (let j = own - 1; j < k; j += own) { const v = g.poly[k * t + j]; if (v !== g.poly[k * t + ((j + own) % k)] && (cList.length === cStart[t] || v !== cList.at(-1))) cList.push(v); }  // (a corner repeated: once)
     cStart[t + 1] = cList.length;
   }
   return (g[key] = cellNeighbours(cStart, Int32Array.from(cList), g.verts.length / 3, sides));
@@ -9484,7 +9497,7 @@ const patternsOn = () => {
     || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
+const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : walk.geo.sideMiddles ? 'hex' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -11512,11 +11525,20 @@ function glSurface(palette, levelOf, path) {
   // the corners of each tile in their current form (k per tile), with the tile's normal
   const geoKey = `${n}|${k}|${R}|${sh.m}|${g.verts.length}|${walk.geo.torus ? g.nu + 'x' + g.nv : ''}`;
   if (S.keys.geo !== geoKey || S.keys.geoObj !== g) {
-    const pos = new Float32Array(3 * k * n), nrm = new Float32Array(3 * k * n);
-    for (let t = 0; t < n; t++) for (let q = 0; q < k; q++) {
-      const i = 3 * (k * t + q);
-      pos[i] = sh.corners[i] * R; pos[i + 1] = sh.corners[i + 1] * R; pos[i + 2] = sh.corners[i + 2] * R;
-      nrm[i] = sh.nrm[3 * t]; nrm[i + 1] = sh.nrm[3 * t + 1]; nrm[i + 2] = sh.nrm[3 * t + 2];
+    // its triangles, a fan from its first corner, each its tile's normal, or its own where it leans off it by more than 10°
+    // (a tile folded over a solid's edge: each part as its face; the near flat, as one)
+    const T = k - 2, cpos = new Float32Array(3 * k * n), pos = new Float32Array(9 * T * n), nrm = new Float32Array(9 * T * n), flat = Math.cos(Math.PI / 18);
+    for (let i = 0; i < 3 * k * n; i++) cpos[i] = sh.corners[i] * R;
+    for (let t = 0; t < n; t++) {
+      const N = sh.nrm.subarray(3 * t, 3 * t + 3), a = 3 * k * t;
+      for (let q = 1; q <= T; q++) {
+        const b = a + 3 * q, c = b + 3, u = [0, 1, 2].map((d) => cpos[b + d] - cpos[a + d]), v = [0, 1, 2].map((d) => cpos[c + d] - cpos[a + d]);
+        let w = cross(u, v);
+        const l = Math.hypot(...w), s = l ? dot3(w, N) / l : 1;
+        w = l && Math.abs(s) < flat ? w.map((x) => (x / l) * Math.sign(s || 1)) : N;
+        const o = 9 * (T * t + q - 1);
+        for (const [z, i] of [[0, a], [3, b], [6, c]]) { pos.set(cpos.subarray(i, i + 3), o + z); nrm.set(w, o + z); }
+      }
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.nrm); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.DYNAMIC_DRAW);
@@ -11538,14 +11560,13 @@ function glSurface(palette, levelOf, path) {
     }
     const ends = new Float32Array(6 * S.edgeList.length), n1 = new Float32Array(ends.length), n2 = new Float32Array(ends.length);
     S.edgeList.forEach(([i, j, t, o], e) => {
-      ends.set(pos.subarray(3 * i, 3 * i + 3), 6 * e); ends.set(pos.subarray(3 * j, 3 * j + 3), 6 * e + 3);
+      ends.set(cpos.subarray(3 * i, 3 * i + 3), 6 * e); ends.set(cpos.subarray(3 * j, 3 * j + 3), 6 * e + 3);
       for (const [arr, u] of [[n1, t], [n2, o < 0 ? t : o]]) for (const z of [0, 3]) arr.set(sh.nrm.subarray(3 * u, 3 * u + 3), 6 * e + z);
     });
     for (const [name, data] of [['ePos', ends], ['eN1', n1], ['eN2', n2]]) { gl.bindBuffer(gl.ARRAY_BUFFER, S[name]); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); }
     S.eCount = 2 * S.edgeList.length;
     if (S.keys.topo !== `${n}|${k}`) {  // the fans only change with the tiling
-      const fan = new Uint32Array(3 * (k - 2) * n);
-      for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
+      const fan = Uint32Array.from({ length: 3 * (k - 2) * n }, (_, i) => i);  // (the triangles as listed, see above)
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, fan, gl.STATIC_DRAW);
       S.fanCount = fan.length;
       S.keys.topo = `${n}|${k}`;
@@ -11553,10 +11574,10 @@ function glSurface(palette, levelOf, path) {
     S.keys.geo = geoKey; S.keys.geoObj = g;
   }
   // each tile's colour, from its level in the palette (0: the dark background of unlit tiles)
-  const col = new Uint8Array(3 * k * n), rgb = palette.map((c) => rgbCached(c ?? UNLIT));
+  const per = 3 * (k - 2), col = new Uint8Array(3 * per * n), rgb = palette.map((c) => rgbCached(c ?? UNLIT));  // (each of its triangles' corners)
   for (let t = 0; t < n; t++) {
     const c = rgb[levelOf(t)] ?? rgb[0];
-    for (let q = 0; q < k; q++) col.set(c, 3 * (k * t + q));
+    for (let q = 0; q < per; q++) col.set(c, 3 * (per * t + q));
   }
   gl.bindBuffer(gl.ARRAY_BUFFER, S.col); gl.bufferData(gl.ARRAY_BUFFER, col, gl.DYNAMIC_DRAW);
   const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
