@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1071';
+const VERSION = '0.1.1072';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7750,6 +7750,7 @@ const RULE_ICONS = {
   'B38/S169/C3': 'ooooo,.....,o.o.o,..o..,..+..',
   'B3v1235v23/S123v012/C5': '..o..,.ooo.,o+.+o,.....,.o.o.', 'B3/S123v0257/C5': '.....,.o+o.,.+.+.,.o+o.,.....', 'B34v1236/S0127/C4': '..o..,.o+o.,o+.+o,.o+o.,..o..', 'B2v01.3v234/S08/C5': 'oo...,o+...,..+..,...+o,...oo', 'B2v01.37/S0/C5': '.....,o+.o+,.....,+o.+o,.....', 'B3v012/S0234v3': 'o...o,.o.o.,..o..,.o.o.,o...o', 'B3/S12v1.3': '.....,oo.oo,..o..,oo.oo,.....',  // (Kite ships, embers, glow, wake, waves, duels, tides)
   'B2v14v2/S23v238': 'o...o,.o.o.,..o..,.....,ooooo', 'B3v23/S056': 'oo...,oo...,.....,...oo,...oo', 'B2v0145v1236/S08/C3': 'o+...,.....,..o..,.....,...+o', 'B246v3/S045/C5': '+o...,.....,..+..,.....,...o+', 'B2v02.3v1/S156v2': 'o.o.o,.....,..o..,.....,o.o.o',  // (Tetrakis duels, tides; Rhombitri duels, tides; Cairo duels)
+  'B3/S1v0.368': 'o...o,.o.o.,..o..,.....,.o.o.', 'B3v023/S014v135v26v27': '.....,oo.oo,.....,oo.oo,.....', 'B2v024v03/S0347': 'o.o..,.o...,.....,...o.,..o.o',  // (Pinwheel duels, tides; Ammann duels)
   'B36/S1258': '.....,..o..,.o.o.,.....,.....', 'B35/S123/C5': 'o+..o,....+,.o+..,...o+,+o...', 'B35/S2356/C4': '.....,...o+,..o+.,.o+..,.....',
   'B2op3m/S12mp3p4p5': 'o.o..,.o..o,o...o,..o.o,.o...', 'B2345/S134/C5': '.....,..o+.,.oo+.,..o+.,.....', 'B2om5/S2om4o': '.....,.oo..,o..o.,.oo.o,...o.',
   'B2o/S2m34': '.....,..oo.,.o...,..o..', 'B2/S24/C3': 'o....,.o...,..+..,...+.,....+', 'B1/S0123456': 'o.o.o,.ooo.,ooooo,.ooo.,o.o.o',
