@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1153';
+const VERSION = '0.1.1154';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1591,7 +1591,42 @@ function renderColorButtons() {
   const buttons = looks.map((o) => tile({ pic: picture(o.value), text: names[o.value], title: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === defaultLook(MODES[$('mode').value]) ? 'yes' : '',
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
+  renderSoundButton();
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, soundButton] : []));  // then Life's Trail and Sound, switches
+}
+// Sound: the life playing its music (Web Audio, made here: a browser plays nothing before a click, off at first). Each
+// generation a note of a pentatonic scale (in tune whatever comes), a square wave as the 8-bit machines': its pitch by how
+// many are born (none: a rest), its loudness by how many are alive; in colours, each colour its voice (its births, the 4
+// that bear most, a wave and an octave each); dying out, a fall down the scale. A voice at most a note every 90 ms (a fast
+// run: its generations between unheard)
+const PENTATONIC = [0, 2, 4, 7, 9], VOICES = [['square', 60], ['triangle', 48], ['square', 72], ['triangle', 36]];
+let music = null, soundButton = null;  // music: its audio, when it last played, each colour's births then, whether it died out
+function renderSoundButton() {
+  soundButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/><path d="M16 9Q18 12 16 15M18.5 6.5Q22 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    text: 'Sound', id: 'lifeSoundButton', toggle: true, title: 'Sound: the life plays its music, a note a generation (8-bit): higher as more are born, louder as more are alive; in colours, a voice each',
+    click: () => { if (music) { music.ctx.close(); music = null; } else music = { ctx: new AudioContext(), last: 0, by: [], over: false }; renderSoundButton(); } });
+  setTile(soundButton, { on: !!music, can: true, byDefault: 'off' });
+}
+function lifeMusic(L) {
+  const c = music.ctx, now = c.currentTime, K = L.colours;
+  const note = (step, [wave, base], at, vol) => {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = wave;
+    o.frequency.value = 440 * 2 ** ((base + 12 * Math.floor(step / 5) + PENTATONIC[step % 5] - 69) / 12);
+    g.gain.setValueAtTime(vol, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.14);
+    o.connect(g).connect(c.destination);
+    o.start(at);
+    o.stop(at + 0.15);
+  };
+  const by = Array.from({ length: K + 1 }, (_, k) => (K === 1 ? (k ? L.bornNow : 0) : Math.max(0, L.bornBy[k] - (music.by[k] ?? L.bornBy[k]))));
+  if (K > 1) for (let k = 1; k <= K; k++) if (now - music.last >= 0.09 || music.by[k] === undefined) music.by[k] = L.bornBy[k];
+  if (!L.aliveCount) { if (!music.over) for (let s = 9; s >= 0; s--) note(s, VOICES[0], now + 0.07 * (9 - s), 0.05); music.over = true; return; }  // (died out: down the scale)
+  music.over = false;
+  if (now - music.last < 0.09) return;
+  music.last = now;
+  const vol = (0.02 + 0.06 * Math.min(1, Math.sqrt((4 * L.aliveCount) / L.alive.length))), voices = by.map((b, k) => [b, k]).filter(([b, k]) => k && b > 0).sort((a, b) => b[0] - a[0]).slice(0, 4);
+  voices.forEach(([b], v) => note(Math.min(14, Math.floor(2 * Math.log2(1 + b))), VOICES[v], now, vol / Math.sqrt(voices.length)));
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
@@ -8936,6 +8971,7 @@ function lifeStep() {
   L.deadMax = Math.max(L.deadMax, L.deadNow);
   if (alive > L.peak) { L.peak = alive; L.peakGen = gen; }  // the most alive at once, and when
   lifeTrack(gen);
+  if (music) lifeMusic(L);
 }
 
 // A reversible one a generation back: its blocks' rule run backwards (the inverse of their permutation on the same blocks,
