@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1132';
+const VERSION = '0.1.1133';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7675,8 +7675,13 @@ function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells()) {
     cells.forEach(([, , st], i) => { const w = [ms[i][0] + n * a[0] + m * b[0], ms[i][1] + n * a[1] + m * b[1]], q = planeCellAt(kind, W, ...(torus ? wrap(w) : w)); if (q) out.push([...q, st]); });
     return out;
   }
-  const square = (x) => Math.floor(x / per);
-  let i = square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1), j = cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1);
+  // its middle (its cells' middles' box's) on the cell pointed at, to a lattice step (a slanted lattice's rows: by where they
+  // are, not their numbers; a half step back); Cairo by its squares' numbers (not a lattice of its cells)
+  const square = (x) => Math.floor(x / per), o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]);
+  const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = (d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2, to = cellMiddle(kind, cx, cy);
+  const D = a[0] * b[1] - a[1] * b[0], ex = to[0] - mid(0), ey = to[1] - mid(1), near = (v) => Math.ceil(v - 0.5 - 1e-9);
+  let i = kind === 'cairo' ? square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1) : near((ex * b[1] - ey * b[0]) / D);
+  let j = kind === 'cairo' ? cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1) : near((a[0] * ey - a[1] * ex) / D);
   if (kind === 'cairo' && (i + j) & 1) j--;
   for (const [dx, dy, v] of cells) {
     let x = per * i + dx, y = j + dy;
