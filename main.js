@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1068';
+const VERSION = '0.1.1069';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2538,13 +2538,17 @@ const FAMILIES = [
                           ['triTorusGrid', 'triTorusWalk', 'triTorusPivotGrid', 'lifeTriTorus'], ['cairoTorusWalk', 'lifeCairoTorus'], ['lifeKiteTorus']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)'],
-           [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
+           [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
                                  ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri'], ['mobiusCairoWalk', 'lifeMobiusCairo'], ['lifeMobiusKite']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (rows along the strip)'],
-           [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
+           [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (pointing along the strip)']] },
   { name: 'Klein bottle', modes: [['kleinWalk', 'lifeKlein', 'kleinPivot'], ['kleinCairoWalk', 'lifeKleinCairo'], ['kleinHexWalk', 'lifeKleinHex', 'kleinHexPivot'], ['kleinTriWalk', 'lifeKleinTri'], ['lifeKleinKite']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [3, false, 'tilesTri', 'Triangles', 'Triangles'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)']] },
+    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)'],
+           [3, false, 'tilesTri', 'Triangles', 'Triangles'], [3, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)']] },
   // the solids: Kites first, the one in use (Life only: elsewhere, the others)
   { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid'], ['lifeIcosaKite']], tab: 0,
     tabs: [[2, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'], [0, false, 'tilesHex', 'Hexagons', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles', 'Triangles (an icosahedron, inflated)']] },
@@ -2555,14 +2559,15 @@ const FAMILIES = [
   }),
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
-for (const kind of MOBIUS_TILINGS) {  // the tilings' strips, after the kites (Life only)
+const kitesNext = (kinds) => [...kinds].sort((a, b) => (b === 'rhombitri') - (a === 'rhombitri'));  // (Rhombitri first, after the kites)
+for (const kind of kitesNext(MOBIUS_TILINGS)) {  // the tilings' strips, after the kites (Life only)
   const F = FAMILIES[1], turned = MOBIUS_STRIPS[`${mobiusOf(kind)}Turned`];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, TILINGS[kind].name, TILINGS[kind].name]);
   if (turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, TILINGS[kind].name, `${TILINGS[kind].name}, turned by ${turned.deg}° (along the strip)`]);  // (see MOBIUS_STRIPS)
   F.modes.push([`lifeMobius${kind[0].toUpperCase()}${kind.slice(1)}`]);
 }
-for (const [kind, t] of Object.entries(TILINGS)) if (t.torus) {  // the tilings' tori, after the kites (Life only)
-  const F = FAMILIES[0];
+for (const kind of kitesNext(Object.keys(TILINGS))) if (TILINGS[kind].torus) {  // the tilings' tori, after the kites (Life only)
+  const F = FAMILIES[0], t = TILINGS[kind];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, t.name, t.name]);
   if (torusSheets(kind).turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, t.name, `${t.name}, turned by ${torusSheets(kind).deg}° (rows round the tube)`]);  // (see torusSheets)
   F.modes.push([`lifeTorus${kind[0].toUpperCase()}${kind.slice(1)}`]);
@@ -2705,23 +2710,21 @@ function renderModePicker() {
     // (else the same rule on the other side, else its first walk: Cairo pentagons have no grid walk)
     const same = (f) => F.modes[f].find((v) => [0, 3, 4].every((i) => NAV[v][i] === NAV[w][i]))
       ?? F.modes[f].find((v) => [0, 3].every((i) => NAV[v][i] === NAV[w][i])) ?? F.modes[f].find((v) => NAV[v][0] === NAV[w][0]);
-    // its tilings as the 2D grids are, a picture and a name each, 4 a row; one that turns by 30° (another grid:
-    // its rows round the tube), a switch once picked: a click turns it (its picture turned) or back
-    const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
+    // its tilings as the 2D grids are, a picture and a name each, 4 a row; then Turned (a torus's, a strip's, a bottle's): on,
+    // the tiling turned (another grid: its rows round the tube); off, not; greyed, a tiling that has none
+    const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab], turns = tabOf(here, true) >= 0;
     $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, shape, name]) => {
       if (turned || !same(f)) return [];
-      const turns = tabOf(f, true) >= 0, b = button(`${icon(pic)}<span>${shapeLabel(shape)}</span>`, f === here, () => {
-        if (f === here) {
-          if (turns) { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); }
-          return;
-        }
+      const b = button(`${icon(pic)}<span>${shapeLabel(shape)}</span>`, f === here, () => {
+        if (f === here) return;
         F.tab = tabOf(f, false);
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
+      }, name, { turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
-    }));
+    }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', on: isTurned, can: turns,
+      title: turns ? F.tabs[tabOf(here, true)][4] : 'This tiling has no other way round', click: () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); } })] : []));
   }
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
@@ -4107,6 +4110,8 @@ function kleinPoint(x, y, nu, nv, m) {
 const kleinColumns = { klein: (nv) => twelve(nv / TORUS_TUBE), kleinHex: (nv) => hexTorusColumns(nv), kleinTri: (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE)),
   kleinCairo: (nv) => twelve(nv / TORUS_TUBE) + 1 };  // Cairo: an odd length, so that the ends turned over keep the tiling
 kleinColumns.kleinKite = kleinColumns.kleinTri;  // kites: the triangles', each cut in 3
+kleinColumns.kleinTriTurned = kleinColumns.kleinKiteTurned = (nv) => turnedTriColumns(nv);  // turned by 30° (as the tori, see turnedTorus)
+kleinColumns.kleinHexTurned = (nv) => turnedHexColumns(nv);
 function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   const key = `${kind}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
@@ -4123,7 +4128,21 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
       else tiles.push([P(i, j), P(i + 1, j), P(i + 1, j + 1)], [P(i, j), P(i + 1, j + 1), P(i, j + 1)]);
     }
   }
-  if (kind === 'kleinKite') tiles.splice(0, tiles.length, ...tiles.flatMap(kitesOf));
+  // turned by 30° (as turnedTorus): the tori's, nu and nv swapped back; their mirror across the ring maps them onto themselves
+  // (the triangles' corners every half step round the tube, the hexagons' columns an even count)
+  const swap = (c) => [c[0], ...c.slice(1).reverse()].map(([i, j]) => [j, i]);
+  if (kind === 'kleinTriTurned' || kind === 'kleinKiteTurned') {
+    const P = (i, j) => [i + (j % 2) / 2, j];
+    for (let j = 0; j < nu; j++) for (let i = 0; i < nv; i++) {
+      if (j % 2 === 0) tiles.push(swap([P(i, j), P(i + 1, j), P(i, j + 1)]), swap([P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]));
+      else tiles.push(swap([P(i, j), P(i + 1, j), P(i + 1, j + 1)]), swap([P(i, j), P(i + 1, j + 1), P(i, j + 1)]));
+    }
+  }
+  if (kind === 'kleinHexTurned') for (let c = 0; c < nv; c++) for (let r = 0; r < nu; r++) {
+    const cj = r + (c % 2) / 2;
+    tiles.push(swap([0, 1, 2, 3, 4, 5].map((k) => [c + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)])));
+  }
+  if (kind === 'kleinKite' || kind === 'kleinKiteTurned') tiles.splice(0, tiles.length, ...tiles.flatMap(kitesOf));
   if (kind === 'kleinCairo') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
     const c = cairoCorners(i, j, o);
     tiles.push(c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0 ? c.reverse() : c);
@@ -4140,7 +4159,7 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
     return ids.get(key);
   };
   const mesh = finishMesh(verts, tiles.map((t) => t.map(([x, y]) => id(x, y))), tiles[0].length, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind === 'kleinKite', nu, nv, uv: new Float64Array(tiles.flat(2)) }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, uv: new Float64Array(tiles.flat(2)) }));
 }
 
 function torusMesh(nv, nu = twelve(nv / TORUS_TUBE)) {  // squares about as long around the ring as around the tube
@@ -4189,7 +4208,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = fals
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
 const MOBIUS_WIDTH = 0.7;
-const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', ...Object.keys(MOBIUS_STRIPS)];
+const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', 'mobiusKiteTurned', ...Object.keys(MOBIUS_STRIPS)];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
  * for them), or rows "x" that count, a length of its own (s=16x240: 16 rows of triangles 120 long). */
@@ -4202,6 +4221,7 @@ const MOBIUS_ALONG = {
   mobiusCairo: { step: 1, ok: (n, nv) => (n + nv) % 2 === 1 },
 };
 MOBIUS_ALONG.mobiusKite = MOBIUS_ALONG.mobiusTri;  // kites: the triangles', each cut in 3
+MOBIUS_ALONG.mobiusKiteTurned = MOBIUS_ALONG.mobiusTriTurned;
 // A tiling's mirror along a side a of its lattice (with b, a lattice cell), the plane turned so that a runs along x: the
 // line y = c, and the slide g along it with it (0: a mirror; else a glide), (x, y) → (x + g, 2c − y) mapping its corners
 // and its cells' middles onto theirs; the nearest the origin, a mirror before a glide, between tiles first (between: no
@@ -4568,20 +4588,22 @@ function triTorusMesh(nv, nu = triTorusColumns(nv), kites = false) {  // kites: 
  * Triangles: nv corners around the tube (edge 1), nu rows around the ring (√3/2 apart, nu even);
  * equilateral when nu / nv = 2 / (√3·TUBE). Hexagons: nv columns around the tube (1.5 apart, nv
  * even), nu rows around the ring (√3 apart); regular when nu / nv = √3 / (2·TUBE). */
-function turnedTorus(kind, build, sides, nv, nu) {
+function turnedTorus(kind, build, sides, nv, nu, kites = false) {  // kites: each triangle cut in 3 (see kitesOf)
   const key = `${kind}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
   const tiles = [], uv = [];
-  build(nv, nu, (c) => {
-    const turned = [c[0], ...c.slice(1).reverse()].map(([i, j]) => [j, i]);
-    tiles.push(turned.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
-    uv.push(...turned.flat());
+  build(nv, nu, (c0) => {
+    for (const c of kites ? kitesOf(c0) : [c0]) {
+      const turned = [c[0], ...c.slice(1).reverse()].map(([i, j]) => [j, i]);
+      tiles.push(turned.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+      uv.push(...turned.flat());
+    }
   });
-  return (meshCache[key] = finishTorus(verts, tiles, sides, nu, nv, uv));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, kites ? 4 : sides, nu, nv, uv), { kite: kites }));
 }
 const turnedTriColumns = (nv) => twelve((2 * nv) / (Math.sqrt(3) * TORUS_TUBE));
-const turnedTriTorusMesh = (nv, nu = turnedTriColumns(nv)) => turnedTorus('tritorusTurned', (rows, cols, put) => {
+const turnedTriTorusMesh = (nv, nu = turnedTriColumns(nv), kites = false) => turnedTorus(kites ? 'kitetorusTurned' : 'tritorusTurned', (rows, cols, put) => {
   const P = (i, j) => [i + (j % 2) / 2, j];  // corner i of row j, as on the usual torus (rows: around the ring)
   for (let j = 0; j < cols; j++) {
     for (let i = 0; i < rows; i++) {
@@ -4589,7 +4611,7 @@ const turnedTriTorusMesh = (nv, nu = turnedTriColumns(nv)) => turnedTorus('trito
       else { put([P(i, j), P(i + 1, j), P(i + 1, j + 1)]); put([P(i, j), P(i + 1, j + 1), P(i, j + 1)]); }
     }
   }
-}, 3, nv, nu);
+}, 3, nv, nu, kites);
 const turnedHexColumns = (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
 const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hextorusTurned', (cols, rows, put) => {
   for (let c = 0; c < cols; c++) {  // as on the usual torus: columns 1.5 apart, odd ones half a row higher
@@ -4605,7 +4627,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'cube', 'pits', 'frame', 'menger', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', 'cubocta', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
+const MORPHABLE = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kleinHexTurned', 'kleinTriTurned', 'kleinKiteTurned', 'kitetorus', 'kitetorusTurned', 'cube', 'pits', 'frame', 'menger', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', 'cubocta', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
   ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (torusSheets(k).turned ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];
 
 function shapeAt(g, m) {
@@ -4806,6 +4828,8 @@ const SPHERES = {
   tritorusTurned: { mesh: (s) => turnedTriTorusMesh(...torusDims('tritorusTurned', s)), radius: (s) => torusDims('tritorusTurned', s)[0] / (2 * Math.PI * TORUS_TUBE),
                     columns: turnedTriColumns, perRow: 1, perColumn: 2, steps: [1, 2],  // an even count of rows
                     least: 2, tiles: (s) => 2 * torusDims('tritorusTurned', s).reduce((a, b) => a * b), unit: 'triangles' },
+  kitetorusTurned: { mesh: (s) => turnedTriTorusMesh(...torusDims('kitetorusTurned', s), true), radius: (s) => torusDims('kitetorusTurned', s)[0] / (2 * Math.PI * TORUS_TUBE),
+                     columns: turnedTriColumns, perRow: 1, perColumn: 2, steps: [1, 2], least: 2, tiles: (s) => 6 * torusDims('kitetorusTurned', s).reduce((a, b) => a * b), unit: 'kites' },
   hextorusTurned: { mesh: (s) => turnedHexTorusMesh(...torusDims('hextorusTurned', s)), radius: (s) => (torusDims('hextorusTurned', s)[0] * 1.5) / (2 * Math.PI * TORUS_TUBE),
                     columns: turnedHexColumns, perRow: 1, steps: [2, 1],  // an even count of columns, around the tube
                     tiles: (s) => torusDims('hextorusTurned', s).reduce((a, b) => a * b), unit: 'hexagons' },
@@ -4822,13 +4846,14 @@ const SPHERES = {
                      tiles: (s) => 2 * mobiusSheet('mobiusTriTurned', s).tiles.length, unit: 'triangles' },
   mobiusTri: { mesh: (s) => mobiusMesh('mobiusTri', s), radius: (s) => mobiusRadius('mobiusTri', s), columns: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length / mobiusSize(s)[0],
                tiles: (s) => 2 * mobiusSheet('mobiusTri', s).tiles.length, unit: 'triangles' },
-  mobiusKite: { mesh: (s) => mobiusMesh('mobiusKite', s), radius: (s) => mobiusRadius('mobiusKite', s), columns: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length / mobiusSize(s)[0],
-                tiles: (s) => 2 * mobiusSheet('mobiusKite', s).tiles.length, unit: 'kites' },
+  ...Object.fromEntries(['mobiusKite', 'mobiusKiteTurned'].map((kind) => [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s),
+    columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit: 'kites' }])),
   ...Object.fromEntries(Object.entries(MOBIUS_STRIPS).map(([kind, { kind: k }]) => [kind, { mesh: (s) => mobiusMesh(kind, s), radius: (s) => mobiusRadius(kind, s),
     columns: (s) => 2 * mobiusSheet(kind, s).tiles.length / mobiusSize(s)[0], tiles: (s) => 2 * mobiusSheet(kind, s).tiles.length, unit: TILINGS[k].cells }])),
   // Klein bottles: their size is their rows round the tube, as a torus's
-  ...Object.fromEntries([['klein', 'squares', 1], ['kleinHex', 'hexagons', 1], ['kleinTri', 'triangles', 2], ['kleinCairo', 'pentagons', 2], ['kleinKite', 'kites', 6]].map(([kind, unit, per]) => [kind, {
-    mesh: (s) => kleinMesh(kind, ...torusDims(kind, s)), radius: (s) => torusDims(kind, s)[0] / (2 * Math.PI * TORUS_TUBE), columns: kleinColumns[kind], perRow: 1,
+  ...Object.fromEntries([['klein', 'squares', 1], ['kleinHex', 'hexagons', 1], ['kleinTri', 'triangles', 2], ['kleinCairo', 'pentagons', 2], ['kleinKite', 'kites', 6],
+    ['kleinHexTurned', 'hexagons', 1, 1.5], ['kleinTriTurned', 'triangles', 2], ['kleinKiteTurned', 'kites', 6]].map(([kind, unit, per, across = 1]) => [kind, {
+    mesh: (s) => kleinMesh(kind, ...torusDims(kind, s)), radius: (s) => (torusDims(kind, s)[0] * across) / (2 * Math.PI * TORUS_TUBE), columns: kleinColumns[kind], perRow: 1,
     steps: [2, 2], tiles: (s) => per * torusDims(kind, s).reduce((a, b) => a * b), unit }])),
   mobiusCairo: { mesh: (s) => mobiusMesh('mobiusCairo', s), radius: (s) => mobiusRadius('mobiusCairo', s), columns: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length / mobiusSize(s)[0],
                  tiles: (s) => 2 * mobiusSheet('mobiusCairo', s).tiles.length, unit: 'pentagons' },
@@ -4990,7 +5015,7 @@ function gridGraph(g) {
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
 const SOLIDS = ['cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', 'cubocta'];
-const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kitetorus', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
+const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kleinHexTurned', 'kleinTriTurned', 'kleinKiteTurned', 'kitetorus', 'kitetorusTurned', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS,
   ...Object.keys(TILINGS).filter((k) => TILINGS[k].torus).flatMap((k) => (torusSheets(k).turned ? [`${k}torus`, `${k}torusTurned`] : [`${k}torus`]))];  // sized by rows × tiles per row
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
 for (const [kind, S] of Object.entries(SPHERES)) {
@@ -5008,7 +5033,8 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
 }
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
-const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned' };
+const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', kitetorus: 'kitetorusTurned', mobiusTri: 'mobiusTriTurned', mobiusHex: 'mobiusHexTurned', mobiusKite: 'mobiusKiteTurned',
+  kleinHex: 'kleinHexTurned', kleinTri: 'kleinTriTurned', kleinKite: 'kleinKiteTurned' };
 // a torus's turn, turned (see torusSheets: the tilings'; the hexagons' and triangles' by 30°)
 // the turn of a surface's tiles on its sheet against the plane's (see sideTurn): a tiling's torus, by its sheet's side round
 // the ring; a strip, along it; the hexagons' and triangles', 0, or 30 turned
@@ -7504,7 +7530,7 @@ function drawLifePlane() {
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', frame: '■', menger: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
-                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', tetraKite: '◆', octaKite: '◆', icosaKite: '◆', stellaKite: '◆', dodecaKite: '◆', cubocta: '◈' };
+                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', kitetorusTurned: '◆', mobiusKiteTurned: '◆', kleinKiteTurned: '◆', kleinHexTurned: '⬡', kleinTriTurned: '▲', tetraKite: '◆', octaKite: '◆', icosaKite: '◆', stellaKite: '◆', dodecaKite: '◆', cubocta: '◈' };
 for (const [kind, t] of Object.entries(TILINGS)) SURFACE_CELLS[`${kind}torus`] = SURFACE_CELLS[`${kind}torusTurned`] = SURFACE_CELLS[mobiusOf(kind)] = SURFACE_CELLS[`${mobiusOf(kind)}Turned`] = t.mark;
 const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
