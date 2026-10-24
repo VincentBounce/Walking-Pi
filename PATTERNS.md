@@ -1581,3 +1581,20 @@ B2v0256/S235 (born with 2, none or both by a corner only, or with 5 or 6; surviv
 
 B3/S1v0.368 on the pinwheel (born with 3; surviving with 1 if it touches by a side, or with 3, 6 or 8) is the most Life-like found by any of these searches (0.76), its battles turning round 4 times (Life: 3).
 
+
+## ⚡ Waking a frozen zone up, on the other grids (2026-10-24)
+
+revive.js (tools/kitesearch) on any torus grid: `deno run --allow-read --allow-write revive.js name 40000` (cairo, a tiling of tilings.json; the flowers and the grids that never repeat left out: no lattice to fly a ship along). As on kites: rules drawn with the letters the grid allows, their Life-like soups, those with ships, then 8 soups each run till they freeze, 2 of the rule's ships flown at the ash: how long till it freezes again. Life the reference (a glider in its ash, 64 × 64 squares): 65 generations at the median, 109 at the 3rd quarter, 13 % of the wake-ups 300 or more. Ranked by the Life-like score times the wake-up over Life's (at most 2). Out: revive-name.json.
+
+| Grid | Rule | Wake-up (median) | 3rd quarter | ≥ 300 | Runs | Life-like | Links |
+|---|---|--:|--:|--:|--:|--:|---|
+| Tetrakis | **B3v12/S1247/C4** | 116 | 308 | 31 % | 16 | 0.24 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dTetrakis&r=B3v12/S1247/C4&s=64) |
+| Prismatic | **B23v14v0/S0467/C4** | 155 | 992 | 31 % | 16 | 0.19 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dPrismatic&r=B23v14v0/S0467/C4&s=64) |
+| Prismatic | **B2v01.3/S034v27/C5** | 220 | 560 | 40 % | 15 | 0.10 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dPrismatic&r=B2v01.3/S034v27/C5&s=64) |
+| Dual 56 | **B2/S03v016/C5** | 577 | 577 | 50 % | 4 | 0.10 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dDual56&r=B2/S03v016/C5&s=64) |
+| Kisrhombille | **B2v1/S026/C5** | 84 | 212 | 17 % | 12 | 0.09 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dKisrhombille&r=B2v1/S026/C5&s=64) |
+| Dual 16 | **B23/S04v06v1/C4** | 116 | 284 | 13 % | 8 | 0.06 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dDual16&r=B23/S04v06v1/C4&s=64) |
+| Cairo | **B23/S045v16/C5** | 226 | 533 | 38 % | 16 | 0.05 | [soup](https://vincentbounce.github.io/Walking-Pi/#w=life2dCairo&r=B23/S045v16/C5&s=64) |
+
+Tetrakis's B3v12/S1247/C4 (born with 3, one or two by a corner only; surviving with 1, 2, 4 or 7; 4 states) wakes its ash up for twice as long as Life, often past 300 generations, and is the most Life-like of these. Few grids have any: on Rhombitri, Snub, Pythagoras, Capital I, Type 14 and the octagons, the rules that wake up long are not Life-like at all (or have no ships: Type 14). Runs: the wake-ups measured, of 8 soups × 2 ships (fewer: some soups never froze, or a ship found nothing); under 8, a lead only.
+
