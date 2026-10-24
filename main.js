@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1115';
+const VERSION = '0.1.1117';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10617,7 +10617,7 @@ function drawGrid() {
   const ctx = layers.grid;
   ctx.clearRect(0, 0, cw, ch);
   if (walk.is3d) drawSky(ctx);
-  stage.classList.toggle('on-sky', darkSky());  // light text over a dark sky, whatever the theme
+  else stage.classList.remove('on-sky');  // (a 2D walk: no sky)
   if (!$('showGrid').checked || !walk.lattice) return;  // (no grid built yet, at load: no lines)
   const s = view.scale;
   let stepCells = 1;
@@ -10677,6 +10677,7 @@ const darkSky = () => skyStops() === SKIES.dark;
 // Twilight's; on a dark one, Dawn's)
 const undersideColour = () => (document.documentElement.dataset.theme === 'light' ? SKIES.dark : SKIES.light).at(-1)[1];
 function drawSky(ctx) {
+  stage.classList.toggle('on-sky', darkSky());  // light text over a dark sky, whatever the theme (the grids of the plane too)
   const stops = skyStops();
   if (!stops) return;  // plain: the page background shows through
   const sky = ctx.createLinearGradient(0, 0, 0, ch);
