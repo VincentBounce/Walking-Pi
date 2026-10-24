@@ -8,8 +8,8 @@
   --accent-text: #1a1300;
   --grid: rgba(255, 255, 255, 0.06);
   --box: rgba(14, 17, 22, 0.75);  /* the boxes over the view */
-  --pick: rgba(240, 180, 41, 0.14);  /* a choice picked, a switch's hover: the gold, as plain on the dark as on the light */
-  --pick-strong: rgba(240, 180, 41, 0.32);
+  --pick: color-mix(in srgb, rgb(240 180 41) 14%, var(--panel));  /* a choice picked, a switch's hover: the gold on the panel, opaque */
+  --pick-strong: color-mix(in srgb, rgb(240 180 41) 32%, var(--panel));  /* (the same whatever lies under it: a box over the sky too) */
   color-scheme: dark;
 }
 /* Light theme (Display box: Light, or System on a light system; see applyTheme) */
@@ -23,8 +23,8 @@
   --accent-text: #ffffff;
   --grid: rgba(0, 0, 0, 0.08);
   --box: rgba(255, 255, 255, 0.82);
-  --pick: rgba(240, 180, 41, 0.08);
-  --pick-strong: rgba(240, 180, 41, 0.22);
+  --pick: color-mix(in srgb, rgb(240 180 41) 8%, var(--panel));
+  --pick-strong: color-mix(in srgb, rgb(240 180 41) 22%, var(--panel));
   color-scheme: light;
 }
 
