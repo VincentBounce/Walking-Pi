@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1096';
+const VERSION = '0.1.1097';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1511,7 +1511,7 @@ const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = fa
   b.type = 'button';
   if (id) b.id = id;
   if (toggle) b.dataset.toggle = '';
-  b.title = title;
+  if (title) b.title = title;
   b.innerHTML = html ?? `${pic}<span>${text}</span>`;
   if (click) b.addEventListener('click', click);
   return setTile(b, { on, can, mark, again, turn });
@@ -1523,6 +1523,17 @@ const setTile = (b, { on = false, can = true, mark = false, again = false, turn 
   b.classList.toggle('active', on);
   b.classList.toggle('mark', mark && can);
   b.classList.toggle('switch', can && ((again && on) || 'toggle' in b.dataset));  // (its hover: on, gold; off, a pale gold)
+  return b;
+};
+// A card, every one alike (the rules, an ant's, the walks', the brushes, the gallery's setups, the hunt's finds): a row, its
+// picture on the left, its name over its words (base: a walk's base on its right); a tile all the same (see tile, setTile:
+// on, can, again); its words as text (a setup's name typed)
+const card = ({ pic = '', name = '', detail = '', base = '', title = '', on = false, can = true, again = false, click = null }) => {
+  const b = tile({ html: '', title, on, can, again, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
+  const picture = part('mode-icon', ''), words = document.createElement('span');
+  picture.innerHTML = pic;
+  words.append(part('mode-name', name), ...(detail ? [part('mode-detail', detail)] : []));
+  b.append(picture, words, ...(base ? [part('mode-base', base)] : []));
   return b;
 };
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
@@ -2629,18 +2640,10 @@ function renderAntRow() {
   $('antRuleTitle').textContent = R.byDigits ? 'Turns' : 'Rule';  // (Digits: a turn per digit, not a rule of colours)
   $('antByRule').classList.toggle('active', !R.byDigits);
   $('antByDigits').classList.toggle('active', !!R.byDigits);
-  const card = (pic, name, words, active, go) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.classList.toggle('active', active);
-    b.classList.toggle('switch', active);  // (picked: a click shows how it works, as Life's rules)
-    b.innerHTML = `<span class="mode-icon">${pic}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${words}</span></span>`;
-    b.addEventListener('click', go);
-    return b;
-  };
+  const rulesCard = (pic, name, detail, on, click) => card({ pic, name, detail, on, again: on, click });  // (picked: a click shows how it works, as Life's rules)
   const known = R.cards.some(([r]) => r === R.now), mine = !known || antCustomOpen, pic = icon(m.worm ? 'worm' : m.turmite ? 'turmite' : 'ant');
-  $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => card(pic, r, words, r === R.now && !antCustomOpen, () => { if (r === R.now && !antCustomOpen) { walkTutorialToggle(); return; } antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
-    ...(R.typed ? [card(pixelIcon('..o..,..o..,ooooo,..o..,..o..'), 'Custom rule', mine ? `${R.now} · your own` : 'your own, typed', mine, () => { if (mine) { walkTutorialToggle(); return; } antCustomOpen = true; renderAntRow(); })] : []));
+  $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => rulesCard(pic, r, words, r === R.now && !antCustomOpen, () => { if (r === R.now && !antCustomOpen) { walkTutorialToggle(); return; } antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
+    ...(R.typed ? [rulesCard(pixelIcon('..o..,..o..,ooooo,..o..,..o..'), 'Custom rule', mine ? `${R.now} · your own` : 'your own, typed', mine, () => { if (mine) { walkTutorialToggle(); return; } antCustomOpen = true; renderAntRow(); })] : []));
   $('antCustomRow').hidden = !R.typed || !mine;
   $('antRuleName').textContent = R.name;
   if (document.activeElement !== $('antRule')) $('antRule').value = R.now;
@@ -2770,9 +2773,8 @@ function renderModePicker() {
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
     const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
     const how = !creatures && r === rule && walkTutorialFits(w);  // (picked: a click shows how it works, as Life's rules)
-    const b = button(creatures ? `${pic}<span>${r}</span>` : `<span class="mode-icon">${pic}</span><span><span class="mode-name">${r}</span></span>`
-      + (alone && base && !r.includes('base') ? `<span class="mode-base">${base}</span>` : ''), r === rule, () => { if (how) { walkTutorialToggle(); return; } if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); });
-    b.classList.toggle('switch', how);
+    const go = () => { if (how) { walkTutorialToggle(); return; } if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); };
+    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', on: r === rule, again: how, click: go });
     b.disabled = !has(kind, r);
     return b;
   }));
@@ -8226,36 +8228,24 @@ function renderRuleSection() {
   const shown = mineNot ? yours : mine;
   if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== tutorialKey(shown)) ruleTutorial(shown);  // how a rule works follows the grid and the rule
   $('ruleCards').replaceChildren(...known.map((o) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    const picked = o.value === now && !customOpen;
-    b.classList.toggle('active', picked);
-    b.classList.toggle('switch', picked);  // (picked: a click shows how it works, see ruleTutorial)
+    const picked = o.value === now && !customOpen;  // (picked: a click shows how it works, see ruleTutorial)
     const bw = MODES[$('mode').value].margolus && !carriesColours(parseRule(o.value));  // (a block rule its cells carry no colour on: black and white)
-    b.innerHTML = `<span class="mode-icon">${pixelIcon(RULE_ICONS[o.value])}</span><span><span class="mode-name">${o.dataset.name}${bw ? ' · B&amp;W' : ''}</span>`
-      + `<span class="mode-detail">${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}</span></span>`;  // its words, without its name
-    b.addEventListener('click', () => {
-      if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
-      customOpen = false;
-      if (o.value === now) { renderRuleSection(); return; }
-      setRuleText(o.value); compute();
-    });
-    return b;
+    return card({ pic: pixelIcon(RULE_ICONS[o.value]), name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked,
+      detail: `${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}`, click: () => {  // its words, without its name
+        if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
+        customOpen = false;
+        if (o.value === now) { renderRuleSection(); return; }
+        setRuleText(o.value); compute();
+      } });
   }));
   // after them, your own: picked when the rule in use is none of them, or clicked (its states, births and survivals below)
-  const own = document.createElement('button');
-  own.type = 'button';
-  own.classList.toggle('active', mineNot);
-  own.classList.toggle('switch', mineNot);  // (picked: a click shows how it works, as the others)
-  own.innerHTML = `<span class="mode-icon">${pixelIcon('..o..,..o..,ooooo,..o..,..o..')}</span><span><span class="mode-name">Custom rule</span>`
-    + `<span class="mode-detail">${mineNot ? `${now} · your own` : 'your own: its states, births and survivals'}</span></span>`;
   $('watchRule').onclick = () => ruleTutorial(!$('ruleTuto').hidden ? null : shown);  // (the rule in use: a card's, or your own)
-  own.addEventListener('click', () => {
-    if (mineNot) { ruleTutorial(!$('ruleTuto').hidden ? null : yours); return; }
-    customOpen = true;
-    renderRuleSection();
-  });
-  $('ruleCards').append(own);
+  $('ruleCards').append(card({ pic: pixelIcon('..o..,..o..,ooooo,..o..,..o..'), name: 'Custom rule', on: mineNot, again: mineNot,
+    detail: mineNot ? `${now} · your own` : 'your own: its states, births and survivals', click: () => {
+      if (mineNot) { ruleTutorial(!$('ruleTuto').hidden ? null : yours); return; }
+      customOpen = true;
+      renderRuleSection();
+    } }));
   document.querySelector('.rule-build').hidden = $('lifeCustomRow').hidden = !mineNot;  // (its states and chips, its text: your own's only)
   if (mode.margolus) { document.querySelector('.rule-build').hidden = true; return; }  // (a block rule: typed only, no births nor survivals)
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
@@ -9360,8 +9350,6 @@ function renderHunt() {
   if (listKey === hunt.listKey) return;
   hunt.listKey = listKey;
   $('huntTop').replaceChildren(...hunt.top.map((r) => {
-    const b = document.createElement('button');
-    b.type = 'button';
     const [name, detail] = K === 1
       ? hunt.goal === 'peak' ? [`${fmt(r.peak)} cells alive at gen ${fmt(r.peakAt)}`, `from ${fmt(r.live)} cells · ${fmt(r.T)} generations${r.P ? '' : ' or more'}`]
         : hunt.goal === 'cover' ? (r.allAt ? [`All by gen ${fmt(r.allAt)}`, `its ${fmt(n)} cells reached · from ${fmt(r.live)}`]
@@ -9370,8 +9358,7 @@ function renderHunt() {
       : [`${fmt(r.contacts)} generations in contact`, r.winner ? `${LIFE_COLOUR_NAMES[r.winner - 1]} wins at gen ${fmt(r.alone)}`
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r);
-    b.innerHTML = `<span class="mode-icon"><i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ` · at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}`}"></i></span><span><span class="mode-name">${name}</span><span class="mode-detail">${detail}</span></span>`;
-    b.classList.toggle('active', huntId(r) === hunt.picked);  // the one played, wherever it is now
+    const b = card({ pic: `<i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ` · at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}`}"></i>`, name, detail, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now)
     const pick = () => (huntId(r) === hunt.picked && !hunt.worker ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
     b.addEventListener('click', (e) => { if (!e.detail) pick(); });  // from the keyboard
@@ -12821,11 +12808,8 @@ $('startTextInput').addEventListener('change', () => { plane.text = $('startText
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.innerHTML = `<span class="mode-icon">${art ? pixelIcon(art) : cellsIcon(kind, rle)}</span><span><span class="mode-name">${name}</span><span class="mode-detail">${what}</span></span>`;
+  const b = card({ pic: art ? pixelIcon(art) : cellsIcon(kind, rle), name, detail: what, click: () => { brush.id = id; renderPlaneRow(); } });
   b.dataset.brush = id;
-  b.addEventListener('click', () => { brush.id = id; renderPlaneRow(); });
   return b;
 }));
 $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) % PATTERN_TURNS[MODES[$('mode').value].plane]; renderPlaneRow(); });
@@ -13318,21 +13302,14 @@ function showSetup(setup) {  // framed and faced once built (see showAll), not b
   applySetup(setup);
 }
 function setupRow(name, detail, setup, onDelete) {
-  const b = document.createElement('button');
-  const part = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; };
-  const words = document.createElement('span'), pic = part('mode-icon', '');
-  words.append(part('mode-name', name), part('mode-detail', detail));
-  pic.innerHTML = icon(SHAPE_ICONS[NAV[setup.w]?.[2]] ?? MODE_ICONS[setup.w]);  // its shape's picture, as the Grid's (the sphere, not its hexagons)
-  b.append(pic, words);
-  b.title = `${name}\n${detail}`;  // in full, as the row may cut them short
+  const b = card({ pic: icon(SHAPE_ICONS[NAV[setup.w]?.[2]] ?? MODE_ICONS[setup.w]), name, detail, title: `${name}\n${detail}`, on: !galleryBefore && isInUse(setup) });  // (its shape's picture, as the Grid's; its title in full, as the row may cut them short)
   if (onDelete) {
-    const x = part('row-delete', '×');
+    const x = Object.assign(document.createElement('span'), { className: 'row-delete', textContent: '×' });
     x.title = `Delete “${name}”`;
     x.addEventListener('click', (e) => { e.stopPropagation(); onDelete(); });
     b.append(x);
   }
   b.setAttribute('role', 'option');
-  b.classList.toggle('active', !galleryBefore && isInUse(setup));
   b.addEventListener('mouseenter', () => {
     ruleTutorial(null);  // what lies over the view (how a rule works, the digits) closes: the setup shown instead
     closeNumber();
