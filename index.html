@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261115r">
+  <link rel="stylesheet" href="style.css?v=20261115s">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -678,10 +678,10 @@
           <div id="viewSection">  <!-- with Grid and Auto-rotate (Auto-fit): the view, then its form -->
             <label class="check open-only" id="autoFitRow" title="Fit the view to the walk and keep it fitted (F or double-click)"><input id="autoFit" type="checkbox" checked> Auto-fit</label>
             <label class="check open-only" id="autoRotateRow" hidden title="Turn the view slowly, swaying up and down so that the top and the bottom show too; it starts Auto-fit, and a hand rotation stops it"><input id="autoRotate" type="checkbox"> Auto-rotate</label>  <!-- the other of Auto-fit and Auto-rotate -->
-            <label class="check" id="autoPlayRow" hidden title="Life: play as soon as anything is changed (not while drawing)"><input id="autoPlay" type="checkbox"> Autoplay</label>
             <label class="check" id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole; elsewhere, the camera as it starts (turning the view unchecks it)"><input id="centered" type="checkbox" checked> <span id="centeredName">Centered pattern</span></label>
             <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
             <label class="check" id="lightRow" hidden title="A lamp at the top left, with its glints and shadows; unchecked, lit from the viewer"><input id="light" type="checkbox" checked> Light</label>
+            <label class="check" id="autoPlayRow" hidden title="Life: play as soon as anything is changed (not while drawing)"><input id="autoPlay" type="checkbox"> Autoplay</label>
             <div id="shapeRow" hidden>
               <div class="shape-slider" title="The same cells, from flat to round: drag (the walk goes on meanwhile)"><span id="shapeFlat"></span><input id="shapeM" type="range" min="0" max="1" step="0.01" aria-label="From flat to round"><span id="shapeRound"></span></div>
             </div>
@@ -730,8 +730,8 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261115r"></script>
-  <script src="emoji.js?v=20261115r"></script>
-  <script src="main.js?v=20261115r"></script>
+  <script src="pixelarticons.js?v=20261115s"></script>
+  <script src="emoji.js?v=20261115s"></script>
+  <script src="main.js?v=20261115s"></script>
 </body>
 </html>

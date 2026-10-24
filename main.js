@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1097';
+const VERSION = '0.1.1098';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1426,12 +1426,12 @@ function updateDisplayMenu() {
   $('heatmap').disabled = !mode.cells;
   $('heatmap').checked = $('colorMode').value === 'visits';
   // Grid stays in sight; Auto-fit (Auto-rotate in 3D) beside it while the box is open, the other one
-  // at the top of the view's settings, above Centered pattern (Default orientation), Perspective and the shape
+  // at the top of the view's settings, above Centered pattern (Default view), Perspective, Light, Autoplay and the shape
   const spin = shows('autoRotate');
   $('viewHead').prepend(spin ? $('autoRotateRow') : $('autoFitRow'));
   $('viewSection').prepend(spin ? $('autoFitRow') : $('autoRotateRow'));
   $('centeredRow').hidden = !spin;
-  $('centeredName').textContent = centersPattern() ? 'Centered pattern' : 'Default orientation';
+  $('centeredName').textContent = centersPattern() ? 'Centered pattern' : 'Default view';  // (as the hint says it)
   $('fillAreasRow').hidden = !shows('fill') || !!mode.antOf;  // an ant fills no areas
   $('fillAreas').disabled = !fillAreasApply();  // greyed out with the colours it does not go with
   $('fillTooBig').hidden = !(fill?.tooBig && $('fillAreas').checked && !$('fillAreas').disabled);
