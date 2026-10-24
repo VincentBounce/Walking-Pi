@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1106';
+const VERSION = '0.1.1107';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2777,7 +2777,7 @@ function renderModePicker() {
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
+      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
     }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', on: isTurned, can: turns,
       title: turns ? F.tabs[tabOf(here, true)][4] : 'This tiling has no other way round', click: turn })] : []));
@@ -2789,14 +2789,14 @@ function renderModePicker() {
   const creatures = kind === 'Ant', optionOf = (v) => $('mode').querySelector(`option[value="${v}"]`);
   const rules = creatures ? [...new Set(Object.values(NAV).filter((n) => n[0] === kind && n[1] === space).map((n) => n[3]))] : navValues(3, [kind, space, shape]);
   $('navRules').hidden = creatures || rules.length < 2;
-  (creatures ? $('antCreatures') : $('navRules')).replaceChildren(...rules.map((r) => {
+  (creatures ? $('antCreatures') : $('navRules')).replaceChildren(...rules.map((r, i) => {
     const here = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const v = here ?? Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][3] === r);  // (elsewhere: its first shape)
     const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
     const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
     const how = !creatures && r === rule && walkTutorialFits(w);  // (picked: a click shows how it works, as Life's rules)
     const go = () => { if (how) { walkTutorialToggle(); return; } if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); };
-    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', on: r === rule, again: how, click: go });
+    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go, '', { byDefault: i ? '' : 'yes' }) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', on: r === rule, again: how, byDefault: i ? '' : 'yes', click: go });  // (the first: where a shape starts)
     b.disabled = !has(kind, r);
     return b;
   }));
@@ -7202,7 +7202,7 @@ function renderPlaneRow() {
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
-    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), click: () => { plane.sym = y; reseedStart(); } });
+    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), byDefault: y === 'none' ? 'yes' : '', click: () => { plane.sym = y; reseedStart(); } });
   }));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
@@ -12841,7 +12841,7 @@ $('startTextInput').addEventListener('change', () => { plane.text = $('startText
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {
-  const b = card({ pic: art ? pixelIcon(art) : cellsIcon(kind, rle), name, detail: what, click: () => { brush.id = id; renderPlaneRow(); } });
+  const b = card({ pic: art ? pixelIcon(art) : cellsIcon(kind, rle), name, detail: what, byDefault: id === 'cell' ? 'yes' : '', click: () => { brush.id = id; renderPlaneRow(); } });  // (see brush)
   b.dataset.brush = id;
   return b;
 }));
@@ -12850,7 +12850,7 @@ $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; rende
 $('huntBtn').addEventListener('click', huntClick);
 $('backBtn').addEventListener('click', () => searchBack(backSearch.life !== walk.life));
 $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, name, words]]) => {
-  const b = tile({ pic: `<i class="goal-mark">${mark}</i>`, text: name, title: words, click: () => pickGoal(goal) });
+  const b = tile({ pic: `<i class="goal-mark">${mark}</i>`, text: name, title: words, byDefault: goal === 'longest' ? 'yes' : '', click: () => pickGoal(goal) });  // (see hunt)
   b.dataset.goal = goal;
   return b;
 }));
@@ -13158,7 +13158,7 @@ function renderAreaModes() {
   const picture = (look) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7L11 3L20 6L19 17L9 21L3 15Z" fill="${look === 'empty' ? 'none' : c}"`
     + `${look === 'light' ? ' fill-opacity="0.35"' : ''} stroke="${GRADIENT[Math.round(0.2 * (BANDS - 1))]}" stroke-width="2" stroke-linejoin="round"/></svg>`;  // a closed loop
   $('areaModes').replaceChildren(tileGroup(AREA_MODES.map(([look, name, title]) => {
-    return tile({ pic: picture(look), text: name, title, on: look === now, can: !(off || (look === 'light' && !light)), click: () => {
+    return tile({ pic: picture(look), text: name, title, on: look === now, can: !(off || (look === 'light' && !light)), byDefault: look === 'light' ? 'yes' : '', click: () => {  // (Light areas: see displayDefaults)
       $('fillAreas').checked = look !== 'empty';
       $('fillTranslucent').checked = look === 'light';
       $('fillAreas').dispatchEvent(new Event('change'));
@@ -13196,7 +13196,7 @@ function renderCellModes(mode) {
   if ($('cellModes').hidden) return;
   // an ant: all six; a walk in 2D: Path, Rainbow, Directions, Heatmap; on a surface: Path, Rainbow, Heatmap
   const looks = CELL_MODES.filter(([look]) => mode.antOf || (look !== 'ink' && look !== 'amber' && (shows('cells') || look !== 'digit'))), now = cellModeOf(mode);
-  const button = ([look, name, title]) => tile({ pic: cellModePicture(look), text: name, title, on: look === now,
+  const button = ([look, name, title]) => tile({ pic: cellModePicture(look), text: name, title, on: look === now, byDefault: look === 'cells' && !mode.antOf ? 'yes' : '',  // (a walk's Rainbow, see displayDefaults)
     can: !((!mode.cells && !['cells', 'digit'].includes(look)) || (look === 'visits' && !useful('visits'))), click: () => pickCellMode(look) });  // (along the lines: Rainbow, Directions, its line's colours)
   // joined in one frame (see tileGroup); an ant's states in one, before the walk's looks in another
   const ants = ['ink', 'amber'], groups = [looks.filter(([look]) => ants.includes(look)), looks.filter(([look]) => !ants.includes(look))].filter((g) => g.length);
