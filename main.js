@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1151';
+const VERSION = '0.1.1152';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4110,18 +4110,19 @@ function hullMesh(kind, f) {
 // A hull solid's colourings (Realm, Wild, the zones, the icons) by its faces' kinds: K colours a face each, of the kind with
 // K faces (squares first), or two opposite faces each, or that kind's faces cut by planes through its middle (one, two or
 // three of x, y, z, x ± y, x ± z, y ± z: as many faces each side, none on them); then the same for a kind's families; all its faces, a face each. { kind: 'square', 'tri' or 'all', groups: each
-// colour's faces (their places, squares first: f² cells each, see hullMesh), mids: its faces' middles }; null: none for K
+// colour's faces (their places, squares first: f² cells each, see hullMesh), mids: its faces' middles, pairs: its colours
+// two opposite faces each (its Mirror; its Realm, Wild, the zones, from its first: as the cube's) }; null: none for K
 const HULL_PLANES = [[0, 0, 1], [1, 0, 0], [0, 1, 0], [1, 1, 0], [1, -1, 0], [1, 0, 1], [1, 0, -1], [0, 1, 1], [0, 1, -1]];
 const hullColourMemo = {};
 function hullColourings(sphere) {
   if (hullColourMemo[sphere]) return hullColourMemo[sphere];
   const all = hullFaces(HULL_SOLIDS[sphere]()), faces = [...all.filter((fc) => fc.corners.length === 4), ...all.filter((fc) => fc.corners.length === 3)];
   const mids = faces.map(({ corners }) => [0, 1, 2].map((d) => corners.reduce((sum, c) => sum + c[d], 0) / corners.length)), out = {};
-  const add = (kind, groups) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups, mids }; };
+  const add = (kind, groups, pairs = false) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups, mids, pairs }; };
   const offer = (kind, qs) => {
     add(kind, qs.map((q) => [q]));
     const across = (q) => qs.find((p) => mids[p].every((v, d) => Math.abs(v + mids[q][d]) < 1e-9));  // (its opposite face)
-    if (qs.every((q) => across(q) !== undefined)) add(kind, qs.filter((q) => q < across(q)).map((q) => [q, across(q)]));
+    if (qs.every((q) => across(q) !== undefined)) add(kind, qs.filter((q) => q < across(q)).map((q) => [q, across(q)]), true);
     for (let a = 0; a < HULL_PLANES.length; a++) for (const ps of [[a], ...HULL_PLANES.slice(a + 1).map((_, b) => [a, a + 1 + b]), ...HULL_PLANES.slice(a + 1).flatMap((_, b) => HULL_PLANES.slice(a + 2 + b).map((__, c) => [a, a + 1 + b, a + 2 + b + c]))]) {
       const side = (q) => ps.map((k) => dot3(HULL_PLANES[k], mids[q]));
       if (qs.some((q) => side(q).some((v) => Math.abs(v) < 1e-9))) continue;
@@ -9274,7 +9275,7 @@ function realmParts(K) {
   if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
   if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
   const hull = hullColours(MODES[$('mode').value].sphere, K);
-  if (HULL_SOLIDS[MODES[$('mode').value].sphere]) return hull && hull.groups.map((gr) => gr.flatMap(hullFaceCells));  // (a hull solid: each colour's faces, see hullColourings)
+  if (HULL_SOLIDS[MODES[$('mode').value].sphere]) return hull && hull.groups.map((gr) => hullFaceCells(gr[0]));  // (a hull solid: each colour's first face, as the cube's, see hullColourings)
   const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), col = colouring(sphere, K);
   // (each colour's patch face: faces dealt out whole, its patch's; spots, the face whose middle its patch's spot is, if all are)
   const faces = !col ? [] : col.faces ? col.patch : col.patch.map((i) => mids.findIndex((m) => dot3(unit(m), unit(col.items[i])) > 1 - 1e-9));
@@ -9481,9 +9482,9 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
   const hull = hullColours(MODES[$('mode').value].sphere, K);
-  if (hull) {  // a hull solid (see hullColourings): Wild, each cell to its nearest colour's face's middle; a zone, round each colour's first face's middle
+  if (hull) {  // a hull solid (see hullColourings): Wild, each cell to its nearest colour's face's middle (two opposite faces a colour: its first, Mirror both); a zone, round each colour's first face's middle
     if (r) return hull.groups.map((gr) => lifePatch(r, hullFaceMiddle(gr[0], hull.mids[gr[0]])));
-    const own = hull.groups.flatMap((gr, k) => gr.map((q) => [hull.mids[q], k]));
+    const own = hull.groups.flatMap((gr, k) => (hull.pairs && !mirror ? [gr[0]] : gr).map((q) => [hull.mids[q], k]));
     for (let t = 0; t < n; t++) {
       if (!open(t)) continue;
       const far = own.map(([m]) => Math.hypot(g.cen[3 * t] - m[0], g.cen[3 * t + 1] - m[1], g.cen[3 * t + 2] - m[2])), least = Math.min(...far), ks = new Set(own.flatMap(([, k], q) => (far[q] < least + 1e-9 ? [k] : [])));
@@ -9557,7 +9558,7 @@ function huntFits() {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
-    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && !!colouring(MODES[$('mode').value].sphere, K, true)];  // (a solid, two parts a colour)
+    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
     if (isIcon(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
