@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1079';
+const VERSION = '0.1.1080';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3223,10 +3223,16 @@ function rotateView(w) {
 const centersPattern = () => { const mode = MODES[$('mode').value]; return SOLIDS.includes(surfaceOf(mode)) && !mode.life; };
 function updateHint() {
   $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
-  $('hint').textContent = walk.is3d  // the mouse on a line, the double-click on the next (see .hint)
-    ? `Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom\nDouble-click: center, again: ${centersPattern() ? 'centered pattern' : 'default view'}`
-    : 'Drag: pan · Wheel: zoom\nDouble-click: auto-fit';
+  showZoom();
   updateDisplayMenu();
+}
+// the hint, its zoom against the view framed (×1: all of it in view, see viewFor; ×2 twice as near): the mouse on a line,
+// the double-click on the next (see .hint)
+function showZoom() {
+  const z = view.scale / viewFor(padBounds(bounds)).scale, x = `×${z >= 9.95 ? Math.round(z) : z.toFixed(1).replace(/\.0$/, '')}`;
+  $('hint').textContent = walk.is3d
+    ? `Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom ${x}\nDouble-click: center, again: ${centersPattern() ? 'centered pattern' : 'default view'}`
+    : `Drag: pan · Wheel: zoom ${x}\nDouble-click: auto-fit`;
 }
 
 /* ==============================================================================================
@@ -10463,6 +10469,7 @@ function setView(v) {
   view.ox = cw / 2 - v.cx * v.scale;
   view.oy = ch / 2 - v.cy * v.scale;
   needsFull = true;
+  showZoom();
 }
 
 // Frame b at once (Fit view, a new walk, a resize); this cancels any smooth auto-fit
@@ -12702,6 +12709,7 @@ stage.addEventListener('wheel', (e) => {
   view.oy = my - (my - view.oy) * f;
   view.scale = s;
   userMovedView();
+  showZoom();
 }, { passive: false });
 
 let drag = null;
