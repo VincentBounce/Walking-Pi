@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1155';
+const VERSION = '0.1.1156';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1592,7 +1592,7 @@ function renderColorButtons() {
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
   renderSoundButton();
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, soundButton] : []));  // then Life's Trail and Sound, switches
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, ...soundButtons] : []));  // then Life's Trail and Sounds, switches
 }
 // Sound: the life playing its music (Web Audio, made here: a browser plays nothing before a click, off at first). Each
 // generation a note of a pentatonic scale (in tune whatever comes), a square wave as the 8-bit machines': its octave by the
@@ -1600,22 +1600,45 @@ function renderColorButtons() {
 // that bear most, a wave and an octave each); dying out, a fall down the scale. A voice at most a note every 90 ms (a fast
 // run: its generations between unheard)
 const PENTATONIC = [0, 2, 4, 7, 9], VOICES = [['square', 60], ['triangle', 48], ['square', 72], ['triangle', 36]];
-let music = null, soundButton = null;  // music: its audio, when it last played, each colour's births then, whether it died out
+// Sound 2, its music by where the births are: each voice's note by the height on screen of the middle of its births (higher
+// up, higher), its place left to right in the speakers by theirs, sliding from its last note (a glider climbing, a rising
+// line); the cells seen only (a solid's front, as the camera turns). Sound and Sound 2: one at a time (to choose one)
+let music = null, soundButtons = null;  // music: its audio, its kind (1, 2), when it last played, each colour's births then, whether it died out, each voice's last note
+const SOUND_PIC = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/>${n === 1 ? '<path d="M16 9Q18 12 16 15M18.5 6.5Q22 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 16L18.5 11L21 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="21" cy="7" r="1.6" fill="currentColor"/>'}</svg>`;
 function renderSoundButton() {
-  soundButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/><path d="M16 9Q18 12 16 15M18.5 6.5Q22 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    text: 'Sound', id: 'lifeSoundButton', toggle: true, title: 'Sound: the life plays its music, a note a generation (8-bit): higher as more are born, louder as more are alive; in colours, a voice each',
-    click: () => { if (music) { music.ctx.close(); music = null; } else music = { ctx: new AudioContext(), last: 0, by: [], over: false }; renderSoundButton(); } });
-  setTile(soundButton, { on: !!music, can: true, byDefault: 'off' });
+  soundButtons ??= [1, 2].map((n) => tile({ pic: SOUND_PIC(n), text: n === 1 ? 'Sound' : 'Sound 2', id: n === 1 ? 'lifeSoundButton' : 'lifeSound2Button', toggle: true,
+    title: n === 1 ? 'Sound: the life plays its music, a note a generation (8-bit): higher as more are born, louder as more are alive; in colours, a voice each'
+      : 'Sound 2: the life plays its moves: a note a generation (8-bit), higher as its births are higher on screen, left or right in the speakers as they are, sliding as they move; in colours, a voice each',
+    click: () => { const was = music?.kind; music?.ctx.close(); music = was === n ? null : { kind: n, ctx: new AudioContext(), last: 0, by: [], over: false, notes: [] }; renderSoundButton(); } }));
+  soundButtons.forEach((b, i) => setTile(b, { on: music?.kind === i + 1, can: true, byDefault: 'off' }));
+}
+// the births' middles, each colour's, on screen (−1 to 1 across the grid, up positive), the cells seen only; null: none
+function birthPlaces(L) {
+  const g = walk.geo, K = L.colours, a = L.next, b = L.alive, sum = Array.from({ length: K + 1 }, () => [0, 0, 0]);
+  const live = (v) => v > 0 && v <= K;
+  let place;
+  if (walk.plane) {
+    const { kind, W, row } = walk.plane, o = cellMiddle(kind, 0, 0), e = cellMiddle(kind, row - 1, W - 1), mx = (o[0] + e[0]) / 2, my = (o[1] + e[1]) / 2, sx = Math.abs(e[0] - o[0]) / 2 || 1, sy = Math.abs(e[1] - o[1]) / 2 || 1;
+    place = (t) => { const m = cellMiddle(kind, t % row, Math.floor(t / row)); return [(m[0] - mx) / sx, -(m[1] - my) / sy]; };
+  } else {
+    const { r, u, v } = cam, x = g.extent || 1;
+    place = (t) => (g.nrm[3 * t] * v[0] + g.nrm[3 * t + 1] * v[1] + g.nrm[3 * t + 2] * v[2] < 0 ? null : [0, 1].map((k) => { const d = k ? u : r; return (g.cen[3 * t] * d[0] + g.cen[3 * t + 1] * d[1] + g.cen[3 * t + 2] * d[2]) / x; }));
+  }
+  for (let t = 0; t < b.length; t++) if (live(b[t]) && !live(a[t])) { const p = place(t); if (p) { const s = sum[K === 1 ? 1 : b[t]]; s[0] += p[0]; s[1] += p[1]; s[2]++; } }
+  return sum.map(([x, y, n]) => (n ? [x / n, y / n, n] : null));
 }
 function lifeMusic(L) {
   const c = music.ctx, now = c.currentTime, K = L.colours;
-  const note = (step, [wave, base], at, vol) => {
-    const o = c.createOscillator(), g = c.createGain();
+  const freq = (step, base) => 440 * 2 ** ((base + 12 * Math.floor(step / 5) + PENTATONIC[step % 5] - 69) / 12);
+  const note = (step, [wave, base], at, vol, pan = 0, from = null) => {
+    const o = c.createOscillator(), g = c.createGain(), p = c.createStereoPanner();
     o.type = wave;
-    o.frequency.value = 440 * 2 ** ((base + 12 * Math.floor(step / 5) + PENTATONIC[step % 5] - 69) / 12);
+    o.frequency.setValueAtTime(from ?? freq(step, base), at);
+    if (from) o.frequency.exponentialRampToValueAtTime(freq(step, base), at + 0.06);  // (sliding from its last note)
+    p.pan.value = Math.max(-1, Math.min(1, pan));
     g.gain.setValueAtTime(vol, at);
     g.gain.exponentialRampToValueAtTime(0.0001, at + 0.14);
-    o.connect(g).connect(c.destination);
+    o.connect(g).connect(p).connect(c.destination);
     o.start(at);
     o.stop(at + 0.15);
   };
@@ -1626,6 +1649,16 @@ function lifeMusic(L) {
   if (now - music.last < 0.09) return;
   music.last = now;
   const vol = (0.02 + 0.06 * Math.min(1, Math.sqrt((4 * L.aliveCount) / L.alive.length))), voices = by.map((b, k) => [b, k]).filter(([b, k]) => k && b > 0).sort((a, b) => b[0] - a[0]).slice(0, 4);
+  if (music.kind === 2) {  // (Sound 2: by where they are born)
+    const at = birthPlaces(L);
+    voices.forEach(([, k], v) => {
+      if (!at[k]) return;
+      const [x, y, n] = at[k], step = Math.max(0, Math.min(14, Math.round(((y + 1) / 2) * 14))), f = freq(step, VOICES[v][1]);
+      note(step, VOICES[v], now, (vol * Math.min(1, 0.4 + Math.log2(1 + n) / 10)) / Math.sqrt(voices.length), x, music.notes[k]);
+      music.notes[k] = f;
+    });
+    return;
+  }
   const octave = (b) => Math.min(2, Math.floor((3 * Math.log2(1 + (1000 * b) / L.alive.length)) / Math.log2(1001)));  // (its share of the grid born, on a log scale)
   voices.forEach(([b], v) => note(5 * octave(b) + (b % 5), VOICES[v], now, vol / Math.sqrt(voices.length)));
 }
