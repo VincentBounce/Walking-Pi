@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1100';
+const VERSION = '0.1.1101';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1865,10 +1865,10 @@ const ICONS = (() => {
     halfDisc: '<circle cx="12" cy="12" r="8.5"/>' + '<path class="f" d="M12 3.5A8.5 8.5 0 0 0 12 20.5Z"/>',
     pivot: pathEl('M18.4 13A6.5 6.5 0 1 1 16.6 7.4') + pathEl('M17.5 3.5V7.8H13.2'),  // a turn on the spot, clockwise
     // the view's switches: Perspective (a road to its vanishing line), Side light (a torch lighting from the left),
-    // Auto-rotate (an orbit round the middle)
+    // Auto-rotate (a turn round a slanted orbit)
     perspective: pathEl('M3.5 20L9 5.5H15L20.5 20Z') + pathEl('M12 5.5V20M6.2 12.8H17.8'),
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
-    autoRotate: pathEl('M17.2 16.7C14.5 17.9 9.5 17.9 6.3 16.7C2.4 15.2 2.4 8.8 6.3 7.3C9.5 6.1 14.5 6.1 17.7 7.3C20 8.2 21 10 20.6 11.8') + pathEl('M15.4 14.4L17.6 16.8L15 18.9') + '<circle class="f" cx="12" cy="12" r="2.2"/>',
+    autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
     ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
     symMirror: flags([[0, false], [0, true], [Math.PI, false], [Math.PI, true]]),
