@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1123';
+const VERSION = '0.1.1124';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10778,7 +10778,7 @@ function styleKey(i) {
 // On a dark page the ramp goes the other way, from dark to bright. With Directions (antRamp null): by
 // the turn each one took, in the walk's colours (left blue as the turtle's, right red)
 const ANT_RAMPS = {
-  ink: { light: ['#e7e0d0', '#b9ae98', '#6f6a60', '#2b2f3a'], dark: ['#3a4150', '#6b7486', '#a9b0bd', '#e8e2d4'] },
+  ink: { light: ['#e7e0d0', '#b9ae98', '#6f6a60', '#2b2f3a'], dark: ['#3a4150', '#636b7c', '#959ba6', '#c8c2b5'] },  // (dark: its cream a shade lower, not glaring on the black)
   amber: { light: ['#f7e6bd', '#f0c35a', '#c98a10', '#8a5200'], dark: ['#4a3a1a', '#8a6418', '#c98f1f', '#f0b429'] },
 };
 let antRamp = 'ink';
