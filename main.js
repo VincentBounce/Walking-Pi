@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1120';
+const VERSION = '0.1.1121';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5051,11 +5051,12 @@ function syncSizeStepper() {
   const kind = surfaceOf(MODES[$('mode').value]), f = sphereSize();
   // (a torus that turns: its turn too, 0° or its own)
   const turn = kind && TURNED[kind.replace(/Turned$/, '')] ? ` · ${Math.round(Math.abs(tilesTurn(kind)))}°` : '';  // (as its tiles lie)
-  if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`;
+  const label = (f) => { $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`; };
+  if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
-  sizeGauge($('sizeGauge'), TORI.includes(kind) ? 0 : sel.options.length, sel.selectedIndex);  // (a torus, a strip, a bottle: sizes of their own too, none)
+  sizeGauge($('sizeGauge'), TORI.includes(kind) ? 0 : sel.options.length, sel.selectedIndex, (k) => label(Number(sel.options[k].value)), (k) => stepSize(k - sel.selectedIndex));  // (a torus, a strip, a bottle: sizes of their own too, none)
   const starts = modeStarts();
   $('startRow').hidden = !starts;
   if (!starts) return;
@@ -5063,10 +5064,15 @@ function syncSizeStepper() {
   $('startDown').disabled = startNo() <= 1;
   $('startUp').disabled = startNo() >= starts.length;
 }
-// The sizes as a gauge under the stepper: a notch each, the one in use marked (none: hidden)
-function sizeGauge(el, n, i) {
+// The sizes as a slider under the stepper, across: a notch each, the one in use its knob (none: hidden); dragged, the label
+// shows the size under it (preview), the size picked when let go (pick: a surface is built again), a notch clicked at once
+function sizeGauge(el, n, i, preview, pick) {
   el.hidden = n < 2;
-  el.replaceChildren(...Array.from({ length: n }, (_, k) => Object.assign(document.createElement('span'), { className: k === i ? 'on' : '' })));
+  if (el.hidden) return;
+  const range = Object.assign(document.createElement('input'), { type: 'range', min: 0, max: n - 1, step: 1, value: i, title: 'The usual sizes: drag, or click a notch' });
+  range.addEventListener('input', () => preview(Number(range.value)));
+  range.addEventListener('change', () => pick(Number(range.value)));
+  el.replaceChildren(...Array.from({ length: n }, () => document.createElement('span')), range);
 }
 // − / +: the usual sizes (from a torus size of its own, the usual ones just below or above it)
 function stepSize(delta) {
@@ -7209,10 +7215,11 @@ function renderPlaneRow() {
   $('drawNote').hidden = true;
   for (const b of $('brushCards').children) b.disabled = false;
   const sides = planeSides(kind);
-  $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
+  const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
+  label(plane.side);
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side));
+  sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
   setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
   // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
   // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)

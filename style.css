@@ -162,11 +162,16 @@ button.primary {
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
 .field-label { margin-bottom: 4px; font-size: 12px; font-weight: 600; }  /* a sub-section's title; under it, grey labels (Birth, Survive…) */
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-/* a size among the usual ones: a notch each on a line, the one in use a dot (see sizeGauge) */
-.size-gauge { display: flex; justify-content: space-between; align-items: center; margin: -4px 40px 12px; height: 12px;
-  background: linear-gradient(var(--border), var(--border)) center / 100% 2px no-repeat; }
+/* a size among the usual ones, across: a notch each on a line, a slider over them, its knob the one in use (see sizeGauge);
+   the notches inset by the knob's half, where its middle goes */
+.size-gauge { position: relative; display: flex; justify-content: space-between; align-items: center; margin: -4px 0 12px; height: 16px; padding: 0 5px;
+  background: linear-gradient(var(--border), var(--border)) center / calc(100% - 12px) 2px no-repeat; }
 .size-gauge span { width: 2px; height: 8px; background: var(--muted); border-radius: 1px; }
-.size-gauge span.on { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.size-gauge input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; appearance: none; -webkit-appearance: none; background: transparent; cursor: pointer; }
+.size-gauge input::-webkit-slider-runnable-track { background: transparent; }
+.size-gauge input::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.size-gauge input::-moz-range-track { background: transparent; }
+.size-gauge input::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%; background: var(--accent); }
 .stepper span small { display: block; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.2; }  /* a size: what to picture, then its tiles */
 .stepper span, .stepper input { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; white-space: nowrap; }  /* the setup at a glance */
 /* the number of digits can be typed: a field that looks like the label until it is hovered or used */
