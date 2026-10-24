@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1149';
+const VERSION = '0.1.1150';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4063,72 +4063,17 @@ function mengerMesh(L, m = 1) {
   return (meshCache[key] = mesh);
 }
 
-/* Cuboctahedron: its 12 corners the cube's edges' middles (±1, ±1, 0 and their turns), its 6 squares (the cube's faces)
- * cut into f × f squares, its 8 triangles (the cube's corners) into f² triangles (edge √2: a cell's edge √2 / f). A cell
- * has 4 corners, a triangle its last one twice (as the sphere of hexagons' pentagons): squares and triangles together */
-function cuboctaMesh(f) {
-  const key = `cubocta${f}`;
-  if (meshCache[key]) return meshCache[key];
-  const { verts, add } = vertexStore(), tiles = [];
-  const at = (A, B, C, i, j) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * i + (C[d] - A[d]) * j) / f));
-  const flipped = [];  // (each square's: its rows and columns, seen from outside, mirrored; see patternAt)
-  for (const [x, y, z] of AXES) {  // a square: from its corner A, along to B (its rows) and to D (its columns)
-    const ax = [x, y, z].findIndex((v) => v), o = [x, y, z], u = [0, 1, 2].map((d) => +(d === (ax + 1) % 3)), v = [0, 1, 2].map((d) => +(d === (ax + 2) % 3));
-    const A = o.map((c, d) => c - u[d]), B = o.map((c, d) => c + v[d]), D = o.map((c, d) => c - v[d]);  // (o − u, o + v, o − v: its corners round it)
-    flipped.push(dot3(cross(D.map((c, d) => c - A[d]), B.map((c, d) => c - A[d])), o) > 0);
-    for (let i = 0; i < f; i++) for (let j = 0; j < f; j++) {
-      const P = (a, b) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * a + (D[d] - A[d]) * b) / f));
-      tiles.push([P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]);
-    }
-  }
-  const triFaces = [];
-  for (const [x, y, z] of CORNERS8) {  // a triangle: the 3 middles of the cube's edges at that corner
-    const [A, B, C] = [[x, y, 0], [x, 0, z], [0, y, z]];
-    triFaces.push({ corners: [A, B, C] });
-    for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
-      const t1 = [at(A, B, C, i, j), at(A, B, C, i + 1, j), at(A, B, C, i, j + 1)];
-      tiles.push([...t1, t1[2]]);
-      if (i + j < f - 1) { const t2 = [at(A, B, C, i + 1, j), at(A, B, C, i + 1, j + 1), at(A, B, C, i, j + 1)]; tiles.push([...t2, t2[2]]); }
-    }
-  }
-  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped, triFaces, triFirst: 6 * f * f }));  // (its squares first, f² cells each, as AXES; its triangles' rows as a triangle face's, see patternAt)
-}
-
-/* Square pyramid: its square (edge 2, at z0) cut into f × f squares, its 4 triangles (equilateral: its tip √2 above) into
- * f² triangles; its middle (its volume's: a quarter up) at 0. As the cuboctahedron's: squares and triangles together */
-const PYRAMID_Z = -Math.SQRT2 / 4;
-function pyramidMesh(f) {
-  const key = `pyramid${f}`;
-  if (meshCache[key]) return meshCache[key];
-  const { verts, add } = vertexStore(), tiles = [], z = PYRAMID_Z, top = [0, 0, z + Math.SQRT2];
-  const at = (A, B, C, i, j) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * i + (C[d] - A[d]) * j) / f));
-  const A = [-1, -1, z], B = [1, -1, z], D = [-1, 1, z], flipped = [dot3(cross(D.map((c, d) => c - A[d]), B.map((c, d) => c - A[d])), [0, 0, -1]) > 0];
-  for (let i = 0; i < f; i++) for (let j = 0; j < f; j++) tiles.push([at(A, B, D, i, j), at(A, B, D, i + 1, j), at(A, B, D, i + 1, j + 1), at(A, B, D, i, j + 1)]);
-  const base = [[-1, -1, z], [1, -1, z], [1, 1, z], [-1, 1, z]], triFaces = [];
-  for (let k = 0; k < 4; k++) {
-    const [P, Q] = [base[k], base[(k + 1) % 4]];
-    triFaces.push({ corners: [P, Q, top] });
-    for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
-      const t1 = [at(P, Q, top, i, j), at(P, Q, top, i + 1, j), at(P, Q, top, i, j + 1)];
-      tiles.push([...t1, t1[2]]);
-      if (i + j < f - 1) { const t2 = [at(P, Q, top, i + 1, j), at(P, Q, top, i + 1, j + 1), at(P, Q, top, i, j + 1)]; tiles.push([...t2, t2[2]]); }
-    }
-  }
-  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped, triFaces, triFirst: f * f }));  // (its square first, f² cells; its triangles' rows as a triangle face's, see patternAt)
-}
-// its faces' feet (the nearest points of their planes to its middle): its square's, then its triangles', round it
-const pyramidFeet = () => [[0, 0, PYRAMID_Z], ...[[0, -1], [1, 0], [0, 1], [-1, 0]].map(([x, y]) => {
-  const n = unit([x * Math.SQRT2, y * Math.SQRT2, 1]), c = dot3(n, [x, y, PYRAMID_Z]);  // (its plane through its square's edge (x, y, z0) and the tip)
-  return n.map((v) => v * c);
-})];
-
-/* Solids of squares and triangles of one edge (2), from their corners: their faces the planes through 3 of them with all
- * the others behind (the convex hull), each square cut into f × f squares, each triangle into f² triangles (its last
- * corner twice, as the cuboctahedron's); its squares first, then its triangles (squareFaces, triFaces: their corners round
- * them seen from outside, their normals). The rhombicuboctahedron: (±1, ±1, ±(1 + √2)) and their turns; the square
- * orthobicupola: an octagon (±1, ±(1 + √2), 0), (±(1 + √2), ±1, 0), squares (±1, ±1, ±√2) over and under it */
-const RT2 = 1 + Math.SQRT2;
+/* Solids of squares and triangles of one edge, from their corners: their faces the planes through 3 of them with all the
+ * others behind (the convex hull), each square cut into f × f squares, each triangle into f² triangles (its last corner
+ * twice, as the sphere of hexagons' pentagons); its squares first, then its triangles (squareFaces, triFaces: their corners
+ * round them seen from outside, their normals), f² cells a face. The cuboctahedron: the cube's edges' middles (±1, ±1, 0
+ * and their turns); the square pyramid: a square (±1, ±1, z0), its tip √2 above (its volume's middle at 0); the
+ * rhombicuboctahedron: (±1, ±1, ±(1 + √2)) and their turns; the square orthobicupola: an octagon (±1, ±(1 + √2), 0),
+ * (±(1 + √2), ±1, 0), squares (±1, ±1, ±√2) over and under it */
+const RT2 = 1 + Math.SQRT2, PYRAMID_Z = -Math.SQRT2 / 4;
 const HULL_SOLIDS = {
+  cubocta: () => [[1, 1, 0], [1, 0, 1], [0, 1, 1]].flatMap((v) => [-1, 1].flatMap((a) => [-1, 1].map((b) => { const s = [a, b]; return v.map((c) => (c ? c * s.shift() : 0)); }))),
+  pyramid: () => [[-1, -1, PYRAMID_Z], [1, -1, PYRAMID_Z], [1, 1, PYRAMID_Z], [-1, 1, PYRAMID_Z], [0, 0, PYRAMID_Z + Math.SQRT2]],
   rhombi: () => [[1, 1, RT2], [1, RT2, 1], [RT2, 1, 1]].flatMap((v) => [-1, 1].flatMap((a) => [-1, 1].flatMap((b) => [-1, 1].map((c) => [a * v[0], b * v[1], c * v[2]])))),
   bicupola: () => [-1, 1].flatMap((a) => [-1, 1].flatMap((b) => [[a, b * RT2, 0], [a * RT2, b, 0], [a, b, Math.SQRT2], [a, b, -Math.SQRT2]])),
 };
@@ -4162,12 +4107,43 @@ function hullMesh(kind, f) {
   }
   return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { squareFaces, triFaces, triFirst: squareFaces.length * f * f }));
 }
-// a hull solid's faces' feet (the nearest points of their planes to its middle: their normals that far), squares first
-const hullFeet = (kind) => { const faces = hullFaces(HULL_SOLIDS[kind]()); return [...faces.filter((fc) => fc.corners.length === 4), ...faces.filter((fc) => fc.corners.length === 3)].map(({ corners, n }) => n.map((v) => v * dot3(n, corners[0]))); };
-
-// the colours whose patterns go on the triangles of a solid of squares and triangles (see patternAt): the pyramid's 2 and 4,
-// the cuboctahedron's, the rhombicuboctahedron's and the bicupola's 8
-const onTriangles = (sphere, K) => ({ pyramid: [2, 4], cubocta: [8], rhombi: [8], bicupola: [8] })[sphere]?.includes(K) ?? false;
+// A hull solid's colourings (Realm, Wild, the zones, the icons) by its faces' kinds: K colours a face each, of the kind with
+// K faces (squares first), or that kind's faces cut by planes through its middle (one, two or three of x, y, z, x ± y, x ± z,
+// y ± z: as many faces each side, none on them); then the same for a kind's families; all its faces, a face each. { kind: 'square', 'tri' or 'all', groups: each
+// colour's faces (their places, squares first: f² cells each, see hullMesh), mids: its faces' middles }; null: none for K
+const HULL_PLANES = [[0, 0, 1], [1, 0, 0], [0, 1, 0], [1, 1, 0], [1, -1, 0], [1, 0, 1], [1, 0, -1], [0, 1, 1], [0, 1, -1]];
+const hullColourMemo = {};
+function hullColourings(sphere) {
+  if (hullColourMemo[sphere]) return hullColourMemo[sphere];
+  const all = hullFaces(HULL_SOLIDS[sphere]()), faces = [...all.filter((fc) => fc.corners.length === 4), ...all.filter((fc) => fc.corners.length === 3)];
+  const mids = faces.map(({ corners }) => [0, 1, 2].map((d) => corners.reduce((sum, c) => sum + c[d], 0) / corners.length)), out = {};
+  const add = (kind, groups) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups, mids }; };
+  const offer = (kind, qs) => {
+    add(kind, qs.map((q) => [q]));
+    for (let a = 0; a < HULL_PLANES.length; a++) for (const ps of [[a], ...HULL_PLANES.slice(a + 1).map((_, b) => [a, a + 1 + b]), ...HULL_PLANES.slice(a + 1).flatMap((_, b) => HULL_PLANES.slice(a + 2 + b).map((__, c) => [a, a + 1 + b, a + 2 + b + c]))]) {
+      const side = (q) => ps.map((k) => dot3(HULL_PLANES[k], mids[q]));
+      if (qs.some((q) => side(q).some((v) => Math.abs(v) < 1e-9))) continue;
+      const groups = Array.from({ length: 1 << ps.length }, () => []);
+      for (const q of qs) groups[side(q).reduce((key, v, b) => key + (v > 0 ? 1 << b : 0), 0)].push(q);
+      if (groups.every((gr) => gr.length && gr.length === groups[0].length)) add(kind, groups);
+    }
+  };
+  const kinds = [['square', 4], ['tri', 3]].map(([kind, sides]) => [kind, faces.flatMap((fc, q) => (fc.corners.length === sides ? [q] : []))]);
+  for (const [kind, qs] of kinds) offer(kind, qs);
+  for (const [kind, qs] of kinds) {  // then a kind's families: its faces by their normals' zeros (the rhombicuboctahedron's squares: 6 on the axes, 12 on the cube's edges)
+    const zeros = (q) => faces[q].n.filter((v) => Math.abs(v) < 1e-9).length, fams = [...new Set(qs.map(zeros))];
+    if (fams.length > 1) for (const z of fams) offer(kind, qs.filter((q) => zeros(q) === z));
+  }
+  add('all', faces.map((_, q) => [q]));
+  return (hullColourMemo[sphere] = out);
+}
+const hullColours = (sphere, K) => (HULL_SOLIDS[sphere] && K > 1 ? hullColourings(sphere)[K] ?? null : null);
+// a face's cells, and those nearest its middle (its square's 1 or 4, its triangle's)
+const hullFaceCells = (q) => Array.from({ length: walk.geo.size ** 2 }, (_, k) => q * walk.geo.size ** 2 + k);
+const hullFaceMiddle = (q, mid) => {
+  const g = walk.geo, cs = hullFaceCells(q), far = (t) => Math.hypot(g.cen[3 * t] - mid[0], g.cen[3 * t + 1] - mid[1], g.cen[3 * t + 2] - mid[2]), least = Math.min(...cs.map(far));
+  return cs.filter((t) => far(t) < least + 1e-9);
+};
 
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
@@ -5147,8 +5123,8 @@ const SPHERES = {
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
             tiles: (f) => 60 * f * f, unit: 'triangles' },
   stellaKite: { mesh: (f) => flatPolyhedron('stella', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 72 * f * f, unit: 'kites' },
-  cubocta: { mesh: cuboctaMesh, radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge √2
-  pyramid: { mesh: pyramidMesh, radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
+  cubocta: { mesh: (f) => hullMesh('cubocta', f), radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge √2
+  pyramid: { mesh: (f) => hullMesh('pyramid', f), radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
   rhombi: { mesh: (f) => hullMesh('rhombi', f), radius: (f) => f / 2, tiles: (f) => 26 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 18 squares, 8 triangles
   bicupola: { mesh: (f) => hullMesh('bicupola', f), radius: (f) => f / 2, tiles: (f) => 18 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 10 squares, 8 triangles
   dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites' },
@@ -7950,6 +7926,7 @@ function torusBlocks(K, g = walk.geo) {
 // its halves or quarters
 // a solid's counts of colours: its faces dealt out whole, its spots paired, its spots (see colouring)
 const solidCounts = (sphere) => {
+  if (HULL_SOLIDS[sphere]) return Object.keys(hullColourings(sphere)).map(Number).sort((a, b) => a - b);  // (see hullColourings)
   if (!SOLID_SPOTS[sphere]) return null;
   const base = FACE_BASE[sphere] ?? sphere;
   return [...new Set([FACE_GROUPS[base], SPOT_PAIRS[base], SOLID_SPOTS[sphere]()].flatMap((t) => Object.keys(t ?? {})))].map(Number).sort((a, b) => a - b);
@@ -9286,7 +9263,7 @@ const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : 'icon'];
 const iconIndex = (name, set = iconSet(hunt.zone)) => Math.max(0, set.names.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
-const realmOnFaces = () => !!SOLID_SPOTS[MODES[$('mode').value].sphere];  // (a solid: Realm its faces, see realmParts)
+const realmOnFaces = () => !!SOLID_SPOTS[MODES[$('mode').value].sphere] || !!HULL_SOLIDS[MODES[$('mode').value].sphere];  // (a solid: Realm its faces, see realmParts)
 const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadius()) : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 // Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots); none (greyed) where a
 // patch is on a corner or an edge (the stella's tips and hollows): a face cut.
@@ -9294,6 +9271,8 @@ const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadi
 function realmParts(K) {
   if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
   if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
+  const hull = hullColours(MODES[$('mode').value].sphere, K);
+  if (HULL_SOLIDS[MODES[$('mode').value].sphere]) return hull && hull.groups.map((gr) => gr.flatMap(hullFaceCells));  // (a hull solid: each colour's faces, see hullColourings)
   const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), col = colouring(sphere, K);
   // (each colour's patch face: faces dealt out whole, its patch's; spots, the face whose middle its patch's spot is, if all are)
   const faces = !col ? [] : col.faces ? col.patch : col.patch.map((i) => mids.findIndex((m) => dot3(unit(m), unit(col.items[i])) > 1 - 1e-9));
@@ -9345,11 +9324,7 @@ const SOLID_SPOTS = {
   octa: () => ({ 3: [AXES[0], AXES[2], AXES[4]], 6: AXES, 12: EDGES12 }),
   tetra: () => ({ 6: AXES }),
   stella: () => ({ 2: AXES.slice(0, 2), 4: TETRA4, 6: AXES, 8: CORNERS8 }),
-  cubocta: () => ({ 2: AXES.slice(0, 2), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (its squares, its triangles, its corners)  // (2: its hollows ±x, the halves cut along its edges, 4 whole tips each)
   dodeca: () => ({}),
-  pyramid: () => ({ 2: [1, 3].map((k) => pyramidFeet()[k]), 4: pyramidFeet().slice(1) }),  // its triangles (2: two opposite)
-  rhombi: () => ({ 2: AXES.slice(4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (2: its squares up and down; 6, 12: its squares; 8: its triangles)
-  bicupola: () => ({ 2: [[0, 0, 1], [0, 0, -1]], 8: hullFeet('bicupola').slice(10), 10: hullFeet('bicupola').slice(0, 10) }),  // (its squares up and down: its halves; its triangles; its squares)
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa', 'stella', 'dodeca']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
@@ -9360,7 +9335,7 @@ for (const k of Object.keys(TETRAKIS_SOLIDS)) SOLID_SPOTS[`${k}Tetrakis`] = SOLI
 const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + POLYHEDRA[k].P[v][d], 0))));
 // (a face's middle on it, not as a direction: m · p / m · m is 1 on its plane, its faces of two sizes the cuboctahedron's)
 const faceDot = (m, p) => dot3(m, p) / dot3(m, m);
-const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [], cubocta: () => [...AXES, ...CORNERS8.map((c) => c.map((v) => (2 * v) / 3))], pyramid: pyramidFeet, rhombi: () => hullFeet('rhombi'), bicupola: () => hullFeet('bicupola') };
+const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [] };
 const FACE_BASE = { ...Object.fromEntries(hexSolids.map((k) => [`${k}Hex`, k])), cubeTetrakis: 'cube', pitsTetrakis: 'cube', frameTetrakis: 'cube', mengerTetrakis: 'cube', pits: 'cube', frame: 'cube', menger: 'cube', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa', stellaKite: 'stella', dodecaKite: 'dodeca' };
 for (const [k, of] of Object.entries(FACE_BASE)) FACE_MIDDLES[k] = FACE_MIDDLES[of];
 // A solid's colourings (made by tools/faceparts.js), each item's colour (base 36), each colour's patch item:
@@ -9374,14 +9349,11 @@ const FACE_GROUPS = {
   octa: { 2: ['00001111', '06'], 4: ['00112233', '0257', '01232301', '0725'], 8: ['01234567', '01234567'] },
   icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '0245g8iace', '01234567893210489567', '01b3ehi7f9'] },
   dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0248'], 6: ['001122334455', '03478b', '011023324554', '01468a'], 12: ['0123456789ab', '0123456789ab'] },
-  pyramid: { 5: ['01234', '01234'] },
-  cubocta: { 2: ['01010100010111', '6d'], 7: ['01234502361546', '6a78cb9', '00112234566543', '024dcb9'] },
 };
 const SPOT_PAIRS = {
   tetra: { 3: ['010212', '013', '001122', '024'] },
   icosa: { 6: ['001122334455', '03478b', '011023324554', '01468a'] },
   stella: { 3: ['010212', '013', '001122', '024'] },
-  cubocta: { 3: ['010212', '013', '001122', '024'], 4: ['00112233', '0356', '01233210', '0653'] },
 };
 // The colouring of a solid for K colours (mirror: each colour's two parts opposite): its items (directions: its faces'
 // middles, its spots), each item's colour, each colour's patch item; faces: its faces dealt out whole (Realm, Famous).
@@ -9505,6 +9477,17 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
     const block = (t) => { const [u, v] = sheetMiddle(g, t); return at(u, g.nu, a) * b + at(v, g.nv, b); };
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
+  }
+  const hull = hullColours(MODES[$('mode').value].sphere, K);
+  if (hull) {  // a hull solid (see hullColourings): Wild, each cell to its nearest colour's face's middle; a zone, round each colour's first face's middle
+    if (r) return hull.groups.map((gr) => lifePatch(r, hullFaceMiddle(gr[0], hull.mids[gr[0]])));
+    const own = hull.groups.flatMap((gr, k) => gr.map((q) => [hull.mids[q], k]));
+    for (let t = 0; t < n; t++) {
+      if (!open(t)) continue;
+      const far = own.map(([m]) => Math.hypot(g.cen[3 * t] - m[0], g.cen[3 * t + 1] - m[1], g.cen[3 * t + 2] - m[2])), least = Math.min(...far), ks = new Set(own.flatMap(([, k], q) => (far[q] < least + 1e-9 ? [k] : [])));
+      if (ks.size === 1) parts[[...ks][0]].push(t);  // (as near two colours: none's)
+    }
+    return parts;
   }
   const sphere = MODES[$('mode').value].sphere, col = K === 1 ? null : colouring(sphere, K, mirror && !r), up = (t) => unit(Array.from(g.cen.subarray(3 * t, 3 * t + 3)));
   // a cell by its face (the one its own middle faces most, see FACE_MIDDLES): faces dealt out whole, its face's colour;
@@ -9773,10 +9756,10 @@ const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
-    || (m.sphere === 'pyramid' && K === 1) || (!!walk.geo?.squareFaces && (K === 1 || !!colouring(m.sphere, K))) || (walk.geo?.sides === 6 && !walk.geo.torus && !m.plane) || onTriangles(m.sphere, K) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+    || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (walk.geo?.sides === 6 && !walk.geo.torus && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.triFaces && onTriangles(MODES[$('mode').value].sphere, walk.life?.colours) ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
+const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -9797,10 +9780,11 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
   }
-  if ((g.sides === 3 && !g.squares) || g.kite || (g.triFaces && onTriangles(MODES[$('mode').value].sphere, K))) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; the pyramid's: its colours' triangles
-    const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(g.triFaces ? patchSpots(sphere, K)[i] : triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
+  const hull = hullColours(MODES[$('mode').value].sphere, K);  // (a hull solid's colour: its first face, see hullColourings)
+  if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; a hull solid's: its colours' triangles
+    const sphere = MODES[$('mode').value].sphere, d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
-    const face = d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
+    const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
     // its rows along its side most level (on a face looking up or down, along x; kites: AB's), the face's rows from that
     // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back)
@@ -9817,18 +9801,10 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     }
     return out;
   }
-  if (g.squareFaces) {  // a hull solid: on its square nearest the colour's spot (one colour: the front's), as the cube's
-    const d = K === 1 ? AXES[3] : unit(patchSpots(MODES[$('mode').value].sphere, K)[i]), f = g.squareFaces.reduce((b, fc, k) => (dot3(fc.n, d) > dot3(g.squareFaces[b].n, d) + 1e-9 ? k : b), 0), m = g.size >> 1;
+  if (g.squareFaces) {  // a hull solid: on its colour's first square (one colour: the square most in front), as the cube's
+    const f = hull ? hull.groups[i][0] : g.squareFaces.reduce((b, fc, k) => (dot3(fc.n, AXES[3]) > dot3(g.squareFaces[b].n, AXES[3]) + 1e-9 ? k : b), 0), m = g.size >> 1;
     for (const [x, y, v] of cells) {
       const r = m + y - (h >> 1), c = m + x - (w >> 1);
-      if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([f * g.size * g.size + r * g.size + c, v]);
-    }
-    return out;
-  }
-  if (['cubocta', 'pyramid'].includes(MODES[$('mode').value].sphere)) {  // the cuboctahedron: on its square at the colour's spot (see patternsOn), as the cube's; the pyramid: on its square, under it
-    const pyramid = MODES[$('mode').value].sphere === 'pyramid', d = pyramid ? [0, 0, -1] : K === 1 ? AXES[3] : unit(patchSpots('cubocta', K)[i]), f = pyramid ? 0 : AXES.findIndex((a) => dot3(a, d) > 1 - 1e-9), m = g.size >> 1;
-    for (const [x, y, v] of cells) {
-      const r = m + y - (h >> 1), c0 = m + x - (w >> 1), c = g.flipped[f] ? g.size - 1 - c0 : c0;
       if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([f * g.size * g.size + r * g.size + c, v]);
     }
     return out;
