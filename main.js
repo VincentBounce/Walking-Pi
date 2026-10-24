@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1137';
+const VERSION = '0.1.1138';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7033,17 +7033,14 @@ const iconPatternMemo = new Map();  // (a few at once: a colour's icons each tur
 // turn: which of the square's 8 turns and mirrors shows it (ICON_TURNS: the icon's pixel at each pixel of the square)
 const ICON_TURNS = [(x, y) => [x, y], (x, y, S) => [S - 1 - y, x], (x, y, S) => [S - 1 - x, S - 1 - y], (x, y, S) => [y, S - 1 - x],
   (x, y, S) => [S - 1 - x, y], (x, y) => [y, x], (x, y, S) => [x, S - 1 - y], (x, y, S) => [S - 1 - y, S - 1 - x]];
-// an icon's pixel, on or off, at N cells wide (12: on where 2 of its 4 pixels are)
-const iconPixel = (b64, N) => {
-  const bits = atob(b64), on = (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0;
-  return N === 12 ? (x, y) => on(2 * x, 2 * y) + on(2 * x + 1, 2 * y) + on(2 * x, 2 * y + 1) + on(2 * x + 1, 2 * y + 1) >= 2 : on;
-};
+// an icon's pixel (of its 24 × 24), on or off
+const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0; };
 // the square's cells, N cells wide: a patch round cell 0 of the grid, the cells under the icon (box, moved by whole lattice
 // steps: its cells' shapes kept), and their pixel (pix)
 function iconSquare(kind, N) {
   const key = `${kind}|${N}`;
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = N === 12 ? 12 : 24, k = N / P, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
+  const P = 24, k = N / P, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
   for (let y = -R; y <= R; y++) for (let x = -R * per; x <= R * per; x++) {
     const m = cellMiddle(kind, x, y), px = Math.floor((m[0] - o[0] - 0.5) / k + P / 2), py = Math.floor((m[1] - o[1] - 0.5) / k + P / 2);
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
@@ -7057,9 +7054,9 @@ function iconSquare(kind, N) {
 function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
   const key = `${kind}|${N}|${set.source}|${turn}`;
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = N === 12 ? 12 : 24, { box, pix } = iconSquare(kind, N);
+  const P = 24, { box, pix } = iconSquare(kind, N);
   const patterns = set.bits.map((b64) => {  // each icon: its cells' places in the square
-    const pixel = iconPixel(b64, N);
+    const pixel = iconPixel(b64);
     return pix.flatMap(([px, py], j) => (pixel(...ICON_TURNS[turn](px, py, P)) ? [j] : []));
   });
   patterns.box = box;
@@ -7090,7 +7087,7 @@ function iconTurn(laid, pix, P) {
 // where it doesn't fit: neither its whole width nor its whole height laid, or two of its cells on one (a small torus), or
 // the colours' squares on each other's (but for a row of their margins)
 function iconLay(N) {
-  const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = N === 12 ? 12 : 24;
+  const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const { box, pix } = iconSquare(kind, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
   const lays = Array.from({ length: K }, (_, i) => {
@@ -7285,7 +7282,7 @@ function zoneWords(zone) {
   if (zone === 'emoji') return `The emoji ${plane.emoji} (Unicode)`;
   if (zone === 'mirror') return `Each colour a soup of its two opposite parts, ${d} % alive`;
   if (zone === 'realm' && !r) return 'Each colour random cells on its face';
-  if (iconSize(zone)) { const set = iconSet(zone); return `${K === 1 ? `The ${set.word} ${set.label(plane.icons[0])}` : `The ${set.word}s ${plane.icons.slice(0, K).map(set.label).join(', ')}`} (${set.source}), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`; }
+  if (isIcon(zone)) { const set = iconSet(zone); return `${K === 1 ? `The ${set.word} ${set.label(plane.icons[0])}` : `The ${set.word}s ${plane.icons.slice(0, K).map(set.label).join(', ')}`} (${set.source}), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`; }
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
     : r ? `Each colour random cells within radius ${r} of its spot (${K} spots)` : `Each colour a soup of its part (${walk.plane ? COLOUR_PARTS[K] : `${K} parts`}), ${d} % alive`;
 }
@@ -7311,7 +7308,7 @@ function planeFromSetup(s) {
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
-    if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
+    if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
     if (hunt.zone === 'emoji') plane.emoji = String(s.pop).slice(6) || '🙂';  // (pop=emoji.🦊)
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
@@ -9188,7 +9185,7 @@ const huntId = (r) => `${r.T}|${r.end}`;
 // The zones: patches of radius 1 to 6 round each spot (Spark … Meadow), the whole grid (Wild), the rule's
 // patterns (Famous); their random starts each as dense as drawn between 10 and 70 % (the records often
 // come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
-const HUNT_ZONES = { icon12: [null, 'Icon 12'], icon24: [null, 'Icon 24'], icon48: [null, 'Icon 48'], punk12: [null, 'Punk 12'], punk24: [null, 'Punk 24'], punk48: [null, 'Punk 48'],  // (Punk: a CryptoPunk, as an icon)  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (see iconCells)
+const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], punk24: [null, 'Punk 24'], punkMax: [null, 'Punk max'],  // (Punk: a CryptoPunk, as an icon)  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (see iconCells)
                      emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
                      radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
@@ -9203,7 +9200,14 @@ const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 // punk's number), what one is called, where they come from
 const ICON_SETS = { icon: { bits: ICON_BITS, names: ICON_NAMES, word: 'icon', label: (i) => `“${ICON_NAMES[i]}”`, source: 'Pixelarticons' },
                     punk: { bits: PUNK_BITS, names: PUNK_BITS.map((_, i) => String(i)), word: 'CryptoPunk', label: (i) => `#${i}`, source: 'CryptoPunks' } };
-const iconSize = (zone) => Number(zone.match(/^(?:icon|punk)(\d+)$/)?.[1] ?? 0);  // (an icon's width in cells)
+const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
+const ICON_MAX = [96, 72, 48, 24];  // (Icon max, Punk max: the widest of these that fits, see iconLay)
+let iconMaxMemo = null;
+const iconMax = () => {
+  const key = `${$('mode').value}|${walk.life.seed.length}|${walk.life.colours}|${colourMix}|${walk.plane?.torus}|${patternKind()}`;
+  return (iconMaxMemo?.key === key ? iconMaxMemo : (iconMaxMemo = { key, N: ICON_MAX.find((N) => iconFits(N)) ?? 24 })).N;
+};
+const iconSize = (zone) => (!isIcon(zone) ? 0 : zone.endsWith('Max') ? iconMax() : 24);  // (an icon's width in cells; max: greyed where 24 doesn't fit)
 const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : 'icon'];
 const iconIndex = (name, set = iconSet(hunt.zone)) => Math.max(0, set.names.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
@@ -9459,8 +9463,8 @@ function huntPlan() {
     const m = emojiMemo?.done && emojiMemo.key === `${walk.plane.kind}|${walk.plane.W}|${walk.plane.row}|${walk.plane.torus}` ? emojiMemo : null;
     return { cells: [], copies: [], choices: m ? m.choices : null, perColour: m ? m.list.length : EMOJIS.length, density: 0, all: m ? m.list.length : EMOJIS.length };
   }
-  if (famousZone(hunt.zone) || iconSize(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
-    const choices = iconSize(hunt.zone) ? iconChoices(iconSize(hunt.zone), iconSet(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
+  if (famousZone(hunt.zone) || isIcon(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
+    const choices = isIcon(hunt.zone) ? iconChoices(iconSize(hunt.zone), iconSet(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
   }
   zoneParts(hunt.zone, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
@@ -9493,7 +9497,7 @@ function huntFits() {
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
     if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && !!colouring(MODES[$('mode').value].sphere, K, true)];  // (a solid, two parts a colour)
-    if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];
+    if (isIcon(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
@@ -9501,7 +9505,7 @@ function huntFits() {
   })));
 }
 // when a zone is greyed (as huntFits finds it), its tooltip's words
-const zoneGreyed = (zone) => (iconSize(zone) ? 'where it cannot fit' : zone === 'emoji' ? 'on a surface and in colours'
+const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'emoji' ? 'on a surface and in colours'
   : zone === 'realm' ? 'in Classic, with Mixed, and where a colour has no whole face' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
   : famousZone(zone) ? 'where the rule has no famous patterns, or they cannot fit' : zone === 'full' ? 'hunting the highest peak (a soup full already)'
   : 'where its patch cannot fit each colour\'s part');
@@ -9533,7 +9537,7 @@ function renderHunt() {
   const L = walk.life, life = !L.margolus, d = plane.density, z = hunt.zone, N = iconSize(z), r = zoneRadius(z), names = plane.icons.slice(0, K).map(iconSet(z).label).join(', ');
   const shown = z === 'custom' ? `A start ${life ? 'found by a hunt, ' : ''}from a link (${fmt(L.seedAlive)} cells)`
     : z === 'emoji' ? `Emoji ${plane.emoji}, as big as the grid · ${fmt(L.seedAlive)} cells alive${life ? '' : L.paint ? ' · in its colours' : ' · black & white'}`
-    : N ? (K === 1 ? `Icon ${names}, ${N} cells wide` : `Icons ${names}, ${N} cells wide, one a colour`)
+    : N ? (K === 1 ? `${iconSet(z).word[0].toUpperCase()}${iconSet(z).word.slice(1)} ${names}, ${N} cells wide` : `${iconSet(z).word[0].toUpperCase()}${iconSet(z).word.slice(1)}s ${names}, ${N} cells wide, one a colour`)
     : z === 'patterns' ? `${K === 1 ? 'A pattern' : 'Patterns'} of the rule, anywhere${K > 1 ? ', one a colour' : ''} (${fmt(perColour)} ways and places)`
     : z === 'centred' ? `${K === 1 ? 'A pattern of the rule, in the middle' : "Patterns of the rule, each at its colour's spot"} (${fmt(perColour)} of them)`
     : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
@@ -9581,7 +9585,7 @@ function renderHunt() {
 function playHuntResult(r) {
   if (hunt.worker) stopHunt();  // a result played: the hunt stops there
   hunt.picked = huntId(r);
-  if (iconSize(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }
+  if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }
   if (hunt.zone === 'emoji' && r.pick && emojiMemo?.done) { plane.emoji = emojiMemo.list[r.pick[0]]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }  // (its emoji, by name)  // (icons: by their names, pop=icon24.star.heart)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
@@ -9605,7 +9609,7 @@ function stopHunt() {
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
   if (hunt.zone === 'emoji') return emojiCells();
-  if (iconSize(hunt.zone)) return iconCells(iconSize(hunt.zone), iconSet(hunt.zone));
+  if (isIcon(hunt.zone)) return iconCells(iconSize(hunt.zone), iconSet(hunt.zone));
   if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'realm') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
@@ -10259,7 +10263,7 @@ function decodeCells(code, n) {
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase().replace(/ /g, '') : 'random');  // (Icon 24: icon24)
 // a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart;
 // a Punk zone's, their numbers: pop=punk24.7804)
-const zonePop = () => (lifeStart?.zone === 'emoji' ? `emoji.${plane.emoji}` : iconSize(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
+const zonePop = () => (lifeStart?.zone === 'emoji' ? `emoji.${plane.emoji}` : isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
@@ -10322,7 +10326,7 @@ function applySetup(s) {
       const [kind, a, b] = String(s.pop ?? 'random').split('.');
       plane.start = kind === 'random' || zoneOfWord(kind) ? 'random' : 'digits';
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
-      if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
+      if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
     }
     lifeColours = Number(s.k) || 1;
     $('lifeTrail').checked = lifeColours === 1;  // (Trail: on in Classic, off in colours, at first)
@@ -13042,7 +13046,7 @@ $('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, 
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
-  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : iconSize(zone) ? pixelIcon(zone.startsWith('punk') ? '.ooo.,o...o,o.o.o,o...o,o.oo.,o...o,ooo..' : '.....,.o.o.,.....,o...o,.ooo.', { 12: 9, 24: 7, 48: 5 }[iconSize(zone)])
+  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : isIcon(zone) ? pixelIcon(zone.startsWith('punk') ? '.ooo.,o...o,o.o.o,o...o,o.oo.,o...o,ooo..' : '.....,.o.o.,.....,o...o,.ooo.', zone.endsWith('Max') ? 5 : 7)
     : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face, as big as its size
   b.dataset.zone = zone;
   if (zone === 'full') b.dataset.default = 'yes';  // (see hunt)
@@ -13051,8 +13055,8 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: Wild, the whole grid, random soups, each colour's two parts opposite (a solid where a colour has two faces or spots)"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
-    : iconSize(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${iconSize(zone)} cells wide, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
-    : iconSize(zone) ? `An icon at random, ${iconSize(zone)} cells wide, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
+    : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits (96, 72, 48 or 24 cells: its width or height whole)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
+    : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits (96, 72, 48 or 24 cells: its width or height whole)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : 'Wild: the whole grid, random soups (a colour with two parts: side by side)';
