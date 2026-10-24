@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1146';
+const VERSION = '0.1.1147';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7072,14 +7072,13 @@ function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
   return patterns;
 }
 // On a surface, the turn an icon laid there shows upright: its top towards the world's up (z, the axes' Up), not mirrored
-// seen from outside (its right: up × the outward normal); on a face looking up or down (no up there), its top towards foot
-// (from a triangle's side to its tip: its foot on that side, see patternAt), else as laid
-function iconTurn(laid, pix, P, foot = null) {
+// seen from outside (its right: up × the outward normal); on a face looking up or down (no up there), as laid
+function iconTurn(laid, pix, P) {
   const g = walk.geo, at = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
   const C = [0, 1, 2].map((d) => laid.reduce((s, [t]) => s + at(t)[d], 0) / laid.length);
   const n = unit([0, 1, 2].map((d) => laid.reduce((s, [t]) => s + g.nrm[3 * t + d], 0)));
-  if (Math.abs(n[2]) > 0.9 && !foot) return 0;
-  const up = Math.abs(n[2]) > 0.9 ? foot : unit([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]]), right = cross(up, n), m = (P - 1) / 2;
+  if (Math.abs(n[2]) > 0.9) return 0;
+  const up = unit([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]]), right = cross(up, n), m = (P - 1) / 2;
   let best = 0, score = -Infinity;
   ICON_TURNS.forEach((T, k) => {
     const R = [0, 0, 0], D = [0, 0, 0];  // (the icon's own right and down, in space)
@@ -7107,7 +7106,7 @@ function iconLay(N) {
     const cross = box.flatMap((_, j) => (pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
     const whole = cross.every((t) => t >= 0) && new Set(cross).size === cross.length;
     const js = box.flatMap((_, j) => (at[j] >= 0 && owner.get(at[j]) === j ? [j] : (at[j] = -1, [])));
-    const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P, cells.up);
+    const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
     return { at, turn, js, whole };
   });
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
@@ -9753,12 +9752,10 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     const face = d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
     // its rows along its side most level (on a face looking up or down, along x; kites: AB's), the face's rows from that
-    // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back), on a face looking up
-    // or down its icon's foot on that side (cells.up, see iconTurn)
+    // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back)
     const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, n = unit(cross(sub(B, A), sub(C, A))), flat = Math.abs(n[2]) > 0.9;
     const level = flat ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n)), turns = [[A, B, C], [B, C, A], [C, A, B]];
     const r = per > 1 ? 0 : [0, 1, 2].reduce((b, q) => (Math.abs(dot3(unit(sub(turns[q][1], turns[q][0])), level)) > Math.abs(dot3(unit(sub(turns[b][1], turns[b][0])), level)) + 1e-9 ? q : b), 0);
-    if (flat) { const [P, Q, T] = turns[r], e = sub(T, P.map((v, d) => (v + Q[d]) / 2)); cells.up = unit(e.map((v, d) => v - dot3(e, n) * n[d])); }
     const f = g.size, back = ([i, j], o) => [f - 1 - o - i - j, i];
     for (const [x, y, v] of cells) {
       const I = Math.floor(x / per) + 2 * i0, o = I & 1;
