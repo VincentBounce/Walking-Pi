@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1135';
+const VERSION = '0.1.1136';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2543,7 +2543,7 @@ MODE_ICONS.lifeFrame = 'frame';
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus'], ['Pyramid', 1, 'Cuboctahedron']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus'], ['Pyramid', 1, 'Tetrahedron']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -4098,16 +4098,17 @@ function pyramidMesh(f) {
   const at = (A, B, C, i, j) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * i + (C[d] - A[d]) * j) / f));
   const A = [-1, -1, z], B = [1, -1, z], D = [-1, 1, z], flipped = [dot3(cross(D.map((c, d) => c - A[d]), B.map((c, d) => c - A[d])), [0, 0, -1]) > 0];
   for (let i = 0; i < f; i++) for (let j = 0; j < f; j++) tiles.push([at(A, B, D, i, j), at(A, B, D, i + 1, j), at(A, B, D, i + 1, j + 1), at(A, B, D, i, j + 1)]);
-  const base = [[-1, -1, z], [1, -1, z], [1, 1, z], [-1, 1, z]];
+  const base = [[-1, -1, z], [1, -1, z], [1, 1, z], [-1, 1, z]], triFaces = [];
   for (let k = 0; k < 4; k++) {
     const [P, Q] = [base[k], base[(k + 1) % 4]];
+    triFaces.push({ corners: [P, Q, top] });
     for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
       const t1 = [at(P, Q, top, i, j), at(P, Q, top, i + 1, j), at(P, Q, top, i, j + 1)];
       tiles.push([...t1, t1[2]]);
       if (i + j < f - 1) { const t2 = [at(P, Q, top, i + 1, j), at(P, Q, top, i + 1, j + 1), at(P, Q, top, i, j + 1)]; tiles.push([...t2, t2[2]]); }
     }
   }
-  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped }));  // (its square first, f² cells)
+  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped, triFaces, triFirst: f * f }));  // (its square first, f² cells; its triangles' rows as a triangle face's, see patternAt)
 }
 // its faces' feet (the nearest points of their planes to its middle): its square's, then its triangles', round it
 const pyramidFeet = () => [[0, 0, PYRAMID_Z], ...[[0, -1], [1, 0], [0, 1], [-1, 0]].map(([x, y]) => {
@@ -9262,7 +9263,7 @@ const SOLID_SPOTS = {
   stella: () => ({ 2: AXES.slice(0, 2), 4: TETRA4, 6: AXES, 8: CORNERS8 }),
   cubocta: () => ({ 2: AXES.slice(0, 2), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (its squares, its triangles, its corners)  // (2: its hollows ±x, the halves cut along its edges, 4 whole tips each)
   dodeca: () => ({}),
-  pyramid: () => ({ 4: pyramidFeet().slice(1) }),  // its triangles
+  pyramid: () => ({ 2: [1, 3].map((k) => pyramidFeet()[k]), 4: pyramidFeet().slice(1) }),  // its triangles (2: two opposite)
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa', 'stella', 'dodeca']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
@@ -9287,6 +9288,7 @@ const FACE_GROUPS = {
   octa: { 2: ['00001111', '06'], 4: ['00112233', '0257', '01232301', '0725'], 8: ['01234567', '01234567'] },
   icosa: { 2: ['00000000001111111111', '0d'], 4: ['00010201123333223112', '08jb'], 5: ['00110022314443322431', '02gic'], 10: ['00112342567788934569', '0245g8iace', '01234567893210489567', '01b3ehi7f9'] },
   dodeca: { 2: ['001110101100', '03'], 3: ['001220102211', '029'], 4: ['001220333211', '0248'], 6: ['001122334455', '03478b', '011023324554', '01468a'], 12: ['0123456789ab', '0123456789ab'] },
+  pyramid: { 5: ['01234', '01234'] },
   cubocta: { 2: ['01010100010111', '6d'], 7: ['01234502361546', '6a78cb9', '00112234566543', '024dcb9'] },
 };
 const SPOT_PAIRS = {
@@ -9685,10 +9687,10 @@ const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
-    || (m.sphere === 'pyramid' && K === 1) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+    || (m.sphere === 'pyramid' && [1, 2, 4].includes(K)) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
+const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.triFaces && walk.life?.colours > 1 ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -9709,12 +9711,12 @@ function patternAt(i, K, cells, partial = false) {  // partial: a sheet's, its c
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
   }
-  if ((g.sides === 3 && !g.squares) || g.kite) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle
-    const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(triFace(sphere, K, i));
+  if ((g.sides === 3 && !g.squares) || g.kite || (g.triFaces && K > 1)) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; the pyramid's: its colours' triangles
+    const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(g.triFaces ? patchSpots(sphere, K)[i] : triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
-    const face = d ? g.faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(g.faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
+    const face = d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
-    for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
+    for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([(g.triFirst ?? 0) + face * perFace + per * k + (x % per), v]); }
     return out;
   }
   if (['cubocta', 'pyramid'].includes(MODES[$('mode').value].sphere)) {  // the cuboctahedron: on its square at the colour's spot (see patternsOn), as the cube's; the pyramid: on its square, under it
