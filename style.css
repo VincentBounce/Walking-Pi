@@ -525,6 +525,8 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   pointer-events: none;
 }
 .stage.on-sky .hint { color: rgba(230, 237, 243, 0.6); }  /* over a sky (see drawGrid) */
+#tip { font-weight: 600; color: var(--text); max-width: 420px; margin-left: auto; }  /* (a long one on lines of its own) */  /* what the mouse is on, its tooltip (see tip) */
+.stage.on-sky #tip { color: rgb(230, 237, 243); }
 
 @media (max-width: 720px) {
   main { flex-direction: column; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1089';
+const VERSION = '0.1.1090';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3239,6 +3239,13 @@ function updateHint() {
   showZoom();
   updateDisplayMenu();
 }
+// Tooltips: none of the browser's (a banner over all), the one of what the mouse is on in bold above the hint, in the
+// view's bottom right corner (its title kept as data-tip; a title set again later, taken again)
+document.addEventListener('mouseover', (e) => {
+  const el = e.target.closest?.('[title], [data-tip]');
+  if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
+  $('tip').textContent = el?.dataset.tip ?? '';
+});
 // the hint, its zoom against the view framed (×1: all of it in view, see viewFor; ×2 twice as near): the mouse on a line,
 // the double-click on the next (see .hint)
 function showZoom() {
