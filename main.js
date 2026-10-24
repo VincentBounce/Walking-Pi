@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1072';
+const VERSION = '0.1.1073';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4110,7 +4110,18 @@ function kleinPoint(x, y, nu, nv, m) {
 // corners one vertex per point of the bottle, found by their place on the sheet (not in space: it crosses
 // itself, and the points where it does are two)
 const kleinColumns = { klein: (nv) => twelve(nv / TORUS_TUBE), kleinHex: (nv) => hexTorusColumns(nv), kleinTri: (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE)),
-  kleinCairo: (nv) => twelve(nv / TORUS_TUBE) + 1 };  // Cairo: an odd length, so that the ends turned over keep the tiling
+  kleinCairo: (nv) => oddColumns(nv / TORUS_TUBE) };  // Cairo: an odd length, so that the ends turned over keep the tiling
+// an odd length near x (within a fifth), the one with the most of 3, 5, 7, 9 dividing it, so as many colours (slices along the
+// ring, see torusBlocks) as can be; then the nearest
+function oddColumns(x) {
+  let best = 0, score = -1;
+  for (let n = Math.max(3, Math.ceil(0.8 * x)); n <= 1.25 * x; n++) {
+    if (n % 2 === 0) continue;
+    const s = [3, 5, 7, 9].filter((d) => n % d === 0).length;
+    if (s > score || (s === score && Math.abs(n - x) < Math.abs(best - x))) { best = n; score = s; }
+  }
+  return best || 2 * Math.round((x - 1) / 2) + 1;
+}
 kleinColumns.kleinKite = kleinColumns.kleinTri;  // kites: the triangles', each cut in 3
 kleinColumns.kleinTriTurned = kleinColumns.kleinKiteTurned = (nv) => turnedTriColumns(nv);  // turned by 30° (as the tori, see turnedTorus)
 kleinColumns.kleinHexTurned = (nv) => turnedHexColumns(nv);
