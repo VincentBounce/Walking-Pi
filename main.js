@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1136';
+const VERSION = '0.1.1137';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4077,15 +4077,17 @@ function cuboctaMesh(f) {
       tiles.push([P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]);
     }
   }
+  const triFaces = [];
   for (const [x, y, z] of CORNERS8) {  // a triangle: the 3 middles of the cube's edges at that corner
     const [A, B, C] = [[x, y, 0], [x, 0, z], [0, y, z]];
+    triFaces.push({ corners: [A, B, C] });
     for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
       const t1 = [at(A, B, C, i, j), at(A, B, C, i + 1, j), at(A, B, C, i, j + 1)];
       tiles.push([...t1, t1[2]]);
       if (i + j < f - 1) { const t2 = [at(A, B, C, i + 1, j), at(A, B, C, i + 1, j + 1), at(A, B, C, i, j + 1)]; tiles.push([...t2, t2[2]]); }
     }
   }
-  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped }));  // (its squares first, f² cells each, as AXES)
+  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped, triFaces, triFirst: 6 * f * f }));  // (its squares first, f² cells each, as AXES; its triangles' rows as a triangle face's, see patternAt)
 }
 
 /* Square pyramid: its square (edge 2, at z0) cut into f × f squares, its 4 triangles (equilateral: its tip √2 above) into
@@ -4115,6 +4117,10 @@ const pyramidFeet = () => [[0, 0, PYRAMID_Z], ...[[0, -1], [1, 0], [0, 1], [-1, 
   const n = unit([x * Math.SQRT2, y * Math.SQRT2, 1]), c = dot3(n, [x, y, PYRAMID_Z]);  // (its plane through its square's edge (x, y, z0) and the tip)
   return n.map((v) => v * c);
 })];
+
+// the colours whose patterns go on the triangles of a solid of squares and triangles (see patternAt): the pyramid's 2 and 4,
+// the cuboctahedron's 8
+const onTriangles = (sphere, K) => ({ pyramid: [2, 4], cubocta: [8] })[sphere]?.includes(K) ?? false;
 
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
@@ -9687,10 +9693,10 @@ const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
-    || (m.sphere === 'pyramid' && [1, 2, 4].includes(K)) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+    || (m.sphere === 'pyramid' && K === 1) || onTriangles(m.sphere, K) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.triFaces && walk.life?.colours > 1 ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
+const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.triFaces && onTriangles(MODES[$('mode').value].sphere, walk.life?.colours) ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -9711,7 +9717,7 @@ function patternAt(i, K, cells, partial = false) {  // partial: a sheet's, its c
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
   }
-  if ((g.sides === 3 && !g.squares) || g.kite || (g.triFaces && K > 1)) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; the pyramid's: its colours' triangles
+  if ((g.sides === 3 && !g.squares) || g.kite || (g.triFaces && onTriangles(MODES[$('mode').value].sphere, K))) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; the pyramid's: its colours' triangles
     const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(g.triFaces ? patchSpots(sphere, K)[i] : triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
