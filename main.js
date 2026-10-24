@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1145';
+const VERSION = '0.1.1146';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7054,12 +7054,15 @@ function iconSquare(kind, N) {
   iconPatternMemo.set(key, square);
   return square;
 }
+// a list of n items, each made when first read (its length, its items by index: the 10,000 punks' cells not all at once, only
+// those drawn; a hunt's, all: see huntClick)
+const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
 function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
   const key = `${kind}|${N}|${set.source}|${turn}`;
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const P = 24, { box, pix } = iconSquare(kind, N);
-  const patterns = set.bits.map((b64) => {  // each icon: its cells' places in the square
-    const pixel = iconPixel(b64);
+  const patterns = lazyList(set.bits.length, (i) => {  // each icon: its cells' places in the square
+    const pixel = iconPixel(set.bits[i]);
     return pix.flatMap(([px, py], j) => (pixel(...ICON_TURNS[turn](px, py, P)) ? [j] : []));
   });
   patterns.box = box;
@@ -7115,7 +7118,11 @@ function iconChoices(N, set) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
   const lays = iconLay(N);  // (each icon its cells of the colour's square)
-  const choices = Array.from({ length: K }, (_, i) => (lays ? iconPatterns(kind, N, set, lays[i].turn).map((js) => Int32Array.from(js.flatMap((j) => (lays[i].at[j] >= 0 ? [lays[i].at[j], i + 1] : [])))) : []));
+  const choices = Array.from({ length: K }, (_, i) => {
+    if (!lays) return [];
+    const patterns = iconPatterns(kind, N, set, lays[i].turn);
+    return lazyList(patterns.length, (k) => Int32Array.from(patterns[k].flatMap((j) => (lays[i].at[j] >= 0 ? [lays[i].at[j], i + 1] : []))));
+  });
   iconMemo = { key, choices };
   return choices;
 }
@@ -9687,7 +9694,7 @@ function huntClick() {
       renderHunt();
     };
     w.postMessage({ n: L.alive.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, more: L.ringMore, side: L.side, B: L.B, S: L.S, C: L.C, K,
-                    cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), dense: DENSITY, all, choices,
+                    cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), dense: DENSITY, all, choices: choices?.map((c) => Array.from({ length: c.length }, (_, k) => c[k])),
                     cap: K === 1 ? 50000 : 4000, part, parts, goal: K === 1 ? hunt.goal : null });
     return w;
   });
