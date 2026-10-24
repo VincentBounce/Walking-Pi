@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1133';
+const VERSION = '0.1.1134';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7008,7 +7008,8 @@ function iconSquare(kind, N) {
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
   const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1]));
-  const square = { box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]) };
+  const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]);  // (its middle, moved as its cells: o + ½, ½)
+  const square = { box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };
   iconPatternMemo.set(key, square);
   return square;
 }
@@ -7053,7 +7054,8 @@ function iconLay(N) {
   const { box, pix } = iconSquare(kind, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
   const lays = Array.from({ length: K }, (_, i) => {
     const at = new Int32Array(box.length).fill(-1);
-    for (const [t, j] of patternAt(i, K, box.map(([x, y], j) => [x, y, j]), true)) if (!dead.has(t)) at[j] = t;
+    const cells = Object.assign(box.map(([x, y], j) => [x, y, j]), { mid: iconSquare(kind, N).mid });
+    for (const [t, j] of patternAt(i, K, cells, true)) if (!dead.has(t)) at[j] = t;
     const js = box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
     const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
     return { at, turn, js };
@@ -7661,7 +7663,7 @@ function brushCells() {
 }
 // where the brush's cells go, round the cell pointed at (Cairo: from an even square): wrapping round the
 // grid, or the ones inside it; [x, y, state]
-function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells()) {
+function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells(), to = null) {  // to: the middle there instead (see patternAt)
   if (!cells) return [[cx, cy, 1]];  // one cell: the one pointed at, whichever way it lies
   const { kind, W, torus } = walk.plane, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
   if (RECTS[kind]) {  // a rectangle's: laid where it is, its middle on the cell pointed at to a lattice cell of its grid (not a whole rectangle)
@@ -7678,7 +7680,8 @@ function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells()) {
   // its middle (its cells' middles' box's) on the cell pointed at, to a lattice step (a slanted lattice's rows: by where they
   // are, not their numbers; a half step back); Cairo by its squares' numbers (not a lattice of its cells)
   const square = (x) => Math.floor(x / per), o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]);
-  const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = (d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2, to = cellMiddle(kind, cx, cy);
+  const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = (d) => cells.mid?.[d] ?? (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2;  // (an icon's: its square's, see iconSquare)
+  to ??= cellMiddle(kind, cx, cy);
   const D = a[0] * b[1] - a[1] * b[0], ex = to[0] - mid(0), ey = to[1] - mid(1), near = (v) => Math.ceil(v - 0.5 - 1e-9);
   let i = kind === 'cairo' ? square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1) : near((ex * b[1] - ey * b[0]) / D);
   let j = kind === 'cairo' ? cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1) : near((a[0] * ey - a[1] * ex) / D);
@@ -9659,8 +9662,10 @@ function patternAt(i, K, cells, partial = false) {  // partial: a sheet's, its c
   const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [];
   const w = Math.max(...cells.map((c) => c[0])) + 1, h = Math.max(...cells.map((c) => c[1])) + 1;
   if (walk.plane) {
-    const { row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : planeFrame().cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows);
-    return brushAt([t % row, Math.floor(t / row)], cells).map(([x, y, v]) => [y * row + x, v]);
+    const { kind, row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : planeFrame().cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows);
+    const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), cs = K === 1 && !wallSlices(K) ? planeCentre().map(mid) : null;  // (one colour: the grid's very middle)
+    const to = cs && [0, 1].map((d) => cs.reduce((sum, m) => sum + m[d], 0) / cs.length);
+    return brushAt([t % row, Math.floor(t / row)], cells, to).map(([x, y, v]) => [y * row + x, v]);
   }
   if (g.torus && (g.mobius || g.klein || g.kite || g.tiling || g.sides !== 4)) return sheetPatternAt(famousSpot(i, K), cells, partial);  // any other sheet
   if (g.torus) {  // cells u × nv + v, the pattern's rows along u
