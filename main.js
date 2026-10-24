@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1138';
+const VERSION = '0.1.1139';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7048,6 +7048,7 @@ function iconSquare(kind, N) {
   const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1]));
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]);  // (its middle, moved as its cells: o + ½, ½)
   const square = { box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };
+  if (iconPatternMemo.size > 32) iconPatternMemo.clear();
   iconPatternMemo.set(key, square);
   return square;
 }
@@ -9201,11 +9202,21 @@ const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 const ICON_SETS = { icon: { bits: ICON_BITS, names: ICON_NAMES, word: 'icon', label: (i) => `“${ICON_NAMES[i]}”`, source: 'Pixelarticons' },
                     punk: { bits: PUNK_BITS, names: PUNK_BITS.map((_, i) => String(i)), word: 'CryptoPunk', label: (i) => `#${i}`, source: 'CryptoPunks' } };
 const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
-const ICON_MAX = [96, 72, 48, 24];  // (Icon max, Punk max: the widest of these that fits, see iconLay)
+const ICON_MAX = [96, 72, 48, 24];  // (Icon max, Punk max on squares: the widest of these that fits, a pixel whole cells)
+// Icon max, Punk max: the widest that fits (see iconLay); on squares, of ICON_MAX; elsewhere (no cells on its pixels anyway)
+// to the cell, up to 192, by halves (wider fits no less); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = () => {
   const key = `${$('mode').value}|${walk.life.seed.length}|${walk.life.colours}|${colourMix}|${walk.plane?.torus}|${patternKind()}`;
-  return (iconMaxMemo?.key === key ? iconMaxMemo : (iconMaxMemo = { key, N: ICON_MAX.find((N) => iconFits(N)) ?? 24 })).N;
+  if (iconMaxMemo?.key === key) return iconMaxMemo.N;
+  let N = 24;
+  if (patternKind() === 'square') N = ICON_MAX.find((n) => iconFits(n)) ?? 24;
+  else if (iconFits(24)) {
+    let hi = 48;
+    while (hi <= 192 && iconFits(hi)) { N = hi; hi *= 2; }
+    for (hi = Math.min(hi, 193); hi - N > 1; ) { const m = (N + hi) >> 1; if (iconFits(m)) N = m; else hi = m; }
+  }
+  return (iconMaxMemo = { key, N }).N;
 };
 const iconSize = (zone) => (!isIcon(zone) ? 0 : zone.endsWith('Max') ? iconMax() : 24);  // (an icon's width in cells; max: greyed where 24 doesn't fit)
 const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : 'icon'];
@@ -13055,8 +13066,8 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: Wild, the whole grid, random soups, each colour's two parts opposite (a solid where a colour has two faces or spots)"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
-    : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits (96, 72, 48 or 24 cells: its width or height whole)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
-    : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits (96, 72, 48 or 24 cells: its width or height whole)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
+    : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width or height whole (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
+    : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width or height whole (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : 'Wild: the whole grid, random soups (a colour with two parts: side by side)';
