@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1070';
+const VERSION = '0.1.1071';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7570,9 +7570,11 @@ const COLOUR_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
 const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 5: [5, 1], 6: [3, 2], 7: [7, 1], 8: [4, 2], 9: [3, 3], 10: [5, 2], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
 // ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3; of those that divide its sides first
-// (26 × 9: 3 colours 1 × 3 round the tube, not 3 × 1)
+// (26 × 9: 3 colours 1 × 3 round the tube, not 3 × 1); a Klein bottle's, slices along the ring only (its ends glued turned
+// over, y → nv − y: blocks round the tube would swap there, a colour going on as another)
 function torusBlocks(K, g = walk.geo) {
   let best = [K, 1], err = Infinity;
+  if (g?.klein) return best;
   for (let b = 1; b <= K; b++) if (K % b === 0) {
     const fits = !g?.nu || (g.nu % (K / b) === 0 && g.nv % b === 0), e = (fits ? 0 : 100) + Math.abs(Math.log(b / ((K / b) * TORUS_TUBE)));
     if (e < err) { err = e; best = [K / b, b]; }
