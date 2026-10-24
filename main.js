@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1142';
+const VERSION = '0.1.1143';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7035,19 +7035,21 @@ const ICON_TURNS = [(x, y) => [x, y], (x, y, S) => [S - 1 - y, x], (x, y, S) => 
   (x, y, S) => [S - 1 - x, y], (x, y) => [y, x], (x, y, S) => [x, S - 1 - y], (x, y, S) => [S - 1 - y, S - 1 - x]];
 // an icon's pixel (of its 24 × 24), on or off
 const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0; };
-// the square's cells, N cells wide: a patch round cell 0 of the grid, the cells under the icon (box, moved by whole lattice
-// steps: its cells' shapes kept), and their pixel (pix)
+// the square's cells, N cells wide (a cell as wide as the root of its mean area: its lattice cell's), a patch
+// round cell 0 of the grid: the cells under the icon (box, moved by whole lattice steps: its cells' shapes kept), and their
+// pixel (pix)
 function iconSquare(kind, N) {
   const key = `${kind}|${N}`;
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = 24, k = N / P, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
+  const P = 24, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
+  const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
+  const cells = [0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))), k = (N / P) * Math.sqrt(cells.reduce((sum, v) => sum + v, 0) / cells.length);
   for (let y = -R; y <= R; y++) for (let x = -R * per; x <= R * per; x++) {
     const m = cellMiddle(kind, x, y), px = Math.floor((m[0] - o[0] - 0.5) / k + P / 2), py = Math.floor((m[1] - o[1] - 0.5) / k + P / 2);
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
   const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1]));
-  const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]);  // (its middle, moved as its cells: o + ½, ½)
-  const square = { box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };
+  const square = { box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };  // (its middle, moved as its cells: o + ½, ½)
   if (iconPatternMemo.size > 32) iconPatternMemo.clear();
   iconPatternMemo.set(key, square);
   return square;
