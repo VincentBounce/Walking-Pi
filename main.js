@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1124';
+const VERSION = '0.1.1125';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4906,6 +4906,17 @@ function updateMorphButton() {
   if (!sh) return;
   [$('shapeFlat').textContent, $('shapeRound').textContent] = walk.geo.torus ? ['Unrolled', 'Rolled'] : ['Flat', 'Inflated'];
   if (document.activeElement !== $('shapeM')) $('shapeM').value = sh.target;
+  // greyed on the pits and the sponge (their holes: no form between); its default, told in its tooltip, each shape's of
+  // this tab (round: a sheet rolled up, a solid inflated)
+  $('shapeM').disabled = ['pits', 'menger'].includes(MODES[$('mode').value].sphere);
+  const [kind, space] = NAV[$('mode').value], sheet = ['Torus', 'Möbius strip', 'Klein bottle'], ways = { Inflated: [], Rolled: [], Flat: [] };
+  for (const s of navValues(2, [kind, space])) {
+    const w = Object.keys(NAV).find((v) => NAV[v][0] === kind && NAV[v][1] === space && NAV[v][2] === s);
+    if (!['pits', 'menger'].includes(MODES[w].sphere)) ways[MODES[w].round ? (sheet.includes(s) ? 'Rolled' : 'Inflated') : 'Flat'].push(SHAPE_SHORT[s] ?? s);
+  }
+  const box = $('shapeRow').querySelector('.shape-slider');
+  box.dataset.default = Object.entries(ways).filter(([, on]) => on.length).map(([way, on]) => `${way} by default on ${on.join(', ')}`).join('\n');
+  box.dataset.greyed = 'on Pits and Sponge';
 }
 // Unrolled ── Rolled (Flat ── Inflated): the form follows the slider at once (the buttons' animation, from
 // one end to the other, when set from elsewhere); its perspective, the form's own at an end
