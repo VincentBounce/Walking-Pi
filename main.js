@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1121';
+const VERSION = '0.1.1122';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5064,7 +5064,7 @@ function syncSizeStepper() {
   $('startDown').disabled = startNo() <= 1;
   $('startUp').disabled = startNo() >= starts.length;
 }
-// The sizes as a slider under the stepper, across: a notch each, the one in use its knob (none: hidden); dragged, the label
+// The sizes as a slider under the stepper, across, a notch each under it, the one in use its knob (none: hidden); dragged, the label
 // shows the size under it (preview), the size picked when let go (pick: a surface is built again), a notch clicked at once
 function sizeGauge(el, n, i, preview, pick) {
   el.hidden = n < 2;
@@ -5072,7 +5072,9 @@ function sizeGauge(el, n, i, preview, pick) {
   const range = Object.assign(document.createElement('input'), { type: 'range', min: 0, max: n - 1, step: 1, value: i, title: 'The usual sizes: drag, or click a notch' });
   range.addEventListener('input', () => preview(Number(range.value)));
   range.addEventListener('change', () => pick(Number(range.value)));
-  el.replaceChildren(...Array.from({ length: n }, () => document.createElement('span')), range);
+  const notches = Object.assign(document.createElement('div'), { className: 'notches' });
+  notches.append(...Array.from({ length: n }, () => document.createElement('span')));
+  el.replaceChildren(range, notches);
 }
 // − / +: the usual sizes (from a torus size of its own, the usual ones just below or above it)
 function stepSize(delta) {
