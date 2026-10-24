@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1150';
+const VERSION = '0.1.1151';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4108,8 +4108,8 @@ function hullMesh(kind, f) {
   return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { squareFaces, triFaces, triFirst: squareFaces.length * f * f }));
 }
 // A hull solid's colourings (Realm, Wild, the zones, the icons) by its faces' kinds: K colours a face each, of the kind with
-// K faces (squares first), or that kind's faces cut by planes through its middle (one, two or three of x, y, z, x ± y, x ± z,
-// y ± z: as many faces each side, none on them); then the same for a kind's families; all its faces, a face each. { kind: 'square', 'tri' or 'all', groups: each
+// K faces (squares first), or two opposite faces each, or that kind's faces cut by planes through its middle (one, two or
+// three of x, y, z, x ± y, x ± z, y ± z: as many faces each side, none on them); then the same for a kind's families; all its faces, a face each. { kind: 'square', 'tri' or 'all', groups: each
 // colour's faces (their places, squares first: f² cells each, see hullMesh), mids: its faces' middles }; null: none for K
 const HULL_PLANES = [[0, 0, 1], [1, 0, 0], [0, 1, 0], [1, 1, 0], [1, -1, 0], [1, 0, 1], [1, 0, -1], [0, 1, 1], [0, 1, -1]];
 const hullColourMemo = {};
@@ -4120,6 +4120,8 @@ function hullColourings(sphere) {
   const add = (kind, groups) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups, mids }; };
   const offer = (kind, qs) => {
     add(kind, qs.map((q) => [q]));
+    const across = (q) => qs.find((p) => mids[p].every((v, d) => Math.abs(v + mids[q][d]) < 1e-9));  // (its opposite face)
+    if (qs.every((q) => across(q) !== undefined)) add(kind, qs.filter((q) => q < across(q)).map((q) => [q, across(q)]));
     for (let a = 0; a < HULL_PLANES.length; a++) for (const ps of [[a], ...HULL_PLANES.slice(a + 1).map((_, b) => [a, a + 1 + b]), ...HULL_PLANES.slice(a + 1).flatMap((_, b) => HULL_PLANES.slice(a + 2 + b).map((__, c) => [a, a + 1 + b, a + 2 + b + c]))]) {
       const side = (q) => ps.map((k) => dot3(HULL_PLANES[k], mids[q]));
       if (qs.some((q) => side(q).some((v) => Math.abs(v) < 1e-9))) continue;
