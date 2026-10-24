@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1143';
+const VERSION = '0.1.1144';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9715,7 +9715,7 @@ const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
-    || (m.sphere === 'pyramid' && K === 1) || onTriangles(m.sphere, K) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+    || (m.sphere === 'pyramid' && K === 1) || (walk.geo?.sides === 6 && !walk.geo.torus && !m.plane) || onTriangles(m.sphere, K) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.triFaces && onTriangles(MODES[$('mode').value].sphere, walk.life?.colours) ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
@@ -9755,6 +9755,10 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     }
     return out;
   }
+  if (g.sides === 6) {  // a solid of hexagons: the pattern's lattice on its face's, by where its cells are (see hexFaceAt)
+    const sphere = MODES[$('mode').value].sphere;
+    return hexFaceAt(K === 1 ? patchCentre() : centreCells(unit(patchSpots(sphere, K)[i]))[0], cells, partial);
+  }
   const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
   // its face's squares, or its pit's floor's (the cube with pits); tetrakis triangles: a cell x of the pattern triangle x % 4
   // (the plane's: its square's left, bottom, top, right) of square x / 4, the one on that side of the face's square
@@ -9765,6 +9769,35 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
   for (const [x, y, v] of cells) {
     const r = m + y - (h >> 1), c = m + Math.floor(x / per) - (wq >> 1);
     if (r >= 0 && c >= 0 && r < a && c < a) out.push([per > 1 ? side(square(r, c), x % per) : square(r, c), v]);
+  }
+  return out;
+}
+// A pattern on a solid of hexagons (see hexSolidMesh), round its cell c0: the plane's hexagons on its face's, the plane's
+// rows (a neighbour 1 along) towards c0's neighbour most level, the pattern's cell nearest its middle on c0; each cell the one there
+// (within a third of a cell), on that face (its normal as c0's), else cut off (partial: an icon's) or none at all
+function hexFaceAt(c0, cells, partial) {
+  const g = walk.geo, P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], N3 = (t) => [g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]];
+  const C = P3(c0), n = N3(c0), { start, list } = walk.life.nbr, out = [];
+  const nbrs = [...list.subarray(start[c0], start[c0 + 1])].map((t) => [t, Math.hypot(...P3(t).map((v, d) => v - C[d]))]), s = Math.min(...nbrs.map((q) => q[1]));
+  const right = Math.abs(n[2]) > 0.9 ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n));  // (the face's level, as iconTurn's: up × n)
+  const along = nbrs.filter((q) => q[1] < 1.05 * s).map(([t]) => { const e = P3(t).map((v, d) => v - C[d]); return unit(e.map((v, d) => v - dot3(e, n) * n[d])); });
+  const u = along.reduce((best, e) => (dot3(e, right) > dot3(best, right) ? e : best)), w = cross(n, u);  // (its rows the most level of its 6 ways)
+  if (g.hexIndex?.s !== s) {  // (the cells by where they are, in boxes a cell wide)
+    const boxes = new Map(), key = (p) => p.map((v) => Math.round(v / s)).join();
+    for (let t = 0; t < g.n; t++) { const k = key(P3(t)); if (!boxes.has(k)) boxes.set(k, []); boxes.get(k).push(t); }
+    g.hexIndex = { s, find: (p) => {
+      const [x, y, z] = p.map((v) => Math.round(v / s));
+      let best = -1, far = s / 3;
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) for (const t of boxes.get([x + a, y + b, z + c].join()) ?? []) { const d = Math.hypot(...P3(t).map((v, k) => v - p[k])); if (d < far) { far = d; best = t; } }
+      return best;
+    } };
+  }
+  const ms = cells.map(([x, y]) => cellMiddle('hex', x, y)), mid = cells.mid ?? [0, 1].map((d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2);
+  const a = ms.reduce((best, m, k) => (Math.hypot(m[0] - mid[0], m[1] - mid[1]) < Math.hypot(ms[best][0] - mid[0], ms[best][1] - mid[1]) ? k : best), 0);
+  for (let k = 0; k < cells.length; k++) {
+    const x = ms[k][0] - ms[a][0], y = ms[k][1] - ms[a][1], t = g.hexIndex.find(C.map((c, d) => c + s * (x * u[d] + y * w[d])));
+    if (t >= 0 && dot3(N3(t), n) > 0.99) out.push([t, cells[k][2]]);
+    else if (!partial) return [];
   }
   return out;
 }
