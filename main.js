@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1092';
+const VERSION = '0.1.1093';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1504,7 +1504,7 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
 // greyed when it cannot be clicked (gold still if on: Walls on a grid that never repeats); a small triangle in its corner,
 // if marked (a count of colours whose battles can bring a colour back); again: on, a click on it still does something (a zone
 // draws another start, a shape's switches walls and a torus): its hover gold; toggle: a switch on or off (Trail, Walls,
-// Turned, System…), said once when made and kept: its hover gold either way; turn: its picture turned by so many degrees (a
+// Turned, System…), said once when made and kept: on, its hover gold (off, the usual one); turn: its picture turned by so many degrees (a
 // second state a click again gives: a torus's tiles turned)
 const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, again = false, toggle = false, turn = 0, click = null }) => {
   const b = document.createElement('button');
@@ -1522,7 +1522,7 @@ const setTile = (b, { on = false, can = true, mark = false, again = false, turn 
   b.disabled = !can;
   b.classList.toggle('active', on);
   b.classList.toggle('mark', mark && can);
-  b.classList.toggle('switch', can && ('toggle' in b.dataset || (again && on)));
+  b.classList.toggle('switch', can && on && (again || 'toggle' in b.dataset));  // (off: the usual hover)
   return b;
 };
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
