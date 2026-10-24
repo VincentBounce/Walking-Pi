@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1152';
+const VERSION = '0.1.1153';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1899,6 +1899,7 @@ const ICONS = (() => {
     symHalf: flags([[0, false], [Math.PI, false]]),
     ...Object.fromEntries([2.2, 3.5, 4.8, 6, 7.2, 8.4, 9.6, 11].map((r, i) => [`zone${i + 1}`, dots([[12, 12]], r)])),
     zoneFace: '<rect class="f" x="4" y="4" width="16" height="16" rx="2"/>',  // a whole face
+    zoneMirror: '<rect class="f" x="3" y="3" width="8" height="8" rx="1.5"/><rect class="f" x="13" y="13" width="8" height="8" rx="1.5"/>',  // two opposite faces
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     bricks: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',  // Walls: a brick wall
@@ -9234,8 +9235,8 @@ const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], pun
                      radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere the widest patches (see realmParts)
+                     mirror: ['zoneMirror', 'Mirror'],  // each colour's two opposite faces (or parts: see colouring, hullColourings)
                      full: ['zoneAll', 'Wild'],
-                     mirror: ['zoneAll', 'Mirror'],  // Wild with each colour's two parts opposite (see colouring)
                      centred: [null, 'Famous'],  // the rule's patterns, each at its colour's spot (see patternChoices)
                      patterns: [null, 'Anywhere'],  // the same, mixed, anywhere in each colour's part
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
@@ -9482,9 +9483,10 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
   const hull = hullColours(MODES[$('mode').value].sphere, K);
-  if (hull) {  // a hull solid (see hullColourings): Wild, each cell to its nearest colour's face's middle (two opposite faces a colour: its first, Mirror both); a zone, round each colour's first face's middle
+  if (hull) {  // a hull solid (see hullColourings): Wild, each cell to its nearest colour's face's middle (two opposite faces a colour: its first); Mirror, those two faces; a zone, round each colour's first face's middle
     if (r) return hull.groups.map((gr) => lifePatch(r, hullFaceMiddle(gr[0], hull.mids[gr[0]])));
-    const own = hull.groups.flatMap((gr, k) => (hull.pairs && !mirror ? [gr[0]] : gr).map((q) => [hull.mids[q], k]));
+    if (mirror) return hull.groups.map((gr) => gr.flatMap(hullFaceCells));  // (Mirror: its two opposite faces only)
+    const own = hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [hull.mids[q], k]));
     for (let t = 0; t < n; t++) {
       if (!open(t)) continue;
       const far = own.map(([m]) => Math.hypot(g.cen[3 * t] - m[0], g.cen[3 * t + 1] - m[1], g.cen[3 * t + 2] - m[2])), least = Math.min(...far), ks = new Set(own.flatMap(([, k], q) => (far[q] < least + 1e-9 ? [k] : [])));
@@ -13161,7 +13163,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link'
     : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
-    : zone === 'mirror' ? "Mirror: Wild, the whole grid, random soups, each colour's two parts opposite (a solid where a colour has two faces or spots)"
+    : zone === 'mirror' ? "Mirror: each colour's two opposite faces (a solid where a colour has two), random soups in them"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
     : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
