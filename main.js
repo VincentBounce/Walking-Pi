@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1103';
+const VERSION = '0.1.1104';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1550,7 +1550,7 @@ const card = ({ pic = '', name = '', detail = '', base = '', title = '', on = fa
   return b;
 };
 // Trail: a dead cell fades through greys for a few generations (States and Age, in colours too; two states)
-const trailApplies = () => !!walk.life && walk.life.C === 2 && $('colorMode').value !== 'digit';
+const trailApplies = () => !!walk.life && walk.life.C === 2 && !walk.life.margolus && $('colorMode').value !== 'digit';  // (a reversible rule's blocks: none, their cells move, none dies, and backwards a trail would show where they are born)
 const trailOn = () => $('lifeTrail').checked && trailApplies();
 // Trail, a tile turned on and off (see tile): its picture a live cell with its comet of fading Ink behind; greyed for Activity
 // and dying stages
