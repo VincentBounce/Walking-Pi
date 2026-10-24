@@ -529,7 +529,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   white-space: pre-line;  /* its lines stacked in the bottom right corner */
   pointer-events: none;
 }
-.stage.on-sky .hint { color: rgba(230, 237, 243, 0.6); }  /* over a sky (see drawGrid) */
+:root:not([data-theme="light"]) .hint { color: rgba(230, 237, 243, 0.6); }  /* the dark page's: a light text, over its Twilight sky as over a plain one (the muted grey lost on the sky) */
 #tip { max-width: 420px; margin-left: auto; }
 .tip-default { opacity: 0.7; }  /* a control's default, under its tooltip: its colour, fainter (lit as it is, over a sky or a page) */
 
