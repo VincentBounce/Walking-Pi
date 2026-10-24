@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1104';
+const VERSION = '0.1.1105';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1452,7 +1452,8 @@ function renderViewTiles() {
   viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
     click: () => { $(id).checked = !$(id).checked; $(id).dispatchEvent(new Event('change')); renderViewTiles(); } }));
   if (!$('viewTiles').children.length) $('viewTiles').replaceChildren(...viewTiles);
-  VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled }));
+  const mode = MODES[$('mode').value], first = { perspective: perspectiveFor(mode, mode.round ? 1 : 0), light: true, autoPlay: false, autoRotate: false };  // (their defaults: see displayDefaults)
+  VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id] ? 'on' : 'off' }));
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
 $('viewTools').addEventListener('mouseenter', renderViewTiles);
@@ -1500,10 +1501,10 @@ function tileGroup(buttons) {
   g.append(...buttons);
   return g;
 }
-function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon per value, above its name
+function renderChoiceButtons(sel, box, pictures = null, first = null) {  // pictures: an icon per value, above its name; first: the default's value
   box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
     const click = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); };
-    if (pictures) return tile({ pic: icon(pictures[o.value]), text: o.text, on: o.value === sel.value, can: !o.disabled, click });
+    if (pictures) return tile({ pic: icon(pictures[o.value]), text: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === first ? 'yes' : '', click });
     const b = document.createElement('button');
     b.textContent = o.text;
     b.classList.toggle('active', o.value === sel.value);
@@ -1519,7 +1520,7 @@ function renderChoiceButtons(sel, box, pictures = null) {  // pictures: an icon 
 // draws another start, a shape's switches walls and a torus): its hover gold; toggle: a switch on or off (Trail, Walls,
 // Turned, System…), said once when made and kept: its hover gold on, a pale gold off (as a choice picked); turn: its picture turned by so many degrees (a
 // second state a click again gives: a torus's tiles turned)
-const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, again = false, toggle = false, turn = 0, click = null }) => {
+const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = false, can = true, mark = false, again = false, toggle = false, turn = 0, byDefault, click = null }) => {
   const b = document.createElement('button');
   b.type = 'button';
   if (id) b.id = id;
@@ -1527,9 +1528,11 @@ const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = fa
   if (title) b.title = title;
   b.innerHTML = html ?? `${pic}<span>${text}</span>`;
   if (click) b.addEventListener('click', click);
-  return setTile(b, { on, can, mark, again, turn });
+  return setTile(b, { on, can, mark, again, turn, byDefault });
 };
-const setTile = (b, { on = false, can = true, mark = false, again = false, turn = 0 }) => {
+// (byDefault: as the tooltip tells it, see tip: 'yes', the choice picked at first; 'on' or 'off', a switch's at first)
+const setTile = (b, { on = false, can = true, mark = false, again = false, turn = 0, byDefault }) => {
+  if (byDefault !== undefined) b.dataset.default = byDefault;
   const pic = b.querySelector('svg');
   if (pic) pic.style.transform = turn ? `rotate(${turn}deg)` : '';
   b.disabled = !can;
@@ -1541,8 +1544,8 @@ const setTile = (b, { on = false, can = true, mark = false, again = false, turn 
 // A card, every one alike (the rules, an ant's, the walks', the brushes, the gallery's setups, the hunt's finds): a row, its
 // picture on the left, its name over its words (base: a walk's base on its right); a tile all the same (see tile, setTile:
 // on, can, again); its words as text (a setup's name typed)
-const card = ({ pic = '', name = '', detail = '', base = '', title = '', on = false, can = true, again = false, click = null }) => {
-  const b = tile({ html: '', title, on, can, again, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
+const card = ({ pic = '', name = '', detail = '', base = '', title = '', on = false, can = true, again = false, byDefault, click = null }) => {
+  const b = tile({ html: '', title, on, can, again, byDefault, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
   const picture = part('mode-icon', ''), words = document.createElement('span');
   picture.innerHTML = pic;
   words.append(part('mode-name', name), ...(detail ? [part('mode-detail', detail)] : []));
@@ -1559,9 +1562,10 @@ function renderTrailButton() {
   const sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
   trailButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1])}${sq(3, LIFE_ALIVE)}</svg>`, text: 'Trail', id: 'lifeTrailButton', toggle: true,  // up the diagonal
     title: 'Trail: a dead cell fades through Ink for a few generations (States and Age)', click: () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); } });
-  setTile(trailButton, { on: $('lifeTrail').checked && trailApplies(), can: trailApplies() });  // (not for these looks: off)
+  setTile(trailButton, { on: $('lifeTrail').checked && trailApplies(), can: trailApplies(), byDefault: lifeColours === 1 ? 'on' : 'off' });  // (not for these looks: off; on at first in Classic)
 }
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
+const defaultLook = (mode) => (mode.life ? 'mono' : 'gradient');  // (the simplest: Life's States, a walk's Rainbow)
 function renderColorButtons() {
   const sel = $('colorMode'), box = $('colorButtons'), L = MODES[$('mode').value]?.life;
   box.className = 'nav-shapes cell-modes';
@@ -1570,7 +1574,7 @@ function renderColorButtons() {
   const names = L ? { mono: 'States', gradient: 'Age', digit: 'Activity' } : { gradient: 'Rainbow', cells: 'Rainbow', visits: 'Heatmap', digit: 'Directions' };
   const picture = (v) => (L ? lifeLookPicture(v) : cellModePicture(v === 'gradient' ? 'cells' : v));
   const looks = Array.from(sel.options).filter((o) => !o.hidden && names[o.value]);
-  const buttons = looks.map((o) => tile({ pic: picture(o.value), text: names[o.value], title: o.text, on: o.value === sel.value, can: !o.disabled,
+  const buttons = looks.map((o) => tile({ pic: picture(o.value), text: names[o.value], title: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === defaultLook(MODES[$('mode').value]) ? 'yes' : '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
   box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
 }
@@ -1587,7 +1591,7 @@ function lifeLookPicture(look) {
 const heatRings = (g) => `<svg viewBox="0 0 24 24" aria-hidden="true">${[0, 0.25, 0.5, 0.75, 1].map((f, i) => `<rect x="${2 + 2 * i}" y="${2 + 2 * i}" width="${20 - 4 * i}" height="${20 - 4 * i}" rx="${2 - 0.4 * i}" fill="${g(f)}"/>`).join('')}</svg>`;
 // the sky, a tile before the themes, on or off (see tile): named after the theme (Dawn on a light page, Twilight on a dark one),
 // its picture the sky; shown where there is a sky (see updateDisplayMenu)
-const skyButton = tile({ toggle: true, title: 'The background: a sky in the page\'s tone, or plain', click: () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); } });
+const skyButton = tile({ toggle: true, byDefault: 'on', title: 'The background: a sky in the page\'s tone, or plain', click: () => { $('sky').value = $('sky').value === 'sky' ? 'plain' : 'sky'; $('sky').dispatchEvent(new Event('change')); } });
 const renderSkyButtons = () => {
   const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark', on = $('sky').value === 'sky';
   const name = theme === 'light' ? 'Dawn' : 'Twilight';
@@ -2775,7 +2779,7 @@ function renderModePicker() {
         $('mode').dispatchEvent(new Event('change'));
       }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
-    }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, on: isTurned, can: turns,
+    }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', on: isTurned, can: turns,
       title: turns ? F.tabs[tabOf(here, true)][4] : 'This tiling has no other way round', click: turn })] : []));
   }
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
@@ -3268,12 +3272,15 @@ function updateHint() {
 // A control's tooltip led by its name in bold (a card's, a tile's, a box's words: in full, a tile's cut short), once (a
 // tooltip that starts with it: that start in bold)
 document.addEventListener('mouseover', (e) => {
-  const el = e.target.closest?.('[title], [data-tip]');
+  const el = e.target.closest?.('[title], [data-tip], [data-default]:not([data-default=""])');
   if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
   const tip = el?.dataset.tip ?? '', named = el?.matches('button, label');
   const name = named ? (el.querySelector('.mode-name') ?? el.querySelector('span') ?? el).textContent.trim() : '';
   const bold = (text) => Object.assign(document.createElement('b'), { textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
-  $('tip').replaceChildren(...(!ok ? [tip] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length)] : [bold(name), `: ${tip}`]));
+  // its default: a tile's (see setTile), a box's (its checkbox as the page starts)
+  const box = el?.matches('label') ? el.querySelector('input[type=checkbox]') : null, d = el?.dataset.default ?? (box ? (box.defaultChecked ? 'on' : 'off') : '');
+  const told = d === 'yes' ? ' (default)' : d ? ` · ${d} by default` : '';
+  $('tip').replaceChildren(...(!tip ? (told ? [bold(name), told] : []) : !ok ? [tip, told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), told] : [bold(name), `: ${tip}`, told]));  // (no words of its own: its name and its default)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
 // the hint, its zoom against the view framed (×1: all of it in view, see viewFor; ×2 twice as near): the mouse on a line,
@@ -7777,10 +7784,10 @@ const colourMissing = (K) => {
 function renderColours() {
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
-    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
+    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), byDefault: k === 1 ? 'yes' : '', click: () => { if (k !== lifeColours) { lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
     // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
     tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
-      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
+      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
 
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
@@ -8252,10 +8259,10 @@ function renderRuleSection() {
   const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
   const shown = mineNot ? yours : mine;
   if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== tutorialKey(shown)) ruleTutorial(shown);  // how a rule works follows the grid and the rule
-  $('ruleCards').replaceChildren(...known.map((o) => {
+  $('ruleCards').replaceChildren(...known.map((o, i) => {
     const picked = o.value === now && !customOpen;  // (picked: a click shows how it works, see ruleTutorial)
     const bw = MODES[$('mode').value].margolus && !carriesColours(parseRule(o.value));  // (a block rule its cells carry no colour on: black and white)
-    return card({ pic: pixelIcon(RULE_ICONS[o.value]), name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked,
+    return card({ pic: pixelIcon(RULE_ICONS[o.value]), name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked, byDefault: i ? '' : 'yes',  // (the first: the shape's, see fitRuleToShape)
       detail: `${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}`, click: () => {  // its words, without its name
         if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
         customOpen = false;
@@ -12853,6 +12860,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
   const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : iconSize(zone) ? pixelIcon('.....,.o.o.,.....,o...o,.ooo.', { 12: 9, 24: 7, 48: 5 }[iconSize(zone)])
     : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face, as big as its size
   b.dataset.zone = zone;
+  if (zone === 'full') b.dataset.default = 'yes';  // (see hunt)
   b.title = zone === 'custom' ? 'A start found by a hunt, from a link'
     : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
@@ -12969,7 +12977,7 @@ function applyTheme() {
   themeWas = t;
   if (t !== 'system') themeLast = t;
   try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
-  renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' });
+  renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' }, 'system');
   $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)));  // Light | Dark, then System
   const system = [...$('themeButtons').children].find((b) => b.textContent === 'System');
   system.dataset.toggle = '';  // (a switch: clicked again, back to Light or Dark)
@@ -13242,7 +13250,7 @@ let displayTab = null;
 const modeTabOf = () => $('mode').selectedOptions[0].parentElement.label;
 function displayDefaults() {
   const mode = MODES[$('mode').value], surface = mode.lattice === 'sphere';
-  $('colorMode').value = mode.life ? 'mono' : 'gradient';  // simplest view by default
+  $('colorMode').value = defaultLook(mode);  // simplest view by default
   $('autoFit').checked = true;  // framed
   $('centered').checked = true;  // on a solid, the walker in front
   $('fillAreas').checked = true;
