@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1131';
+const VERSION = '0.1.1132';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7012,17 +7012,6 @@ function iconSquare(kind, N) {
   iconPatternMemo.set(key, square);
   return square;
 }
-// a set's footprint at N cells wide: the pixels some icon of it has (once a set: what fits, see iconLay)
-const iconFootMemo = new Map();
-function iconFoot(set, N) {
-  const P = N === 12 ? 12 : 24, key = `${set.source}|${P}`;
-  if (!iconFootMemo.has(key)) {
-    const foot = new Uint8Array(P * P);
-    for (const b64 of set.bits) { const pixel = iconPixel(b64, N); for (let y = 0; y < P; y++) for (let x = 0; x < P; x++) if (!foot[P * y + x] && pixel(x, y)) foot[P * y + x] = 1; }
-    iconFootMemo.set(key, foot);
-  }
-  return iconFootMemo.get(key);
-}
 function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
   const key = `${kind}|${N}|${set.source}|${turn}`;
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
@@ -7054,30 +7043,30 @@ function iconTurn(laid, pix, P) {
   });
   return best;
 }
-// Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them),
-// upright (see iconTurn): its cells (each of the square's, -1 off the grid or on its wall), its turn, its footprint's cells.
-// Null where the set doesn't fit: a cell of its footprint (its icons' pixels, see iconFoot) off the grid, or two on one cell
-// (a small torus), or the colours' footprints on each other's (but for a row of their margins)
-function iconLay(N, set) {
+// Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
+// rest cut off), upright (see iconTurn): its cells (each of the square's, -1 off the grid or on its wall), its turn. Null
+// where it doesn't fit: neither its whole width nor its whole height laid, or two of its cells on one (a small torus), or
+// the colours' squares on each other's (but for a row of their margins)
+function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = N === 12 ? 12 : 24;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
-  const { box, pix } = iconSquare(kind, N), foot = iconFoot(set, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
+  const { box, pix } = iconSquare(kind, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
   const lays = Array.from({ length: K }, (_, i) => {
     const at = new Int32Array(box.length).fill(-1);
     for (const [t, j] of patternAt(i, K, box.map(([x, y], j) => [x, y, j]), true)) if (!dead.has(t)) at[j] = t;
     const js = box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
     const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
-    return { at, turn, foot: pix.flatMap(([px, py], j) => { const [x, y] = ICON_TURNS[turn](px, py, P); return foot[P * y + x] ? [at[j]] : []; }) };
+    return { at, turn, js };
   });
-  const all = lays.flatMap((l) => l.foot);
-  return lays.every((l) => l.foot.every((t) => t >= 0) && new Set(l.foot).size === l.foot.length) && new Set(all).size >= 0.95 * all.length ? lays : null;
+  const across = (js, d) => new Set(js.map((j) => pix[j][d])).size === P, all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
+  return lays.every(({ at, js }) => (across(js, 0) || across(js, 1)) && new Set(js.map((j) => at[j])).size === js.length) && new Set(all).size >= 0.95 * all.length ? lays : null;
 }
-const iconFits = (N, set) => !!iconLay(N, set);
+const iconFits = (N) => !!iconLay(N);
 function iconChoices(N, set) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
-  const lays = iconLay(N, set);  // (each icon its cells of the colour's square)
-  const choices = Array.from({ length: K }, (_, i) => (lays ? iconPatterns(kind, N, set, lays[i].turn).map((js) => Int32Array.from(js.flatMap((j) => [lays[i].at[j], i + 1]))) : []));
+  const lays = iconLay(N);  // (each icon its cells of the colour's square)
+  const choices = Array.from({ length: K }, (_, i) => (lays ? iconPatterns(kind, N, set, lays[i].turn).map((js) => Int32Array.from(js.flatMap((j) => (lays[i].at[j] >= 0 ? [lays[i].at[j], i + 1] : [])))) : []));
   iconMemo = { key, choices };
   return choices;
 }
@@ -9453,7 +9442,7 @@ function huntFits() {
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
     if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && !!colouring(MODES[$('mode').value].sphere, K, true)];  // (a solid, two parts a colour)
-    if (iconSize(zone)) return [zone, iconFits(iconSize(zone), iconSet(zone))];
+    if (iconSize(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
