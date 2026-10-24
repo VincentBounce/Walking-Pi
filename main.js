@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1087';
+const VERSION = '0.1.1088';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2702,11 +2702,14 @@ function renderModePicker() {
   $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
   // the shapes, as pictures with their (short) names
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
-  // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title
+  // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
+  // then the surfaces (a sheet rolled up: Torus, Möbius, Klein)
   const shapes = navValues(2, [kind, space]), planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
-  const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh));
-  $('navShapes').replaceChildren(...(grouped ? [1, 3, 0, 2].map((i) => SHAPE_GROUPS[i][0]) : [null]).flatMap((g) => {  // (squares, parallelograms, the circles, rhombi)
-    const these = g ? shapes.filter((sh) => groupOf(sh) === g) : shapes;
+  const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => ['Torus', 'Möbius strip', 'Klein bottle'].includes(sh);
+  const groups = grouped ? [1, 3, 0, 2].map((i) => [SHAPE_GROUPS[i][0], (sh) => groupOf(sh) === SHAPE_GROUPS[i][0]])  // (squares, parallelograms, the circles, rhombi)
+    : space === 'Surfaces' ? [['Solid', (sh) => !sheet(sh)], ['Surface', sheet]] : [[null, () => true]];
+  $('navShapes').replaceChildren(...groups.flatMap(([g, has]) => {
+    const these = shapes.filter(has);
     if (!these.length) return [];
     const title = g ? [Object.assign(document.createElement('div'), { className: 'block-label', textContent: g })] : [];
     return [...title, ...these.map((sh) => {
@@ -2724,7 +2727,7 @@ function renderModePicker() {
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
   $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles; an ant's: its shape, then its creatures)
-  $('shapesLabel').hidden = grouped;  // (always there, but in 2D's groups: their own titles)
+  $('shapesLabel').hidden = grouped || space === 'Surfaces';  // (always there, but in groups: their own titles)
   $('shapesLabel').textContent = space === '2D' ? 'Shape' : 'Surface';
   if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
