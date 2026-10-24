@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1074';
+const VERSION = '0.1.1075';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5106,7 +5106,8 @@ const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', kitetor
 // the turn of a surface's tiles on its sheet against the plane's (see sideTurn): a tiling's torus, by its sheet's side round
 // the ring; a strip, along it; the hexagons' and triangles', 0, or 30 turned
 function tilesTurn(surface) {
-  if (MOBIUS_STRIPS[surface]) return sideTurn(MOBIUS_STRIPS[surface].kind, MOBIUS_STRIPS[surface].basis[0]);
+  const strip = MOBIUS_STRIPS[surface] ?? MOBIUS_STRIPS[KLEIN_TILINGS[surface]];  // (a tiling's bottle: its strip's sheet)
+  if (strip) return sideTurn(strip.kind, strip.basis[0]);
   const k = Object.keys(TILINGS).find((x) => surface.replace(/Turned$/, '') === `${x}torus`);
   if (!k) return surface.endsWith('Turned') ? 30 : 0;
   const [a, b] = TILINGS[k].basis, [p, q] = torusSheets(k)[surface.endsWith('Turned') ? 'turned' : 'plain'][0];
