@@ -1555,3 +1555,29 @@ turns.js (tools/kitesearch) on any grid: `deno run --allow-read --allow-write tu
 
 B2v0256/S235 (born with 2, none or both by a corner only, or with 5 or 6; surviving with 2, 3 or 5) comes first on Flower, 5 and 7: 6 turnarounds a battle, twice Life’s, and the most Life-like found on Flower 7 (0.63). Conway’s B3/S23 dies in 50 to 70 generations on Cairo, Rhombitri and the flowers. Flowers 5 and 7 turn as a spiral (no mirror): the app deals them out in 5 or 7 colours, no duel (their halves not alike), so their links play the rule alone.
 
+
+**The rest of the grids** (same search, 34 more): the best turning as Life does, by Life-like score. Nothing worth keeping on Floret, Capital I, Type 14, Dual 16, Dual 314, the rings 7 to 10, Mirror 7 (Life-like 0.03 or less), little on Rhombille, Pythagoras, Octagons, Dodecagons, Spectre, Flowers 3 and 4 (0.2 at most). Flower 9 and Penrose have no duel in the app (no fair halves): their links play the rule alone.
+
+| Grid | Rule | Turnarounds | At least one | Battle (generations) | Life-like score | Links |
+|---|---|--:|--:|--:|--:|---|
+| Pinwheel | **B3/S1v0.368** | 4 | 100 % | 977 | 0.76 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B3/S1v0.368&k=2&s=64&pop=random.35.7) |
+| Pinwheel | **B3v023/S014v135v26v27** | 3 | 80 % | 1461 | 0.63 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dPinwheel&r=B3v023/S014v135v26v27&k=2&s=64&pop=random.35.7) |
+| Flower 10 | **B2v1.3/S0146/C4** | 3 | 90 % | 595 | 0.67 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower10&r=B2v1.3/S0146/C4&k=2&s=64&pop=random.35.7) |
+| Ammann | **B2v024v03/S0347** | 4 | 100 % | 583 | 0.50 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dAmmann&r=B2v024v03/S0347&k=2&s=64&pop=random.35.7) |
+| Ammann | **B2v0.3/S014v17/C3** | 3 | 80 % | 1069 | 0.42 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dAmmann&r=B2v0.3/S014v17/C3&k=2&s=64&pop=random.35.7) |
+| Rhombs 14 | **B2v1/S01v0.3v1578/C5** | 4 | 80 % | 659 | 0.44 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs14&r=B2v1/S01v0.3v1578/C5&k=2&s=64&pop=random.35.7) |
+| Flower 9 | **B2v01/S4v37v3** | 4 | 100 % | 537 | 0.43 | [alone](https://vincentbounce.github.io/Walking-Pi/#w=life2dFlower9&r=B2v01/S4v37v3&s=64) |
+| Dual 56 | **B2v01/S6v17v38** | 4 | 80 % | 776 | 0.41 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dDual56&r=B2v01/S6v17v38&k=2&s=64&pop=random.35.7) |
+| Hat | **B2v02/S02v16** | 4 | 100 % | 592 | 0.40 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dHat&r=B2v02/S02v16&k=2&s=64&pop=random.35.7) |
+| Trihex | **B2v0.3/S01367v128v3/C5** | 3 | 80 % | 523 | 0.37 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTrihex&r=B2v0.3/S01367v128v3/C5&k=2&s=64&pop=random.35.7) |
+| Kisrhombille | **B2v167/S024v2/C5** | 3 | 90 % | 592 | 0.37 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dKisrhombille&r=B2v167/S024v2/C5&k=2&s=64&pop=random.35.7) |
+| Penrose | **B2v17/S2v1.36v28** | 3 | 90 % | 539 | 0.35 | [alone](https://vincentbounce.github.io/Walking-Pi/#w=life2dPenrose&r=B2v17/S2v1.36v28&s=64) |
+| Pent 15 | **B23v36v0/S4v012** | 3 | 90 % | 588 | 0.33 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dPent15&r=B23v36v0/S4v012&k=2&s=64&pop=random.35.7) |
+| Trunctrihex | **B27/S138/C3** | 4 | 80 % | 716 | 0.32 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dTrunctrihex&r=B27/S138/C3&k=2&s=64&pop=random.35.7) |
+| Rhombs 12 | **B3/S23v123567/C4** | 3 | 80 % | 576 | 0.31 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dRhombs12&r=B3/S23v123567/C4&k=2&s=64&pop=random.35.7) |
+| Snub square | **B2v014v2/S5v136** | 4 | 100 % | 682 | 0.31 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dSnubsquare&r=B2v014v2/S5v136&k=2&s=64&pop=random.35.7) |
+| Snub tri | **B356v03/S014/C3** | 3 | 80 % | 681 | 0.26 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dSnubtri&r=B356v03/S014/C3&k=2&s=64&pop=random.35.7) |
+| Prismatic | **B25v01/S1/C5** | 3 | 80 % | 614 | 0.26 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dPrismatic&r=B25v01/S1/C5&k=2&s=64&pop=random.35.7) |
+
+B3/S1v0.368 on the pinwheel (born with 3; surviving with 1, its neighbours by a side or 3 by a corner, or with 6 or 8) is the most Life-like found by any of these searches (0.76), its battles turning round 4 times (Life: 3).
+
