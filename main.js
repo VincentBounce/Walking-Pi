@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1129';
+const VERSION = '0.1.1130';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3972,7 +3972,7 @@ function tetrakisOf(key, g) {
     verts.push(g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]);
     for (let q = 0; q < 4; q++) tiles.push([c[q], c[(q + 1) % 4], mid]);
   }
-  return (meshCache[key] = finishMesh(verts, tiles, 3, g.size, null));  // (as listed: its squares' turn)
+  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 3, g.size, null), { squares: g }));  // (as listed: its squares' turn; triangle t of square t >> 2)
 }
 
 /* Cube with pits: each face of the cube (n × n squares, n a multiple of 6) with a pit in its middle,
@@ -7032,7 +7032,7 @@ function iconTurn(laid, pix, P) {
 }
 // whether an icon N cells wide fits whole at each colour's spot (its square all laid), as Centered's patterns
 const iconFits = (N) => { const kind = patternKind(), K = walk.life.colours, g = walk.geo; if (!patternsOn() || (walk.plane && APERIODIC[kind])) return false;
-  if (!walk.plane && !g.torus && N > (g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size)) return false; /* (wider than a face's room, as laidChoices': not tried) */ const box = iconPatterns(kind, N).box; const laid = Array.from({ length: K }, (_, i) => patternAt(i, K, box).map((c) => c[0])); return laid.every((cs) => new Set(cs).size === box.length) && new Set(laid.flat()).size >= 0.95 * K * box.length; };  // (all of it on cells of its own, a small torus would lay it over itself; the colours' apart, but for a row of their margins)
+  if (!walk.plane && !g.torus && N > (g.squares ? (g.squares.floorSize ?? g.size) : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size)) return false; /* (wider than a face's room, as laidChoices': not tried) */ const box = iconPatterns(kind, N).box; const laid = Array.from({ length: K }, (_, i) => patternAt(i, K, box).map((c) => c[0])); return laid.every((cs) => new Set(cs).size === box.length) && new Set(laid.flat()).size >= 0.95 * K * box.length; };  // (all of it on cells of its own, a small torus would lay it over itself; the colours' apart, but for a row of their margins)
 function iconChoices(N, set) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
   if (iconMemo?.key === key) return iconMemo.choices;
@@ -9616,11 +9616,11 @@ const triFace = (sphere, K, i) => (colouring(sphere, K)?.faces ? patchSpots(sphe
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
-  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere) && CUBE_FACES.includes(K))
+  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
     || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
+const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -9639,7 +9639,7 @@ function patternAt(i, K, cells) {
     for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
     return out;
   }
-  if (g.sides === 3 || g.kite) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle
+  if ((g.sides === 3 && !g.squares) || g.kite) {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle
     const sphere = MODES[$('mode').value].sphere, d = K === 1 ? null : unit(triFace(sphere, K, i));
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = d ? g.faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(g.faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / g.perFace);
@@ -9656,18 +9656,15 @@ function patternAt(i, K, cells) {
     return out;
   }
   const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
-  if (g.floors) {  // the cube with pits: its pit's floor
-    const a = g.floorSize, m = a >> 1;
-    for (const [x, y, v] of cells) {
-      const r = m + y - (h >> 1), c = m + x - (w >> 1);
-      if (r >= 0 && c >= 0 && r < a && c < a) out.push([g.floors[f * a * a + r * a + c], v]);
-    }
-    return out;
-  }
-  const m = g.size >> 1;
+  // its face's squares, or its pit's floor's (the cube with pits); tetrakis triangles: a cell x of the pattern triangle x % 4
+  // (the plane's: its square's left, bottom, top, right) of square x / 4, the one on that side of the face's square
+  const S = g.squares ?? g, per = g.squares ? 4 : 1, a = S.floors ? S.floorSize : S.size, m = a >> 1, wq = Math.ceil(w / per);
+  const square = (r, c) => (S.floors ? S.floors[f * a * a + r * a + c] : f * S.perFace + r * a + c), at = (r, c) => Array.from(S.cen.subarray(3 * square(r, c), 3 * square(r, c) + 3));
+  const X = per > 1 && at(m, a - 1).map((v, d) => v - at(m, 0)[d]), Y = per > 1 && at(a - 1, m).map((v, d) => v - at(0, m)[d]), sides = per > 1 && [X.map((v) => -v), Y.map((v) => -v), Y, X];
+  const side = (s, q) => [0, 1, 2, 3].reduce((b, k) => (dot3(g.cen.subarray(3 * (4 * s + k)), sides[q]) > dot3(g.cen.subarray(3 * (4 * s + b)), sides[q]) ? k : b), 0) + 4 * s;
   for (const [x, y, v] of cells) {
-    const r = m + y - (h >> 1), c = m + x - (w >> 1);
-    if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([f * g.perFace + r * g.size + c, v]);
+    const r = m + y - (h >> 1), c = m + Math.floor(x / per) - (wq >> 1);
+    if (r >= 0 && c >= 0 && r < a && c < a) out.push([per > 1 ? side(square(r, c), x % per) : square(r, c), v]);
   }
   return out;
 }
@@ -9944,7 +9941,7 @@ function laidChoices(centred, any = false) {  // any: the first one of each colo
   const span = (rle, t, f) => { const cs = orientPattern(pk, rle, t, f); return Math.max(...cs.map((c) => Math.floor(c[0] / pper)), ...cs.map((c) => c[1])) + 1; };
   const room = walk.plane ? (Math.min(walk.plane.W / cols, walk.plane.W / rows) * cellsAcross) : g.mobius ? Math.min((2 * g.L) / K, g.nv)  // (a Möbius strip: a stretch of its loop)
     : g.torus ? Math.min(g.nu / torusBlocks(K)[0], g.nv / torusBlocks(K)[1])
-    : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
+    : g.squares ? (g.squares.floorSize ?? g.size) : g.floors ? g.floorSize : g.sides === 3 || g.kite ? g.size / 2 : g.size;
   const shapes = [], seen = new Set();
   for (const p of DRAW_PATTERNS.filter((q) => q[1] === baseOf(kind) && (mine || q[2].includes(rule)))) {
     for (let t = 0; t < PATTERN_TURNS[kind]; t++) for (const f of [false, true]) {
@@ -10059,7 +10056,7 @@ function centreCells(d) {
     const per = facesPer(), f0 = Math.floor(Math.floor(patchCentre() / g.perFace) / per) * per;
     d = [0, 1, 2].map((a) => g.faces.slice(f0, f0 + per).reduce((sum, fc) => sum + fc.corners.reduce((s, c) => s + c[a], 0), 0));
   }
-  if (!d && !(g.sides === 4 && !g.kite && (g.perFace || g.floors))) return [patchCentre()];
+  if (!d && !(g.sides === 4 && !g.kite && (g.perFace || g.floors)) && !g.squares) return [patchCentre()];
   d = unit(d ?? AXES[3]);  // the cube's front face
   // (each direction once a grid: a hunt asks for the same few, at every radius; plain numbers, as it runs over every cell)
   const key = d.join(), known = (g.centres ??= new Map()).get(key);
@@ -10078,14 +10075,15 @@ function centreCells(d) {
 // square on square grids, a small disc of triangles on the polyhedra), or r − 1 steps from the cells
 // round a middle corner (on an even side: 2×2, 4×4, 6×6)
 function lifePatch(r, centre = centreCells()) {
-  const { start, list } = walk.life.nbr, seen = new Set([centre].flat());
+  const sq = walk.geo?.squares;  // (tetrakis triangles: their squares' patch, see tetrakisOf, 4 cells each)
+  const { start, list } = sq ? cornerNeighbours(sq) : walk.life.nbr, seen = new Set([centre].flat().map((t) => (sq ? t >> 2 : t)));
   let ring = [...seen];
   for (let k = seen.size > 1 ? 1 : 0; k < r; k++) {
     const next = [];
     for (const t of ring) for (let q = start[t]; q < start[t + 1]; q++) if (!seen.has(list[q])) { seen.add(list[q]); next.push(list[q]); }
     ring = next;
   }
-  return [...seen];
+  return sq ? [...seen].flatMap((s) => [4 * s, 4 * s + 1, 4 * s + 2, 4 * s + 3]) : [...seen];
 }
 
 
