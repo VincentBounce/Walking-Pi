@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1086';
+const VERSION = '0.1.1087';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2484,11 +2484,11 @@ MODE_ICONS.lifePits = 'walls';
 MODE_ICONS.lifeMenger = 'menger';
 MODE_ICONS.lifeFrame = 'frame';
 // in each shape's rules: Turtle, then Pivot and Parity, then the others as they come; among the shapes,
-// Cairo right after Squares, Hexagons before Triangles, the Klein bottle after the Möbius strip, the
+// Cairo right after Squares, Hexagons before Triangles (right after Kites where they are), the Klein bottle after the Möbius strip, the
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Cuboctahedron', 0, 'Torus']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -2566,18 +2566,17 @@ const FAMILIES = [
   { name: 'Torus', modes: [['torusGrid', 'torusWalk', 'lifeTorus', 'torusPivotGrid', 'torusPivot'], ['hexTorusGrid', 'hexTorusWalk', 'lifeHexTorus', 'hexTorusPivot'],
                           ['triTorusGrid', 'triTorusWalk', 'triTorusPivotGrid', 'lifeTriTorus'], ['cairoTorusWalk', 'lifeCairoTorus'], ['lifeKiteTorus']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
-           [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)'],
            [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
-           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)']] },
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
                                  ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri'], ['mobiusCairoWalk', 'lifeMobiusCairo'], ['lifeMobiusKite']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (rows along the strip)'],
+    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
-           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (pointing along the strip)']] },
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (pointing along the strip)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (rows along the strip)']] },
   { name: 'Klein bottle', modes: [['kleinWalk', 'lifeKlein', 'kleinPivot'], ['kleinCairoWalk', 'lifeKleinCairo'], ['kleinHexWalk', 'lifeKleinHex', 'kleinHexPivot'], ['kleinTriWalk', 'lifeKleinTri'], ['lifeKleinKite']], tab: 0,
-    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)'],
+    tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [3, false, 'tilesTri', 'Triangles', 'Triangles'], [3, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
-           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)']] },
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)']] },
   // the volumes of triangles, one menu: Kites first (the one in use, Life only: elsewhere, the others), Hexagons (the
   // sphere's its own, with its walks; the solids' folded over their edges, see hexSolidMesh), Triangles
   ...[['Sphere', 'icosa'], ['Tetrahedron', 'tetra'], ['Octahedron', 'octa'], ['Stella octangula', 'stella'], ['Dodecahedron', 'dodeca']].map(([name, k]) => {
@@ -10347,7 +10346,7 @@ function advanceTo(target) {
       const s = L.stable;
       if (!s) continue;
       if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += L.trace.by[g][k]; }  // (its cell-generations till it settles or loops)
-      if (s.extinct || s.P === 1) { cur = s.T; play(false); break; }  // nothing moves any more: it ends there
+      if (s.extinct || s.P === 1) { cur = s.T; if (lifeEnded()) { play(false); break; } continue; }  // nothing moves any more: it ends there (its trail fading first)
       if (!L.loopAvg) {  // found: each colour's live cells over the loop (its generations' counts, see lifeStep), their mean
         for (let g = s.T; g < s.T + s.P; g++) for (let k = 1; k <= L.colours; k++) {
           const v = L.colours === 1 ? L.trace.alive[g] : L.trace.by[g][k];
@@ -10395,7 +10394,9 @@ function advanceTo(target) {
 }
 
 // a Game of Life that died out or froze: shown at the generation it ended
-const lifeEnded = () => { const s = walk.life?.stable; return !!s && (s.extinct || s.P === 1) && cur === s.T; };
+// a run ended: nothing moves any more (all dead or still), its trail faded (Trail: the generations of its fading played
+// on, the generation shown its end's)
+const lifeEnded = () => { const s = walk.life?.stable; return !!s && (s.extinct || s.P === 1) && cur === s.T && !(trailOn() && walk.life.gen <= s.T + LIFE_TRAIL.length); };
 function play(on) {
   playing = on && walk.n > 0 && cur < walk.n && !lifeEnded();
   if (playing) reverse(false);
