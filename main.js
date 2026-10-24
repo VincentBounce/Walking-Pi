@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1134';
+const VERSION = '0.1.1135';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1160,6 +1160,7 @@ const MODES = {
   lifeStellaKite: { base: 2, lattice: 'sphere', sphere: 'stellaKite', life: true, where: 'a stella octangula (two tetrahedra) of kites (each triangle cut in 3)' },
   lifeDodecaKite: { base: 2, lattice: 'sphere', sphere: 'dodecaKite', life: true, where: 'a dodecahedron, its pentagons cut into triangles, of kites (each triangle cut in 3)' },
   lifeCubocta: { base: 2, lattice: 'sphere', sphere: 'cubocta', life: true, where: 'a cuboctahedron of squares and triangles' },
+  lifePyramid: { base: 2, lattice: 'sphere', sphere: 'pyramid', life: true, where: 'a square pyramid of squares and triangles' },
   lifeStella: { base: 2, lattice: 'sphere', sphere: 'stella', life: true,
                 where: 'a stella octangula (two tetrahedra) of triangles' },
   lifeDodeca: { base: 2, lattice: 'sphere', sphere: 'dodeca', life: true,
@@ -1848,6 +1849,7 @@ const ICONS = (() => {
     icosahedron: ico,
     dodecahedron: dodeca,
     cubocta: pathEl('M4 4H20V20H4Z') + pathEl('M12 4L20 12L12 20L4 12Z'),  // a cuboctahedron face on: a square, its 4 corners triangles
+    pyramid: pathEl('M12 3L3 17L10 21L21 16Z') + pathEl('M12 3L10 21'),  // a square pyramid, a corner of its square in front
     spiral: pathEl(pathOf(spiralOf(4, 11), false)),
     triSpiral: pathEl(pathOf(spiralOf(3, 7), false)),
     hexSpiral: pathEl(pathOf(spiralOf(6, 15), false)),
@@ -2430,7 +2432,7 @@ const MODE_ICONS = {
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dPinwheel: 'pinwheel', life2dSpectre: 'spectre', life2dAmmann: 'ammann', life2dRhombs12: 'rhombs12', life2dRhombs14: 'rhombs14', life2dFlower: 'flower', life2dFlower5: 'flower5', life2dFlower7: 'flower7', life2dMirror7: 'mirror7', life2dFlower3: 'flower3', life2dFlower4: 'flower4', life2dFlower8: 'flower8', life2dFlower9: 'flower9', life2dFlower10: 'flower10', life2dRing7: 'ring7', life2dRing8: 'ring8', life2dRing9: 'ring9', life2dRing10: 'ring10', life2dRing12: 'ring12', lifeKiteTorus: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
   life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', blocks2dTetrakis: 'tetrakis', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeHexTorus: 'torus', lifeCairoTorus: 'torus', lifeTriTorus: 'torus', cairoTorusWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
-  lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeStellaKite: 'stella', lifeDodecaKite: 'dodecahedron', lifeCubocta: 'cubocta', lifeHexSphere: 'hexagon',
+  lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeStellaKite: 'stella', lifeDodecaKite: 'dodecahedron', lifeCubocta: 'cubocta', lifePyramid: 'pyramid', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
 
@@ -2495,7 +2497,7 @@ const NAV = {
   lifeHexSphere: ['Life', 'Surfaces', 'Sphere', 'Life', ''], lifeKiteTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeMobiusKite: ['Life', 'Surfaces', 'Möbius strip', 'Life', ''], lifeKleinKite: ['Life', 'Surfaces', 'Klein bottle', 'Life', ''], lifeTetraKite: ['Life', 'Surfaces', 'Tetrahedron', 'Life', ''],
   lifeOctaKite: ['Life', 'Surfaces', 'Octahedron', 'Life', ''], lifeIcosaKite: ['Life', 'Surfaces', 'Sphere', 'Life', ''],
-  lifeStellaKite: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''], lifeDodecaKite: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeCubocta: ['Life', 'Surfaces', 'Cuboctahedron', 'Life', ''],
+  lifeStellaKite: ['Life', 'Surfaces', 'Stella octangula', 'Life', ''], lifeDodecaKite: ['Life', 'Surfaces', 'Dodecahedron', 'Life', ''], lifeCubocta: ['Life', 'Surfaces', 'Cuboctahedron', 'Life', ''], lifePyramid: ['Life', 'Surfaces', 'Pyramid', 'Life', ''],
   squareParity: ['Walk', '2D', 'Squares', 'Parity', 'grid'], squareParityCells: ['Walk', '2D', 'Squares', 'Parity', 'cells'],
   triParity: ['Walk', '2D', 'Triangles', 'Parity', 'grid'], hexParityCells: ['Walk', '2D', 'Hexagons', 'Parity', 'cells'],
   squarePivot: ['Walk', '2D', 'Squares', 'Pivot', 'grid'], squarePivotCells: ['Walk', '2D', 'Squares', 'Pivot', 'cells'],
@@ -2541,7 +2543,7 @@ MODE_ICONS.lifeFrame = 'frame';
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus'], ['Pyramid', 1, 'Cuboctahedron']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -2575,7 +2577,7 @@ const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natura
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Rhombs 14': 'rhombs14', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Flower 9': 'flower9', 'Flower 10': 'flower10', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 10': 'ring10', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
-  Dodecahedron: 'dodecahedron', Cuboctahedron: 'cubocta', Sphere: 'icosahedron', Pits: 'walls', Frame: 'frame', Sponge: 'menger', 'Klein bottle': 'klein' };
+  Dodecahedron: 'dodecahedron', Cuboctahedron: 'cubocta', Pyramid: 'pyramid', Sphere: 'icosahedron', Pits: 'walls', Frame: 'frame', Sponge: 'menger', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
@@ -4086,6 +4088,33 @@ function cuboctaMesh(f) {
   return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped }));  // (its squares first, f² cells each, as AXES)
 }
 
+/* Square pyramid: its square (edge 2, at z0) cut into f × f squares, its 4 triangles (equilateral: its tip √2 above) into
+ * f² triangles; its middle (its volume's: a quarter up) at 0. As the cuboctahedron's: squares and triangles together */
+const PYRAMID_Z = -Math.SQRT2 / 4;
+function pyramidMesh(f) {
+  const key = `pyramid${f}`;
+  if (meshCache[key]) return meshCache[key];
+  const { verts, add } = vertexStore(), tiles = [], z = PYRAMID_Z, top = [0, 0, z + Math.SQRT2];
+  const at = (A, B, C, i, j) => add(...[0, 1, 2].map((d) => A[d] + ((B[d] - A[d]) * i + (C[d] - A[d]) * j) / f));
+  const A = [-1, -1, z], B = [1, -1, z], D = [-1, 1, z], flipped = [dot3(cross(D.map((c, d) => c - A[d]), B.map((c, d) => c - A[d])), [0, 0, -1]) > 0];
+  for (let i = 0; i < f; i++) for (let j = 0; j < f; j++) tiles.push([at(A, B, D, i, j), at(A, B, D, i + 1, j), at(A, B, D, i + 1, j + 1), at(A, B, D, i, j + 1)]);
+  const base = [[-1, -1, z], [1, -1, z], [1, 1, z], [-1, 1, z]];
+  for (let k = 0; k < 4; k++) {
+    const [P, Q] = [base[k], base[(k + 1) % 4]];
+    for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) {
+      const t1 = [at(P, Q, top, i, j), at(P, Q, top, i + 1, j), at(P, Q, top, i, j + 1)];
+      tiles.push([...t1, t1[2]]);
+      if (i + j < f - 1) { const t2 = [at(P, Q, top, i + 1, j), at(P, Q, top, i + 1, j + 1), at(P, Q, top, i, j + 1)]; tiles.push([...t2, t2[2]]); }
+    }
+  }
+  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 4, f), { flipped }));  // (its square first, f² cells)
+}
+// its faces' feet (the nearest points of their planes to its middle): its square's, then its triangles', round it
+const pyramidFeet = () => [[0, 0, PYRAMID_Z], ...[[0, -1], [1, 0], [0, 1], [-1, 0]].map(([x, y]) => {
+  const n = unit([x * Math.SQRT2, y * Math.SQRT2, 1]), c = dot3(n, [x, y, PYRAMID_Z]);  // (its plane through its square's edge (x, y, z0) and the tip)
+  return n.map((v) => v * c);
+})];
+
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
  * tetrahedron (4 faces, corners shared by 3 triangles instead of 6), octahedron (8 faces,
@@ -4803,7 +4832,7 @@ const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hexto
  * polyhedra (each vertex slides from its face towards the circumscribed sphere) and the torus
  * (rolled up from a flat rectangle). The cells and their neighbours never change, so a walk or a
  * Game of Life run goes on unchanged: only the drawing and the 3D positions move. */
-const MORPHABLE = [...Object.keys(TETRAKIS_SOLIDS).map((k) => `${k}Tetrakis`), 'klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kleinHexTurned', 'kleinTriTurned', 'kleinKiteTurned', ...foldedIn('klein'), 'kitetorus', 'kitetorusTurned', 'cube', 'pits', 'frame', 'menger', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', ...hexSolids.map((k) => `${k}Hex`), 'cubocta', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
+const MORPHABLE = [...Object.keys(TETRAKIS_SOLIDS).map((k) => `${k}Tetrakis`), 'klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kleinHexTurned', 'kleinTriTurned', 'kleinKiteTurned', ...foldedIn('klein'), 'kitetorus', 'kitetorusTurned', 'cube', 'pits', 'frame', 'menger', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', ...hexSolids.map((k) => `${k}Hex`), 'cubocta', 'pyramid', 'torus', 'hextorus', 'tritorus', 'cairotorus', 'hextorusTurned', 'tritorusTurned', 'hexsphere', ...MOBIUS_KINDS,
   ...foldedIn('torus')];
 
 function shapeAt(g, m) {
@@ -5064,7 +5093,8 @@ const SPHERES = {
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
             tiles: (f) => 60 * f * f, unit: 'triangles' },
   stellaKite: { mesh: (f) => flatPolyhedron('stella', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 72 * f * f, unit: 'kites' },
-  cubocta: { mesh: cuboctaMesh, radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells' },  // edge √2
+  cubocta: { mesh: cuboctaMesh, radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge √2
+  pyramid: { mesh: pyramidMesh, radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
   dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites' },
 };
 // the solids of squares as tetrakis triangles (see tetrakisOf): sized as their squares, 4 cells a square
@@ -5222,7 +5252,7 @@ function gridGraph(g) {
  * along the grid starts on a corner, arriving by one of its edges. The rotations that map the solid
  * onto itself map the grid onto itself, and a walk's rule only looks at its own turns, so turned
  * starts draw the same walk, turned. A mirror does not count: it swaps left and right. */
-const SOLIDS = [...Object.keys(TETRAKIS_SOLIDS).map((k) => `${k}Tetrakis`), 'cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', ...hexSolids.map((k) => `${k}Hex`), 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', 'cubocta'];
+const SOLIDS = [...Object.keys(TETRAKIS_SOLIDS).map((k) => `${k}Tetrakis`), 'cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', ...hexSolids.map((k) => `${k}Hex`), 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', 'cubocta', 'pyramid'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kleinHexTurned', 'kleinTriTurned', 'kleinKiteTurned', 'kitetorus', 'kitetorusTurned', 'torus', 'tritorus', 'hextorus', 'cairotorus', 'tritorusTurned', 'hextorusTurned', ...MOBIUS_KINDS, ...foldedIn('klein'),
   ...foldedIn('torus')];  // sized by rows × tiles per row
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
@@ -5235,7 +5265,11 @@ for (const [kind, S] of Object.entries(SPHERES)) {
     return (n) => sizes.reduce((a, b) => (Math.abs(Math.log(b[1] / n)) < Math.abs(Math.log(a[1] / n)) ? b : a))[0];
   })();
   let list;
-  Object.defineProperty(S, 'sizes', { get: () => (list ??= [...new Set(counts.map(nearest()))]) });
+  const edged = (sizes) => {  // (edges: its squares' sides as the icons' widths, each in place of the size nearest it)
+    for (const e of S.edges ?? []) { const k = sizes.reduce((best, f, i) => (Math.abs(Math.log(S.tiles(f) / S.tiles(e))) < Math.abs(Math.log(S.tiles(sizes[best]) / S.tiles(e))) ? i : best), 0); sizes[k] = e; }
+    return sizes;
+  };
+  Object.defineProperty(S, 'sizes', { get: () => (list ??= edged([...new Set(counts.map(nearest()))])) });
   Object.defineProperty(S, 'initial', { get: () => nearest()(start) });
   S.near = (n) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / n)) < Math.abs(Math.log(S.tiles(a) / n)) ? b : a));  // the usual size with about n cells
   S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
@@ -7793,7 +7827,7 @@ function drawLifePlane() {
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
 // the cells of each surface (else triangles): one table for every surface, whatever its shape
 const SURFACE_CELLS = { cube: '■', pits: '■', frame: '■', menger: '■', torus: '■', mobius: '■', klein: '■', hextorus: '⬡', hexsphere: '⬡', mobiusHex: '⬡', kleinHex: '⬡',
-                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', ...Object.fromEntries(hexSolids.map((k) => [`${k}Hex`, '⬡'])), ...Object.fromEntries(Object.keys(TETRAKIS_SOLIDS).map((k) => [`${k}Tetrakis`, '◩'])), kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', kitetorusTurned: '◆', mobiusKiteTurned: '◆', kleinKiteTurned: '◆', kleinHexTurned: '⬡', kleinTriTurned: '▲', tetraKite: '◆', octaKite: '◆', icosaKite: '◆', stellaKite: '◆', dodecaKite: '◆', cubocta: '◈' };
+                        cairotorus: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', ...Object.fromEntries(hexSolids.map((k) => [`${k}Hex`, '⬡'])), ...Object.fromEntries(Object.keys(TETRAKIS_SOLIDS).map((k) => [`${k}Tetrakis`, '◩'])), kitetorus: '◆', mobiusKite: '◆', kleinKite: '◆', kitetorusTurned: '◆', mobiusKiteTurned: '◆', kleinKiteTurned: '◆', kleinHexTurned: '⬡', kleinTriTurned: '▲', tetraKite: '◆', octaKite: '◆', icosaKite: '◆', stellaKite: '◆', dodecaKite: '◆', cubocta: '◈', pyramid: '◈' };
 for (const [s, { kind }] of Object.entries(FOLDED)) SURFACE_CELLS[s] = TILINGS[kind].mark;
 const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? (TILINGS[mode.plane]?.mark ?? { square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' }[mode.plane]) : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
@@ -9228,6 +9262,7 @@ const SOLID_SPOTS = {
   stella: () => ({ 2: AXES.slice(0, 2), 4: TETRA4, 6: AXES, 8: CORNERS8 }),
   cubocta: () => ({ 2: AXES.slice(0, 2), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (its squares, its triangles, its corners)  // (2: its hollows ±x, the halves cut along its edges, 4 whole tips each)
   dodeca: () => ({}),
+  pyramid: () => ({ 4: pyramidFeet().slice(1) }),  // its triangles
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa', 'stella', 'dodeca']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
@@ -9238,7 +9273,7 @@ for (const k of Object.keys(TETRAKIS_SOLIDS)) SOLID_SPOTS[`${k}Tetrakis`] = SOLI
 const middles = (k) => POLYHEDRA[k].faces.map((f) => unit([0, 1, 2].map((d) => f.reduce((sum, v) => sum + POLYHEDRA[k].P[v][d], 0))));
 // (a face's middle on it, not as a direction: m · p / m · m is 1 on its plane, its faces of two sizes the cuboctahedron's)
 const faceDot = (m, p) => dot3(m, p) / dot3(m, m);
-const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [], cubocta: () => [...AXES, ...CORNERS8.map((c) => c.map((v) => (2 * v) / 3))] };
+const FACE_MIDDLES = { cube: () => AXES, tetra: () => middles('tetra'), octa: () => middles('octa'), icosa: () => middles('icosa'), dodeca: () => ICO().map(unit), stella: () => [], cubocta: () => [...AXES, ...CORNERS8.map((c) => c.map((v) => (2 * v) / 3))], pyramid: pyramidFeet };
 const FACE_BASE = { ...Object.fromEntries(hexSolids.map((k) => [`${k}Hex`, k])), cubeTetrakis: 'cube', pitsTetrakis: 'cube', frameTetrakis: 'cube', mengerTetrakis: 'cube', pits: 'cube', frame: 'cube', menger: 'cube', hexsphere: 'icosa', tetraKite: 'tetra', octaKite: 'octa', icosaKite: 'icosa', stellaKite: 'stella', dodecaKite: 'dodeca' };
 for (const [k, of] of Object.entries(FACE_BASE)) FACE_MIDDLES[k] = FACE_MIDDLES[of];
 // A solid's colourings (made by tools/faceparts.js), each item's colour (base 36), each colour's patch item:
@@ -9650,7 +9685,7 @@ const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
-    || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+    || (m.sphere === 'pyramid' && K === 1) || (m.sphere === 'cubocta' && (K === 1 || (!!colouring('cubocta', K) && patchSpots('cubocta', K).every((p) => AXES.some((a) => dot3(a, unit(p)) > 1 - 1e-9))))) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
@@ -9682,8 +9717,8 @@ function patternAt(i, K, cells, partial = false) {  // partial: a sheet's, its c
     for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([face * g.perFace + per * k + (x % per), v]); }
     return out;
   }
-  if (MODES[$('mode').value].sphere === 'cubocta') {  // the cuboctahedron: on its square at the colour's spot (see patternsOn), as the cube's
-    const d = K === 1 ? AXES[3] : unit(patchSpots('cubocta', K)[i]), f = AXES.findIndex((a) => dot3(a, d) > 1 - 1e-9), m = g.size >> 1;
+  if (['cubocta', 'pyramid'].includes(MODES[$('mode').value].sphere)) {  // the cuboctahedron: on its square at the colour's spot (see patternsOn), as the cube's; the pyramid: on its square, under it
+    const pyramid = MODES[$('mode').value].sphere === 'pyramid', d = pyramid ? [0, 0, -1] : K === 1 ? AXES[3] : unit(patchSpots('cubocta', K)[i]), f = pyramid ? 0 : AXES.findIndex((a) => dot3(a, d) > 1 - 1e-9), m = g.size >> 1;
     for (const [x, y, v] of cells) {
       const r = m + y - (h >> 1), c0 = m + x - (w >> 1), c = g.flipped[f] ? g.size - 1 - c0 : c0;
       if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([f * g.size * g.size + r * g.size + c, v]);
