@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1107';
+const VERSION = '0.1.1108';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1452,8 +1452,15 @@ function renderViewTiles() {
   viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
     click: () => { $(id).checked = !$(id).checked; $(id).dispatchEvent(new Event('change')); renderViewTiles(); } }));
   if (!$('viewTiles').children.length) $('viewTiles').replaceChildren(...viewTiles);
-  const mode = MODES[$('mode').value], first = { perspective: perspectiveFor(mode, mode.round ? 1 : 0), light: true, autoPlay: false, autoRotate: false };  // (their defaults: see displayDefaults)
-  VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id] ? 'on' : 'off' }));
+  // (their defaults, see displayDefaults; Perspective's, the shapes' of this kind and space: on for some, off for the others)
+  const [kind, space] = NAV[$('mode').value], ways = { on: [], off: [] };
+  for (const sh of navValues(2, [kind, space])) {
+    const w = Object.keys(NAV).find((v) => NAV[v][0] === kind && NAV[v][1] === space && NAV[v][2] === sh);
+    ways[perspectiveFor(MODES[w], MODES[w].round ? 1 : 0) ? 'on' : 'off'].push(SHAPE_SHORT[sh] ?? sh);
+  }
+  const perspective = !ways.on.length ? 'off' : !ways.off.length ? 'on' : `On by default on ${ways.on.join(', ')}; off on ${ways.off.join(', ')}`;
+  const first = { perspective, light: 'on', autoPlay: 'off', autoRotate: 'off' };
+  VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id] }));
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
 $('viewTools').addEventListener('mouseenter', renderViewTiles);
@@ -1562,7 +1569,7 @@ function renderTrailButton() {
   const sq = (k, c) => `<rect x="${(17 * k) / 3}" y="${17 - (17 * k) / 3}" width="7" height="7" rx="1" fill="${c}"/>`;
   trailButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${sq(0, LIFE_FADE[5]) + sq(1, LIFE_FADE[3]) + sq(2, LIFE_FADE[1])}${sq(3, LIFE_ALIVE)}</svg>`, text: 'Trail', id: 'lifeTrailButton', toggle: true,  // up the diagonal
     title: 'Trail: a dead cell fades through Ink for a few generations (States and Age)', click: () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); } });
-  setTile(trailButton, { on: $('lifeTrail').checked && trailApplies(), can: trailApplies(), byDefault: lifeColours === 1 ? 'on' : 'off' });  // (not for these looks: off; on at first in Classic)
+  setTile(trailButton, { on: $('lifeTrail').checked && trailApplies(), can: trailApplies(), byDefault: 'On by default in Classic; off in colours' });  // (not for these looks: off)
 }
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 const defaultLook = (mode) => (mode.life ? 'mono' : 'gradient');  // (the simplest: Life's States, a walk's Rainbow)
@@ -3279,7 +3286,7 @@ document.addEventListener('mouseover', (e) => {
   const bold = (text) => Object.assign(document.createElement('b'), { textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
   // its default: a tile's (see setTile), a box's (its checkbox as the page starts)
   const box = el?.matches('label') ? el.querySelector('input[type=checkbox]') : null, d = el?.dataset.default ?? (box ? (box.defaultChecked ? 'on' : 'off') : '');
-  const told = d ? [Object.assign(document.createElement('div'), { className: 'tip-default', textContent: d === 'yes' ? 'By default' : `${d === 'on' ? 'On' : 'Off'} by default` })] : [];  // (on a line of its own, fainter)
+  const told = d ? [Object.assign(document.createElement('div'), { className: 'tip-default', textContent: d === 'yes' ? 'By default' : d === 'on' ? 'On by default' : d === 'off' ? 'Off by default' : d })] : [];  // (on a line of its own, fainter; a default that depends, told in full)
   $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), ...told] : [bold(name), `: ${tip}`, ...told]));  // (no words of its own: its name and its default)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
