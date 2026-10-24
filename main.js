@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1148';
+const VERSION = '0.1.1149';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9349,7 +9349,7 @@ const SOLID_SPOTS = {
   dodeca: () => ({}),
   pyramid: () => ({ 2: [1, 3].map((k) => pyramidFeet()[k]), 4: pyramidFeet().slice(1) }),  // its triangles (2: two opposite)
   rhombi: () => ({ 2: AXES.slice(4), 6: AXES, 8: CORNERS8, 12: EDGES12 }),  // (2: its squares up and down; 6, 12: its squares; 8: its triangles)
-  bicupola: () => ({ 2: [[0, 0, 1], [0, 0, -1]], 8: hullFeet('bicupola').slice(10) }),  // (its squares up and down; its triangles)
+  bicupola: () => ({ 2: [[0, 0, 1], [0, 0, -1]], 8: hullFeet('bicupola').slice(10), 10: hullFeet('bicupola').slice(0, 10) }),  // (its squares up and down: its halves; its triangles; its squares)
   icosa: ICOSA_SPOTS, hexsphere: ICOSA_SPOTS,
 };
 for (const k of ['tetra', 'octa', 'icosa', 'stella', 'dodeca']) SOLID_SPOTS[`${k}Kite`] = SOLID_SPOTS[k];  // kites: the triangles' solids
