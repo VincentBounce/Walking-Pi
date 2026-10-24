@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1139';
+const VERSION = '0.1.1140';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7084,9 +7084,9 @@ function iconTurn(laid, pix, P) {
   return best;
 }
 // Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
-// rest cut off), upright (see iconTurn): its cells (each of the square's, -1 off the grid or on its wall), its turn. Null
-// where it doesn't fit: neither its whole width nor its whole height laid, or two of its cells on one (a small torus), or
-// the colours' squares on each other's (but for a row of their margins)
+// rest cut off; a small torus, round onto itself: a cell its pixel nearest the middle, the others cut off), upright (see
+// iconTurn): its cells (each of the square's, -1 off the grid, on its wall or cut off), its turn. Null where it doesn't fit:
+// neither its whole width nor its whole height laid, or the colours' squares on each other's (but for a row of their margins)
 function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
@@ -7094,13 +7094,14 @@ function iconLay(N) {
   const lays = Array.from({ length: K }, (_, i) => {
     const at = new Int32Array(box.length).fill(-1);
     const cells = Object.assign(box.map(([x, y], j) => [x, y, j]), { mid: iconSquare(kind, N).mid });
-    for (const [t, j] of patternAt(i, K, cells, true)) if (!dead.has(t)) at[j] = t;
-    const js = box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
+    const owner = new Map(), far = (j) => Math.hypot(pix[j][0] - (P - 1) / 2, pix[j][1] - (P - 1) / 2);
+    for (const [t, j] of patternAt(i, K, cells, true)) if (!dead.has(t)) { at[j] = t; if (!owner.has(t) || far(j) < far(owner.get(t))) owner.set(t, j); }
+    const js = box.flatMap((_, j) => (at[j] >= 0 && owner.get(at[j]) === j ? [j] : (at[j] = -1, [])));
     const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
     return { at, turn, js };
   });
   const across = (js, d) => new Set(js.map((j) => pix[j][d])).size === P, all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
-  return lays.every(({ at, js }) => (across(js, 0) || across(js, 1)) && new Set(js.map((j) => at[j])).size === js.length) && new Set(all).size >= 0.95 * all.length ? lays : null;
+  return lays.every(({ js }) => across(js, 0) || across(js, 1)) && new Set(all).size >= 0.95 * all.length ? lays : null;
 }
 const iconFits = (N) => !!iconLay(N);
 function iconChoices(N, set) {
