@@ -1579,5 +1579,5 @@ B2v0256/S235 (born with 2, none or both by a corner only, or with 5 or 6; surviv
 | Snub tri | **B356v03/S014/C3** | 3 | 80 % | 681 | 0.26 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dSnubtri&r=B356v03/S014/C3&k=2&s=64&pop=random.35.7) |
 | Prismatic | **B25v01/S1/C5** | 3 | 80 % | 614 | 0.26 | [duel](https://vincentbounce.github.io/Walking-Pi/#w=life2dPrismatic&r=B25v01/S1/C5&k=2&s=64&pop=random.35.7) |
 
-B3/S1v0.368 on the pinwheel (born with 3; surviving with 1, its neighbours by a side or 3 by a corner, or with 6 or 8) is the most Life-like found by any of these searches (0.76), its battles turning round 4 times (Life: 3).
+B3/S1v0.368 on the pinwheel (born with 3; surviving with 1 if it touches by a side, or with 3, 6 or 8) is the most Life-like found by any of these searches (0.76), its battles turning round 4 times (Life: 3).
 
