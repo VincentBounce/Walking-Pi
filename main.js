@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1069';
+const VERSION = '0.1.1070';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2710,21 +2710,23 @@ function renderModePicker() {
     // (else the same rule on the other side, else its first walk: Cairo pentagons have no grid walk)
     const same = (f) => F.modes[f].find((v) => [0, 3, 4].every((i) => NAV[v][i] === NAV[w][i]))
       ?? F.modes[f].find((v) => [0, 3].every((i) => NAV[v][i] === NAV[w][i])) ?? F.modes[f].find((v) => NAV[v][0] === NAV[w][0]);
-    // its tilings as the 2D grids are, a picture and a name each, 4 a row; then Turned (a torus's, a strip's, a bottle's): on,
-    // the tiling turned (another grid: its rows round the tube); off, not; greyed, a tiling that has none
+    // its tilings as the 2D grids are, a picture and a name each, 4 a row; one that turns by 30° (another grid: its rows
+    // round the tube), a switch once picked: a click turns it (its picture turned) or back; then Turned (a torus's, a
+    // strip's, a bottle's), the same: on, the tiling turned; off, not; greyed, a tiling that has none
     const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab], turns = tabOf(here, true) >= 0;
+    const turn = () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); };
     $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, shape, name]) => {
       if (turned || !same(f)) return [];
       const b = button(`${icon(pic)}<span>${shapeLabel(shape)}</span>`, f === here, () => {
-        if (f === here) return;
+        if (f === here) { if (turns) turn(); return; }
         F.tab = tabOf(f, false);
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, name, { turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
+      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
     }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', on: isTurned, can: turns,
-      title: turns ? F.tabs[tabOf(here, true)][4] : 'This tiling has no other way round', click: () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); } })] : []));
+      title: turns ? F.tabs[tabOf(here, true)][4] : 'This tiling has no other way round', click: turn })] : []));
   }
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
   const tiling = inFamily?.F.modes[inFamily.m], has = (...n) => !tiling || tiling.some((v) => n.every((x, i) => NAV[v][[0, 3, 4][i]] === x));
