@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1109';
+const VERSION = '0.1.1110';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1550,9 +1550,9 @@ const setTile = (b, { on = false, can = true, mark = false, again = false, turn 
 };
 // A card, every one alike (the rules, an ant's, the walks', the brushes, the gallery's setups, the hunt's finds): a row, its
 // picture on the left, its name over its words (base: a walk's base on its right); a tile all the same (see tile, setTile:
-// on, can, again); its words as text (a setup's name typed)
+// on, can, again); its words as text (a setup's name typed), and its tooltip (in full: the row may cut them short)
 const card = ({ pic = '', name = '', detail = '', base = '', title = '', on = false, can = true, again = false, byDefault, click = null }) => {
-  const b = tile({ html: '', title, on, can, again, byDefault, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
+  const b = tile({ html: '', title: title || detail, on, can, again, byDefault, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
   const picture = part('mode-icon', ''), words = document.createElement('span');
   picture.innerHTML = pic;
   words.append(part('mode-name', name), ...(detail ? [part('mode-detail', detail)] : []));
