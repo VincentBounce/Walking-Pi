@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1154';
+const VERSION = '0.1.1155';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1595,8 +1595,8 @@ function renderColorButtons() {
   box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, soundButton] : []));  // then Life's Trail and Sound, switches
 }
 // Sound: the life playing its music (Web Audio, made here: a browser plays nothing before a click, off at first). Each
-// generation a note of a pentatonic scale (in tune whatever comes), a square wave as the 8-bit machines': its pitch by how
-// many are born (none: a rest), its loudness by how many are alive; in colours, each colour its voice (its births, the 4
+// generation a note of a pentatonic scale (in tune whatever comes), a square wave as the 8-bit machines': its octave by the
+// share of the grid born (a log scale), its note in it by how many exactly (none: a rest), its loudness by how many are alive; in colours, each colour its voice (its births, the 4
 // that bear most, a wave and an octave each); dying out, a fall down the scale. A voice at most a note every 90 ms (a fast
 // run: its generations between unheard)
 const PENTATONIC = [0, 2, 4, 7, 9], VOICES = [['square', 60], ['triangle', 48], ['square', 72], ['triangle', 36]];
@@ -1626,7 +1626,8 @@ function lifeMusic(L) {
   if (now - music.last < 0.09) return;
   music.last = now;
   const vol = (0.02 + 0.06 * Math.min(1, Math.sqrt((4 * L.aliveCount) / L.alive.length))), voices = by.map((b, k) => [b, k]).filter(([b, k]) => k && b > 0).sort((a, b) => b[0] - a[0]).slice(0, 4);
-  voices.forEach(([b], v) => note(Math.min(14, Math.floor(2 * Math.log2(1 + b))), VOICES[v], now, vol / Math.sqrt(voices.length)));
+  const octave = (b) => Math.min(2, Math.floor((3 * Math.log2(1 + (1000 * b) / L.alive.length)) / Math.log2(1001)));  // (its share of the grid born, on a log scale)
+  voices.forEach(([b], v) => note(5 * octave(b) + (b % 5), VOICES[v], now, vol / Math.sqrt(voices.length)));
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
