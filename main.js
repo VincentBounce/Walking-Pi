@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1082';
+const VERSION = '0.1.1083';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4989,12 +4989,18 @@ function syncSizeStepper() {
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
+  sizeGauge($('sizeGauge'), TORI.includes(kind) ? 0 : sel.options.length, sel.selectedIndex);  // (a torus, a strip, a bottle: sizes of their own too, none)
   const starts = modeStarts();
   $('startRow').hidden = !starts;
   if (!starts) return;
   if (document.activeElement !== $('startLabel')) $('startLabel').value = `start ${fmt(startNo())} of ${fmt(starts.length)}`;
   $('startDown').disabled = startNo() <= 1;
   $('startUp').disabled = startNo() >= starts.length;
+}
+// The sizes as a gauge under the stepper: a notch each, the one in use marked (none: hidden)
+function sizeGauge(el, n, i) {
+  el.hidden = n < 2;
+  el.replaceChildren(...Array.from({ length: n }, (_, k) => Object.assign(document.createElement('span'), { className: k === i ? 'on' : '' })));
 }
 // − / +: the usual sizes (from a torus size of its own, the usual ones just below or above it)
 function stepSize(delta) {
@@ -7140,6 +7146,7 @@ function renderPlaneRow() {
   $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), plane.side)}<small>${sizeCells(planeKind(kind), plane.side)}</small>`;  // the size (see gridSize; a rectangle's, if so)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
+  sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side));
   setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
   // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
   // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)
@@ -7730,7 +7737,7 @@ const colourMissing = (K) => {
 function renderColours() {
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
-    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; compute(); } } })),
+    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), click: () => { if (k !== lifeColours) { lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
     // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
     tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
       title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
@@ -10103,6 +10110,7 @@ function applySetup(s) {
       if (iconSize(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map(iconIndex);  // (pop=icon24.star.heart: each colour's)
     }
     lifeColours = Number(s.k) || 1;
+    $('lifeTrail').checked = lifeColours === 1;  // (Trail: on in Classic, off in colours, at first)
     colourMix = Number(s.mx) === 1;
     if (s.r) { ruleFittedTo = s.w; setRuleText(ruleBody(s.r)); }  // a link's rule as it is
   }
