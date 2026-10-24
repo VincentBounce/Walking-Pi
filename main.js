@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1085';
+const VERSION = '0.1.1086';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2488,7 +2488,7 @@ MODE_ICONS.lifeFrame = 'frame';
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Cuboctahedron', 0, 'Torus']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -2578,14 +2578,14 @@ const FAMILIES = [
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)'],
            [3, false, 'tilesTri', 'Triangles', 'Triangles'], [3, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
            [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)']] },
-  // the solids: Kites first, the one in use (Life only: elsewhere, the others)
-  { name: 'Sphere', modes: [['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'], ['icosaGrid', 'icosaLR', 'antIcosa', 'lifeIcosa', 'icosaPivotGrid'], ['lifeIcosaKite']], tab: 0,
-    tabs: [[2, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'], [0, false, 'tilesHex', 'Hexagons', 'Hexagons (and 12 pentagons)'], [1, false, 'tilesTri', 'Triangles', 'Triangles (an icosahedron, inflated)']] },
-  ...[['Tetrahedron', 'tetra'], ['Octahedron', 'octa'], ['Stella octangula', 'stella'], ['Dodecahedron', 'dodeca']].map(([name, k]) => {
-    const K = k[0].toUpperCase() + k.slice(1);
-    const hex = !!HEX_SOLIDS[k];  // (its hexagons folded over its edges, see hexSolidMesh)
-    return { name, modes: [[`${k}Grid`, `${k}LR`, `${k}PivotGrid`, `life${K}`], [`life${K}Kite`], ...(hex ? [[`life${K}Hex`]] : [])], tab: 0,
-      tabs: [[1, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'], ...(hex ? [[2, false, 'tilesHex', 'Hexagons', 'Hexagons (folded over the edges, the corners walls)']] : []), [0, false, 'tilesTri', 'Triangles', 'Triangles']] };
+  // the volumes of triangles, one menu: Kites first (the one in use, Life only: elsewhere, the others), Hexagons (the
+  // sphere's its own, with its walks; the solids' folded over their edges, see hexSolidMesh), Triangles
+  ...[['Sphere', 'icosa'], ['Tetrahedron', 'tetra'], ['Octahedron', 'octa'], ['Stella octangula', 'stella'], ['Dodecahedron', 'dodeca']].map(([name, k]) => {
+    const K = k[0].toUpperCase() + k.slice(1), sphere = k === 'icosa';
+    return { name, tab: 0,
+      modes: [[`${k}Grid`, `${k}LR`, ...(MODES[`ant${K}`] ? [`ant${K}`] : []), `life${K}`, `${k}PivotGrid`], [`life${K}Kite`], sphere ? ['hexSphereGrid', 'hexSphereWalk', 'antHexSphere', 'lifeHexSphere'] : [`life${K}Hex`]],
+      tabs: [[1, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'], [2, false, 'tilesHex', 'Hexagons', sphere ? 'Hexagons (and 12 pentagons)' : 'Hexagons (folded over the edges, the corners walls)'],
+             [0, false, 'tilesTri', 'Triangles', sphere ? 'Triangles (an icosahedron, inflated)' : 'Triangles']] };
   }),
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
