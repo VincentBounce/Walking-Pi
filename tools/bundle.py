@@ -1,6 +1,6 @@
 # Walking Pi as one HTML file, to send: index.html with style.css and its scripts in it, the scripts gzipped (base64) and
 # unzipped by the page as it opens (DecompressionStream, every browser since 2023), or as they are (--plain).
-# python3 tools/bundle.py [--plain] [out.html]   (out: « Walking Pi resources/Walking Pi v<version>[ plain].html », beside the repo)
+# python3 tools/bundle.py [--plain] [out.html]   (out: « Walking Pi resources/Walking Pi v<version> compressed|plain.html », beside the repo)
 import base64, gzip, os, re, sys
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,7 +9,7 @@ plain = '--plain' in sys.argv
 read = lambda name: open(os.path.join(root, name), encoding='utf-8').read()
 html, main = read('index.html'), read('main.js')
 version = re.search(r"VERSION = '([^']+)'", main).group(1)
-out = args[0] if args else os.path.join(os.path.dirname(root), 'Walking Pi resources', f'Walking Pi v{version}{" plain" if plain else ""}.html')
+out = args[0] if args else os.path.join(os.path.dirname(root), 'Walking Pi resources', f'Walking Pi v{version}{" plain" if plain else " compressed"}.html')
 
 html = re.sub(r'<link rel="stylesheet" href="style\.css[^"]*">', lambda _: '<style>\n' + read('style.css') + '</style>', html)
 names = re.findall(r'<script src="([^"?]+)', html)
