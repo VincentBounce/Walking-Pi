@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1118';
+const VERSION = '0.1.1119';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -12339,7 +12339,8 @@ function renderGauges(L) {
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
   if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Growth', 'Born · died', 'Ever alive', 'Peak'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
-    + `${i === 2 || i === 3 ? '<span></span>' : `<span class="rank-bar"><i style="background:${LIFE_ALIVE}"></i></span>`}<span class="rank-num"></span></div>`).join('');
+    + `${i === 2 || i === 3 ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');
+  for (const i of box.querySelectorAll('.rank-bar i')) i.style.background = LIFE_ALIVE;  // (the theme's live cells, as it is now)
   const varies = L.loopAvg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
   const turnover = both ? (b + d) / both : 0, bar = (i) => box.children[i].children[1].firstChild;
   const width = (i, v, most) => { bar(i).style.width = `${most ? Math.min(100, (100 * v) / most) : 0}%`; };
