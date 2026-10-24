@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1112';
+const VERSION = '0.1.1113';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3295,14 +3295,21 @@ document.addEventListener('mouseover', (e) => {
   $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), ...told] : [bold(name), `: ${tip}`, ...told]));  // (no words of its own: its name and its default)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
-// the hint, its zoom against the view framed (×1: all of it in view, see viewFor; ×2 twice as near): the mouse on a line,
-// the double-click on the next (see .hint)
+// the hint, as the tooltips (each action in bold, then its gesture): the zoom first, against the view framed (×1: all of
+// it in view, see viewFor; ×2 twice as near), with the mouse's; the double-click's on the next line (see .hint)
 function showZoom() {
   const z = view.scale / viewFor(padBounds(bounds)).scale, x = `×${z >= 9.95 ? Math.round(z) : z.toFixed(1).replace(/\.0$/, '')}`;
-  const text = walk.is3d
-    ? `Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom ${x}\nDouble-click: center, again: ${centersPattern() ? 'centered pattern' : 'default view'}`
-    : `Drag: pan · Wheel: zoom ${x}\nDouble-click: auto-fit`;
-  if ($('hint').textContent !== text) $('hint').textContent = text;  // (each frame of a walk: its fit grows with it)
+  const lines = walk.is3d
+    ? [[[`Zoom ${x}`, 'wheel'], ['Rotate', 'drag'], ['Pan', 'right-drag or Shift+drag']], [['Center', 'double-click'], [centersPattern() ? 'Centered pattern' : 'Default view', 'double-click again']]]
+    : [[[`Zoom ${x}`, 'wheel'], ['Pan', 'drag']], [['Auto-fit', 'double-click']]];
+  const key = JSON.stringify(lines);
+  if ($('hint').dataset.key === key) return;  // (each frame of a walk: its fit grows with it)
+  $('hint').dataset.key = key;
+  $('hint').replaceChildren(...lines.map((line) => {
+    const div = document.createElement('div');
+    line.forEach(([action, gesture], i) => div.append(...(i ? [' · '] : []), Object.assign(document.createElement('b'), { textContent: action }), `: ${gesture}`));
+    return div;
+  }));
 }
 
 /* ==============================================================================================
