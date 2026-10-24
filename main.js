@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1105';
+const VERSION = '0.1.1106';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1914,8 +1914,8 @@ const ICONS = (() => {
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 // the plane's outline: Square (a slanted grid cut as a square) and Walls (else a torus), on or off
 $('planeEdges').append(
-  tile({ pic: icon('walls'), text: 'Square', id: 'squareBtn', toggle: true, title: 'A slanted grid cut as a square (its cells moved, the same neighbours); off: as it is, a rhombus', click: () => { plane.rect = !plane.rect; compute(true); } }),
-  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }));
+  tile({ pic: icon('walls'), text: 'Square', id: 'squareBtn', toggle: true, byDefault: 'off', title: 'A slanted grid cut as a square (its cells moved, the same neighbours); off: as it is, a rhombus', click: () => { plane.rect = !plane.rect; compute(true); } }),
+  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }));
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
 
@@ -3279,8 +3279,8 @@ document.addEventListener('mouseover', (e) => {
   const bold = (text) => Object.assign(document.createElement('b'), { textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
   // its default: a tile's (see setTile), a box's (its checkbox as the page starts)
   const box = el?.matches('label') ? el.querySelector('input[type=checkbox]') : null, d = el?.dataset.default ?? (box ? (box.defaultChecked ? 'on' : 'off') : '');
-  const told = d === 'yes' ? ' (default)' : d ? ` · ${d} by default` : '';
-  $('tip').replaceChildren(...(!tip ? (told ? [bold(name), told] : []) : !ok ? [tip, told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), told] : [bold(name), `: ${tip}`, told]));  // (no words of its own: its name and its default)
+  const told = d ? [Object.assign(document.createElement('div'), { className: 'tip-default', textContent: d === 'yes' ? 'By default' : `${d === 'on' ? 'On' : 'Off'} by default` })] : [];  // (on a line of its own, fainter)
+  $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), ...told] : [bold(name), `: ${tip}`, ...told]));  // (no words of its own: its name and its default)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
 // the hint, its zoom against the view framed (×1: all of it in view, see viewFor; ×2 twice as near): the mouse on a line,

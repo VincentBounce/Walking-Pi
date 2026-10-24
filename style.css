@@ -530,7 +530,8 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   pointer-events: none;
 }
 .stage.on-sky .hint { color: rgba(230, 237, 243, 0.6); }  /* over a sky (see drawGrid) */
-#tip { max-width: 420px; margin-left: auto; }  /* what the mouse is on, its tooltip, as the hint (a long one on lines of its own) */
+#tip { max-width: 420px; margin-left: auto; }
+.tip-default { color: color-mix(in srgb, var(--muted) 60%, var(--bg)); }  /* a control's default, under its tooltip: fainter, on either page */  /* what the mouse is on, its tooltip, as the hint (a long one on lines of its own) */
 
 @media (max-width: 720px) {
   main { flex-direction: column; }
