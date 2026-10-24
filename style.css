@@ -384,8 +384,8 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 .number-view .number-digits { max-width: none; color: var(--text); font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
 .tut-tools .icon { width: 16px; height: 16px; vertical-align: middle; }
 button.wide.active, .head-btn.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
-.display-menu:hover { width: 230px; }
-@media (hover: none) { .display-menu:focus-within { width: 230px; } }
+.display-menu:hover { width: 276px; }  /* (4 tiles a row, Perspective and Auto-rotate in full) */
+@media (hover: none) { .display-menu:focus-within { width: 276px; } }
 /* Auto-fit stays at the top right; hovering opens the settings, Grid beside it and the rest below */
 .display-menu .stage-head { display: flex; justify-content: flex-end; gap: 16px; }
 .display-menu .stage-head .check { margin: 0; }

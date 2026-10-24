@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1099';
+const VERSION = '0.1.1100';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1425,11 +1425,9 @@ function updateDisplayMenu() {
   $('pathLayer').style.opacity = shows('cells') && $('showPath').checked && !$('showPath').disabled ? 0.15 : '';
   $('heatmap').disabled = !mode.cells;
   $('heatmap').checked = $('colorMode').value === 'visits';
-  // Grid stays in sight; Auto-fit (Auto-rotate in 3D) beside it while the box is open, the other one
-  // at the top of the view's settings, above Centered pattern (Default view), Perspective, Side light, Autoplay and the shape
+  // Grid stays in sight, Auto-fit beside it while the box is open; then Centered pattern (Default view), the view's
+  // switches as tiles (Perspective, Side light, Autoplay, Auto-rotate: see renderViewTiles) and the shape
   const spin = shows('autoRotate');
-  $('viewHead').prepend(spin ? $('autoRotateRow') : $('autoFitRow'));
-  $('viewSection').prepend(spin ? $('autoFitRow') : $('autoRotateRow'));
   $('centeredRow').hidden = !spin;
   $('centeredName').textContent = centersPattern() ? 'Centered pattern' : 'Default view';  // (as the hint says it)
   $('fillAreasRow').hidden = !shows('fill') || !!mode.antOf;  // an ant fills no areas
@@ -1441,8 +1439,23 @@ function updateDisplayMenu() {
   renderAreaModes();
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   renderTrailButton();
+  renderViewTiles();
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
+// The view's switches, standard tiles (toggle): each its checkbox's (the source, kept out of sight), on as it is checked,
+// greyed where its row is hidden (it does not apply: Autoplay but in Life, the others but in 3D); drawn again with the
+// display box and when the box opens (a hand rotation, a new mode: their boxes changed)
+const VIEW_TILES = [['perspective', 'perspectiveRow', 'perspective', 'Perspective', 'Perspective: what is nearer looks bigger'],
+  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoPlay', 'autoPlayRow', 'play', 'Autoplay'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate']];
+let viewTiles = null;
+function renderViewTiles() {
+  viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
+    click: () => { $(id).checked = !$(id).checked; $(id).dispatchEvent(new Event('change')); renderViewTiles(); } }));
+  if (!$('viewTiles').children.length) $('viewTiles').replaceChildren(...viewTiles);
+  VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled }));
+  $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
+}
+$('viewTools').addEventListener('mouseenter', renderViewTiles);
 
 // The colour menu means something else for the Game of Life, and depends on its number of states.
 // In Life the plain states come first (the default); walks keep the gradient first.
@@ -1851,6 +1864,11 @@ const ICONS = (() => {
     moon: '<path class="f" d="M19.5 14.6A8 8 0 1 1 9.4 4.5A6.3 6.3 0 0 0 19.5 14.6Z"/>',
     halfDisc: '<circle cx="12" cy="12" r="8.5"/>' + '<path class="f" d="M12 3.5A8.5 8.5 0 0 0 12 20.5Z"/>',
     pivot: pathEl('M18.4 13A6.5 6.5 0 1 1 16.6 7.4') + pathEl('M17.5 3.5V7.8H13.2'),  // a turn on the spot, clockwise
+    // the view's switches: Perspective (a road to its vanishing line), Side light (a torch lighting from the left),
+    // Auto-rotate (an orbit round the middle)
+    perspective: pathEl('M3.5 20L9 5.5H15L20.5 20Z') + pathEl('M12 5.5V20M6.2 12.8H17.8'),
+    sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
+    autoRotate: pathEl('M17.2 16.7C14.5 17.9 9.5 17.9 6.3 16.7C2.4 15.2 2.4 8.8 6.3 7.3C9.5 6.1 14.5 6.1 17.7 7.3C20 8.2 21 10 20.6 11.8') + pathEl('M15.4 14.4L17.6 16.8L15 18.9') + '<circle class="f" cx="12" cy="12" r="2.2"/>',
     ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
     symMirror: flags([[0, false], [0, true], [Math.PI, false], [Math.PI, true]]),
@@ -2822,6 +2840,7 @@ function compute(keepDigits = false) {
   fitRuleToShape();
   $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
   $('autoPlayRow').hidden = !mode.life;
+  renderViewTiles();
   renderColours();
   renderRuleSection();
   if (!mode.life) { stopHunt(); $('huntRow').hidden = true; }
@@ -3256,9 +3275,10 @@ document.addEventListener('mouseover', (e) => {
 // the double-click on the next (see .hint)
 function showZoom() {
   const z = view.scale / viewFor(padBounds(bounds)).scale, x = `×${z >= 9.95 ? Math.round(z) : z.toFixed(1).replace(/\.0$/, '')}`;
-  $('hint').textContent = walk.is3d
+  const text = walk.is3d
     ? `Drag: rotate · Right-drag or Shift+drag: pan · Wheel: zoom ${x}\nDouble-click: center, again: ${centersPattern() ? 'centered pattern' : 'default view'}`
     : `Drag: pan · Wheel: zoom ${x}\nDouble-click: auto-fit`;
+  if ($('hint').textContent !== text) $('hint').textContent = text;  // (each frame of a walk: its fit grows with it)
 }
 
 /* ==============================================================================================
@@ -10473,10 +10493,10 @@ function restart() {
 // works on this form: the scale on a log scale (a steady feeling of zoom at any size) and the
 // centre in world units, so zooming out does not drift sideways.
 const MIN_SCALE = 1e-6;  // pixels per cell, the farthest zoom out
-// how far the wheel zooms: a 3D view (a surface, a 3D walk) from its fit (the whole of it framed, see viewFor), ZOOM_IN times
-// nearer, ZOOM_OUT times farther, whatever its size; else from MIN_SCALE to 200 pixels a cell
+// how far the wheel zooms, in 2D as in 3D: from the view's fit (the whole of it framed, see viewFor; a walk's as it is
+// now), ZOOM_IN times nearer, ZOOM_OUT times farther, whatever its size
 const ZOOM_IN = 20, ZOOM_OUT = 10;
-const zoomRange = () => { if (!walk.is3d) return [MIN_SCALE, 200]; const fit = viewFor(padBounds(bounds)).scale; return [fit / ZOOM_OUT, fit * ZOOM_IN]; };
+const zoomRange = () => { const fit = viewFor(padBounds(bounds)).scale; return [Math.max(MIN_SCALE, fit / ZOOM_OUT), fit * ZOOM_IN]; };
 function viewFor(b) {
   const tight = walk.is3d;  // a surface or a 3D walk: the sphere round it touches the sides, at most (see surfaceBounds, includeBox)
   const w = b.maxX - b.minX + (tight ? 0 : 2);
@@ -12546,6 +12566,7 @@ function tick(now = performance.now()) {
     viewGoal = viewFor({ minX: b.minX - mx, maxX: b.maxX + mx, minY: b.minY - my, maxY: b.maxY + my });
   }
   easeView(dt);
+  if (walk.n && !walk.sphere && !walk.plane) showZoom();  // (a walk: its fit grows with it)
   if (walk.plane) {  // Life on the plane: the grid as one picture, each generation
     if (needsFull) glClear();
     if (needsFull) drawPlaneGrid();
