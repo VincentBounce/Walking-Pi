@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1140';
+const VERSION = '0.1.1141';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7086,7 +7086,7 @@ function iconTurn(laid, pix, P) {
 // Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
 // rest cut off; a small torus, round onto itself: a cell its pixel nearest the middle, the others cut off), upright (see
 // iconTurn): its cells (each of the square's, -1 off the grid, on its wall or cut off), its turn. Null where it doesn't fit:
-// neither its whole width nor its whole height laid, or the colours' squares on each other's (but for a row of their margins)
+// not its whole width and its whole height laid (cut off in its corners only), or the colours' squares on each other's (but for a row of their margins)
 function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
@@ -7101,7 +7101,7 @@ function iconLay(N) {
     return { at, turn, js };
   });
   const across = (js, d) => new Set(js.map((j) => pix[j][d])).size === P, all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
-  return lays.every(({ js }) => across(js, 0) || across(js, 1)) && new Set(all).size >= 0.95 * all.length ? lays : null;
+  return lays.every(({ js }) => across(js, 0) && across(js, 1)) && new Set(all).size >= 0.95 * all.length ? lays : null;
 }
 const iconFits = (N) => !!iconLay(N);
 function iconChoices(N, set) {
@@ -13067,8 +13067,8 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: Wild, the whole grid, random soups, each colour's two parts opposite (a solid where a colour has two faces or spots)"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
-    : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width or height whole (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
-    : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width or height whole (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
+    : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
+    : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : 'Wild: the whole grid, random soups (a colour with two parts: side by side)';
