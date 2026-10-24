@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1077';
+const VERSION = '0.1.1078';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10438,6 +10438,10 @@ function restart() {
 // works on this form: the scale on a log scale (a steady feeling of zoom at any size) and the
 // centre in world units, so zooming out does not drift sideways.
 const MIN_SCALE = 1e-6;  // pixels per cell, the farthest zoom out
+// how far the wheel zooms: a 3D view (a surface, a 3D walk) as far in as out from its fit (the whole of it framed, see
+// viewFor), ZOOM_SPAN times either way, whatever its size; else from MIN_SCALE to 200 pixels a cell
+const ZOOM_SPAN = 10;
+const zoomRange = () => { if (!walk.is3d) return [MIN_SCALE, 200]; const fit = viewFor(padBounds(bounds)).scale; return [fit / ZOOM_SPAN, fit * ZOOM_SPAN]; };
 function viewFor(b) {
   const tight = walk.is3d;  // a surface or a 3D walk: the sphere round it touches the sides, at most (see surfaceBounds, includeBox)
   const w = b.maxX - b.minX + (tight ? 0 : 2);
@@ -12685,7 +12689,7 @@ stage.addEventListener('wheel', (e) => {
   const r = stage.getBoundingClientRect();
   const mx = e.clientX - r.left, my = e.clientY - r.top;
   const k = Math.exp(-e.deltaY * 0.0015);
-  const s = Math.min(200, Math.max(MIN_SCALE, view.scale * k));
+  const [lo, hi] = zoomRange(), s = Math.min(hi, Math.max(lo, view.scale * k));
   const f = s / view.scale;
   view.ox = mx - (mx - view.ox) * f;
   view.oy = my - (my - view.oy) * f;
