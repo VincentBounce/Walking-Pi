@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1158';
+const VERSION = '0.1.1159';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1592,81 +1592,33 @@ function renderColorButtons() {
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
   renderSoundButton();
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, ...soundButtons] : []));  // then Life's Trail and Sounds, switches
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, soundButton] : []));  // then Life's Trail and Sound, switches
 }
-// Sound: the life playing its music (Web Audio, made here: a browser plays nothing before a click, off at first). Each
-// generation a note of a pentatonic scale (in tune whatever comes), a square wave as the 8-bit machines': its octave by the
-// share of the grid born (a log scale), its note in it by how many exactly (none: a rest), its loudness by how many are alive; in colours, each colour its voice (its births, the 4
-// that bear most, a wave and an octave each); dying out, a fall down the scale. A voice at most a note every 90 ms (a fast
-// run: its generations between unheard)
-const PENTATONIC = [0, 2, 4, 7, 9], VOICES = [['square', 60], ['triangle', 48], ['square', 72], ['triangle', 36]];
-// Sound 2, its music by where the births are: each voice's note by the height on screen of the middle of its births (higher
-// up, higher), its place left to right in the speakers by theirs, sliding from its last note (a glider climbing, a rising
-// line); the cells seen only (a solid's front, as the camera turns). Sound 3, a sequencer sweeping the screen: a line across
-// it left to right, 16 steps, a step every 125 ms; each live cell it meets a note, higher as it is higher up (10 rows, two
-// octaves), the 3 rows with most cells there, louder as they have more, left or right as the line is (its colour's voice:
-// the most there). Sound, 2 and 3: one at a time (to choose one)
-let music = null, soundButtons = null;  // music: its audio, its kind (1, 2), when it last played, each colour's births then, whether it died out, each voice's last note
-const SOUND_PIC = (n) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/>${n === 1 ? '<path d="M16 9Q18 12 16 15M18.5 6.5Q22 12 18.5 17.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
-  : n === 2 ? '<path d="M16 16L18.5 11L21 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="21" cy="7" r="1.6" fill="currentColor"/>'
-  : n === 3 ? '<path d="M18.5 4V20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="15.5" y="7" width="2.4" height="2.4" fill="currentColor"/><rect x="19.5" y="13" width="2.4" height="2.4" fill="currentColor"/>'
-  : '<path d="M17 17V7L22 6V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.6" cy="17.2" r="1.7" fill="currentColor"/><circle cx="20.6" cy="16.2" r="1.7" fill="currentColor"/>'}</svg>`;
-// Sound 4: tunes as 8-bit (public domain, and one of ours): a melody (square), a bass (triangle, its bar's root and its
-// octave in eighths), drums (noise: a kick on the beats, a hat between), on a clock of their own while Life plays; the life's
-// moments over them: an explosion (more born at once than 2.5 times of late, 1 % of the grid at least) a boom of noise
-// falling, louder the bigger; a colour dying out, a falling blip; all dying out, a fall down the scale, the tune stopped
-// till it lives again; none born, the tune softer. A click again: the next tune; past the last, off. A melody: its notes
-// (C4 is the middle C), each an eighth or as many as said (E5:2), R a rest
-const TUNES = [
-  { name: 'Korobeiniki (the Russian song of Tetris)', bpm: 152, bass: 'E2 A2 E2 A2 D2 C2 E2 A2',
-    melody: 'E5:2 B4 C5 D5:2 C5 B4 A4:2 A4 C5 E5:2 D5 C5 B4:3 C5 D5:2 E5:2 C5:2 A4:2 A4:4 R D5:2 F5 A5:2 G5 F5 E5:3 C5 E5:2 D5 C5 B4:2 B4 C5 D5:2 E5:2 C5:2 A4:2 A4:4' },
-  { name: 'In the Hall of the Mountain King (Grieg)', bpm: 132, bass: 'B1 F#2 B1 F#2',
-    melody: 'B3 C#4 D4 E4 F#4 D4 F#4:2 F4 C#4 F4:2 E4 C4 E4:2 B3 C#4 D4 E4 F#4 D4 F#4 B4 A4 F#4 D4 F#4 A4:4' },
-  { name: 'Can-can (Offenbach)', bpm: 168, bass: 'C2 G2 G2 C2 C2 G2 G2 C2',
-    melody: 'C4:2 D4 F4 E4 D4 G4:2 G4:2 G4 A4 E4 F4 D4:2 D4:2 D4 F4 E4 D4 C4 C5 B4 A4 G4 F4 E4 D4 C4:4 G4:2 A4 C5 B4 A4 D5:2 D5:2 D5 E5 B4 C5 A4:2 A4:2 A4 C5 B4 A4 G4 G5 F5 E5 D5 C5 B4 D5 C5:4' },
-  { name: 'Pixel quest (ours)', bpm: 140, bass: 'C2 A1 F1 G1 C2 A1 F1 G1',
-    melody: 'C5 E5 G5 E5 A5 G5 E5 D5 C5 D5 E5 G5 E5:2 D5:2 A4 C5 D5 E5 G5 E5 D5 C5 D5:2 E5 D5 C5:4 G5 E5 G5 A5 G5 E5 D5 E5 C5 D5 E5 C5 A4:2 G4:2 A4 C5 D5 E5 G5:2 A5 G5 E5 D5 C5 D5 C5:4' },
-];
-const NOTE_NAMES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-const midiOf = (n) => 12 * (Number(n.at(-1)) + 1) + NOTE_NAMES[n[0]] + (n.includes('#') ? 1 : 0);
-// a tune as its eighths: each a note starting there [midi, eighths] or none; its bass a note an eighth; padded to whole bars
-function tuneSteps(tune) {
-  const notes = [];
-  for (const w of tune.melody.split(' ')) { const [n, l = '1'] = w.split(':'); notes.push(n === 'R' ? null : [midiOf(n), Number(l)]); for (let k = 1; k < Number(l); k++) notes.push(null); }
-  const roots = tune.bass.split(' ').map(midiOf), bars = Math.max(roots.length, Math.ceil(notes.length / 8));
-  while (notes.length < 8 * bars) notes.push(null);
-  return { notes, bass: notes.map((_, k) => roots[Math.floor(k / 8) % roots.length] + (k % 2 ? 12 : 0)) };
+// Sound: Korobeiniki (the Russian song of Tetris, public domain) as 8-bit, while Life plays, on a clock of its own (Web
+// Audio, made here: a browser plays nothing before a click, off at first): its melody a square wave, its bass a triangle
+// (its bar's root and its octave in eighths), drums of noise (a kick on the beats, a hat between); the life's moments over
+// it: an explosion (more born at once than 2.5 times of late, 1 % of the grid at least) a boom of noise falling, louder the
+// bigger; a colour dying out, a falling blip; all dying out, a fall down the scale, the tune stopped till it lives again;
+// none born, the tune softer. Its melody: its notes (C4 the middle C), each an eighth or as many as said (E5:2), R a rest
+const TUNE = { bpm: 152, bass: 'E2 A2 E2 A2 D2 C2 E2 A2',
+  melody: 'E5:2 B4 C5 D5:2 C5 B4 A4:2 A4 C5 E5:2 D5 C5 B4:3 C5 D5:2 E5:2 C5:2 A4:2 A4:4 R D5:2 F5 A5:2 G5 F5 E5:3 C5 E5:2 D5 C5 B4:2 B4 C5 D5:2 E5:2 C5:2 A4:2 A4:4' };
+const midiOf = (n) => 12 * (Number(n.at(-1)) + 1) + { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[n[0]] + (n.includes('#') ? 1 : 0);
+let music = null, soundButton = null;  // music: its audio, its clock, its eighths (the melody's notes, the bass), where it is, of late how many born, softer, stopped
+function tone(midi, at, len, wave, vol, to = null) {  // (to: sliding there)
+  const c = music.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = wave;
+  o.frequency.setValueAtTime(440 * 2 ** ((midi - 69) / 12), at);
+  if (to) o.frequency.exponentialRampToValueAtTime(440 * 2 ** ((to - 69) / 12), at + len);
+  g.gain.setValueAtTime(vol, at);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+  o.connect(g).connect(c.destination);
+  o.start(at);
+  o.stop(at + len + 0.01);
 }
-function tuneTick() {
-  const c = music.ctx, eighth = 30 / TUNES[music.tune].bpm, { notes, bass } = music.steps;
-  if (!playing || music.stopped) { music.next = c.currentTime + 0.05; return; }
-  const tone = (midi, at, len, wave, vol) => {
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = wave;
-    o.frequency.value = 440 * 2 ** ((midi - 69) / 12);
-    g.gain.setValueAtTime(vol, at);
-    g.gain.setValueAtTime(vol, at + len * 0.8);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + len);
-    o.connect(g).connect(c.destination);
-    o.start(at);
-    o.stop(at + len + 0.01);
-  };
-  const soft = music.soft ? 0.5 : 1;
-  while (music.next < c.currentTime + 0.12) {
-    const k = music.step % notes.length, at = music.next;
-    if (notes[k]) tone(notes[k][0], at, notes[k][1] * eighth * 0.95, 'square', 0.035 * soft);
-    tone(bass[k], at, eighth * 0.9, 'triangle', 0.07 * soft);
-    noise(at, k % 2 ? 0.03 : 0.08, k % 2 ? 8000 : 300, 0.03 * soft);  // (a hat between the beats, a kick on them)
-    music.next += eighth;
-    music.step++;
-  }
-}
-// a burst of noise at, len long, through a filter at freq (falling to fall, if said), vol loud
-function noise(at, len, freq, vol, fall = null) {
-  const c = music.ctx;
-  music.noiseBuffer ??= (() => { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; })();
-  const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-  src.buffer = music.noiseBuffer;
+function noise(at, len, freq, vol, fall = null) {  // a burst of noise through a filter at freq (falling to fall, if said)
+  const c = music.ctx, src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  music.noise ??= (() => { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; })();
+  src.buffer = music.noise;
   f.type = freq > 2000 ? 'highpass' : 'lowpass';
   f.frequency.setValueAtTime(freq, at);
   if (fall) f.frequency.exponentialRampToValueAtTime(fall, at + len);
@@ -1676,102 +1628,41 @@ function noise(at, len, freq, vol, fall = null) {
   src.start(at);
   src.stop(at + len + 0.01);
 }
-const stopMusic = () => { if (music) { clearInterval(music.timer); music.ctx.close(); music = null; } };
-function startMusic(kind, tune = 0) {
-  music = { kind, ctx: new AudioContext(), last: 0, by: [], over: false, notes: [], col: 0, tune, step: 0, next: 0, avg: null };
-  if (kind === 4) { music.steps = tuneSteps(TUNES[tune]); music.timer = setInterval(tuneTick, 25); }
+function tuneTick() {  // (its next eighths, a little ahead)
+  const c = music.ctx, eighth = 30 / TUNE.bpm, { notes, bass } = music, soft = music.soft ? 0.5 : 1;
+  if (!playing || music.stopped) { music.next = c.currentTime + 0.05; return; }
+  while (music.next < c.currentTime + 0.12) {
+    const k = music.step++ % notes.length, at = music.next;
+    if (notes[k]) tone(notes[k][0], at, notes[k][1] * eighth * 0.95, 'square', 0.035 * soft);
+    tone(bass[k], at, eighth * 0.9, 'triangle', 0.07 * soft);
+    noise(at, k % 2 ? 0.03 : 0.08, k % 2 ? 8000 : 300, 0.03 * soft);
+    music.next += eighth;
+  }
 }
 function renderSoundButton() {
-  soundButtons ??= [1, 2, 3, 4].map((n) => tile({ pic: SOUND_PIC(n), text: n === 1 ? 'Sound' : `Sound ${n}`, id: n === 1 ? 'lifeSoundButton' : `lifeSound${n}Button`, toggle: n < 4,
-    title: n === 1 ? 'Sound: the life plays its music, a note a generation (8-bit): higher as more are born, louder as more are alive; in colours, a voice each'
-      : n === 2 ? 'Sound 2: the life plays its moves: a note a generation (8-bit), higher as its births are higher on screen, left or right in the speakers as they are, sliding as they move; in colours, a voice each'
-      : n === 3 ? 'Sound 3: a sequencer sweeping the screen left to right (16 steps, 2 s round): each live cell it meets a note (8-bit), higher as the cell is higher up; in colours, the voice of the most there'
-      : '',
+  soundButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/><path d="M17 17V7L22 6V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.6" cy="17.2" r="1.7" fill="currentColor"/><circle cx="20.6" cy="16.2" r="1.7" fill="currentColor"/></svg>',
+    text: 'Sound', id: 'lifeSoundButton', toggle: true, title: "Sound: Korobeiniki (Tetris's tune) as 8-bit while Life plays, the life's moments over it: an explosion a boom, a colour dying out a blip, all dying out a fall, stillness softer",
     click: () => {
-      const was = music?.kind, tune = music?.tune ?? -1;
-      stopMusic();
-      if (n === 4 && was === 4) { if (tune + 1 < TUNES.length) startMusic(4, tune + 1); }  // (again: the next tune; past the last, off)
-      else if (was !== n) startMusic(n);
+      if (music) { clearInterval(music.timer); music.ctx.close(); music = null; }
+      else {
+        const notes = [];
+        for (const w of TUNE.melody.split(' ')) { const [n, l = '1'] = w.split(':'); notes.push(n === 'R' ? null : [midiOf(n), Number(l)]); for (let k = 1; k < Number(l); k++) notes.push(null); }
+        const roots = TUNE.bass.split(' ').map(midiOf);
+        music = { ctx: new AudioContext(), notes, bass: notes.map((_, k) => roots[Math.floor(k / 8) % roots.length] + (k % 2 ? 12 : 0)), step: 0, next: 0, avg: null, soft: false, stopped: false };
+        music.timer = setInterval(tuneTick, 25);
+      }
       renderSoundButton();
-    } }));
-  soundButtons.forEach((b, i) => setTile(b, { on: music?.kind === i + 1, can: true, again: i === 3, byDefault: 'off' }));
-  soundButtons[3].title = `Sound 4: tunes as 8-bit, the life's moments over them (an explosion a boom, a colour dying out a blip, all dying out a fall, stillness softer)${music?.kind === 4 ? `; now ${TUNES[music.tune].name}, a click again: ${music.tune + 1 < TUNES.length ? TUNES[music.tune + 1].name : 'off'}` : `: ${TUNES.map((t) => t.name).join(', ')}`}`;
+    } });
+  setTile(soundButton, { on: !!music, can: true, byDefault: 'off' });
 }
-// a cell's place on screen (−1 to 1 across the grid, up positive), null when not seen (a solid's back)
-function screenPlaces() {
-  const g = walk.geo;
-  if (walk.plane) {
-    const { kind, W, row } = walk.plane, o = cellMiddle(kind, 0, 0), e = cellMiddle(kind, row - 1, W - 1), mx = (o[0] + e[0]) / 2, my = (o[1] + e[1]) / 2, sx = Math.abs(e[0] - o[0]) / 2 || 1, sy = Math.abs(e[1] - o[1]) / 2 || 1;
-    return (t) => { const m = cellMiddle(kind, t % row, Math.floor(t / row)); return [(m[0] - mx) / sx, -(m[1] - my) / sy]; };
-  }
-  const { r, u, v } = cam, x = g.extent || 1;
-  return (t) => (g.nrm[3 * t] * v[0] + g.nrm[3 * t + 1] * v[1] + g.nrm[3 * t + 2] * v[2] < 0 ? null : [0, 1].map((k) => { const d = k ? u : r; return (g.cen[3 * t] * d[0] + g.cen[3 * t + 1] * d[1] + g.cen[3 * t + 2] * d[2]) / x; }));
-}
-// the births' middles, each colour's, on screen (see screenPlaces); null: none
-function birthPlaces(L) {
-  const K = L.colours, a = L.next, b = L.alive, sum = Array.from({ length: K + 1 }, () => [0, 0, 0]), live = (v) => v > 0 && v <= K, place = screenPlaces();
-  for (let t = 0; t < b.length; t++) if (live(b[t]) && !live(a[t])) { const p = place(t); if (p) { const s = sum[K === 1 ? 1 : b[t]]; s[0] += p[0]; s[1] += p[1]; s[2]++; } }
-  return sum.map(([x, y, n]) => (n ? [x / n, y / n, n] : null));
-}
-function lifeMusic(L) {
-  const c = music.ctx, now = c.currentTime, K = L.colours;
-  const freq = (step, base) => 440 * 2 ** ((base + 12 * Math.floor(step / 5) + PENTATONIC[step % 5] - 69) / 12);
-  const note = (step, [wave, base], at, vol, pan = 0, from = null) => {
-    const o = c.createOscillator(), g = c.createGain(), p = c.createStereoPanner();
-    o.type = wave;
-    o.frequency.setValueAtTime(from ?? freq(step, base), at);
-    if (from) o.frequency.exponentialRampToValueAtTime(freq(step, base), at + 0.06);  // (sliding from its last note)
-    p.pan.value = Math.max(-1, Math.min(1, pan));
-    g.gain.setValueAtTime(vol, at);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.14);
-    o.connect(g).connect(p).connect(c.destination);
-    o.start(at);
-    o.stop(at + 0.15);
-  };
-  const by = Array.from({ length: K + 1 }, (_, k) => (K === 1 ? (k ? L.bornNow : 0) : Math.max(0, L.bornBy[k] - (music.by[k] ?? L.bornBy[k]))));
-  if (K > 1) for (let k = 1; k <= K; k++) if (now - music.last >= 0.09 || music.by[k] === undefined) music.by[k] = L.bornBy[k];
-  if (!L.aliveCount) { if (!music.over) for (let s = 9; s >= 0; s--) note(s, VOICES[0], now + 0.07 * (9 - s), 0.05); music.over = true; music.stopped = true; return; }  // (died out: down the scale; a tune, stopped)
+function lifeMusic(L) {  // (a generation's moments, see Sound)
+  const now = music.ctx.currentTime, born = L.bornNow;
+  if (!L.aliveCount) { if (!music.stopped) for (let s = 0; s < 8; s++) tone(76 - 2 * s, now + 0.07 * s, 0.1, 'square', 0.05); music.stopped = true; return; }
   music.stopped = false;
-  if (music.kind === 4) {  // (Sound 4: the tune plays on its own, see tuneTick; the life's moments over it)
-    const n = L.alive.length, born = L.bornNow;
-    if (music.avg !== null && born > 2.5 * music.avg && born > 0.01 * n) noise(now, 0.6, 3000, Math.min(0.25, 0.05 * (born / Math.max(1, music.avg))), 60);  // (an explosion: a boom)
-    music.avg = music.avg === null ? born : 0.9 * music.avg + 0.1 * born;
-    music.soft = born === 0;
-    if (K > 1) for (let k = 1; k <= K; k++) if (L.extinctAt[k] === L.gen) { const o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.setValueAtTime(880, now); o.frequency.exponentialRampToValueAtTime(110, now + 0.3); g.gain.setValueAtTime(0.05, now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3); o.connect(g).connect(c.destination); o.start(now); o.stop(now + 0.31); }  // (a colour out: a falling blip)
-    return;
-  }
-  music.over = false;
-  if (music.kind === 3) {  // (Sound 3: the sweep, a step every 125 ms)
-    if (now - music.last < 0.125) return;
-    music.last = now;
-    const COLS = 16, ROWS = 10, col = music.col, place = screenPlaces(), rows = Array.from({ length: ROWS }, () => new Int32Array(K + 1));
-    music.col = (col + 1) % COLS;
-    for (let t = 0; t < L.alive.length; t++) {
-      const v = L.alive[t];
-      if (!(v > 0 && v <= K)) continue;
-      const p = place(t);
-      if (!p || Math.min(COLS - 1, Math.floor(((p[0] + 1) / 2) * COLS)) !== col) continue;
-      rows[Math.max(0, Math.min(ROWS - 1, Math.floor(((p[1] + 1) / 2) * ROWS)))][v]++;
-    }
-    const hits = rows.map((by, row) => [by.reduce((s, n) => s + n, 0), row, by.indexOf(Math.max(...by.slice(1)), 1)]).filter(([n]) => n).sort((a, b) => b[0] - a[0]).slice(0, 3);
-    hits.forEach(([n, row, k]) => note(row, VOICES[(k - 1) % VOICES.length].map((x, i) => (i ? 60 : x)), now, (0.03 + 0.05 * Math.min(1, n / 20)) / Math.sqrt(hits.length), ((col + 0.5) / COLS) * 2 - 1));
-    return;
-  }
-  if (now - music.last < 0.09) return;
-  music.last = now;
-  const vol = (0.02 + 0.06 * Math.min(1, Math.sqrt((4 * L.aliveCount) / L.alive.length))), voices = by.map((b, k) => [b, k]).filter(([b, k]) => k && b > 0).sort((a, b) => b[0] - a[0]).slice(0, 4);
-  if (music.kind === 2) {  // (Sound 2: by where they are born)
-    const at = birthPlaces(L);
-    voices.forEach(([, k], v) => {
-      if (!at[k]) return;
-      const [x, y, n] = at[k], step = Math.max(0, Math.min(14, Math.round(((y + 1) / 2) * 14))), f = freq(step, VOICES[v][1]);
-      note(step, VOICES[v], now, (vol * Math.min(1, 0.4 + Math.log2(1 + n) / 10)) / Math.sqrt(voices.length), x, music.notes[k]);
-      music.notes[k] = f;
-    });
-    return;
-  }
-  const octave = (b) => Math.min(2, Math.floor((3 * Math.log2(1 + (1000 * b) / L.alive.length)) / Math.log2(1001)));  // (its share of the grid born, on a log scale)
-  voices.forEach(([b], v) => note(5 * octave(b) + (b % 5), VOICES[v], now, vol / Math.sqrt(voices.length)));
+  if (music.avg !== null && born > 2.5 * music.avg && born > 0.01 * L.alive.length) noise(now, 0.6, 3000, Math.min(0.25, (0.05 * born) / Math.max(1, music.avg)), 60);
+  music.avg = music.avg === null ? born : 0.9 * music.avg + 0.1 * born;
+  music.soft = born === 0;
+  if (L.colours > 1) for (let k = 1; k <= L.colours; k++) if (L.extinctAt[k] === L.gen) tone(81, now, 0.3, 'square', 0.05, 45);
 }
 // States: alive and dead cells (Colours: the civilisations' and dead); Age: young (warm) to old (cold), then the fading
 // trail of the dead; Activity: the cells that change most, hot in the middle
