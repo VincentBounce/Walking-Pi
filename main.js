@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1101';
+const VERSION = '0.1.1102';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3265,10 +3265,15 @@ function updateHint() {
 // The view's bottom right corner tells what the mouse is on: on the view itself (its canvases, not the boxes over it), how
 // to move it (the hint); on anything with a tooltip, that, in its place (none of the browser's: a banner over all; its
 // title kept as data-tip, a title set again later taken again); else nothing
+// A control's tooltip led by its name in bold (a card's, a tile's, a box's words: in full, a tile's cut short), once (a
+// tooltip that starts with it: that start in bold)
 document.addEventListener('mouseover', (e) => {
   const el = e.target.closest?.('[title], [data-tip]');
   if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
-  $('tip').textContent = el?.dataset.tip ?? '';
+  const tip = el?.dataset.tip ?? '', named = el?.matches('button, label');
+  const name = named ? (el.querySelector('.mode-name') ?? el.querySelector('span') ?? el).textContent.trim() : '';
+  const bold = (text) => Object.assign(document.createElement('b'), { textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
+  $('tip').replaceChildren(...(!ok ? [tip] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length)] : [bold(name), `: ${tip}`]));
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
 // the hint, its zoom against the view framed (×1: all of it in view, see viewFor; ×2 twice as near): the mouse on a line,
