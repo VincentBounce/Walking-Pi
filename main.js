@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1185';
+const VERSION = '0.1.1186';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9653,7 +9653,7 @@ function huntFits() {
 }
 // when a zone is greyed (as huntFits finds it), its tooltip's words
 const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'emoji' ? 'on a surface and in colours'
-  : zone === 'realm' ? 'in Classic, with Mixed, and where a colour has no whole face' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
+  : zone === 'realm' ? 'in Classic, with Mixed, where a colour has no whole face, and on a grid too small to keep the colours apart' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
   : famousZone(zone) ? 'where the rule has no famous patterns, or they cannot fit' : zone === 'full' ? 'hunting the highest peak (a soup full already), and on a solid of squares and triangles where its colours\' parts differ'
   : 'where its patch cannot fit each colour\'s part');
 // blocks: the search for its return, whatever the start (see searchBack)

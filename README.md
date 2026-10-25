@@ -145,14 +145,22 @@ A cellular automaton on the plane (squares, triangles, hexagons, Cairo pentagons
 - **Births in a battle** (under States, *Births by majority colour*, and in the player's description): a dead cell is born only if one colour has more live neighbours than any other, and takes it. On a tie, it takes the one colour missing around it if just one is, else it stays dead. So Life (B3/S23) with 2 colours never meets a tie (3 neighbours split 2 + 1, Immigration), with 4 colours is QuadLife (1 + 1 + 1 gives the 4th colour: the colours never change who lives); a birth on 2 neighbours with 3 colours gives the third on 1 + 1; 1 + 1 + 1 with 3 colours, or 1 + 1 with 2, gives none. Under States, the ties the rule meets with the colours chosen, and what they give.
 - **Where the colours start** (each colour its part of the grid; Wild fills the part, the other zones a patch at its middle, Famous a pattern there):
   - **the plane:** a grid of blocks, 2 × 1, 3 × 1, 2 × 2, 3 × 2, 4 × 2, 4 × 3 for 2, 3, 4, 6, 8, 12 colours;
-  - **a torus or a Klein bottle, Square** (any tiling): the same grid as the plane, on its sheet;
-  - **a torus or a Klein bottle, Rectangle:** blocks as square as can be on the doughnut seen, its ring 2.5 times its tube (12 colours 6 × 2); each tile in the block its middle is in;
+  - **a torus:** blocks as square as can be on the doughnut, its ring 2.5 times its tube (12 colours 6 × 2), a block 2:1 at most (7 and 9 colours left out); its rows a multiple of 6, its columns a whole count of blocks round the ring; each tile in the block its middle is in. On squares, when the blocks can be as many squares round as along with the ring at most 20 % longer or shorter, they are, and the tube follows, its squares always square (12 colours on 48 rows: 144 columns, blocks 24 × 24);
+  - **a Klein bottle:** each colour a slice round the ring;
   - **a Möbius strip:** its two faces one strip twice its length, each colour a stretch of it in turn, from the start of the face in view (red first), so that a face holds whole stretches when it can;
   - **a solid** (cube, pits, polyhedra, spheres): fair spots its symmetries swap (faces, corners or edges' middles; the cube with 3 colours, 2 opposite faces each), each cell to the nearest; Realm, a whole face each.
   - The 12 colours come in an order that keeps close hues apart in all these layouts: red, blue, gold, green, violet, cyan, magenta, lime, orange, pink, indigo, teal.
 - **Start:**
   - **Hunt:** looks for the longest life, the longest death (a start that ends empty) or, in colours, the fairest battle (the longest contact between colours, by their balance). It runs on all the computer's cores until stopped, 1 run in 3 a random start and the others tweaks of the best; the 8 best are listed, a click plays one. Each has a light: in colours how even the battle is, in one colour how far it spreads (its most live cells at once against its cells at the start).
-  - **Zones** where the hunt draws its starts: radius 1 to 8 round the middle (Spark, Seed, Sprout, Bloom, Grove, Meadow, Forest, Jungle; on an even side, round the middle corner), a whole face of a solid (Realm), the whole grid (Wild), or the rule's known patterns, turned and mirrored (Famous). Each random start is as dense as drawn between 10 and 70 %, each colour at least one cell alive; a zone with at most 20,000 possible starts has them all tried.
+  - **Zones** where the hunt draws its starts, each colour in its part (see above):
+    - **Spark … Jungle:** radius 1 to 8 round its part's middle (Spark, Seed, Sprout, Bloom, Grove, Meadow, Forest, Jungle; on an even side, round the middle corner);
+    - **Realm:** on a solid, a whole face each; elsewhere, its whole part but its cells next to another colour's, so that the colours start two cells apart whatever the shape of their parts;
+    - **Mirror:** on a solid, two opposite faces each (where the colouring pairs them);
+    - **Wild:** its whole part, the colours side by side;
+    - **Icon, Punk:** a picture (a Pixelarticons icon, a CryptoPunk), 24 cells or as big as fits, one a colour; **Emoji** (the plane, one colour): as big as the grid;
+    - **Famous, Anywhere:** the rule's known patterns, turned and mirrored, at its part's middle or anywhere in it.
+
+    Each random start is as dense as drawn between 10 and 70 %, each colour at least one cell alive; a zone with at most 20,000 possible starts has them all tried.
   - **Draw:** cells drawn by hand, or the rule's patterns.
   - On the plane, a start can have a **symmetry** (mirrors, turns).
   - **Digits:** the number's digits, one per cell, in base C.
