@@ -376,27 +376,27 @@ The tables list every fraction p/q between 1 and 2 with q ≤ 256 and a period o
 
 | # | Number | Period | Round | Corners visited (of 4,992) | New edges |
 |--:|---|--:|--:|--:|--:|
-| 1 | [89/87](https://vincentbounce.github.io/Walking-Pi/#x=89/87&w=triTorusGrid&d=8737&s=48x208) | 14 | 8,736 | 4,992 | 100 % |
-| 2 | [28/27](https://vincentbounce.github.io/Walking-Pi/#x=28/27&w=triTorusGrid&d=5617&s=48x208) | 18 | 5,616 | 4,368 | 100 % |
-| 3 | [101/99](https://vincentbounce.github.io/Walking-Pi/#x=101/99&w=triTorusGrid&d=9361&s=48x208) | 30 | 9,360 | 4,680 | 93 % |
-| 4 | [207/203](https://vincentbounce.github.io/Walking-Pi/#x=207/203&w=triTorusGrid&d=6553&s=48x208) | 42 | 6,552 | 4,368 | 95 % |
-| 5 | [10/9](https://vincentbounce.github.io/Walking-Pi/#x=10/9&w=triTorusGrid&d=3745&s=48x208) | 6 | 3,744 | 3,744 | 100 % |
-| 6 | [188/181](https://vincentbounce.github.io/Walking-Pi/#x=188/181&w=triTorusGrid&d=4681&s=48x208) | 15 | 4,680 | 3,744 | 100 % |
-| 7 | [193/191](https://vincentbounce.github.io/Walking-Pi/#x=193/191&w=triTorusGrid&d=5929&s=48x208) | 19 | 5,928 | 4,056 | 95 % |
-| 8 | [75/74](https://vincentbounce.github.io/Walking-Pi/#x=75/74&w=triTorusGrid&d=7489&s=48x208) | 36 | 7,488 | 4,576 | 89 % |
+| 1 | [89/87](https://vincentbounce.github.io/Walking-Pi/#x=89/87&w=torusTriGrid&d=8737&s=48x208) | 14 | 8,736 | 4,992 | 100 % |
+| 2 | [28/27](https://vincentbounce.github.io/Walking-Pi/#x=28/27&w=torusTriGrid&d=5617&s=48x208) | 18 | 5,616 | 4,368 | 100 % |
+| 3 | [101/99](https://vincentbounce.github.io/Walking-Pi/#x=101/99&w=torusTriGrid&d=9361&s=48x208) | 30 | 9,360 | 4,680 | 93 % |
+| 4 | [207/203](https://vincentbounce.github.io/Walking-Pi/#x=207/203&w=torusTriGrid&d=6553&s=48x208) | 42 | 6,552 | 4,368 | 95 % |
+| 5 | [10/9](https://vincentbounce.github.io/Walking-Pi/#x=10/9&w=torusTriGrid&d=3745&s=48x208) | 6 | 3,744 | 3,744 | 100 % |
+| 6 | [188/181](https://vincentbounce.github.io/Walking-Pi/#x=188/181&w=torusTriGrid&d=4681&s=48x208) | 15 | 4,680 | 3,744 | 100 % |
+| 7 | [193/191](https://vincentbounce.github.io/Walking-Pi/#x=193/191&w=torusTriGrid&d=5929&s=48x208) | 19 | 5,928 | 4,056 | 95 % |
+| 8 | [75/74](https://vincentbounce.github.io/Walking-Pi/#x=75/74&w=torusTriGrid&d=7489&s=48x208) | 36 | 7,488 | 4,576 | 89 % |
 
 **On cells** (base 2), size 48:
 
 | # | Number | Period | Round | Cells visited (of 9,984) | New edges |
 |--:|---|--:|--:|--:|--:|
-| 1 | [68/65](https://vincentbounce.github.io/Walking-Pi/#x=68/65&w=triTorusWalk&d=7489&s=48x208) | 12 | 7,488 | 7,488 | 100 % |
-| 2 | [254/251](https://vincentbounce.github.io/Walking-Pi/#x=254/251&w=triTorusWalk&d=10401&s=48x208) | 50 | 10,400 | 8,320 | 90 % |
-| 3 | [44/41](https://vincentbounce.github.io/Walking-Pi/#x=44/41&w=triTorusWalk&d=6241&s=48x208) | 20 | 6,240 | 6,240 | 100 % |
-| 4 | [112/109](https://vincentbounce.github.io/Walking-Pi/#x=112/109&w=triTorusWalk&d=11233&s=48x208) | 36 | 11,232 | 8,736 | 83 % |
-| 5 | [202/189](https://vincentbounce.github.io/Walking-Pi/#x=202/189&w=triTorusWalk&d=5617&s=48x208) | 18 | 5,616 | 5,616 | 100 % |
-| 6 | [38/37](https://vincentbounce.github.io/Walking-Pi/#x=38/37&w=triTorusWalk&d=11233&s=48x208) | 36 | 11,232 | 8,112 | 83 % |
-| 7 | [116/105](https://vincentbounce.github.io/Walking-Pi/#x=116/105&w=triTorusWalk&d=7489&s=48x208) | 12 | 7,488 | 6,240 | 92 % |
-| 8 | [156/145](https://vincentbounce.github.io/Walking-Pi/#x=156/145&w=triTorusWalk&d=8737&s=48x208) | 28 | 8,736 | 6,864 | 86 % |
+| 1 | [68/65](https://vincentbounce.github.io/Walking-Pi/#x=68/65&w=torusTriWalk&d=7489&s=48x208) | 12 | 7,488 | 7,488 | 100 % |
+| 2 | [254/251](https://vincentbounce.github.io/Walking-Pi/#x=254/251&w=torusTriWalk&d=10401&s=48x208) | 50 | 10,400 | 8,320 | 90 % |
+| 3 | [44/41](https://vincentbounce.github.io/Walking-Pi/#x=44/41&w=torusTriWalk&d=6241&s=48x208) | 20 | 6,240 | 6,240 | 100 % |
+| 4 | [112/109](https://vincentbounce.github.io/Walking-Pi/#x=112/109&w=torusTriWalk&d=11233&s=48x208) | 36 | 11,232 | 8,736 | 83 % |
+| 5 | [202/189](https://vincentbounce.github.io/Walking-Pi/#x=202/189&w=torusTriWalk&d=5617&s=48x208) | 18 | 5,616 | 5,616 | 100 % |
+| 6 | [38/37](https://vincentbounce.github.io/Walking-Pi/#x=38/37&w=torusTriWalk&d=11233&s=48x208) | 36 | 11,232 | 8,112 | 83 % |
+| 7 | [116/105](https://vincentbounce.github.io/Walking-Pi/#x=116/105&w=torusTriWalk&d=7489&s=48x208) | 12 | 7,488 | 6,240 | 92 % |
+| 8 | [156/145](https://vincentbounce.github.io/Walking-Pi/#x=156/145&w=torusTriWalk&d=8737&s=48x208) | 28 | 8,736 | 6,864 | 86 % |
 
 ### Hex torus
 
@@ -404,27 +404,27 @@ The tables list every fraction p/q between 1 and 2 with q ≤ 256 and a period o
 
 | # | Number | Period | Round | Corners visited (of 13,248) | New edges |
 |--:|---|--:|--:|--:|--:|
-| 1 | [46/43](https://vincentbounce.github.io/Walking-Pi/#x=46/43&w=hexTorusGrid&d=10305&s=48x138) | 14 | 10,304 | 10,304 | 100 % |
-| 2 | [226/205](https://vincentbounce.github.io/Walking-Pi/#x=226/205&w=hexTorusGrid&d=11041&s=48x138) | 20 | 11,040 | 9,936 | 95 % |
-| 3 | [6/5](https://vincentbounce.github.io/Walking-Pi/#x=6/5&w=hexTorusGrid&d=8833&s=48x138) | 4 | 8,832 | 8,832 | 100 % |
-| 4 | [222/205](https://vincentbounce.github.io/Walking-Pi/#x=222/205&w=hexTorusGrid&d=11041&s=48x138) | 20 | 11,040 | 9,384 | 90 % |
-| 5 | [88/87](https://vincentbounce.github.io/Walking-Pi/#x=88/87&w=hexTorusGrid&d=7729&s=48x138) | 28 | 7,728 | 7,176 | 96 % |
-| 6 | [236/205](https://vincentbounce.github.io/Walking-Pi/#x=236/205&w=hexTorusGrid&d=11041&s=48x138) | 20 | 11,040 | 8,832 | 85 % |
-| 7 | [76/65](https://vincentbounce.github.io/Walking-Pi/#x=76/65&w=hexTorusGrid&d=8833&s=48x138) | 12 | 8,832 | 7,360 | 92 % |
-| 8 | [60/59](https://vincentbounce.github.io/Walking-Pi/#x=60/59&w=hexTorusGrid&d=10673&s=48x138) | 58 | 10,672 | 8,096 | 86 % |
+| 1 | [46/43](https://vincentbounce.github.io/Walking-Pi/#x=46/43&w=torusHexGrid&d=10305&s=48x138) | 14 | 10,304 | 10,304 | 100 % |
+| 2 | [226/205](https://vincentbounce.github.io/Walking-Pi/#x=226/205&w=torusHexGrid&d=11041&s=48x138) | 20 | 11,040 | 9,936 | 95 % |
+| 3 | [6/5](https://vincentbounce.github.io/Walking-Pi/#x=6/5&w=torusHexGrid&d=8833&s=48x138) | 4 | 8,832 | 8,832 | 100 % |
+| 4 | [222/205](https://vincentbounce.github.io/Walking-Pi/#x=222/205&w=torusHexGrid&d=11041&s=48x138) | 20 | 11,040 | 9,384 | 90 % |
+| 5 | [88/87](https://vincentbounce.github.io/Walking-Pi/#x=88/87&w=torusHexGrid&d=7729&s=48x138) | 28 | 7,728 | 7,176 | 96 % |
+| 6 | [236/205](https://vincentbounce.github.io/Walking-Pi/#x=236/205&w=torusHexGrid&d=11041&s=48x138) | 20 | 11,040 | 8,832 | 85 % |
+| 7 | [76/65](https://vincentbounce.github.io/Walking-Pi/#x=76/65&w=torusHexGrid&d=8833&s=48x138) | 12 | 8,832 | 7,360 | 92 % |
+| 8 | [60/59](https://vincentbounce.github.io/Walking-Pi/#x=60/59&w=torusHexGrid&d=10673&s=48x138) | 58 | 10,672 | 8,096 | 86 % |
 
 **On cells** (base 5), size 48:
 
 | # | Number | Period | Round | Cells visited (of 6,624) | New edges |
 |--:|---|--:|--:|--:|--:|
-| 1 | [14/13](https://vincentbounce.github.io/Walking-Pi/#x=14/13&w=hexTorusWalk&d=8833&s=48x138) | 4 | 8,832 | 6,624 | 100 % |
-| 2 | [19/18](https://vincentbounce.github.io/Walking-Pi/#x=19/18&w=hexTorusWalk&d=6625&s=48x138) | 6 | 6,624 | 6,624 | 100 % |
-| 3 | [161/142](https://vincentbounce.github.io/Walking-Pi/#x=161/142&w=hexTorusWalk&d=11041&s=48x138) | 5 | 11,040 | 6,624 | 100 % |
-| 4 | [185/183](https://vincentbounce.github.io/Walking-Pi/#x=185/183&w=hexTorusWalk&d=8281&s=48x138) | 30 | 8,280 | 6,348 | 100 % |
-| 5 | [61/58](https://vincentbounce.github.io/Walking-Pi/#x=61/58&w=hexTorusWalk&d=10305&s=48x138) | 14 | 10,304 | 6,624 | 93 % |
-| 6 | [8/7](https://vincentbounce.github.io/Walking-Pi/#x=8/7&w=hexTorusWalk&d=6625&s=48x138) | 6 | 6,624 | 5,520 | 100 % |
-| 7 | [151/142](https://vincentbounce.github.io/Walking-Pi/#x=151/142&w=hexTorusWalk&d=5521&s=48x138) | 5 | 5,520 | 5,520 | 100 % |
-| 8 | [35/34](https://vincentbounce.github.io/Walking-Pi/#x=35/34&w=hexTorusWalk&d=11777&s=48x138) | 16 | 11,776 | 6,624 | 88 % |
+| 1 | [14/13](https://vincentbounce.github.io/Walking-Pi/#x=14/13&w=torusHexWalk&d=8833&s=48x138) | 4 | 8,832 | 6,624 | 100 % |
+| 2 | [19/18](https://vincentbounce.github.io/Walking-Pi/#x=19/18&w=torusHexWalk&d=6625&s=48x138) | 6 | 6,624 | 6,624 | 100 % |
+| 3 | [161/142](https://vincentbounce.github.io/Walking-Pi/#x=161/142&w=torusHexWalk&d=11041&s=48x138) | 5 | 11,040 | 6,624 | 100 % |
+| 4 | [185/183](https://vincentbounce.github.io/Walking-Pi/#x=185/183&w=torusHexWalk&d=8281&s=48x138) | 30 | 8,280 | 6,348 | 100 % |
+| 5 | [61/58](https://vincentbounce.github.io/Walking-Pi/#x=61/58&w=torusHexWalk&d=10305&s=48x138) | 14 | 10,304 | 6,624 | 93 % |
+| 6 | [8/7](https://vincentbounce.github.io/Walking-Pi/#x=8/7&w=torusHexWalk&d=6625&s=48x138) | 6 | 6,624 | 5,520 | 100 % |
+| 7 | [151/142](https://vincentbounce.github.io/Walking-Pi/#x=151/142&w=torusHexWalk&d=5521&s=48x138) | 5 | 5,520 | 5,520 | 100 % |
+| 8 | [35/34](https://vincentbounce.github.io/Walking-Pi/#x=35/34&w=torusHexWalk&d=11777&s=48x138) | 16 | 11,776 | 6,624 | 88 % |
 
 ### Cube
 

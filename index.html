@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261119l">
+  <link rel="stylesheet" href="style.css?v=20261119m">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -116,20 +116,20 @@
               <option value="antHexSphere">Hexagon sphere ant — base 2 (Langton's ant)</option>
               <option value="antIcosa">Triangle sphere ant — base 2 (Langton's ant)</option>
               <option value="antTorus">Square torus ant — base 2 (Langton's ant)</option>
-              <option value="antHexTorus">Hexagon torus ant — base 2 (Langton's ant)</option>
-              <option value="antTriTorus">Triangle torus ant — base 2 (Langton's ant)</option>
-              <option value="antCairoTorus">Cairo torus ant — base 2 (Langton's ant)</option>
+              <option value="antTorusHex">Hexagon torus ant — base 2 (Langton's ant)</option>
+              <option value="antTorusTri">Triangle torus ant — base 2 (Langton's ant)</option>
+              <option value="antTorusCairo">Cairo torus ant — base 2 (Langton's ant)</option>
               <option value="antMobius">Square Möbius ant — base 2 (Langton's ant)</option>
               <option value="antMobiusHex">Hexagon Möbius ant — base 2 (Langton's ant)</option>
               <option value="antMobiusTri">Triangle Möbius ant — base 2 (Langton's ant)</option>
               <option value="antMobiusCairo">Cairo Möbius ant — base 2 (Langton's ant)</option>
               <option value="torusGrid">Square torus — base 3 (left / forward / right)</option>
               <option value="torusWalk">Square torus — base 3 (left / forward / right)</option>
-              <option value="triTorusGrid">Triangle torus — base 5 (5 relative turns)</option>
-              <option value="triTorusWalk">Triangle torus — base 2 (left / right)</option>
-              <option value="hexTorusGrid">Hex torus — base 2 (left / right)</option>
-              <option value="cairoTorusWalk">Cairo torus — base 4 (4 edges out)</option>
-              <option value="hexTorusWalk">Hex torus — base 5 (5 relative turns)</option>
+              <option value="torusTriGrid">Triangle torus — base 5 (5 relative turns)</option>
+              <option value="torusTriWalk">Triangle torus — base 2 (left / right)</option>
+              <option value="torusHexGrid">Hex torus — base 2 (left / right)</option>
+              <option value="torusCairoWalk">Cairo torus — base 4 (4 edges out)</option>
+              <option value="torusHexWalk">Hex torus — base 5 (5 relative turns)</option>
               <option value="mobiusGrid">Möbius strip — base 3 (left / forward / right)</option>
               <option value="mobiusWalk">Möbius strip — base 3 (left / forward / right)</option>
               <option value="mobiusHexGrid">Möbius strip of hexagons — base 2 (left / right)</option>
@@ -165,8 +165,8 @@
               <option value="cubePivotGrid">Cube — base 2 (forward / turn right on the spot)</option>
               <option value="torusPivot">Square torus — base 2 (forward / turn right on the spot)</option>
               <option value="torusPivotGrid">Square torus — base 2 (forward / turn right on the spot)</option>
-              <option value="hexTorusPivot">Hex torus — base 2 (forward / turn right on the spot)</option>
-              <option value="triTorusPivotGrid">Triangle torus — base 2 (forward / turn right on the spot)</option>
+              <option value="torusHexPivot">Hex torus — base 2 (forward / turn right on the spot)</option>
+              <option value="torusTriPivotGrid">Triangle torus — base 2 (forward / turn right on the spot)</option>
               <option value="mobiusPivot">Möbius strip — base 2 (forward / turn right on the spot)</option>
               <option value="mobiusPivotGrid">Möbius strip — base 2 (forward / turn right on the spot)</option>
               <option value="mobiusHexPivot">Möbius strip of hexagons — base 2 (forward / turn right on the spot)</option>
@@ -180,8 +180,8 @@
               <option value="cubeParityGrid">Cube — base 2 (forward / forward then turn, right or left by the digit's place)</option>
               <option value="torusParity">Square torus — base 2 (forward / forward then turn, right or left by the digit's place)</option>
               <option value="torusParityGrid">Square torus — base 2 (forward / forward then turn, right or left by the digit's place)</option>
-              <option value="hexTorusParity">Hex torus — base 2 (forward / forward then turn, right or left by the digit's place)</option>
-              <option value="triTorusParityGrid">Triangle torus — base 2 (forward / forward then turn, right or left by the digit's place)</option>
+              <option value="torusHexParity">Hex torus — base 2 (forward / forward then turn, right or left by the digit's place)</option>
+              <option value="torusTriParityGrid">Triangle torus — base 2 (forward / forward then turn, right or left by the digit's place)</option>
               <option value="mobiusParity">Möbius strip — base 2 (forward / forward then turn, right or left by the digit's place)</option>
               <option value="mobiusParityGrid">Möbius strip — base 2 (forward / forward then turn, right or left by the digit's place)</option>
               <option value="mobiusHexParity">Möbius strip of hexagons — base 2 (forward / forward then turn, right or left by the digit's place)</option>
@@ -265,10 +265,10 @@
               <option value="lifeMenger">Life — Menger's sponge</option>
               <option value="lifeMengerTetrakis">Life — Menger's sponge</option>
               <option value="lifeTorus">Life — torus</option>
-              <option value="lifeHexTorus">Life — torus</option>
-              <option value="lifeCairoTorus">Life — torus</option>
-              <option value="lifeTriTorus">Life — torus</option>
-              <option value="lifeKiteTorus">Life — torus</option>
+              <option value="lifeTorusHex">Life — torus</option>
+              <option value="lifeTorusCairo">Life — torus</option>
+              <option value="lifeTorusTri">Life — torus</option>
+              <option value="lifeTorusKite">Life — torus</option>
               <option value="lifeTorusRhombille">Life — torus</option>
               <option value="lifeTorusRhombitri">Life — torus</option>
               <option value="lifeTorusFloret">Life — torus</option>
@@ -742,9 +742,9 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261119l"></script>
-  <script src="punks.js?v=20261119l"></script>
-  <script src="emoji.js?v=20261119l"></script>
-  <script src="main.js?v=20261119l"></script>
+  <script src="pixelarticons.js?v=20261119m"></script>
+  <script src="punks.js?v=20261119m"></script>
+  <script src="emoji.js?v=20261119m"></script>
+  <script src="main.js?v=20261119m"></script>
 </body>
 </html>

@@ -19,8 +19,8 @@ const within = (a, b) => Object.keys(a).every((k) => k in b);  // (a's counts al
 const show = (c) => Object.entries(c).map(([k, v]) => `${k}:${v.toFixed(2)}`).join(' ');
 
 // a strip's tiles and the torus of the same tiles
-const STRIP_TORUS = { mobius: 'torus', mobiusHex: 'hextorus', mobiusTri: 'tritorus', mobiusHexTurned: 'hextorus', mobiusTriTurned: 'tritorus', mobiusCairo: 'cairotorus', mobiusKite: 'kitetorus', mobiusKiteTurned: 'kitetorus' };
-const torusOfStrip = (strip) => STRIP_TORUS[strip] ?? `${MOBIUS_STRIPS[strip].kind}torus`;
+const STRIP_TORUS = { mobius: 'torus', mobiusHex: 'torusHex', mobiusTri: 'torusTri', mobiusHexTurned: 'torusHex', mobiusTriTurned: 'torusTri', mobiusCairo: 'torusCairo', mobiusKite: 'torusKite', mobiusKiteTurned: 'torusKite' };
+const torusOfStrip = (strip) => STRIP_TORUS[strip] ?? FOLDS.torus.of(MOBIUS_STRIPS[strip].kind);
 
 function checkMeshes(fail) {
   let checked = 0;
