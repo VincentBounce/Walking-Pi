@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1193';
+const VERSION = '0.1.1194';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4811,6 +4811,8 @@ function sheetCells(kind, [[p, q], [r, s]]) {
   const R = RECTS[`${kind}Rect`], same = (x) => x && x[0][0] === p && x[0][1] === q && x[1][0] === r && x[1][1] === s;
   if (same([[1, 0], [0, 1]])) return TILINGS[kind].polys;
   if (same(R?.step)) return R.polys;  // (the 2D rectangle's: the slanted grids', or along the cells' sides)
+  const back = (x) => x && x[0][0] === p && x[0][1] === q && x[1][0] === -r && x[1][1] === -s;  // (their B the other way: see torusSheets)
+  if (back([[1, 0], [0, 1]]) || back(R?.step)) return (back(R?.step) ? R.polys : TILINGS[kind].polys).map((P) => P.map(([u, v]) => [u, 1 - v]).reverse());
   return sheetCells(kind, [[-r, -s], [p, q]]).map((P) => P.map(([u, v]) => [v, 1 - u]));
 }
 // A tiling's torus (see TILINGS: sheet): its cell A round the ring nu times, B round the tube nv times (A ⟂ B: its tiles
@@ -7723,7 +7725,10 @@ function torusSheets(kind) {
     }
   }
   if (turned && Math.abs(sideTurn(kind, W(turned[0]))) < Math.abs(sideTurn(kind, W(plain[0]))) - 1e-6) [plain, turned] = [turned, plain];  // (plain: its tiles nearest the plane's way)
-  return (t.sheets = { plain, turned, deg });
+  // B a quarter turn clockwise from A (on screen, y down), as the sheet lies (east, south): the plane's tiles turned, never
+  // mirrored (Type 14's and 15's lattice sides the other way round: their tori the plane's mirror, the pictures on them upside down)
+  const upright = (S) => S && (cross(W(S[0]), W(S[1])) < 0 ? [S[0], S[1].map((x) => -x)] : S);
+  return (t.sheets = { plain: upright(plain), turned: upright(turned), deg });
 }
 // A frame's cells, the slanted grids' lattice cells and rectangles' alike (tools/tilings/build.js: a copy): each of its grid's
 // cells with the lattice point nearest its middle (a brick round a point of the grid, the lattice moved there), the bricks
