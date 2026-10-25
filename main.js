@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1202';
+const VERSION = '0.1.1203';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7167,7 +7167,7 @@ const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.char
 function iconSquare(kind, N) {
   const g = walk.geo, sheet = !walk.plane && g?.torus && g.tiling === kind && !g.mobius && !g.klein ? g.sheet : null, t = TILINGS[kind];
   const A = sheet && [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]), step = (2 * Math.PI) / (t?.turns ?? 1);
-  const tilt = A ? Math.round(Math.atan2(A[1], A[0]) / step) * step : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;
+  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const P = 24, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
