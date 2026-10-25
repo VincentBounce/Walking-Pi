@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1213';
+const VERSION = '0.1.1214';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4730,8 +4730,8 @@ function mobiusMesh(kind, size) {
   const tiles = [], uv = [];
   for (const side of [0, 1]) sheet.forEach((t, i) => {
     const c = t.map(([x], q) => corner(ids[i][q], side ^ (Math.abs(x - home[ids[i][q]]) > L / 2 ? 1 : 0)));
-    tiles.push(side ? turnOver(c) : c);
-    uv.push(...(side ? turnOver(t) : t).flat());
+    tiles.push(side ? c : turnOver(c));  // (its front facing the view as the torus's sheet: east, south, seen from above; listed counterclockwise y up, so turned over)
+    uv.push(...(side ? t : turnOver(t)).flat());
   });
   const mesh = finishMesh(cv, tiles, k, nv, null);  // as listed: a back faces the other way
   // the step from a corner to a neighbour, on the sheet as seen from its face (a back: mirrored)
