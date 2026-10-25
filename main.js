@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1174';
+const VERSION = '0.1.1175';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7221,7 +7221,7 @@ function iconLay(N) {
 }
 const iconFits = (N) => !!iconLay(N);
 function iconChoices(N, set) {
-  const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
+  const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMix}`;
   if (iconMemo?.key === key) return iconMemo.choices;
   const lays = iconLay(N);  // (each icon its cells of the colour's square)
   const choices = Array.from({ length: K }, (_, i) => {
@@ -9324,13 +9324,17 @@ const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 // punk's number), what one is called, where they come from
 const ICON_SETS = { icon: { bits: ICON_BITS, names: ICON_NAMES, word: 'icon', label: (i) => `“${ICON_NAMES[i]}”`, source: 'Pixelarticons' },
                     punk: { bits: PUNK_BITS, names: PUNK_BITS.map((_, i) => String(i)), word: 'CryptoPunk', label: (i) => `#${i}`, source: 'CryptoPunks' } };
+// the grid in use, for the caches built on it (not its mode's name: Turned, another grid of the same mode): the plane's,
+// by its kind, side and torus; a surface's, its mesh, a number of its own
+let gridCount = 0;
+const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.torus}` : `#${(walk.geo.gridId ??= ++gridCount)}`);
 const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
 const ICON_MAX = [96, 72, 48, 24];  // (Icon max, Punk max on squares: the widest of these that fits, a pixel whole cells)
 // Icon max, Punk max: the widest that fits (see iconLay); on squares, of ICON_MAX; elsewhere (no cells on its pixels anyway)
 // to the cell, up to 192, by halves (wider fits no less); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = () => {
-  const key = `${$('mode').value}|${walk.life.seed.length}|${walk.life.colours}|${colourMix}|${walk.plane?.torus}|${patternKind()}`;
+  const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}`;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   let N = 24;
   if (patternKind() === 'square') N = ICON_MAX.find((n) => iconFits(n)) ?? 24;
@@ -9374,7 +9378,7 @@ let realmMemo = null;
 function realmRadius() {
   const L = walk.life, K = L?.colours;
   if (!L || K === 1 || colourMix) return 0;
-  const key = `${$('mode').value}|${L.seed.length}|${K}|${walk.plane?.torus}|${L.ruleText}|${walk.plane ? planeTurn() : ''}`;
+  const key = `${gridKey()}|${K}|${L.ruleText}|${walk.plane ? planeTurn() : ''}`;
   if (realmMemo?.key === key) return realmMemo.r;
   const apart = (parts) => parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0);
   let r = 0, size = 0;
@@ -9634,7 +9638,7 @@ const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
-  const K = walk.life.colours, key = `${$('mode').value}|${walk.life.seed.length}|${K}|${walk.plane?.torus}|${walk.life.ruleText}|${walk.life.colours === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
+  const K = walk.life.colours, key = `${gridKey()}|${K}|${walk.life.ruleText}|${walk.life.colours === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
   if (hunt.fitKey === key) return hunt.fits;
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
