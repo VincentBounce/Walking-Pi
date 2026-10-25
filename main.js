@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1188';
+const VERSION = '0.1.1189';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2722,7 +2722,8 @@ const FAMILIES = [
   }),
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
-const kitesNext = (kinds) => [...kinds].sort((a, b) => (['tetrakis', 'rhombitri'].indexOf(a) + 1 || 9) - (['tetrakis', 'rhombitri'].indexOf(b) + 1 || 9));  // (Tetrakis first, after the hexagons, then Rhombitri; else as listed)
+const FOLDED_FIRST = ['tetrakis', 'pythagorean', 'rhombille', 'rhombitri'];  // (as on the plane's: Pythagoras after Tetrakis, Rhombitri after Rhombille)
+const kitesNext = (kinds) => [...kinds].sort((a, b) => (FOLDED_FIRST.indexOf(a) + 1 || 9) - (FOLDED_FIRST.indexOf(b) + 1 || 9));  // (those first, after the hexagons; else as listed)
 // the tilings folded, after the kites (Life only): those every fold has (Rhombitri first), then its own (the torus's)
 for (const [fold, Fo] of Object.entries(FOLDS)) for (const kind of kitesNext([...MOBIUS_TILINGS, ...Object.keys(TILINGS).filter((k) => !MOBIUS_TILINGS.includes(k))]).filter(Fo.has)) {
   const F = FAMILIES[Fo.family], turned = FOLDED[`${Fo.of(kind)}Turned`], { name } = TILINGS[kind];
