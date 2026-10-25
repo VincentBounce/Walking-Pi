@@ -150,6 +150,7 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
 }
 // the polygons of one lattice cell (their middles in it), in lattice units
 function cell(name, a, b, polys, extra = {}) {
+  if (a[0] * b[1] - a[1] * b[0] < 0) return cell(name, b, a, polys, extra);  // (b a quarter turn clockwise from a on screen, y down, as every sheet lies: never a mirror)
   const det = a[0] * b[1] - a[1] * b[0], toL = ([x, y]) => [(x * b[1] - y * b[0]) / det, (a[0] * y - a[1] * x) / det];
   const own = polys.map((P) => P.map(toL)).filter((P) => { const [u, v] = mid(P); return Math.floor(u + 1e-6) === 0 && Math.floor(v + 1e-6) === 0; });  // (a middle on the cell's edge: once)
   const sum = own.reduce((s, P) => s + Math.abs(area(P)), 0);

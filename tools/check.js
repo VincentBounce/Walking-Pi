@@ -30,7 +30,9 @@ function checkMeshes(fail) {
   const ref = {};
   // each tile's sheet corners its corners, in the same order (unrolled, its grid's edges drawn from them, see glSurface)
   const sheetOff = (g) => { let bad = 0; for (let s = 0; s < g.n * g.sides; s++) { const v = g.poly[s], P = sheetPoint(g, g.uv[2 * s], g.uv[2 * s + 1], 1); bad += Math.hypot(P[0] - g.verts[3 * v], P[1] - g.verts[3 * v + 1], P[2] - g.verts[3 * v + 2]) > 1e-6; } return bad; };
-  // a tiling's sheets: B a quarter turn clockwise from A (on screen), the plane's tiles turned, not mirrored (see torusSheets)
+  // a tiling's lattice: b a quarter turn clockwise from a on screen (see tools/tilings/build.js); its sheets alike, B from A:
+  // the plane's tiles turned on its tori, not mirrored (see torusSheets)
+  for (const [kind, { basis: [a, b] }] of Object.entries(TILINGS)) { checked++; if (a[0] * b[1] - a[1] * b[0] <= 0) fail(`${kind}: its lattice listed the other way round`); }
   for (const kind of Object.keys(TILINGS)) if (TILINGS[kind].torus) for (const [way, S] of Object.entries(torusSheets(kind))) if (Array.isArray(S)) {
     const [a, b] = TILINGS[kind].basis, W = ([u, v]) => [u * a[0] + v * b[0], u * a[1] + v * b[1]], A = W(S[0]), B = W(S[1]);
     checked++;
