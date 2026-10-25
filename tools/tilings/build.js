@@ -192,7 +192,10 @@ cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   // its lattice (u, v) reduced: u, and v + u at right angles to it, 4.1 times as long; a cell of 4 u by it (48 pentagons): near a square
   const u = [-(1 + R3) / 4, (3 + R3) / 4], v = [(10 + 7 * R3) / 4, (3 + 2 * R3) / 4], a = mul(u, 4), b = add(v, u), patch = [];
   for (let i = -12; i <= 12; i++) for (let j = -3; j <= 3; j++) for (const Q of twelve) patch.push(Q.map((p) => add(add(p, mul(u, i)), mul(b, j))));
-  cell('pent15', a, b, withT(patch)); }
+  // laid along its lattice's side b, its first once listed clockwise (see cell): its torus's straight sheet round the ring at
+  // 0°, not at its construction's 30°
+  const t = -Math.atan2(b[1], b[0]), turn = ([x, y]) => [x * Math.cos(t) - y * Math.sin(t), x * Math.sin(t) + y * Math.cos(t)];
+  cell('pent15', turn(a), turn(b), withT(patch).map((Q) => Q.map(turn))); }
 
 // Stein's pentagon (type 14, 1985; the only other with no freedom): 6 a cell, as Jaap Scherphuis's Tiling Viewer builds
 // it (jaapsch.net/tilings, TilingTypeN5_14): its corners from B (2B + C = 360, C + E = 180, A = 90, 2a = 2c = d = e),
