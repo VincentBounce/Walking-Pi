@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1206';
+const VERSION = '0.1.1207';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8077,7 +8077,7 @@ const colourFairOwn = (K, g) => {
   if (solidCounts(mode?.sphere)) return solidCounts(mode.sphere).includes(K);
   if (g?.mobius) return true;
   if (g?.period) { const x = g.nu / torusBlocks(K, g)[0] / g.period; return Math.abs(x - Math.round(x)) < 1e-6; }  // (a tiling's bottle: slices a whole count of its lattice's steps along)
-  if (g?.nu) { const [u, v] = torusBlocks(K, g), r = v / u / tubeOf(g); return g.nv % v === 0 && r > 0.5 - 1e-9 && r < 2 + 1e-9; }  // (a torus: its columns made for its colours, see ringColumns; its rows as they are; a block at most twice as long as wide: 7, 9, not)
+  if (g?.nu) { const [u, v] = torusBlocks(K, g), r = v / u / TORUS_TUBE; return g.nv % v === 0 && r > 0.5 - 1e-9 && r < 2 + 1e-9; }  // (a torus: its columns made for its colours, see ringColumns, its tube with them: judged on its shape, TORUS_TUBE, not on the tube made for the colours now; its rows as they are; a block at most twice as long as wide: 7, 9, not)
   return false;
 };
 // a count of colours whose battles can bring a colour back: the rule's birth with c live neighbours that K − 1 colours can share
