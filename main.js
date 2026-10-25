@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1182';
+const VERSION = '0.1.1183';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4333,6 +4333,7 @@ const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
 // colours only (a walk's: one)
 function ringColumns(x, nv, step = 1, klein = false) {
   const K = MODES[$('mode').value]?.life ? lifeColours : 1, a = klein ? K : torusBlocks(K, { nv })[0], m = a % step ? a * step : a;
+  const sq = (a * a * nv) / K; if (step === 1 && !klein && sq % m === 0 && Math.abs(sq / x - 1) <= 0.2) return sq;  // squares: its blocks as many squares round as along, stretched by 20 % at most (else as long, 2:1 at most)
   return m * Math.max(1, Math.round(x / m));
 }
 
