@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1211';
+const VERSION = '0.1.1212';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -949,7 +949,7 @@ const RECTS = {};  // the slanted grids as rectangles (see RECTS's making, after
 const latticeStep = (kind) => { const o = cellMiddle(kind, 0, 0), m = cellMiddle(kind, PER_RHOMBUS[kind] ?? 1, 0); return [m[0] - o[0], m[1] - o[1]]; };  // a step along a row's lattice cells
 const tilingOf = (kind) => TILINGS[kind] ?? RECTS[kind];
 const baseOf = (kind) => RECTS[kind]?.base ?? kind;
-const planeKind = (kind) => (plane.rect && RECTS[`${kind}Rect`] && !hexagonFits(kind) ? `${kind}Rect` : kind);  // (a six-fold grid: never, a hexagon or a rhombus)  // the grid as it is built: a rectangle's, if so
+const planeKind = (kind) => (STRAIGHT_RECTS.has(kind) && !(hexagonFits(kind) && !planeTorus(kind)) ? `${kind}Rect` : kind);  // the grid as it is built: a slanted one's, its straight sheet, a rectangle (its torus's laid flat); a six-fold one with walls, its hexagon
 const tilingAt = (kind, x, y) => { const P = tilingOf(kind).polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
 const tilingWorld = (kind, [u, v]) => { const [a, b] = tilingOf(kind).basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
 
@@ -2002,9 +2002,8 @@ const ICONS = (() => {
   };
 })();
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
-// the plane's outline: Square (a slanted grid cut as a square) and Walls (else a torus), on or off
+// the plane's outline: Walls (else a torus), on or off
 $('planeEdges').append(
-  tile({ pic: icon('walls'), text: 'Square', id: 'squareBtn', toggle: true, byDefault: 'off', greyed: 'on a grid already square, in a hexagon or a circle', title: 'A slanted grid cut as a square (its cells moved, the same neighbours); off: as it is, a rhombus', click: () => { plane.rect = !plane.rect; compute(true); } }),
   tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', greyed: 'on a grid that never repeats (always walls)', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }));
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
@@ -2649,7 +2648,7 @@ for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(ki
 // The 2D grids by their natural shape: none repeating (round walls), a square lattice (quarter turns), a lattice of 60°
 // rhombi (sixth turns), else a parallelogram (half turns only); each its title
 const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
-                      ['Rhombus torus · Walled hexagon', (k) => [3, 6].includes(TILINGS[k]?.turns ?? PATTERN_TURNS[k])], ['Parallelograms', () => true]];
+                      ['Rectangle torus · Walled hexagon', (k) => [3, 6].includes(TILINGS[k]?.turns ?? PATTERN_TURNS[k])], ['Parallelograms', () => true]];
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Rhombs 14': 'rhombs14', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Flower 9': 'flower9', 'Flower 10': 'flower10', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 10': 'ring10', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
@@ -6322,8 +6321,8 @@ const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], h
 for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
 const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
-const plane = { side: 48, torus: true, rect: false, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
-                start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // rect: a slanted grid shown as a rectangle (see RECTS)  // a soup of its own each visit (a link keeps its seed)
+const plane = { side: 48, torus: true, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
+                start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -7163,11 +7162,12 @@ const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.char
 // the square's cells, N cells wide (a cell as wide as the root of its mean area: its lattice cell's), a patch
 // round cell 0 of the grid: the cells under the icon (box, moved by whole lattice steps: its cells' shapes kept), and their
 // pixel (pix). On a tiling's torus, its square along the tiling's own turn (of its turns) nearest the ring: as the tiles lie
-// there (not along its sheet's lattice side, a turn away: 120°, 180°…), turned with them when they are
+// there (not along its sheet's lattice side, a turn away: 120°, 180°…), turned with them when they are; on the plane's rectangle
+// (a slanted grid's straight sheet, see planeKind), along its side U, as the view shows it (see planeTurn)
 function iconSquare(kind, N) {
   const g = walk.geo, sheet = !walk.plane && g?.torus && g.tiling === kind && !g.mobius && !g.klein ? g.sheet : null, t = TILINGS[kind];
   const A = sheet && [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]), step = (2 * Math.PI) / (t?.turns ?? 1);
-  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
+  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : walk.plane ? -planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const P = 24, per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
@@ -7365,27 +7365,10 @@ function buildLifePlane(seq) {
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
-// A grid of a lattice (W of its cells along each side: a parallelogram) lies along the view: one of its sides across or
-// upright, the other two slanting the same way on every grid (down to the right, as the rhombi's), whichever of those
-// shows it biggest in the view (on a tie, the least turn): a rhombus's sides across a view wider than high, upright in a
-// higher one; a rectangle upright, its long side along the view's. The angle the view turns its world
-// by (drawn turned, see turnLayer; a frame or the pointer in the turned world)
-function planeTurn(kind = walk.plane?.kind) {
-  const t = tilingOf(kind);
-  if (!t && kind !== 'hex' && kind !== 'tri' && kind !== 'kite') return 0;
-  const [a, b] = t ? t.basis : [[1, 0], [0.5, ROOT3_2]], ends = [[0, 0], a, b, [a[0] + b[0], a[1] + b[1]]], half = Math.PI / 2;
-  let best = 0, big = -Infinity;
-  for (const [v, w] of [[a, b], [b, a]]) for (const up of [0, half]) {
-    let turn = up - Math.atan2(v[1], v[0]);
-    turn -= Math.PI * Math.round(turn / Math.PI);  // (a half turn shows the same)
-    const [wx, wy] = turnPoint(w, turn);
-    if (wx * wy < -1e-9 * Math.hypot(wx, wy) ** 2) continue;  // (the other side slanting up to the right: the other way)
-    const pts = ends.map((p) => turnPoint(p, turn)), across = Math.max(...pts.map((p) => p[0])) - Math.min(...pts.map((p) => p[0])), down = Math.max(...pts.map((p) => p[1])) - Math.min(...pts.map((p) => p[1]));
-    const size = Math.min(cw / across, ch / down);
-    if (size > big * (1 + 1e-9) || (size > big * (1 - 1e-9) && Math.abs(turn) < Math.abs(best))) { best = turn; big = size; }
-  }
-  return best;
-}
+// The angle the view turns its world by (drawn turned, see turnLayer; a frame or the pointer in the turned world): a
+// rectangle's (a slanted grid's straight sheet, see planeKind), its side U across; any other grid's, as it is (its tiles as
+// their picture, their torus's)
+const planeTurn = (kind = walk.plane?.kind) => (RECTS[kind] ? -Math.atan2(RECTS[kind].basis[0][1], RECTS[kind].basis[0][0]) : 0);
 const turnPoint = ([u, v], a) => [u * Math.cos(a) - v * Math.sin(a), u * Math.sin(a) + v * Math.cos(a)];
 // a layer drawn turned by a (the grid's turn, 0: as it is), about the view's origin, at the screen's resolution
 function turnLayer(ctx, a = planeTurn()) {
@@ -7443,7 +7426,6 @@ function planeLead(number) {
 function planeFromSetup(s) {
   plane.side = Number(s.s) || 48;  // fitted to the grid's sizes when built
   plane.torus = Number(s.e) !== 1;
-  plane.rect = Number(s.o) === 1;
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
@@ -7496,10 +7478,6 @@ function renderPlaneRow() {
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
   setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
-  // Square, a switch as Torus: on, a slanted grid cut as a square; off, its rhombus; greyed, a grid without (its outline its
-  // own: a six-fold one's hexagon with walls, its rhombus on a torus; a grid that never repeats, its circle)
-  const cut = !!RECTS[`${kind}Rect`] && !hexagonFits(kind);
-  setTile($('squareBtn'), { can: cut, on: cut ? plane.rect : !APERIODIC[kind] && !hexagonFits(kind) });  // (a grid of squares already: greyed on)
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -7776,18 +7754,26 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
   }
   return pick;
 }
-// A slanted grid shown as a rectangle (o=1: its button clicked again): a tiling of its own, its lattice cell a rectangle
+// A slanted grid as a rectangle (its straight sheet, the plane's: see planeKind): a tiling of its own, its lattice cell a rectangle
 // of its lattice cells (two sides of whole steps at right angles, or within 3°, the nearest a square), its cells the ones
 // whose middles are in it: a torus that wraps straight across and down, and straight walls (as a 3D torus's sheet).
 // Each its grid's cells (nat: which, from its row's first lattice cell), its patterns its grid's, laid where they are
 // (see orientPattern); its RLE its grid's again (see lifeRle)
+const STRAIGHT_RECTS = new Set();  // (the grids whose rectangle is their straight sheet: the plane's, see planeKind)
 for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   const per = PER_RHOMBUS[base] ?? 1, o = cellMiddle(base, 0, 0), d = (x, y) => { const m = cellMiddle(base, x, y); return [m[0] - o[0], m[1] - o[1]]; }, a = d(per, 0), b = d(0, 1);
   // (at right angles already: its lattice cell, or on four turns its sheet along its cells' sides, see torusSheets)
   const right = Math.abs(a[0] * b[0] + a[1] * b[1]) < 0.01 * Math.hypot(...a) * Math.hypot(...b), cell = (x) => `${x}` === '1,0,0,1';  // (its sheet that is not its lattice cell)
   const along = right && TILINGS[base]?.turns === 4 && [torusSheets(base).plain, torusSheets(base).turned].find((x) => x && !cell(x));
-  const best = !right ? rectSides(a, b) : along && { step: along, U: [along[0][0] * a[0] + along[0][1] * b[0], along[0][0] * a[1] + along[0][1] * b[1]], V: [along[1][0] * a[0] + along[1][1] * b[0], along[1][0] * a[1] + along[1][1] * b[1]], det: along[0][0] * along[1][1] - along[0][1] * along[1][0] };
+  // (a slanted grid's: the rectangle whose side U lies as its tiles do on the plane, one of its turns' copies, as its straight
+  // torus's sheet, see torusSheets; a six-fold one's at 30°, the other way round it: B, then −A)
+  const P = 360 / (TILINGS[base]?.turns ?? 6), straight = ([[p, q]]) => { const r = ((((Math.atan2(p * a[1] + q * b[1], p * a[0] + q * b[0]) * 180) / Math.PI) % P) + P) % P; return Math.min(r, P - r) < 1e-6; };
+  let step = !right ? rectSides(a, b).step : along;
+  if (step && !right && !straight(step)) step = [step[1], step[0].map((x) => -x)];
+  const W = ([p, q]) => [p * a[0] + q * b[0], p * a[1] + q * b[1]];
+  const best = step && { step, U: W(step[0]), V: W(step[1]), det: step[0][0] * step[1][1] - step[0][1] * step[1][0] };
   if (!best) continue;
+  if (straight(step)) STRAIGHT_RECTS.add(base);
   // its cells when first asked for (RECTS[kind]: built then, kept)
   const kind = `${base}Rect`, build = () => {
     const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
@@ -10489,7 +10475,6 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    if (planeKind(mode.plane) !== mode.plane) s.o = 1;  // (a slanted grid as a rectangle)
     if (mode.margolus) s.g = plane.gens;  // (a reversible one's generations)
     s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
