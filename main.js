@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1191';
+const VERSION = '0.1.1192';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -850,9 +850,9 @@ const TILINGS = {
   capitalI: { name: 'Capital I', mark: '⌶', cells: 'I tiles', where: 'a grid of capital I tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
     basis: [[2, 1], [-1, 3]],
     polys: [[[0,1],[0.428571,0.857143],[0.857143,0.714286],[1.285714,0.571429],[1.428571,0.857143],[1,1],[1.142857,1.285714],[1.571429,1.142857],[1.714286,1.428571],[1.285714,1.571429],[0.857143,1.714286],[0.428571,1.857143],[0.285714,1.571429],[0.714286,1.428571],[0.571429,1.142857],[0.142857,1.285714]]] },
-  pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.2], torus: true,
-    basis: [[2, 1], [-1, 2]],
-    polys: [[[0,1],[0.4,0.8],[0.8,0.6],[1,1],[1.2,1.4],[0.8,1.6],[0.4,1.8],[0.2,1.4]],[[-0.2,1.6],[0.2,1.4],[0.4,1.8],[0,2]]] },
+  pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.8], torus: true,
+    basis: [[2, -1], [1, 2]],  // (y down: a small square at the bottom of each big one's right side, as its picture)
+    polys: [[[0.2,0.6],[0.4,0.2],[0.8,0.4],[1.2,0.6],[1,1],[0.8,1.4],[0.4,1.2],[0,1]],[[0,0],[0.4,0.2],[0.2,0.6],[-0.2,0.4]]] },
   prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], torus: true,
     basis: [[1, 0], [0.5, 1.8660254037844386]],
     polys: [[[0.57735,0.845299],[1.154701,0.690599],[1.57735,0.845299],[1.366025,1.267949],[0.366025,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
@@ -2643,7 +2643,7 @@ function tilingIcon(kind) {
   const few = { capitalI: [4, c], truncsquare: [5, tilingWorld(kind, [0, 0])] }[kind];  // (Capital I's: 4 tiles; Octagons': an octagon and its 4 squares)
   const near = few ? [...polys].sort((P, Q) => far(P, few[1]) - far(Q, few[1])).slice(0, few[0]) : polys.filter((P) => far(P) < r);
   const o = few?.[1] ?? c, s = 10 / Math.max(...near.flat().map(([x, y]) => Math.max(Math.abs(x - o[0]), Math.abs(y - o[1]))));  // (round its middle)
-  return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - o[0]) * s).toFixed(1)} ${(12 - (y - o[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');
+  return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - o[0]) * s).toFixed(1)} ${(12 + (y - o[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');  // (y down, as the grids are drawn)
 }
 for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(kind);
 // The 2D grids by their natural shape: none repeating (round walls), a square lattice (quarter turns), a lattice of 60°
@@ -6452,9 +6452,9 @@ const DRAW_PATTERNS = [
   ['ilife-osc', 'capitalI', ['B345/S0236'], 'Oscillator', '.A$.2A$A!', 'period 2 · 4 cells'],
   ['itrails-ship', 'capitalI', ['B2/S24/C8'], 'Spaceship', '4.C2A$2.FD2A$.GCDC$FGF!', 'flies, period 3 · 14 cells'],
   ['pythagoraslife-osc', 'pythagorean', ['B28/S28'], 'Oscillator', 'A$A!', 'period 2 · 2 cells'],
-  ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', '2.A$3.A$A.2A!', 'flies, period 2 · 5 cells'],
-  ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', '3.A$A.2A!', 'period 3 · 4 cells'],
-  ['pythagorastrails-ship', 'pythagorean', ['B23/S13/C8'], 'Spaceship', '3.A$A.AC$C.CE$E.EG$G.G!', 'flies, period 2 · 12 cells'],
+  ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', 'A.2A$3.A$2.A!', 'flies, period 2 · 5 cells'],
+  ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', 'A.2A$3.A!', 'period 3 · 4 cells'],
+  ['pythagorastrails-ship', 'pythagorean', ['B23/S13/C8'], 'Spaceship', 'G.G$E.EG$C.CE$A.AC$3.A!', 'flies, period 2 · 12 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', 'A.B.BAD.D2.C$.A.BABCD.D!', 'flies, period 4 · 14 cells'],
   ['prismtrails-ship', 'prismatic', ['B2/S1/C8'], 'Spaceship', '2.G.GFEDE.C.CB3A$F2.G.GDEBE.C.C.A.A!', 'flies, period 4 · 23 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', 'A.B.BAD.D2.C$.2AB.B.DCD!', 'flies, period 4 · 14 cells'],

@@ -174,8 +174,9 @@ const tri = [[1, 0], [0.5, R3 / 2]];  // the unit triangular lattice's vectors (
 // truncated trihexagonal (4.6.12): its dual the kisrhombille (each hexagon cut in 12 triangles)
 { const s = 3 + R3, R = 1 / (2 * Math.sin(Math.PI / 12)), a = [s, 0], b = mul(dir(60), s), pts = points(a, b, Array.from({ length: 12 }, (_, k) => mul(dir(15 + 30 * k), R)), 5);
   cell('kisrhombille', a, b, polygons(pts, true)); }
-// Pythagorean: squares of sides 2 and 1, on the lattice (2, 1), (−1, 2)
-cell('pythagorean', [2, 1], [-1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]), polyomino([[2, 0]])].flatMap((P) => [[-1, 0], [0, 0], [0, -1], [1, 0], [0, 1], [-1, 1], [1, -1]].map(([i, j]) => P.map(([x, y]) => [x + 2 * i - j, y + i + 2 * j]))));
+// Pythagorean: squares of sides 2 and 1, on the lattice (2, 1), (−1, 2); y down (as the screen): a small square at the bottom
+// of each big one's right side (its mirror, y up, on the lattice (2, −1), (1, 2))
+cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]), polyomino([[2, 0]])].flatMap((P) => [[-1, 0], [0, 0], [0, -1], [1, 0], [0, 1], [-1, 1], [1, -1]].map(([i, j]) => P.map(([x, y]) => [x + 2 * i - j, -(y + i + 2 * j)]))));
 // Capital I: the heptomino I (a bar of 3, a stem, a bar of 3), on the lattice (2, 1), (−1, 3)
 { const I = polyomino([[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]]);
   cell('capitalI', [2, 1], [-1, 3], [[-1, 0], [0, 0], [0, -1], [1, 0], [0, 1], [-1, 1], [1, -1], [-1, -1], [1, 1]].map(([i, j]) => I.map(([x, y]) => [x + 2 * i - j, y + i + 3 * j]))); }
