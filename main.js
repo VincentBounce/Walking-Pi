@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1165';
+const VERSION = '0.1.1166';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6089,7 +6089,7 @@ function cellNeighbours(cStart, cList, nv, sides = 0) {
 }
 // A surface's: its tiles' corners (a repeated one, a pentagon's of the hexagon sphere, once; a wall: none). On
 // hexagons, their ring (Callahan's letters); on squares, sides 8 asked (Hensel's)
-function cornerNeighbours(g, sides = g.sides === 6 ? 6 : 0) {
+function cornerNeighbours(g, sides = g.sides === 6 || g.hexagons ? 6 : 0) {  // (a solid of hexagons: its walls of more sides too, the stella's)
   const key = `life${sides}`;
   if (g[key]) return g[key];
   const k = g.sides, wall = new Set(g.walls), cStart = new Int32Array(g.n + 1), cList = [];
