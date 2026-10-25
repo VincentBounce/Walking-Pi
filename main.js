@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1195';
+const VERSION = '0.1.1196';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7177,7 +7177,7 @@ function iconSquare(kind, N) {
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
   const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1]));
-  const square = { box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };  // (its middle, moved as its cells: o + ½, ½)
+  const square = { key, box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };  // (its middle, moved as its cells: o + ½, ½)
   if (iconPatternMemo.size > 32) iconPatternMemo.clear();
   iconPatternMemo.set(key, square);
   return square;
@@ -7186,9 +7186,9 @@ function iconSquare(kind, N) {
 // those drawn; a hunt's, all: see huntClick)
 const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
 function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
-  const key = `${kind}|${N}|${set.source}|${turn}`;
+  const sq = iconSquare(kind, N), key = `${sq.key}|${set.source}|${turn}`;  // (its square's: its tilt too, a torus's not the plane's)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = 24, { box, pix } = iconSquare(kind, N);
+  const P = 24, { box, pix } = sq;
   const patterns = lazyList(set.bits.length, (i) => {  // each icon: its cells' places in the square
     const pixel = iconPixel(set.bits[i]);
     return pix.flatMap(([px, py], j) => (pixel(...ICON_TURNS[turn](px, py, P)) ? [j] : []));
