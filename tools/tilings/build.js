@@ -212,7 +212,9 @@ cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   const u = [tiles[0][4][0] - tiles[3][3][0], tiles[0][4][1] - tiles[3][3][1]], v = [tiles[0][4][0] - tiles[5][3][0], tiles[0][4][1] - tiles[5][3][1]];
   const [a1, b1] = reduce(u, v), patch = [];
   for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (const Q of tiles) patch.push(Q.map((p) => add(add(p, mul(a1, i)), mul(b1, j))));
-  cell('pent14', a1, b1, withT(patch), { ring: [-2, -1] }); }
+  // laid as its mirror (y down): its turned torus a quarter turn clockwise (+88°), not anticlockwise, its sheet's 1.7° shear the other way
+  const F = ([x, y]) => [x, -y];
+  cell('pent14', F(a1), F(b1), withT(patch).map((Q) => Q.map(F)), { ring: [-1, -2] }); }
 
 // trihexagonal (3.6.3.6, the kagome): the rhombille's points, their faces (hexagons, triangles between)
 { const a = [2, 0], b = [1, R3], pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 7); cell('trihex', a, b, polygons(pts, false)); }
