@@ -153,14 +153,15 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
 function cell(name, a, b, polys, { ring, ...extra } = {}) {
   if (a[0] * b[1] - a[1] * b[0] < 0) return cell(name, b, a, polys, { ring, ...extra });  // (b a quarter turn clockwise from a on screen, y down, as every sheet lies: never a mirror)
   if (ring) {
-    const A = add(mul(a, ring[0]), mul(b, ring[1])), t = -Math.atan2(A[1], A[0]), turn = ([x, y]) => [x * Math.cos(t) - y * Math.sin(t), x * Math.sin(t) + y * Math.cos(t)].map((c) => (Math.abs(c) < 1e-12 ? 0 : c));
+    const A = add(mul(a, ring[0]), mul(b, ring[1])), t = -Math.atan2(A[1], A[0]), turn = ([x, y]) => [x * Math.cos(t) - y * Math.sin(t), x * Math.sin(t) + y * Math.cos(t)];
     return cell(name, turn(a), turn(b), polys.map((P) => P.map(turn)), extra);
   }
   const det = a[0] * b[1] - a[1] * b[0], toL = ([x, y]) => [(x * b[1] - y * b[0]) / det, (a[0] * y - a[1] * x) / det];
   const own = polys.map((P) => P.map(toL)).filter((P) => { const [u, v] = mid(P); return Math.floor(u + 1e-6) === 0 && Math.floor(v + 1e-6) === 0; });  // (a middle on the cell's edge: once)
   const sum = own.reduce((s, P) => s + Math.abs(area(P)), 0);
   if (Math.abs(sum - 1) > 1e-6) throw new Error(`${name}: the cell's polygons fill ${sum} of it`);
-  T[name] = { basis: [a, b], polys: placeCells(own, [1, 0], [0, 1], a, b, false).sort((p, q) => p[0] - q[0]).map(([k, n, m]) => own[k].map(([u, v]) => [u + n, v + m])).map((P) => (area(P) < 0 ? P.reverse() : P).map(([u, v]) => [+u.toFixed(6), +v.toFixed(6)])), ...extra };
+  // (its sides' noise off, 10⁻¹⁶: a 0 a 0, a turn's limit a turn's limit, see main.js's sideTurn)
+  T[name] = { basis: [a, b].map((v) => v.map((c) => (Math.abs(c) < 1e-12 ? 0 : c))), polys: placeCells(own, [1, 0], [0, 1], a, b, false).sort((p, q) => p[0] - q[0]).map(([k, n, m]) => own[k].map(([u, v]) => [u + n, v + m])).map((P) => (area(P) < 0 ? P.reverse() : P).map(([u, v]) => [+u.toFixed(6), +v.toFixed(6)])), ...extra };
 }
 const tri = [[1, 0], [0.5, R3 / 2]];  // the unit triangular lattice's vectors (e0, e1)
 
