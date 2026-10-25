@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1204';
+const VERSION = '0.1.1205';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7169,10 +7169,13 @@ function iconSquare(kind, N) {
   const A = sheet && [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]), step = (2 * Math.PI) / (t?.turns ?? 1);
   const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = 24, per = PER_RHOMBUS[kind] ?? 1, R = N + 4, o = cellMiddle(kind, 0, 0), under = [];
+  const P = 24, per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
   const cells = [0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))), k = (N / P) * Math.sqrt(cells.reduce((sum, v) => sum + v, 0) / cells.length);
-  for (let y = -R; y <= R; y++) for (let x = -R * per; x <= R * per; x++) {
+  // (the lattice cells it can cover: its half diagonal, P·k/√2, in lattice steps either way, and 2 more; not N + 4 lattice cells
+  // of a lattice of 30 cells, Dual 314's, 30 times too many)
+  const det = Math.abs(a[0] * b[1] - a[1] * b[0]), half = (P * k) / Math.SQRT2, Ru = Math.ceil((half * Math.hypot(...b)) / det) + 2, Rv = Math.ceil((half * Math.hypot(...a)) / det) + 2;
+  for (let y = -Rv; y <= Rv; y++) for (let x = -Ru * per; x <= Ru * per; x++) {
     const m = cellMiddle(kind, x, y), u = m[0] - o[0] - 0.5, v = m[1] - o[1] - 0.5, px = Math.floor((u * cs + v * sn) / k + P / 2), py = Math.floor((v * cs - u * sn) / k + P / 2);
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
