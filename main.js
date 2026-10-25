@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1214';
+const VERSION = '0.1.1215';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9848,8 +9848,7 @@ for (const k of ['dodeca', 'stella']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]
 const triFace = (sphere, K, i) => (colouring(sphere, K)?.faces ? patchSpots(sphere, K)[i] : TRI_FACES[sphere]?.()[K]?.[i] ?? null);
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
-  const turned = !!walk.geo?.mobius && !walk.geo.tiling && tilesTurn(surfaceOf(m)) !== 0;  // (a strip's hexagons and triangles turned by 30°: not yet, see sheetUnits; a torus's, a bottle's, a tiling's, yes)
-  return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
+  return !!walk.life && (!!m.plane || !!walk.geo?.torus || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
     || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (!!walk.geo?.hexagons && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
@@ -9950,20 +9949,23 @@ function hexFaceAt(c0, cells, partial) {
 // turned by 30°, as the sheets' flat ones), laid with the one nearest their middle on a tile near the spot
 // and every other one on a tile too (a tiling's cells of several kinds: the first tile that fits them all)
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
-  if (kind === 'square') return (p) => p;
   if (TILINGS[kind] && (g.mobius || g.klein)) return (p) => turnPoint(p, g.stripTurn);  // (a strip, a bottle: the plane turned, see tilingStrip)
   if (TILINGS[kind]) {  // its lattice's units, then the sheet's cell's (see tilingTorusMesh)
     const [a, b] = TILINGS[kind].basis, det = a[0] * b[1] - a[1] * b[0], [[p, q], [r, s]] = g.sheet, d = p * s - q * r;
     return ([x, y]) => { const u = (x * b[1] - y * b[0]) / det, v = (a[0] * y - a[1] * x) / det; return [(s * u - r * v) / d, (p * v - q * u) / d]; };
   }
-  if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
-  if (g.mobius) return kind === 'hex' ? ([x, y]) => [x * Math.sqrt(3), y * Math.sqrt(3)] : (p) => p;  // (a Möbius strip's sheet: edges of 1; its hexagons' 1 across)
-  // the triangles', the kites', the hexagons' (a torus, a Klein bottle): the plane turned as its tiles lie (see tilesTurn: by
-  // 30° turned), as big as its tiles, in the sheet's units (round the ring, round the tube: see torusPoint)
+  // the others (squares, Cairo pentagons, triangles, kites, hexagons; a torus, a Klein bottle, a Möbius strip): the plane
+  // turned as its tiles lie (see tilesTurn: by 30° turned), as big as its tiles, in the sheet's units as its first tile
+  // tells them (laid flat, east and south: see sheetPoint)
   const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
-  const flat = Array.from({ length: g.sides }, (_, q) => { const P = sheetPoint(g, g.uv[2 * q], g.uv[2 * q + 1], 0); return [P[0], P[1]]; });
+  const uv = Array.from({ length: g.sides }, (_, q) => [g.uv[2 * q], g.uv[2 * q + 1]]), flat = uv.map(([u, v]) => { const P = sheetPoint(g, u, v, 0); return [P[0], -P[1]]; });
+  const j = [...uv.keys()].slice(2).reduce((best, q) => (area([flat[0], flat[1], flat[q]]) > area([flat[0], flat[1], flat[best]]) ? q : best), 2);  // (a third corner off the line of the first two)
+  const d = (P, q) => [P[q][0] - P[0][0], P[q][1] - P[0][1]], [e1, e2] = [d(flat, 1), d(flat, j)], [f1, f2] = [d(uv, 1), d(uv, j)], D = e1[0] * e2[1] - e1[1] * e2[0];
   const k = Math.sqrt(area(flat) / area(planeCorners(kind, 0, 0))), turn = (tilesTurn(surfaceOf(MODES[$('mode').value])) * Math.PI) / 180;
-  return (p) => { const [x, y] = turnPoint(p, turn); return [(x * k * g.nu) / (2 * Math.PI), (y * k * g.nv) / (2 * Math.PI * tubeOf(g))]; };
+  return (p) => {  // (a length laid flat: its parts along the first tile's two sides there, the same parts of them in sheet units)
+    const [x, y] = turnPoint(p, turn).map((c) => c * k), a = (x * e2[1] - y * e2[0]) / D, b = (e1[0] * y - e1[1] * x) / D;
+    return [a * f1[0] + b * f2[0], a * f1[1] + b * f2[1]];
+  };
 }
 // a tile's place on the sheet (a Möbius strip: on its two sides as one strip, see mobiusLoop), and the
 // tile at a place, across the seams (a Klein bottle's turning over)
