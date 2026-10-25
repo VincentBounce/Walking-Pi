@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1197';
+const VERSION = '0.1.1198';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -908,8 +908,8 @@ const hexSolids = Object.keys(HEX_SOLIDS);
 const TETRAKIS_SOLIDS = { cube: 'Cube', pits: 'Pits', frame: 'Frame', menger: 'Sponge' };
 const foldOf = (fold, kind) => `${fold}${kind[0].toUpperCase()}${kind.slice(1)}`, mobiusOf = (kind) => foldOf('mobius', kind);  // (a tiling folded: see FOLDS)
 // the turn of a tiling's tiles on a sheet along a side (x, y) of its lattice, against the plane's (degrees, the nearest
-// of its turns' copies: within half a turn of 0)
-const sideTurn = (kind, [x, y]) => { const P = 360 / TILINGS[kind].turns, r = ((((-Math.atan2(y, x) * 180) / Math.PI) % P) + P) % P; return Math.round((r >= P / 2 - 1e-9 ? r - P : r) * 1e6) / 1e6; };
+// of its turns' copies: within half a turn of 0; half a turn exactly, clockwise: +)
+const sideTurn = (kind, [x, y]) => { const P = 360 / TILINGS[kind].turns, r = ((((-Math.atan2(y, x) * 180) / Math.PI) % P) + P) % P; return Math.round((r > P / 2 + 1e-9 ? r - P : r) * 1e6) / 1e6; };
 // Each strip of a tiling: along its lattice's first side a, then the other side b of the strip's lattice cell; turned (as
 // a torus's, by 180° / its turns: 45° on squares, 30° on hexagons, 90° on two turns), along the shortest lattice side
 // that far round from a, when the tiling is mirrored along it (see mobiusMirror); the straight one, of the two, the one
