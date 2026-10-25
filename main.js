@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1161';
+const VERSION = '0.1.1162';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7196,7 +7196,6 @@ function iconTurn(laid, pix, P) {
 // margins)
 function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
-  if (!walk.plane && !g.torus) return solidLay(N);  // (a solid: sampled)
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const { box, pix } = iconSquare(kind, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
   const lays = Array.from({ length: K }, (_, i) => {
@@ -7213,62 +7212,6 @@ function iconLay(N) {
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
   return lays.every((l) => l.whole) && new Set(all).size >= 0.95 * all.length ? lays : null;
 }
-// On a solid, an icon sampled: each cell of its colour's face the pixel under its middle, the face's plane seen from outside
-// from the face's middle, its up the world's up (a face looking up or down: north; on squares, along their sides the most
-// level), N cells wide (a cell as wide as the root of the face's cells' mean area; on squares, its middle on a corner of its
-// cells: a pixel whole cells). The face: the cells
-// as far the same way as its colour's middle cell, round it (see faceCells). Each colour's [cell, pixel x, y]; null where
-// it doesn't fit: the ends of its middle row or column off its face (its width and height whole, cut off in its corners
-// only), or the colours' icons on each other's (but for a row of their margins)
-function solidLay(N) {
-  const g = walk.geo, K = walk.life.colours, sphere = MODES[$('mode').value].sphere, hull = hullColours(sphere, K), P = 24, at3 = (a, t) => [a[3 * t], a[3 * t + 1], a[3 * t + 2]];
-  const middle = (i) => {  // (its colour's middle cell: a hull solid's face's; one colour: the square most in front, else the cell)
-    if (hull) return hullFaceMiddle(hull.groups[i][0], hull.mids[hull.groups[i][0]])[0];
-    if (K === 1 && g.squareFaces) { const f = g.squareFaces.reduce((b, fc, k) => (dot3(fc.n, AXES[3]) > dot3(g.squareFaces[b].n, AXES[3]) + 1e-9 ? k : b), 0); return hullFaceMiddle(f, [0, 1, 2].map((d) => g.squareFaces[f].corners.reduce((sum, c) => sum + c[d], 0) / 4))[0]; }
-    return K === 1 ? patchCentre() : centreCells(unit(triFace(sphere, K, i) ?? patchSpots(sphere, K)[i]))[0];
-  };
-  let lays;
-  try {
-    lays = Array.from({ length: K }, (_, i) => {
-      const c0 = middle(i), cells = faceCells(c0), n = unit(at3(g.nrm, c0)), up0 = Math.abs(n[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1];
-      const corners = (t) => [...new Set(g.poly.subarray(g.sides * t, g.sides * (t + 1)))].map((v) => at3(g.verts, v)), [ca, cb, cc, cd] = corners(c0);
-      const side = (p, q) => q.map((v, d) => v - p[d]), sq = !!cd && Math.abs(dot3(side(ca, cb), side(cb, cc))) < 1e-9 && Math.abs(Math.hypot(...side(ca, cb)) - Math.hypot(...side(cb, cc))) < 1e-9;  // (a square: not a kite)
-      let up = unit(up0.map((v, d) => v - dot3(up0, n) * n[d])), right = cross(up, n);
-      if (sq) {  // (squares: along their sides, the most level: a pixel whole cells)
-        const e = [unit(side(ca, cb)), unit(side(cb, cc))].flatMap((x) => [x, x.map((v) => -v)]);
-        right = e.reduce((best, x) => (dot3(x, right) > dot3(best, right) ? x : best));
-        up = cross(n, right);
-      }
-      const area = cells.reduce((sum, t) => { const c = corners(t); let a = 0; for (let q = 1; q + 1 < c.length; q++) a += Math.hypot(...cross(c[q].map((v, d) => v - c[0][d]), c[q + 1].map((v, d) => v - c[0][d]))) / 2; return sum + a; }, 0) / cells.length;
-      const w = Math.sqrt(area), k = (N * w) / P, mid = [0, 1, 2].map((d) => cells.reduce((sum, t) => sum + g.cen[3 * t + d], 0) / cells.length);
-      const near = (p, ts) => ts.reduce((b, t) => (Math.hypot(...at3(g.cen, t).map((v, d) => v - p[d])) < Math.hypot(...at3(g.cen, b).map((v, d) => v - p[d])) ? t : b));
-      let o = mid;
-      if (sq) o = corners(near(mid, cells)).reduce((b, c) => (Math.hypot(...c.map((v, d) => v - mid[d])) < Math.hypot(...b.map((v, d) => v - mid[d])) ? c : b));  // (squares: a corner)
-      const sample = [];
-      for (const t of cells) { const e = at3(g.cen, t).map((v, d) => v - o[d]), x = dot3(e, right) / k + P / 2, y = P / 2 - dot3(e, up) / k; if (x >= 0 && y >= 0 && x < P && y < P) sample.push([t, Math.floor(x), Math.floor(y)]); }
-      const ends = [right, up].flatMap((a) => [1, -1].map((sg) => o.map((v, d) => v + sg * (P / 2 - 0.5) * k * a[d])));
-      return { sample, whole: ends.every((p) => Math.hypot(...at3(g.cen, near(p, cells)).map((v, d) => v - p[d])) <= 1.1 * w) };  // (a cell's middle as near as from its corners)
-    });
-  } catch { return null; }  // (no spots for so many colours)
-  const all = lays.flatMap(({ sample }) => sample.map(([t]) => t));
-  return lays.every((l) => l.whole) && new Set(all).size >= 0.95 * all.length ? lays : null;
-}
-// a face's cells: those round c0, side by side, as far from the solid's middle the same way (a flat face, whatever its cells;
-// not by a corner: the stella's tips), once a cell
-function faceCells(c0) {
-  const g = walk.geo, memo = (g.faceMemo ??= new Map());
-  if (memo.has(c0)) return memo.get(c0);
-  const n = [g.nrm[3 * c0], g.nrm[3 * c0 + 1], g.nrm[3 * c0 + 2]], h = dot3(n, [g.cen[3 * c0], g.cen[3 * c0 + 1], g.cen[3 * c0 + 2]]), seen = new Set([c0]), stack = [c0];
-  while (stack.length) {
-    const t = stack.pop();
-    for (let q = g.sides * t; q < g.sides * (t + 1); q++) {
-      const u = g.nbr[q];
-      if (u >= 0 && !seen.has(u) && g.nrm[3 * u] * n[0] + g.nrm[3 * u + 1] * n[1] + g.nrm[3 * u + 2] * n[2] > 0.999 && Math.abs(g.cen[3 * u] * n[0] + g.cen[3 * u + 1] * n[1] + g.cen[3 * u + 2] * n[2] - h) < 1e-6 * (g.extent || 1)) { seen.add(u); stack.push(u); }
-    }
-  }
-  memo.set(c0, [...seen]);
-  return memo.get(c0);
-}
 const iconFits = (N) => !!iconLay(N);
 function iconChoices(N, set) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
@@ -7276,7 +7219,6 @@ function iconChoices(N, set) {
   const lays = iconLay(N);  // (each icon its cells of the colour's square)
   const choices = Array.from({ length: K }, (_, i) => {
     if (!lays) return [];
-    if (lays[i].sample) return lazyList(set.bits.length, (k) => { const on = iconPixel(set.bits[k]); return Int32Array.from(lays[i].sample.flatMap(([t, x, y]) => (on(x, y) ? [t, i + 1] : []))); });  // (a solid's, sampled)
     const patterns = iconPatterns(kind, N, set, lays[i].turn);
     return lazyList(patterns.length, (k) => Int32Array.from(patterns[k].flatMap((j) => (lays[i].at[j] >= 0 ? [lays[i].at[j], i + 1] : []))));
   });
@@ -9924,7 +9866,19 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
-    for (const [x, y, v] of cells) { const k = at.get(`${Math.floor(x / per) + 2 * i0},${y + j0}`); if (k !== undefined) out.push([(g.triFirst ?? 0) + face * perFace + per * k + (x % per), v]); }
+    // its rows along its side most level (on a face looking up or down, along x; kites: AB's), the face's rows from that
+    // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back)
+    const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, n = unit(cross(sub(B, A), sub(C, A))), flat = Math.abs(n[2]) > 0.9;
+    const level = flat ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n)), turns = [[A, B, C], [B, C, A], [C, A, B]];
+    const r = per > 1 ? 0 : [0, 1, 2].reduce((b, q) => (Math.abs(dot3(unit(sub(turns[q][1], turns[q][0])), level)) > Math.abs(dot3(unit(sub(turns[b][1], turns[b][0])), level)) + 1e-9 ? q : b), 0);
+    const f = g.size, back = ([i, j], o) => [f - 1 - o - i - j, i];
+    for (const [x, y, v] of cells) {
+      const I = Math.floor(x / per) + 2 * i0, o = I & 1;
+      let ij = [I >> 1, y + j0];
+      for (let q = 0; q < r; q++) ij = back(ij, o);
+      const k = at.get(`${2 * ij[0] + o},${ij[1]}`);
+      if (k !== undefined) out.push([(g.triFirst ?? 0) + face * perFace + per * k + (x % per), v]);
+    }
     return out;
   }
   if (g.squareFaces) {  // a hull solid: on its colour's first square (one colour: the square most in front), as the cube's
