@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1169';
+const VERSION = '0.1.1170';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2876,7 +2876,7 @@ function renderModePicker() {
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: -tilesTurn(f === here && isTurned ? TURNED[MODES[same(f)].sphere] : MODES[same(f)].sphere) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
+      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: -tilesTurn(shownSurface(MODES[same(f)].sphere, f === here && isTurned)) });  // its picture as its tiles lie (a torus's, a strip's alike; the page's turns the other way)
       return [b];
     }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', greyed: 'on a tiling with no other way round', on: isTurned, can: turns,
       title: turns ? F.tabs[tabOf(here, true)][4] : 'The tiling turned, its rows another way round', click: turn })] : []));
@@ -5390,11 +5390,14 @@ const TURNED = { tritorus: 'tritorusTurned', hextorus: 'hextorusTurned', kitetor
 // the ring; a strip, along it; the hexagons' and triangles', 0, or 30 turned
 function tilesTurn(surface) {
   if (FOLDED[surface]) return sideTurn(FOLDED[surface].kind, FOLDED[surface].side);  // (a tiling folded: its sheet's side round the ring)
-  return surface.endsWith('Turned') ? 30 : 0;
+  return surface.endsWith('Turned') !== POINTY.has(surface.replace(/Turned$/, '')) ? 30 : 0;
 }
 for (const s of Object.keys(FOLDED)) if (FOLDED[`${s}Turned`]) TURNED[s] = `${s}Turned`;  // (see FOLDED)
 let torusTurned = false;
-const surfaceOf = (mode) => (torusTurned && TURNED[mode.sphere]) || mode.sphere;
+// the hexagons' tori, strips and bottles at 0° pointy as the plane's (their Turned ones), turned their flat ones
+const POINTY = new Set(['hextorus', 'mobiusHex', 'kleinHex']);
+const shownSurface = (sphere, turned) => (TURNED[sphere] && turned !== POINTY.has(sphere) ? TURNED[sphere] : sphere);
+const surfaceOf = (mode) => shownSurface(mode.sphere, torusTurned);
 const STARTS_ON = [...SOLIDS, ...TORI];  // the surfaces with a start selector
 
 // On a torus every corner is like any other (shifting the sheet maps the grid onto itself), and
@@ -9835,7 +9838,7 @@ for (const k of ['dodeca', 'stella']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]
 const triFace = (sphere, K, i) => (colouring(sphere, K)?.faces ? patchSpots(sphere, K)[i] : TRI_FACES[sphere]?.()[K]?.[i] ?? null);
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
-  const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
+  const turned = !walk.geo?.tiling && tilesTurn(surfaceOf(m)) !== 0;  // (hexagons and triangles turned by 30° from the plane's: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
     || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (!!walk.geo?.hexagons && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
@@ -9950,9 +9953,8 @@ function sheetUnits(g, kind) {  // a point of the plane (its world units) in the
     return ([x, y]) => { const u = (x * b[1] - y * b[0]) / det, v = (a[0] * y - a[1] * x) / det; return [(s * u - r * v) / d, (p * v - q * u) / d]; };
   }
   if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
-  if (kind === 'tri' || kind === 'kite') return g.mobius ? (p) => p : ([x, y]) => [x, y / ROOT3_2];  // (a Möbius strip's sheet: edges of 1; kites: on the triangles' grid)
-  const c = Math.cos(Math.PI / 6), sn = Math.sin(Math.PI / 6), r3 = Math.sqrt(3);
-  return ([x, y]) => { const X = r3 * (x * c - y * sn), Y = r3 * (x * sn + y * c); return g.mobius ? [X, Y] : [X / 1.5, Y / r3]; };
+  if (g.mobius) return kind === 'hex' ? ([x, y]) => [x * Math.sqrt(3), y * Math.sqrt(3)] : (p) => p;  // (a Möbius strip's sheet: edges of 1; its hexagons' 1 across)
+  return ([x, y]) => [x, y / ROOT3_2];  // (the triangles', the kites' on them, the hexagons' pointy: as the plane's, a row a unit)
 }
 // a tile's place on the sheet (a Möbius strip: on its two sides as one strip, see mobiusLoop), and the
 // tile at a place, across the seams (a Klein bottle's turning over)
