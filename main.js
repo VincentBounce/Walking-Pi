@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1205';
+const VERSION = '0.1.1206';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5389,7 +5389,7 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
   let near;
   const nearest = () => near ??= (() => {
-    const s0 = S.steps?.[0] ?? 1, step = TORI.includes(kind) && !kind.startsWith('klein') ? (s0 % 6 ? (s0 % 3 ? 3 : 1) * (s0 % 2 ? 2 : 1) * s0 : s0) : s0, sizes = [];  // (a torus's rows a multiple of 6 too: its colours' blocks round the tube, halves and thirds, whole, see torusBlocks)
+    const step = S.steps?.[0] ?? 1, sizes = [];  // (a torus's rows any: its colours greyed where their blocks round the tube are not whole, see colourFairOwn)
     for (let f = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step; ; f += step) { sizes.push([f, S.tiles(f)]); if (sizes.at(-1)[1] > 1.5 * counts.at(-1) || f >= (S.most ?? Infinity)) break; }
     return (n) => sizes.reduce((a, b) => (Math.abs(Math.log(b[1] / n)) < Math.abs(Math.log(a[1] / n)) ? b : a))[0];
   })();
