@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1159';
+const VERSION = '0.1.1160';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6220,7 +6220,7 @@ function startColours(seed) {
   const K = walk.life.colours;
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
-  const fits = huntFits(), r = hunt.zone === 'realm' ? Infinity : zoneRadius(hunt.zone);
+  const fits = huntFits(), r = hunt.zone === 'realm' || hunt.zone === 'full' ? Infinity : zoneRadius(hunt.zone);  // (Wild greyed, its parts unlike: the widest radius)
   if (hunt.zone === 'custom' || !fits[hunt.zone]) hunt.zone = [8, 7, 6, 5, 4, 3, 2, 1].map((k) => `radius${k}`).find((z) => zoneRadius(z) < r && fits[z]) ?? 'full';
   const z = zoneSeed();  // the zone picked, again on this grid (a radius, patterns)
   if (z) { seed.set(z); for (const t of walk.geo.walls ?? []) seed[t] = 0; lifeStart = { zone: hunt.zone }; return; }  // (none on the wall's cells)
@@ -9555,12 +9555,14 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
   const hull = hullColours(MODES[$('mode').value].sphere, K);
-  if (hull) {  // a hull solid (see hullColourings): Wild, each cell to its nearest colour's face's middle (two opposite faces a colour: its first); Mirror, those two faces; a zone, round each colour's first face's middle
+  if (hull) {  // a hull solid (see hullColourings): Wild, a colour's faces its own (two opposite faces a colour: its first), the others' cells each to the nearest colour's face's middle; Mirror, its two faces; a zone, round each colour's first face's middle
     if (r) return hull.groups.map((gr) => lifePatch(r, hullFaceMiddle(gr[0], hull.mids[gr[0]])));
     if (mirror) return hull.groups.map((gr) => gr.flatMap(hullFaceCells));  // (Mirror: its two opposite faces only)
-    const own = hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [hull.mids[q], k]));
+    const own = hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [hull.mids[q], k])), owner = new Map(hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [q, k])));
     for (let t = 0; t < n; t++) {
       if (!open(t)) continue;
+      const q = Math.floor(t / (g.size * g.size));
+      if (owner.has(q)) { parts[owner.get(q)].push(t); continue; }
       const far = own.map(([m]) => Math.hypot(g.cen[3 * t] - m[0], g.cen[3 * t + 1] - m[1], g.cen[3 * t + 2] - m[2])), least = Math.min(...far), ks = new Set(own.flatMap(([, k], q) => (far[q] < least + 1e-9 ? [k] : [])));
       if (ks.size === 1) parts[[...ks][0]].push(t);  // (as near two colours: none's)
     }
@@ -9635,6 +9637,7 @@ function huntFits() {
     if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
     if (isIcon(zone)) return [zone, iconFits(iconSize(zone))];
     if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
+    if (zone === 'full' && hullColours(MODES[$('mode').value].sphere, K)) { const p = huntParts(0, K, false); return [zone, !peakHunt() && p.every((x) => x.length === p[0].length)]; }  // (a hull solid's Wild: its parts alike, else greyed)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
@@ -9643,7 +9646,7 @@ function huntFits() {
 // when a zone is greyed (as huntFits finds it), its tooltip's words
 const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'emoji' ? 'on a surface and in colours'
   : zone === 'realm' ? 'in Classic, with Mixed, and where a colour has no whole face' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
-  : famousZone(zone) ? 'where the rule has no famous patterns, or they cannot fit' : zone === 'full' ? 'hunting the highest peak (a soup full already)'
+  : famousZone(zone) ? 'where the rule has no famous patterns, or they cannot fit' : zone === 'full' ? 'hunting the highest peak (a soup full already), and on a solid of squares and triangles where its colours\' parts differ'
   : 'where its patch cannot fit each colour\'s part');
 // blocks: the search for its return, whatever the start (see searchBack)
 function renderBack() {
