@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1184';
+const VERSION = '0.1.1185';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9320,7 +9320,7 @@ const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], pun
                      emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
                      radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
-                     realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere the widest patches (see realmParts)
+                     realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere its part, the colours apart (see realmParts)
                      mirror: ['zoneMirror', 'Mirror'],  // each colour's two opposite faces (or parts: see colouring, hullColourings)
                      full: ['zoneAll', 'Wild'],
                      centred: [null, 'Famous'],  // the rule's patterns, each at its colour's spot (see patternChoices)
@@ -9358,13 +9358,20 @@ const iconIndex = (name, set = iconSet(hunt.zone)) => Math.max(0, set.names.inde
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
 const realmOnFaces = () => !!SOLID_SPOTS[MODES[$('mode').value].sphere] || !!HULL_SOLIDS[MODES[$('mode').value].sphere];  // (a solid: Realm its faces, see realmParts)
-const zoneRadius = (zone) => (zone === 'realm' ? (realmOnFaces() ? 0 : realmRadius()) : zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
+const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) : 0);
 // Realm: on a solid, each colour's whole face, the one its patch is in the middle of (see patchSpots); none (greyed) where a
 // patch is on a corner or an edge (the stella's tips and hollows): a face cut.
-// Elsewhere (the plane, a torus, a strip), the colours' patches as wide as they go (see realmRadius). Null: greyed
+// Elsewhere (the plane, a torus, a strip), each colour's whole part (see huntParts) but its cells next to another's: the colours
+// two cells apart, whatever their parts' shapes and sizes. Null: greyed
 function realmParts(K) {
   if (K === 1 || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild)
-  if (!realmOnFaces()) { const r = realmRadius(); return r ? huntParts(r, K) : null; }
+  if (!realmOnFaces()) {
+    const L = walk.life, parts = huntParts(0, K), of = new Int32Array(L.alive.length).fill(-1);
+    parts.forEach((p, k) => { for (const t of p) of[t] = k; });
+    const apart = (t) => { for (let q = L.nbr.start[t]; q < L.nbr.start[t + 1]; q++) if (of[L.nbr.list[q]] !== of[t]) return false; return true; };
+    const own = parts.map((p) => p.filter(apart));
+    return own.every((p) => p.length) ? own : null;  // (a grid too small: greyed)
+  }
   const hull = hullColours(MODES[$('mode').value].sphere, K);
   if (HULL_SOLIDS[MODES[$('mode').value].sphere]) return hull && hull.groups.map((gr) => hullFaceCells(gr[0]));  // (a hull solid: each colour's first face, as the cube's, see hullColourings)
   const sphere = MODES[$('mode').value].sphere, g = walk.geo, L = walk.life, mids = FACE_MIDDLES[sphere](), col = colouring(sphere, K);
@@ -9378,23 +9385,6 @@ function realmParts(K) {
     if (v.filter((x) => x > top - 1e-9).length === 1) parts[faces.indexOf(v.indexOf(top))]?.push(t);
   }
   return parts;
-}
-// Realm's radius off the solids: the colours' patches (see huntParts) grown a step at a time while each has cells of its own
-// and none meets another's. Once a grid, rule, view
-let realmMemo = null;
-function realmRadius() {
-  const L = walk.life, K = L?.colours;
-  if (!L || K === 1 || colourMix) return 0;
-  const key = `${gridKey()}|${K}|${L.ruleText}|${walk.plane ? planeTurn() : ''}`;
-  if (realmMemo?.key === key) return realmMemo.r;
-  const apart = (parts) => parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0);
-  let r = 0, size = 0;
-  for (;;) {
-    const parts = huntParts(r + 1, K), cells = parts.reduce((sum, p) => sum + p.length, 0);
-    if (!apart(parts) || cells === size) break;  // (met; or grown no more: each patch its whole piece of the grid)
-    r++; size = cells;
-  }
-  return (realmMemo = { key, r }).r;
 }
 const COLOUR_PARTS = { 2: '2 halves', 3: '3 thirds', 4: '4 quarters', 5: '5 fifths', 6: '6 sixths', 7: '7 sevenths', 8: '8 eighths', 9: '9 ninths', 10: '10 tenths', 12: '12 twelfths' };
 // The rules whose colours meet only when they start side by side (measured: none in contact from 16
@@ -13255,7 +13245,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
     : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
     : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
-    : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its patch as wide as it goes without meeting another's: random starts in it (two colours or more)"
+    : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its whole part but its cells next to another's: random starts in it (two colours or more)"
     : zoneRadius(zone) ? `Radius ${zoneRadius(zone)}: random starts within ${zoneRadius(zone)} steps of each spot`
     : 'Wild: the whole grid, random soups (a colour with two parts: side by side)';
   if (zone === 'custom') { b.hidden = true; return b; }  // shown, lit, for a start from a link
