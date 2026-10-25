@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1208';
+const VERSION = '0.1.1209';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9355,21 +9355,22 @@ const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.p
 const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
 const ICON_MAX = [96, 72, 48, 24];  // (Icon max, Punk max on squares: the widest of these that fits, a pixel whole cells)
 // Icon max, Punk max: the widest that fits (see iconLay); on squares, of ICON_MAX; elsewhere (no cells on its pixels anyway)
-// to the cell, up to 192, by halves (wider fits no less); 24 where none (greyed)
+// to the cell, from 16 (a picture of 24 pixels a little merged) up to 192, by halves (wider fits no less); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = () => {
   const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}`;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   let N = 24;
   if (patternKind() === 'square') N = ICON_MAX.find((n) => iconFits(n)) ?? 24;
-  else if (iconFits(24)) {
-    let hi = 48;
+  else if (iconFits(16)) {
+    let hi = 32;
+    N = 16;
     while (hi <= 192 && iconFits(hi)) { N = hi; hi *= 2; }
     for (hi = Math.min(hi, 193); hi - N > 1; ) { const m = (N + hi) >> 1; if (iconFits(m)) N = m; else hi = m; }
   }
   return (iconMaxMemo = { key, N }).N;
 };
-const iconSize = (zone) => (!isIcon(zone) ? 0 : zone.endsWith('Max') ? iconMax() : 24);  // (an icon's width in cells; max: greyed where 24 doesn't fit)
+const iconSize = (zone) => (!isIcon(zone) ? 0 : zone.endsWith('Max') ? iconMax() : 24);  // (an icon's width in cells; max: greyed where none fits, 16 off squares)
 const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : 'icon'];
 const iconIndex = (name, set = iconSet(hunt.zone)) => Math.max(0, set.names.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
