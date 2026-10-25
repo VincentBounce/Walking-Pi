@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1177';
+const VERSION = '0.1.1179';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4328,6 +4328,13 @@ const TORUS_TUBE = 0.4;
 // a length round a torus or along a Möbius strip, from its proportions: the nearest multiple of 12, so that
 // the blocks of 2, 3, 4, 6 and 12 colours divide it (and their middles fall on whole tiles)
 const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
+// a torus's (a Klein bottle's) columns round the ring near x: a whole count of its colours' blocks round it (see torusBlocks; a
+// bottle's, its colours' slices) and of step (the hexagons' and the triangles': even), each colour as many cells; Life's
+// colours only (a walk's: one)
+function ringColumns(x, nv, step = 1, klein = false) {
+  const K = MODES[$('mode').value]?.life ? lifeColours : 1, a = klein ? K : torusBlocks(K, { nv })[0], m = a % step ? a * step : a;
+  return m * Math.max(1, Math.round(x / m));
+}
 
 /* Grid point (i, j) of an nu × nv torus, rolled up by m ∈ [0, 1]: at m = 0 a flat rectangle
  * (2π by 2π·TUBE, in the x–z plane), at m = 1 the torus. The rectangle first curls into a tube
@@ -4363,7 +4370,7 @@ function kleinPoint(x, y, nu, nv, m) {
 // Its tiles as the torus's (squares, hexagons, triangles, Cairo pentagons; tiles in the same order), their
 // corners one vertex per point of the bottle, found by their place on the sheet (not in space: it crosses
 // itself, and the points where it does are two)
-const kleinColumns = { klein: (nv) => twelve(nv / TORUS_TUBE), kleinHex: (nv) => hexTorusColumns(nv), kleinTri: (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE)),
+const kleinColumns = { klein: (nv) => ringColumns(nv / TORUS_TUBE, nv, 1, true), kleinHex: (nv) => hexTorusColumns(nv, true), kleinTri: (nv) => ringColumns((nv * Math.sqrt(3)) / (2 * TORUS_TUBE), nv, 2, true),
   kleinCairo: (nv) => oddColumns(nv / TORUS_TUBE) };  // Cairo: an odd length, so that the ends turned over keep the tiling
 // an odd length near x (within a fifth), the one with the most of 3, 5, 7, 9 dividing it, so as many colours (slices along the
 // ring, see torusBlocks) as can be; then the nearest
@@ -4378,7 +4385,7 @@ function oddColumns(x) {
 }
 kleinColumns.kleinKite = kleinColumns.kleinTri;  // kites: the triangles', each cut in 3
 kleinColumns.kleinTriTurned = kleinColumns.kleinKiteTurned = (nv) => turnedTriColumns(nv);  // turned by 30° (as the tori, see turnedTorus)
-kleinColumns.kleinHexTurned = (nv) => turnedHexColumns(nv);
+kleinColumns.kleinHexTurned = (nv) => turnedHexColumns(nv, true);
 function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   const key = `${kind}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
@@ -4429,7 +4436,7 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, uv: new Float64Array(tiles.flat(2)) }));
 }
 
-function torusMesh(nv, nu = twelve(nv / TORUS_TUBE)) {  // squares about as long around the ring as around the tube
+function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares about as long around the ring as around the tube
   const key = `torus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
@@ -4741,7 +4748,7 @@ const sheetPoint = (g, i, j, m) => {
  * odd columns sit half a row higher, so nu must be even for the columns to close up. In sheet
  * units a column is 1.5·R wide and a row √3·R high; the sheet is 2π by 2π·TUBE, so the hexagons
  * are regular when nu / nv = √3 / (1.5·TUBE). Every hexagon has 6 neighbours, all across an edge. */
-const hexTorusColumns = (nv) => twelve((2 * nv * Math.sqrt(3)) / (3 * TORUS_TUBE));
+const hexTorusColumns = (nv, klein = false) => ringColumns((2 * nv * Math.sqrt(3)) / (3 * TORUS_TUBE), nv, 2, klein);
 function hexTorusMesh(nv, nu = hexTorusColumns(nv)) {
   const key = `hextorus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
@@ -4761,7 +4768,7 @@ function hexTorusMesh(nv, nu = hexTorusColumns(nv)) {
 // A torus of Cairo pentagons: nv squares of the Cairo grid round the tube, nu round the ring (both even:
 // the tiling repeats every other square), two pentagons a square (tile 2 (i·nv + j) + o, see cairoCorners),
 // listed counterclockwise on the sheet as the squares are
-const cairoTorusColumns = (nv) => twelve(nv / TORUS_TUBE);
+const cairoTorusColumns = (nv) => ringColumns(nv / TORUS_TUBE, nv, 2);
 function cairoTorusMesh(nv, nu = cairoTorusColumns(nv)) {
   const key = `cairotorus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
@@ -4862,7 +4869,7 @@ function hexSolidMesh(solid, f) {
  * a triangle, nu corners along each row. In sheet units a triangle is 1 wide and its row √3/2 high;
  * the sheet is 2π by 2π·TUBE, so the triangles are equilateral when nu / nv = √3 / (2·TUBE).
  * Every corner has 6 edges: the triangular grid that wraps around both ways. */
-const triTorusColumns = (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
+const triTorusColumns = (nv) => ringColumns((nv * Math.sqrt(3)) / (2 * TORUS_TUBE), nv, 2);
 /* Kites (the deltoidal trihexagonal tiling, the grid of the hat monotile): each triangle of the triangles'
  * grid cut in 3 from its middle to its sides' middles, a kite at each corner (that corner, the middles of
  * its two sides, the triangle's middle); 6 kites round a corner of the triangles make a hexagon. A kite
@@ -4913,7 +4920,7 @@ function turnedTorus(kind, build, sides, nv, nu, kites = false) {  // kites: eac
   });
   return (meshCache[key] = Object.assign(finishTorus(verts, tiles, kites ? 4 : sides, nu, nv, uv), { kite: kites }));
 }
-const turnedTriColumns = (nv) => twelve((2 * nv) / (Math.sqrt(3) * TORUS_TUBE));
+const turnedTriColumns = (nv) => ringColumns((2 * nv) / (Math.sqrt(3) * TORUS_TUBE), nv, 2);
 const turnedTriTorusMesh = (nv, nu = turnedTriColumns(nv), kites = false) => turnedTorus(kites ? 'kitetorusTurned' : 'tritorusTurned', (rows, cols, put) => {
   const P = (i, j) => [i + (j % 2) / 2, j];  // corner i of row j, as on the usual torus (rows: around the ring)
   for (let j = 0; j < cols; j++) {
@@ -4923,7 +4930,7 @@ const turnedTriTorusMesh = (nv, nu = turnedTriColumns(nv), kites = false) => tur
     }
   }
 }, 3, nv, nu, kites);
-const turnedHexColumns = (nv) => twelve((nv * Math.sqrt(3)) / (2 * TORUS_TUBE));
+const turnedHexColumns = (nv, klein = false) => ringColumns((nv * Math.sqrt(3)) / (2 * TORUS_TUBE), nv, 2, klein);
 const turnedHexTorusMesh = (nv, nu = turnedHexColumns(nv)) => turnedTorus('hextorusTurned', (cols, rows, put) => {
   for (let c = 0; c < cols; c++) {  // as on the usual torus: columns 1.5 apart, odd ones half a row higher
     for (let r = 0; r < rows; r++) {
@@ -5124,7 +5131,7 @@ const SPHERES = {
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
   torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
-          columns: (nv) => twelve(nv / TORUS_TUBE), perRow: 1, steps: [1, 1],
+          columns: (nv) => ringColumns(nv / TORUS_TUBE, nv), perRow: 1, steps: [1, 1],
           least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
   hextorus: { mesh: (s) => hexTorusMesh(...torusDims('hextorus', s)), radius: (s) => (torusDims('hextorus', s)[0] * Math.sqrt(3)) / (2 * Math.PI * TORUS_TUBE),
@@ -5215,7 +5222,7 @@ for (const name of foldedIn('torus')) {
   const { kind, turned } = FOLDED[name], t = TILINGS[kind], [[p, q], [r, s]] = torusSheets(kind)[turned ? 'turned' : 'plain'], [a, b] = t.basis;
   const ring = Math.hypot(p * a[0] + q * b[0], p * a[1] + q * b[1]), tube = Math.hypot(r * a[0] + s * b[0], r * a[1] + s * b[1]), per = t.polys.length * Math.abs(p * s - q * r);  // (cells a cell of the sheet)
   SPHERES[name] = { mesh: (z) => tilingTorusMesh(kind, ...torusDims(name, z), turned), radius: (z) => (torusDims(name, z)[0] * tube) / (2 * Math.PI * TORUS_TUBE),
-                    columns: (nv) => Math.max(1, Math.round((nv * tube) / (ring * TORUS_TUBE))), perRow: per, steps: [1, 1], least: 2,
+                    columns: (nv) => ringColumns((nv * tube) / (ring * TORUS_TUBE), nv), perRow: per, steps: [1, 1], least: 2,
                     tiles: (z) => per * torusDims(name, z).reduce((x, y) => x * y), unit: t.cells };
 }
 
@@ -5316,7 +5323,7 @@ const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 // (each family's last size kept, see SIZE_LADDERS: on another tiling or surface of it, the size with about as many cells)
 const familyCells = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
-  const sel = $('sphereF'), key = `${kind} ${initial}`, [was] = (sel.dataset.kind ?? '').split(' ');
+  const sel = $('sphereF'), key = `${kind} ${initial} ${lifeColours}`, [was] = (sel.dataset.kind ?? '').split(' ');  // (a torus's sizes: its columns as its colours, see ringColumns)
   if (sel.dataset.kind === key) return;
   if (SPHERES[was] && sel.value) familyCells[ladderOf(was)] = SPHERES[was].tiles(sphereSize());
   const kept = familyCells[ladderOf(kind)];
@@ -5368,7 +5375,7 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
   let near;
   const nearest = () => near ??= (() => {
-    const step = S.steps?.[0] ?? 1, sizes = [];
+    const s0 = S.steps?.[0] ?? 1, step = TORI.includes(kind) && !kind.startsWith('klein') ? (s0 % 6 ? (s0 % 3 ? 3 : 1) * (s0 % 2 ? 2 : 1) * s0 : s0) : s0, sizes = [];  // (a torus's rows a multiple of 6 too: its colours' blocks round the tube, halves and thirds, whole, see torusBlocks)
     for (let f = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step; ; f += step) { sizes.push([f, S.tiles(f)]); if (sizes.at(-1)[1] > 1.5 * counts.at(-1) || f >= (S.most ?? Infinity)) break; }
     return (n) => sizes.reduce((a, b) => (Math.abs(Math.log(b[1] / n)) < Math.abs(Math.log(a[1] / n)) ? b : a))[0];
   })();
@@ -7988,14 +7995,14 @@ function setRuleText(rule) {  // the rule field, and its preset if it is one
 const COLOUR_STEPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
 const COLOUR_GRID = { 1: [1, 1], 2: [2, 1], 3: [3, 1], 4: [2, 2], 5: [5, 1], 6: [3, 2], 7: [7, 1], 8: [4, 2], 9: [3, 3], 10: [5, 2], 12: [4, 3] };
 // a torus's colour blocks: a round the ring, b round the tube, as square as can be on the torus as seen (its
-// ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3; of those that divide its sides first
-// (26 × 9: 3 colours 1 × 3 round the tube, not 3 × 1); a Klein bottle's, slices along the ring only (its ends glued turned
+// ring 1 / TORUS_TUBE times as long as its tube): 12 colours 6 × 2 rather than 4 × 3; of those whose b divides its rows
+// first (its columns made for a, see ringColumns); a Klein bottle's, slices along the ring only (its ends glued turned
 // over, y → nv − y: blocks round the tube would swap there, a colour going on as another)
 function torusBlocks(K, g = walk.geo) {
   let best = [K, 1], err = Infinity;
   if (g?.klein) return best;
   for (let b = 1; b <= K; b++) if (K % b === 0) {
-    const fits = !g?.nu || (g.nu % (K / b) === 0 && g.nv % b === 0), e = (fits ? 0 : 100) + Math.abs(Math.log(b / ((K / b) * TORUS_TUBE)));
+    const fits = !g?.nv || g.nv % b === 0, e = (fits ? 0 : 100) + Math.abs(Math.log(b / ((K / b) * TORUS_TUBE)));
     if (e < err) { err = e; best = [K / b, b]; }
   }
   return best;
@@ -9558,7 +9565,7 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
   }
   if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its middle is in
     // (a Klein bottle's tile across the seam, its middle past the sheet's end: in the block at that end)
-    const [a, b] = torusBlocks(K), at = (x, m, k) => Math.max(0, Math.min(k - 1, Math.floor((x * k) / m)));
+    const [a, b] = torusBlocks(K), at = (x, m, k) => Math.max(0, Math.min(k - 1, Math.floor((x * k) / m + 1e-6)));
     const block = (t) => { const [u, v] = sheetMiddle(g, t); return at(u, g.nu, a) * b + at(v, g.nv, b); };
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
