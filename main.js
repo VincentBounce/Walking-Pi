@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1176';
+const VERSION = '0.1.1177';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4335,12 +4335,12 @@ const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
  * Bending a length L into an arc of a circle whose circumference is L / k keeps lengths along it. */
 function torusPoint(i, j, nu, nv, m) {
   const b = Math.min(1, 2 * m), c = Math.max(0, 2 * m - 1);  // tube bend, then ring bend
-  // flat, the sheet lies in the north–east plane: i towards the east, j towards the north
+  // flat, the sheet lies in the east–south plane, as the plane's grids and a picture read: i towards the east, j towards the south
   const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
-  let w = -Y, h = 0;  // w: offset away from the ring's centre (the north goes into the hole), h: height
-  if (b > 1e-6) {  // it curls down round the tube, so its middle becomes the top of the torus, in front
+  let w = Y, h = 0;  // w: offset away from the ring's centre (the north goes into the hole), h: height
+  if (b > 1e-6) {  // it curls down round the tube, closing in front, so its middle becomes the top of the torus
     const rt = TORUS_TUBE / b, th = Y / rt;
-    w = -rt * Math.sin(th);
+    w = rt * Math.sin(th);
     h = rt * (Math.cos(th) - 1) + TORUS_TUBE * b;
   }
   if (c < 1e-6) return [X, -w, h];
@@ -7211,7 +7211,7 @@ function iconLay(N) {
     const cross = box.flatMap((_, j) => (pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
     const whole = cross.every((t) => t >= 0) && new Set(cross).size === cross.length;
     const js = box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
-    const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
+    const turn = walk.plane || g.torus || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
     return { at, turn, js, whole };
   });
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
