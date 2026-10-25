@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1164';
+const VERSION = '0.1.1165';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4854,6 +4854,7 @@ function hexSolidMesh(solid, f) {
   // in a Game of Life the corners' cells (not 6 triangles round them: a pentagon, a square, a triangle, the stella's hollows'
   // octagons) are walls: always dead, and no one's neighbour
   mesh.walls = cells.flatMap((c, v) => (c.length !== 6 ? [v] : []));
+  mesh.hexagons = true;  // (its cells hexagons, whatever its walls' sides: the stella's octagons, see patternAt)
   return (meshCache[key] = mesh);
 }
 
@@ -9836,10 +9837,10 @@ const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
   const turned = /Turned$/.test(surfaceOf(m)) && !walk.geo?.tiling;  // (hexagons and triangles turned by 30°: not yet; the new tilings, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
-    || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (walk.geo?.sides === 6 && !walk.geo.torus && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
+    || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (!!walk.geo?.hexagons && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides] ?? 'square');
+const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : (walk.geo.hexagons ? 'hex' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides]) ?? 'square');
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
@@ -9889,9 +9890,11 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     }
     return out;
   }
-  if (g.sides === 6) {  // a solid of hexagons: the pattern's lattice on its face's, by where its cells are (see hexFaceAt)
+  if (g.hexagons) {  // a solid of hexagons: the pattern's lattice on its face's, by where its cells are (see hexFaceAt)
     const sphere = MODES[$('mode').value].sphere;
-    return hexFaceAt(K === 1 ? patchCentre() : centreCells(unit(patchSpots(sphere, K)[i]))[0], cells, partial);
+    const base = FACE_BASE[sphere] ?? sphere, c = patchCentre(), d = unit(K === 1 ? [0, 1, 2].map((a) => g.cen[3 * c + a]) : triFace(base, K, i) ?? patchSpots(sphere, K)[i]);
+    const face = POLYHEDRA[base] ? middles(base).reduce((b, m) => (dot3(m, d) > dot3(b, d) ? m : b)) : d;  // (the face most its way, its middle: a stella's tip, a face of it; one colour, the front's)
+    return hexFaceAt(face ? centreCells(face)[0] : c, cells, partial);
   }
   const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
   // its face's squares, or its pit's floor's (the cube with pits); tetrakis triangles: a cell x of the pattern triangle x % 4
