@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1216';
+const VERSION = '0.1.1217';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5251,7 +5251,7 @@ function syncSizeStepper() {
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
-  sizeGauge($('sizeGauge'), TORI.includes(kind) ? 0 : sel.options.length, sel.selectedIndex, (k) => label(Number(sel.options[k].value)), (k) => stepSize(k - sel.selectedIndex));  // (a torus, a strip, a bottle: sizes of their own too, none)
+  sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
   const starts = modeStarts();
   $('startRow').hidden = !starts;
   if (!starts) return;
