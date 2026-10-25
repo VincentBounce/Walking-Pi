@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1166';
+const VERSION = '0.1.1167';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9892,9 +9892,9 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
   }
   if (g.hexagons) {  // a solid of hexagons: the pattern's lattice on its face's, by where its cells are (see hexFaceAt)
     const sphere = MODES[$('mode').value].sphere;
-    const base = FACE_BASE[sphere] ?? sphere, c = patchCentre(), d = unit(K === 1 ? [0, 1, 2].map((a) => g.cen[3 * c + a]) : triFace(base, K, i) ?? patchSpots(sphere, K)[i]);
+    const base = FACE_BASE[sphere] ?? sphere, c = K === 1 ? patchCentre() : -1, d = unit(K === 1 ? [0, 1, 2].map((a) => g.cen[3 * c + a]) : triFace(base, K, i) ?? patchSpots(sphere, K)[i]);
     const face = POLYHEDRA[base] ? middles(base).reduce((b, m) => (dot3(m, d) > dot3(b, d) ? m : b)) : d;  // (the face most its way, its middle: a stella's tip, a face of it; one colour, the front's)
-    return hexFaceAt(face ? centreCells(face)[0] : c, cells, partial);
+    return hexFaceAt(centreCells(face)[0], cells, partial);
   }
   const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i], f = AXES.reduce((b, d, k) => (dot3(d, dir) > dot3(AXES[b], dir) ? k : b), 0);  // the cube: its face (a corner's: its first)
   // its face's squares, or its pit's floor's (the cube with pits); tetrakis triangles: a cell x of the pattern triangle x % 4
