@@ -57,6 +57,8 @@ function checkMeshes(fail) {
     const inside = neighbourCounts(g, (t) => t < g.front && y(t) > far && y(t) < g.W - far);
     checked++;
     if (SPHERES[kind].tiles(6) !== g.n) fail(`${kind}: ${g.n} cells, said ${SPHERES[kind].tiles(6)}`);
+    { const bad = sheetOff(g); if (bad) fail(`${kind}: ${bad} sheet corners off their corners`); }  // (as the tori's)
+    if (mobiusMiddle(g) !== g.L / 2) fail(`${kind}: its back facing the view, not its front`);  // (its sheet laid east and south, as a torus's)
     if (!torus) fail(`${kind}: no torus of its tiles to compare with`);
     else if (!within(inside, torus)) fail(`${kind}: inside ${show(inside)}, its torus ${show(torus)}`);
   }
