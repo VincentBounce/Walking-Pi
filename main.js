@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1163';
+const VERSION = '0.1.1164';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7196,7 +7196,6 @@ function iconTurn(laid, pix, P) {
 // margins)
 function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
-  if (pentaSpot(0)) return pentaLay(N);  // (round a point of five: see pentaLay)
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const { box, pix } = iconSquare(kind, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
   const lays = Array.from({ length: K }, (_, i) => {
@@ -7213,35 +7212,6 @@ function iconLay(N) {
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
   return lays.every((l) => l.whole) && new Set(all).size >= 0.95 * all.length ? lays : null;
 }
-// The points where five triangles meet, as the dodecahedron's pentagons' middles and the icosahedron's corners: colour i's,
-// as a direction (one colour: the one most in front), on those solids, for those colours; else none
-const pentaSpot = (i) => {
-  const sphere = MODES[$('mode').value].sphere, K = walk.life.colours;
-  if (!(['dodeca', 'dodecaKite'].includes(sphere) || (['icosa', 'icosaKite'].includes(sphere) && K === 12))) return null;
-  if (K > 1) return unit(patchSpots(sphere, K)[i]);
-  const t = patchCentre(), c = [0, 1, 2].map((d) => walk.geo.cen[3 * t + d]);
-  return ICO().map(unit).reduce((b, p) => (dot3(p, c) > dot3(b, c) ? p : b));
-};
-// An icon round a point of five (see pentaSpot): its cells those nearer it than any other such point (a pentagon, flat or a
-// little folded), seen flat across its direction, each the pixel under its middle (N cells wide, a cell as wide as the root
-// of the mean cell's area), its top towards the point of five most up (any way: the balls turn). Each colour's [cell,
-// pixel x, y]; null where its middle row or column ends off its pentagon. Its pentagons kept a grid (pentaParts)
-function pentaLay(N) {
-  const g = walk.geo, K = walk.life.colours, P = 24, ico = ICO().map(unit);
-  const parts = (g.pentaParts ??= (() => { const out = ico.map(() => []); for (let t = 0; t < g.n; t++) { const c = [0, 1, 2].map((d) => g.cen[3 * t + d]); out[ico.reduce((b, p, k) => (dot3(p, c) > dot3(ico[b], c) ? k : b), 0)].push(t); } return out; })());
-  const V = (v) => [g.verts[3 * v], g.verts[3 * v + 1], g.verts[3 * v + 2]], area = (t) => { const c = [...new Set(g.poly.subarray(g.sides * t, g.sides * (t + 1)))].map(V); let a = 0; for (let q = 1; q + 1 < c.length; q++) a += Math.hypot(...cross(c[q].map((v, d) => v - c[0][d]), c[q + 1].map((v, d) => v - c[0][d]))) / 2; return a; };
-  const w = (g.cellWidth ??= Math.sqrt(parts[0].reduce((sum, t) => sum + area(t), 0) / parts[0].length)), k = (N * w) / P;  // (a cell as wide as the root of its pentagon's cells' mean area)
-  const lays = Array.from({ length: K }, (_, i) => {
-    const d = pentaSpot(i), cells = parts[ico.reduce((b, p, q) => (dot3(p, d) > dot3(ico[b], d) ? q : b), 0)];
-    const flat = (v) => v.map((x, a) => x - dot3(v, d) * d[a]), ups = ico.filter((p) => dot3(p, d) > 0.3 && dot3(p, d) < 0.99).map((p) => unit(flat(p)));
-    const up = ups.reduce((b, p) => (p[2] > b[2] ? p : b)), right = cross(up, d);
-    const at = cells.map((t) => { const e = flat([0, 1, 2].map((a) => g.cen[3 * t + a])); return [t, dot3(e, right), dot3(e, up)]; });
-    const sample = at.flatMap(([t, x, y]) => { const px = Math.floor(x / k + P / 2), py = Math.floor(P / 2 - y / k); return px >= 0 && py >= 0 && px < P && py < P ? [[t, px, py]] : []; });
-    const r = (P / 2 - 0.5) * k, whole = [[r, 0], [-r, 0], [0, r], [0, -r]].every(([x, y]) => at.some(([, a, b]) => Math.hypot(a - x, b - y) <= 1.1 * w));
-    return { sample, whole };
-  });
-  return lays.every((l) => l.whole) ? lays : null;
-}
 const iconFits = (N) => !!iconLay(N);
 function iconChoices(N, set) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${$('mode').value}|${kind}|${walk.life.seed.length}|${K}|${colourMix}|${walk.plane?.torus}`;
@@ -7249,7 +7219,6 @@ function iconChoices(N, set) {
   const lays = iconLay(N);  // (each icon its cells of the colour's square)
   const choices = Array.from({ length: K }, (_, i) => {
     if (!lays) return [];
-    if (lays[i].sample) return lazyList(set.bits.length, (k) => { const on = iconPixel(set.bits[k]); return Int32Array.from(lays[i].sample.flatMap(([t, x, y]) => (on(x, y) ? [t, i + 1] : []))); });  // (round a point of five, see pentaLay)
     const patterns = iconPatterns(kind, N, set, lays[i].turn);
     return lazyList(patterns.length, (k) => Int32Array.from(patterns[k].flatMap((j) => (lays[i].at[j] >= 0 ? [lays[i].at[j], i + 1] : []))));
   });
@@ -9897,18 +9866,18 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
-    // its rows along its side most level (on a face looking up or down, along x), the face's rows from that
+    // its rows along its side most level (on a face looking up or down, along x; kites: AB's), the face's rows from that
     // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back)
     const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, n = unit(cross(sub(B, A), sub(C, A))), flat = Math.abs(n[2]) > 0.9;
     const level = flat ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n)), turns = [[A, B, C], [B, C, A], [C, A, B]];
-    const r = [0, 1, 2].reduce((b, q) => (Math.abs(dot3(unit(sub(turns[q][1], turns[q][0])), level)) > Math.abs(dot3(unit(sub(turns[b][1], turns[b][0])), level)) + 1e-9 ? q : b), 0);
+    const r = per > 1 ? 0 : [0, 1, 2].reduce((b, q) => (Math.abs(dot3(unit(sub(turns[q][1], turns[q][0])), level)) > Math.abs(dot3(unit(sub(turns[b][1], turns[b][0])), level)) + 1e-9 ? q : b), 0);
     const f = g.size, back = ([i, j], o) => [f - 1 - o - i - j, i];
     for (const [x, y, v] of cells) {
       const I = Math.floor(x / per) + 2 * i0, o = I & 1;
       let ij = [I >> 1, y + j0];
       for (let q = 0; q < r; q++) ij = back(ij, o);
       const k = at.get(`${2 * ij[0] + o},${ij[1]}`);
-      if (k !== undefined) out.push([(g.triFirst ?? 0) + face * perFace + per * k + (((x % per) + r) % per), v]);  // (a kite: its triangle's corner turned with it)
+      if (k !== undefined) out.push([(g.triFirst ?? 0) + face * perFace + per * k + (x % per), v]);
     }
     return out;
   }
