@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1187';
+const VERSION = '0.1.1188';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4325,7 +4325,13 @@ function flatPolyhedron(name, f, kites = false) {
  * major radius 1 and tube radius TORUS_TUBE. Every square has 4 edge neighbours and 8 corner
  * neighbours with no exception: it is the square grid that wraps around both ways. */
 const TORUS_TUBE = 0.4;
-const tubeOf = (g) => g.tube ?? TORUS_TUBE;  // a grid's own tube (the torus of squares: its rows over its columns, its squares square)
+const tubeOf = (g) => g.tube ?? TORUS_TUBE;  // a grid's own tube (see TUBE_SHAPE)
+// A torus's (a Klein bottle's) tube its own: its tiles regular whatever its columns, the ring as long as they ask. Its
+// shape: round the tube over round the ring, of a cell of its sheet (a column, a row) as its tiles are regular: its tube
+// shape × rows / columns (0.4, TORUS_TUBE, at its natural columns, shape × rows / 0.4)
+const TUBE_SHAPE = { torus: 1, torusCairo: 1, torusHex: 2 / Math.sqrt(3), torusTri: Math.sqrt(3) / 2, torusKite: Math.sqrt(3) / 2, torusHexTurned: Math.sqrt(3) / 2, torusTriTurned: 2 / Math.sqrt(3), torusKiteTurned: 2 / Math.sqrt(3) };
+for (const k of Object.keys(TUBE_SHAPE)) TUBE_SHAPE[k.replace('torus', 'klein')] = TUBE_SHAPE[k];
+const tubeFor = (kind, nv, nu) => (TUBE_SHAPE[kind] * nv) / nu;
 // a length round a torus or along a Möbius strip, from its proportions: the nearest multiple of 12, so that
 // the blocks of 2, 3, 4, 6 and 12 colours divide it (and their middles fall on whole tiles)
 const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
@@ -4362,11 +4368,11 @@ function torusPoint(i, j, nu, nv, m, tube = TORUS_TUBE) {
  * and (x, y + nv) ≡ (x, y). One-sided and closed; in space it must cross itself: the figure-8 immersion,
  * its tube's cross-section a figure 8 that turns half a turn round the ring (the ends meet turned over),
  * crossing itself along the circle through the 8's middle. Flat (m = 0) as the torus's sheet. */
-function kleinPoint(x, y, nu, nv, m) {
-  const t = (x / nu - 0.5) * 2 * Math.PI, f = (y / nv) * 2 * Math.PI, a = TORUS_TUBE, c = Math.cos(t / 2), s = Math.sin(t / 2);
+function kleinPoint(x, y, nu, nv, m, tube = TORUS_TUBE) {
+  const t = (x / nu - 0.5) * 2 * Math.PI, f = (y / nv) * 2 * Math.PI, a = tube, c = Math.cos(t / 2), s = Math.sin(t / 2);
   const r = 1 + a * (c * Math.sin(f) - s * Math.sin(2 * f)), K = [r * Math.sin(t), -r * Math.cos(t), a * (s * Math.sin(f) + c * Math.sin(2 * f))];
   if (m >= 1) return K;
-  const F = torusPoint(x, y, nu, nv, 0);
+  const F = torusPoint(x, y, nu, nv, 0, tube);
   return F.map((v, d) => v + (K[d] - v) * m);
 }
 // Its tiles as the torus's (squares, hexagons, triangles, Cairo pentagons; tiles in the same order), their
@@ -4423,7 +4429,7 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
     const c = cairoCorners(i, j, o);
     tiles.push(c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0 ? c.reverse() : c);
   }
-  const ids = new Map(), verts = [], r6 = (v) => Math.round(v * 1e6) / 1e6;
+  const ids = new Map(), verts = [], r6 = (v) => Math.round(v * 1e6) / 1e6, tube = tubeFor(kind, nv, nu);
   const id = (x0, y0) => {  // the point's place on the sheet, brought within it
     let x = r6(x0), y = r6(y0);
     const k = Math.floor(x / nu);
@@ -4431,18 +4437,18 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
     if (k % 2) y = r6(nv - y);
     y = r6(((y % nv) + nv) % nv);
     const key = `${x},${y}`;
-    if (!ids.has(key)) { ids.set(key, verts.length / 3); verts.push(...kleinPoint(x0, y0, nu, nv, 1)); }
+    if (!ids.has(key)) { ids.set(key, verts.length / 3); verts.push(...kleinPoint(x0, y0, nu, nv, 1, tube)); }
     return ids.get(key);
   };
   const mesh = finishMesh(verts, tiles.map((t) => t.map(([x, y]) => id(x, y))), tiles[0].length, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, uv: new Float64Array(tiles.flat(2)) }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, tube, uv: new Float64Array(tiles.flat(2)) }));
 }
 
 function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares about as long around the ring as around the tube
   const key = `torus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
-  const at = (i, j) => add(...torusPoint(i, j, nu, nv, 1, nv / nu));  // i = nu and i = 0 meet (same for j)
+  const tube = tubeFor('torus', nv, nu), at = (i, j) => add(...torusPoint(i, j, nu, nv, 1, tube));  // i = nu and i = 0 meet (same for j)
   const quads = [], uv = [];
   for (let i = 0; i < nu; i++) {
     for (let j = 0; j < nv; j++) {
@@ -4451,7 +4457,7 @@ function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares abou
       uv.push(...c.flat());
     }
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, quads, 4, nu, nv, uv), { tube: nv / nu }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, quads, 4, nu, nv, uv), { tube }));
 }
 
 // A torus mesh keeps the sheet coordinates (i, j) of every tile corner (uv, in listing order):
@@ -4688,11 +4694,11 @@ function kleinTilingMesh(kindK, size) {
     i -= k * n * Q;
     if (k % 2) j = nv * Q - j;
     j = ((j % (nv * Q)) + nv * Q) % (nv * Q);
-    if (!ids.has(i * nv * Q + j)) { ids.set(i * nv * Q + j, verts.length / 3); verts.push(...kleinPoint(x, y, L, W, 1)); }
+    if (!ids.has(i * nv * Q + j)) { ids.set(i * nv * Q + j, verts.length / 3); verts.push(...kleinPoint(x, y, L, W, 1, W / L)); }
     return ids.get(i * nv * Q + j);
   };
   const mesh = finishMesh(verts, tiles.map((t) => t.map(id)), sides, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, period: la, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids) }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: la, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids) }));
 }
 // a tile's corners the other way round, its last one repeated still last (a tile with fewer corners than the strip's:
 // repeated first, its normal, from its first corners, was none, and the back's tiles all but black)
@@ -4744,7 +4750,7 @@ function mobiusMesh(kind, size) {
 // The sheet point of a surface: a torus, or a Möbius strip
 const sheetPoint = (g, i, j, m) => {
   if (g.mobius) return mobiusPoint(i, j, g.L, g.W, m);
-  if (g.klein) return kleinPoint(i, j, g.nu, g.nv, m);
+  if (g.klein) return kleinPoint(i, j, g.nu, g.nv, m, tubeOf(g));
   return torusPoint(i, j, g.nu, g.nv, m, tubeOf(g));
 };
 
@@ -4757,16 +4763,16 @@ function torusHexMesh(nv, nu = torusHexColumns(nv)) {
   const key = `torusHex${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
-  const hexes = [], uv = [];
+  const hexes = [], uv = [], tube = tubeFor('torusHex', nv, nu);
   for (let c = 0; c < nu; c++) {
     for (let r = 0; r < nv; r++) {  // tile c·nv + r, like the square torus
       const ci = c, cj = r + (c % 2) / 2;
       const corners = [0, 1, 2, 3, 4, 5].map((k) => [ci + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]);
-      hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+      hexes.push(corners.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1, tube))));
       uv.push(...corners.flat());
     }
   }
-  return (meshCache[key] = finishTorus(verts, hexes, 6, nu, nv, uv));
+  return (meshCache[key] = Object.assign(finishTorus(verts, hexes, 6, nu, nv, uv), { tube }));
 }
 
 // A torus of Cairo pentagons: nv squares of the Cairo grid round the tube, nu round the ring (both even:
@@ -4776,14 +4782,14 @@ const torusCairoColumns = (nv) => ringColumns(nv / TORUS_TUBE, nv, 2);
 function torusCairoMesh(nv, nu = torusCairoColumns(nv)) {
   const key = `torusCairo${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
-  const { verts, add } = vertexStore(), tiles = [], uv = [];
+  const { verts, add } = vertexStore(), tiles = [], uv = [], tube = tubeFor('torusCairo', nv, nu);
   for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
     let c = cairoCorners(i, j, o);
     if (c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0) c = c.reverse();
-    tiles.push(c.map(([x, y]) => add(...torusPoint(x, y, nu, nv, 1))));
+    tiles.push(c.map(([x, y]) => add(...torusPoint(x, y, nu, nv, 1, tube))));
     uv.push(...c.flat());
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, 5, nu, nv, uv), { cairo: true }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, 5, nu, nv, uv), { cairo: true, tube }));
 }
 
 // A tiling's polygons, their corners the same from every polygon round them (stored to 6 decimals: those a whole lattice
@@ -4818,10 +4824,11 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
   const frame = sheetCells(kind, sheet), area = (P) => Math.abs(P.reduce((x, p, i) => x + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
   const c = [0, 1].map((d) => frame.reduce((x, P) => x + area(P) * P.reduce((y, p) => y + p[d], 0) / P.length, 0) / frame.reduce((x, P) => x + area(P), 0));
   const polys = frame.map((P) => P.map(([u, v]) => [u + 0.5 - c[0], v + 0.5 - c[1]]));
-  const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map();
+  const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map(), [[p, q], [r, s]] = sheet, [a, b] = t.basis;
+  const tube = (nv * Math.hypot(r * a[0] + s * b[0], r * a[1] + s * b[1])) / (nu * Math.hypot(p * a[0] + q * b[0], p * a[1] + q * b[1]));  // (a sheet cell's sides: round the tube, round the ring)
   const corner = (i, j) => {  // a corner once, by its place on the sheet round the seams (not by its rounded point in space)
     const k = `${roundOff(((i % nu) + nu) % nu, 1e4) % roundOff(nu, 1e4)},${roundOff(((j % nv) + nv) % nv, 1e4) % roundOff(nv, 1e4)}`;
-    if (!ids.has(k)) ids.set(k, add(...torusPoint(i, j, nu, nv, 1)));
+    if (!ids.has(k)) ids.set(k, add(...torusPoint(i, j, nu, nv, 1, tube)));
     return ids.get(k);
   };
   for (let j0 = 0; j0 < nv; j0++) for (let i0 = 0; i0 < nu; i0++) for (const P of polys) {
@@ -4831,7 +4838,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
     tiles.push(c.map(([i, j]) => corner(i, j)));
     uv.push(...c.flat());
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid, true), { tiling: kind, sheet, uvMid: new Float64Array(mid) }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid, true), { tiling: kind, sheet, tube, uvMid: new Float64Array(mid) }));
 }
 
 /* Sphere of hexagons (a Goldberg polyhedron, the football's pattern): the dual of the icosahedron
@@ -4886,9 +4893,9 @@ function torusTriMesh(nv, nu = torusTriColumns(nv), kites = false) {  // kites: 
   const key = `${kites ? 'kite' : 'tri'}torus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
-  const tris = [], uv = [];
+  const tris = [], uv = [], tube = tubeFor('torusTri', nv, nu);
   const P = (i, j) => [i + (j % 2) / 2, j];  // sheet coordinates of corner i of row j
-  const put = (c) => { for (const t of kites ? kitesOf(c) : [c]) { tris.push(t.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1)))); uv.push(...t.flat()); } };
+  const put = (c) => { for (const t of kites ? kitesOf(c) : [c]) { tris.push(t.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1, tube)))); uv.push(...t.flat()); } };
   for (let j = 0; j < nv; j++) {
     for (let i = 0; i < nu; i++) {  // the two triangles between corners i, i + 1 of rows j and j + 1
       if (j % 2 === 0) {
@@ -4900,7 +4907,7 @@ function torusTriMesh(nv, nu = torusTriColumns(nv), kites = false) {  // kites: 
       }
     }
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tris, kites ? 4 : 3, nu, nv, uv), { kite: kites }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tris, kites ? 4 : 3, nu, nv, uv), { kite: kites, tube }));
 }
 
 /* The same tori turned by 30° (or 90°: the same grid) on the sheet: the triangles' rows, or the
@@ -4914,15 +4921,15 @@ function turnedTorus(kind, build, sides, nv, nu, kites = false) {  // kites: eac
   const key = `${kind}${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
-  const tiles = [], uv = [];
+  const tiles = [], uv = [], tube = tubeFor(kind, nv, nu);
   build(nv, nu, (c0) => {
     for (const c of kites ? kitesOf(c0) : [c0]) {
       const turned = [c[0], ...c.slice(1).reverse()].map(([i, j]) => [j, i]);
-      tiles.push(turned.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1))));
+      tiles.push(turned.map(([i, j]) => add(...torusPoint(i, j, nu, nv, 1, tube))));
       uv.push(...turned.flat());
     }
   });
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, kites ? 4 : sides, nu, nv, uv), { kite: kites }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, kites ? 4 : sides, nu, nv, uv), { kite: kites, tube }));
 }
 const turnedTriColumns = (nv) => ringColumns((2 * nv) / (Math.sqrt(3) * TORUS_TUBE), nv, 2);
 const turnedTorusTriMesh = (nv, nu = turnedTriColumns(nv), kites = false) => turnedTorus(kites ? 'torusKiteTurned' : 'torusTriTurned', (rows, cols, put) => {
@@ -5134,7 +5141,7 @@ const SPHERES = {
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
-  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[1] / (2 * Math.PI),  // edge = 1 unit
+  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
           columns: (nv) => ringColumns(nv / TORUS_TUBE, nv), perRow: 1, steps: [1, 1],
           least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
@@ -5374,6 +5381,8 @@ function gridGraph(g) {
 const SOLIDS = [...Object.keys(TETRAKIS_SOLIDS).map((k) => `${k}Tetrakis`), 'cube', 'tetra', 'octa', 'stella', 'dodeca', 'icosa', 'hexsphere', ...hexSolids.map((k) => `${k}Hex`), 'tetraKite', 'octaKite', 'icosaKite', 'stellaKite', 'dodecaKite', 'cubocta', 'pyramid', 'rhombi', 'bicupola'];
 const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'kleinHexTurned', 'kleinTriTurned', 'kleinKiteTurned', 'torusKite', 'torusKiteTurned', 'torus', 'torusTri', 'torusHex', 'torusCairo', 'torusTriTurned', 'torusHexTurned', ...MOBIUS_KINDS, ...foldedIn('klein'),
   ...foldedIn('torus')];  // sized by rows × tiles per row
+// their sizes on screen by their own tubes (see TUBE_SHAPE; their radii said for TORUS_TUBE's)
+for (const kind of TORI) if (!MOBIUS_KINDS.includes(kind) && !kind.startsWith('mobius')) { const S = SPHERES[kind], r = S.radius; S.radius = (s) => (r(s) * TORUS_TUBE) / tubeOf(S.mesh(s)); }
 // each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
 for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
