@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1172';
+const VERSION = '0.1.1173';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9857,13 +9857,7 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
     const to = cs && [0, 1].map((d) => cs.reduce((sum, m) => sum + m[d], 0) / cs.length);
     return brushAt([t % row, Math.floor(t / row)], cells, to, partial).map(([x, y, v]) => [y * row + x, v]);
   }
-  if (g.torus && (g.mobius || g.klein || g.kite || g.tiling || g.sides !== 4)) return sheetPatternAt(famousSpot(i, K), cells, partial);  // any other sheet
-  if (g.torus) {  // cells u × nv + v, the pattern's rows along u
-    const [a, b] = torusBlocks(K);
-    const u0 = Math.floor(((Math.floor(i / b) + 0.5) * g.nu) / a) - (h >> 1), v0 = Math.floor((((i % b) + 0.5) * g.nv) / b) - (w >> 1);
-    for (const [x, y, v] of cells) out.push([(((u0 + y) % g.nu) + g.nu) % g.nu * g.nv + ((((v0 + x) % g.nv) + g.nv) % g.nv), v]);
-    return out;
-  }
+  if (g.torus) return sheetPatternAt(famousSpot(i, K), cells, partial);  // a sheet: a torus, a Möbius strip, a Klein bottle (its rows the plane's, round the ring)
   const hull = hullColours(MODES[$('mode').value].sphere, K);  // (a hull solid's colour: its first face, see hullColourings)
   if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; a hull solid's: its colours' triangles
     const sphere = MODES[$('mode').value].sphere, d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
