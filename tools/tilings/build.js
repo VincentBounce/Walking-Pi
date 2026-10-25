@@ -149,8 +149,13 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
   return pick;
 }
 // the polygons of one lattice cell (their middles in it), in lattice units
-function cell(name, a, b, polys, extra = {}) {
-  if (a[0] * b[1] - a[1] * b[0] < 0) return cell(name, b, a, polys, extra);  // (b a quarter turn clockwise from a on screen, y down, as every sheet lies: never a mirror)
+// ring: its torus's straight sheet's side round the ring, p·a + q·b (main.js: torusSheets), laid at 0°: the whole tiling turned
+function cell(name, a, b, polys, { ring, ...extra } = {}) {
+  if (a[0] * b[1] - a[1] * b[0] < 0) return cell(name, b, a, polys, { ring, ...extra });  // (b a quarter turn clockwise from a on screen, y down, as every sheet lies: never a mirror)
+  if (ring) {
+    const A = add(mul(a, ring[0]), mul(b, ring[1])), t = -Math.atan2(A[1], A[0]), turn = ([x, y]) => [x * Math.cos(t) - y * Math.sin(t), x * Math.sin(t) + y * Math.cos(t)].map((c) => (Math.abs(c) < 1e-12 ? 0 : c));
+    return cell(name, turn(a), turn(b), polys.map((P) => P.map(turn)), extra);
+  }
   const det = a[0] * b[1] - a[1] * b[0], toL = ([x, y]) => [(x * b[1] - y * b[0]) / det, (a[0] * y - a[1] * x) / det];
   const own = polys.map((P) => P.map(toL)).filter((P) => { const [u, v] = mid(P); return Math.floor(u + 1e-6) === 0 && Math.floor(v + 1e-6) === 0; });  // (a middle on the cell's edge: once)
   const sum = own.reduce((s, P) => s + Math.abs(area(P)), 0);
@@ -163,7 +168,7 @@ const tri = [[1, 0], [0.5, R3 / 2]];  // the unit triangular lattice's vectors (
 { const a = [2, 0], b = [1, R3], pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 7); cell('rhombille', a, b, polygons(pts, true)); }
 // snub trihexagonal (3.3.3.3.6): the unit triangular lattice but one point in 7 (the hexagons' middles); its dual the floret pentagonal
 { const a = add(mul(tri[0], 2), tri[1]), b = add(mul(tri[0], -1), mul(tri[1], 3)), pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 6);
-  cell('snubtri', a, b, polygons(pts, false)); cell('floret', a, b, polygons(pts, true)); }
+  cell('snubtri', a, b, polygons(pts, false), { ring: [1, 1] }); cell('floret', a, b, polygons(pts, true), { ring: [1, 1] }); }
 // elongated triangular (3.3.3.4.4): rows of squares and of triangles; its dual the prismatic pentagonal
 { const a = [1, 0], b = [0.5, 1 + R3 / 2], pts = points(a, b, [[0, 0], [0, 1]], 9); cell('prismatic', a, b, polygons(pts, true)); }
 // rhombitrihexagonal (3.4.6.4): hexagons, squares, triangles; its dual the kites (a check: 9 neighbours)
@@ -192,10 +197,7 @@ cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   // its lattice (u, v) reduced: u, and v + u at right angles to it, 4.1 times as long; a cell of 4 u by it (48 pentagons): near a square
   const u = [-(1 + R3) / 4, (3 + R3) / 4], v = [(10 + 7 * R3) / 4, (3 + 2 * R3) / 4], a = mul(u, 4), b = add(v, u), patch = [];
   for (let i = -12; i <= 12; i++) for (let j = -3; j <= 3; j++) for (const Q of twelve) patch.push(Q.map((p) => add(add(p, mul(u, i)), mul(b, j))));
-  // laid along its lattice's side b, its first once listed clockwise (see cell): its torus's straight sheet round the ring at
-  // 0°, not at its construction's 30°
-  const t = -Math.atan2(b[1], b[0]), turn = ([x, y]) => [x * Math.cos(t) - y * Math.sin(t), x * Math.sin(t) + y * Math.cos(t)];
-  cell('pent15', turn(a), turn(b), withT(patch).map((Q) => Q.map(turn))); }
+  cell('pent15', a, b, withT(patch), { ring: [1, 0] }); }
 
 // Stein's pentagon (type 14, 1985; the only other with no freedom): 6 a cell, as Jaap Scherphuis's Tiling Viewer builds
 // it (jaapsch.net/tilings, TilingTypeN5_14): its corners from B (2B + C = 360, C + E = 180, A = 90, 2a = 2c = d = e),
@@ -210,7 +212,7 @@ cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   const u = [tiles[0][4][0] - tiles[3][3][0], tiles[0][4][1] - tiles[3][3][1]], v = [tiles[0][4][0] - tiles[5][3][0], tiles[0][4][1] - tiles[5][3][1]];
   const [a1, b1] = reduce(u, v), patch = [];
   for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (const Q of tiles) patch.push(Q.map((p) => add(add(p, mul(a1, i)), mul(b1, j))));
-  cell('pent14', a1, b1, withT(patch)); }
+  cell('pent14', a1, b1, withT(patch), { ring: [-2, -1] }); }
 
 // trihexagonal (3.6.3.6, the kagome): the rhombille's points, their faces (hexagons, triangles between)
 { const a = [2, 0], b = [1, R3], pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 7); cell('trihex', a, b, polygons(pts, false)); }
