@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1196';
+const VERSION = '0.1.1197';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9856,7 +9856,7 @@ for (const k of ['dodeca', 'stella']) TRI_FACES[`${k}Kite`] = () => TRI_FACES[k]
 const triFace = (sphere, K, i) => (colouring(sphere, K)?.faces ? patchSpots(sphere, K)[i] : TRI_FACES[sphere]?.()[K]?.[i] ?? null);
 const patternsOn = () => {
   const m = MODES[$('mode').value], K = walk.life?.colours;
-  const turned = !m.plane && !walk.geo?.tiling && tilesTurn(surfaceOf(m)) !== 0;  // (hexagons and triangles turned by 30° from the plane's: not yet; the new tilings, yes)
+  const turned = !!walk.geo?.mobius && !walk.geo.tiling && tilesTurn(surfaceOf(m)) !== 0;  // (a strip's hexagons and triangles turned by 30°: not yet, see sheetUnits; a torus's, a bottle's, a tiling's, yes)
   return !!walk.life && (!!m.plane || (!!walk.geo?.torus && !turned) || (['cube', 'pits'].includes(m.sphere.replace(/Tetrakis$/, '')) && CUBE_FACES.includes(K))
     || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (!!walk.geo?.hexagons && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
@@ -9966,7 +9966,12 @@ function sheetUnits(g, kind) {  // a point of the plane (its world units) in the
   }
   if (kind === 'cairo') return ([x, y]) => [x / CAIRO, y / CAIRO];
   if (g.mobius) return kind === 'hex' ? ([x, y]) => [x * Math.sqrt(3), y * Math.sqrt(3)] : (p) => p;  // (a Möbius strip's sheet: edges of 1; its hexagons' 1 across)
-  return ([x, y]) => [x, y / ROOT3_2];  // (the triangles', the kites' on them, the hexagons' pointy: as the plane's, a row a unit)
+  // the triangles', the kites', the hexagons' (a torus, a Klein bottle): the plane turned as its tiles lie (see tilesTurn: by
+  // 30° turned), as big as its tiles, in the sheet's units (round the ring, round the tube: see torusPoint)
+  const area = (P) => Math.abs(P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
+  const flat = Array.from({ length: g.sides }, (_, q) => { const P = sheetPoint(g, g.uv[2 * q], g.uv[2 * q + 1], 0); return [P[0], P[1]]; });
+  const k = Math.sqrt(area(flat) / area(planeCorners(kind, 0, 0))), turn = (tilesTurn(surfaceOf(MODES[$('mode').value])) * Math.PI) / 180;
+  return (p) => { const [x, y] = turnPoint(p, turn); return [(x * k * g.nu) / (2 * Math.PI), (y * k * g.nv) / (2 * Math.PI * tubeOf(g))]; };
 }
 // a tile's place on the sheet (a Möbius strip: on its two sides as one strip, see mobiusLoop), and the
 // tile at a place, across the seams (a Klein bottle's turning over)
