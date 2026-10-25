@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1212';
+const VERSION = '0.1.1213';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7026,12 +7026,14 @@ function insidePolygon(pts, u, v) {
   return inside;
 }
 // the cell at a world point, or null outside the grid
+const cellAtMemo = {};  // (a tiling's lattice cell's polygons, at lattice cell 0: see planeCellAt)
 function planeCellAt(kind, W, wx, wy) {
   let x, y;
-  if (tilingOf(kind)) {  // its lattice cell's polygons, and those of the cells round it
+  if (tilingOf(kind)) {  // its lattice cell's polygons, and those of the cells round it (the point moved back by the lattice step: its polygons' corners once)
     const [a, b] = tilingOf(kind).basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = tilingOf(kind).polys.length;
+    const cell0 = (cellAtMemo[kind] ??= Array.from({ length: m }, (_, k) => planeCorners(kind, k, 0)));
     for (let j = Math.floor(v) - 1; j <= Math.floor(v) + 1; j++) for (let i = Math.floor(u) - 1; i <= Math.floor(u) + 1; i++) {
-      if (i >= 0 && j >= 0 && i < W && j < W) for (let k = 0; k < m; k++) if (insidePolygon(planeCorners(kind, i * m + k, j), wx, wy)) return [i * m + k, j];
+      if (i >= 0 && j >= 0 && i < W && j < W) for (let k = 0; k < m; k++) if (insidePolygon(cell0[k], wx - i * a[0] - j * b[0], wy - i * a[1] - j * b[1])) return [i * m + k, j];
     }
     return null;
   }
