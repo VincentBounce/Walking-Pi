@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1186';
+const VERSION = '0.1.1187';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1969,8 +1969,8 @@ const ICONS = (() => {
     symKaleido: flags([0, 1, 2, 3].flatMap((k) => [[(k * Math.PI) / 2, false], [(k * Math.PI) / 2, true]])),
     symHalf: flags([[0, false], [Math.PI, false]]),
     ...Object.fromEntries([2.2, 3.5, 4.8, 6, 7.2, 8.4, 9.6, 11].map((r, i) => [`zone${i + 1}`, dots([[12, 12]], r)])),
-    zoneFace: '<rect class="f" x="4" y="4" width="16" height="16" rx="2"/>',  // a whole face
-    zoneMirror: '<rect class="f" x="3" y="3" width="8" height="8" rx="1.5"/><rect class="f" x="13" y="13" width="8" height="8" rx="1.5"/>',  // two opposite faces
+    zoneFace: '<rect x="3" y="3" width="18" height="18" rx="2"/>' + [[6, 6], [13.5, 6], [6, 13.5], [13.5, 13.5]].map(([x, y]) => `<rect class="f" x="${x}" y="${y}" width="4.5" height="4.5" rx="0.8"/>`).join(''),  // Realm: each colour its part, apart
+    zoneMirror: '<path d="M8 7L16 4M8 20L16 17" stroke-dasharray="1.6 2"/><path class="f" d="M3 7H8V20H3Z"/><path class="f" d="M16 4H21V17H16Z"/>',  // two opposite faces: a box's two ends
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     bricks: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',  // Walls: a brick wall
@@ -4460,6 +4460,8 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = fals
   // outwards = away from the circle running through the middle of the tube
   const fromTubeAxis = ([x, y, z]) => { const l = Math.hypot(x, y) || 1; return [x - x / l, y - y / l, z]; };
   const mesh = finishMesh(verts, tiles, sides, nv, fromTubeAxis);
+  // a tile its corners turned the other way (to face outwards, see finishMesh): its sheet corners as well
+  tiles.forEach((c, t) => { if (c.some((v, q) => v !== mesh.poly[sides * t + q])) for (let q = 1; 2 * q < sides; q++) for (const d of [0, 1]) { const a = 2 * (sides * t + q) + d, b = 2 * (sides * t + sides - q) + d; [uv[a], uv[b]] = [uv[b], uv[a]]; } });
   // on the sheet, each tile on the side of a seam its middle is on (a triangle across the end, its middle past
   // it, drawn at the start once unrolled, with the tiles it belongs with)
   if (!placed) for (let t = 0; t < uv.length / (2 * sides); t++) {
