@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1175';
+const VERSION = '0.1.1176';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7196,11 +7196,10 @@ function iconTurn(laid, pix, P) {
   return best;
 }
 // Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
-// rest cut off; a small torus, round onto itself: a cell its pixel nearest the middle, the others cut off), upright (see
-// iconTurn): its cells (each of the square's, -1 off the grid, on its wall or cut off), its turn. Null where it doesn't fit:
-// its middle row or column (its pixels 11 and 12) not all laid, each on a cell of its own (its whole width and height: cut
-// off in its corners only, not round a torus onto itself), or the colours' squares on each other's (but for a row of their
-// margins)
+// rest cut off: a torus's or a bottle's at its sheet's edges as drawn flat, never round it), upright (see iconTurn): its
+// cells (each of the square's, -1 off the grid or on its wall), its turn. Null where it doesn't fit: its middle row or column
+// (its pixels 11 and 12) not all laid, each on a cell of its own (its whole width and height: cut off in its corners only),
+// or the colours' squares on each other's (but for a row of their margins)
 function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
@@ -7208,11 +7207,10 @@ function iconLay(N) {
   const lays = Array.from({ length: K }, (_, i) => {
     const at = new Int32Array(box.length).fill(-1);
     const cells = Object.assign(box.map(([x, y], j) => [x, y, j]), { mid: iconSquare(kind, N).mid });
-    const owner = new Map(), far = (j) => Math.hypot(pix[j][0] - (P - 1) / 2, pix[j][1] - (P - 1) / 2);
-    for (const [t, j] of patternAt(i, K, cells, true)) if (!dead.has(t)) { at[j] = t; if (!owner.has(t) || far(j) < far(owner.get(t))) owner.set(t, j); }
+    for (const [t, j] of patternAt(i, K, cells, true)) if (!dead.has(t)) at[j] = t;
     const cross = box.flatMap((_, j) => (pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
     const whole = cross.every((t) => t >= 0) && new Set(cross).size === cross.length;
-    const js = box.flatMap((_, j) => (at[j] >= 0 && owner.get(at[j]) === j ? [j] : (at[j] = -1, [])));
+    const js = box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
     const turn = walk.plane || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
     return { at, turn, js, whole };
   });
@@ -9996,7 +9994,7 @@ const tileCorners = (g, t) => {  // (a Möbius strip's back: its front's, turned
   const back = g.mobius && t >= g.front, s = back ? t - g.front : t;
   return Array.from({ length: g.sides }, (_, q) => { const u = g.uv[2 * (g.sides * s + q)], v = g.uv[2 * (g.sides * s + q) + 1]; return back ? [u, g.W - v] : [u, v]; });
 };
-function sheetPatternAt(spot, cells, partial = false) {
+function sheetPatternAt(spot, cells, partial = false) {  // partial: its cells there only, past a torus's or a bottle's sheet cut off (as drawn flat), not round it
   if (!cells.length) return [];  // (an icon with no cell at that size)
   const g = walk.geo, kind = patternKind(), unitsOf = sheetUnits(g, kind), { key, at } = sheetIndex(g);
   const pts = cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y)));
@@ -10008,7 +10006,7 @@ function sheetPatternAt(spot, cells, partial = false) {
     if (shapeOf(tileCorners(g, T)) !== shape) continue;  // (a cell of the same shape, the same way round, as the pattern's there)
     const [tu, tv] = sheetPlace(g, T), out = [];
     for (let k = 0; k < pts.length; k++) {
-      const t = at.get(key([pts[k][0] - anchor[0] + tu, pts[k][1] - anchor[1] + tv]));
+      const u = pts[k][0] - anchor[0] + tu, v = pts[k][1] - anchor[1] + tv, t = partial && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? undefined : at.get(key([u, v]));
       if (t === undefined) { if (partial) continue; break; }
       out.push([t, cells[k][2]]);
     }
