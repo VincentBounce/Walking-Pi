@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1170';
+const VERSION = '0.1.1171';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1913,7 +1913,7 @@ const ICONS = (() => {
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
     tilesSqStretched: pathEl('M2 8H22V16H2Z') + pathEl('M6 8V16M10 8V16M14 8V16M18 8V16M2 12H22'),  // a long sheet of squares: 5 by 2
     tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
-    tilesHex: hexCluster(0), tilesHexTurned: hexCluster(30),
+    tilesHex: hexCluster(30), tilesHexTurned: hexCluster(0),  // (pointy as the plane's; turned, flat)
     klein: pathEl('M14 4.5C17 4.5 19 7 19 10.5S16.5 19.5 12 19.5S5 17 5 13.5S8 9 11 10.5S13 15 11 15.5') + pathEl('M14 4.5C12.5 4.5 11.5 6 12 8.5S13.5 13 11 15.5'),  // a bottle going into itself
     mobius: pathEl('M3 12C3 7.5 8.5 7.5 12 12S21 16.5 21 12S15.5 7.5 12 12S3 16.5 3 12Z') + pathEl('M6.5 10.4Q9 9.6 10.6 11.2M13.4 12.8Q15 14.4 17.5 13.6'),
     tetrahedron: pathEl(pathOf([a, b, c])) + [a, b, c].map((p) => pathEl(seg(p, d))).join(''),
@@ -2698,16 +2698,16 @@ const FAMILIES = [
                           ['triTorusGrid', 'triTorusWalk', 'triTorusPivotGrid', 'lifeTriTorus'], ['cairoTorusWalk', 'lifeCairoTorus'], ['lifeKiteTorus']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
-           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)']] },
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (flat-topped, columns round the ring)']] },
   { name: 'Möbius strip', modes: [['mobiusGrid', 'mobiusWalk', 'mobiusPivotGrid', 'mobiusPivot', 'lifeMobius'], ['mobiusHexGrid', 'mobiusHexWalk', 'mobiusHexPivot', 'lifeMobiusHex'],
                                  ['mobiusTriGrid', 'mobiusTriWalk', 'mobiusTriPivotGrid', 'lifeMobiusTri'], ['mobiusCairoWalk', 'lifeMobiusCairo'], ['lifeMobiusKite']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (pointing along the strip)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
-           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (pointing along the strip)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (rows along the strip)']] },
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (pointing along the strip)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (flat-topped, columns across the strip)']] },
   { name: 'Klein bottle', modes: [['kleinWalk', 'lifeKlein', 'kleinPivot'], ['kleinCairoWalk', 'lifeKleinCairo'], ['kleinHexWalk', 'lifeKleinHex', 'kleinHexPivot'], ['kleinTriWalk', 'lifeKleinTri'], ['lifeKleinKite']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [3, false, 'tilesTri', 'Triangles', 'Triangles'], [3, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
-           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (columns round the tube)']] },
+           [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [2, false, 'tilesHex', 'Hexagons', 'Hexagons'], [2, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (flat-topped, columns round the ring)']] },
   // the solids of squares: their squares, or as tetrakis triangles (Life only)
   ...Object.entries(TETRAKIS_SOLIDS).map(([k, name]) => ({ name, tab: 0, modes: [Object.keys(MODES).filter((w) => MODES[w].sphere === k), [Object.keys(MODES).find((w) => MODES[w].sphere === `${k}Tetrakis`)]],
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [1, false, 'tiling-tetrakis', 'Tetrakis', 'Tetrakis: each square cut in 4 from its middle']] })),
