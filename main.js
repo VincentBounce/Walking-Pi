@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1183';
+const VERSION = '0.1.1184';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4325,6 +4325,7 @@ function flatPolyhedron(name, f, kites = false) {
  * major radius 1 and tube radius TORUS_TUBE. Every square has 4 edge neighbours and 8 corner
  * neighbours with no exception: it is the square grid that wraps around both ways. */
 const TORUS_TUBE = 0.4;
+const tubeOf = (g) => g.tube ?? TORUS_TUBE;  // a grid's own tube (the torus of squares: its rows over its columns, its squares square)
 // a length round a torus or along a Möbius strip, from its proportions: the nearest multiple of 12, so that
 // the blocks of 2, 3, 4, 6 and 12 colours divide it (and their middles fall on whole tiles)
 const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
@@ -4333,7 +4334,7 @@ const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
 // colours only (a walk's: one)
 function ringColumns(x, nv, step = 1, klein = false) {
   const K = MODES[$('mode').value]?.life ? lifeColours : 1, a = klein ? K : torusBlocks(K, { nv })[0], m = a % step ? a * step : a;
-  const sq = (a * a * nv) / K; if (step === 1 && !klein && sq % m === 0 && Math.abs(sq / x - 1) <= 0.2) return sq;  // squares: its blocks as many squares round as along, stretched by 20 % at most (else as long, 2:1 at most)
+  const sq = (a * a * nv) / K; if (step === 1 && !klein && sq % m === 0 && Math.abs(sq / x - 1) <= 0.2) return sq;  // squares: its blocks as many squares round as along, the ring 20 % longer or shorter at most (see tubeOf; else 2:1 at most)
   return m * Math.max(1, Math.round(x / m));
 }
 
@@ -4341,15 +4342,15 @@ function ringColumns(x, nv, step = 1, klein = false) {
  * (2π by 2π·TUBE, in the x–z plane), at m = 1 the torus. The rectangle first curls into a tube
  * (m from 0 to ½: its short side bends into a circle), then the tube bends into a ring (½ to 1).
  * Bending a length L into an arc of a circle whose circumference is L / k keeps lengths along it. */
-function torusPoint(i, j, nu, nv, m) {
+function torusPoint(i, j, nu, nv, m, tube = TORUS_TUBE) {
   const b = Math.min(1, 2 * m), c = Math.max(0, 2 * m - 1);  // tube bend, then ring bend
   // flat, the sheet lies in the east–south plane, as the plane's grids and a picture read: i towards the east, j towards the south
-  const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * TORUS_TUBE;
+  const X = (i / nu - 0.5) * 2 * Math.PI, Y = (j / nv - 0.5) * 2 * Math.PI * tube;
   let w = Y, h = 0;  // w: offset away from the ring's centre (the north goes into the hole), h: height
   if (b > 1e-6) {  // it curls down round the tube, closing in front, so its middle becomes the top of the torus
-    const rt = TORUS_TUBE / b, th = Y / rt;
+    const rt = tube / b, th = Y / rt;
     w = rt * Math.sin(th);
-    h = rt * (Math.cos(th) - 1) + TORUS_TUBE * b;
+    h = rt * (Math.cos(th) - 1) + tube * b;
   }
   if (c < 1e-6) return [X, -w, h];
   const rr = 1 / c, ph = X / rr;
@@ -4441,7 +4442,7 @@ function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares abou
   const key = `torus${nv}x${nu}`;
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore();
-  const at = (i, j) => add(...torusPoint(i, j, nu, nv, 1));  // i = nu and i = 0 meet (same for j)
+  const at = (i, j) => add(...torusPoint(i, j, nu, nv, 1, nv / nu));  // i = nu and i = 0 meet (same for j)
   const quads = [], uv = [];
   for (let i = 0; i < nu; i++) {
     for (let j = 0; j < nv; j++) {
@@ -4450,7 +4451,7 @@ function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares abou
       uv.push(...c.flat());
     }
   }
-  return (meshCache[key] = finishTorus(verts, quads, 4, nu, nv, uv));
+  return (meshCache[key] = Object.assign(finishTorus(verts, quads, 4, nu, nv, uv), { tube: nv / nu }));
 }
 
 // A torus mesh keeps the sheet coordinates (i, j) of every tile corner (uv, in listing order):
@@ -4742,7 +4743,7 @@ function mobiusMesh(kind, size) {
 const sheetPoint = (g, i, j, m) => {
   if (g.mobius) return mobiusPoint(i, j, g.L, g.W, m);
   if (g.klein) return kleinPoint(i, j, g.nu, g.nv, m);
-  return torusPoint(i, j, g.nu, g.nv, m);
+  return torusPoint(i, j, g.nu, g.nv, m, tubeOf(g));
 };
 
 /* Torus of regular hexagons (flat-topped): nu columns around the ring, nv rows around the tube;
@@ -5131,7 +5132,7 @@ const SPHERES = {
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
-  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[0] / (2 * Math.PI * TORUS_TUBE),  // edge around the tube = 1 unit
+  torus: { mesh: (s) => torusMesh(...torusDims('torus', s)), radius: (s) => torusDims('torus', s)[1] / (2 * Math.PI),  // edge = 1 unit
           columns: (nv) => ringColumns(nv / TORUS_TUBE, nv), perRow: 1, steps: [1, 1],
           least: 3, tiles: (s) => torusDims('torus', s).reduce((a, b) => a * b), unit: 'squares' },
   // hexagon edge = 1 unit: the tube is nv rows of √3 around
@@ -5421,11 +5422,11 @@ function torusStarts(g) {
     const [ua, va] = at(a), [ub, vb] = at(b);
     let du = ub - ua, dv = vb - va;
     du -= nu * Math.round(du / nu); dv -= nv * Math.round(dv / nv);
-    return [(du / nu) * 2 * Math.PI, (dv / nv) * 2 * Math.PI * TORUS_TUBE];
+    return [(du / nu) * 2 * Math.PI, (dv / nv) * 2 * Math.PI * tubeOf(g)];
   };
   let v0 = 0, best = Infinity;
   for (let v = 0; v < G.nv; v++) {
-    const [u, w] = at(v), d = Math.hypot(((u - nu / 2) / nu) * 2 * Math.PI, ((w - nv / 2) / nv) * 2 * Math.PI * TORUS_TUBE);
+    const [u, w] = at(v), d = Math.hypot(((u - nu / 2) / nu) * 2 * Math.PI, ((w - nv / 2) / nv) * 2 * Math.PI * tubeOf(g));
     if (d < best) { best = d; v0 = v; }
   }
   const heading = ([e, n]) => (Math.atan2(e, n) * 180) / Math.PI;  // clockwise from north, −180 … 180
@@ -5666,7 +5667,7 @@ function nextCorner(g, G, v, from, angle) {
   if (g.mobius) return nextCornerAround(g, v, from, angle);
   const V = g.verts, n = g.torus ? [0, 0, 1] : [0, 1, 2].map((d) => G.normal[3 * v + d]), nl = Math.hypot(...n);
   const flat = (w) => {  // the edge from v to w, flattened onto the plane tangent at v (or on the sheet)
-    if (g.torus) { const [du, dv] = sheetDelta(g, G, v, w); return [(du / g.nu) * 2 * Math.PI, (dv / g.nv) * 2 * Math.PI * TORUS_TUBE, 0]; }
+    if (g.torus) { const [du, dv] = sheetDelta(g, G, v, w); return [(du / g.nu) * 2 * Math.PI, (dv / g.nv) * 2 * Math.PI * tubeOf(g), 0]; }
     const e = [0, 1, 2].map((d) => V[3 * w + d] - V[3 * v + d]), s = (e[0] * n[0] + e[1] * n[1] + e[2] * n[2]) / (nl * nl);
     return e.map((x, d) => x - s * n[d]);
   };
@@ -8059,7 +8060,7 @@ const colourFairOwn = (K, g) => {
   if (solidCounts(mode?.sphere)) return solidCounts(mode.sphere).includes(K);
   if (g?.mobius) return true;
   if (g?.period) { const x = g.nu / torusBlocks(K, g)[0] / g.period; return Math.abs(x - Math.round(x)) < 1e-6; }  // (a tiling's bottle: slices a whole count of its lattice's steps along)
-  if (g?.nu) { const [u, v] = torusBlocks(K, g), r = v / u / TORUS_TUBE; return g.nv % v === 0 && r > 0.5 - 1e-9 && r < 2 + 1e-9; }  // (a torus: its columns made for its colours, see ringColumns; its rows as they are; a block at most twice as long as wide: 7, 9, not)
+  if (g?.nu) { const [u, v] = torusBlocks(K, g), r = v / u / tubeOf(g); return g.nv % v === 0 && r > 0.5 - 1e-9 && r < 2 + 1e-9; }  // (a torus: its columns made for its colours, see ringColumns; its rows as they are; a block at most twice as long as wide: 7, 9, not)
   return false;
 };
 // a count of colours whose battles can bring a colour back: the rule's birth with c live neighbours that K − 1 colours can share
