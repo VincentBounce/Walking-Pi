@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1340';
+const VERSION = '0.1.1341';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -14117,6 +14117,7 @@ function setupRow(name, detail, setup, onDelete) {
 }
 function renderGallery() {
   fillSetupList();
+  $('galleryPane').querySelector('h2').append(galleryClose);  // (by its first title: a group's, else Management's)
 }
 for (const list of ['yourList']) {
   $(list).addEventListener('mouseleave', () => {
@@ -14131,18 +14132,16 @@ for (const list of ['yourList']) {
     applySetup(before);
   });
 }
-// The left pane shows the parameters, or the gallery: opened by hovering the Gallery tab (until the
-// mouse leaves the tab and the pane) or kept open by a click on it; a setup clicked, or another tab,
-// brings back the parameters
-let galleryKept = false, galleryClose = 0;
+// The left pane shows the parameters, or the gallery: opened by a click on the Gallery tab (lit as the tab in use), closed by
+// it again or by its Close (by its first title, as How it works), a setup clicked or another tab: the parameters of the tab before
 function showPane(gallery) {
-  if (!gallery) galleryKept = false;
   $('paramsPane').hidden = gallery;
   $('galleryPane').hidden = !gallery;
   galleryTab().classList.toggle('open', gallery);
   if (gallery) renderGallery();
 }
-const galleryButton = document.createElement('button');
+const galleryButton = document.createElement('button'), galleryClose = Object.assign(document.createElement('button'), { type: 'button', className: 'head-btn', textContent: 'Close' });
+galleryClose.addEventListener('click', () => showPane(false));
 function galleryTab() {
   if (galleryButton.dataset.ready) return galleryButton;
   const b = galleryButton;
@@ -14150,27 +14149,9 @@ function galleryTab() {
   b.className = 'gallery-tab';
   b.innerHTML = `${icon('gallery')} Gallery`;
   b.title = 'Treasures and the curated setups: hover one to see it, click it to keep it';
-  b.addEventListener('mouseenter', () => { clearTimeout(galleryClose); showPane(true); });
-  b.addEventListener('click', () => { galleryKept = true; showPane(true); });
+  b.addEventListener('click', () => showPane($('galleryPane').hidden));
   return b;
 }
-// leaving the tab or the pane closes it at once, unless the mouse goes from one to the other: straight
-// in, or across the header's bare strip between them (a short grace for that)
-const leaveGallery = (e) => {
-  clearTimeout(galleryClose);
-  if (galleryKept || $('galleryPane').hidden) return;
-  const to = e.relatedTarget, pane = document.querySelector('aside.panel');
-  if (to && (pane.contains(to) || galleryButton.contains(to))) return;
-  if (to && (to.tagName === 'HEADER' || to.classList?.contains('header-row') || to.id === 'modeTabs')) {
-    galleryClose = setTimeout(() => showPane(false), 120);
-    return;
-  }
-  showPane(false);
-};
-galleryButton.addEventListener('mouseleave', leaveGallery);
-galleryButton.addEventListener('mouseenter', () => clearTimeout(galleryClose));
-document.querySelector('aside.panel').addEventListener('mouseleave', leaveGallery);
-document.querySelector('aside.panel').addEventListener('mouseenter', () => clearTimeout(galleryClose));
 
 $('setupSave').addEventListener('click', saveSetup);
 // Treasures' tools, tiles: Import (added to them, a name already used numbered), Export, Erase all (then Confirm erase, under them)
