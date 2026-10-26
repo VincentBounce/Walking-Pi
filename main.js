@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1291';
+const VERSION = '0.1.1292';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11620,7 +11620,7 @@ function drawSphere() {
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
   if (motifShown) palette = palette.map((c) => c && (c === LIFE_WALL ? c : faded(c, 0.25)));  // (the motif shown: the cells pale under its outlines, the walls not: ochre, as its tooltip says them)
-  if (!startsShown && !motifShown && glSurface(palette, levelOf, path)) return;  // WebGL, when the browser has it (see 11.4b); flat, the motif's outline over it
+  if (!startsShown && glSurface(palette, levelOf, path)) { drawMotif(ctx); return; }  // WebGL, when the browser has it (see 11.4b); the motif's outlines over it
   glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
     const wall = new Set(g.walls);
@@ -11628,7 +11628,7 @@ function drawSphere() {
     drawStarts(ctx);
     return;
   }
-  if (motifShown || g.torus || !g.faces || g.concave || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
+  if (g.torus || !g.faces || g.concave || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
     drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, path && pathHalves());
     drawMotif(ctx);
     return;
