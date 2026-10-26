@@ -3,6 +3,7 @@
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
 //   await walkingCheck({ fuzz: 400, seed: 7 });                            // 400 actions at random, menu to menu (transitions, smallest sizes)
 //   await walkingCheck({ fuzz: 100, cold: true });                          // and after each, its link loaded cold beside: the same menus offered
+//   await walkingCheck({ colours: true });                                 // every Life surface offers colours (more than Classic) at one of its sizes at least
 //   await walkingCheck({ deep: true });                                    // every grid's rules (yours too), How it works, colours, zones, smallest size: a night's
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
@@ -283,11 +284,30 @@ async function deep(fail, from, only) {
   return checked;
 }
 
-window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, seed = Date.now() % 1e6, from, only } = {}) => {
+// Colours offered: every Life surface, its sizes from the least up till one offers a count of colours past Classic (none at
+// any: its colours never fair there, as Klein Trihex's were, its length always half a period off)
+async function coloursOffered(fail) {
+  let checked = 0;
+  for (const w of Object.keys(MODES).filter((m) => MODES[m].life && MODES[m].sphere && [...$('mode').options].some((o) => o.value === m))) {
+    const kind = surfaceOf(MODES[w]), sizes = SPHERES[kind]?.sizes ?? [];
+    let some = false;
+    for (const s of sizes) {
+      location.hash = `#w=${w}&s=${s}`;
+      await wait(400);
+      if (COLOUR_STEPS.some((K) => K > 1 && coloursFit(K, walk.geo))) { some = true; break; }
+    }
+    checked++;
+    if (!some) fail(`${w}: Classic only at every size (${sizes.join(', ')})`);
+  }
+  return checked;
+}
+
+window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, colours = false, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
   let checked = checkMeshes(fail);
   if (andCrawl) checked += await crawl(fail);
   if (actions) checked += await fuzz(fail, actions, seed, cold);
+  if (colours) checked += await coloursOffered(fail);
   if (andDeep) checked += await deep(fail, from, only);
   return { ok: !failures.length, failures, checked };
 };

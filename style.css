@@ -387,10 +387,12 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 button.wide.active, .head-btn.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
-/* Auto-fit stays at the top right; hovering opens the settings, Grid beside it and the rest below */
-.display-menu .stage-head { display: flex; justify-content: flex-end; gap: 16px; }
-.display-menu .stage-head .check { margin: 0; }
-#viewHead > :first-child { margin-right: auto; }  /* Auto-fit (Auto-rotate) on the left, Grid on the right */
+/* Grid stays at the top right; hovering opens the settings: Sound and Auto-fit on its left, tiles as wide as the theme's, the rest below */
+.display-menu .stage-head { display: flex; justify-content: flex-end; }
+.head-tiles { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 0; }
+.head-tiles button { width: calc((230px - 18px - 12px) / 4); }  /* (a quarter of the open box, as the theme's tiles: see .nav-shapes) */
+.head-section { padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.head-section .nav-shapes { margin-bottom: 0; }
 /* shown only while the box is open, like its other settings */
 .stage-box .open-only { display: none; }
 .stage-box:hover .open-only { display: flex; }

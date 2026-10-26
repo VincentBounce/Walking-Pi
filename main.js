@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1245';
+const VERSION = '0.1.1246';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1445,6 +1445,7 @@ function updateDisplayMenu() {
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   renderTrailButton();
   renderViewTiles();
+  renderHeadTiles();
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
 // The view's switches, standard tiles (toggle): each its checkbox's (the source, kept out of sight), on as it is checked,
@@ -1469,6 +1470,23 @@ function renderViewTiles() {
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
 $('viewTools').addEventListener('mouseenter', renderViewTiles);
+// The view's head, standard tiles on the right (toggle): Life's Sound, Auto-fit (both while the box is open), Grid (always), each
+// its checkbox's (the source, kept out of sight); drawn again with the display box, when the box opens and as either changes
+let headTiles = null;
+function renderHeadTiles() {
+  const flip = (id) => () => { $(id).checked = !$(id).checked; $(id).dispatchEvent(new Event('change')); renderHeadTiles(); };
+  if (!headTiles) {
+    renderSoundButton();
+    headTiles = [tile({ pic: icon('fit'), text: 'Auto-fit', title: $('autoFitRow').title, toggle: true, click: flip('autoFit') }), tile({ pic: icon('grid'), text: 'Grid', title: $('gridRow').title, toggle: true, click: flip('showGrid') })];
+    soundButton.classList.add('open-only');
+    headTiles[0].classList.add('open-only');
+    $('headTiles').replaceChildren(soundButton, ...headTiles);
+  }
+  renderSoundButton();
+  setTile(headTiles[0], { on: $('autoFit').checked, byDefault: 'on' });
+  setTile(headTiles[1], { on: $('showGrid').checked, can: !$('gridRow').hidden, byDefault: 'on' });
+}
+$('viewTools').addEventListener('mouseenter', renderHeadTiles);
 
 // The colour menu means something else for the Game of Life, and depends on its number of states.
 // In Life the plain states come first (the default); walks keep the gradient first.
@@ -1591,8 +1609,7 @@ function renderColorButtons() {
   const buttons = looks.map((o) => tile({ pic: picture(o.value), text: names[o.value], title: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === defaultLook(MODES[$('mode').value]) ? 'yes' : '',
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
-  renderSoundButton();
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton, soundButton] : []));  // then Life's Trail and Sound, switches
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
 }
 // Sound: Korobeiniki (the Russian song of Tetris, public domain) as 8-bit, while Life plays, on a clock of its own (Web
 // Audio, made here: a browser plays nothing before a click, off at first): its melody a square wave, its bass a triangle
@@ -1640,7 +1657,7 @@ function tuneTick() {  // (its next eighths, a little ahead)
   }
 }
 function renderSoundButton() {
-  soundButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9H8L13 5V19L8 15H4Z" fill="currentColor"/><path d="M17 17V7L22 6V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.6" cy="17.2" r="1.7" fill="currentColor"/><circle cx="20.6" cy="16.2" r="1.7" fill="currentColor"/></svg>',
+  soundButton ??= tile({ pic: icon('sound'),
     text: 'Sound', id: 'lifeSoundButton', toggle: true, title: "Sound: Korobeiniki (Tetris's tune) as 8-bit while Life plays, the life's moments over it: an explosion a boom, a colour dying out a blip, all dying out a fall, stillness softer",
     click: () => {
       if (music) { clearInterval(music.timer); music.ctx.close(); music = null; }
@@ -1654,6 +1671,7 @@ function renderSoundButton() {
       renderSoundButton();
     } });
   setTile(soundButton, { on: !!music, can: true, byDefault: 'off' });
+  soundButton.hidden = !MODES[$('mode').value].life;  // (Life's, in the view's head: see renderHeadTiles)
 }
 function lifeMusic(L) {  // (a generation's moments, see Sound)
   const now = music.ctx.currentTime, born = L.bornNow;
@@ -1961,6 +1979,8 @@ const ICONS = (() => {
     // Auto-rotate (a turn round a slanted orbit)
     perspective: pathEl('M6.14 4.16L18.14 5.88A1 1 0 0 1 19 6.87V17.13A1 1 0 0 1 18.14 18.12L6.14 19.84A1 1 0 0 1 5 18.85V5.15A1 1 0 0 1 6.14 4.16Z'),
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
+    fit: pathEl('M4 9V4H9M15 4H20V9M20 15V20H15M9 20H4V15') + '<rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',  // (the view framed round the walk)
+    sound: pathEl('M3.5 9.5H7.5L12.5 5V19L7.5 14.5H3.5Z') + pathEl('M15.5 9.2A4 4 0 0 1 15.5 14.8M18.2 6.5A8 8 0 0 1 18.2 17.5'),  // (a speaker, its waves)
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
     ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
@@ -13182,8 +13202,8 @@ $('colorMode').addEventListener('change', () => { needsFull = true; renderColorB
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
 $('fillTranslucent').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); });
-$('showGrid').addEventListener('change', () => { needsFull = true; });
-$('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); });
+$('showGrid').addEventListener('change', () => { needsFull = true; renderHeadTiles(); });
+$('autoFit').addEventListener('change', () => { if ($('autoFit').checked) fitNow(); renderHeadTiles(); });
 $('autoRotate').addEventListener('change', () => { if ($('autoRotate').checked) fitNow(); });  // turning starts framed
 
 function fitNow() {
