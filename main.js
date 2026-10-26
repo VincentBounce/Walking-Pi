@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1293';
+const VERSION = '0.1.1294';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5440,7 +5440,8 @@ const howCounted = (kind, f) => {
     const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
     return `${fmt(d[0])} rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
   }
-  if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} ${per > 1 ? `lattice cells × ${per} ${d[3]} each` : `a row${Number.isInteger(d[1]) ? '' : ' (on average)'}`}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  // the plane's: its rows × its lattice cells (its motif, yellow) × their cells (green), less its wall's
+  if (d) return `${fmt(d[0])} rows × {y:${fmt(d[1])} ${per > 1 ? 'lattice cells' : d[3]}} a row${per > 1 ? ` × {k:${per} ${d[3]} each}` : ''}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   // a solid of flat faces: each face's cells, f to an edge (its faces as its least size's mesh has them, the same at every size)
   const base = kind.endsWith('Tetrakis') && SPHERES[kind.slice(0, -8)] ? kind.slice(0, -8) : kind, B = SPHERES[base];  // (a solid of tetrakis triangles: its squares', 4 each)
   const g = B && !TORI.includes(base) && (facesMemo[base] ??= B.mesh(B.sizes[0])), cut = base !== kind ? 4 : g?.kite ? 3 : 1;
@@ -8155,6 +8156,13 @@ function drawMotif(ctx) {
   ctx.beginPath();
   for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
   ctx.stroke();
+  if (!APERIODIC[kind] && !planeShape(kind, W) && (PER_RHOMBUS[kind] ?? 1) > 1) {  // (a lattice cell of several: its first in green, as its tooltip's cells)
+    ctx.strokeStyle = cssColour('--cell');
+    ctx.beginPath();
+    planeCorners(kind, 0, 0).forEach(([u, v], j) => ctx[j ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s));
+    ctx.closePath();
+    ctx.stroke();
+  }
   turnLayer(ctx, 0);
 }
 // a surface's tiles outlined in a colour: their sides not shared by two of them, as the shape has them now, facing the viewer
