@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1242';
+const VERSION = '0.1.1243';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4676,7 +4676,10 @@ function stripFrame(kind, kind0, size) {
 // its tiles' count, as tilingStrip keeps them, without building it: each of a lattice cell's polygons' middle, moved by
 // the lattice's steps (no corner built; on the fine grid a middle on an edge lands on it: here 10⁻⁵ of it, as near)
 // (a bottle: below its top, see kleinTilingSheet)
-function stripCount(kind, kind0, size, bottle = false) {
+function stripCount(kind, kind0, size, bottle = false) {  // (once each: a size's sought among them all, see near)
+  return (countMemo[`${kind}|${kind0}|${size}|${bottle}`] ??= stripCounted(kind, kind0, size, bottle));
+}
+function stripCounted(kind, kind0, size, bottle) {
   const { m, L, W, cells, i0, i1, j0, j1, ta, tb } = stripFrame(kind, kind0, size), e = 1e-5;
   const mid = Array.from({ length: m }, (_, k) => { const P = cells(0, 0, k); return [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length); });
   let count = 0;
