@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1297';
+const VERSION = '0.1.1298';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5429,13 +5429,15 @@ const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
   const per = PLANE_CELLS[kind] ? PER_RHOMBUS[kind] ?? 1 : 1, all = d && d[0] * d[1] * per;  // (the plane's: its lattice cells a row, each per cells; less its wall's)
+  // (a hexagon's or a disc's middle, yellow as its core is drawn, see drawMotif: its cells nearest its middle, so many)
+  const middle = () => { const W = planeW(kind, f), c = (APERIODIC[kind]?.(W) ?? planeShape(kind, W)).core.length; return `{y:middle (${c} ${c === 1 ? d[3].replace(/s$/, '') : d[3]})}`; };
   if (d && PLANE_CELLS[kind] && shaped(kind)) {  // a hexagon round its middle (see planeShape): rings of hexagons, else 3n² rhombi of its lattice where it falls on it
     const N = d[2], r = Math.round((Math.sqrt(12 * N - 3) - 3) / 6), m = Math.round(Math.sqrt(N / (3 * per)));
-    if (kind === 'hex' && 3 * r * (r + 1) + 1 === N) return `its middle hexagon and ${r} rings round it, 6 more each: 1 + 6 + … + ${6 * r} = 3 × ${r} × ${r + 1} + 1 = ${fmt(N)} ${d[3]}`;
-    if (3 * m * m * per === N) return `a hexagon of its lattice, ${m} a side round its middle: 3 × ${m}² rhombi${per > 1 ? ` × ${per} ${d[3]} each` : ''} = ${fmt(N)} ${d[3]}`;
-    return `the cells in a hexagon round its middle (a point it turns onto by a sixth), as far as each other all in or all out: ${fmt(N)} ${d[3]}`;
+    if (kind === 'hex' && 3 * r * (r + 1) + 1 === N) return `its ${middle()} and ${r} rings round it, 6 more each: 1 + 6 + … + ${6 * r} = 3 × ${r} × ${r + 1} + 1 = ${fmt(N)} ${d[3]}`;
+    if (3 * m * m * per === N) return `a hexagon of its lattice, ${m} a side round its ${middle()}: 3 × ${m}² rhombi${per > 1 ? ` × ${per} ${d[3]} each` : ''} = ${fmt(N)} ${d[3]}`;
+    return `the cells in a hexagon round its ${middle()} (a point it turns onto by a sixth), as far as each other all in or all out: ${fmt(N)} ${d[3]}`;
   }
-  if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest the middle (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest its ${middle()} (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
     const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
     return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
