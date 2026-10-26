@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1334';
+const VERSION = '0.1.1335';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10034,10 +10034,9 @@ function renderHunt() {
   $('huntBtn').title = hunt.zone === 'custom' ? 'A start found by a hunt, from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
   $('huntStatus').textContent = hunt.status || zone;
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
-  // grey: the colours never touched, no battle), a life by its length against the best one's (green 80 %
-  // and up, orange from 50 %)
-  // a life by how far it spreads: its most live cells at once, as a share of the grid, by its cells at the
-  // start (green 0.01 and up, orange from 0.002: a soup half full is red)
+  // grey: the colours never touched, no battle); a life (one colour), whatever its goal, by how far it spreads:
+  // its most live cells at once, as a share of the grid, by its cells at the start (green 0.01 and up, orange
+  // from 0.002: a soup half full is red)
   const n = walk.life.seed.length;
   const light = (r) => {
     if (K > 1 && !r.contacts) return ['#8b949e', 'no contact'];
@@ -10057,7 +10056,8 @@ function renderHunt() {
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r), why = K > 1 ? (r.contacts ? `balance ${r.balance.toFixed(2)}: how evenly its colours keep being born (1 all alike, 0 one alone; green from 0.6, orange from 0.3, else red)` : 'its colours never touched: no battle')
       : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: ${((100 * r.peak) / n / r.live).toFixed(2)} % of the grid a starting cell (green from 1 %, orange from 0.2 %, else red)`;
-    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, title: `${name}\n${detail}\n● ${word}, ${why}`, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now; its light said in its tooltip)
+    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now)
+    b.dataset.tipHtml = `<b class="tip-name">${name}</b>${detail}<br><span style="color:${colour}">●</span> ${word}, ${why}`;  // (its light in its tooltip, in its colour)
     const pick = () => (huntId(r) === hunt.picked && !hunt.worker ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
     b.addEventListener('click', (e) => { if (!e.detail) pick(); });  // from the keyboard
