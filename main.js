@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1259';
+const VERSION = '0.1.1260';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8100,8 +8100,9 @@ function drawMotif(ctx) {
   ctx.stroke();
   if (walk.plane) turnLayer(ctx, 0);
 }
-// a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a solid's face, all its
-// cells; a sheet's (a torus, a Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); else that tile
+// a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a sheet's (a torus, a
+// Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
+// hexagon, a tetrakis square's 4 triangles, a rhombus of triangles (of 3 kites each), the one and the next in its row
 function motifTiles() {
   const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
   let near = -1, best = -Infinity;
@@ -8112,9 +8113,11 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
-  if (g.perFace) return Array.from({ length: g.perFace }, (_, j) => Math.floor(near / g.perFace) * g.perFace + j);
   if (g.torus) return sheetPatternAt(near, Array.from({ length: PER_RHOMBUS[patternKind()] ?? 1 }, (_, j) => [j, 0, j]), true).map(([t]) => t);
-  return [near];
+  const m = g.kite ? 3 : g.squares ? 4 : 1, group = (q) => Array.from({ length: m }, (_, j) => q * m + j), q = Math.floor(near / m);  // (a kite's triangle, a tetrakis square)
+  if ((g.sides === 4 && !g.kite) || g.squares || g.sides >= 5) return group(q);  // (one cell: a square, a hexagon; a tetrakis square)
+  const touches = (r) => group(q).some((t) => group(r).some((u) => Array.from({ length: g.sides }, (_, j) => g.nbr[g.sides * t + j]).includes(u)));
+  return [...group(q), ...group(touches(q + 1) ? q + 1 : q - 1)];
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
