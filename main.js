@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1253';
+const VERSION = '0.1.1254';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7587,6 +7587,7 @@ function renderPlaneRow() {
   $('planeLabel').title = `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${fmt(plane.side)} × ${fmt(plane.side)} = ${fmt(plane.side ** 2)} cells, its colours' blocks whole (the size last picked: − + or the slider)`;
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
+  for (const el of [$('planeLabel').parentElement, $('planeGauge')]) el.onmouseenter = el.onmouseleave = (e) => { motifShown = e.type === 'mouseenter'; needsFull = true; };  // (its motif shown, see drawMotif)
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
   setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
   const syms = PLANE_SYMMETRIES[kind];
@@ -8033,6 +8034,7 @@ function drawLifePlane() {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+    drawMotif(ctx);
     drawGhost();
     return;
   }
@@ -8057,10 +8059,20 @@ function drawLifePlane() {
     ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
     ctx.fill();
   }
-  // a grid in a circle or a hexagon: its core outlined in yellow (see discPatch, planeShape), the sides of its cells not
-  // shared by two of them
-  const core = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? [], sides = new Map();
-  for (const P of core) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, q]); });
+  turnLayer(ctx, 0);
+  drawMotif(ctx);
+  drawGhost();
+}
+// The grid's motif, outlined in yellow while its size is hovered (see renderPlaneRow): what repeats, the sides of its cells
+// not shared by two of them; a grid in a circle or a hexagon its core, in its middle (see discPatch, planeShape); the
+// others a lattice cell, at the top right (the top row's last cells, as many as a lattice cell has)
+let motifShown = false;
+function drawMotif(ctx) {
+  if (!motifShown) return;
+  const { kind, W, row } = walk.plane, { scale: s, ox, oy } = view, sides = new Map();
+  const motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, row - 1 - k, 0));
+  for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, q]); });
+  turnLayer(ctx);
   ctx.strokeStyle = '#ffd60a';
   ctx.lineWidth = Math.max(2, s / 6);
   ctx.lineCap = 'round';
@@ -8068,7 +8080,6 @@ function drawLifePlane() {
   for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
   ctx.stroke();
   turnLayer(ctx, 0);
-  drawGhost();
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
