@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1241';
+const VERSION = '0.1.1242';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7824,10 +7824,10 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     if (tiles.length !== det * per) return undefined;  // (a rectangle of whole lattice cells: as many as their cells)
     tiles.sort((p, q) => p.be - q.be || p.al - q.al);
     const t = TILINGS[base], R = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
-    PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
     return R;
   };
-  PLANE_SIDES[kind] = PLANE_SIDES[base];  // (its tables at once, not when first built: its size said before it is)
+  PER_RHOMBUS[kind] = PLANE_PER[kind] = Math.abs(best.det) * per;  // (its tables at once, not when first built: its size said before it is)
+  PLANE_SIDES[kind] = PLANE_SIDES[base];
   PATTERN_TURNS[kind] = PATTERN_TURNS[base];
   PLANE_CELLS[kind] = PLANE_CELLS[base];
   PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
