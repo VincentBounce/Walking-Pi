@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1332';
+const VERSION = '0.1.1333';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5490,7 +5490,7 @@ const howCounted = (kind, f) => {
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
       const red = redFaces(g, base) && (base === kind || kind === 'cubeTetrakis'), mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells violet)
-      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${mark('k', `${cut} ${unit} each`)}` : ''} = ${fmt(n)} ${unit}`;
+      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark(g.triFaces && c === '4' ? 's' : 'y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${mark('k', `${cut} ${unit} each`)}` : ''} = ${fmt(n)} ${unit}`;
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
@@ -8216,6 +8216,7 @@ function drawMotif(ctx) {
   if (!walk.plane) {  // (a surface: its motif violet, one of its cells green when it has several, its face red round it, see drawMotifFace)
     const tiles = motifTiles();
     outlineTiles(ctx, motifColour(), tiles);
+    if (tiles.square >= 0) { outlineTiles(ctx, cssColour('--sector'), [tiles.square]); drawMotifFace(ctx, tiles.square); }  // (a solid of squares and triangles: a square, blue, as its tooltip's)
     if (tiles.length > 1) outlineTiles(ctx, cssColour('--cell'), [tiles[0]]);  // (as its tooltip's cells)
     if (tiles.length) drawMotifFace(ctx, tiles[0]);
     return;
@@ -8273,14 +8274,16 @@ function drawMotifFace(ctx, t0) {
 // hexagon, a tetrakis square's 4 triangles, a triangle (of 3 kites)
 function motifTiles() {
   const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
-  let near = -1, best = -Infinity;
+  const nears = [-1, -1], best = [-Infinity, -Infinity];  // (a solid of squares and triangles: a triangle, and a square apart, see drawMotif)
   for (let t = 0; t < g.n; t++) {
-    const n = [0, 1, 2].map((d) => sh.nrm[3 * t + d]);
+    const n = [0, 1, 2].map((d) => sh.nrm[3 * t + d]), k = +(t < g.triFirst);
     if (!planeVisible(n, at(t))) continue;
     const [x, y] = proj(...at(t)), score = towardViewer(...n) + towardViewer(...at(t)) / (walk.R * (g.extent || 1)) - 0.2 * (Math.hypot(ox + x * s - cw / 2, oy + y * s - ch / 2) / Math.min(cw, ch));  // (facing the viewer, near it: in front, not a far side seen through a hole)
-    if (score > best) { best = score; near = t; }
+    if (score > best[k]) { best[k] = score; nears[k] = t; }
   }
+  const near = nears[0] >= 0 ? nears[0] : nears[1];
   if (near < 0) return [];
+  if (g.triFaces) return Object.assign([near], { square: near === nears[1] ? -1 : nears[1] });
   if (g.torus) {  // a sheet: its bricks as laid (g.bricks, else brickOf(g) tiles at a time as listed, a strip's back as its front); its first whole and seen, else the one in front
     const m = brickOf(g), id = (t) => g.bricks?.[t] ?? Math.floor((g.mobius ? t % g.front : t) / m), bricks = Map.groupBy([...Array(g.n).keys()], id);
     const seen = (ts) => ts.filter((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t)));
