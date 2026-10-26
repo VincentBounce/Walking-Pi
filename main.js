@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1308';
+const VERSION = '0.1.1309';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8263,9 +8263,12 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
-  if (ringTorus(g)) {  // a torus: its sheet's cell [i, i + 1) × [j, j + 1), as laid nu × nv times: its first, at the corner, else the one in front
-    const cell = (t) => sheetMiddle(g, t).map(Math.floor).join(), brick = (c) => [...Array(g.n).keys()].filter((t) => cell(t) === c), corner = brick('0,0');
-    return corner.some((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) ? corner : brick(cell(near));
+  if (ringTorus(g)) {  // a torus: its sheet's cell [i, i + 1) × [j, j + 1), as laid nu × nv times: the first drawn whole (flat, the seam cuts some) and seen, else the one in front
+    const cell = (t) => sheetMiddle(g, t).map(Math.floor), bricks = new Map();
+    for (let t = 0; t < g.n; t++) { const [i, j] = cell(t), k = j * g.nu + i; bricks.set(k, [...(bricks.get(k) ?? []), t]); }
+    const spread = (ts) => { const m = [0, 1, 2].map((d) => ts.reduce((sum, t) => sum + at(t)[d], 0) / ts.length); return Math.max(...ts.map((t) => Math.hypot(...at(t).map((x, d) => x - m[d])))); };
+    const least = Math.min(...[...bricks.values()].map(spread)), [i, j] = cell(near);
+    return [...bricks].sort(([a], [b]) => a - b).map(([, ts]) => ts).find((ts) => spread(ts) < 1.01 * least && ts.every((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t)))) ?? bricks.get(j * g.nu + i);
   }
   if (g.torus) return sheetPatternAt(near, Array.from({ length: brickOf(g) }, (_, j) => [j, 0, j]), true).map(([t]) => t);  // (a Möbius strip, a Klein bottle: the plane's motif, laid)
   const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
