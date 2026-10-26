@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1260';
+const VERSION = '0.1.1261';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5303,19 +5303,19 @@ const SPHERES = {
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
             tiles: (f) => 24 * f * f, unit: 'triangles' },
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
-            tiles: (f) => 60 * f * f, unit: 'triangles' },
+            tiles: (f) => 60 * f * f, unit: 'triangles', how: (f) => `12 pentagonal faces × 5 × ${fmt(f)}² triangles` },  // (each pentagon 5 triangles round its middle)
   stellaKite: { mesh: (f) => flatPolyhedron('stella', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 72 * f * f, unit: 'kites' },
   cubocta: { mesh: (f) => hullMesh('cubocta', f), radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge √2
   pyramid: { mesh: (f) => hullMesh('pyramid', f), radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
   rhombi: { mesh: (f) => hullMesh('rhombi', f), radius: (f) => f / 2, tiles: (f) => 26 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 18 squares, 8 triangles
   bicupola: { mesh: (f) => hullMesh('bicupola', f), radius: (f) => f / 2, tiles: (f) => 18 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 10 squares, 8 triangles
-  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites' },
+  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `12 pentagonal faces × 5 × ${fmt(f)}² triangles × 3 kites each` },
 };
 // the solids of squares as tetrakis triangles (see tetrakisOf): sized as their squares, 4 cells a square
 for (const k of Object.keys(TETRAKIS_SOLIDS)) {
   const S = SPHERES[k];
   SPHERES[`${k}Tetrakis`] = { ...S, mesh: (s) => tetrakisOf(`tetrakis-${k}${s}`, S.mesh(s)), tiles: (s) => 4 * S.tiles(s), unit: 'triangles',
-    how: (s) => `${S.how?.(s) ?? `6 × ${fmt(s)}²`} squares, 4 triangles each: 4 × ${fmt(S.tiles(s))}` };
+    how: S.how && ((s) => `${S.how(s)} squares, 4 triangles each: 4 × ${fmt(S.tiles(s))}`) };  // (else its faces', see howCounted)
 }
 // the tilings' tori (see tilingTorusMesh): their rows B round the tube, as many A round the ring as keep them even
 for (const name of foldedIn('torus')) {
@@ -5339,7 +5339,7 @@ function syncSizeStepper() {
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
-  $('sizeLabel').title = [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `Each ${family} at the size closest to ${fmt(sought[ladderOf(kind)])} cells (the size last picked: − + or the slider)` : ''].filter(Boolean).join('\n');
+  sizeTips('size', [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `Each ${family} at the size closest to ${fmt(sought[ladderOf(kind)])} cells (the size last picked: − + or the slider)` : ''].filter(Boolean).join('\n'));
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5400,6 +5400,9 @@ function gridSize(kind, f) {
 const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
 // how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
+// a size's tooltip on all its controls, − + its label and its slider, as its motif shows on them (see drawMotif)
+const sizeTips = (row, text) => { for (const id of ['Down', 'Label', 'Up', 'Gauge']) $(`${row}${id}`).title = text; };
+const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 const sizeHow = (kind, f) => howCounted(kind, f).replace(/^./, (c) => c.toUpperCase());  // (a tooltip's first line: capitalised)
 const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
@@ -5413,6 +5416,16 @@ const howCounted = (kind, f) => {
   }
   if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest the middle (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} ${per > 1 ? `lattice cells × ${per} ${d[3]} each` : `a row${Number.isInteger(d[1]) ? '' : ' (on average)'}`}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  // a solid of flat faces: each face's cells, f to an edge (its faces as its least size's mesh has them, the same at every size)
+  const base = kind.endsWith('Tetrakis') && SPHERES[kind.slice(0, -8)] ? kind.slice(0, -8) : kind, B = SPHERES[base];  // (a solid of tetrakis triangles: its squares', 4 each)
+  const g = B && !TORI.includes(base) && (facesMemo[base] ??= B.mesh(B.sizes[0])), cut = base !== kind ? 4 : g?.kite ? 3 : 1;
+  if (g?.faces || g?.triFaces) {
+    const by = g.faces ? {} : { 3: g.triFaces.length, 4: g.squareFaces.length }, adj = { 3: 'triangular', 4: 'square', 5: 'pentagonal', 6: 'hexagonal' }, cells = { 3: 'triangles', 4: 'squares', 5: 'triangles', 6: 'triangles' }, round = { 5: 5, 6: 6 };  // (a pentagon, a hexagon: as many triangles round its middle)
+    for (const F of g.faces ?? []) by[F.corners.length] = (by[F.corners.length] ?? 0) + 1;  // (a solid of triangles and squares: its faces of each, see Johnson solids)
+    for (const c in by) if (!by[c]) delete by[c];
+    if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
+      return `${Object.entries(by).map(([c, k]) => `${k} ${adj[c]} face${k > 1 ? 's' : ''} × ${round[c] ? `${round[c]} × ` : ''}${fmt(f)}² ${cells[c]}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
+  }
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
 };
@@ -7593,7 +7606,7 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  $('planeLabel').title = `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${APERIODIC[kind] || shaped(kind) ? `a disc ${fmt(plane.side)} across, ${fmt(Math.round((Math.PI / 4) * plane.side ** 2))}` : fmt(plane.side ** 2)} cells (the size last picked: − + or the slider)`;  // (⌀: a disc's, see shapeW)
+  sizeTips('plane', `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${APERIODIC[kind] || shaped(kind) ? `a disc ${fmt(plane.side)} across, ${fmt(Math.round((Math.PI / 4) * plane.side ** 2))}` : fmt(plane.side ** 2)} cells (the size last picked: − + or the slider)`);  // (⌀: a disc's, see shapeW)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
