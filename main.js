@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1282';
+const VERSION = '0.1.1283';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5449,7 +5449,7 @@ const howCounted = (kind, f) => {
     const g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
     for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
     const F = (2 * (n - 2)) / (f * f), names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' }, at = Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + ');
-    const faces = kind === 'dodecaHex' ? `{r:12 pentagonal faces} × 5` : `{r:${F} triangular faces}`;  // (the dodecahedron's pentagons: 5 triangles each; red as drawn, see drawMotif)
+    const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each; not red: not drawn, see drawMotifFace)
     // (a sum on lines: its faces, a triangle f steps a side as big as f² / 2 hexagons; + 2: its corners, 5 faces round a
     // pentagon, not 6, each counted 5/6 by them, 12 × 1/6 (Euler's 2 on any of them); its cells, its corners' and its hexagons)
     return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
@@ -8145,57 +8145,28 @@ function drawMotif(ctx) {
 // the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): flat faces of cells, the cube's tetrakis triangles too
 const facePer = (g, kind) => g?.perFace ?? (kind === 'cubeTetrakis' ? g.n / 6 : 0);  // (its cells a face, as listed: the cube's tetrakis triangles, 4 a square, its squares a face at a time)
 const redFaces = (g, kind = surfaceOf(MODES[$('mode').value])) => facePer(g, kind) > 0;  // (of triangles, kites, squares: their edges along their cells')
-// a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner
-// along its cells' sides (as a start's edges, see gridGraph): the shortest way from wall to wall, of those the corners nearest
-// the plane through its middle and both walls (the face's straight side), as the shape has them now, the sides facing the viewer
+// a solid's face round the motif in red (its sector in blue, a cell of it in green), along its cells' sides; none on a solid
+// of hexagons (its faces' sides through the middles of its hexagons, not along them)
 function drawMotifFace(ctx) {
   const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
-  if (t0 !== undefined && redFaces(g)) {  // a solid of triangles (of kites): its face's cells' sides not shared by two of them (its edges, along its cells)
-    const { scale: s, ox, oy } = view, proj = projector(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
-    // (its face: the mesh's faces next to it in its plane too, as listed: a dodecahedron's pentagon, 5 triangles)
-    const per = facePer(g, surfaceOf(MODES[$('mode').value])), fi = Math.floor(t0 / per), flat = (i) => g.faces?.[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
-    let lo = fi, hi = fi;
-    while (flat(lo - 1)) lo--;
-    while (flat(hi + 1)) hi++;
-    const stroke = (colour, from, to) => {  // (the sides of the tiles from … to not shared by two of them)
-      const sides = new Map();
-      for (let t = from; t < to; t++) for (let j = 0; j < k; j++) { const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|'); sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]); }
-      ctx.strokeStyle = colour;
-      ctx.beginPath();
-      for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
-      ctx.stroke();
-    };
-    if (g.kite || g.squares) stroke(cssColour('--cell'), t0, t0 + 1);  // (a motif of several cells, a triangle's kites, a square's tetrakis triangles: one of them)
-    if (hi > lo) stroke(cssColour('--sector'), fi * per, (fi + 1) * per);  // (a face of several: its sector round the motif)
-    stroke(faceRed(), lo * per, (hi + 1) * per);
-    return;
-  }
-  if (SPHERES[surfaceOf(MODES[$('mode').value])]?.unit !== 'hexagons' || !g.walls?.length || t0 === undefined) return;
-  const G = gridGraph(g), base = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], d2 = (p, q) => p.reduce((sum, v, i) => sum + (v - q[i]) ** 2, 0);
-  const [a, b, c] = [...g.walls].sort((p, q) => d2(base(p), base(t0)) - d2(base(q), base(t0))).slice(0, 3), proj = projector(), { scale: s, ox, oy } = view;
-  const cornersOf = (t) => [...new Set(Array.from({ length: k }, (_, j) => g.poly[k * t + j]))];
-  const way = (p, q) => {  // (its corners: as far from q as can be, a step nearer each time, by the one nearest the plane)
-    const n = unit(cross(base(p), base(q))), off = (v) => Math.abs(g.verts[3 * v] * n[0] + g.verts[3 * v + 1] * n[1] + g.verts[3 * v + 2] * n[2]), far = new Map(), queue = cornersOf(q);
-    for (const v of queue) far.set(v, 0);
-    for (let i = 0; i < queue.length; i++) for (const w of G.nbrs[queue[i]]) if (!far.has(w)) { far.set(w, far.get(queue[i]) + 1); queue.push(w); }
-    let v = cornersOf(p).sort((x, y) => far.get(x) - far.get(y) || off(x) - off(y))[0];
-    const corners = [v];
-    while (far.get(v) > 0) corners.push((v = G.nbrs[v].filter((w) => far.get(w) === far.get(v) - 1).sort((x, y) => off(x) - off(y))[0]));
-    return corners;
+  if (t0 === undefined || !redFaces(g)) return;  // (a solid of flat faces of cells: its face's cells' sides not shared by two of them, along its cells)
+  const { scale: s, ox, oy } = view, proj = projector(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
+  // (its face: the mesh's faces next to it in its plane too, as listed: a dodecahedron's pentagon, 5 triangles)
+  const per = facePer(g, surfaceOf(MODES[$('mode').value])), fi = Math.floor(t0 / per), flat = (i) => g.faces?.[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
+  let lo = fi, hi = fi;
+  while (flat(lo - 1)) lo--;
+  while (flat(hi + 1)) hi++;
+  const stroke = (colour, from, to) => {  // (the sides of the tiles from … to not shared by two of them)
+    const sides = new Map();
+    for (let t = from; t < to; t++) for (let j = 0; j < k; j++) { const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|'); sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]); }
+    ctx.strokeStyle = colour;
+    ctx.beginPath();
+    for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
+    ctx.stroke();
   };
-  const at = (v) => { const i = 3 * (k * G.tileOf[v] + G.cornerOf[v]); return [sh.corners[i], sh.corners[i + 1], sh.corners[i + 2]].map((x) => x * walk.R); };  // (as the shape has it, see drawStarts)
-  ctx.strokeStyle = faceRed();
-  ctx.beginPath();
-  for (const [p, q] of [[a, b], [b, c], [c, a]]) {
-    let down = false;
-    for (const v of way(p, q)) {
-      if (!planeVisible(unit([0, 1, 2].map((d) => G.normal[3 * v + d])), at(v))) { down = false; continue; }  // (behind: lifted)
-      const [u, w] = proj(...at(v));
-      ctx[down ? 'lineTo' : 'moveTo'](ox + u * s, oy + w * s);
-      down = true;
-    }
-  }
-  ctx.stroke();
+  if (g.kite || g.squares) stroke(cssColour('--cell'), t0, t0 + 1);  // (a motif of several cells, a triangle's kites, a square's tetrakis triangles: one of them)
+  if (hi > lo) stroke(cssColour('--sector'), fi * per, (fi + 1) * per);  // (a face of several: its sector round the motif)
+  stroke(faceRed(), lo * per, (hi + 1) * per);
 }
 // a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a sheet's (a torus, a
 // Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
