@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1306';
+const VERSION = '0.1.1307';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8248,8 +8248,8 @@ function drawMotifFace(ctx, t0) {
   if (f.sector) outlineTiles(ctx, cssColour('--sector'), tilesOf(f.sector));
   outlineTiles(ctx, faceRed(), tilesOf(f.face));
 }
-// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a sheet's (a torus, a
-// Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
+// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a tiling's
+// torus's sheet cell, as replicated; a sheet's (a Möbius strip, a Klein bottle, a torus of regular tiles) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
 // hexagon, a tetrakis square's 4 triangles, a triangle (of 3 kites)
 function motifTiles() {
   const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
@@ -8261,6 +8261,11 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
+  if (g.torus && g.uvMid && !g.mobius && !g.klein) {  // a tiling's torus: its sheet's cell as it is laid nu × nv times (see tilingTorusMesh), at its corner, else in front
+    const cell = (t) => `${Math.floor(g.uvMid[2 * t])},${Math.floor(g.uvMid[2 * t + 1])}`, brick = (c) => [...Array(g.n).keys()].filter((t) => cell(t) === c);
+    const corner = brick('0,0');
+    return corner.some((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) ? corner : brick(cell(near));
+  }
   if (g.torus) return sheetPatternAt(near, Array.from({ length: PER_RHOMBUS[patternKind()] ?? 1 }, (_, j) => [j, 0, j]), true).map(([t]) => t);
   const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
   return Array.from({ length: m }, (_, j) => Math.floor(near / m) * m + j);  // (a cell, a triangle: what a face counts, f² of them; not the plane's rhombus, a face not whole ones)
