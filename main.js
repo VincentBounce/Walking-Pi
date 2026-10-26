@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1254';
+const VERSION = '0.1.1255';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8065,12 +8065,12 @@ function drawLifePlane() {
 }
 // The grid's motif, outlined in yellow while its size is hovered (see renderPlaneRow): what repeats, the sides of its cells
 // not shared by two of them; a grid in a circle or a hexagon its core, in its middle (see discPatch, planeShape); the
-// others a lattice cell, at the top right (the top row's last cells, as many as a lattice cell has)
+// others a lattice cell, at the top left (the top row's first cells, as many as a lattice cell has)
 let motifShown = false;
 function drawMotif(ctx) {
   if (!motifShown) return;
-  const { kind, W, row } = walk.plane, { scale: s, ox, oy } = view, sides = new Map();
-  const motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, row - 1 - k, 0));
+  const { kind, W } = walk.plane, { scale: s, ox, oy } = view, sides = new Map();
+  const motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0));
   for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, q]); });
   turnLayer(ctx);
   ctx.strokeStyle = '#ffd60a';
