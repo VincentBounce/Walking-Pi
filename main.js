@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1284';
+const VERSION = '0.1.1285';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8180,7 +8180,7 @@ function drawMotifFace(ctx) {
   if (hi > lo) stroke(cssColour('--sector'), fi * per, (fi + 1) * per);  // (a face of several: its sector round the motif)
   stroke(faceRed(), lo * per, (hi + 1) * per);
 }
-// a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a sheet's (a torus, a
+// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a sheet's (a torus, a
 // Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
 // hexagon, a tetrakis square's 4 triangles, a triangle (of 3 kites)
 function motifTiles() {
@@ -8189,7 +8189,7 @@ function motifTiles() {
   for (let t = 0; t < g.n; t++) {
     const n = [0, 1, 2].map((d) => sh.nrm[3 * t + d]);
     if (!planeVisible(n, at(t))) continue;
-    const [x, y] = proj(...at(t)), score = towardViewer(...n) - 0.2 * (Math.hypot(ox + x * s - cw / 2, oy + y * s - ch / 2) / Math.min(cw, ch));
+    const [x, y] = proj(...at(t)), score = towardViewer(...n) + towardViewer(...at(t)) / (walk.R * (g.extent || 1)) - 0.2 * (Math.hypot(ox + x * s - cw / 2, oy + y * s - ch / 2) / Math.min(cw, ch));  // (facing the viewer, near it: in front, not a far side seen through a hole)
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
