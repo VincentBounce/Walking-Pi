@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1324';
+const VERSION = '0.1.1325';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5359,7 +5359,7 @@ function syncSizeStepper() {
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
-  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `\n{b:Last picked size: ${fmt(sought[ladderOf(kind)])} cells}\nEach ${family} at the size closest to it (picked with − + or the slider)` : ''].filter(Boolean).join('\n'));
+  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? `${sizeHow(kind, f)}\n${sizeSides(kind, f)}`.trim() : '', sought[ladderOf(kind)] ? `\n{b:Last picked size: ${fmt(sought[ladderOf(kind)])} cells}\nEach ${family} at the size closest to it (picked with − + or the slider)` : ''].filter(Boolean).join('\n'));
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5440,6 +5440,17 @@ const sizeTips = (row, total, text) => {
   if (box.matches(':hover')) $('tip').innerHTML = box.dataset.tipHtml;
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
+// its cells as a rectangle as wide as the grid lies, for an idea of its resolution: the plane's a square, a ring's or a strip's its
+// sheet laid flat (a Möbius strip's loop, 2L × W; a ring's, its least mesh's proportions, its columns and rows as many); a solid, none
+const sizeSides = (kind, f) => {
+  const d = gridSize(kind, f), S = SPHERES[kind];
+  if (!d) return '';
+  let r = 1;
+  if (kind.startsWith('mobius')) { const { L, W } = mobiusCount(kind, f); r = (2 * L) / W; }
+  else if (FOLDED[kind]?.fold === 'klein') { const { n, step, W } = kleinLength(kind, f); r = (n * step) / W; }
+  else if (S) { const g = (facesMemo[kind] ??= S.mesh(S.sizes[0])), [nv, nu] = torusDims(kind, f); r = (nu * g.nv) / (nv * g.nu * tubeOf(g)); }
+  return `≈ ${fmt(Math.round(Math.sqrt(d[2] * r)))} × ${fmt(Math.round(Math.sqrt(d[2] / r)))} ${d[3]}`;
+};
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
 const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
 // a sheet's brick, so many tiles: a torus's sheet cell (a tiling's: g.sheet's, see tilingTorusMesh); a tiling's Möbius strip's, Klein
@@ -7677,7 +7688,7 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  sizeTips('plane', sizeCells(planeKind(kind), plane.side), `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n\n` : ''}{b:Last picked size: ${fmt(Math.round((APERIODIC[kind] || shaped(kind) ? Math.PI / 4 : 1) * plane.side ** 2))} cells}\nEach grid at the size closest to it${APERIODIC[kind] || shaped(kind) ? `, a disc ${fmt(plane.side)} across` : ''} (picked with − + or the slider)`);  // (⌀: a disc's, see shapeW)
+  sizeTips('plane', sizeCells(planeKind(kind), plane.side), `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n${sizeSides(planeKind(kind), plane.side)}\n\n` : ''}{b:Last picked size: ${fmt(Math.round((APERIODIC[kind] || shaped(kind) ? Math.PI / 4 : 1) * plane.side ** 2))} cells}\nEach grid at the size closest to it${APERIODIC[kind] || shaped(kind) ? `, a disc ${fmt(plane.side)} across` : ''} (picked with − + or the slider)`);  // (⌀: a disc's, see shapeW)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
