@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1315';
+const VERSION = '0.1.1316';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4715,15 +4715,16 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
 // whose middle is within nv rows of b (a mirror along a: the strip's edges alike) and L along (see MOBIUS_ALONG), as
 // many corners each (the last one repeated); the usual length, the counts' nearest that the twist allows
 function tilingStrip(kind, kind0, size) {
-  const { t, m, L, W, sides, cells, i0, i1, j0, j1 } = stripFrame(kind, kind0, size), tiles = [], mids = [], bricks = [];
+  const { m, nv, L, W, sides, cells, i0, i1, j0, j1, la } = stripFrame(kind, kind0, size), by = W / nv, cols = Math.ceil(L / la - 1e-9), laid = [];
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) for (let k = 0; k < m; k++) {
     const P = cells(i, j, k), [x, y] = [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length);
     if (x < -1e-9 || x >= L - 1e-9 || y < -1e-9 || y > W + 1e-9) continue;
-    tiles.push([...P, ...Array(sides - P.length).fill(P.at(-1))]);
-    mids.push(x, y);
-    bricks.push((j - j0) * (i1 - i0 + 1) + i - i0);  // (its lattice cell: the strip's bricks, see motifTiles)
+    laid.push({ P, x, y, brick: Math.floor(y / by + 1e-6) * cols + Math.floor(x / la + 1e-6) });
   }
-  return { L, W, tiles, sides, mids, bricks };
+  // brick by brick from its corner: a row of b (its sides mirrors, as y = 0), |a| along it, m tiles each; a mirror through
+  // tiles, those on its far edge after; a glide's twist, half a brick at its end
+  laid.sort((p, q) => p.brick - q.brick);
+  return { L, W, sides, tiles: laid.map(({ P }) => [...P, ...Array(sides - P.length).fill(P.at(-1))]), mids: laid.flatMap(({ x, y }) => [x, y]), bricks: laid.map(({ brick }) => brick) };
 }
 // a tiling's strip's frame: its length (the usual one, the counts' nearest that the twist allows), its width, its cells'
 // corners on a fine grid (in steps along and rows across from the middle: the twist (x + L, y) → (x, W − y) maps the grid
@@ -4740,7 +4741,7 @@ function stripFrame(kind, kind0, size) {
   const ends = [[0, 0], [L, 0], [0, W], [L, W]].map(([x, y]) => [(x * tb[1] - y * tb[0]) / det, (ta[0] * y - ta[1] * x) / det]);
   const [i0, i1, j0, j1] = [0, 1].flatMap((d) => [Math.floor(Math.min(...ends.map((e) => e[d]))) - 1, Math.ceil(Math.max(...ends.map((e) => e[d]))) + 1]);
   const cells = (i, j, k) => tilingPolys(kind)[k].map(([u, v]) => { const [x, y] = turnPoint(tilingWorld(kind, [u + i, v + j]), turn); return snap([x, y - c]); });  // (its mirror on y = 0)
-  return { t, m, nv, L, W, sides, cells, i0, i1, j0, j1, ta, tb };
+  return { t, m, nv, L, W, sides, cells, i0, i1, j0, j1, ta, tb, la: Math.hypot(...a) };
 }
 // its tiles' count, as tilingStrip keeps them, without building it: each of a lattice cell's polygons' middle, moved by
 // the lattice's steps (no corner built; on the fine grid a middle on an edge lands on it: here 10⁻⁵ of it, as near)
