@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1300';
+const VERSION = '0.1.1301';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5408,7 +5408,13 @@ function gridSize(kind, f) {
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
 const discOf = (W) => Math.round(((2 * W) / Math.sqrt(Math.PI)) * 10) / 10;  // (a grid that never repeats: its W² items as big as a disc of this diameter, see sideW)
-const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] ? `⌀ ${fmt(discOf(d[0]))}` : shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
+// (a six-fold grid in a hexagon: its rings of hexagons round its middle, else its side in lattice cells where it falls on its
+// lattice, as its tooltip counts them, see howCounted; else a hexagon)
+const hexagonOf = (kind, f) => {
+  const N = gridSize(kind, f)[2], r = Math.round((Math.sqrt(12 * N - 3) - 3) / 6), m = Math.round(Math.sqrt(N / (3 * (PER_RHOMBUS[kind] ?? 1))));
+  return kind === 'hex' && 3 * r * (r + 1) + 1 === N ? `Hexagon · ${r} rings` : 3 * m * m * (PER_RHOMBUS[kind] ?? 1) === N ? `Hexagon · ${m} a side` : 'Hexagon';
+};
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] ? `⌀ ${fmt(discOf(d[0]))}` : shaped(kind) ? hexagonOf(kind, f) : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
 // how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
 // a size's tooltip on its block, − + its label and its slider, as its motif shows on it (see drawMotif); its words
