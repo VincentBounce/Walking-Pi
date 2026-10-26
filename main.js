@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1256';
+const VERSION = '0.1.1257';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5404,6 +5404,12 @@ const sizeHow = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
   const per = PLANE_CELLS[kind] ? PER_RHOMBUS[kind] ?? 1 : 1, all = d && d[0] * d[1] * per;  // (the plane's: its lattice cells a row, each per cells; less its wall's)
+  if (d && PLANE_CELLS[kind] && shaped(kind)) {  // a hexagon round its middle (see planeShape): rings of hexagons, else 3n² rhombi of its lattice where it falls on it
+    const N = d[2], r = Math.round((Math.sqrt(12 * N - 3) - 3) / 6), m = Math.round(Math.sqrt(N / (3 * per)));
+    if (kind === 'hex' && 3 * r * (r + 1) + 1 === N) return `its middle hexagon and ${r} rings round it, 6 more each: 1 + 6 + … + ${6 * r} = 3 × ${r} × ${r + 1} + 1 = ${fmt(N)} ${d[3]}`;
+    if (3 * m * m * per === N) return `a hexagon of its lattice, ${m} a side round its middle: 3 × ${m}² rhombi${per > 1 ? ` × ${per} ${d[3]} each` : ''} = ${fmt(N)} ${d[3]}`;
+    return `the cells in a hexagon round its middle (a point it turns onto by a sixth), as far as each other all in or all out: ${fmt(N)} ${d[3]}`;
+  }
   if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest the middle (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} ${per > 1 ? `lattice cells × ${per} ${d[3]} each` : `a row${Number.isInteger(d[1]) ? '' : ' (on average)'}`}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   const k = S.tiles(0), c = (n - k) / (f * f);
@@ -7586,7 +7592,7 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  $('planeLabel').title = `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${fmt(plane.side)} × ${fmt(plane.side)} = ${fmt(plane.side ** 2)} cells, its colours' blocks whole (the size last picked: − + or the slider)`;
+  $('planeLabel').title = `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${APERIODIC[kind] || shaped(kind) ? `a disc ${fmt(plane.side)} across, ${fmt(Math.round((Math.PI / 4) * plane.side ** 2))}` : fmt(plane.side ** 2)} cells (the size last picked: − + or the slider)`;  // (⌀: a disc's, see shapeW)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   for (const el of [$('planeLabel').parentElement, $('planeGauge')]) el.onmouseenter = el.onmouseleave = (e) => { motifShown = e.type === 'mouseenter'; needsFull = true; };  // (its motif shown, see drawMotif)
