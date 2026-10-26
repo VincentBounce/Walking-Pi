@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1244';
+const VERSION = '0.1.1245';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4536,7 +4536,8 @@ function mobiusMirror(kind, [a, b] = TILINGS[kind].basis) {
 // steps of |a| / q, the least that g and b_x are whole counts of
 for (const [strip, { kind, basis }] of Object.entries(MOBIUS_STRIPS)) {
   const { g, la, bx, q } = mobiusMirror(kind, basis), step = la / q;
-  MOBIUS_ALONG[strip] = { step, ok: (n, nv) => (((n - Math.round((g + nv * bx) / step)) % q) + q) % q === 0 };
+  // (copy: the least slide along that brings it onto itself, turned over on a glide: a bottle's colours' slices whole counts of it)
+  MOBIUS_ALONG[strip] = { step, copy: g > 1e-9 ? g : la, ok: (n, nv) => (((n - Math.round((g + nv * bx) / step)) % q) + q) % q === 0 };
 }
 const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.split('x').map(Number));  // [rows, count along or null]
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
@@ -4708,11 +4709,11 @@ function kleinTilingSheet(kindK, size) {
 // its frame, without its tiles: its strip, its rows and its length (see kleinTilingSheet); its tiles' count (see stripCount)
 const kleinCount = (kindK, size) => { const { kind, strip, nv, n } = kleinLength(kindK, size); return stripCount(kind, strip, `${nv}x${n}`, true); };
 function kleinLength(kindK, size) {
-  const { strip } = FOLDED[kindK], { kind, basis: [a, b] } = MOBIUS_STRIPS[strip], { step, ok } = MOBIUS_ALONG[strip];
+  const { strip } = FOLDED[kindK], { kind, basis: [a, b] } = MOBIUS_STRIPS[strip], { step, ok, copy } = MOBIUS_ALONG[strip];
   const [nv, own] = mobiusSize(size), turn = -Math.atan2(a[1], a[0]), by = turnPoint(b, turn)[1], W = nv * by;
   // its length: of the counts the twist allows within a fifth of the usual, the one cut in the most counts of colours (slices
   // a whole count of the lattice's steps along, see colourFair), then the nearest
-  const x = W / TORUS_TUBE / step, q = Math.round(Math.hypot(...a) / step), cuts = (c) => COLOUR_STEPS.filter((K) => K > 1 && c % (q * K) === 0).length;
+  const x = W / TORUS_TUBE / step, q = Math.round(copy / step), cuts = (c) => COLOUR_STEPS.filter((K) => K > 1 && c % (q * K) === 0).length;
   let n = own ?? undefined;
   for (let c = Math.ceil(0.8 * x); !own && c <= 1.25 * x; c++) if (ok(c, nv) && (n === undefined || cuts(c) > cuts(n) || (cuts(c) === cuts(n) && Math.abs(c - x) < Math.abs(n - x)))) n = c;
   if (n === undefined) for (let d = 0, c = Math.round(x); ; d++) { c += d % 2 ? -d : d; if (ok(c, nv)) { n = c; break; } }  // (the nearest the twist allows)
@@ -4732,7 +4733,7 @@ function kleinTilingMesh(kindK, size) {
     return ids.get(i * nv * Q + j);
   };
   const mesh = finishMesh(verts, tiles.map((t) => t.map(id)), sides, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: la, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids) }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids) }));
 }
 // a tile's corners the other way round, its last one repeated still last (a tile with fewer corners than the strip's:
 // repeated first, its normal, from its first corners, was none, and the back's tiles all but black)
@@ -8103,7 +8104,7 @@ const colourFairOwn = (K, g) => {
   }
   if (solidCounts(mode?.sphere)) return solidCounts(mode.sphere).includes(K);
   if (g?.mobius) return true;
-  if (g?.period) { const x = g.nu / torusBlocks(K, g)[0] / g.period; return Math.abs(x - Math.round(x)) < 1e-6; }  // (a tiling's bottle: slices a whole count of its lattice's steps along)
+  if (g?.period) { const x = g.nu / torusBlocks(K, g)[0] / g.period; return Math.abs(x - Math.round(x)) < 1e-6; }  // (a tiling's bottle: slices a whole count of its copies along, see MOBIUS_ALONG: a glide's turned over)
   if (g?.nu) return g.nv % torusBlocks(K, g)[1] === 0;  // (a torus: its blocks' rows dividing its rows; its columns made for its colours, see ringColumns)
   return false;
 };
