@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1335';
+const VERSION = '0.1.1336';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -14082,6 +14082,7 @@ function showSetup(setup) {  // framed and faced once built (see showAll), not b
   pendingSpin = true;  // then turning, in 3D, a moment later (see applyPendingView)
   applySetup(setup);
 }
+const preview = (setup) => (setup.d > 5000 ? { ...setup, d: 5000 } : setup);  // (a setup hovered: its first 5,000 digits or steps, at once; clicked, all of them)
 function setupRow(name, detail, setup, onDelete) {
   const b = card({ pic: icon(SHAPE_ICONS[NAV[setup.w]?.[2]] ?? MODE_ICONS[setup.w]), name, detail, title: `${name}\n${detail}`, on: !galleryBefore && isInUse(setup) });  // (its shape's picture, as the Grid's; its title in full, as the row may cut them short)
   if (onDelete) {
@@ -14095,11 +14096,11 @@ function setupRow(name, detail, setup, onDelete) {
     ruleTutorial(null);  // what lies over the view (how a rule works, the digits) closes: the setup shown instead
     closeNumber();
     clearTimeout(galleryHover);
-    galleryHover = setTimeout(() => { if (!galleryBefore) { galleryBefore = getSetup(); galleryView = viewNow(); } showSetup(setup); }, 120);
+    galleryHover = setTimeout(() => { if (!galleryBefore) { galleryBefore = getSetup(); galleryView = viewNow(); } showSetup(preview(setup)); }, 120);
   });
   b.addEventListener('click', () => {
     clearTimeout(galleryHover);
-    if (!galleryBefore || !isInUse(setup)) showSetup(setup);
+    if (!galleryBefore || !isInUse(setup) || preview(setup) !== setup) showSetup(setup);  // (shown cut short: all of it now; isInUse leaves its digits out)
     pendingSpin = false;  // clicked while still: it stays still (already turning: it goes on)
     spinFrom = 0;
     galleryBefore = galleryView = null;  // kept, Auto-fit on: leaving the list no longer brings back the one before
