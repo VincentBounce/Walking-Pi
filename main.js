@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1321';
+const VERSION = '0.1.1322';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5223,11 +5223,11 @@ function morphStep(dt) {
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
 /* Sizes, one way for every grid and surface: one ladder (SIDES), each its own size the ladder's (the plane's side, a
  * solid's edge, a torus's, a Möbius strip's or a Klein bottle's rows; a tiling's, its sheet's), those it allows (a multiple
- * of steps[0], from least to most) with 256 cells at least and 100,000 at most (CELLS). A new surface needs only its
+ * of steps[0], from least to most) with 2⁸ cells at least and 2¹⁷ at most (CELLS). A new surface needs only its
  * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
 const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048],  // (every multiple of 24 up to 192: an icon's whole size)
   sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
-const CELLS = [256, 100000], START = { surface: 2688, solid: 6144 };
+const CELLS = [2 ** 8, 2 ** 17], START = { surface: 2688, solid: 6144 };
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).L / (2 * Math.PI);  // (its length: no tile built)  // a Möbius strip's circle, L tile edges round
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
