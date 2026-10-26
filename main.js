@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1289';
+const VERSION = '0.1.1290';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5225,11 +5225,11 @@ const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           tiles: (n) => 6 * n * n, unit: 'squares' },
   pits: { mesh: cubePits, radius: (n) => n / 2, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares',
-          how: (n) => `each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a pit (its floor, 4 walls half a block deep): 11 blocks a face, 6 × 11 × ${fmt(n / 3)}²` },
+          how: (n) => `each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a pit (its floor, 4 walls half a block deep): 11 blocks a face, 6 × 11 × {y:${fmt(n / 3)}² squares}` },
   frame: { mesh: (m) => mengerMesh(1, m), radius: (m) => (3 * m) / 2, tiles: (m) => 72 * m * m, unit: 'squares', edge: (m) => 3 * m,  // a cube's frame: its branches m squares wide, its edge 3m
-           how: (m) => `a cube's frame, its edge ${fmt(3 * m)}, its branches ${fmt(m)} wide: 72 × ${fmt(m)}²` },
+           how: (m) => `a cube's frame, its edge ${fmt(3 * m)}, its branches ${fmt(m)} wide: 72 × {y:${fmt(m)}² squares}` },
   menger: { mesh: (L) => mengerMesh(L), radius: (L) => 3 ** L / 2, least: 2, most: 3, tiles: (L) => 2 * 20 ** L + 4 * 8 ** L, unit: 'squares', edge: (L) => 3 ** L,
-            how: (L) => `Menger's sponge, level ${L} (its edge 3^${L} = ${fmt(3 ** L)}): 2 × 20^${L} + 4 × 8^${L}` },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
+            how: (L) => `Menger's sponge, level ${L} (its edge 3^${L} = ${fmt(3 ** L)}): {y:2 × 20^${L} + 4 × 8^${L} squares}` },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
@@ -5319,7 +5319,7 @@ const SPHERES = {
 for (const k of Object.keys(TETRAKIS_SOLIDS)) {
   const S = SPHERES[k];
   SPHERES[`${k}Tetrakis`] = { ...S, mesh: (s) => tetrakisOf(`tetrakis-${k}${s}`, S.mesh(s)), tiles: (s) => 4 * S.tiles(s), unit: 'triangles',
-    how: S.how && ((s) => `${S.how(s)} squares, 4 triangles each: 4 × ${fmt(S.tiles(s))}`) };  // (else its faces', see howCounted)
+    how: S.how && ((s) => `${S.how(s)} × {k:4 triangles each}`) };  // (else its faces', see howCounted)
 }
 // the tilings' tori (see tilingTorusMesh): their rows B round the tube, as many A round the ring as keep them even
 for (const name of foldedIn('torus')) {
@@ -5421,7 +5421,7 @@ const sizeTips = (row, total, text) => {
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
-const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{]/.test(how) ? `= ${how.replace(/ × /g, '\n× ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor on its line)
+const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
 const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
@@ -8135,62 +8135,56 @@ function drawLifePlane() {
 let motifShown = false;
 function drawMotif(ctx) {
   if (!motifShown) return;
-  const { scale: s, ox, oy } = view, sides = new Map();
-  let tiles = [];  // (a surface's motif, see motifTiles)
-  const add = (P, keys) => P.forEach((p, i) => { const j = (i + 1) % P.length, k = [keys[i], keys[j]].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, P[j]]); });
-  if (walk.plane) {
-    const { kind, W } = walk.plane, motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0));
-    for (const P of motif) add(P.map(([u, v]) => [ox + u * s, oy + v * s]), P.map((p) => pointKey(p)));
-    turnLayer(ctx);
-  } else {
-    const g = walk.geo, sh = walk.shape, k = g.sides, proj = projector(), corner = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
-    for (const t of (tiles = motifTiles())) {
-      const P = Array.from({ length: k }, (_, j) => corner(t, j));
-      if (!planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), P[0])) continue;
-      add(P.map((p) => { const [x, y] = proj(...p); return [ox + x * s, oy + y * s]; }), Array.from({ length: k }, (_, j) => g.poly[k * t + j]));
-    }
-  }
-  ctx.strokeStyle = motifYellow();
+  const { scale: s, ox, oy } = view;
   ctx.lineWidth = Math.max(2, Math.min(s / 6, 4));
   ctx.lineCap = 'round';
+  if (!walk.plane) {  // (a surface: its motif yellow, one of its cells green when it has several, its face red round it, see drawMotifFace)
+    const tiles = motifTiles();
+    outlineTiles(ctx, motifYellow(), tiles);
+    if (tiles.length > 1) outlineTiles(ctx, cssColour('--cell'), [tiles[0]]);  // (as its tooltip's cells)
+    if (tiles.length) drawMotifFace(ctx, tiles[0]);
+    return;
+  }
+  const { kind, W } = walk.plane, motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0)), sides = new Map();
+  for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], key = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, q]); });
+  turnLayer(ctx);
+  ctx.strokeStyle = motifYellow();
   ctx.beginPath();
-  for (const side of sides.values()) if (side) { ctx.moveTo(...side[0]); ctx.lineTo(...side[1]); }
+  for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
   ctx.stroke();
-  if (walk.plane) turnLayer(ctx, 0);
-  else if (walk.geo.torus && tiles.length > 1) {  // (a sheet's lattice cell of several: one of them in green, as its tooltip's cells)
-    const g = walk.geo, sh = walk.shape, k = g.sides, proj = projector();
-    ctx.strokeStyle = cssColour('--cell');
-    ctx.beginPath();
-    Array.from({ length: k }, (_, j) => { const c = 3 * (k * tiles[0] + j), [x, y] = proj(...[sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R)); return [ox + x * s, oy + y * s]; }).forEach((p, j) => ctx[j ? 'lineTo' : 'moveTo'](...p));
-    ctx.closePath();
-    ctx.stroke();
-  } else drawMotifFace(ctx);
+  turnLayer(ctx, 0);
 }
-// the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): flat faces of cells, the cube's tetrakis triangles too
-const facePer = (g, kind) => g?.perFace ?? (kind === 'cubeTetrakis' ? g.n / 6 : 0);  // (its cells a face, as listed: the cube's tetrakis triangles, 4 a square, its squares a face at a time)
-const redFaces = (g, kind = surfaceOf(MODES[$('mode').value])) => facePer(g, kind) > 0;  // (of triangles, kites, squares: their edges along their cells')
-// a solid's face round the motif in red (its sector in blue, a cell of it in green), along its cells' sides; none on a solid
-// of hexagons (its faces' sides through the middles of its hexagons, not along them)
-function drawMotifFace(ctx) {
-  const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
-  if (t0 === undefined || !redFaces(g)) return;  // (a solid of flat faces of cells: its face's cells' sides not shared by two of them, along its cells)
-  const { scale: s, ox, oy } = view, proj = projector(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
-  // (its face: the mesh's faces next to it in its plane too, as listed: a dodecahedron's pentagon, 5 triangles)
-  const per = facePer(g, surfaceOf(MODES[$('mode').value])), fi = Math.floor(t0 / per), flat = (i) => g.faces?.[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
+// a surface's tiles outlined in a colour: their sides not shared by two of them, as the shape has them now, facing the viewer
+function outlineTiles(ctx, colour, tiles) {
+  const g = walk.geo, sh = walk.shape, k = g.sides, proj = projector(), { scale: s, ox, oy } = view, sides = new Map();
+  const at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
+  for (const t of tiles) for (let j = 0; j < k; j++) { const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|'); sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]); }
+  ctx.strokeStyle = colour;
+  ctx.beginPath();
+  for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
+  ctx.stroke();
+}
+// a solid's face of its tile t, as listed: its tiles from … to, and its sector's (a face of several of the mesh's in one plane:
+// a dodecahedron's pentagon, 5 triangles); a solid of squares and triangles: its squares' faces, then its triangles', f² cells
+// each; none but on flat faces of cells (a solid of hexagons: its faces' sides through its hexagons' middles)
+function faceOf(g, kind, t) {
+  if (g.triFaces) { const sq = g.size ** 2, tri = t >= g.triFirst, lo = (tri ? g.triFirst : 0) + Math.floor((tri ? t - g.triFirst : t) / sq) * sq; return { face: [lo, lo + sq] }; }
+  const per = g.perFace ?? (kind === 'cubeTetrakis' ? g.n / 6 : 0);  // (the cube's tetrakis triangles, 4 a square, its squares a face at a time)
+  if (!per) return null;
+  const fi = Math.floor(t / per), flat = (i) => g.faces?.[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
   let lo = fi, hi = fi;
   while (flat(lo - 1)) lo--;
   while (flat(hi + 1)) hi++;
-  const stroke = (colour, from, to) => {  // (the sides of the tiles from … to not shared by two of them)
-    const sides = new Map();
-    for (let t = from; t < to; t++) for (let j = 0; j < k; j++) { const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|'); sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]); }
-    ctx.strokeStyle = colour;
-    ctx.beginPath();
-    for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
-    ctx.stroke();
-  };
-  if (g.kite || g.squares) stroke(cssColour('--cell'), t0, t0 + 1);  // (a motif of several cells, a triangle's kites, a square's tetrakis triangles: one of them)
-  if (hi > lo) stroke(cssColour('--sector'), fi * per, (fi + 1) * per);  // (a face of several: its sector round the motif)
-  stroke(faceRed(), lo * per, (hi + 1) * per);
+  return { face: [lo * per, (hi + 1) * per], sector: hi > lo ? [fi * per, (fi + 1) * per] : null };
+}
+const redFaces = (g, kind) => !!(g?.perFace || g?.triFaces || kind === 'cubeTetrakis');  // (the solids whose faces are drawn red, as their tooltip says them)
+const tilesOf = ([from, to]) => Array.from({ length: to - from }, (_, j) => from + j);
+// a solid's face round the motif in red (its sector in blue), along its cells' sides
+function drawMotifFace(ctx, t0) {
+  const f = faceOf(walk.geo, surfaceOf(MODES[$('mode').value]), t0);
+  if (!f) return;
+  if (f.sector) outlineTiles(ctx, cssColour('--sector'), tilesOf(f.sector));
+  outlineTiles(ctx, faceRed(), tilesOf(f.face));
 }
 // a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a sheet's (a torus, a
 // Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
