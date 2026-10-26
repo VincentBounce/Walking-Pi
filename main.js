@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1296';
+const VERSION = '0.1.1297';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6754,8 +6754,8 @@ function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls
   let live = W * W;
   while (live > 1 && far(items[live]) - far(items[live - 1]) < 1e-6) live--;
   for (let k = live; k < W * W; k++) items[k].dead = true;
-  // its core: the items nearest the middle, all those as far, then the next ones, till two of them at least, one alive
-  for (let k = 0; k < 2 || !items.slice(0, k).some((h) => !h.dead);) { const d = far(items[k]); while (far(items[k]) - d < 1e-6) items[k++].core = true; }
+  // its core: the items nearest the middle, all those as far (then the next ones, till one alive)
+  for (let k = 0; k < 1 || !items.slice(0, k).some((h) => !h.dead);) { const d = far(items[k]); while (far(items[k]) - d < 1e-6) items[k++].core = true; }
   const cells = items.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
   cells.forEach(poly);
   for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
@@ -7754,9 +7754,9 @@ function planeShape(kind, W) {
   }
   const R = cs.flat().reduce((r, p) => (turn.get(pointKey(p)) < 2 * Math.PI - 1e-3 ? Math.min(r, size(p)) : r), Infinity) - width + 1e-3;
   const dead = mids.flatMap((m, t) => (size(m) > R ? [t] : [])), out = new Set(dead);
-  // its core: the cells nearest its middle, all those as far, then the next ones, till two of them at least
+  // its core: the cells nearest its middle, all those as far (its middle, as its size's tooltip says it, see drawMotif)
   const byFar = [...mids.keys()].sort((p, q) => far(mids[p], o) - far(mids[q], o)), core = [];
-  while (core.length < 2) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-3) core.push(byFar[core.length]); }  // (as far: within 10⁻³, the tilings' corners to 6 places)
+  while (core.length < 1) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-3) core.push(byFar[core.length]); }  // (as far: within 10⁻³, the tilings' corners to 6 places)
   const inside = new Set(cs.flatMap((P, t) => (out.has(t) ? [] : P.map((p) => pointKey(p)))));
   const walls = dead.filter((t) => cs[t].some((p) => inside.has(pointKey(p)))).map((t) => [t % row, Math.floor(t / row)]);
   return shapeMemo.set(key, { dead, walls, core: core.map((t) => cs[t]), o, corner: th + Math.PI / 6 }).get(key);  // (o: its middle; corner: a corner's way)
