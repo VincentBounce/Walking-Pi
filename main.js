@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1246';
+const VERSION = '0.1.1247';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1445,6 +1445,7 @@ function updateDisplayMenu() {
   $('fillLayer').style.opacity = $('fillTranslucent').checked && !$('fillTranslucent').disabled ? 0.35 : 1;
   renderTrailButton();
   renderViewTiles();
+  renderViewModes();
   renderHeadTiles();
   updateMorphButton();  // Shape: only for a surface that can change shape
 }
@@ -1452,7 +1453,7 @@ function updateDisplayMenu() {
 // greyed where its row is hidden (it does not apply: Autoplay but in Life, the others but in 3D); drawn again with the
 // display box and when the box opens (a hand rotation, a new mode: their boxes changed)
 const VIEW_TILES = [['perspective', 'perspectiveRow', 'perspective', 'Perspective', 'Perspective: what is nearer looks bigger'],
-  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoPlay', 'autoPlayRow', 'play', 'Autoplay'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate']];
+  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate']];
 let viewTiles = null;
 function renderViewTiles() {
   viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
@@ -1465,11 +1466,34 @@ function renderViewTiles() {
     ways[perspectiveFor(MODES[w], MODES[w].round ? 1 : 0) ? 'on' : 'off'].push(SHAPE_SHORT[sh] ?? sh);
   }
   const perspective = !ways.on.length ? 'off' : !ways.off.length ? 'on' : `On by default on ${ways.on.join(', ')}\nOff by default on ${ways.off.join(', ')}`;
-  const first = { perspective, light: 'on', autoPlay: 'off', autoRotate: 'off' }, why = { autoPlay: 'outside Life' };
+  const first = { perspective, light: 'on', autoRotate: 'off' }, why = {};
   VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id], greyed: why[id] ?? '' }));
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
 $('viewTools').addEventListener('mouseenter', renderViewTiles);
+// The view, tabs (see tileGroup): Default view (Centered pattern where it faces one), Upright, Free (neither: as turned by hand);
+// each its checkbox's (the source), in 3D (Upright greyed where its row is hidden)
+let viewModes = null;
+function renderViewModes() {
+  const set = (centered, upright) => () => {
+    $('centered').checked = centered;
+    $('centered').dispatchEvent(new Event('change'));
+    $('upright').checked = upright;
+    $('upright').dispatchEvent(new Event('change'));
+    renderViewModes();
+  };
+  viewModes ??= [tile({ pic: icon('viewDefault'), text: 'Default', click: set(true, false) }), tile({ pic: icon('upright'), text: 'Upright', title: $('uprightRow').title, click: set(false, true) }),
+    tile({ pic: icon('free'), text: 'Free', title: 'Free: the view as turned by hand (a drag frees it)', click: set(false, false) })];
+  if (!$('viewModes').children.length) $('viewModes').replaceChildren(tileGroup(viewModes));
+  viewModes[0].title = $('centeredRow').title;
+  viewModes[0].querySelector('span').textContent = centersPattern() ? 'Centered' : 'Default';
+  const c = $('centered').checked, u = $('upright').checked && !$('uprightRow').hidden;
+  setTile(viewModes[0], { on: c, byDefault: 'yes' });
+  setTile(viewModes[1], { on: u, can: !$('uprightRow').hidden });
+  setTile(viewModes[2], { on: !c && !u });
+  $('viewModes').hidden = $('centeredRow').hidden;
+}
+$('viewTools').addEventListener('mouseenter', renderViewModes);
 // The view's head, standard tiles on the right (toggle): Life's Sound, Auto-fit (both while the box is open), Grid (always), each
 // its checkbox's (the source, kept out of sight); drawn again with the display box, when the box opens and as either changes
 let headTiles = null;
@@ -1477,14 +1501,15 @@ function renderHeadTiles() {
   const flip = (id) => () => { $(id).checked = !$(id).checked; $(id).dispatchEvent(new Event('change')); renderHeadTiles(); };
   if (!headTiles) {
     renderSoundButton();
-    headTiles = [tile({ pic: icon('fit'), text: 'Auto-fit', title: $('autoFitRow').title, toggle: true, click: flip('autoFit') }), tile({ pic: icon('grid'), text: 'Grid', title: $('gridRow').title, toggle: true, click: flip('showGrid') })];
-    soundButton.classList.add('open-only');
-    headTiles[0].classList.add('open-only');
+    headTiles = [tile({ pic: icon('play'), text: 'Autoplay', title: $('autoPlayRow').title, toggle: true, click: flip('autoPlay') }),
+      tile({ pic: icon('fit'), text: 'Auto-fit', title: $('autoFitRow').title, toggle: true, click: flip('autoFit') }), tile({ pic: icon('grid'), text: 'Grid', title: $('gridRow').title, toggle: true, click: flip('showGrid') })];
+    for (const b of [soundButton, headTiles[0], headTiles[1]]) b.classList.add('open-only');
     $('headTiles').replaceChildren(soundButton, ...headTiles);
   }
   renderSoundButton();
-  setTile(headTiles[0], { on: $('autoFit').checked, byDefault: 'on' });
-  setTile(headTiles[1], { on: $('showGrid').checked, can: !$('gridRow').hidden, byDefault: 'on' });
+  setTile(headTiles[0], { on: $('autoPlay').checked, can: !$('autoPlayRow').hidden, byDefault: 'off', greyed: 'outside Life' });
+  setTile(headTiles[1], { on: $('autoFit').checked, byDefault: 'on' });
+  setTile(headTiles[2], { on: $('showGrid').checked, can: !$('gridRow').hidden, byDefault: 'on' });
 }
 $('viewTools').addEventListener('mouseenter', renderHeadTiles);
 
@@ -1979,6 +2004,9 @@ const ICONS = (() => {
     // Auto-rotate (a turn round a slanted orbit)
     perspective: pathEl('M6.14 4.16L18.14 5.88A1 1 0 0 1 19 6.87V17.13A1 1 0 0 1 18.14 18.12L6.14 19.84A1 1 0 0 1 5 18.85V5.15A1 1 0 0 1 6.14 4.16Z'),
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
+    viewDefault: pathEl('M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z') + pathEl('M4 7.5L12 12L20 7.5M12 12V21'),  // (a cube from its usual corner)
+    upright: pathEl('M12 3V17M8 7L12 3L16 7M4 20.5H20'),  // (up, over a level line)
+    free: pathEl('M12 4A8 8 0 1 1 4.6 9') + pathEl('M4 4.5L4.6 9L9 8.2'),  // (turned any way)
     fit: pathEl('M4 9V4H9M15 4H20V9M20 15V20H15M9 20H4V15') + '<rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',  // (the view framed round the walk)
     sound: pathEl('M3.5 9.5H7.5L12.5 5V19L7.5 14.5H3.5Z') + pathEl('M15.5 9.2A4 4 0 0 1 15.5 14.8M18.2 6.5A8 8 0 0 1 18.2 17.5'),  // (a speaker, its waves)
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
@@ -6600,9 +6628,12 @@ const colourW = (kind, W) => {
   return Math.max(m, Math.round(W / m) * m);
 };
 const blockWraps = new Map();
+// whether a torus of side W takes its blocks' sets round: their sets by the lattice mod 2 or 3 (Cairo's, by twos), so as a
+// side of the same remainder mod 6 does; past 24, one of 18 to 23 built for it (not 128 sides' blocks: checked, see tools/check.js)
+const blocksWrap = (kind, W) => planeBlocks(kind, W > 24 ? 18 + (W % 6) : W, true).wraps;
 function blockWrapW(kind, W) {
   const key = `${kind} ${W}`, d = kind === 'cairo' || kind === 'cairoRect' ? 2 : 1;  // (Cairo's: even)
-  if (!blockWraps.has(key)) blockWraps.set(key, [0, d, -d, 2 * d, -2 * d, 3 * d, -3 * d].map((e) => W + e).find((w) => w > 2 && planeBlocks(kind, w, true).wraps) ?? W);
+  if (!blockWraps.has(key)) blockWraps.set(key, [0, d, -d, 2 * d, -2 * d, 3 * d, -3 * d].map((e) => W + e).find((w) => w > 2 && blocksWrap(kind, w)) ?? W);
   return blockWraps.get(key);
 }
 const planeRow = (kind, W) => (tilingOf(kind) ? tilingOf(kind).polys.length * W : kind === 'kite' ? 6 * W : kind === 'tri' || kind === 'cairo' ? 2 * W : W);  // cells a row (two a rhombus, two a square of Cairo pentagons, six kites a rhombus)

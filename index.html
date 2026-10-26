@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261122d">
+  <link rel="stylesheet" href="style.css?v=20261122e">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -688,7 +688,7 @@
           </div>
         </div>
         <div class="stage-more">  <!-- shown on hover, below -->
-          <div class="head-section">  <!-- the page and the sky behind a 3D view: the whole app's, first -->
+          <div>  <!-- the page and the sky behind a 3D view: the whole app's, first -->
             <div id="themeRow">
               <div id="themeButtons" class="nav-shapes theme-buttons" title="The colours of the page: light, dark, or as the system is set"></div>
               <select id="theme" hidden>
@@ -704,9 +704,12 @@
               </select>
             </div>
           </div>
-          <div id="viewSection">  <!-- the view (Default view, its switches as tiles), then its form -->
-            <label class="check" id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole; elsewhere, the camera as it starts (turning the view unchecks it)"><input id="centered" type="checkbox" checked> <span id="centeredName">Centered pattern</span></label>
-            <label class="check" id="uprightRow" hidden title="Upright: the view from the front, level, a drag turning it round the vertical only (Default view frees it)"><input id="upright" type="checkbox"> Upright</label>
+          <div id="viewSection" class="form-section">  <!-- the view (Default, Upright or Free, its switches as tiles), then its form -->
+            <div id="viewModes" class="nav-shapes" hidden></div>  <!-- Default view | Upright | Free, tabs (see renderViewModes) -->
+            <div hidden>  <!-- their checkboxes, the source (a row hidden: it does not apply) -->
+              <label id="centeredRow" hidden title="On a solid, the camera keeps the walker in front as it walks, and faces the middle of a walk shown whole; elsewhere, the camera as it starts (turning the view frees it)"><input id="centered" type="checkbox" checked> <span id="centeredName">Centered pattern</span></label>
+              <label id="uprightRow" hidden title="Upright: the view from the front, level, a drag turning it round the vertical only"><input id="upright" type="checkbox"></label>
+            </div>
             <div id="viewTiles" class="nav-shapes view-tiles" hidden></div>  <!-- the view's switches as tiles (see renderViewTiles) -->
             <div hidden>  <!-- their checkboxes, the source (a row hidden: it does not apply) -->
               <label class="check" id="perspectiveRow" hidden><input id="perspective" type="checkbox"> Perspective</label>
@@ -746,9 +749,9 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261122d"></script>
-  <script src="punks.js?v=20261122d"></script>
-  <script src="emoji.js?v=20261122d"></script>
-  <script src="main.js?v=20261122d"></script>
+  <script src="pixelarticons.js?v=20261122e"></script>
+  <script src="punks.js?v=20261122e"></script>
+  <script src="emoji.js?v=20261122e"></script>
+  <script src="main.js?v=20261122e"></script>
 </body>
 </html>

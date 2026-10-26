@@ -302,9 +302,19 @@ async function coloursOffered(fail) {
   return checked;
 }
 
+// a torus of blocks: whether its sets go round, as a side of the same remainder mod 6 does (see blocksWrap)
+function checkBlockWraps(fail) {
+  let checked = 0;
+  for (const k0 of new Set(Object.values(MODES).filter((m) => m.margolus && m.plane).map((m) => m.plane))) {
+    const kind = STRAIGHT_RECTS.has(k0) ? `${k0}Rect` : k0;  // (a torus of a slanted grid: its rectangle's)
+    for (let W = 25; W <= 30; W++) { checked++; if (planeBlocks(kind, W, true).wraps !== blocksWrap(kind, W)) fail(`${kind}: blocks at side ${W} wrap otherwise than at ${18 + (W % 6)}`); }
+  }
+  return checked;
+}
+
 window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, colours = false, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
-  let checked = checkMeshes(fail);
+  let checked = checkMeshes(fail) + checkBlockWraps(fail);
   if (andCrawl) checked += await crawl(fail);
   if (actions) checked += await fuzz(fail, actions, seed, cold);
   if (colours) checked += await coloursOffered(fail);
