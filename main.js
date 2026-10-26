@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1299';
+const VERSION = '0.1.1300';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5407,7 +5407,8 @@ function gridSize(kind, f) {
   return [h, Math.round((cells / h) * 10) / 10, cells, unit];  // (a strip of teeth: its rows not all alike, on average, to a tenth)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
-const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
+const discOf = (W) => Math.round(((2 * W) / Math.sqrt(Math.PI)) * 10) / 10;  // (a grid that never repeats: its W² items as big as a disc of this diameter, see sideW)
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] ? `⌀ ${fmt(discOf(d[0]))}` : shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
 // how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
 // a size's tooltip on its block, − + its label and its slider, as its motif shows on it (see drawMotif); its words
@@ -5438,7 +5439,7 @@ const howCounted = (kind, f) => {
     return `the cells in a hexagon round its ${middle()} (a point it turns onto by a sixth), as far as each other all in or all out: ${fmt(N)} ${d[3]}`;
   }
   // (a disc ⌀ side: as big as a square of side × √π / 2, in whole rows of its items, see sideW: W² of them nearest its middle)
-  if (d && APERIODIC[kind]) return `a disc ⌀ ${fmt(f)} round its ${middle()} (it never repeats: no rows)\n= the ${fmt(d[0])}² ${d[3]} nearest it (${fmt(d[0])} ≈ ${fmt(f)} × √π / 2: a square as big as the disc)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  if (d && APERIODIC[kind]) return `a disc ⌀ ${fmt(discOf(d[0]))} round its ${middle()} (it never repeats: no rows)\n= the ${fmt(d[0])}² ${d[3]} nearest it (whole rows: a square as big as the disc, ${fmt(discOf(d[0]))} × √π / 2 = ${fmt(d[0])})${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
     const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
     return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
