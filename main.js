@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1329';
+const VERSION = '0.1.1330';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8207,7 +8207,7 @@ function drawBlocks(ctx) {
 // cell, at the top left (the top row's first cells, as many as a lattice cell has). On a surface (see motifTiles), on its
 // tiles as drawn flat (see drawSphere), the sides facing the viewer
 let motifShown = false;
-const MOTIF_FADE = 0.25;  // (the motif shown: the cells this pale under its outlines, on the plane and on a surface)
+const MOTIF_FADE = 0.25, PATH_FADE = 0.3;  // (the cells this pale: under the motif's outlines, on the plane and on a surface; under a walk's line, or Translucent)
 function drawMotif(ctx) {
   if (!motifShown) return;
   const { scale: s, ox, oy } = view;
@@ -11644,8 +11644,8 @@ function drawSphere() {
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
     const cells = MODES[$('mode').value].cells && firstVisits(), areas = !walk.ant && $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
-    const tiles = path && MODES[$('mode').value].cells ? grad.map((c) => faded(c, 0.3)) : grad;  // Path: the tiles faded under the line
-    palette = [null, ...tiles, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, 0.35)) : grad)];
+    const tiles = path && MODES[$('mode').value].cells ? grad.map((c) => faded(c, PATH_FADE)) : grad;  // Path: the tiles faded under the line
+    palette = [null, ...tiles, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, PATH_FADE)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
       : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
@@ -11684,7 +11684,7 @@ function drawSphere() {
   const look = $('colorMode').value;
   if (walk.ant && look === 'digit' && antRamp) {
     const ramp = Array.from({ length: walk.ant }, (_, k) => rampColour(k, walk.ant));
-    palette = [null, ...(path ? ramp.map((c) => faded(c, 0.3)) : ramp)];
+    palette = [null, ...(path ? ramp.map((c) => faded(c, PATH_FADE)) : ramp)];
     levelOf = (t) => (visits[t] ? 1 + (visits[t] % walk.ant) : 0);
   } else if (walk.ant && look === 'digit') {
     const arrows = arrowsOf(current.mode), last = new Int16Array(g.n).fill(-1);
