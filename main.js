@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1275';
+const VERSION = '0.1.1276';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5310,7 +5310,7 @@ const SPHERES = {
   pyramid: { mesh: (f) => hullMesh('pyramid', f), radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
   rhombi: { mesh: (f) => hullMesh('rhombi', f), radius: (f) => f / 2, tiles: (f) => 26 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 18 squares, 8 triangles
   bicupola: { mesh: (f) => hullMesh('bicupola', f), radius: (f) => f / 2, tiles: (f) => 18 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 10 squares, 8 triangles
-  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `{r:12 pentagonal faces} × {s:5 sectors} × {y:${fmt(f)}² triangles} × 3 kites each` },
+  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `{r:12 pentagonal faces} × {s:5 sectors} × {y:${fmt(f)}² triangles} × {k:3 kites each}` },
 };
 // the solids of squares as tetrakis triangles (see tetrakisOf): sized as their squares, 4 cells a square
 for (const k of Object.keys(TETRAKIS_SOLIDS)) {
@@ -5405,7 +5405,7 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, total, text) => {
-  const plain = text.replace(/\{[yrosb]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yrosb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
+  const plain = text.replace(/\{[yroskb]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
   for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = `<b class="tip-name">Size: ${total}</b>${html}`; }  // (its name and its total first, as a control's)
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
@@ -5433,7 +5433,7 @@ const howCounted = (kind, f) => {
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
       const red = redFaces(g) && base === kind, mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
-      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `${fmt(f)}² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
+      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `${fmt(f)}² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${cut === 3 ? mark('k', `${cut} ${unit} each`) : `${cut} ${unit} each`}` : ''} = ${fmt(n)} ${unit}`;
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
@@ -8155,6 +8155,7 @@ function drawMotifFace(ctx) {
       for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
       ctx.stroke();
     };
+    if (g.kite) stroke(cssColour('--cell'), t0, t0 + 1);  // (a triangle of kites: one of them)
     if (hi > lo) stroke(cssColour('--sector'), fi * g.perFace, (fi + 1) * g.perFace);  // (a face of several: its sector round the motif)
     stroke(faceRed(), lo * g.perFace, (hi + 1) * g.perFace);
     return;

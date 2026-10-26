@@ -13,6 +13,7 @@
   --motif: #ffd60a;  /* a grid's motif, outlined while its size is hovered (see drawMotif), its words in the size's tooltip */
   --face: #e5484d;  /* a solid's face round it */
   --sector: #58a6ff;  /* a face's sector round it (a dodecahedron's pentagon, 5 triangles) */
+  --cell: #3fb950;  /* a cell of the motif, when it has several (a triangle's 3 kites) */
   color-scheme: dark;
 }
 /* Light theme (Display box: Light, or System on a light system; see applyTheme) */
@@ -31,6 +32,7 @@
   --motif: #d49a00;
   --face: #c4161c;
   --sector: #0969da;
+  --cell: #1a7f37;
   color-scheme: light;
 }
 
@@ -542,7 +544,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 #hint:not([hidden]) { width: max-content; }
 .tip-name { display: block; }  /* (a control's name, a line of its own) */
 .tip-default { color: var(--muted); }  /* a control's default, under its tooltip: fainter */
-.tip-y { color: var(--motif); } .tip-r { color: var(--face); } .tip-s { color: var(--sector); } .tip-o { color: #c4934e; }  /* a size's words in the colours drawn (see sizeTips; the walls': LIFE_WALL) */
+.tip-y { color: var(--motif); } .tip-r { color: var(--face); } .tip-s { color: var(--sector); } .tip-k { color: var(--cell); } .tip-o { color: #c4934e; }  /* a size's words in the colours drawn (see sizeTips; the walls': LIFE_WALL) */
 
 @media (max-width: 720px) {
   main { flex-direction: column; }
