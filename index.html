@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261126u">
+  <link rel="stylesheet" href="style.css?v=20261126v">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -395,7 +395,7 @@
           <div id="huntZones" class="nav-shapes" title="Where the random starts go: the whole grid (in colours, each its part of it) or patches of radius 1, 2 or 3 side by side round the middle"></div>
           <div id="huntModeLabel" class="block-label">Hunt mode</div>
           <div id="huntGoals" class="nav-shapes"></div>  <!-- what the hunt looks for, over its button -->
-          <button id="huntBtn" type="button" class="wide" title="Random starts, then tweaks of the best: the 5 best kept, a click plays one"></button>
+          <button id="huntBtn" type="button" class="wide"></button>  <!-- its words in its tooltip: the hunt and the zone (see renderHunt) -->
           <p id="huntStatus" class="muted"></p>
           <div id="huntTop" class="mode-list" role="listbox"></div>
         </div>
@@ -612,14 +612,11 @@
       </div>
       <div id="galleryPane" hidden>
       <section>
-        <div class="finds-head">
-          <p class="caption">Kept in this browser only</p>
-          <span class="finds-tools">  <!-- Treasures as a JSON file: to keep, or to bring to another browser (Save: the ☆ in the header) -->
-            <button id="setupImport" type="button" class="icon-btn" title="Import setups from a JSON file into Treasures" aria-label="Import into Treasures"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg></button>
-            <button id="setupExport" type="button" class="icon-btn" title="Export Treasures as a JSON file" aria-label="Export Treasures"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg></button>
-          </span>
-        </div>
         <div id="yourList" class="mode-list" role="listbox"></div>
+      </section>
+      <section class="form-section">  <!-- Treasures (kept in this browser only) as a JSON file: to keep, or to bring to another browser; or erased (Save: the ☆ in the header) -->
+        <div id="setupTools" class="nav-shapes"></div>  <!-- Import, Export, Erase all (see renderSetupTools) -->
+        <button id="eraseConfirm" type="button" class="wide" hidden></button>  <!-- Erase all, then this to confirm -->
         <input id="setupFile" type="file" accept="application/json,.json" hidden>
       </section>
       </div>
@@ -750,9 +747,9 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261126u"></script>
-  <script src="punks.js?v=20261126u"></script>
-  <script src="emoji.js?v=20261126u"></script>
-  <script src="main.js?v=20261126u"></script>
+  <script src="pixelarticons.js?v=20261126v"></script>
+  <script src="punks.js?v=20261126v"></script>
+  <script src="emoji.js?v=20261126v"></script>
+  <script src="main.js?v=20261126v"></script>
 </body>
 </html>

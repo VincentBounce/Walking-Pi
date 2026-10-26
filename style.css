@@ -210,6 +210,7 @@ button.primary {
 }
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
+#huntRow .nav-shapes { margin-bottom: 4px; }  /* the hunt's button right under its tiles, as close as a row of them */
 
 /* Walk mode: one tab per category, then every choice of that category */
 /* Tabs: text only, the active one in yellow and underlined on the header's hairline; always bold,
@@ -561,8 +562,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .save-btn.saved .icon path { fill: currentColor; }
 .icon-btn .icon { width: 16px; height: 16px; }
 /* Treasures: Export and Import as two small icons at the right of its heading */
-.finds-head { display: flex; align-items: center; justify-content: space-between; }  /* where they are kept, the tools */
-.finds-tools { display: flex; gap: 4px; }
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; background: transparent; border-color: transparent; color: var(--muted); }
 .icon-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--border); background: var(--bg); }
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1336';
+const VERSION = '0.1.1337';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2066,6 +2066,8 @@ const ICONS = (() => {
     star: pathEl(pathOf(ngon(10, 1).map((_, k) => ngon(10, k % 2 ? 4.2 : 9.5)[k]))),
     check: pathEl('M5 12.5L10 17.5L19 7'),
     copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/>' + pathEl('M15.5 8.5V5.5A2 2 0 0 0 13.5 3.5H5.5A2 2 0 0 0 3.5 5.5V13.5A2 2 0 0 0 5.5 15.5H8.5'),
+    import: pathEl('M12 3v12M7 10l5 5 5-5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5'), export: pathEl('M12 15V3M7 8l5-5 5 5M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5'),
+    trash: pathEl('M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6'),
     link: pathEl('M9.5 14.5L14.5 9.5') + pathEl('M8.5 11.5L6.5 13.5A3.5 3.5 0 0 0 10.5 17.5L12.5 15.5M15.5 12.5L17.5 10.5A3.5 3.5 0 0 0 13.5 6.5L11.5 8.5'),
   };
 })();
@@ -3442,6 +3444,8 @@ function updateHint() {
 // title kept as data-tip, a title set again later taken again); else nothing
 // A control's tooltip led by its name in bold (a card's, a tile's, a box's words: in full, a tile's cut short), once (a
 // tooltip that starts with it: that start in bold)
+new MutationObserver((ms) => { for (const { target: el } of ms) if (el.title && el.matches(':hover')) { el.dataset.tip = el.title; el.removeAttribute('title'); } })  // (a title set again under the mouse: not the browser's)
+  .observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
 document.addEventListener('mouseover', (e) => {
   const el = e.target.closest?.('[title], [data-tip], [data-default]:not([data-default=""])');
   if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
@@ -10031,8 +10035,8 @@ function renderHunt() {
   const zone = shown + (sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}` : '') + (life ? ` · Hunt: ${hunts}` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
-  $('huntBtn').title = hunt.zone === 'custom' ? 'A start found by a hunt, from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it';
-  $('huntStatus').textContent = hunt.status || zone;
+  $('huntBtn').title = `${hunt.zone === 'custom' ? 'A start found by a hunt, from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it'}\n${zone}`;
+  $('huntStatus').textContent = hunt.status;  // (its zone: in its button's tooltip)
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle); a life (one colour), whatever its goal, by how far it spreads:
   // its most live cells at once, as a share of the grid, by its cells at the start (green 0.01 and up, orange
@@ -14168,8 +14172,11 @@ document.querySelector('aside.panel').addEventListener('mouseleave', leaveGaller
 document.querySelector('aside.panel').addEventListener('mouseenter', () => clearTimeout(galleryClose));
 
 $('setupSave').addEventListener('click', saveSetup);
-$('setupExport').addEventListener('click', exportSetups);
-$('setupImport').addEventListener('click', () => $('setupFile').click());
+// Treasures' tools, tiles: Import (added to them, a name already used numbered), Export, Erase all (then Confirm erase, under them)
+$('setupTools').replaceChildren(tile({ pic: icon('import'), text: 'Import', title: 'Add the setups of a JSON file to Treasures (those of a name already used numbered: none replaced)', click: () => $('setupFile').click() }),
+  tile({ pic: icon('export'), text: 'Export', title: 'Treasures as a JSON file', click: exportSetups }), tile({ pic: icon('trash'), text: 'Erase all', title: 'Erase Treasures from this browser (asked again under it)', click: () => { $('eraseConfirm').hidden = !$('eraseConfirm').hidden; } }));
+$('eraseConfirm').innerHTML = `${icon('trash')} Confirm erase`;
+$('eraseConfirm').addEventListener('click', () => { writeSetups([]); $('eraseConfirm').hidden = true; fillSetupList(); syncSaveButton(); });
 $('setupFile').addEventListener('change', () => {
   if ($('setupFile').files[0]) importSetups($('setupFile').files[0]);
   $('setupFile').value = '';
