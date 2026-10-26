@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1330';
+const VERSION = '0.1.1331';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8119,7 +8119,7 @@ function drawLifePlane() {
     }
     planeColours = new Uint32Array(planeImage.data.buffer);
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
-  const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(motifShown ? faded(c, MOTIF_FADE) : c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
+  const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(motifShown ? faded(c, FADING) : c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
   const painted = L.paint ? [0, ...blockPalette().map(pack)] : null;  // (blocks: each cell its colour)
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
@@ -8207,7 +8207,7 @@ function drawBlocks(ctx) {
 // cell, at the top left (the top row's first cells, as many as a lattice cell has). On a surface (see motifTiles), on its
 // tiles as drawn flat (see drawSphere), the sides facing the viewer
 let motifShown = false;
-const MOTIF_FADE = 0.25, PATH_FADE = 0.3;  // (the cells this pale: under the motif's outlines, on the plane and on a surface; under a walk's line, or Translucent)
+const FADING = 0.3;  // (the cells this pale: under the motif's outlines, on the plane and on a surface; under a walk's line, or Translucent)
 function drawMotif(ctx) {
   if (!motifShown) return;
   const { scale: s, ox, oy } = view;
@@ -11644,8 +11644,8 @@ function drawSphere() {
   if (line) {  // Rainbow along the walk: a tile walked through (Fill cells), enclosed (Fill areas), or dark
     const cells = MODES[$('mode').value].cells && firstVisits(), areas = !walk.ant && $('fillAreas').checked && areaSteps();
     const band = (step) => Math.min(LEVELS - 1, Math.floor((step * LEVELS) / (walk.n + 1)));
-    const tiles = path && MODES[$('mode').value].cells ? grad.map((c) => faded(c, PATH_FADE)) : grad;  // Path: the tiles faded under the line
-    palette = [null, ...tiles, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, PATH_FADE)) : grad)];
+    const tiles = path && MODES[$('mode').value].cells ? grad.map((c) => faded(c, FADING)) : grad;  // Path: the tiles faded under the line
+    palette = [null, ...tiles, ...(shows('translucent') && $('fillTranslucent').checked ? grad.map((c) => faded(c, FADING)) : grad)];
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
       : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
@@ -11684,7 +11684,7 @@ function drawSphere() {
   const look = $('colorMode').value;
   if (walk.ant && look === 'digit' && antRamp) {
     const ramp = Array.from({ length: walk.ant }, (_, k) => rampColour(k, walk.ant));
-    palette = [null, ...(path ? ramp.map((c) => faded(c, PATH_FADE)) : ramp)];
+    palette = [null, ...(path ? ramp.map((c) => faded(c, FADING)) : ramp)];
     levelOf = (t) => (visits[t] ? 1 + (visits[t] % walk.ant) : 0);
   } else if (walk.ant && look === 'digit') {
     const arrows = arrowsOf(current.mode), last = new Int16Array(g.n).fill(-1);
@@ -11699,7 +11699,7 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
-  if (motifShown) palette = palette.map((c) => c && (c === LIFE_WALL ? c : faded(c, MOTIF_FADE)));  // (the motif shown: the cells pale under its outlines, the walls not: ochre, as its tooltip says them)
+  if (motifShown) palette = palette.map((c) => c && (c === LIFE_WALL ? c : faded(c, FADING)));  // (the motif shown: the cells pale under its outlines, the walls not: ochre, as its tooltip says them)
   if (!startsShown && glSurface(palette, levelOf, path)) { drawMotif(ctx); return; }  // WebGL, when the browser has it (see 11.4b); the motif's outlines over it
   glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
