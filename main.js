@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1262';
+const VERSION = '0.1.1263';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3431,7 +3431,8 @@ document.addEventListener('mouseover', (e) => {
   const line = (text) => Object.assign(document.createElement('div'), { className: 'tip-default', textContent: text });  // (on a line of its own, fainter)
   const told = [...(d ? [line(d === 'yes' ? 'By default' : d === 'on' ? 'On by default' : d === 'off' ? 'Off by default' : d)] : []),  // (a default that depends, told in full)
     ...(el?.dataset.greyed ? [line(`Greyed ${el.dataset.greyed}`)] : [])];  // (when it cannot be clicked)
-  $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), ...told] : [bold(name), `: ${tip}`, ...told]));  // (no words of its own: its name and its default)
+  if (el?.dataset.tipHtml) $('tip').innerHTML = el.dataset.tipHtml;  // (a size's: its words in colour, see sizeTips)
+  else $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), ...told] : [bold(name), `: ${tip}`, ...told]));  // (no words of its own: its name and its default)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
 // the hint, as the tooltips (each action in bold, then its gesture): the zoom first, against the view framed (×1: all of
@@ -5400,8 +5401,13 @@ function gridSize(kind, f) {
 const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
 // how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
-// a size's tooltip on all its controls, − + its label and its slider, as its motif shows on them (see drawMotif)
-const sizeTips = (row, text) => { for (const id of ['Down', 'Label', 'Up', 'Gauge']) $(`${row}${id}`).title = text; };
+// a size's tooltip on all its controls, − + its label and its slider, as its motif shows on them (see drawMotif); its words
+// marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
+const MOTIF_YELLOW = '#ffd60a', FACE_RED = '#e5484d';
+const sizeTips = (row, text) => {
+  const plain = text.replace(/\{[yro]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yro]):([^}]*)\}/g, (_, c, w) => `<b style="color: ${{ y: MOTIF_YELLOW, r: FACE_RED, o: LIFE_WALL }[c]}">${w}</b>`).replace(/\n/g, '<br>');
+  for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = html; }
+};
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 const sizeHow = (kind, f) => howCounted(kind, f).replace(/^./, (c) => c.toUpperCase());  // (a tooltip's first line: capitalised)
 const howCounted = (kind, f) => {
@@ -5430,8 +5436,8 @@ const howCounted = (kind, f) => {
     const g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
     for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
     const F = (2 * (n - 2)) / (f * f), names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' }, at = Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + ');
-    const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each)
-    return `${faces} × ${fmt(f)}² / 2 + 2 = ${at} at its corners + ${fmt(n - (g0.walls?.length ?? 0))} hexagons`;
+    const faces = kind === 'dodecaHex' ? `{r:12 pentagonal faces} × 5` : `{r:${F} triangular faces}`;  // (the dodecahedron's pentagons: 5 triangles each; red as drawn, see drawMotif)
+    return `${faces} × ${fmt(f)}² / 2 + 2 = {o:${at}} at its corners + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
   }
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
@@ -8112,13 +8118,32 @@ function drawMotif(ctx) {
       add(P.map((p) => { const [x, y] = proj(...p); return [ox + x * s, oy + y * s]; }), Array.from({ length: k }, (_, j) => g.poly[k * t + j]));
     }
   }
-  ctx.strokeStyle = '#ffd60a';
+  ctx.strokeStyle = MOTIF_YELLOW;
   ctx.lineWidth = Math.max(2, Math.min(s / 6, 4));
   ctx.lineCap = 'round';
   ctx.beginPath();
   for (const side of sides.values()) if (side) { ctx.moveTo(...side[0]); ctx.lineTo(...side[1]); }
   ctx.stroke();
   if (walk.plane) turnLayer(ctx, 0);
+  else drawMotifFace(ctx);
+}
+// a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner along
+// the surface (each side cut in 24, each point as far from the middle as its ends), its sides facing the viewer
+function drawMotifFace(ctx) {
+  const g = walk.geo, sh = walk.shape, [t0] = motifTiles();
+  if (SPHERES[surfaceOf(MODES[$('mode').value])]?.unit !== 'hexagons' || !g.walls?.length || t0 === undefined) return;
+  const at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R), d2 = (p, q) => p.reduce((sum, v, i) => sum + (v - q[i]) ** 2, 0), m = at(t0);
+  const [a, b, c] = [...g.walls].sort((p, q) => d2(at(p), m) - d2(at(q), m)).slice(0, 3).map(at), proj = projector(), { scale: s, ox, oy } = view;
+  ctx.strokeStyle = FACE_RED;
+  ctx.beginPath();
+  for (const [p, q] of [[a, b], [b, c], [c, a]]) for (let i = 0, down = false; i <= 24; i++) {
+    const r = Math.hypot(...p) + ((Math.hypot(...q) - Math.hypot(...p)) * i) / 24, x = p.map((v, k) => v + ((q[k] - v) * i) / 24), l = Math.hypot(...x), w = x.map((v) => (v * r) / l);
+    if (!planeVisible(w.map((v) => v / r), w)) { down = false; continue; }  // (behind: lifted)
+    const [u, v] = proj(...w);
+    ctx[down ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s);
+    down = true;
+  }
+  ctx.stroke();
 }
 // a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a sheet's (a torus, a
 // Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
