@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1279';
+const VERSION = '0.1.1280';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5356,7 +5356,7 @@ function syncSizeStepper() {
 function sizeGauge(el, n, i, preview, pick) {
   el.hidden = n < 2;
   if (el.hidden) return;
-  const range = Object.assign(document.createElement('input'), { type: 'range', min: 0, max: n - 1, step: 1, value: i, title: 'The usual sizes: drag, or click a notch' });
+  const range = Object.assign(document.createElement('input'), { type: 'range', min: 0, max: n - 1, step: 1, value: i });  // (its tooltip the size's, on the gauge: see sizeTips)
   range.addEventListener('input', () => preview(Number(range.value)));
   range.addEventListener('change', () => pick(Number(range.value)));
   const notches = Object.assign(document.createElement('div'), { className: 'notches' });
