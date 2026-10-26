@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1269';
+const VERSION = '0.1.1270';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5340,7 +5340,7 @@ function syncSizeStepper() {
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
-  sizeTips('size', [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `Each ${family} at the size closest to ${fmt(sought[ladderOf(kind)])} cells (the size last picked: − + or the slider)` : ''].filter(Boolean).join('\n'));
+  sizeTips('size', [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `\n{b:Last picked size: ${fmt(sought[ladderOf(kind)])} cells}\nEach ${family} at the size closest to it (picked with − + or the slider)` : ''].filter(Boolean).join('\n'));
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5405,7 +5405,7 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
 const MOTIF_YELLOW = '#ffd60a', FACE_RED = '#e5484d';
 const sizeTips = (row, text) => {
-  const plain = text.replace(/\{[yro]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yro]):([^}]*)\}/g, (_, c, w) => `<b style="color: ${{ y: MOTIF_YELLOW, r: FACE_RED, o: LIFE_WALL }[c]}">${w}</b>`).replace(/\n/g, '<br>');
+  const plain = text.replace(/\{[yrob]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yrob]):([^}]*)\}/g, (_, c, w) => (c === 'b' ? `<b>${w}</b>` : `<b style="color: ${{ y: MOTIF_YELLOW, r: FACE_RED, o: LIFE_WALL }[c]}">${w}</b>`)).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
   for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = `<b class="tip-name">Size</b>${html}`; }  // (its name first, as a control's)
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
@@ -7624,7 +7624,7 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  sizeTips('plane', `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${APERIODIC[kind] || shaped(kind) ? `a disc ${fmt(plane.side)} across, ${fmt(Math.round((Math.PI / 4) * plane.side ** 2))}` : fmt(plane.side ** 2)} cells (the size last picked: − + or the slider)`);  // (⌀: a disc's, see shapeW)
+  sizeTips('plane', `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n\n` : ''}{b:Last picked size: ${fmt(Math.round((APERIODIC[kind] || shaped(kind) ? Math.PI / 4 : 1) * plane.side ** 2))} cells}\nEach grid at the size closest to it${APERIODIC[kind] || shaped(kind) ? `, a disc ${fmt(plane.side)} across` : ''} (picked with − + or the slider)`);  // (⌀: a disc's, see shapeW)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
