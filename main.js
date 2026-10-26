@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1313';
+const VERSION = '0.1.1314';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4715,8 +4715,10 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
 // whose middle is within nv rows of b (a mirror along a: the strip's edges alike) and L along (see MOBIUS_ALONG), as
 // many corners each (the last one repeated); the usual length, the counts' nearest that the twist allows
 function tilingStrip(kind, kind0, size) {
-  const { t, m, L, W, sides, cells, i0, i1, j0, j1 } = stripFrame(kind, kind0, size), tiles = [], mids = [], bricks = [];
-  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) for (let k = 0; k < m; k++) {
+  const { t, m, L, W, sides, cells, i0, i1, j0, j1, ta, tb } = stripFrame(kind, kind0, size), tiles = [], mids = [], bricks = [], at = ([i, j]) => [0, 1].map((d) => i * ta[d] + j * tb[d]);
+  const laid = Array.from({ length: (j1 - j0 + 1) * (i1 - i0 + 1) }, (_, c) => [i0 + (c % (i1 - i0 + 1)), j0 + Math.floor(c / (i1 - i0 + 1))]);
+  laid.sort((p, q) => Math.round((at(p)[0] - at(q)[0]) * 1e6) || at(p)[1] - at(q)[1]);  // (its lattice cells along the strip from its corner, as a torus's: its first brick there)
+  for (const [i, j] of laid) for (let k = 0; k < m; k++) {
     const P = cells(i, j, k), [x, y] = [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length);
     if (x < -1e-9 || x >= L - 1e-9 || y < -1e-9 || y > W + 1e-9) continue;
     tiles.push([...P, ...Array(sides - P.length).fill(P.at(-1))]);
@@ -8265,10 +8267,10 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
-  if (g.torus) {  // a sheet: its bricks as laid (g.bricks, else brickOf(g) tiles at a time as listed, a strip's back as its front); the one whole and seen nearest its corner (0, 0), where it is built from, else the one in front
+  if (g.torus) {  // a sheet: its bricks as laid from its corner (g.bricks, else brickOf(g) tiles at a time as listed, a strip's back as its front); its first whole and seen, else the one in front
     const m = brickOf(g), id = (t) => g.bricks?.[t] ?? Math.floor((g.mobius ? t % g.front : t) / m), bricks = Map.groupBy([...Array(g.n).keys()], id);
-    const seen = (ts) => ts.filter((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))), corner = (ts) => Math.min(...ts.map((t) => Math.hypot(...sheetMiddle(g, g.mobius ? t % g.front : t))));
-    return [...bricks.values()].sort((p, q) => corner(p) - corner(q)).map(seen).find((ts) => ts.length === m) ?? bricks.get(id(near));
+    const seen = (ts) => ts.filter((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t)));
+    return [...bricks.values()].map(seen).find((ts) => ts.length === m) ?? bricks.get(id(near));
   }
   const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
   return Array.from({ length: m }, (_, j) => Math.floor(near / m) * m + j);  // (a cell, a triangle: what a face counts, f² of them; not the plane's rhombus, a face not whole ones)
