@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1261';
+const VERSION = '0.1.1262';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5425,6 +5425,13 @@ const howCounted = (kind, f) => {
     for (const c in by) if (!by[c]) delete by[c];
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
       return `${Object.entries(by).map(([c, k]) => `${k} ${adj[c]} face${k > 1 ? 's' : ''} × ${round[c] ? `${round[c]} × ` : ''}${fmt(f)}² ${cells[c]}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
+  }
+  if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
+    const g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
+    for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
+    const F = (2 * (n - 2)) / (f * f), names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' }, at = Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + ');
+    const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each)
+    return `${faces} × ${fmt(f)}² / 2 + 2 = ${at} at its corners + ${fmt(n - (g0.walls?.length ?? 0))} hexagons`;
   }
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
