@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1320';
+const VERSION = '0.1.1321';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4552,7 +4552,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = fals
  * As a strip of paper, each tile has two faces, and a walker keeps to the face it is on: at the
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
-const MOBIUS_WIDTH = 0.85;  // (12 colours' stretches square within a ring's margin: see ringLength, stripSteps)
+const MOBIUS_WIDTH = 1.05;  // (about 4π / 12: 12 colours' stretches square as it is, 10's within a ring's margin, see ringLength, stripSteps)
 const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', 'mobiusKiteTurned', ...Object.keys(MOBIUS_STRIPS)];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
