@@ -128,7 +128,7 @@ function checker(fail) {
   c.look = async (what, ms = 450) => {
     await wait(ms);
     c.checked++;
-    const w = $('mode').value, hashW = (location.hash.match(/w=([^&]*)/) ?? [])[1], said = Number(($('sizeLabel').innerText.match(/([\d,]+)\s+[a-z]+\s*$/i) ?? [])[1]?.replace(/,/g, ''));
+    const w = $('mode').value, hashW = (location.hash.match(/w=([^&]*)/) ?? [])[1], said = [...($('sizeLabel').innerText.split('\n').at(-1).matchAll(/([\d,]+)\s+[a-z]+/gi))].reduce((sum, m) => sum + Number(m[1].replace(/,/g, '')), 0);  // (its cells, its terms summed: 1,910 hexagons + 12 pentagons)
     const n = MODES[w].sphere && !MODES[w].plane ? walk.geo?.n : null;
     const bad = [errors.length && errors.splice(0).join(' / '), hashW !== w && `the link says ${hashW}`, n && said && said !== n && `${n} cells, said ${said}`].filter(Boolean);
     if (bad.length) fail(`${what} → ${w}: ${bad.join('; ')}`);

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1287';
+const VERSION = '0.1.1288';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5450,18 +5450,28 @@ const howCounted = (kind, f) => {
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
-    const g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
-    for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
-    const F = (2 * (n - 2)) / (f * f), names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' }, at = Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + ');
+    const { at, walls } = hexCorners(kind), F = (2 * (n - 2)) / (f * f);
     const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5 sectors` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each; not red: not drawn, see drawMotifFace)
     // (a sum on lines: its faces, a triangle f steps a side as big as f² / 2 hexagons; + 2: its corners, 5 faces round a
     // pentagon, not 6, each counted 5/6 by them, 12 × 1/6 (Euler's 2 on any of them); its cells, its corners' and its hexagons)
-    return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
+    return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - walls)} hexagons}`;
   }
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × (Edge=${fmt(f)})²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
 };
-const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
+// a solid of hexagons' corners: its cells there, by their sides (12 pentagons; 8 triangles + 6 octagons), as its least mesh has them
+const hexCorners = (kind) => {
+  const S = SPHERES[kind], g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
+  for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
+  const names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' };
+  return { at: Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + '), walls: g0.walls?.length ?? 0 };
+};
+const sizeCells = (kind, f) => {  // (a solid of hexagons: its hexagons, then its corners' cells, not all said hexagons)
+  const d = gridSize(kind, f), S = SPHERES[kind];
+  if (d) return `${fmt(d[2])} ${d[3]}`;
+  if (S.unit === 'hexagons') { const { at, walls } = hexCorners(kind); return `${fmt(S.tiles(f) - walls)} hexagons + ${at}`; }
+  return `${fmt(S.tiles(f))} ${S.unit}`;
+};
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
 // A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
 // a Möbius strip) or tiles across (a solid); a torus with the usual tiles per row is the usual size
