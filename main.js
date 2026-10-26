@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1250';
+const VERSION = '0.1.1251';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5220,9 +5220,12 @@ const mobiusRadius = (kind, s) => mobiusCount(kind, s).W / MOBIUS_WIDTH;  // (it
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           tiles: (n) => 6 * n * n, unit: 'squares' },
-  pits: { mesh: cubePits, radius: (n) => n / 2, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares' },
-  frame: { mesh: (m) => mengerMesh(1, m), radius: (m) => (3 * m) / 2, tiles: (m) => 72 * m * m, unit: 'squares' },  // a cube's frame: its branches m squares wide
-  menger: { mesh: (L) => mengerMesh(L), radius: (L) => 3 ** L / 2, least: 2, most: 3, tiles: (L) => 2 * 20 ** L + 4 * 8 ** L, unit: 'squares' },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
+  pits: { mesh: cubePits, radius: (n) => n / 2, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares',
+          how: (n) => `each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a pit (its floor, 4 walls half a block deep): 11 blocks a face, 6 × 11 × ${fmt(n / 3)}²` },
+  frame: { mesh: (m) => mengerMesh(1, m), radius: (m) => (3 * m) / 2, tiles: (m) => 72 * m * m, unit: 'squares', edge: (m) => 3 * m,  // a cube's frame: its branches m squares wide, its edge 3m
+           how: (m) => `a cube's frame, its edge ${fmt(3 * m)}, its branches ${fmt(m)} wide: 72 × ${fmt(m)}²` },
+  menger: { mesh: (L) => mengerMesh(L), radius: (L) => 3 ** L / 2, least: 2, most: 3, tiles: (L) => 2 * 20 ** L + 4 * 8 ** L, unit: 'squares', edge: (L) => 3 ** L,
+            how: (L) => `Menger's sponge, level ${L} (its edge 3^${L} = ${fmt(3 ** L)}): 2 × 20^${L} + 4 × 8^${L}` },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
@@ -5311,7 +5314,8 @@ const SPHERES = {
 // the solids of squares as tetrakis triangles (see tetrakisOf): sized as their squares, 4 cells a square
 for (const k of Object.keys(TETRAKIS_SOLIDS)) {
   const S = SPHERES[k];
-  SPHERES[`${k}Tetrakis`] = { ...S, mesh: (s) => tetrakisOf(`tetrakis-${k}${s}`, S.mesh(s)), tiles: (s) => 4 * S.tiles(s), unit: 'triangles' };
+  SPHERES[`${k}Tetrakis`] = { ...S, mesh: (s) => tetrakisOf(`tetrakis-${k}${s}`, S.mesh(s)), tiles: (s) => 4 * S.tiles(s), unit: 'triangles',
+    how: (s) => `${S.how?.(s) ?? `6 × ${fmt(s)}²`} squares, 4 triangles each: 4 × ${fmt(S.tiles(s))}` };
 }
 // the tilings' tori (see tilingTorusMesh): their rows B round the tube, as many A round the ring as keep them even
 for (const name of foldedIn('torus')) {
@@ -5335,7 +5339,7 @@ function syncSizeStepper() {
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
-  $('sizeLabel').title = sought[ladderOf(kind)] ? `Each ${family} at the size closest to ${fmt(sought[ladderOf(kind)])} cells (the size last picked: − + or the slider)` : '';
+  $('sizeLabel').title = [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `Each ${family} at the size closest to ${fmt(sought[ladderOf(kind)])} cells (the size last picked: − + or the slider)` : ''].filter(Boolean).join('\n');
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5393,7 +5397,16 @@ function gridSize(kind, f) {
   return [h, Math.round((cells / h) * 10) / 10, cells, unit];  // (a strip of teeth: its rows not all alike, on average, to a tenth)
 }
 // on top, the grid as height × width (a solid: its edge); under it, its cells
-const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : kind === 'menger' ? `Level ${f}` : `Edge ${fmt(f)}`; };  // (a circle: its diameter; Menger's sponge: its steps)
+const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
+// how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
+// count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
+const sizeHow = (kind, f) => {
+  const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
+  if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
+  if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} a row${Number.isInteger(d[1]) ? '' : ' (on average)'} = ${fmt(d[2])} ${d[3]}`;
+  const k = S.tiles(0), c = (n - k) / (f * f);
+  return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
+};
 const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
 // A size of its own (a link, a loop found): an extra entry among the usual ones, by rows (a torus,
@@ -7569,7 +7582,7 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  $('planeLabel').title = `Each grid at the size closest to ${fmt(plane.side)} × ${fmt(plane.side)} = ${fmt(plane.side ** 2)} cells, its colours' blocks whole (the size last picked: − + or the slider)`;
+  $('planeLabel').title = `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${fmt(plane.side)} × ${fmt(plane.side)} = ${fmt(plane.side ** 2)} cells, its colours' blocks whole (the size last picked: − + or the slider)`;
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
@@ -9435,7 +9448,7 @@ const ICON_SETS = { icon: { bits: ICON_BITS, names: ICON_NAMES, word: 'icon', la
 let gridCount = 0;
 const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.torus}` : `#${(walk.geo.gridId ??= ++gridCount)}`);
 const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
-const ICON_MAX = [96, 72, 48, 24];  // (Icon max, Punk max on squares: the widest of these that fits, a pixel whole cells)
+const ICON_MAX = [192, 168, 144, 120, 96, 72, 48, 24];  // (Icon max, Punk max on squares: the widest of these that fits, a pixel whole cells; up to 192, as elsewhere)
 // Icon max, Punk max: the widest that fits (see iconLay); on squares, of ICON_MAX; elsewhere (no cells on its pixels anyway)
 // to the cell, from 16 (a picture of 24 pixels a little merged) up to 192, by halves (wider fits no less); 24 where none (greyed)
 let iconMaxMemo = null;
