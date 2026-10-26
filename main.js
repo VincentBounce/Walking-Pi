@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1309';
+const VERSION = '0.1.1310';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4886,7 +4886,7 @@ function torusCairoMesh(nv, nu = torusCairoColumns(nv)) {
   if (meshCache[key]) return meshCache[key];
   const { verts, add } = vertexStore(), tiles = [], uv = [], tube = tubeFor('torusCairo', nv, nu);
   for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
-    let c = cairoCorners(i, j, o);
+    let c = cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + 0.5]);  // (a square's two pentagons reach half a square back: on the sheet, its first pair at its corner)
     if (c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0) c = c.reverse();
     tiles.push(c.map(([x, y]) => add(...torusPoint(x, y, nu, nv, 1, tube))));
     uv.push(...c.flat());
@@ -8263,12 +8263,9 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
-  if (ringTorus(g)) {  // a torus: its sheet's cell [i, i + 1) × [j, j + 1), as laid nu × nv times: the first drawn whole (flat, the seam cuts some) and seen, else the one in front
-    const cell = (t) => sheetMiddle(g, t).map(Math.floor), bricks = new Map();
-    for (let t = 0; t < g.n; t++) { const [i, j] = cell(t), k = j * g.nu + i; bricks.set(k, [...(bricks.get(k) ?? []), t]); }
-    const spread = (ts) => { const m = [0, 1, 2].map((d) => ts.reduce((sum, t) => sum + at(t)[d], 0) / ts.length); return Math.max(...ts.map((t) => Math.hypot(...at(t).map((x, d) => x - m[d])))); };
-    const least = Math.min(...[...bricks.values()].map(spread)), [i, j] = cell(near);
-    return [...bricks].sort(([a], [b]) => a - b).map(([, ts]) => ts).find((ts) => spread(ts) < 1.01 * least && ts.every((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t)))) ?? bricks.get(j * g.nu + i);
+  if (ringTorus(g)) {  // a torus: its sheet's cell, laid nu × nv times as its tiles are listed, brickOf(g) each: its first, at the corner, else the one in front
+    const m = brickOf(g), brick = (k) => Array.from({ length: m }, (_, j) => k * m + j), first = brick(0);
+    return first.every((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) ? first : brick(Math.floor(near / m));
   }
   if (g.torus) return sheetPatternAt(near, Array.from({ length: brickOf(g) }, (_, j) => [j, 0, j]), true).map(([t]) => t);  // (a Möbius strip, a Klein bottle: the plane's motif, laid)
   const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
