@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1345';
+const VERSION = '0.1.1346';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10260,20 +10260,23 @@ function hexFaceAt(c0, cells, partial) {
   const right = Math.abs(n[2]) > 0.9 ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n));  // (the face's level, as iconTurn's: up × n)
   const along = nbrs.filter((q) => q[1] < 1.05 * s).map(([t]) => { const e = P3(t).map((v, d) => v - C[d]); return unit(e.map((v, d) => v - dot3(e, n) * n[d])); });
   const u = along.reduce((best, e) => (dot3(e, right) > dot3(best, right) ? e : best)), w = cross(n, u);  // (its rows the most level of its 6 ways)
-  if (g.hexIndex?.s !== s) {  // (the cells by where they are, in boxes a cell wide)
-    const boxes = new Map(), key = (p) => p.map((v) => Math.round(v / s)).join();
-    for (let t = 0; t < g.n; t++) { const k = key(P3(t)); if (!boxes.has(k)) boxes.set(k, []); boxes.get(k).push(t); }
-    g.hexIndex = { s, find: (p) => {
-      const [x, y, z] = p.map((v) => Math.round(v / s));
-      let best = -1, far = s / 3;
-      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) for (const t of boxes.get([x + a, y + b, z + c].join()) ?? []) { const d = Math.hypot(...P3(t).map((v, k) => v - p[k])); if (d < far) { far = d; best = t; } }
+  if (!g.hexIndex) {  // (the cells by where they are, in boxes a cell wide: once a mesh, its cells a little apart from one to another)
+    const b = s, boxes = new Map(), key = (x, y, z) => (x * 4096 + y) * 4096 + z;  // (a box by its numbers: no string to make at each look)
+    for (let t = 0; t < g.n; t++) { const k = key(...P3(t).map((v) => Math.round(v / b))); if (!boxes.has(k)) boxes.set(k, []); boxes.get(k).push(t); }
+    g.hexIndex = { find: ([px, py, pz], near) => {
+      const x = Math.round(px / b), y = Math.round(py / b), z = Math.round(pz / b), c = g.cen;
+      let best = -1, far = near * near;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) for (const t of boxes.get(key(x + i, y + j, z + k)) ?? []) {
+        const d = (c[3 * t] - px) ** 2 + (c[3 * t + 1] - py) ** 2 + (c[3 * t + 2] - pz) ** 2;
+        if (d < far) { far = d; best = t; }
+      }
       return best;
     } };
   }
   const ms = cells.map(([x, y]) => cellMiddle('hex', x, y)), mid = cells.mid ?? [0, 1].map((d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2);
   const a = ms.reduce((best, m, k) => (Math.hypot(m[0] - mid[0], m[1] - mid[1]) < Math.hypot(ms[best][0] - mid[0], ms[best][1] - mid[1]) ? k : best), 0);
   for (let k = 0; k < cells.length; k++) {
-    const x = ms[k][0] - ms[a][0], y = ms[k][1] - ms[a][1], t = g.hexIndex.find(C.map((c, d) => c + s * (x * u[d] + y * w[d])));
+    const x = ms[k][0] - ms[a][0], y = ms[k][1] - ms[a][1], t = g.hexIndex.find(C.map((c, d) => c + s * (x * u[d] + y * w[d])), s / 3);
     if (t >= 0 && dot3(N3(t), n) > 0.99) out.push([t, cells[k][2]]);
     else if (!partial) return [];
   }
