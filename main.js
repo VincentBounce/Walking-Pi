@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1247';
+const VERSION = '0.1.1248';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1452,8 +1452,7 @@ function updateDisplayMenu() {
 // The view's switches, standard tiles (toggle): each its checkbox's (the source, kept out of sight), on as it is checked,
 // greyed where its row is hidden (it does not apply: Autoplay but in Life, the others but in 3D); drawn again with the
 // display box and when the box opens (a hand rotation, a new mode: their boxes changed)
-const VIEW_TILES = [['perspective', 'perspectiveRow', 'perspective', 'Perspective', 'Perspective: what is nearer looks bigger'],
-  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate']];
+const VIEW_TILES = [['perspective', 'perspectiveRow', 'perspective', 'Perspective', 'Perspective: what is nearer looks bigger'], ['light', 'lightRow', 'sideLight', 'Side light']];
 let viewTiles = null;
 function renderViewTiles() {
   viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
@@ -1466,14 +1465,14 @@ function renderViewTiles() {
     ways[perspectiveFor(MODES[w], MODES[w].round ? 1 : 0) ? 'on' : 'off'].push(SHAPE_SHORT[sh] ?? sh);
   }
   const perspective = !ways.on.length ? 'off' : !ways.off.length ? 'on' : `On by default on ${ways.on.join(', ')}\nOff by default on ${ways.off.join(', ')}`;
-  const first = { perspective, light: 'on', autoRotate: 'off' }, why = {};
+  const first = { perspective, light: 'on' }, why = {};
   VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id], greyed: why[id] ?? '' }));
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
 $('viewTools').addEventListener('mouseenter', renderViewTiles);
-// The view, tabs (see tileGroup): Default view (Centered pattern where it faces one), Upright, Free (neither: as turned by hand);
-// each its checkbox's (the source), in 3D (Upright greyed where its row is hidden)
-let viewModes = null;
+// The view, tabs (see tileGroup): Default view (Centered pattern where it faces one), Free (neither: as turned by hand), Upright;
+// each its checkbox's (the source), in 3D (Upright greyed where its row is hidden); Auto-rotate on their right, a switch
+let viewModes = null, rotateTile = null;
 function renderViewModes() {
   const set = (centered, upright) => () => {
     $('centered').checked = centered;
@@ -1482,15 +1481,17 @@ function renderViewModes() {
     $('upright').dispatchEvent(new Event('change'));
     renderViewModes();
   };
-  viewModes ??= [tile({ pic: icon('viewDefault'), text: 'Default', click: set(true, false) }), tile({ pic: icon('upright'), text: 'Upright', title: $('uprightRow').title, click: set(false, true) }),
-    tile({ pic: icon('free'), text: 'Free', title: 'Free: the view as turned by hand (a drag frees it)', click: set(false, false) })];
-  if (!$('viewModes').children.length) $('viewModes').replaceChildren(tileGroup(viewModes));
+  viewModes ??= [tile({ pic: icon('viewDefault'), text: 'Default', click: set(true, false) }), tile({ pic: icon('free'), text: 'Free', title: 'Free: the view as turned by hand (a drag frees it)', click: set(false, false) }),
+    tile({ pic: icon('upright'), text: 'Upright', title: $('uprightRow').title, click: set(false, true) })];
+  rotateTile ??= tile({ pic: icon('autoRotate'), text: 'Auto-rotate', title: $('autoRotateRow').title, toggle: true, click: () => { $('autoRotate').checked = !$('autoRotate').checked; $('autoRotate').dispatchEvent(new Event('change')); renderViewModes(); } });
+  if (!$('viewModes').children.length) $('viewModes').replaceChildren(tileGroup(viewModes), rotateTile);
   viewModes[0].title = $('centeredRow').title;
   viewModes[0].querySelector('span').textContent = centersPattern() ? 'Centered' : 'Default';
   const c = $('centered').checked, u = $('upright').checked && !$('uprightRow').hidden;
   setTile(viewModes[0], { on: c, byDefault: 'yes' });
-  setTile(viewModes[1], { on: u, can: !$('uprightRow').hidden });
-  setTile(viewModes[2], { on: !c && !u });
+  setTile(viewModes[1], { on: !c && !u });
+  setTile(viewModes[2], { on: u, can: !$('uprightRow').hidden });
+  setTile(rotateTile, { on: $('autoRotate').checked, can: !$('autoRotateRow').hidden && !$('autoRotate').disabled, byDefault: 'off' });
   $('viewModes').hidden = $('centeredRow').hidden;
 }
 $('viewTools').addEventListener('mouseenter', renderViewModes);
@@ -2006,7 +2007,7 @@ const ICONS = (() => {
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
     viewDefault: pathEl('M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z') + pathEl('M4 7.5L12 12L20 7.5M12 12V21'),  // (a cube from its usual corner)
     upright: pathEl('M12 3V17M8 7L12 3L16 7M4 20.5H20'),  // (up, over a level line)
-    free: pathEl('M12 4A8 8 0 1 1 4.6 9') + pathEl('M4 4.5L4.6 9L9 8.2'),  // (turned any way)
+    free: pathEl('M11.5 20.2A3 9.5 0 1 1 12.8 8.8') + pathEl('M13.9 6.8L12.8 8.8L11.4 7.1') + pathEl('M4.7 15.1A9.5 3.2 0 1 1 16.8 15.8') + pathEl('M18.3 14.2L16.8 15.8L18.8 16.7'),  // (turned any way: round up and round across)
     fit: pathEl('M4 9V4H9M15 4H20V9M20 15V20H15M9 20H4V15') + '<rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',  // (the view framed round the walk)
     sound: pathEl('M3.5 9.5H7.5L12.5 5V19L7.5 14.5H3.5Z') + pathEl('M15.5 9.2A4 4 0 0 1 15.5 14.8M18.2 6.5A8 8 0 0 1 18.2 17.5'),  // (a speaker, its waves)
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
