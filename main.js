@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1255';
+const VERSION = '0.1.1256';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6424,7 +6424,9 @@ const PLANE_SIDES = {}, sidesTo = (most) => sidesIn(16, most);
 for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', 'hat', 'penrose', 'spectre', 'ammann', 'rhombs12', 'rhombs14', ...Object.keys(TILINGS)]) PLANE_SIDES[kind] = sidesTo({ square: 2048, hex: 512, tri: 256, cairo: 256 }[kind] ?? 128);
 for (const kind of ['pinwheel', 'flower', 'flower3', 'flower4', 'flower5', 'flower7', 'flower8', 'flower9', 'flower10', 'mirror7', 'ring7', 'ring8', 'ring9', 'ring10', 'ring12']) PLANE_SIDES[kind] = sidesTo(64);
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
-const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]).filter((f, i, a) => planeW(kind, f) >= 2 && (!i || planeW(kind, f) !== planeW(kind, a[i - 1])));  // (two sides as many lattice cells: once; a grid of 2 of them across at least: Dual 314's straight sheet, 120 cells, 1 for 16)
+// (two sides as many lattice cells: once; a grid of 2 of them across at least: Dual 314's straight sheet, 120 cells, 1 for 16;
+// a hexagon's by its side alone, each its own: its hexagon fitted only when shown, see shapeW, not 512's 6 times to list it)
+const planeSides = (kind, w = (f) => (shaped(kind) ? sideW : planeW)(kind, f)) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]).filter((f, i, a) => w(f) >= 2 && (!i || w(f) !== w(a[i - 1])));
 const plane = { side: 48, torus: true, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
