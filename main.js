@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1325';
+const VERSION = '0.1.1326';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5431,25 +5431,29 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, total, text) => {
-  const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`);
+  const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskbg]):([^}]*)\}/g, (_, c, w) => (c === 'g' ? `<span class="tip-default">${w}</span>` : `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`));  // ({g:…}: grey, as a default)
   total = marks(total);
-  const plain = text.replace(/\{[yroskb]:([^}]*)\}/g, '$1'), html = marks(text).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
+  const plain = text.replace(/\{[yroskbg]:([^}]*)\}/g, '$1'), html = marks(text).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
   const box = $(`${row}Box`);  // (− + its label and its slider, one block; its name and its total first, as a control's; shown again at once if hovered: − + clicked)
   box.dataset.tip = plain;
   box.dataset.tipHtml = `<b class="tip-name">Size: ${total}</b>${html}`;
   if (box.matches(':hover')) $('tip').innerHTML = box.dataset.tipHtml;
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
-// its cells as a rectangle as wide as the grid lies, for an idea of its resolution: the plane's a square, a ring's or a strip's its
-// sheet laid flat (a Möbius strip's loop, 2L × W; a ring's, its least mesh's proportions, its columns and rows as many); a solid, none
+// its cells as a rectangle as wide as the grid lies, for an idea of its resolution (grey, as the walk's description): the plane's a
+// square, a ring's or a strip's its sheet laid flat (a Möbius strip's loop, 2L × W; a ring's, its least mesh's proportions, its columns
+// and rows as many); a solid's, a face's as a square (its cells shared out among its faces: a carved cube's, its walls' too)
 const sizeSides = (kind, f) => {
   const d = gridSize(kind, f), S = SPHERES[kind];
-  if (!d) return '';
+  if (!d) {
+    const g = (facesMemo[kind] ??= S.mesh(S.sizes[0])), F = { tetra: 4, octa: 8, icosa: 20, stella: 24, dodeca: 12 }[FACE_BASE[kind] ?? kind.replace(/Kite$/, '')] ?? (g.triFaces ? g.triFaces.length + g.squareFaces.length : 6), a = fmt(Math.round(Math.sqrt(S.tiles(f) / F)));
+    return `{g:≈ ${a} × ${a} ${S.unit} a face}`;
+  }
   let r = 1;
   if (kind.startsWith('mobius')) { const { L, W } = mobiusCount(kind, f); r = (2 * L) / W; }
   else if (FOLDED[kind]?.fold === 'klein') { const { n, step, W } = kleinLength(kind, f); r = (n * step) / W; }
   else if (S) { const g = (facesMemo[kind] ??= S.mesh(S.sizes[0])), [nv, nu] = torusDims(kind, f); r = (nu * g.nv) / (nv * g.nu * tubeOf(g)); }
-  return `≈ ${fmt(Math.round(Math.sqrt(d[2] * r)))} × ${fmt(Math.round(Math.sqrt(d[2] / r)))} ${d[3]}`;
+  return `{g:≈ ${fmt(Math.round(Math.sqrt(d[2] * r)))} × ${fmt(Math.round(Math.sqrt(d[2] / r)))} ${d[3]}}`;
 };
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
 const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
