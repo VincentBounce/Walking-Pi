@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1302';
+const VERSION = '0.1.1303';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8154,11 +8154,20 @@ function drawLifePlane() {
   drawGhost();
 }
 // Reversible's blocks (Blocks on): those of the set the generation shown goes on by, its next (see blockStep), each outlined, the
-// sides of its cells not shared by two of them (a block cut by the torus's edges: each part of it)
+// sides of its cells not shared by two of them; masked by the grid's outline: its sides on it never drawn (a block cut by the
+// torus's edges: its parts' sides between them only)
+let outlineMemo = null;
+const gridOutline = () => {  // (the grid's sides of one cell only, as keys: its outline as laid flat)
+  const { kind, W, row } = walk.plane, key = `${kind}|${W}`;
+  if (outlineMemo?.key === key) return outlineMemo.sides;
+  const count = new Map();
+  for (let t = 0; t < W * row; t++) { const P = planeCorners(kind, t % row, Math.floor(t / row)); P.forEach((p, q) => { const k = [pointKey(p), pointKey(P[(q + 1) % P.length])].sort().join('|'); count.set(k, (count.get(k) ?? 0) + 1); }); }
+  return (outlineMemo = { key, sides: new Set([...count].filter(([, c]) => c === 1).map(([k]) => k)) }).sides;
+};
 function drawBlocks(ctx) {
   const M = walk.life?.margolus;
   if (!showBlocks || !M || M.ising) return;
-  const { kind, row } = walk.plane, { scale: s, ox, oy } = view, blocks = M.turns[cur % M.turns.length];
+  const { kind, row } = walk.plane, { scale: s, ox, oy } = view, blocks = M.turns[cur % M.turns.length], outline = gridOutline();
   turnLayer(ctx);
   ctx.strokeStyle = cssColour('--sector');
   ctx.lineWidth = Math.max(1, Math.min(s / 8, 3));
@@ -8169,7 +8178,7 @@ function drawBlocks(ctx) {
       const t = blocks[j], P = planeCorners(kind, t % row, Math.floor(t / row));
       P.forEach((p, q) => { const r = P[(q + 1) % P.length], key = [pointKey(p), pointKey(r)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, r]); });
     }
-    for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
+    for (const [key, side] of sides) if (side && !outline.has(key)) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
   }
   ctx.stroke();
   turnLayer(ctx, 0);
