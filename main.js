@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1221';
+const VERSION = '0.1.1222';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1451,7 +1451,7 @@ function updateDisplayMenu() {
 // greyed where its row is hidden (it does not apply: Autoplay but in Life, the others but in 3D); drawn again with the
 // display box and when the box opens (a hand rotation, a new mode: their boxes changed)
 const VIEW_TILES = [['perspective', 'perspectiveRow', 'perspective', 'Perspective', 'Perspective: what is nearer looks bigger'],
-  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoPlay', 'autoPlayRow', 'play', 'Autoplay'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate'], ['upright', 'uprightRow', 'upright', 'Upright']];
+  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoPlay', 'autoPlayRow', 'play', 'Autoplay'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate']];
 let viewTiles = null;
 function renderViewTiles() {
   viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
@@ -1464,7 +1464,7 @@ function renderViewTiles() {
     ways[perspectiveFor(MODES[w], MODES[w].round ? 1 : 0) ? 'on' : 'off'].push(SHAPE_SHORT[sh] ?? sh);
   }
   const perspective = !ways.on.length ? 'off' : !ways.off.length ? 'on' : `On by default on ${ways.on.join(', ')}\nOff by default on ${ways.off.join(', ')}`;
-  const first = { perspective, light: 'on', autoPlay: 'off', autoRotate: 'off', upright: 'off' }, why = { autoPlay: 'outside Life' };
+  const first = { perspective, light: 'on', autoPlay: 'off', autoRotate: 'off' }, why = { autoPlay: 'outside Life' };
   VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id], greyed: why[id] ?? '' }));
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
@@ -1961,7 +1961,6 @@ const ICONS = (() => {
     // Auto-rotate (a turn round a slanted orbit)
     perspective: pathEl('M6.14 4.16L18.14 5.88A1 1 0 0 1 19 6.87V17.13A1 1 0 0 1 18.14 18.12L6.14 19.84A1 1 0 0 1 5 18.85V5.15A1 1 0 0 1 6.14 4.16Z'),
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
-    upright: pathEl('M12 2.5V21.5') + pathEl('M4.5 12.5C4.5 15 7.9 17 12 17S19.5 15 19.5 12.5') + pathEl('M16.5 15.8L19.5 12.5L20.8 16.6'),  // a turn round the upright only
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
     ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
@@ -13515,10 +13514,18 @@ $('startRow').addEventListener('mouseleave', () => {
 const startField = $('startLabel').parentElement;
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
+// Upright: the view from the front exactly, level (its heading kept), a drag turning it round the vertical only
+$('upright').addEventListener('change', () => {
+  if (!$('upright').checked) return;
+  const yaw = Math.atan2(-cam.v[0], -cam.v[1]);  // (where it looks from, round the vertical: see camFrom)
+  $('centered').checked = false;
+  Object.assign(cam, camFrom(yaw, 0));
+  rotateView([0, 0, 0]);
+});
 $('centered').addEventListener('change', () => {  // on: the camera turns to the pattern again, or back to the default view
   faced = false;
   if ($('centered').checked && !centersPattern()) { Object.assign(cam, CAM0); rotateView([0, 0, 0]); }
-  if ($('centered').checked) { $('upright').checked = false; renderViewTiles(); }  // (the default view: free again)
+  if ($('centered').checked) $('upright').checked = false;  // (the default view: free again)
 });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
