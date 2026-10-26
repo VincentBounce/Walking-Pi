@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1311';
+const VERSION = '0.1.1312';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4507,8 +4507,8 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
     if (!ids.has(key)) { ids.set(key, verts.length / 3); verts.push(...kleinPoint(x0, y0, nu, nv, 1, tube)); }
     return ids.get(key);
   };
-  const mesh = finishMesh(verts, tiles.map((t) => t.map(([x, y]) => id(x, y))), tiles[0].length, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, tube, uv: new Float64Array(tiles.flat(2)) }));
+  const sheet = tiles.map(turnOver), mesh = finishMesh(verts, sheet.map((t) => t.map(([x, y]) => id(x, y))), tiles[0].length, nv, null);  // one-sided: as listed, turned over (as the torus's sheet: facing the view, flat)
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, tube, uv: new Float64Array(sheet.flat(2)) }));
 }
 
 function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares about as long around the ring as around the tube
@@ -4800,8 +4800,8 @@ function kleinTilingMesh(kindK, size) {
     if (!ids.has(i * nv * Q + j)) { ids.set(i * nv * Q + j, verts.length / 3); verts.push(...kleinPoint(x, y, L, W, 1, W / L)); }
     return ids.get(i * nv * Q + j);
   };
-  const mesh = finishMesh(verts, tiles.map((t) => t.map(id)), sides, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids), bricks }));
+  const sheet = tiles.map(turnOver), mesh = finishMesh(verts, sheet.map((t) => t.map(id)), sides, nv, null);  // one-sided: as listed, turned over (see kleinMesh)
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(sheet.flat(2)), uvMid: new Float64Array(mids), bricks }));
 }
 // a tile's corners the other way round, its last one repeated still last (a tile with fewer corners than the strip's:
 // repeated first, its normal, from its first corners, was none, and the back's tiles all but black)
