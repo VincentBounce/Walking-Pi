@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1346';
+const VERSION = '0.1.1347';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9836,7 +9836,7 @@ function planeSlices(K) {
 }
 // The plane's colour blocks as seen: their columns along the grid's side that runs most across the screen, left to
 // right, their rows along the other, top to bottom, whichever way its lattice lies (turned too, see planeTurn). Each
-// cell by where it is, not by its number: its middle's shares (0 to 1) along those two sides, from the grid's ends
+// cell by where it is, not by its number: its motif's middle's shares (0 to 1) along those two sides, from the grid's ends
 // (once a grid and a view); a cell's block, and the cell nearest a place (its shares across and down)
 let frameMemo = null;
 function planeFrame() {
@@ -9848,6 +9848,7 @@ function planeFrame() {
   // each middle in that frame (c across, r down), then as shares between the grid's ends, flipped to run left to right and top to bottom
   const A = new Float32Array(n), D = new Float32Array(n);
   for (let t = 0; t < n; t++) { const [px, py] = mid(t), dx = px - o[0], dy = py - o[1]; A[t] = (dx * r[1] - dy * r[0]) / det; D[t] = (c[0] * dy - c[1] * dx) / det; }
+  for (let t0 = 0; per > 1 && t0 < n; t0 += per) for (const arr of [A, D]) arr.fill(arr.subarray(t0, t0 + per).reduce((x, y) => x + y) / per, t0, t0 + per);  // (a cell where its motif is: blocks of whole motifs, as many cells each)
   for (const [arr, flip] of [[A, fc], [D, fr]]) {
     let lo = Infinity, hi = -Infinity;
     for (const v of arr) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
