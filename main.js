@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1267';
+const VERSION = '0.1.1268';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5437,7 +5437,9 @@ const howCounted = (kind, f) => {
     for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
     const F = (2 * (n - 2)) / (f * f), names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' }, at = Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + ');
     const faces = kind === 'dodecaHex' ? `{r:12 pentagonal faces} × 5` : `{r:${F} triangular faces}`;  // (the dodecahedron's pentagons: 5 triangles each; red as drawn, see drawMotif)
-    return `${faces} × ${fmt(f)}² / 2 + 2 = {o:${at}} at its corners + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
+    // (a sum on lines: its faces, a triangle f steps a side as big as f² / 2 hexagons; + 2: its corners, 5 faces round a
+    // pentagon, not 6, each counted 5/6 by them, 12 × 1/6 (Euler's 2 on any of them); its cells, its corners' and its hexagons)
+    return `${faces} × ${fmt(f)}² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
   }
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
