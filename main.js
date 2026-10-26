@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1341';
+const VERSION = '0.1.1344';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10761,41 +10761,40 @@ let pendingSpin = false;     // a Gallery setup shown: Auto-rotate once built an
 const SPIN_DELAY = 900, SPIN_EASE = 1200;
 let spinFrom = 0, spinRamp = 0;
 
-// Cells as a short code, whichever is shorter:
-// - dense "C.base64url", packing 1, 2 or 4 bits per cell depending on the number of states C;
-// - sparse "sC.gap-gap_state-…", the live cells only: each gap (base 36) counts the dead cells
-//   since the previous live one, and "_state" follows when the state is not 1 (small starts)
+// Cells as a short code, whichever is shorter, in base64url:
+// - dense "C.…", packing 1, 2 or 4 bits per cell depending on the number of states C;
+// - sparse "vC.…", the live cells only, a state at a time: the state, its count of cells, then each gap (the dead cells and
+//   others' since its previous one), each a varint (7 bits a byte, the 8th: more to come)
+const toB64 = (bytes) => { let s = ''; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const fromB64 = (data) => atob(data.replace(/-/g, '+').replace(/_/g, '/'));
 function encodeCells(cells, C) {
   const bits = C <= 2 ? 1 : C <= 4 ? 2 : 4, per = 8 / bits;
-  const bytes = new Uint8Array(Math.ceil(cells.length / per));
-  cells.forEach((v, i) => { bytes[Math.floor(i / per)] |= v << ((i % per) * bits); });
-  let s = '';
-  for (const b of bytes) s += String.fromCharCode(b);
-  const dense = `${C}.${btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
-  const items = [];
-  let prev = -1;
-  cells.forEach((v, i) => {
-    if (!v) return;
-    items.push((i - prev - 1).toString(36) + (v === 1 ? '' : `_${v}`));
-    prev = i;
-  });
-  const sparse = `s${C}.${items.join('-')}`;
+  const packed = new Uint8Array(Math.ceil(cells.length / per));
+  cells.forEach((v, i) => { packed[Math.floor(i / per)] |= v << ((i % per) * bits); });
+  const bytes = [], varint = (x) => { for (; x > 127; x >>>= 7) bytes.push((x & 127) | 128); bytes.push(x); };
+  for (let st = 1, top = cells.reduce((m, v) => Math.max(m, v), 0); st <= top; st++) {
+    const at = [];
+    cells.forEach((v, i) => { if (v === st) at.push(i); });
+    if (!at.length) continue;
+    varint(st); varint(at.length);
+    at.forEach((i, k) => varint(i - (k ? at[k - 1] : -1) - 1));
+  }
+  const dense = `${C}.${toB64(packed)}`, sparse = `v${C}.${toB64(bytes)}`;
   return sparse.length < dense.length ? sparse : dense;
 }
 function decodeCells(code, n) {
   const cells = new Uint8Array(n);
-  const [c, data] = code.split('.');
-  if (c.startsWith('s')) {
-    let i = -1;
-    for (const item of data ? data.split('-') : []) {
-      const [gap, v] = item.split('_');
-      i += parseInt(gap, 36) + 1;
-      if (i < n) cells[i] = v ? Number(v) : 1;
+  const [c, data = ''] = code.split('.'), s = fromB64(data);
+  if (c.startsWith('v')) {
+    let p = 0;
+    const varint = () => { let x = 0, shift = 0, y; do { y = s.charCodeAt(p++); x |= (y & 127) << shift; shift += 7; } while (y & 128); return x; };
+    while (p < s.length) {
+      const st = varint();
+      for (let k = varint(), i = -1; k > 0; k--) { i += varint() + 1; if (i < n) cells[i] = st; }
     }
     return cells;
   }
   const C = Number(c), bits = C <= 2 ? 1 : C <= 4 ? 2 : 4, per = 8 / bits;
-  const s = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
   for (let i = 0; i < n; i++) cells[i] = ((s.charCodeAt(Math.floor(i / per)) || 0) >> ((i % per) * bits)) & ((1 << bits) - 1);
   return cells;
 }
@@ -11011,6 +11010,9 @@ function fillSetupList() {
     section.append(cards);
     return [section];
   }));
+  for (const b of [...$('setupTools').children].slice(1)) setTile(b, { can: list.length > 0, greyed: 'with no Treasures' });  // (Export, Erase all: none to take)
+  $('eraseConfirm').hidden ||= !list.length;
+  $('galleryPane').querySelector('h2').append(galleryClose);  // (Close by its first title: a group's, else Management's)
   syncSaveButton();
 }
 
@@ -11018,16 +11020,16 @@ function fillSetupList() {
 // the same number gets "(2)", "(3)", …); its row tells the walk, size, start and rule (see setupDetail)
 // the saved setup that is the one in view (same number, walk, size, start, turn and rule), if any
 const savedInView = () => readSetups().find((x) => isInUse(x.setup) && String(x.setup.r ?? '') === String(getSetup().r ?? ''));
-// ☆ Save, or ★ (in yellow) while the setup in view is one of Treasures
+// ☆ Save, or ★ (in yellow) while the setup in view is one of Treasures: clicked again, taken out of them
 function syncSaveButton() {
   const saved = savedInView(), b = $('setupSave');
   b.classList.toggle('saved', !!saved);
-  b.title = saved ? `Saved in Treasures as “${saved.name}”` : 'Save the setup in view in Treasures, in this browser';
+  b.title = saved ? `Saved in Treasures as “${saved.name}”: a click takes it out` : 'Save the setup in view in Treasures, in this browser';
 }
 function saveSetup() {
   const setup = getSetup(), list = readSetups();
   const same = savedInView();
-  if (same) return;  // already one of them (its ☆ is yellow)
+  if (same) { deleteSetup(same.name); return; }  // already one of them (its ★ yellow): out of them
   let name = shownSym;
   for (let k = 2; list.some((x) => x.name === name); k++) name = `${shownSym} (${k})`;
   list.push({ name, setup, saved: new Date().toISOString() });
@@ -14055,7 +14057,7 @@ const BUILT_IN = [
   ['Thue–Morse', 'Koch curve', { x: 'thuemorse', w: 'triPivot', d: 4096 }],
   // added later: their batch number, so that a browser that took the first ones gets these once too (see seedCurated)
   ['Möbius battle', 'A battle of 2 colours round the strip', { w: 'lifeMobius', s: 8, r: 'B3/S23', k: 2, pop: 'random.69.711421864',
-    ch: 's3.74-0-0-0-1-1-2-1-0-1-0-0-0-1-0-1-2-0-1-4-0-0-0-0-0-2-0-0-1-1-0-1-1-1-0-0-0-0-0-0-0-0-e8_2-2_2-0_2-1_2-1_2-0_2-1_2-0_2-1_2-1_2-2_2-0_2-0_2-0_2-2_2-0_2-0_2-1_2-1_2-0_2-0_2-1_2-1_2-0_2-2_2-1_2-2_2-0_2-0_2-1_2-1_2-1_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2-0_2' }, 2],
+    ch: 'v3.ASqAAgAAAAEBAgEAAQAAAAEAAQIAAQQAAAAAAAIAAAEBAAEBAQAAAAAAAAAA' }, 2],
   ['1/438', 'A highway from step 534,473', { x: '1/438', w: 'antSquare', d: 540989, r: 'digits LR' }, 2],
   ['Rabbit', 'Fibonacci word fractal', { x: 'rabbit', w: 'squareParity', d: 4181 }],
   ['Rudin–Shapiro', 'On hexagons', { x: 'rudinshapiro', w: 'hexTurtle', d: 16384 }],
@@ -14117,7 +14119,6 @@ function setupRow(name, detail, setup, onDelete) {
 }
 function renderGallery() {
   fillSetupList();
-  $('galleryPane').querySelector('h2').append(galleryClose);  // (by its first title: a group's, else Management's)
 }
 for (const list of ['yourList']) {
   $(list).addEventListener('mouseleave', () => {
@@ -14159,7 +14160,7 @@ $('setupTools').replaceChildren(tile({ pic: icon('import'), text: 'Import', titl
   tile({ pic: icon('export'), text: 'Export', title: 'Treasures as a JSON file', click: exportSetups }), tile({ pic: icon('trash'), text: 'Erase all', title: 'Erase Treasures from this browser (asked again under it)', click: () => { $('eraseConfirm').hidden = !$('eraseConfirm').hidden; } }));
 $('eraseConfirm').innerHTML = `${icon('trash')} Confirm erase`;
 $('setupToolsHead').insertAdjacentHTML('afterbegin', icon('star'));  // (Treasures', as the header's ☆)
-$('eraseConfirm').addEventListener('click', () => { writeSetups([]); $('eraseConfirm').hidden = true; fillSetupList(); syncSaveButton(); });
+$('eraseConfirm').addEventListener('click', () => { writeSetups([]); $('eraseConfirm').hidden = true; fillSetupList(); });
 $('setupFile').addEventListener('change', () => {
   if ($('setupFile').files[0]) importSetups($('setupFile').files[0]);
   $('setupFile').value = '';
