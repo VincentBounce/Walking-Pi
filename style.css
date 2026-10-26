@@ -246,7 +246,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .tile-group > button + button { margin-left: -1px; }  /* one line between them */
 .tile-group > button:first-child { border-radius: 6px 0 0 6px; }
 .tile-group > button:last-child { border-radius: 0 6px 6px 0; }
-.tile-group > button.active, .tile-group > button:hover { position: relative; }  /* its border over its neighbour's */
+.tile-group > button.active, .tile-group > button:hover { position: relative; z-index: 1; }  /* its border over its neighbour's (every button its own layer: above the next one) */
 button.switch:hover:not(:disabled) { background: var(--pick); }  /* a switch (a button that a click changes again) answers the hover: off, in the pale gold of a choice picked; on, deeper (Dawn sky) */
 button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 .gallery-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }  /* Life, Ant, Walk: a section each */
