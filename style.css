@@ -10,7 +10,7 @@
   --box: rgba(14, 17, 22, 0.75);  /* the boxes over the view */
   --pick: color-mix(in srgb, rgb(240 180 41) 14%, var(--panel));  /* a choice picked, a switch's hover: the gold on the panel, opaque */
   --pick-strong: color-mix(in srgb, rgb(240 180 41) 32%, var(--panel));  /* (the same whatever lies under it: a box over the sky too) */
-  --motif: #ffd60a;  /* a grid's motif, outlined while its size is hovered (see drawMotif), its words in the size's tooltip */
+  --motif: #bc8cff;  /* a grid's motif, outlined while its size is hovered (see drawMotif), its words in the size's tooltip */
   --face: #e5484d;  /* a solid's face round it */
   --sector: #58a6ff;  /* a face's sector round it (a dodecahedron's pentagon, 5 triangles) */
   --cell: #3fb950;  /* a cell of the motif, when it has several (a triangle's 3 kites) */
@@ -29,7 +29,7 @@
   --box: rgba(255, 255, 255, 0.82);
   --pick: color-mix(in srgb, rgb(240 180 41) 8%, var(--panel));
   --pick-strong: color-mix(in srgb, rgb(240 180 41) 22%, var(--panel));
-  --motif: #d49a00;
+  --motif: #8250df;
   --face: #c4161c;
   --sector: #0969da;
   --cell: #1a7f37;

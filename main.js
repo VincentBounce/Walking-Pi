@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1331';
+const VERSION = '0.1.1332';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5428,8 +5428,8 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
 // a size's tooltip on its block, − + its label and its slider, as its motif shows on it (see drawMotif); its words
-// marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
-const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
+// marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's violet, a face's red, the walls' ochre
+const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifColour = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, total, text) => {
   const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskbg]):([^}]*)\}/g, (_, c, w) => (c === 'g' ? `<span class="tip-default">${w}</span>` : `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`));  // ({g:…}: grey, as a default)
   total = marks(total);
@@ -5464,7 +5464,7 @@ const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
   const per = PLANE_CELLS[kind] ? PER_RHOMBUS[kind] ?? 1 : 1, all = d && d[0] * d[1] * per;  // (the plane's: its lattice cells a row, each per cells; less its wall's)
-  // (a hexagon's or a disc's middle, yellow as its core is drawn, see drawMotif: its cells nearest its middle, so many)
+  // (a hexagon's or a disc's middle, violet as its core is drawn, see drawMotif: its cells nearest its middle, so many)
   const middle = () => { const W = planeW(kind, f), c = (APERIODIC[kind]?.(W) ?? planeShape(kind, W)).core.length; return `{y:middle (${c} ${c === 1 ? d[3].replace(/s$/, '') : d[3]})}`; };
   if (d && PLANE_CELLS[kind] && shaped(kind)) {  // a hexagon round its middle (see planeShape): rings of hexagons, else 3n² rhombi of its lattice where it falls on it
     const N = d[2], r = Math.round((Math.sqrt(12 * N - 3) - 3) / 6), m = Math.round(Math.sqrt(N / (3 * per)));
@@ -5474,11 +5474,11 @@ const howCounted = (kind, f) => {
   }
   // (a disc ⌀ side: as big as a square of side × √π / 2, in whole rows of its items, see sideW: W² of them nearest its middle)
   if (d && APERIODIC[kind]) return `a disc ⌀ ${fmt(discOf(d[0]))} round its ${middle()} (it never repeats: no rows)\n= the ${fmt(d[0])}² ${d[3]} nearest it (whole rows: a square as big as the disc, ${fmt(discOf(d[0]))} × √π / 2 = ${fmt(d[0])})${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
-  if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
+  if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, violet) × their cells (green)
     const m = brickOf((facesMemo[kind] ??= S.mesh(S.sizes[0]))), L = d[2] / d[0] / m, whole = Number.isInteger(L);
     return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'bricks' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
   }
-  // the plane's: its rows × its lattice cells (its motif, yellow) × their cells (green), less its wall's
+  // the plane's: its rows × its lattice cells (its motif, violet) × their cells (green), less its wall's
   if (d) return `(Edge=${fmt(d[0])}) rows × {y:${fmt(d[1])} ${per > 1 ? 'lattice cells' : d[3]}} a row${per > 1 ? ` × {k:${per} ${d[3]} each}` : ''}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   // a solid of flat faces: each face's cells, f to an edge (its faces as its least size's mesh has them, the same at every size)
   const base = kind.endsWith('Tetrakis') && SPHERES[kind.slice(0, -8)] ? kind.slice(0, -8) : kind, B = SPHERES[base];  // (a solid of tetrakis triangles: its squares', 4 each)
@@ -5489,7 +5489,7 @@ const howCounted = (kind, f) => {
     for (const c in by) if (!by[c]) delete by[c];
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
-      const red = redFaces(g, base) && (base === kind || kind === 'cubeTetrakis'), mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
+      const red = redFaces(g, base) && (base === kind || kind === 'cubeTetrakis'), mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells violet)
       return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${mark('k', `${cut} ${unit} each`)}` : ''} = ${fmt(n)} ${unit}`;
     }
   }
@@ -8202,7 +8202,7 @@ function drawBlocks(ctx) {
   ctx.stroke();
   turnLayer(ctx, 0);
 }
-// The grid's motif, outlined in yellow while its size is hovered: what repeats, the sides of its cells not shared by two of
+// The grid's motif, outlined in violet while its size is hovered: what repeats, the sides of its cells not shared by two of
 // them. On the plane, a grid in a circle or a hexagon its core, in its middle (see discPatch, planeShape); the others a lattice
 // cell, at the top left (the top row's first cells, as many as a lattice cell has). On a surface (see motifTiles), on its
 // tiles as drawn flat (see drawSphere), the sides facing the viewer
@@ -8213,9 +8213,9 @@ function drawMotif(ctx) {
   const { scale: s, ox, oy } = view;
   ctx.lineWidth = Math.max(2, Math.min(s / 6, 4));
   ctx.lineCap = 'round';
-  if (!walk.plane) {  // (a surface: its motif yellow, one of its cells green when it has several, its face red round it, see drawMotifFace)
+  if (!walk.plane) {  // (a surface: its motif violet, one of its cells green when it has several, its face red round it, see drawMotifFace)
     const tiles = motifTiles();
-    outlineTiles(ctx, motifYellow(), tiles);
+    outlineTiles(ctx, motifColour(), tiles);
     if (tiles.length > 1) outlineTiles(ctx, cssColour('--cell'), [tiles[0]]);  // (as its tooltip's cells)
     if (tiles.length) drawMotifFace(ctx, tiles[0]);
     return;
@@ -8223,7 +8223,7 @@ function drawMotif(ctx) {
   const { kind, W } = walk.plane, motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0)), sides = new Map();
   for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], key = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, q]); });
   turnLayer(ctx);
-  ctx.strokeStyle = motifYellow();
+  ctx.strokeStyle = motifColour();
   ctx.beginPath();
   for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
   ctx.stroke();
