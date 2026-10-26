@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1276';
+const VERSION = '0.1.1277';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5304,13 +5304,13 @@ const SPHERES = {
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
             tiles: (f) => 24 * f * f, unit: 'triangles' },
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
-            tiles: (f) => 60 * f * f, unit: 'triangles', how: (f) => `{r:12 pentagonal faces} × {s:5 sectors} × {y:${fmt(f)}² triangles}` },  // (each pentagon 5 triangles round its middle)
+            tiles: (f) => 60 * f * f, unit: 'triangles', how: (f) => `{r:12 pentagonal faces} × {s:5 sectors} × {y:(Edge=${fmt(f)})² triangles}` },  // (each pentagon 5 triangles round its middle)
   stellaKite: { mesh: (f) => flatPolyhedron('stella', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 72 * f * f, unit: 'kites' },
   cubocta: { mesh: (f) => hullMesh('cubocta', f), radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge √2
   pyramid: { mesh: (f) => hullMesh('pyramid', f), radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
   rhombi: { mesh: (f) => hullMesh('rhombi', f), radius: (f) => f / 2, tiles: (f) => 26 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 18 squares, 8 triangles
   bicupola: { mesh: (f) => hullMesh('bicupola', f), radius: (f) => f / 2, tiles: (f) => 18 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 10 squares, 8 triangles
-  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `{r:12 pentagonal faces} × {s:5 sectors} × {y:${fmt(f)}² triangles} × {k:3 kites each}` },
+  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `{r:12 pentagonal faces} × {s:5 sectors} × {y:(Edge=${fmt(f)})² triangles} × {k:3 kites each}` },
 };
 // the solids of squares as tetrakis triangles (see tetrakisOf): sized as their squares, 4 cells a square
 for (const k of Object.keys(TETRAKIS_SOLIDS)) {
@@ -5433,7 +5433,7 @@ const howCounted = (kind, f) => {
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
       const red = redFaces(g) && base === kind, mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
-      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `${fmt(f)}² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${cut === 3 ? mark('k', `${cut} ${unit} each`) : `${cut} ${unit} each`}` : ''} = ${fmt(n)} ${unit}`;
+      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${cut === 3 ? mark('k', `${cut} ${unit} each`) : `${cut} ${unit} each`}` : ''} = ${fmt(n)} ${unit}`;
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
@@ -5443,10 +5443,10 @@ const howCounted = (kind, f) => {
     const faces = kind === 'dodecaHex' ? `{r:12 pentagonal faces} × 5` : `{r:${F} triangular faces}`;  // (the dodecahedron's pentagons: 5 triangles each; red as drawn, see drawMotif)
     // (a sum on lines: its faces, a triangle f steps a side as big as f² / 2 hexagons; + 2: its corners, 5 faces round a
     // pentagon, not 6, each counted 5/6 by them, 12 × 1/6 (Euler's 2 on any of them); its cells, its corners' and its hexagons)
-    return `${faces} × ${fmt(f)}² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
+    return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
   }
   const k = S.tiles(0), c = (n - k) / (f * f);
-  return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
+  return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × (Edge=${fmt(f)})²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
 };
 const sizeCells = (kind, f) => { const d = gridSize(kind, f); return d ? `${fmt(d[2])} ${d[3]}` : `${fmt(SPHERES[kind].tiles(f))} ${SPHERES[kind].unit}`; };
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
