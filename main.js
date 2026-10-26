@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1223';
+const VERSION = '0.1.1224';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5389,9 +5389,16 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
   let near;
   const nearest = () => near ??= (() => {
-    const step = S.steps?.[0] ?? 1, sizes = [];  // (a torus's rows any: its colours greyed where their blocks round the tube are not whole, see colourFairOwn)
-    for (let f = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step; ; f += step) { sizes.push([f, S.tiles(f)]); if (sizes.at(-1)[1] > 1.5 * counts.at(-1) || f >= (S.most ?? Infinity)) break; }
-    return (n) => sizes.reduce((a, b) => (Math.abs(Math.log(b[1] / n)) < Math.abs(Math.log(a[1] / n)) ? b : a))[0];
+    // (a torus's rows any: its colours greyed where their blocks round the tube are not whole, see colourFairOwn); the size
+    // with about n cells: guessed from the cells growing as its size squared, then walked a step at a time to the nearest
+    // (a size's cells once: a Möbius strip's, built to count them)
+    const step = S.steps?.[0] ?? 1, f0 = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step, most = S.most ?? Infinity, cells = new Map();
+    const tiles = (f) => cells.get(f) ?? cells.set(f, S.tiles(f)).get(f), off = (f, n) => Math.abs(Math.log(tiles(f) / n));
+    return (n) => {
+      let f = Math.min(most, Math.max(f0, Math.round(f0 * Math.sqrt(n / tiles(f0)) / step) * step));
+      for (const d of [step, -step]) while (f + d >= f0 && f + d <= most && off(f + d, n) < off(f, n)) f += d;
+      return f;
+    };
   })();
   let list;
   const edged = (sizes) => {  // (edges: its squares' sides as the icons' widths, each in place of the size nearest it)
