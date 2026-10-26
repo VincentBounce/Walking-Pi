@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1286';
+const VERSION = '0.1.1287';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5453,7 +5453,7 @@ const howCounted = (kind, f) => {
     const g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
     for (const t of g0.walls ?? []) corners[sidesOf(t)] = (corners[sidesOf(t)] ?? 0) + 1;
     const F = (2 * (n - 2)) / (f * f), names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' }, at = Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + ');
-    const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each; not red: not drawn, see drawMotifFace)
+    const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5 sectors` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each; not red: not drawn, see drawMotifFace)
     // (a sum on lines: its faces, a triangle f steps a side as big as f² / 2 hexagons; + 2: its corners, 5 faces round a
     // pentagon, not 6, each counted 5/6 by them, 12 × 1/6 (Euler's 2 on any of them); its cells, its corners' and its hexagons)
     return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - (g0.walls?.length ?? 0))} hexagons}`;
@@ -11606,7 +11606,7 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
-  if (motifShown) palette = palette.map((c) => c && faded(c, 0.25));  // (the motif shown: the cells pale under its outlines)
+  if (motifShown) palette = palette.map((c) => c && (c === LIFE_WALL ? c : faded(c, 0.25)));  // (the motif shown: the cells pale under its outlines, the walls not: ochre, as its tooltip says them)
   if (!startsShown && !motifShown && glSurface(palette, levelOf, path)) return;  // WebGL, when the browser has it (see 11.4b); flat, the motif's outline over it
   glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
