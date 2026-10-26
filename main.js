@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1271';
+const VERSION = '0.1.1272';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5403,9 +5403,9 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
 // a size's tooltip on all its controls, − + its label and its slider, as its motif shows on them (see drawMotif); its words
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
-const lightPage = () => document.documentElement.dataset.theme === 'light', motifYellow = () => (lightPage() ? '#d49a00' : '#ffd60a'), faceRed = () => (lightPage() ? '#c4161c' : '#e5484d');  // (darker on a light page: read on it)
+const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, text) => {
-  const plain = text.replace(/\{[yrob]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yrob]):([^}]*)\}/g, (_, c, w) => (c === 'b' ? `<b>${w}</b>` : `<b style="color: ${{ y: motifYellow(), r: faceRed(), o: LIFE_WALL }[c]}">${w}</b>`)).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
+  const plain = text.replace(/\{[yrob]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yrob]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
   for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = `<b class="tip-name">Size</b>${html}`; }  // (its name first, as a control's)
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
@@ -5432,7 +5432,7 @@ const howCounted = (kind, f) => {
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
       const red = redFaces(g) && base === kind, mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
-      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${fmt(f)}² ${mark('y', cells[c])}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
+      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `${fmt(f)}² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
@@ -8132,14 +8132,14 @@ function drawMotif(ctx) {
   if (walk.plane) turnLayer(ctx, 0);
   else drawMotifFace(ctx);
 }
-// the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): of triangles
-const redFaces = (g) => !!g?.perFace && g.sides === 3 && !g.squares;
+// the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): of triangles, of kites
+const redFaces = (g) => !!g?.perFace && ((g.sides === 3 && !g.squares) || !!g.kite);  // (of triangles, of kites: their edges along their cells')
 // a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner
 // along its cells' sides (as a start's edges, see gridGraph): the shortest way from wall to wall, of those the corners nearest
 // the plane through its middle and both walls (the face's straight side), as the shape has them now, the sides facing the viewer
 function drawMotifFace(ctx) {
   const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
-  if (t0 !== undefined && redFaces(g)) {  // a solid of triangles: its face's triangles' sides not shared by two of them (its edges, along its cells)
+  if (t0 !== undefined && redFaces(g)) {  // a solid of triangles (of kites): its face's cells' sides not shared by two of them (its edges, along its cells)
     const { scale: s, ox, oy } = view, proj = projector(), sides = new Map(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
     for (let t = Math.floor(t0 / g.perFace) * g.perFace, e = t + g.perFace; t < e; t++) for (let j = 0; j < k; j++) {
       const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|');
@@ -8180,7 +8180,7 @@ function drawMotifFace(ctx) {
 }
 // a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a sheet's (a torus, a
 // Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
-// hexagon, a tetrakis square's 4 triangles, a rhombus of triangles (of 3 kites each), the one and the next in its row
+// hexagon, a tetrakis square's 4 triangles, a triangle (of 3 kites)
 function motifTiles() {
   const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
   let near = -1, best = -Infinity;
@@ -8192,10 +8192,8 @@ function motifTiles() {
   }
   if (near < 0) return [];
   if (g.torus) return sheetPatternAt(near, Array.from({ length: PER_RHOMBUS[patternKind()] ?? 1 }, (_, j) => [j, 0, j]), true).map(([t]) => t);
-  const m = g.kite ? 3 : g.squares ? 4 : 1, group = (q) => Array.from({ length: m }, (_, j) => q * m + j), q = Math.floor(near / m);  // (a kite's triangle, a tetrakis square)
-  if ((g.sides === 4 && !g.kite) || g.squares || g.sides >= 5) return group(q);  // (one cell: a square, a hexagon; a tetrakis square)
-  const touches = (r) => group(q).some((t) => group(r).some((u) => Array.from({ length: g.sides }, (_, j) => g.nbr[g.sides * t + j]).includes(u)));
-  return [...group(q), ...group(touches(q + 1) ? q + 1 : q - 1)];
+  const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
+  return Array.from({ length: m }, (_, j) => Math.floor(near / m) * m + j);  // (a cell, a triangle: what a face counts, f² of them; not the plane's rhombus, a face not whole ones)
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
