@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1239';
+const VERSION = '0.1.1240';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7824,12 +7824,12 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     tiles.sort((p, q) => p.be - q.be || p.al - q.al);
     const t = TILINGS[base], R = { base, name: t?.name, mark: t?.mark, cells: t?.cells ?? PLANE_CELLS[base], basis: [U, V], polys: tiles.map((c) => c.polys), nat: tiles.map((c) => [c.x, c.y]), step };
     PER_RHOMBUS[kind] = PLANE_PER[kind] = tiles.length;
-    PLANE_SIDES[kind] = PLANE_SIDES[base];
-    PATTERN_TURNS[kind] = PATTERN_TURNS[base];
-    PLANE_CELLS[kind] = PLANE_CELLS[base];
-    PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
     return R;
   };
+  PLANE_SIDES[kind] = PLANE_SIDES[base];  // (its tables at once, not when first built: its size said before it is)
+  PATTERN_TURNS[kind] = PATTERN_TURNS[base];
+  PLANE_CELLS[kind] = PLANE_CELLS[base];
+  PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
   Object.defineProperty(RECTS, kind, { configurable: true, enumerable: true, get: () => { const R = build(); Object.defineProperty(RECTS, kind, { value: R, writable: true, enumerable: true }); return R; } });
 }
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
