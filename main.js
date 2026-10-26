@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1270';
+const VERSION = '0.1.1271';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5403,9 +5403,9 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
 // a size's tooltip on all its controls, − + its label and its slider, as its motif shows on them (see drawMotif); its words
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
-const MOTIF_YELLOW = '#ffd60a', FACE_RED = '#e5484d';
+const lightPage = () => document.documentElement.dataset.theme === 'light', motifYellow = () => (lightPage() ? '#d49a00' : '#ffd60a'), faceRed = () => (lightPage() ? '#c4161c' : '#e5484d');  // (darker on a light page: read on it)
 const sizeTips = (row, text) => {
-  const plain = text.replace(/\{[yrob]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yrob]):([^}]*)\}/g, (_, c, w) => (c === 'b' ? `<b>${w}</b>` : `<b style="color: ${{ y: MOTIF_YELLOW, r: FACE_RED, o: LIFE_WALL }[c]}">${w}</b>`)).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
+  const plain = text.replace(/\{[yrob]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yrob]):([^}]*)\}/g, (_, c, w) => (c === 'b' ? `<b>${w}</b>` : `<b style="color: ${{ y: motifYellow(), r: faceRed(), o: LIFE_WALL }[c]}">${w}</b>`)).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
   for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = `<b class="tip-name">Size</b>${html}`; }  // (its name first, as a control's)
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
@@ -8123,7 +8123,7 @@ function drawMotif(ctx) {
       add(P.map((p) => { const [x, y] = proj(...p); return [ox + x * s, oy + y * s]; }), Array.from({ length: k }, (_, j) => g.poly[k * t + j]));
     }
   }
-  ctx.strokeStyle = MOTIF_YELLOW;
+  ctx.strokeStyle = motifYellow();
   ctx.lineWidth = Math.max(2, Math.min(s / 6, 4));
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -8145,7 +8145,7 @@ function drawMotifFace(ctx) {
       const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|');
       sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]);
     }
-    ctx.strokeStyle = FACE_RED;
+    ctx.strokeStyle = faceRed();
     ctx.beginPath();
     for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
     ctx.stroke();
@@ -8165,7 +8165,7 @@ function drawMotifFace(ctx) {
     return corners;
   };
   const at = (v) => { const i = 3 * (k * G.tileOf[v] + G.cornerOf[v]); return [sh.corners[i], sh.corners[i + 1], sh.corners[i + 2]].map((x) => x * walk.R); };  // (as the shape has it, see drawStarts)
-  ctx.strokeStyle = FACE_RED;
+  ctx.strokeStyle = faceRed();
   ctx.beginPath();
   for (const [p, q] of [[a, b], [b, c], [c, a]]) {
     let down = false;
@@ -11605,6 +11605,7 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
+  if (motifShown) palette = palette.map((c) => c && faded(c, 0.25));  // (the motif shown: the cells pale under its outlines)
   if (!startsShown && !motifShown && glSurface(palette, levelOf, path)) return;  // WebGL, when the browser has it (see 11.4b); flat, the motif's outline over it
   glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
