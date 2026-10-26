@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1301';
+const VERSION = '0.1.1302';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1624,6 +1624,14 @@ function renderTrailButton() {
     title: 'Trail: a dead cell fades through Ink for a few generations (States and Age)', click: () => { $('lifeTrail').checked = !$('lifeTrail').checked; $('lifeTrail').dispatchEvent(new Event('change')); } });
   setTile(trailButton, { on: $('lifeTrail').checked && trailApplies(), can: trailApplies(), byDefault: 'On by default in Classic\nOff by default in colours', greyed: 'with dying stages (Generations), on Reversible and with Activity' });  // (not for these looks: off)
 }
+// Blocks (Reversible, in Trail's place: no trail there), a tile turned on and off: the blocks of the set the next generation
+// is worked out by, outlined over the cells (see drawBlocks); Ising's squares in turn are no blocks: greyed
+let showBlocks = false, blocksButton = null;
+function renderBlocksButton() {
+  blocksButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="13" y="13" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+    text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
+  setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
+}
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 const defaultLook = (mode) => (mode.life ? 'mono' : 'gradient');  // (the simplest: Life's States, a walk's Rainbow)
 function renderColorButtons() {
@@ -1637,7 +1645,8 @@ function renderColorButtons() {
   const buttons = looks.map((o) => tile({ pic: picture(o.value), text: names[o.value], title: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === defaultLook(MODES[$('mode').value]) ? 'yes' : '',
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [trailButton] : []));  // then Life's Trail, a switch
+  if (MODES[$('mode').value].margolus) renderBlocksButton();
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [MODES[$('mode').value].margolus ? blocksButton : trailButton] : []));  // then Life's Trail, a switch (Reversible's Blocks)
 }
 // Sound: Korobeiniki (the Russian song of Tetris, public domain) as 8-bit, while Life plays, on a clock of its own (Web
 // Audio, made here: a browser plays nothing before a click, off at first): its melody a square wave, its bass a triangle
@@ -8113,6 +8122,7 @@ function drawLifePlane() {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
+    drawBlocks(ctx);
     drawMotif(ctx);
     drawGhost();
     return;
@@ -8139,8 +8149,30 @@ function drawLifePlane() {
     ctx.fill();
   }
   turnLayer(ctx, 0);
+  drawBlocks(ctx);
   drawMotif(ctx);
   drawGhost();
+}
+// Reversible's blocks (Blocks on): those of the set the generation shown goes on by, its next (see blockStep), each outlined, the
+// sides of its cells not shared by two of them (a block cut by the torus's edges: each part of it)
+function drawBlocks(ctx) {
+  const M = walk.life?.margolus;
+  if (!showBlocks || !M || M.ising) return;
+  const { kind, row } = walk.plane, { scale: s, ox, oy } = view, blocks = M.turns[cur % M.turns.length];
+  turnLayer(ctx);
+  ctx.strokeStyle = cssColour('--sector');
+  ctx.lineWidth = Math.max(1, Math.min(s / 8, 3));
+  ctx.beginPath();
+  for (let i = 0; i < blocks.length; i += M.k) {
+    const sides = new Map();
+    for (let j = i; j < i + M.k; j++) {
+      const t = blocks[j], P = planeCorners(kind, t % row, Math.floor(t / row));
+      P.forEach((p, q) => { const r = P[(q + 1) % P.length], key = [pointKey(p), pointKey(r)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, r]); });
+    }
+    for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
+  }
+  ctx.stroke();
+  turnLayer(ctx, 0);
 }
 // The grid's motif, outlined in yellow while its size is hovered: what repeats, the sides of its cells not shared by two of
 // them. On the plane, a grid in a circle or a hexagon its core, in its middle (see discPatch, planeShape); the others a lattice
