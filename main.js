@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1333';
+const VERSION = '0.1.1334';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10055,8 +10055,9 @@ function renderHunt() {
         : [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
       : [`${fmt(r.contacts)} generations in contact`, r.winner ? `${LIFE_COLOUR_NAMES[r.winner - 1]} wins at gen ${fmt(r.alone)}`
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
-    const [colour, word] = light(r);
-    const b = card({ pic: `<i class="light" style="background:${colour}" title="${word}${K > 1 ? ` · balance ${r.balance.toFixed(2)}` : ` · at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}`}"></i>`, name, detail, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now)
+    const [colour, word] = light(r), why = K > 1 ? (r.contacts ? `balance ${r.balance.toFixed(2)}: how evenly its colours keep being born (1 all alike, 0 one alone; green from 0.6, orange from 0.3, else red)` : 'its colours never touched: no battle')
+      : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: ${((100 * r.peak) / n / r.live).toFixed(2)} % of the grid a starting cell (green from 1 %, orange from 0.2 %, else red)`;
+    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, title: `${name}\n${detail}\n● ${word}, ${why}`, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now; its light said in its tooltip)
     const pick = () => (huntId(r) === hunt.picked && !hunt.worker ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
     b.addEventListener('click', (e) => { if (!e.detail) pick(); });  // from the keyboard
