@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1283';
+const VERSION = '0.1.1284';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5431,6 +5431,10 @@ const howCounted = (kind, f) => {
     return `the cells in a hexagon round its middle (a point it turns onto by a sixth), as far as each other all in or all out: ${fmt(N)} ${d[3]}`;
   }
   if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest the middle (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
+    const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
+    return `${fmt(d[0])} rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
+  }
   if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} ${per > 1 ? `lattice cells × ${per} ${d[3]} each` : `a row${Number.isInteger(d[1]) ? '' : ' (on average)'}`}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   // a solid of flat faces: each face's cells, f to an edge (its faces as its least size's mesh has them, the same at every size)
   const base = kind.endsWith('Tetrakis') && SPHERES[kind.slice(0, -8)] ? kind.slice(0, -8) : kind, B = SPHERES[base];  // (a solid of tetrakis triangles: its squares', 4 each)
@@ -8120,6 +8124,7 @@ let motifShown = false;
 function drawMotif(ctx) {
   if (!motifShown) return;
   const { scale: s, ox, oy } = view, sides = new Map();
+  let tiles = [];  // (a surface's motif, see motifTiles)
   const add = (P, keys) => P.forEach((p, i) => { const j = (i + 1) % P.length, k = [keys[i], keys[j]].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, P[j]]); });
   if (walk.plane) {
     const { kind, W } = walk.plane, motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0));
@@ -8127,7 +8132,7 @@ function drawMotif(ctx) {
     turnLayer(ctx);
   } else {
     const g = walk.geo, sh = walk.shape, k = g.sides, proj = projector(), corner = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
-    for (const t of motifTiles()) {
+    for (const t of (tiles = motifTiles())) {
       const P = Array.from({ length: k }, (_, j) => corner(t, j));
       if (!planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), P[0])) continue;
       add(P.map((p) => { const [x, y] = proj(...p); return [ox + x * s, oy + y * s]; }), Array.from({ length: k }, (_, j) => g.poly[k * t + j]));
@@ -8140,7 +8145,14 @@ function drawMotif(ctx) {
   for (const side of sides.values()) if (side) { ctx.moveTo(...side[0]); ctx.lineTo(...side[1]); }
   ctx.stroke();
   if (walk.plane) turnLayer(ctx, 0);
-  else drawMotifFace(ctx);
+  else if (walk.geo.torus && tiles.length > 1) {  // (a sheet's lattice cell of several: one of them in green, as its tooltip's cells)
+    const g = walk.geo, sh = walk.shape, k = g.sides, proj = projector();
+    ctx.strokeStyle = cssColour('--cell');
+    ctx.beginPath();
+    Array.from({ length: k }, (_, j) => { const c = 3 * (k * tiles[0] + j), [x, y] = proj(...[sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R)); return [ox + x * s, oy + y * s]; }).forEach((p, j) => ctx[j ? 'lineTo' : 'moveTo'](...p));
+    ctx.closePath();
+    ctx.stroke();
+  } else drawMotifFace(ctx);
 }
 // the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): flat faces of cells, the cube's tetrakis triangles too
 const facePer = (g, kind) => g?.perFace ?? (kind === 'cubeTetrakis' ? g.n / 6 : 0);  // (its cells a face, as listed: the cube's tetrakis triangles, 4 a square, its squares a face at a time)
@@ -10073,7 +10085,8 @@ const patternsOn = () => {
     || (!!HULL_SOLIDS[m.sphere] && (K === 1 || ['square', 'tri'].includes(hullColours(m.sphere, K)?.kind))) || (!!walk.geo?.hexagons && !m.plane) || (!!TRI_FACES[m.sphere] && (K === 1 || !!triFace(m.sphere, K, 0))));
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
-const patternKind = () => walk.plane?.kind ?? walk.geo.tiling ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' ? 'tri' : walk.geo.squares ? 'tetrakis' : walk.geo.kite ? 'kite' : (walk.geo.hexagons ? 'hex' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[walk.geo.sides]) ?? 'square');
+const cellKind = (g) => g.tiling ?? (g.squares ? 'tetrakis' : g.kite ? 'kite' : (g.hexagons ? 'hex' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[g.sides]) ?? 'square');  // (a mesh's cells, as the plane's grids)
+const patternKind = () => walk.plane?.kind ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' && !walk.geo.tiling ? 'tri' : cellKind(walk.geo));
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
