@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1258';
+const VERSION = '0.1.1259';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7596,7 +7596,6 @@ function renderPlaneRow() {
   $('planeLabel').title = `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n` : ''}Each grid at the size closest to ${APERIODIC[kind] || shaped(kind) ? `a disc ${fmt(plane.side)} across, ${fmt(Math.round((Math.PI / 4) * plane.side ** 2))}` : fmt(plane.side ** 2)} cells (the size last picked: − + or the slider)`;  // (⌀: a disc's, see shapeW)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  for (const el of [$('planeLabel').parentElement, $('planeGauge')]) el.onmouseenter = el.onmouseleave = (e) => { motifShown = e.type === 'mouseenter'; needsFull = true; };  // (its motif shown, see drawMotif)
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.side = sides[k]; compute(true); });
   setTile($('edgeWalls'), { can: !APERIODIC[kind], on: !planeTorus(kind) });  // (a grid that never repeats: always walls, greyed on)
   const syms = PLANE_SYMMETRIES[kind];
@@ -8072,23 +8071,50 @@ function drawLifePlane() {
   drawMotif(ctx);
   drawGhost();
 }
-// The grid's motif, outlined in yellow while its size is hovered (see renderPlaneRow): what repeats, the sides of its cells
-// not shared by two of them; a grid in a circle or a hexagon its core, in its middle (see discPatch, planeShape); the
-// others a lattice cell, at the top left (the top row's first cells, as many as a lattice cell has)
+// The grid's motif, outlined in yellow while its size is hovered: what repeats, the sides of its cells not shared by two of
+// them. On the plane, a grid in a circle or a hexagon its core, in its middle (see discPatch, planeShape); the others a lattice
+// cell, at the top left (the top row's first cells, as many as a lattice cell has). On a surface (see motifTiles), on its
+// tiles as drawn flat (see drawSphere), the sides facing the viewer
 let motifShown = false;
 function drawMotif(ctx) {
   if (!motifShown) return;
-  const { kind, W } = walk.plane, { scale: s, ox, oy } = view, sides = new Map();
-  const motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0));
-  for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, q]); });
-  turnLayer(ctx);
+  const { scale: s, ox, oy } = view, sides = new Map();
+  const add = (P, keys) => P.forEach((p, i) => { const j = (i + 1) % P.length, k = [keys[i], keys[j]].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, P[j]]); });
+  if (walk.plane) {
+    const { kind, W } = walk.plane, motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0));
+    for (const P of motif) add(P.map(([u, v]) => [ox + u * s, oy + v * s]), P.map((p) => pointKey(p)));
+    turnLayer(ctx);
+  } else {
+    const g = walk.geo, sh = walk.shape, k = g.sides, proj = projector(), corner = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
+    for (const t of motifTiles()) {
+      const P = Array.from({ length: k }, (_, j) => corner(t, j));
+      if (!planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), P[0])) continue;
+      add(P.map((p) => { const [x, y] = proj(...p); return [ox + x * s, oy + y * s]; }), Array.from({ length: k }, (_, j) => g.poly[k * t + j]));
+    }
+  }
   ctx.strokeStyle = '#ffd60a';
-  ctx.lineWidth = Math.max(2, s / 6);
+  ctx.lineWidth = Math.max(2, Math.min(s / 6, 4));
   ctx.lineCap = 'round';
   ctx.beginPath();
-  for (const side of sides.values()) if (side) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
+  for (const side of sides.values()) if (side) { ctx.moveTo(...side[0]); ctx.lineTo(...side[1]); }
   ctx.stroke();
-  turnLayer(ctx, 0);
+  if (walk.plane) turnLayer(ctx, 0);
+}
+// a surface's motif round its tile most towards the viewer (of those, the nearest the view's middle): a solid's face, all its
+// cells; a sheet's (a torus, a Möbius strip, a Klein bottle) lattice cell, laid as a pattern (see sheetPatternAt); else that tile
+function motifTiles() {
+  const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
+  let near = -1, best = -Infinity;
+  for (let t = 0; t < g.n; t++) {
+    const n = [0, 1, 2].map((d) => sh.nrm[3 * t + d]);
+    if (!planeVisible(n, at(t))) continue;
+    const [x, y] = proj(...at(t)), score = towardViewer(...n) - 0.2 * (Math.hypot(ox + x * s - cw / 2, oy + y * s - ch / 2) / Math.min(cw, ch));
+    if (score > best) { best = score; near = t; }
+  }
+  if (near < 0) return [];
+  if (g.perFace) return Array.from({ length: g.perFace }, (_, j) => Math.floor(near / g.perFace) * g.perFace + j);
+  if (g.torus) return sheetPatternAt(near, Array.from({ length: PER_RHOMBUS[patternKind()] ?? 1 }, (_, j) => [j, 0, j]), true).map(([t]) => t);
+  return [near];
 }
 // the shape a Life mode's cells have, as the rule menu marks the rules that suit it (■ ▲ ⬡); on
 // coming to another mode, a rule marked for another shape gives way to the first one for this shape
@@ -11498,7 +11524,7 @@ function drawSphere() {
   }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
-  if (!startsShown && glSurface(palette, levelOf, path)) return;  // WebGL, when the browser has it (see 11.4b)
+  if (!startsShown && !motifShown && glSurface(palette, levelOf, path)) return;  // WebGL, when the browser has it (see 11.4b); flat, the motif's outline over it
   glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
     const wall = new Set(g.walls);
@@ -11506,8 +11532,9 @@ function drawSphere() {
     drawStarts(ctx);
     return;
   }
-  if (g.torus || !g.faces || g.concave || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
+  if (motifShown || g.torus || !g.faces || g.concave || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
     drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, path && pathHalves());
+    drawMotif(ctx);
     return;
   }
   const px = new Float32Array(nv), py = new Float32Array(nv);  // the corners on the screen
@@ -13645,6 +13672,7 @@ $('startRow').addEventListener('mouseleave', () => {
   if ($('autoFit').checked) fitWhole();
 });
 const startField = $('startLabel').parentElement;
+for (const el of [$('planeLabel').parentElement, $('planeGauge'), $('sizeLabel').parentElement, $('sizeGauge')]) el.onmouseenter = el.onmouseleave = (e) => { motifShown = e.type === 'mouseenter'; needsFull = true; };  // a size hovered: its motif shown (see drawMotif)
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 // Upright: the view from the front exactly, level (its heading kept), a drag turning it round the vertical only
