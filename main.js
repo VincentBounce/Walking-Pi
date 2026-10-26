@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1307';
+const VERSION = '0.1.1308';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5441,6 +5441,8 @@ const sizeTips = (row, total, text) => {
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
 const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
+// a sheet's brick: a torus's sheet cell (a tiling's: g.sheet's, see tilingTorusMesh), so many tiles; a Möbius strip's, a Klein bottle's: the plane's lattice cell
+const ringTorus = (g) => g.torus && !g.mobius && !g.klein, brickOf = (g) => (ringTorus(g) ? g.n / (g.nu * g.nv) : PER_RHOMBUS[cellKind(g)] ?? 1);
 const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
@@ -5456,8 +5458,8 @@ const howCounted = (kind, f) => {
   // (a disc ⌀ side: as big as a square of side × √π / 2, in whole rows of its items, see sideW: W² of them nearest its middle)
   if (d && APERIODIC[kind]) return `a disc ⌀ ${fmt(discOf(d[0]))} round its ${middle()} (it never repeats: no rows)\n= the ${fmt(d[0])}² ${d[3]} nearest it (whole rows: a square as big as the disc, ${fmt(discOf(d[0]))} × √π / 2 = ${fmt(d[0])})${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
-    const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
-    return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
+    const m = brickOf((facesMemo[kind] ??= S.mesh(S.sizes[0]))), L = d[2] / d[0] / m, whole = Number.isInteger(L);
+    return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'bricks' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
   }
   // the plane's: its rows × its lattice cells (its motif, yellow) × their cells (green), less its wall's
   if (d) return `(Edge=${fmt(d[0])}) rows × {y:${fmt(d[1])} ${per > 1 ? 'lattice cells' : d[3]}} a row${per > 1 ? ` × {k:${per} ${d[3]} each}` : ''}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
@@ -8248,8 +8250,8 @@ function drawMotifFace(ctx, t0) {
   if (f.sector) outlineTiles(ctx, cssColour('--sector'), tilesOf(f.sector));
   outlineTiles(ctx, faceRed(), tilesOf(f.face));
 }
-// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a tiling's
-// torus's sheet cell, as replicated; a sheet's (a Möbius strip, a Klein bottle, a torus of regular tiles) lattice cell, laid as a pattern (see sheetPatternAt); a solid's its faces' grid's: a square, a
+// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a torus's
+// sheet cell, as replicated; a Möbius strip's or a Klein bottle's, the plane's lattice cell laid on it (see sheetPatternAt); a solid's its faces' grid's: a square, a
 // hexagon, a tetrakis square's 4 triangles, a triangle (of 3 kites)
 function motifTiles() {
   const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
@@ -8261,12 +8263,11 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
-  if (g.torus && g.uvMid && !g.mobius && !g.klein) {  // a tiling's torus: its sheet's cell as it is laid nu × nv times (see tilingTorusMesh), at its corner, else in front
-    const cell = (t) => `${Math.floor(g.uvMid[2 * t])},${Math.floor(g.uvMid[2 * t + 1])}`, brick = (c) => [...Array(g.n).keys()].filter((t) => cell(t) === c);
-    const corner = brick('0,0');
+  if (ringTorus(g)) {  // a torus: its sheet's cell [i, i + 1) × [j, j + 1), as laid nu × nv times: its first, at the corner, else the one in front
+    const cell = (t) => sheetMiddle(g, t).map(Math.floor).join(), brick = (c) => [...Array(g.n).keys()].filter((t) => cell(t) === c), corner = brick('0,0');
     return corner.some((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) ? corner : brick(cell(near));
   }
-  if (g.torus) return sheetPatternAt(near, Array.from({ length: PER_RHOMBUS[patternKind()] ?? 1 }, (_, j) => [j, 0, j]), true).map(([t]) => t);
+  if (g.torus) return sheetPatternAt(near, Array.from({ length: brickOf(g) }, (_, j) => [j, 0, j]), true).map(([t]) => t);  // (a Möbius strip, a Klein bottle: the plane's motif, laid)
   const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
   return Array.from({ length: m }, (_, j) => Math.floor(near / m) * m + j);  // (a cell, a triangle: what a face counts, f² of them; not the plane's rhombus, a face not whole ones)
 }
