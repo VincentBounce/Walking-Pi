@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1238';
+const VERSION = '0.1.1239';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -13718,6 +13718,7 @@ $('mode').addEventListener('change', () => {
   // come back with every new mode
   $('perspective').checked = perspectiveFor(MODES[$('mode').value], MODES[$('mode').value].round ? 1 : 0);
   Object.assign(cam, CAM0);
+  $('upright').checked = false;  // (the default view: free, on each surface)
   $('autoFit').checked = true;  // a new walk is shown framed, whatever the view did before
   $('startNo').value = 1;
   compute();

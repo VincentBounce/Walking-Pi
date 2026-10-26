@@ -2,6 +2,7 @@
 //   await import(`/tools/check.js?${Date.now()}`); await walkingCheck();   // the meshes, a few seconds
 //   await walkingCheck({ crawl: true });                                   // and every tab, shape and tiling, a few minutes
 //   await walkingCheck({ fuzz: 400, seed: 7 });                            // 400 actions at random, menu to menu (transitions, smallest sizes)
+//   await walkingCheck({ fuzz: 100, cold: true });                          // and after each, its link loaded cold beside: the same menus offered
 //   await walkingCheck({ deep: true });                                    // every grid's rules (yours too), How it works, colours, zones, smallest size: a night's
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
@@ -179,7 +180,25 @@ async function crawl(fail) {
 // tab, 2D or 3D, a shape, a tiling, colours, a zone, a rule, a start, a look, the smallest size (often), a size up, a few
 // steps, a short play, the link loaded again (not back in the history: it can leave the page); after each, the crawl's checks; a failure told with the
 // actions that led to it
-async function fuzz(fail, count, seedv) {
+// what the menus offer (a choice: its name, greyed or not, picked or not), the size said: a link loaded cold offers the same
+const offered = (w) => {
+  const d = w.document, row = (sel) => [...d.querySelectorAll(sel)].filter((b) => !b.closest('[hidden]')).map((b) => `${b.textContent.trim().slice(0, 16)}${b.disabled ? '⊘' : ''}${b.classList.contains('active') ? '•' : ''}`).join(' ');
+  return { size: d.getElementById('sizeLabel').closest('[hidden]') ? '' : d.getElementById('sizeLabel').innerText, plane: d.getElementById('planeLabel').closest('[hidden]') ? '' : d.getElementById('planeLabel').innerText,
+    tiles: row('#torusTiles button'), colours: row('#colourBlocks button'), zones: row('#huntZones button'), rules: row('#navRules button') };
+};
+async function coldLike(fail, what) {
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:900px;opacity:0;pointer-events:none';
+  f.src = `${location.pathname}?cold=${Date.now()}${location.hash}`;
+  document.body.append(f);
+  await new Promise((go) => f.addEventListener('load', go, { once: true }));
+  await wait(1500);
+  const a = offered(window), b = offered(f.contentWindow);
+  f.remove();
+  const diff = Object.keys(a).filter((k) => a[k] !== b[k]).map((k) => `${k}: «${a[k]}» here, «${b[k]}» cold`);
+  if (diff.length) fail(`${what} ${location.hash}: ${diff.join('; ')}`);
+}
+async function fuzz(fail, count, seedv, cold = false) {
   const C = checker(fail);
   let sd = seedv >>> 0 || 1;
   const rnd = () => ((sd = (Math.imul(sd, 1103515245) + 12345) >>> 0) / 4294967296), pick = (a) => a[Math.floor(rnd() * a.length)];
@@ -204,6 +223,7 @@ async function fuzz(fail, count, seedv) {
     trail.push(what);
     if (trail.length > 8) trail.shift();
     if (!(await C.look(`fuzz #${i} (seed ${seedv}) ${trail.join(' › ')}`, 300))) trail.length = 0;
+    else if (cold) await coldLike(fail, `fuzz #${i} (seed ${seedv}) ${trail.join(' › ')}`);
   }
   C.stop();
   return C.checked;
@@ -263,11 +283,11 @@ async function deep(fail, from, only) {
   return checked;
 }
 
-window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, seed = Date.now() % 1e6, from, only } = {}) => {
+window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
   let checked = checkMeshes(fail);
   if (andCrawl) checked += await crawl(fail);
-  if (actions) checked += await fuzz(fail, actions, seed);
+  if (actions) checked += await fuzz(fail, actions, seed, cold);
   if (andDeep) checked += await deep(fail, from, only);
   return { ok: !failures.length, failures, checked };
 };
