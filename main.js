@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1236';
+const VERSION = '0.1.1237';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5361,15 +5361,15 @@ const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
-// (each family's last size kept: on another tiling or surface of it, the size with about as many cells)
-const familyCells = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
+// (each family's last size kept: on another tiling or surface of it, the same size, else the nearest it has)
+const familySize = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial} ${lifeColours}`, [was] = (sel.dataset.kind ?? '').split(' ');  // (a torus's sizes: its columns as its colours, see ringColumns)
   if (sel.dataset.kind === key) return;
-  if (SPHERES[was] && sel.value) familyCells[ladderOf(was)] = SPHERES[was].tiles(sphereSize());
-  const kept = familyCells[ladderOf(kind)], rows = was === kind ? sel.value : null;  // (the same surface, its colours changed: its rows kept, its columns its colours')
-  sel.replaceChildren(...SPHERES[kind].sizes.map((f) => new Option(sizeLabel(kind, f), f)));
-  sel.value = rows && SPHERES[kind].sizes.map(String).includes(rows) ? rows : kept ? SPHERES[kind].near(kept) : SPHERES[kind].nearest(initial);
+  if (SPHERES[was] && sel.value) familySize[ladderOf(was)] = parseInt(sel.value);
+  const kept = familySize[ladderOf(kind)], rows = was === kind ? sel.value : null, { sizes } = SPHERES[kind];  // (the same surface, its colours changed: its rows kept, its columns its colours')
+  sel.replaceChildren(...sizes.map((f) => new Option(sizeLabel(kind, f), f)));
+  sel.value = rows && sizes.map(String).includes(rows) ? rows : kept ? sizes.reduce((a, b) => (Math.abs(Math.log(b / kept)) < Math.abs(Math.log(a / kept)) ? b : a)) : SPHERES[kind].nearest(initial);
   sel.dataset.kind = key;
 }
 
@@ -10015,8 +10015,8 @@ function sheetIndex(g) {
   };
   const at = new Map();
   for (let t = 0; t < g.n; t++) at.set(key(sheetPlace(g, t)), t);
-  // the tile at a place: its key, else a hair off it either way (the sheet's places Float32, 1e-5 off at u = 100: on a
-  // thousandth's edge, a row's places all on the other side of it)
+  // the tile at a place: its key, else a hair off it either way (the plane's middles turned onto the strip 1e-5 off its own: on
+  // a thousandth's edge, a row's places all on the other side of it)
   const find = (p) => at.get(key(p)) ?? [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([a, b]) => at.get(key([p[0] + a * 1e-4, p[1] + b * 1e-4]))).find((t) => t !== undefined);
   return (g.famousIndex = { find });
 }
@@ -10051,7 +10051,8 @@ function sheetPatternAt(spot, cells, partial = false) {  // partial: its cells t
   const a = pts.reduce((best, p, k) => (Math.hypot(p[0] - mid[0], p[1] - mid[1]) < Math.hypot(pts[best][0] - mid[0], pts[best][1] - mid[1]) ? k : best), 0), anchor = pts[a];
   const shape = shapeOf(planeCorners(kind, cells[a][0], cells[a][1]).map(unitsOf));
   let most = [];  // (partial: the tile that lays the most)
-  for (const T of lifePatch(2, [spot])) {  // the spot, then the tiles round it
+  const reach = Math.ceil(Math.sqrt(TILINGS[kind]?.polys.length ?? 1)) + 1;  // (a lattice cell's tiles round the spot, nearest first: a cell's shape there twice, Dual 314's, its twin in it too)
+  for (const T of lifePatch(reach, [spot])) {  // the spot, then the tiles round it
     if (shapeOf(tileCorners(g, T)) !== shape) continue;  // (a cell of the same shape, the same way round, as the pattern's there)
     const [tu, tv] = sheetPlace(g, T), out = [];
     for (let k = 0; k < pts.length; k++) {
