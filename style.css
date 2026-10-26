@@ -524,11 +524,9 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   position: absolute;
   right: 12px;
   bottom: 10px;
-  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
-  text-align: right;
-  white-space: pre-line;  /* its lines stacked in the bottom right corner */
+  white-space: pre-line;  /* its lines stacked in the bottom right corner, each a box (below) */
   pointer-events: none;
   z-index: 3;  /* (over the view's boxes: the player's, the display's) */
 }
