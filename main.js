@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1220';
+const VERSION = '0.1.1221';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1401,10 +1401,10 @@ function describe(base, available) {
 // step that closed them; or the tiles coloured by their visits (Heatmap, on cells only).
 const DISPLAY_BY_TAB = {
   '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],
-  '3D walks': ['colors', 'digit', 'grid', 'sky', 'autoRotate', 'perspective', 'light'],
-  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'perspective', 'light'],
+  '3D walks': ['colors', 'digit', 'grid', 'sky', 'autoRotate', 'upright', 'perspective', 'light'],
+  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'upright', 'perspective', 'light'],
   'Automata on the plane': ['colors', 'digit', 'mono', 'grid', 'sky'],
-  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'perspective', 'light'],
+  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'upright', 'perspective', 'light'],
   '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
@@ -1415,7 +1415,7 @@ const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElemen
 const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Grid heads the box
-                 autoRotate: 'autoRotateRow', perspective: 'perspectiveRow', light: 'lightRow' };
+                 autoRotate: 'autoRotateRow', upright: 'uprightRow', perspective: 'perspectiveRow', light: 'lightRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
   skyButton.hidden = $('skyRow').hidden;  // the sky's switch, among the themes
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
@@ -1451,7 +1451,7 @@ function updateDisplayMenu() {
 // greyed where its row is hidden (it does not apply: Autoplay but in Life, the others but in 3D); drawn again with the
 // display box and when the box opens (a hand rotation, a new mode: their boxes changed)
 const VIEW_TILES = [['perspective', 'perspectiveRow', 'perspective', 'Perspective', 'Perspective: what is nearer looks bigger'],
-  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoPlay', 'autoPlayRow', 'play', 'Autoplay'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate']];
+  ['light', 'lightRow', 'sideLight', 'Side light'], ['autoPlay', 'autoPlayRow', 'play', 'Autoplay'], ['autoRotate', 'autoRotateRow', 'autoRotate', 'Auto-rotate'], ['upright', 'uprightRow', 'upright', 'Upright']];
 let viewTiles = null;
 function renderViewTiles() {
   viewTiles ??= VIEW_TILES.map(([id, row, pic, text, title]) => tile({ pic: icon(pic), text, title: title ?? $(row).title, toggle: true,
@@ -1464,7 +1464,7 @@ function renderViewTiles() {
     ways[perspectiveFor(MODES[w], MODES[w].round ? 1 : 0) ? 'on' : 'off'].push(SHAPE_SHORT[sh] ?? sh);
   }
   const perspective = !ways.on.length ? 'off' : !ways.off.length ? 'on' : `On by default on ${ways.on.join(', ')}\nOff by default on ${ways.off.join(', ')}`;
-  const first = { perspective, light: 'on', autoPlay: 'off', autoRotate: 'off' }, why = { autoPlay: 'outside Life' };
+  const first = { perspective, light: 'on', autoPlay: 'off', autoRotate: 'off', upright: 'off' }, why = { autoPlay: 'outside Life' };
   VIEW_TILES.forEach(([id, row], k) => setTile(viewTiles[k], { on: $(id).checked, can: !$(row).hidden && !$(id).disabled, byDefault: first[id], greyed: why[id] ?? '' }));
   $('viewTiles').hidden = VIEW_TILES.every(([, row]) => $(row).hidden);
 }
@@ -1961,6 +1961,7 @@ const ICONS = (() => {
     // Auto-rotate (a turn round a slanted orbit)
     perspective: pathEl('M6.14 4.16L18.14 5.88A1 1 0 0 1 19 6.87V17.13A1 1 0 0 1 18.14 18.12L6.14 19.84A1 1 0 0 1 5 18.85V5.15A1 1 0 0 1 6.14 4.16Z'),
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
+    upright: pathEl('M12 2.5V21.5') + pathEl('M4.5 12.5C4.5 15 7.9 17 12 17S19.5 15 19.5 12.5') + pathEl('M16.5 15.8L19.5 12.5L20.8 16.6'),  // a turn round the upright only
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
     ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
@@ -5131,7 +5132,7 @@ function morphStep(dt) {
  * the size is about as many cells whatever the tiling (cells stay regular, so not exactly). Each step about doubles the
  * cells (×2.25, then ×1.78). A new surface needs only its tiles(size) and its steps. */
 const SIDES = [8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
-const SIZE_LADDERS = { surface: { counts: sidesIn(24, 96).map((f) => f * f), start: 2688 }, solid: { counts: sidesIn(8, 128).map((f) => 6 * f * f), start: 6144 } };
+const SIZE_LADDERS = { surface: { counts: sidesIn(24, 256).map((f) => f * f), start: 2688 }, solid: { counts: sidesIn(8, 128).map((f) => 6 * f * f), start: 6144 } };
 const mobiusRadius = (kind, s) => mobiusSheet(kind, s).W / MOBIUS_WIDTH;  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -13186,7 +13187,7 @@ stage.addEventListener('pointermove', (e) => {
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
     $('centered').checked = false;
-    rotateView(screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up
+    rotateView($('upright').checked ? [0, 0, (cam.u[2] < 0 ? -1 : 1) * dx * 0.008] : screenTurn(dy * 0.008, dx * 0.008, 0));  // a trackball: drag right turns around the screen's up; Upright: round the world's up only
   }
 });
 const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
@@ -13200,6 +13201,7 @@ function recentre() {
     $('autoRotate').checked = false;
     spinFrom = spinRamp = 0;
     $('centered').checked = true;
+    $('upright').checked = false;  // (the default view: free again)
     Object.assign(cam, CAM0);
     rotateView([0, 0, 0]);  // the projection and the frame again
     faced = false;
@@ -13516,6 +13518,7 @@ startField.addEventListener('mouseleave', () => { startsShown = false; needsFull
 $('centered').addEventListener('change', () => {  // on: the camera turns to the pattern again, or back to the default view
   faced = false;
   if ($('centered').checked && !centersPattern()) { Object.assign(cam, CAM0); rotateView([0, 0, 0]); }
+  if ($('centered').checked) { $('upright').checked = false; renderViewTiles(); }  // (the default view: free again)
 });
 $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
