@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1316';
+const VERSION = '0.1.1317';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4399,16 +4399,20 @@ const tubeOf = (g) => g.tube ?? TORUS_TUBE;  // a grid's own tube (see TUBE_SHAP
 const TUBE_SHAPE = { torus: 1, torusCairo: 1, torusHex: 2 / Math.sqrt(3), torusTri: Math.sqrt(3) / 2, torusKite: Math.sqrt(3) / 2, torusHexTurned: Math.sqrt(3) / 2, torusTriTurned: 2 / Math.sqrt(3), torusKiteTurned: 2 / Math.sqrt(3) };
 for (const k of Object.keys(TUBE_SHAPE)) TUBE_SHAPE[k.replace('torus', 'klein')] = TUBE_SHAPE[k];
 const tubeFor = (kind, nv, nu) => (TUBE_SHAPE[kind] * nv) / nu;
-// a length round a torus or along a Möbius strip, from its proportions: the nearest multiple of 12, so that
-// the blocks of 2, 3, 4, 6 and 12 colours divide it (and their middles fall on whole tiles)
-const twelve = (x) => 12 * Math.max(1, Math.round(x / 12));
-// a torus's (a Klein bottle's) columns round the ring near x: a whole count of its colours' blocks round it (see torusBlocks; a
-// bottle's, its colours' slices) and of step (the hexagons' and the triangles': even), each colour as many cells; Life's
-// colours only (a walk's: one)
-function ringColumns(x, nv, step = 1, klein = false) {
-  const K = MODES[$('mode').value]?.life ? lifeColours : 1, a = klein ? K : torusBlocks(K, { nv })[0], m = a % step ? a * step : a;
-  const sq = (a * a * nv) / K; if (step === 1 && !klein && sq % m === 0 && sq / x <= 1.6 + 1e-9 && sq / x >= 0.8 - 1e-9) return sq;  // squares: its blocks as many squares round as along, the ring 60 % longer or 20 % shorter at most (see tubeOf; else 2:1 at most)
-  return m * Math.max(1, Math.round(x / m));
+// One length for every ring and strip (a torus's, a Klein bottle's round its ring, a Möbius strip's along it), in its steps: near
+// x (its usual), its colours' blocks square (as long round as across: square) when that is 20 % shorter to 60 % longer, a whole
+// count of unit (each colour's block whole) as ok allows (a twist's), else the nearest ok allows. Life's colours only (a walk's: one)
+const ringColours = () => (MODES[$('mode').value]?.life ? lifeColours : 1);
+function ringLength(x, square, unit, ok = () => true) {
+  const near = (t, u) => { for (let d = 0; d <= t / u + 1; d++) for (const n of [Math.round(t / u) + d, Math.round(t / u) - d]) if (n >= 1 && ok(n * u)) return n * u; };
+  const sq = near(square, unit) ?? near(square, 1);
+  return sq >= 0.8 * x - 1e-9 && sq <= 1.6 * x + 1e-9 ? sq : near(x, unit) ?? near(x, 1);
+}
+// a torus's (a Klein bottle's) columns round the ring near x: its colours' blocks a × b (see torusBlocks; a bottle's, slices
+// along its ring), a whole count of them and of step (the hexagons' and the triangles': even)
+function ringColumns(x, nv, step = 1, klein = false, ok) {
+  const K = ringColours(), [a, b] = klein ? [K, 1] : torusBlocks(K, { nv });
+  return ringLength(x, (x * TORUS_TUBE * a) / b, a % step ? a * step : a, ok);
 }
 
 /* Grid point (i, j) of an nu × nv torus, rolled up by m ∈ [0, 1]: at m = 0 a flat rectangle
@@ -4446,18 +4450,7 @@ function kleinPoint(x, y, nu, nv, m, tube = TORUS_TUBE) {
 // corners one vertex per point of the bottle, found by their place on the sheet (not in space: it crosses
 // itself, and the points where it does are two)
 const kleinColumns = { klein: (nv) => ringColumns(nv / TORUS_TUBE, nv, 1, true), kleinHex: (nv) => torusHexColumns(nv, true), kleinTri: (nv) => ringColumns((nv * Math.sqrt(3)) / (2 * TORUS_TUBE), nv, 2, true),
-  kleinCairo: (nv) => oddColumns(nv / TORUS_TUBE) };  // Cairo: an odd length, so that the ends turned over keep the tiling
-// an odd length near x (within a fifth), the one with the most of 3, 5, 7, 9 dividing it, so as many colours (slices along the
-// ring, see torusBlocks) as can be; then the nearest
-function oddColumns(x) {
-  let best = 0, score = -1;
-  for (let n = Math.max(3, Math.ceil(0.8 * x)); n <= 1.25 * x; n++) {
-    if (n % 2 === 0) continue;
-    const s = [3, 5, 7, 9].filter((d) => n % d === 0).length;
-    if (s > score || (s === score && Math.abs(n - x) < Math.abs(best - x))) { best = n; score = s; }
-  }
-  return best || 2 * Math.round((x - 1) / 2) + 1;
-}
+  kleinCairo: (nv) => ringColumns(nv / TORUS_TUBE, nv, 1, true, (n) => n % 2 === 1) };  // Cairo: an odd length, so that the ends turned over keep the tiling
 kleinColumns.kleinKite = kleinColumns.kleinTri;  // kites: the triangles', each cut in 3
 kleinColumns.kleinTriTurned = kleinColumns.kleinKiteTurned = (nv) => turnedTriColumns(nv);  // turned by 30° (as the tori, see turnedTorus)
 kleinColumns.kleinHexTurned = (nv) => turnedHexColumns(nv, true);
@@ -4632,11 +4625,18 @@ function mobiusPoint(x, y, L, W, m) {
  *   further on; L whole hexagons, or half one more when nv is even; the edges zigzag along them;
  * - triangles pointing along the strip, in columns √3/2 wide (vertical edges), the strip nv edges
  *   wide, an even number of columns; the edges zigzag along them. */
+// a Möbius strip's length in its steps along (see MOBIUS_ALONG): its own, else as a ring's (see ringLength): its usual (its circle,
+// its width MOBIUS_WIDTH times its radius), its K colours' stretches of its loop (its two faces, 2L) square (W long), whole counts of
+// q steps (a tiling's copy along), as its twist allows
+const stripSteps = (kind0, nv, W, own, q = 1) => {
+  const { step, ok } = MOBIUS_ALONG[kind0], K = ringColours();
+  return own ?? ringLength((2 * Math.PI * W) / MOBIUS_WIDTH / step, (K * W) / 2 / step, (K * q) % 2 ? K * q : (K * q) / 2, (n) => ok(n, nv));
+};
 const stripMemo = {}, countMemo = {};
 // a strip's length, width and tiles' count, without its tiles (the sizes' ladder asks for many: see mobiusSheetOf's count)
-const mobiusCount = (kind0, size) => (countMemo[`${kind0}|${size}`] ??= mobiusSheetOf(kind0, size, true));
+const mobiusCount = (kind0, size) => (countMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size, true));  // (its length its colours': see stripSteps)
 function mobiusSheet(kind0, size) {
-  return (stripMemo[`${kind0}|${size}`] ??= mobiusSheetOf(kind0, size));  // (once: the sizes' labels and ladder ask again and again)
+  return (stripMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size));  // (once: the sizes' labels and ladder ask again and again)
 }
 function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counted, not built ({ L, W, n }: see mobiusCount)
   if (kind0.startsWith('mobiusKite')) {  // the triangles', cut in 3
@@ -4646,12 +4646,11 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
   const tiling = MOBIUS_STRIPS[kind0]?.kind;
   if (tiling) return count ? { ...stripFrame(tiling, kind0, size), n: stripCount(tiling, kind0, size) } : tilingStrip(tiling, kind0, size);
   // the usual length, a multiple of 12
-  const kind = kind0, [nv, own] = mobiusSize(size), step = MOBIUS_ALONG[kind].step, fit = twelve;
-  const len = (W) => (own ? own * step : (2 * Math.PI * W) / MOBIUS_WIDTH), tiles = [], H = Math.sqrt(3) / 2;  // its length, or the usual one
+  const kind = kind0, [nv, own] = mobiusSize(size), steps = (W) => stripSteps(kind, nv, W, own), tiles = [], H = Math.sqrt(3) / 2;  // its length, in steps along
   let n = 0;
   const put = (tile) => (count ? n++ : tiles.push(tile())), done = (L, W) => (count ? { L, W, n } : { L, W, tiles });  // (a tile made only when kept)
   if (kind === 'mobiusHexTurned') {
-    const W = 1.5 * (nv - 1) + 2, S3 = Math.sqrt(3), a = Math.round(len(W) / S3 - (own && !(nv % 2) ? 0.5 : 0)), L = S3 * (nv % 2 ? a : a + 0.5);
+    const W = 1.5 * (nv - 1) + 2, S3 = Math.sqrt(3), L = (S3 / 2) * steps(W);
     for (let r = 0; r < nv; r++) {
       const cy = 1.5 * r + 1;
       for (let i = -2; S3 * (i - 1) < L; i++) {
@@ -4663,7 +4662,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
     return done(L, W);
   }
   if (kind === 'mobiusTriTurned') {
-    const W = nv, cols = own ?? fit(len(W) / H), L = cols * H;
+    const W = nv, cols = steps(W), L = cols * H;
     for (let i = -1; i <= cols; i++) {
       const x0 = i * H, x1 = x0 + H, o0 = (((i % 2) + 2) % 2) / 2, o1 = 0.5 - o0;  // the lattice's rows on either side
       for (let y = o0 - 2; y < W + 2; y += 1) {
@@ -4679,7 +4678,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
   }
   if (kind === 'mobiusCairo') {  // nv squares of the Cairo grid across, L along with L + nv odd: the ends glued turned over keep
     // the tiling (see cairoCorners); the pentagons whose middles lie on the strip, its edges zigzag along them
-    const W = nv, L0 = own ?? fit(len(W)), L = (L0 + W) % 2 ? L0 : L0 + 1;
+    const W = nv, L = steps(W);
     for (let i = -1; i <= L; i++) for (let j = -1; j <= W; j++) for (const o of [0, 1]) {
       const [cx, cy] = cairoMiddle(i, j, o);
       if (cx < 0 || cx >= L || cy <= 0 || cy >= W) continue;
@@ -4688,7 +4687,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
     return done(L, W);
   }
   if (kind === 'mobiusHex') {
-    const W = Math.sqrt(3) * (nv + 0.5), a = own ?? 2 * Math.round((len(W) / 1.5 - 1) / 2) + 1, L = 1.5 * a;
+    const W = Math.sqrt(3) * (nv + 0.5), a = steps(W), L = 1.5 * a;
     for (let c = 0; c < a; c++) for (let r = 0; r < nv; r++) {
       const cx = 1.5 * c + 1, cy = Math.sqrt(3) * (r + (c % 2) / 2) + H;
       put(() => [0, 1, 2, 3, 4, 5].map((k) => [cx + Math.cos((k * Math.PI) / 3), cy + Math.sin((k * Math.PI) / 3)]));
@@ -4696,7 +4695,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
     return done(L, W);
   }
   if (kind === 'mobiusTri') {
-    const W = nv * H, L = own ? own / 2 : nv % 2 ? fit(len(W)) - 0.5 : fit(len(W));
+    const W = nv * H, L = steps(W) / 2;
     for (let j = 0; j < nv; j++) {
       const y0 = j * H, y1 = y0 + H;
       for (let a = (j % 2) / 2 - 2; a < L + 2; a += 1) {
@@ -4706,7 +4705,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
     }
     return done(L, W);
   }
-  const L = own ?? fit(len(nv));
+  const L = steps(nv);
   for (let i = 0; i < L; i++) for (let j = 0; j < nv; j++) put(() => [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]);
   return done(L, nv);
 }
@@ -4731,10 +4730,8 @@ function tilingStrip(kind, kind0, size) {
 // onto itself, so a corner and its twin meet exactly; the polygons' 6 decimals leave them 10⁻⁶ apart), the lattice cells
 // over its rectangle (its corners in the lattice's units, a cell more round them)
 function stripFrame(kind, kind0, size) {
-  const t = TILINGS[kind], [a, b] = MOBIUS_STRIPS[kind0].basis, turn = -Math.atan2(a[1], a[0]), m = t.polys.length, { step, ok } = MOBIUS_ALONG[kind0], { c } = mobiusMirror(kind, [a, b]);
-  const [nv, own] = mobiusSize(size), W = nv * turnPoint(b, turn)[1], len = (2 * Math.PI * W) / MOBIUS_WIDTH;
-  let n = own ?? Math.round(len / step);
-  if (!own) for (let d = 0; !ok(n, nv); d++) n += d % 2 ? -d : d;  // (the nearest count the twist allows)
+  const t = TILINGS[kind], [a, b] = MOBIUS_STRIPS[kind0].basis, turn = -Math.atan2(a[1], a[0]), m = t.polys.length, { step } = MOBIUS_ALONG[kind0], { c } = mobiusMirror(kind, [a, b]);
+  const [nv, own] = mobiusSize(size), W = nv * turnPoint(b, turn)[1], n = stripSteps(kind0, nv, W, own, Math.round(MOBIUS_ALONG[kind0].copy / step));  // (its colours' stretches whole copies along)
   const L = n * step, sides = Math.max(...t.polys.map((P) => P.length)), by = W / nv, Q = 12000;
   const snap = ([x, y]) => [(Math.round((x / step) * Q) / Q) * step, W / 2 + (Math.round(((y - W / 2) / by) * Q) / Q) * by];
   const [ta, tb] = t.basis.map((v) => turnPoint(v, turn)), det = ta[0] * tb[1] - ta[1] * tb[0];  // (the tiling's own cells)
@@ -4747,7 +4744,7 @@ function stripFrame(kind, kind0, size) {
 // the lattice's steps (no corner built; on the fine grid a middle on an edge lands on it: here 10⁻⁵ of it, as near)
 // (a bottle: below its top, see kleinTilingSheet)
 function stripCount(kind, kind0, size, bottle = false) {  // (once each: a size's sought among them all, see near)
-  return (countMemo[`${kind}|${kind0}|${size}|${bottle}`] ??= stripCounted(kind, kind0, size, bottle));
+  return (countMemo[`${kind}|${kind0}|${size}|${bottle}|${ringColours()}`] ??= stripCounted(kind, kind0, size, bottle));
 }
 function stripCounted(kind, kind0, size, bottle) {
   const { m, L, W, cells, i0, i1, j0, j1, ta, tb } = stripFrame(kind, kind0, size), e = 1e-5;
@@ -4769,7 +4766,7 @@ const kleinRows = (kindK) => {
 };
 const kleinMemo = {};
 function kleinTilingSheet(kindK, size) {
-  return (kleinMemo[`${kindK}|${size}`] ??= (() => {
+  return (kleinMemo[`${kindK}|${size}|${ringColours()}`] ??= (() => {
     const { kind, strip, turn, nv, n, W, step, by, a } = kleinLength(kindK, size);
     const s = tilingStrip(kind, strip, `${nv}x${n}`), keep = s.tiles.map((_, i) => i).filter((i) => s.mids[2 * i + 1] < W - 1e-9);
     return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]), bricks: keep.map((i) => s.bricks[i]) };
@@ -4780,16 +4777,13 @@ const kleinCount = (kindK, size) => { const { kind, strip, nv, n } = kleinLength
 function kleinLength(kindK, size) {
   const { strip } = FOLDED[kindK], { kind, basis: [a, b] } = MOBIUS_STRIPS[strip], { step, ok, copy } = MOBIUS_ALONG[strip];
   const [nv, own] = mobiusSize(size), turn = -Math.atan2(a[1], a[0]), by = turnPoint(b, turn)[1], W = nv * by;
-  // its length: of the counts the twist allows within a fifth of the usual, the one cut in the most counts of colours (slices
-  // a whole count of the lattice's steps along, see colourFair), then the nearest
-  const x = W / TORUS_TUBE / step, q = Math.round(copy / step), cuts = (c) => COLOUR_STEPS.filter((K) => K > 1 && c % (q * K) === 0).length;
-  let n = own ?? undefined;
-  for (let c = Math.ceil(0.8 * x); !own && c <= 1.25 * x; c++) if (ok(c, nv) && (n === undefined || cuts(c) > cuts(n) || (cuts(c) === cuts(n) && Math.abs(c - x) < Math.abs(n - x)))) n = c;
-  if (n === undefined) for (let d = 0, c = Math.round(x); ; d++) { c += d % 2 ? -d : d; if (ok(c, nv)) { n = c; break; } }  // (the nearest the twist allows)
+  // its length as a ring's (see ringLength): near its usual (W / TORUS_TUBE), its colours' slices square, each whole copies along
+  // (a glide's turned over: see colourFair), as the twist allows
+  const K = ringColours(), x = W / TORUS_TUBE / step, n = own ?? ringLength(x, x * TORUS_TUBE * K, K * Math.round(copy / step), (c) => ok(c, nv));
   return { kind, strip, turn, nv, n, W, step, by, a };
 }
 function kleinTilingMesh(kindK, size) {
-  const key = `${kindK}${size}`;
+  const key = `${kindK}${size}|${ringColours()}`;  // (its length its colours': see kleinLength)
   if (meshCache[key]) return meshCache[key];
   const { kind, turn, L, W, n, nv, step, by, la, sides, tiles, mids, bricks } = kleinTilingSheet(kindK, size), Q = 12000, ids = new Map(), verts = [];
   const id = ([x, y]) => {  // a corner by its place on tilingStrip's fine grid, brought within the sheet (turned over past its end)
@@ -4811,7 +4805,7 @@ const turnOver = (c) => { let d = c.length; while (d > 1 && c[d - 1] === c[d - 2
 // corners turned over. A corner of the sheet is a corner of each face (but one where the faces
 // meet, on the strip's edge); past the glued ends, the front goes on as the back
 function mobiusMesh(kind, size) {
-  const key = `${kind}${size}`, nv = mobiusSize(size)[0];
+  const key = `${kind}${size}|${ringColours()}`, nv = mobiusSize(size)[0];  // (its length its colours': see stripSteps)
   if (meshCache[key]) return meshCache[key];
   const { L, W, tiles: sheet, mids, bricks } = mobiusSheet(kind, size), k = sheet[0].length;
   const { verts, add } = vertexStore();
