@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1252';
+const VERSION = '0.1.1253';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5403,7 +5403,9 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 const sizeHow = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
-  if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} a row${Number.isInteger(d[1]) ? '' : ' (on average)'} = ${fmt(d[2])} ${d[3]}`;
+  const per = PLANE_CELLS[kind] ? PER_RHOMBUS[kind] ?? 1 : 1, all = d && d[0] * d[1] * per;  // (the plane's: its lattice cells a row, each per cells; less its wall's)
+  if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest the middle (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  if (d) return `${fmt(d[0])} rows × ${fmt(d[1])} ${per > 1 ? `lattice cells × ${per} ${d[3]} each` : `a row${Number.isInteger(d[1]) ? '' : ' (on average)'}`}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × ${fmt(f)}²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
 };
