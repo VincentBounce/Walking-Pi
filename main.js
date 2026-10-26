@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1319';
+const VERSION = '0.1.1320';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4403,10 +4403,10 @@ const tubeFor = (kind, nv, nu) => (TUBE_SHAPE[kind] * nv) / nu;
 // x (its usual), its colours' blocks square (as long round as across: square) when that is 20 % shorter to 60 % longer, a whole
 // count of unit (each colour's block whole) as ok allows (a twist's), else the nearest ok allows. Life's colours only (a walk's: one)
 const ringColours = () => (MODES[$('mode').value]?.life ? lifeColours : 1);
-function ringLength(x, square, unit, ok = () => true, least = 0.8) {
+function ringLength(x, square, unit, ok = () => true) {
   const near = (t, u) => { for (let d = 0; d <= t / u + 1; d++) for (const n of [Math.round(t / u) + d, Math.round(t / u) - d]) if (n >= 1 && ok(n * u)) return n * u; };
   const sq = near(square, unit) ?? near(square, 1);
-  return sq >= least * x - 1e-9 && sq <= 1.6 * x + 1e-9 ? sq : near(x, unit) ?? near(x, 1);
+  return sq >= 0.8 * x - 1e-9 && sq <= 1.6 * x + 1e-9 ? sq : near(x, unit) ?? near(x, 1);
 }
 // a torus's (a Klein bottle's) columns round the ring near x: its colours' blocks a × b (see torusBlocks; a bottle's, slices
 // along its ring), a whole count of them and of step (the hexagons' and the triangles': even)
@@ -4552,7 +4552,7 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = fals
  * As a strip of paper, each tile has two faces, and a walker keeps to the face it is on: at the
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
-const MOBIUS_WIDTH = 0.7;
+const MOBIUS_WIDTH = 0.85;  // (12 colours' stretches square within a ring's margin: see ringLength, stripSteps)
 const MOBIUS_KINDS = ['mobius', 'mobiusHex', 'mobiusTri', 'mobiusHexTurned', 'mobiusTriTurned', 'mobiusCairo', 'mobiusKite', 'mobiusKiteTurned', ...Object.keys(MOBIUS_STRIPS)];
 /* A strip's length L, as a whole count of the steps its tiling repeats by along it, glued with the
  * half twist (see mobiusSheet): ok, the counts that tile it. A size is its rows (the usual length
@@ -4625,11 +4625,11 @@ function mobiusPoint(x, y, L, W, m) {
  * - triangles pointing along the strip, in columns √3/2 wide (vertical edges), the strip nv edges
  *   wide, an even number of columns; the edges zigzag along them. */
 // a Möbius strip's length in its steps along (see MOBIUS_ALONG): its own, else as a ring's (see ringLength): its usual (its circle,
-// its width MOBIUS_WIDTH times its radius), its K colours' stretches of its loop (its two faces, 2L) square (W long) down to 0.6 of it
-// (12 colours: its width then about its radius, 4π / K; fewer, wider still), whole counts of q steps (a tiling's copy along), as its twist allows
+// its width MOBIUS_WIDTH times its radius), its K colours' stretches of its loop (its two faces, 2L) square (W long), whole counts of
+// q steps (a tiling's copy along), as its twist allows
 const stripSteps = (kind0, nv, W, own, q = 1) => {
   const { step, ok } = MOBIUS_ALONG[kind0], K = ringColours();
-  return own ?? ringLength((2 * Math.PI * W) / MOBIUS_WIDTH / step, (K * W) / 2 / step, (K * q) % 2 ? K * q : (K * q) / 2, (n) => ok(n, nv), 0.6);
+  return own ?? ringLength((2 * Math.PI * W) / MOBIUS_WIDTH / step, (K * W) / 2 / step, (K * q) % 2 ? K * q : (K * q) / 2, (n) => ok(n, nv));
 };
 const stripMemo = {}, countMemo = {};
 // a strip's length, width and tiles' count, without its tiles (the sizes' ladder asks for many: see mobiusSheetOf's count)
