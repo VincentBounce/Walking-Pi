@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1310';
+const VERSION = '0.1.1311';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4715,14 +4715,15 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
 // whose middle is within nv rows of b (a mirror along a: the strip's edges alike) and L along (see MOBIUS_ALONG), as
 // many corners each (the last one repeated); the usual length, the counts' nearest that the twist allows
 function tilingStrip(kind, kind0, size) {
-  const { t, m, L, W, sides, cells, i0, i1, j0, j1 } = stripFrame(kind, kind0, size), tiles = [], mids = [];
+  const { t, m, L, W, sides, cells, i0, i1, j0, j1 } = stripFrame(kind, kind0, size), tiles = [], mids = [], bricks = [];
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) for (let k = 0; k < m; k++) {
     const P = cells(i, j, k), [x, y] = [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length);
     if (x < -1e-9 || x >= L - 1e-9 || y < -1e-9 || y > W + 1e-9) continue;
     tiles.push([...P, ...Array(sides - P.length).fill(P.at(-1))]);
     mids.push(x, y);
+    bricks.push((j - j0) * (i1 - i0 + 1) + i - i0);  // (its lattice cell: the strip's bricks, see motifTiles)
   }
-  return { L, W, tiles, sides, mids };
+  return { L, W, tiles, sides, mids, bricks };
 }
 // a tiling's strip's frame: its length (the usual one, the counts' nearest that the twist allows), its width, its cells'
 // corners on a fine grid (in steps along and rows across from the middle: the twist (x + L, y) → (x, W − y) maps the grid
@@ -4770,7 +4771,7 @@ function kleinTilingSheet(kindK, size) {
   return (kleinMemo[`${kindK}|${size}`] ??= (() => {
     const { kind, strip, turn, nv, n, W, step, by, a } = kleinLength(kindK, size);
     const s = tilingStrip(kind, strip, `${nv}x${n}`), keep = s.tiles.map((_, i) => i).filter((i) => s.mids[2 * i + 1] < W - 1e-9);
-    return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]) };
+    return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]), bricks: keep.map((i) => s.bricks[i]) };
   })());
 }
 // its frame, without its tiles: its strip, its rows and its length (see kleinTilingSheet); its tiles' count (see stripCount)
@@ -4789,7 +4790,7 @@ function kleinLength(kindK, size) {
 function kleinTilingMesh(kindK, size) {
   const key = `${kindK}${size}`;
   if (meshCache[key]) return meshCache[key];
-  const { kind, turn, L, W, n, nv, step, by, la, sides, tiles, mids } = kleinTilingSheet(kindK, size), Q = 12000, ids = new Map(), verts = [];
+  const { kind, turn, L, W, n, nv, step, by, la, sides, tiles, mids, bricks } = kleinTilingSheet(kindK, size), Q = 12000, ids = new Map(), verts = [];
   const id = ([x, y]) => {  // a corner by its place on tilingStrip's fine grid, brought within the sheet (turned over past its end)
     let i = Math.round((x / step) * Q), j = Math.round((y / by) * Q);
     const k = Math.floor(i / (n * Q));
@@ -4800,7 +4801,7 @@ function kleinTilingMesh(kindK, size) {
     return ids.get(i * nv * Q + j);
   };
   const mesh = finishMesh(verts, tiles.map((t) => t.map(id)), sides, nv, null);  // one-sided: as listed
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids) }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(tiles.flat(2)), uvMid: new Float64Array(mids), bricks }));
 }
 // a tile's corners the other way round, its last one repeated still last (a tile with fewer corners than the strip's:
 // repeated first, its normal, from its first corners, was none, and the back's tiles all but black)
@@ -4811,7 +4812,7 @@ const turnOver = (c) => { let d = c.length; while (d > 1 && c[d - 1] === c[d - 2
 function mobiusMesh(kind, size) {
   const key = `${kind}${size}`, nv = mobiusSize(size)[0];
   if (meshCache[key]) return meshCache[key];
-  const { L, W, tiles: sheet, mids } = mobiusSheet(kind, size), k = sheet[0].length;
+  const { L, W, tiles: sheet, mids, bricks } = mobiusSheet(kind, size), k = sheet[0].length;
   const { verts, add } = vertexStore();
   const ids = sheet.map((t) => t.map(([x, y]) => add(...mobiusPoint(x, y, L, W, 1))));  // the glued ends share corners
   const n0 = verts.length / 3, uses = new Map(), onEdge = new Uint8Array(n0), home = new Float64Array(n0).fill(NaN);
@@ -4847,7 +4848,7 @@ function mobiusMesh(kind, size) {
     }
   });
   return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_STRIPS[kind]?.kind, stripTurn: MOBIUS_STRIPS[kind] && -Math.atan2(MOBIUS_STRIPS[kind].basis[0][1], MOBIUS_STRIPS[kind].basis[0][0]), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length,
-    ...(mids && { uvMid: new Float64Array([...mids, ...mids]) }) }));  // (a tiling's: its tiles' own middles, see sheetMiddle)
+    ...(mids && { uvMid: new Float64Array([...mids, ...mids]), bricks: [...bricks, ...bricks] }) }));  // (a tiling's: its tiles' own middles, see sheetMiddle)
 }
 // The sheet point of a surface: a torus, or a Möbius strip
 const sheetPoint = (g, i, j, m) => {
@@ -5441,8 +5442,9 @@ const sizeTips = (row, total, text) => {
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
 const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
-// a sheet's brick: a torus's sheet cell (a tiling's: g.sheet's, see tilingTorusMesh), so many tiles; a Möbius strip's, a Klein bottle's: the plane's lattice cell
-const ringTorus = (g) => g.torus && !g.mobius && !g.klein, brickOf = (g) => (ringTorus(g) ? g.n / (g.nu * g.nv) : PER_RHOMBUS[cellKind(g)] ?? 1);
+// a sheet's brick, so many tiles: a torus's sheet cell (a tiling's: g.sheet's, see tilingTorusMesh); a tiling's Möbius strip's, Klein
+// bottle's, its lattice cell (g.bricks: each tile's, see tilingStrip); the others', the plane's
+const brickOf = (g) => (g.bricks ? TILINGS[g.tiling].polys.length : g.torus && !g.mobius && !g.klein ? g.n / (g.nu * g.nv) : PER_RHOMBUS[cellKind(g)] ?? 1);
 const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
@@ -8250,8 +8252,8 @@ function drawMotifFace(ctx, t0) {
   if (f.sector) outlineTiles(ctx, cssColour('--sector'), tilesOf(f.sector));
   outlineTiles(ctx, faceRed(), tilesOf(f.face));
 }
-// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a torus's
-// sheet cell, as replicated; a Möbius strip's or a Klein bottle's, the plane's lattice cell laid on it (see sheetPatternAt); a solid's its faces' grid's: a square, a
+// a surface's motif round its tile most towards the viewer and nearest it (of those, the nearest the view's middle): a sheet's
+// brick, as laid (see brickOf); a solid's its faces' grid's: a square, a
 // hexagon, a tetrakis square's 4 triangles, a triangle (of 3 kites)
 function motifTiles() {
   const g = walk.geo, sh = walk.shape, proj = projector(), { scale: s, ox, oy } = view, at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R);
@@ -8263,11 +8265,11 @@ function motifTiles() {
     if (score > best) { best = score; near = t; }
   }
   if (near < 0) return [];
-  if (ringTorus(g)) {  // a torus: its sheet's cell, laid nu × nv times as its tiles are listed, brickOf(g) each: its first, at the corner, else the one in front
-    const m = brickOf(g), brick = (k) => Array.from({ length: m }, (_, j) => k * m + j), first = brick(0);
-    return first.every((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) ? first : brick(Math.floor(near / m));
+  if (g.torus) {  // a sheet: its bricks as laid (g.bricks, else brickOf(g) tiles at a time as listed, a strip's back as its front); its first whole and seen, else the one in front
+    const m = brickOf(g), id = (t) => g.bricks?.[t] ?? Math.floor((g.mobius ? t % g.front : t) / m), bricks = Map.groupBy([...Array(g.n).keys()], id);
+    const seen = (ts) => ts.filter((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t)));
+    return [...bricks.values()].map(seen).find((ts) => ts.length === m) ?? bricks.get(id(near));
   }
-  if (g.torus) return sheetPatternAt(near, Array.from({ length: brickOf(g) }, (_, j) => [j, 0, j]), true).map(([t]) => t);  // (a Möbius strip, a Klein bottle: the plane's motif, laid)
   const m = g.kite ? 3 : g.squares ? 4 : 1;  // (a kite's triangle, 3 kites; a tetrakis square, 4 triangles)
   return Array.from({ length: m }, (_, j) => Math.floor(near / m) * m + j);  // (a cell, a triangle: what a face counts, f² of them; not the plane's rhombus, a face not whole ones)
 }
