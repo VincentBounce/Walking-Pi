@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1268';
+const VERSION = '0.1.1269';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5430,7 +5430,10 @@ const howCounted = (kind, f) => {
     for (const F of g.faces ?? []) by[F.corners.length] = (by[F.corners.length] ?? 0) + 1;  // (a solid of triangles and squares: its faces of each, see Johnson solids)
     for (const c in by) if (!by[c]) delete by[c];
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
-      return `${Object.entries(by).map(([c, k]) => `${k} ${adj[c]} face${k > 1 ? 's' : ''} × ${round[c] ? `${round[c]} × ` : ''}${fmt(f)}² ${cells[c]}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
+    {
+      const red = redFaces(g) && base === kind, mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
+      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${fmt(f)}² ${mark('y', cells[c])}`).join(' + ')}${cut > 1 ? ` × ${cut} ${unit} each` : ''} = ${fmt(n)} ${unit}`;
+    }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
     const g0 = (facesMemo[kind] ??= S.mesh(S.sizes[0])), sidesOf = (t) => new Set(Array.from({ length: g0.sides }, (_, j) => g0.poly[g0.sides * t + j])).size, corners = {};
@@ -8129,11 +8132,25 @@ function drawMotif(ctx) {
   if (walk.plane) turnLayer(ctx, 0);
   else drawMotifFace(ctx);
 }
+// the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): of triangles
+const redFaces = (g) => !!g?.perFace && g.sides === 3 && !g.squares;
 // a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner
 // along its cells' sides (as a start's edges, see gridGraph): the shortest way from wall to wall, of those the corners nearest
 // the plane through its middle and both walls (the face's straight side), as the shape has them now, the sides facing the viewer
 function drawMotifFace(ctx) {
   const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
+  if (t0 !== undefined && redFaces(g)) {  // a solid of triangles: its face's triangles' sides not shared by two of them (its edges, along its cells)
+    const { scale: s, ox, oy } = view, proj = projector(), sides = new Map(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
+    for (let t = Math.floor(t0 / g.perFace) * g.perFace, e = t + g.perFace; t < e; t++) for (let j = 0; j < k; j++) {
+      const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|');
+      sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]);
+    }
+    ctx.strokeStyle = FACE_RED;
+    ctx.beginPath();
+    for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
+    ctx.stroke();
+    return;
+  }
   if (SPHERES[surfaceOf(MODES[$('mode').value])]?.unit !== 'hexagons' || !g.walls?.length || t0 === undefined) return;
   const G = gridGraph(g), base = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], d2 = (p, q) => p.reduce((sum, v, i) => sum + (v - q[i]) ** 2, 0);
   const [a, b, c] = [...g.walls].sort((p, q) => d2(base(p), base(t0)) - d2(base(q), base(t0))).slice(0, 3), proj = projector(), { scale: s, ox, oy } = view;
