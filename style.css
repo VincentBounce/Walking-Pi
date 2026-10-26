@@ -77,7 +77,8 @@ main { flex: 1; display: flex; min-height: 0; }
 .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 .panel::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .panel section { padding: 12px 0; border-top: 1px solid var(--border); }  /* a grey hairline between sections */
-#paramsPane > section:first-child, #galleryPane > section:first-child { padding-top: 6px; border-top: 0; }  /* the first, always there: no line, no gap under the header */
+#paramsPane > section:first-child, #galleryPane > section:first-child, #yourList > section:first-child { padding-top: 6px; border-top: 0; }  /* the first, always there: no line, no gap under the header */
+:is(#paramsPane, #galleryPane, #yourList) > section:first-child h2 { margin-top: 0; }  /* its title as high in every pane */
 .row-delete { padding: 0 6px; font-size: 16px; color: var(--muted); border-radius: 4px; }  /* × on a saved setup */
 .row-delete:hover { color: var(--text); background: var(--border); }
 .panel .muted:empty { display: none; }  /* an empty status line takes no room */
@@ -250,7 +251,7 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .tile-group > button.active, .tile-group > button:hover { position: relative; z-index: 1; }  /* its border over its neighbour's (every button its own layer: above the next one) */
 button.switch:hover:not(:disabled) { background: var(--pick); }  /* a switch (a button that a click changes again) answers the hover: off, in the pale gold of a choice picked; on, deeper (Dawn sky) */
 button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
-.gallery-group:not(:first-child) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }  /* Life, Ant, Walk: a section each, a hairline between them (none over the first) */
+#yourList { display: contents; }  /* (its sections the pane's, as Life's: see .panel section) */
 .cell-modes button svg { width: 24px; height: 24px; border-radius: 3px; }  /* the looks of a walk on cells: swatches */
 .nav-shapes button.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
 .mode-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }

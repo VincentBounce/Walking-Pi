@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1339';
+const VERSION = '0.1.1340';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11001,14 +11001,15 @@ function fillSetupList() {
   $('yourList').replaceChildren(...NAV_KINDS.flatMap(([kind]) => {
     const mine = rows.filter(([, , x]) => kindOf(x) === kind).sort((a, b) => a[0].localeCompare(b[0]));
     if (!mine.length) return [];
-    const head = document.createElement('h2');
-    head.className = 'gallery-group';  // a section each, its picture as the tab's
-    head.innerHTML = icon(NAV_KINDS.find(([k]) => k === kind)[1]) + kind;
-    return [head, ...mine.map(([title, detail, x]) => {
+    const section = document.createElement('section'), cards = Object.assign(document.createElement('div'), { className: 'mode-list' });  // a section each, as Life's, its picture as the tab's
+    section.innerHTML = `<h2>${icon(NAV_KINDS.find(([k]) => k === kind)[1])}${kind}</h2>`;
+    cards.append(...mine.map(([title, detail, x]) => {
       const k = (seen.get(title + detail) ?? 0) + 1;
       seen.set(title + detail, k);
       return setupRow(k > 1 ? `${title} (${k})` : title, detail, x.setup, () => deleteSetup(x.name));
-    })];
+    }));
+    section.append(cards);
+    return [section];
   }));
   syncSaveButton();
 }
