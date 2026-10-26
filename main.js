@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1237';
+const VERSION = '0.1.1238';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5279,6 +5279,8 @@ function syncSizeStepper() {
   const label = (f) => { $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`; };
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
+  const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
+  $('sizeLabel').title = sought[ladderOf(kind)] ? `Each ${family} at the size closest to ${fmt(sought[ladderOf(kind)])} cells (the size last picked: − + or the slider)` : '';
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5307,6 +5309,7 @@ function stepSize(delta) {
   if (i < 0 || i >= sel.options.length) return;
   sel.selectedIndex = i;
   for (const o of [...sel.options]) if (o.dataset.own && o !== sel.selectedOptions[0]) o.remove();
+  seek(surfaceOf(MODES[$('mode').value]));
   sel.dispatchEvent(new Event('change'));
 }
 
@@ -5361,15 +5364,17 @@ const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
-// (each family's last size kept: on another tiling or surface of it, the same size, else the nearest it has)
-const familySize = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
+// (each family's size sought: as many cells as the size last picked by hand or by a link, kept on every other tiling or surface
+// of it, the size with about as many, from that same number each time: never drifting a step at a time)
+const sought = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
+const seek = (kind) => { sought[ladderOf(kind)] = SPHERES[kind].tiles(parseInt($('sphereF').value)); };  // (the size picked: its cells sought from now on)
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial} ${lifeColours}`, [was] = (sel.dataset.kind ?? '').split(' ');  // (a torus's sizes: its columns as its colours, see ringColumns)
   if (sel.dataset.kind === key) return;
-  if (SPHERES[was] && sel.value) familySize[ladderOf(was)] = parseInt(sel.value);
-  const kept = familySize[ladderOf(kind)], rows = was === kind ? sel.value : null, { sizes } = SPHERES[kind];  // (the same surface, its colours changed: its rows kept, its columns its colours')
-  sel.replaceChildren(...sizes.map((f) => new Option(sizeLabel(kind, f), f)));
-  sel.value = rows && sizes.map(String).includes(rows) ? rows : kept ? sizes.reduce((a, b) => (Math.abs(Math.log(b / kept)) < Math.abs(Math.log(a / kept)) ? b : a)) : SPHERES[kind].nearest(initial);
+  const kept = sought[ladderOf(kind)], rows = was === kind ? sel.value : null;  // (the same surface, its colours changed: its rows kept, its columns its colours')
+  sel.replaceChildren(...SPHERES[kind].sizes.map((f) => new Option(sizeLabel(kind, f), f)));
+  sel.value = rows && SPHERES[kind].sizes.map(String).includes(rows) ? rows : kept ? SPHERES[kind].near(kept) : SPHERES[kind].nearest(initial);
+  if (!kept) seek(kind);
   sel.dataset.kind = key;
 }
 
@@ -10545,7 +10550,7 @@ function applySetup(s) {
   if (MODES[s.w].sphere) {
     const kind = surfaceOf(MODES[s.w]);
     fillSphereSizes(kind, MODES[s.w].initial);
-    if (s.s !== undefined) selectSize(kind, linkSize(kind, s.s));
+    if (s.s !== undefined) { selectSize(kind, linkSize(kind, s.s)); seek(kind); }
   }
   if (s.r && MODES[s.w].turmite) {
     if (turmiteOf(s.r)) turmite.rule = turmiteOf(s.r).text;
