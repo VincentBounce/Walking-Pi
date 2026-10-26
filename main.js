@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1249';
+const VERSION = '0.1.1250';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5213,7 +5213,8 @@ function morphStep(dt) {
  * solid's edge, a torus's, a Möbius strip's or a Klein bottle's rows; a tiling's, its sheet's), those it allows (a multiple
  * of steps[0], from least to most) with 256 cells at least and 100,000 at most (CELLS). A new surface needs only its
  * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
-const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
+const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048],  // (every multiple of 24 up to 192: an icon's whole size)
+  sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
 const CELLS = [256, 100000], START = { surface: 2688, solid: 6144 };
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).W / MOBIUS_WIDTH;  // (its width: no tile built)  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
