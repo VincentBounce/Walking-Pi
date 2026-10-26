@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1224';
+const VERSION = '0.1.1227';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5391,13 +5391,22 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   const nearest = () => near ??= (() => {
     // (a torus's rows any: its colours greyed where their blocks round the tube are not whole, see colourFairOwn); the size
     // with about n cells: guessed from the cells growing as its size squared, then walked a step at a time to the nearest
-    // (a size's cells once: a Möbius strip's, built to count them)
+    // (a size's cells once); a Möbius strip's or a tiling's Klein bottle's (built to count them) by an estimate, a·f² + b·f
+    // from two built (its edge's: b), none built for the others
     const step = S.steps?.[0] ?? 1, f0 = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step, most = S.most ?? Infinity, cells = new Map();
-    const tiles = (f) => cells.get(f) ?? cells.set(f, S.tiles(f)).get(f), off = (f, n) => Math.abs(Math.log(tiles(f) / n));
+    const exact = (f) => cells.get(f) ?? cells.set(f, S.tiles(f)).get(f), built = MOBIUS_KINDS.includes(kind) || FOLDED[kind]?.fold === 'klein';
+    const f1 = built && Math.min(most, f0 + 6 * step), [t0, t1] = built ? [exact(f0), exact(f1)] : [], a = built && (t1 / f1 - t0 / f0) / (f1 - f0), b = built && t0 / f0 - a * f0;
+    const guess = (f) => (built && !cells.has(f) ? a * f * f + b * f : exact(f));
+    const walk = (f, n, tiles) => { const off = (g) => Math.abs(Math.log(tiles(g) / n)); for (const d of [step, -step]) while (f + d >= f0 && f + d <= most && off(f + d) < off(f)) f += d; return f; };
     return (n) => {
-      let f = Math.min(most, Math.max(f0, Math.round(f0 * Math.sqrt(n / tiles(f0)) / step) * step));
-      for (const d of [step, -step]) while (f + d >= f0 && f + d <= most && off(f + d, n) < off(f, n)) f += d;
-      return f;
+      let f = walk(Math.min(most, Math.max(f0, Math.round(f0 * Math.sqrt(n / guess(f0)) / step) * step)), n, guess);
+      if (!built) return f;
+      for (let k = 0; k < 3; k++) {  // (the estimate corrected by the one built there, its own: the sizes round it again)
+        const r = exact(f) / guess(f), g = walk(f, n, (h) => (cells.has(h) ? cells.get(h) : guess(h) * r));
+        if (g === f) break;
+        f = g;
+      }
+      return walk(f, n, exact);  // (its neighbours built: the nearest for sure)
     };
   })();
   let list;
