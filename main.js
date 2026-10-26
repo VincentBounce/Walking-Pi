@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1294';
+const VERSION = '0.1.1295';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5424,7 +5424,7 @@ const sizeTips = (row, total, text) => {
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
-const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
+const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
 const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
@@ -5438,10 +5438,10 @@ const howCounted = (kind, f) => {
   if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest the middle (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
     const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
-    return `${fmt(d[0])} rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
+    return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
   }
   // the plane's: its rows × its lattice cells (its motif, yellow) × their cells (green), less its wall's
-  if (d) return `${fmt(d[0])} rows × {y:${fmt(d[1])} ${per > 1 ? 'lattice cells' : d[3]}} a row${per > 1 ? ` × {k:${per} ${d[3]} each}` : ''}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  if (d) return `(Edge=${fmt(d[0])}) rows × {y:(Edge=${fmt(d[1])}) ${per > 1 ? 'lattice cells' : d[3]}} a row${per > 1 ? ` × {k:${per} ${d[3]} each}` : ''}${all > d[2] ? ` − ${fmt(all - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   // a solid of flat faces: each face's cells, f to an edge (its faces as its least size's mesh has them, the same at every size)
   const base = kind.endsWith('Tetrakis') && SPHERES[kind.slice(0, -8)] ? kind.slice(0, -8) : kind, B = SPHERES[base];  // (a solid of tetrakis triangles: its squares', 4 each)
   const g = B && !TORI.includes(base) && (facesMemo[base] ??= B.mesh(B.sizes[0])), cut = base !== kind ? 4 : g?.kite ? 3 : 1;
