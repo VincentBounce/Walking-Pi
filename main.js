@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1278';
+const VERSION = '0.1.1279';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5406,7 +5406,13 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, total, text) => {
   const plain = text.replace(/\{[yroskb]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
-  for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = `<b class="tip-name">Size: ${total}</b>${html}`; }  // (its name and its total first, as a control's)
+  for (const id of ['Down', 'Label', 'Up', 'Gauge']) {  // (its name and its total first, as a control's; shown again at once if hovered: − + clicked)
+    const el = $(`${row}${id}`);
+    el.removeAttribute('title');
+    el.dataset.tip = plain;
+    el.dataset.tipHtml = `<b class="tip-name">Size: ${total}</b>${html}`;
+    if (el.matches(':hover')) $('tip').innerHTML = el.dataset.tipHtml;
+  }
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
@@ -5432,8 +5438,8 @@ const howCounted = (kind, f) => {
     for (const c in by) if (!by[c]) delete by[c];
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
-      const red = redFaces(g) && base === kind, mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
-      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${cut === 3 ? mark('k', `${cut} ${unit} each`) : `${cut} ${unit} each`}` : ''} = ${fmt(n)} ${unit}`;
+      const red = redFaces(g, base) && (base === kind || kind === 'cubeTetrakis'), mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells yellow)
+      return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark('y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${mark('k', `${cut} ${unit} each`)}` : ''} = ${fmt(n)} ${unit}`;
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
@@ -8133,8 +8139,9 @@ function drawMotif(ctx) {
   if (walk.plane) turnLayer(ctx, 0);
   else drawMotifFace(ctx);
 }
-// the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): of triangles, of kites
-const redFaces = (g) => !!g?.perFace && ((g.sides === 3 && !g.squares) || !!g.kite);  // (of triangles, of kites: their edges along their cells')
+// the solids whose faces are drawn in red round the motif, as their tooltip says them (see howCounted): flat faces of cells, the cube's tetrakis triangles too
+const facePer = (g, kind) => g?.perFace ?? (kind === 'cubeTetrakis' ? g.n / 6 : 0);  // (its cells a face, as listed: the cube's tetrakis triangles, 4 a square, its squares a face at a time)
+const redFaces = (g, kind = surfaceOf(MODES[$('mode').value])) => facePer(g, kind) > 0;  // (of triangles, kites, squares: their edges along their cells')
 // a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner
 // along its cells' sides (as a start's edges, see gridGraph): the shortest way from wall to wall, of those the corners nearest
 // the plane through its middle and both walls (the face's straight side), as the shape has them now, the sides facing the viewer
@@ -8143,7 +8150,7 @@ function drawMotifFace(ctx) {
   if (t0 !== undefined && redFaces(g)) {  // a solid of triangles (of kites): its face's cells' sides not shared by two of them (its edges, along its cells)
     const { scale: s, ox, oy } = view, proj = projector(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
     // (its face: the mesh's faces next to it in its plane too, as listed: a dodecahedron's pentagon, 5 triangles)
-    const fi = Math.floor(t0 / g.perFace), flat = (i) => g.faces[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
+    const per = facePer(g, surfaceOf(MODES[$('mode').value])), fi = Math.floor(t0 / per), flat = (i) => g.faces?.[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
     let lo = fi, hi = fi;
     while (flat(lo - 1)) lo--;
     while (flat(hi + 1)) hi++;
@@ -8155,9 +8162,9 @@ function drawMotifFace(ctx) {
       for (const side of sides.values()) if (side && planeVisible([0, 1, 2].map((d) => sh.nrm[3 * side[2] + d]), side[0])) for (const [i, p] of [side[0], side[1]].entries()) { const [u, v] = proj(...p); ctx[i ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s); }
       ctx.stroke();
     };
-    if (g.kite) stroke(cssColour('--cell'), t0, t0 + 1);  // (a triangle of kites: one of them)
-    if (hi > lo) stroke(cssColour('--sector'), fi * g.perFace, (fi + 1) * g.perFace);  // (a face of several: its sector round the motif)
-    stroke(faceRed(), lo * g.perFace, (hi + 1) * g.perFace);
+    if (g.kite || g.squares) stroke(cssColour('--cell'), t0, t0 + 1);  // (a motif of several cells, a triangle's kites, a square's tetrakis triangles: one of them)
+    if (hi > lo) stroke(cssColour('--sector'), fi * per, (fi + 1) * per);  // (a face of several: its sector round the motif)
+    stroke(faceRed(), lo * per, (hi + 1) * per);
     return;
   }
   if (SPHERES[surfaceOf(MODES[$('mode').value])]?.unit !== 'hexagons' || !g.walls?.length || t0 === undefined) return;
