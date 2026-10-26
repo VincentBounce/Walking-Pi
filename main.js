@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1235';
+const VERSION = '0.1.1236';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10015,7 +10015,10 @@ function sheetIndex(g) {
   };
   const at = new Map();
   for (let t = 0; t < g.n; t++) at.set(key(sheetPlace(g, t)), t);
-  return (g.famousIndex = { key, at });
+  // the tile at a place: its key, else a hair off it either way (the sheet's places Float32, 1e-5 off at u = 100: on a
+  // thousandth's edge, a row's places all on the other side of it)
+  const find = (p) => at.get(key(p)) ?? [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([a, b]) => at.get(key([p[0] + a * 1e-4, p[1] + b * 1e-4]))).find((t) => t !== undefined);
+  return (g.famousIndex = { find });
 }
 // colour i's spot: the middle (one colour), else the middle of its block (a torus, a Klein bottle) or of its
 // stretch (a Möbius strip), as the zones' (see huntParts)
@@ -10042,7 +10045,7 @@ const tileCorners = (g, t) => {  // (a Möbius strip's back: its front's, turned
 const sheetPts = new WeakMap();  // (a pattern's cells' places on the sheet, see sheetPatternAt)
 function sheetPatternAt(spot, cells, partial = false) {  // partial: its cells there only, past a torus's or a bottle's sheet cut off (as drawn flat), not round it
   if (!cells.length) return [];  // (an icon with no cell at that size)
-  const g = walk.geo, kind = patternKind(), unitsOf = sheetUnits(g, kind), { key, at } = sheetIndex(g), seen = sheetPts.get(cells);
+  const g = walk.geo, kind = patternKind(), unitsOf = sheetUnits(g, kind), { find } = sheetIndex(g), seen = sheetPts.get(cells);
   const pts = seen?.g === g ? seen.pts : sheetPts.set(cells, { g, pts: cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y))) }).get(cells).pts;  // (the same pattern for every colour: once)
   const mid = [0, 1].map((d) => pts.reduce((sum, p) => sum + p[d], 0) / pts.length);
   const a = pts.reduce((best, p, k) => (Math.hypot(p[0] - mid[0], p[1] - mid[1]) < Math.hypot(pts[best][0] - mid[0], pts[best][1] - mid[1]) ? k : best), 0), anchor = pts[a];
@@ -10052,7 +10055,7 @@ function sheetPatternAt(spot, cells, partial = false) {  // partial: its cells t
     if (shapeOf(tileCorners(g, T)) !== shape) continue;  // (a cell of the same shape, the same way round, as the pattern's there)
     const [tu, tv] = sheetPlace(g, T), out = [];
     for (let k = 0; k < pts.length; k++) {
-      const u = pts[k][0] - anchor[0] + tu, v = pts[k][1] - anchor[1] + tv, t = partial && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? undefined : at.get(key([u, v]));
+      const u = pts[k][0] - anchor[0] + tu, v = pts[k][1] - anchor[1] + tv, t = partial && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? undefined : find([u, v]);
       if (t === undefined) { if (partial) continue; break; }
       out.push([t, cells[k][2]]);
     }
@@ -10080,12 +10083,12 @@ function famousGrid() {
     for (let t = 0; t < n; t++) if (corners(t)) at.set(key(place(t)), t);
     cellAt = ([u, v]) => { for (const [x, y] of ends) { const t = at.get(key([u + x, v + y])); if (t !== undefined) return t; } };
   } else {
-    const { key, at } = sheetIndex(g);
+    const { find } = sheetIndex(g);
     unitsOf = sheetUnits(g, kind);
     place = (t) => sheetPlace(g, t);
     corners = (t) => tileCorners(g, t);
     n = g.n;
-    cellAt = (p) => at.get(key(p));
+    cellAt = find;
   }
   const shape = Array.from({ length: n }, (_, t) => { const c = corners(t); return c && shapeOf(c); });
   const pattern = (cells) => [cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y))), cells.map(([x, y]) => shapeOf(planeCorners(kind, x, y).map(unitsOf)))];
