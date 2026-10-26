@@ -210,7 +210,7 @@ button.primary {
 }
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
-#huntRow .nav-shapes { margin-bottom: 4px; }  /* the hunt's button right under its tiles, as close as a row of them */
+#huntRow .nav-shapes, #setupTools { margin-bottom: 4px; }  /* a wide button right under its tiles (Hunt, Confirm erase), as close as a row of them */
 
 /* Walk mode: one tab per category, then every choice of that category */
 /* Tabs: text only, the active one in yellow and underlined on the header's hairline; always bold,

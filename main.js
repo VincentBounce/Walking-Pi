@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1338';
+const VERSION = '0.1.1339';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -14176,6 +14176,7 @@ $('setupSave').addEventListener('click', saveSetup);
 $('setupTools').replaceChildren(tile({ pic: icon('import'), text: 'Import', title: 'Add the setups of a JSON file to Treasures (those of a name already used numbered: none replaced)', click: () => $('setupFile').click() }),
   tile({ pic: icon('export'), text: 'Export', title: 'Treasures as a JSON file', click: exportSetups }), tile({ pic: icon('trash'), text: 'Erase all', title: 'Erase Treasures from this browser (asked again under it)', click: () => { $('eraseConfirm').hidden = !$('eraseConfirm').hidden; } }));
 $('eraseConfirm').innerHTML = `${icon('trash')} Confirm erase`;
+$('setupToolsHead').insertAdjacentHTML('afterbegin', icon('star'));  // (Treasures', as the header's ☆)
 $('eraseConfirm').addEventListener('click', () => { writeSetups([]); $('eraseConfirm').hidden = true; fillSetupList(); syncSaveButton(); });
 $('setupFile').addEventListener('change', () => {
   if ($('setupFile').files[0]) importSetups($('setupFile').files[0]);
