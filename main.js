@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1280';
+const VERSION = '0.1.1281';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2881,9 +2881,12 @@ function renderModePicker() {
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
   // then the surfaces (a sheet rolled up: Torus, Möbius, Klein)
   const shapes = navValues(2, [kind, space]), planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
+  // (in 3D: the regular solids, the cubes carved, the solids of squares and triangles, the surfaces)
+  const CARVED = ['Pits', 'Frame', 'Sponge'], MIXED = ['Cuboctahedron', 'Rhombicuboctahedron', 'Bicupola', 'Pyramid'];
   const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => ['Torus', 'Möbius strip', 'Klein bottle'].includes(sh);
   const groups = grouped ? [1, 3, 0, 2].map((i) => [SHAPE_GROUPS[i][0], (sh) => groupOf(sh) === SHAPE_GROUPS[i][0]])  // (squares, parallelograms, the circles, rhombi)
-    : space === 'Surfaces' ? [['Solid', (sh) => !sheet(sh)], ['Surface', sheet]] : [[null, () => true]];
+    : space === 'Surfaces' ? [['Solid', (sh) => !sheet(sh) && !CARVED.includes(sh) && !MIXED.includes(sh)], ['Carved cubes', (sh) => CARVED.includes(sh)], ['Squares & triangles', (sh) => MIXED.includes(sh)], ['Surface', sheet]]
+    : [[null, () => true]];
   $('navShapes').replaceChildren(...groups.flatMap(([g, has]) => {
     const these = shapes.filter(has);
     if (!these.length) return [];
