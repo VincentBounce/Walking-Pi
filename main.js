@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1288';
+const VERSION = '0.1.1289';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5343,7 +5343,7 @@ function syncSizeStepper() {
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
   const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
-  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f) : '', [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `\n{b:Last picked size: ${fmt(sought[ladderOf(kind)])} cells}\nEach ${family} at the size closest to it (picked with − + or the slider)` : ''].filter(Boolean).join('\n'));
+  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? sizeHow(kind, f) : '', sought[ladderOf(kind)] ? `\n{b:Last picked size: ${fmt(sought[ladderOf(kind)])} cells}\nEach ${family} at the size closest to it (picked with − + or the slider)` : ''].filter(Boolean).join('\n'));
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5408,7 +5408,9 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, total, text) => {
-  const plain = text.replace(/\{[yroskb]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
+  const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`);
+  total = marks(total);
+  const plain = text.replace(/\{[yroskb]:([^}]*)\}/g, '$1'), html = marks(text).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
   for (const id of ['Down', 'Label', 'Up', 'Gauge']) {  // (its name and its total first, as a control's; shown again at once if hovered: − + clicked)
     const el = $(`${row}${id}`);
     el.removeAttribute('title');
@@ -5450,11 +5452,11 @@ const howCounted = (kind, f) => {
     }
   }
   if (S?.unit === 'hexagons' && !TORI.includes(kind)) {  // a solid of triangles blown up: f² / 2 hexagons a face, a cell of its own at each corner (see goldberg)
-    const { at, walls } = hexCorners(kind), F = (2 * (n - 2)) / (f * f);
+    const F = (2 * (n - 2)) / (f * f);
     const faces = kind === 'dodecaHex' ? `12 pentagonal faces × 5 sectors` : `${F} triangular faces`;  // (the dodecahedron's pentagons: 5 triangles each; not red: not drawn, see drawMotifFace)
     // (a sum on lines: its faces, a triangle f steps a side as big as f² / 2 hexagons; + 2: its corners, 5 faces round a
     // pentagon, not 6, each counted 5/6 by them, 12 × 1/6 (Euler's 2 on any of them); its cells, its corners' and its hexagons)
-    return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells: {o:${at}} + {y:${fmt(n - walls)} hexagons}`;
+    return `${faces} × (Edge=${fmt(f)})² / 2 = ${fmt(n - 2)}\n+ 2 (its corners: fewer than 6 faces round each)\n= ${fmt(n)} cells`;  // (its hexagons and its corners' cells: in the title, see sizeCells)
   }
   const k = S.tiles(0), c = (n - k) / (f * f);
   return Number.isInteger(c) && S.tiles(2 * f) === 4 * c * f * f + k ? `${c} × (Edge=${fmt(f)})²${k ? ` + ${k}` : ''} = ${fmt(n)} ${unit}` : `${fmt(n)} ${unit}`;
@@ -5466,10 +5468,10 @@ const hexCorners = (kind) => {
   const names = { 3: 'triangles', 4: 'squares', 5: 'pentagons', 8: 'octagons' };
   return { at: Object.entries(corners).map(([c, k]) => `${k} ${names[c]}`).join(' + '), walls: g0.walls?.length ?? 0 };
 };
-const sizeCells = (kind, f) => {  // (a solid of hexagons: its hexagons, then its corners' cells, not all said hexagons)
+const sizeCells = (kind, f, marked = false) => {  // (a solid of hexagons: its hexagons, then its corners' cells, not all said hexagons; marked: in their colours, see sizeTips)
   const d = gridSize(kind, f), S = SPHERES[kind];
   if (d) return `${fmt(d[2])} ${d[3]}`;
-  if (S.unit === 'hexagons') { const { at, walls } = hexCorners(kind); return `${fmt(S.tiles(f) - walls)} hexagons + ${at}`; }
+  if (S.unit === 'hexagons') { const { at, walls } = hexCorners(kind), hex = `${fmt(S.tiles(f) - walls)} hexagons`; return marked ? `{y:${hex}} + {o:${at}}` : `${hex} + ${at}`; }
   return `${fmt(S.tiles(f))} ${S.unit}`;
 };
 const sizeLabel = (kind, f) => (gridSize(kind, f) ? `${sizeShape(kind, f)} ${sizeCells(kind, f)}` : sizeCells(kind, f));
