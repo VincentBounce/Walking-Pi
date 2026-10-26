@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1217';
+const VERSION = '0.1.1219';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5124,13 +5124,13 @@ function morphStep(dt) {
 
 
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
-/* Sizes, one way for every surface: a ladder of cell counts for each family (a torus, a Möbius strip or a Klein
- * bottle: the square torus's; a solid: the cube's), and each surface's sizes the allowed ones (rows a multiple
- * of steps[0], from least) whose cells are nearest them: a step of the size is about as many cells whatever
- * the tiling (cells stay regular, so not exactly). Each step about doubles the cells (×2.25, then ×1.78). A
- * new surface needs only its tiles(size) and its steps. */
-const SIZE_LADDERS = { surface: { counts: [576, 1440, 2688, 5760, 9984], start: 2688 },
-                       solid: { counts: [384, 864, 1536, 3456, 6144, 13824, 24576, 55296, 98304], start: 6144 } };
+/* Sizes, one way for every grid and surface: one ladder, the squares' sides on the plane (SIDES), their squares' cells
+ * everywhere else, each family up to what it runs well at (a torus, a Möbius strip or a Klein bottle; a solid), and each
+ * surface's sizes the allowed ones (rows a multiple of steps[0], from least) whose cells are nearest them: a step of
+ * the size is about as many cells whatever the tiling (cells stay regular, so not exactly). Each step about doubles the
+ * cells (×2.25, then ×1.78). A new surface needs only its tiles(size) and its steps. */
+const SIDES = [16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], cellsUpTo = (lo, hi) => SIDES.map((f) => f * f).filter((n) => n >= lo && n <= hi);
+const SIZE_LADDERS = { surface: { counts: cellsUpTo(576, 10000), start: 2688 }, solid: { counts: cellsUpTo(256, 100000), start: 6144 } };
 const mobiusRadius = (kind, s) => mobiusSheet(kind, s).W / MOBIUS_WIDTH;  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -6317,10 +6317,11 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 // the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
-const PLANE_SIDES = { square: [16, 24, 32, 48, 64, 128, 256, 512, 1024, 2048], hex: [16, 24, 32, 48, 64, 128, 256, 512], tri: [16, 24, 32, 48, 64, 128, 256], cairo: [16, 24, 32, 48, 64, 128, 256], kite: [16, 24, 32, 48, 64, 128], hat: [16, 24, 32, 48, 64, 128], penrose: [16, 24, 32, 48, 64, 128], pinwheel: [16, 24, 32, 48, 64], spectre: [16, 24, 32, 48, 64, 128], ammann: [16, 24, 32, 48, 64, 128], rhombs12: [16, 24, 32, 48, 64, 128], rhombs14: [16, 24, 32, 48, 64, 128], flower: [16, 24, 32, 48, 64], flower5: [16, 24, 32, 48, 64], flower7: [16, 24, 32, 48, 64], mirror7: [16, 24, 32, 48, 64], flower3: [16, 24, 32, 48, 64], flower4: [16, 24, 32, 48, 64], flower8: [16, 24, 32, 48, 64], flower9: [16, 24, 32, 48, 64], flower10: [16, 24, 32, 48, 64], ring7: [16, 24, 32, 48, 64], ring8: [16, 24, 32, 48, 64], ring9: [16, 24, 32, 48, 64], ring10: [16, 24, 32, 48, 64], ring12: [16, 24, 32, 48, 64] };
-for (const kind of Object.keys(TILINGS)) PLANE_SIDES[kind] = [16, 24, 32, 48, 64, 128];
+const PLANE_SIDES = {}, sidesTo = (most) => SIDES.filter((f) => f <= most);
+for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', 'hat', 'penrose', 'spectre', 'ammann', 'rhombs12', 'rhombs14', ...Object.keys(TILINGS)]) PLANE_SIDES[kind] = sidesTo({ square: 2048, hex: 512, tri: 256, cairo: 256 }[kind] ?? 128);
+for (const kind of ['pinwheel', 'flower', 'flower3', 'flower4', 'flower5', 'flower7', 'flower8', 'flower9', 'flower10', 'mirror7', 'ring7', 'ring8', 'ring9', 'ring10', 'ring12']) PLANE_SIDES[kind] = sidesTo(64);
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
-const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]);
+const planeSides = (kind) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]).filter((f, i, a) => planeW(kind, f) >= 2 && (!i || planeW(kind, f) !== planeW(kind, a[i - 1])));  // (two sides as many lattice cells: once; a grid of 2 of them across at least: Dual 314's straight sheet, 120 cells, 1 for 16)
 const plane = { side: 48, torus: true, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
@@ -8205,7 +8206,7 @@ const PLANE_OF_MARK = { '■': 'square', '⬡': 'hex', '▲': 'tri', '⬠': 'cai
 // changing then those kept, by their live cells; the state before shown a moment, fading
 function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be)
-  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, PLANE_SIDES[kind][0]), row = planeRow(kind, W), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
+  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, planeSides(kind)[0]), row = planeRow(kind, W), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
   const blocksOf = (torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four)), { k, turns, move } = blocksOf(false);  // (Ising: its squares, a colour a phase)
   if (!ising && to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
@@ -13211,7 +13212,7 @@ let drawing = false, drawFrom = null;
 // Life on the plane: the grid's size and edges (built again), its start (the cells only, but by the digits)
 for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
   $(id).addEventListener('click', () => {
-    const sides = planeSides(MODES[$('mode').value].plane);
+    const sides = planeSides(planeKind(MODES[$('mode').value].plane));
     plane.side = sides[Math.min(sides.length - 1, Math.max(0, sides.indexOf(plane.side) + k))];
     compute(true);
   });
