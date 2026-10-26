@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1263';
+const VERSION = '0.1.1264';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8127,21 +8127,31 @@ function drawMotif(ctx) {
   if (walk.plane) turnLayer(ctx, 0);
   else drawMotifFace(ctx);
 }
-// a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner along
-// the surface (each side cut in 24, each point as far from the middle as its ends), its sides facing the viewer
+// a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner
+// through the middles of the tiles between them (a straight row, the shortest way along its neighbours), as the shape has
+// them now (inflated or not, as a start's edge is drawn), the tiles facing the viewer
 function drawMotifFace(ctx) {
-  const g = walk.geo, sh = walk.shape, [t0] = motifTiles();
+  const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
   if (SPHERES[surfaceOf(MODES[$('mode').value])]?.unit !== 'hexagons' || !g.walls?.length || t0 === undefined) return;
   const at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R), d2 = (p, q) => p.reduce((sum, v, i) => sum + (v - q[i]) ** 2, 0), m = at(t0);
-  const [a, b, c] = [...g.walls].sort((p, q) => d2(at(p), m) - d2(at(q), m)).slice(0, 3).map(at), proj = projector(), { scale: s, ox, oy } = view;
+  const [a, b, c] = [...g.walls].sort((p, q) => d2(at(p), m) - d2(at(q), m)).slice(0, 3), proj = projector(), { scale: s, ox, oy } = view;
+  const way = (from, to) => {  // (its tiles, breadth first along its neighbours)
+    const back = new Map([[from, -1]]);
+    for (let queue = [from], i = 0; i < queue.length && !back.has(to); i++) for (let j = 0; j < k; j++) { const n = g.nbr[k * queue[i] + j]; if (n >= 0 && !back.has(n)) { back.set(n, queue[i]); queue.push(n); } }
+    const tiles = [];
+    for (let t = to; t >= 0; t = back.get(t)) tiles.push(t);
+    return tiles;
+  };
   ctx.strokeStyle = FACE_RED;
   ctx.beginPath();
-  for (const [p, q] of [[a, b], [b, c], [c, a]]) for (let i = 0, down = false; i <= 24; i++) {
-    const r = Math.hypot(...p) + ((Math.hypot(...q) - Math.hypot(...p)) * i) / 24, x = p.map((v, k) => v + ((q[k] - v) * i) / 24), l = Math.hypot(...x), w = x.map((v) => (v * r) / l);
-    if (!planeVisible(w.map((v) => v / r), w)) { down = false; continue; }  // (behind: lifted)
-    const [u, v] = proj(...w);
-    ctx[down ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s);
-    down = true;
+  for (const [p, q] of [[a, b], [b, c], [c, a]]) {
+    let down = false;
+    for (const t of way(p, q)) {
+      if (!planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) { down = false; continue; }  // (behind: lifted)
+      const [u, v] = proj(...at(t));
+      ctx[down ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s);
+      down = true;
+    }
   }
   ctx.stroke();
 }
