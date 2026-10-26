@@ -238,7 +238,6 @@ button.wide { width: 100%; margin-bottom: 10px; }
 .nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-shapes button svg { width: 24px; height: 24px; }
 .nav-shapes .goal-mark { width: 24px; height: 24px; font: 600 19px/24px system-ui, sans-serif; font-style: normal; text-align: center; }  /* a hunt's goal: its mark as an icon */  /* icons: 24 px in a tile, a tab or by a section's title, 20 px on a card, 16 px in a line of text */
-.theme-buttons > .tile-group { grid-column: 2 / span 2; }  /* Light | Dark, then System, on the right, the sky's place on the left kept */
 /* a group of tiles, one choice among them: joined in one frame, 2 or 3 columns of tiles */
 .tile-group { display: flex; grid-column: span 2; }
 .tile-group:has(> :nth-child(3)) { grid-column: span 3; }
@@ -395,16 +394,16 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 button.wide.active, .head-btn.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
 .display-menu:hover { width: 230px; }
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
-/* Grid stays at the top right; hovering opens the settings: Sound and Auto-fit on its left, tiles as wide as the theme's, the rest below */
+/* System stays at the top right; hovering opens the settings: the sky, Light and Dark on its left, tiles a quarter of the box, the rest below */
 .display-menu .stage-head { display: flex; justify-content: flex-end; }
 .head-tiles { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 0; }
-.head-tiles button { width: calc((230px - 18px - 12px) / 4); }  /* (a quarter of the open box, as the theme's tiles: see .nav-shapes) */
+.head-tiles button { width: calc((230px - 18px - 12px) / 4); }  /* (a quarter of the open box, as the tiles below: see .nav-shapes) */
 #themeButtons { margin-bottom: 0; }  /* (the sections below: their own line and margins, see .form-section) */
 /* shown only while the box is open, like its other settings */
 .stage-box .open-only { display: none; }
 .stage-box:hover .open-only { display: flex; }
 @media (hover: none) { .stage-box:focus-within .open-only { display: flex; } }
-.display-menu .stage-more { margin: 10px 0 -10px; }  /* below Grid and Auto-fit; each row's 10px under the last one taken back, so the bottom matches the top */
+.display-menu .stage-more { margin: 10px 0 -10px; }  /* below the themes; each row's 10px under the last one taken back, so the bottom matches the top */
 .form-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }  /* shape and perspective */
 .form-section:not(:has(> :not([hidden]))) { display: none; }
 .choice-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1322';
+const VERSION = '0.1.1323';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1416,10 +1416,10 @@ const greyed = (item) => !!DISPLAY_GREYED[$('mode').selectedOptions[0].parentEle
 const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
 const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
-  const rows = { colors: 'colorsRow', grid: 'gridRow', sky: 'skyRow',  // Grid heads the box
+  const rows = { colors: 'colorsRow', grid: 'gridRow',
                  autoRotate: 'autoRotateRow', upright: 'uprightRow', perspective: 'perspectiveRow', light: 'lightRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  skyButton.hidden = $('skyRow').hidden;  // the sky's switch, among the themes
+  skyButton.hidden = !shows('sky');  // the sky's switch, among the themes
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
@@ -1506,7 +1506,6 @@ function renderHeadTiles() {
     renderSoundButton();
     headTiles = [tile({ pic: icon('play'), text: 'Autoplay', title: $('autoPlayRow').title, toggle: true, click: flip('autoPlay') }),
       tile({ pic: icon('fit'), text: 'Auto-fit', title: $('autoFitRow').title, toggle: true, click: flip('autoFit') }), tile({ pic: icon('grid'), text: 'Grid', title: $('gridRow').title, toggle: true, click: flip('showGrid') })];
-    for (const b of [soundButton, headTiles[0], headTiles[1]]) b.classList.add('open-only');
     $('headTiles').replaceChildren(soundButton, ...headTiles);
   }
   renderSoundButton();
@@ -1915,10 +1914,17 @@ const ICONS = (() => {
   const hex = ngon(6, 9.5), tri = ngon(3, 10, -90, 12, 14), sq = [[4, 4], [20, 4], [20, 20], [4, 20]];
   const cube = (fillTop) => pathEl(pathOf(hex)) + [0, 2, 4].map((k) => pathEl(seg([12, 12], hex[k]))).join('')
     + (fillTop ? pathEl(pathOf([[12, 12], hex[4], hex[5], hex[0]]), 'f') : '');
-  const frame = cube(false) + [0, 2, 4].map((k) => {  // a cube's frame: each face's hole, a third of it
+  // the carved cubes, as the cube: on each face seen, its middle third (P) a hole (filled), a pit (its rim), a bump (its top out of
+  // it), or a grid of thirds round a hole (the sponge)
+  const carved = (each) => cube(false) + [0, 2, 4].map((k) => {
     const F = [[12, 12], hex[k], hex[(k + 1) % 6], hex[(k + 2) % 6]], m = [0, 1].map((d) => F.reduce((t, p) => t + p[d], 0) / 4);
-    return pathEl(pathOf(F.map((p) => p.map((v, d) => m[d] + (v - m[d]) / 3))));
+    const P = F.map((p) => p.map((v, d) => m[d] + (v - m[d]) / 3)), v = hex[(k + 4) % 6].map((x) => (x - 12) / 6);  // (v: half a block into the cube)
+    return each(F, P, (s) => P.map((p) => [p[0] + s * v[0], p[1] + s * v[1]]));
   }).join('');
+  const frame = carved((F, P) => pathEl(pathOf(P), 'f'));
+  const pits = carved((F, P) => pathEl(pathOf(P)));
+  const bumps = carved((F, P, at) => pathEl(pathOf(at(-1))));
+  const menger = carved((F, P) => pathEl(pathOf(P), 'f') + [1, 2].map((t) => pathEl(seg(...[F[0], F[3]].map((p, j) => p.map((x, d) => x + (t / 3) * (F[1][d] - F[0][d])))) + seg(...[F[0], F[1]].map((p) => p.map((x, d) => x + (t / 3) * (F[3][d] - F[0][d])))))).join(''));
   const torus = '<ellipse cx="12" cy="12" rx="10" ry="7"/>' + pathEl('M5.5 11Q12 17 18.5 11M7.8 12.6Q12 8 16.2 12.6');
   const [a, b, c, d] = [[12, 3], [3, 19], [21, 19], [13, 14.5]];
   const icoOut = ngon(6, 10), icoIn = ngon(3, 5, 90);
@@ -2035,10 +2041,10 @@ const ICONS = (() => {
     duel: dots([[6.5, 12], [17.5, 12]], 3.5),
     // Life's grid edges: walls, a square in a frame
     bricks: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',  // Walls: a brick wall
-    walls: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx="0.5"/>',
-    bumps: '<rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><rect x="8" y="8" width="8" height="8" rx="0.5"/>' + pathEl('M8 8L5.5 5.5M16 8L18.5 5.5M16 16L18.5 18.5M8 16L5.5 18.5'),  // (a face, its bump raised: its walls seen from above)
+    pits,
+    bumps,
     frame,
-    menger: '<rect x="3.5" y="3.5" width="17" height="17"/><rect x="9.2" y="9.2" width="5.6" height="5.6"/><path d="M5.6 5.6h1.6v1.6h-1.6zM11.2 5.6h1.6v1.6h-1.6zM16.8 5.6h1.6v1.6h-1.6zM5.6 11.2h1.6v1.6h-1.6zM16.8 11.2h1.6v1.6h-1.6zM5.6 16.8h1.6v1.6h-1.6zM11.2 16.8h1.6v1.6h-1.6zM16.8 16.8h1.6v1.6h-1.6z"/>',  // Menger's sponge: a face, its hole and the 8 next ones
+    menger,
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
     // numbers
@@ -2672,7 +2678,7 @@ for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && M
   NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
 }
 for (const w of Object.keys(MODES)) if (MODES[w].pivot || MODES[w].parity) MODE_ICONS[w] = MODES[w].pivot ? 'pivot' : 'walk2d';
-MODE_ICONS.lifePits = 'walls';
+MODE_ICONS.lifePits = 'pits';
 MODE_ICONS.lifeBumps = 'bumps';
 MODE_ICONS.lifeMenger = 'menger';
 MODE_ICONS.lifeFrame = 'frame';
@@ -2715,7 +2721,7 @@ const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natura
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
 const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Rhombs 14': 'rhombs14', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Flower 9': 'flower9', 'Flower 10': 'flower10', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 10': 'ring10', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
-  Dodecahedron: 'dodecahedron', Cuboctahedron: 'cubocta', Pyramid: 'pyramid', Rhombicuboctahedron: 'rhombi', Bicupola: 'bicupola', Sphere: 'icosahedron', Pits: 'walls', Bumps: 'bumps', Frame: 'frame', Sponge: 'menger', 'Klein bottle': 'klein' };
+  Dodecahedron: 'dodecahedron', Cuboctahedron: 'cubocta', Pyramid: 'pyramid', Rhombicuboctahedron: 'rhombi', Bicupola: 'bicupola', Sphere: 'icosahedron', Pits: 'pits', Bumps: 'bumps', Frame: 'frame', Sponge: 'menger', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
@@ -5233,13 +5239,13 @@ const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           tiles: (n) => 6 * n * n, unit: 'squares' },
   pits: { mesh: cubePits, radius: (n) => n / 2, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares',
-          how: (n) => `each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a pit (its floor, 4 walls half a block deep): 11 blocks a face, 6 × 11 × {y:${fmt(n / 3)}² squares}` },
+          how: (n) => `(Edge=${fmt(n)}) / 3 = ${fmt(n / 3)}: each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a pit (its floor, 4 walls half a block deep): 11 blocks a face, 6 × 11 × {y:${fmt(n / 3)}² squares}` },
   bumps: { mesh: (n) => cubePits(n, true), radius: (n) => (2 * n) / 3, steps: [6], tiles: (n) => (66 * n * n) / 9, unit: 'squares',  // (its bumps a sixth out: 4/3 of its half side)
-           how: (n) => `each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a bump (its top, 4 walls half a block high): 11 blocks a face, 6 × 11 × {y:${fmt(n / 3)}² squares}` },
+           how: (n) => `(Edge=${fmt(n)}) / 3 = ${fmt(n / 3)}: each face 3 × 3 blocks of ${fmt(n / 3)}², its middle a bump (its top, 4 walls half a block high): 11 blocks a face, 6 × 11 × {y:${fmt(n / 3)}² squares}` },
   frame: { mesh: (m) => mengerMesh(1, m), radius: (m) => (3 * m) / 2, tiles: (m) => 72 * m * m, unit: 'squares', edge: (m) => 3 * m,  // a cube's frame: its branches m squares wide, its edge 3m
-           how: (m) => `a cube's frame, its edge ${fmt(3 * m)}, its branches ${fmt(m)} wide: 72 × {y:${fmt(m)}² squares}` },
+           how: (m) => `a cube's frame, (Edge=${fmt(3 * m)}) / 3 = ${fmt(m)} its branches' width: 72 × {y:${fmt(m)}² squares}` },
   menger: { mesh: (L) => mengerMesh(L), radius: (L) => 3 ** L / 2, least: 2, most: 3, tiles: (L) => 2 * 20 ** L + 4 * 8 ** L, unit: 'squares', edge: (L) => 3 ** L,
-            how: (L) => `Menger's sponge, level ${L} (its edge 3^${L} = ${fmt(3 ** L)}): {y:2 × 20^${L} + 4 × 8^${L} squares}` },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
+            how: (L) => `Menger's sponge, (Edge=${fmt(3 ** L)}) = 3^${L}, divided by 3 ${L} times (level ${L}): {y:2 × 20^${L} + 4 × 8^${L} squares}` },  // Menger's sponge: its size, its steps L (side 3^L)  // the cube with pits (a sixth deep: n a multiple of 6)
   // flat polyhedra: radius = f / (edge of the solid) so that a small triangle's edge is 1 unit
   // a torus's size: its rows (see torusDims); perRow: tiles per column across a row; steps: what rows
   // and tiles per row go by in a size of its own, keeping the sheet's columns even or rows even
@@ -13687,7 +13693,8 @@ function applyTheme() {
   if (t !== 'system') themeLast = t;
   try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' }, 'system');
-  $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)));  // Light | Dark, then System
+  $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)), skyButton);  // Light | Dark, then System: open, the sky first
+  for (const b of $('themeButtons').children) if (b.textContent !== 'System') b.classList.add('open-only');
   const system = [...$('themeButtons').children].find((b) => b.textContent === 'System');
   system.dataset.toggle = '';  // (a switch: clicked again, back to Light or Dark)
   setTile(system, { on: t === 'system' });
