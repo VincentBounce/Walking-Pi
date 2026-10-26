@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1272';
+const VERSION = '0.1.1273';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5304,13 +5304,13 @@ const SPHERES = {
   stella: { mesh: (f) => flatPolyhedron('stella', f), radius: (f) => f / Math.SQRT2,       // edge √2
             tiles: (f) => 24 * f * f, unit: 'triangles' },
   dodeca: { mesh: (f) => flatPolyhedron('dodeca', f), radius: (f) => (f * PHI) / 2,        // edge 2/φ
-            tiles: (f) => 60 * f * f, unit: 'triangles', how: (f) => `12 pentagonal faces × 5 × ${fmt(f)}² triangles` },  // (each pentagon 5 triangles round its middle)
+            tiles: (f) => 60 * f * f, unit: 'triangles', how: (f) => `{r:12 pentagonal faces} × 5 × {y:${fmt(f)}² triangles}` },  // (each pentagon 5 triangles round its middle)
   stellaKite: { mesh: (f) => flatPolyhedron('stella', f, true), radius: (f) => f / Math.SQRT2, tiles: (f) => 72 * f * f, unit: 'kites' },
   cubocta: { mesh: (f) => hullMesh('cubocta', f), radius: (f) => f / Math.SQRT2, tiles: (f) => 14 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge √2
   pyramid: { mesh: (f) => hullMesh('pyramid', f), radius: (f) => f / 2, tiles: (f) => 5 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2
   rhombi: { mesh: (f) => hullMesh('rhombi', f), radius: (f) => f / 2, tiles: (f) => 26 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 18 squares, 8 triangles
   bicupola: { mesh: (f) => hullMesh('bicupola', f), radius: (f) => f / 2, tiles: (f) => 18 * f * f, unit: 'cells', edges: [12, 24, 48] },  // edge 2: 10 squares, 8 triangles
-  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `12 pentagonal faces × 5 × ${fmt(f)}² triangles × 3 kites each` },
+  dodecaKite: { mesh: (f) => flatPolyhedron('dodeca', f, true), radius: (f) => (f * PHI) / 2, tiles: (f) => 180 * f * f, unit: 'kites', how: (f) => `{r:12 pentagonal faces} × 5 × {y:${fmt(f)}² triangles} × 3 kites each` },
 };
 // the solids of squares as tetrakis triangles (see tetrakisOf): sized as their squares, 4 cells a square
 for (const k of Object.keys(TETRAKIS_SOLIDS)) {
@@ -8141,7 +8141,12 @@ function drawMotifFace(ctx) {
   const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
   if (t0 !== undefined && redFaces(g)) {  // a solid of triangles (of kites): its face's cells' sides not shared by two of them (its edges, along its cells)
     const { scale: s, ox, oy } = view, proj = projector(), sides = new Map(), at = (t, j) => { const c = 3 * (k * t + j); return [sh.corners[c], sh.corners[c + 1], sh.corners[c + 2]].map((v) => v * walk.R); };
-    for (let t = Math.floor(t0 / g.perFace) * g.perFace, e = t + g.perFace; t < e; t++) for (let j = 0; j < k; j++) {
+    // (its face: the mesh's faces next to it in its plane too, as listed: a dodecahedron's pentagon, 5 triangles)
+    const fi = Math.floor(t0 / g.perFace), flat = (i) => g.faces[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
+    let lo = fi, hi = fi;
+    while (flat(lo - 1)) lo--;
+    while (flat(hi + 1)) hi++;
+    for (let t = lo * g.perFace, e = (hi + 1) * g.perFace; t < e; t++) for (let j = 0; j < k; j++) {
       const key = [g.poly[k * t + j], g.poly[k * t + ((j + 1) % k)]].sort().join('|');
       sides.set(key, sides.has(key) ? null : [at(t, j), at(t, (j + 1) % k), t]);
     }
