@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1344';
+const VERSION = '0.1.1345';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11001,7 +11001,7 @@ function fillSetupList() {
     const mine = rows.filter(([, , x]) => kindOf(x) === kind).sort((a, b) => a[0].localeCompare(b[0]));
     if (!mine.length) return [];
     const section = document.createElement('section'), cards = Object.assign(document.createElement('div'), { className: 'mode-list' });  // a section each, as Life's, its picture as the tab's
-    section.innerHTML = `<h2>${icon(NAV_KINDS.find(([k]) => k === kind)[1])}${kind}</h2>`;
+    section.innerHTML = `<h2>${icon(NAV_KINDS.find(([k]) => k === kind)[1])}${kind}<button type="button" class="head-btn gallery-close">Close</button></h2>`;
     cards.append(...mine.map(([title, detail, x]) => {
       const k = (seen.get(title + detail) ?? 0) + 1;
       seen.set(title + detail, k);
@@ -11012,7 +11012,6 @@ function fillSetupList() {
   }));
   for (const b of [...$('setupTools').children].slice(1)) setTile(b, { can: list.length > 0, greyed: 'with no Treasures' });  // (Export, Erase all: none to take)
   $('eraseConfirm').hidden ||= !list.length;
-  $('galleryPane').querySelector('h2').append(galleryClose);  // (Close by its first title: a group's, else Management's)
   syncSaveButton();
 }
 
@@ -14134,15 +14133,15 @@ for (const list of ['yourList']) {
   });
 }
 // The left pane shows the parameters, or the gallery: opened by a click on the Gallery tab (lit as the tab in use), closed by
-// it again or by its Close (by its first title, as How it works), a setup clicked or another tab: the parameters of the tab before
+// it again or by a Close (by each of its titles, as How it works), a setup clicked or another tab: the parameters of the tab before
 function showPane(gallery) {
   $('paramsPane').hidden = gallery;
   $('galleryPane').hidden = !gallery;
   galleryTab().classList.toggle('open', gallery);
   if (gallery) renderGallery();
 }
-const galleryButton = document.createElement('button'), galleryClose = Object.assign(document.createElement('button'), { type: 'button', className: 'head-btn', textContent: 'Close' });
-galleryClose.addEventListener('click', () => showPane(false));
+const galleryButton = document.createElement('button');
+$('galleryPane').addEventListener('click', (e) => { if (e.target.closest('.gallery-close')) showPane(false); });  // (each section's Close)
 function galleryTab() {
   if (galleryButton.dataset.ready) return galleryButton;
   const b = galleryButton;
