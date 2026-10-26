@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1317';
+const VERSION = '0.1.1318';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4547,7 +4547,8 @@ function finishTorus(verts, tiles, sides, nu, nv, uv, mids = null, placed = fals
 /* ---- 7.4b Möbius strip ---------------------------------------------------------------------- */
 /* A Möbius strip tiled with squares, hexagons or triangles: on the flat sheet, a strip L long (its
  * middle line, a circle of radius 1 once rolled up, is L tile edges long) and W wide, its ends glued
- * with a half twist, (x + L, y) ≡ (x, W − y). Its width is MOBIUS_WIDTH times the circle's radius.
+ * with a half twist, (x + L, y) ≡ (x, W − y). Its width is its tiles' (2πW / L times the circle's radius: a torus's tube
+ * alike, see tubeFor); MOBIUS_WIDTH, its usual (its usual length's, see stripSteps).
  * As a strip of paper, each tile has two faces, and a walker keeps to the face it is on: at the
  * strip's edge it goes round to the face just behind (the same tile, turned over). The faces make one
  * closed surface: every tile has as many neighbours as on a torus, and nothing is mirrored. */
@@ -4603,13 +4604,11 @@ const mobiusSize = (size) => (typeof size === 'number' ? [size, null] : size.spl
 /* Sheet point (x, y) rolled up by m ∈ [0, 1]: at m = 0 the flat strip (in the x–y plane, as the
  * unrolled torus), at m = 1 the Möbius strip. As it rolls, the strip bends round the circle (keeping
  * lengths, as torusPoint does) and twists along it, up to half a turn at m = 1, so the ends meet
- * upside down: the point (x + L, y) is then the point (x, W − y). Its width is always MOBIUS_WIDTH times
- * the circle's radius; flat, its length is in proportion (flat: its share of the circle), stretched to
- * the circle as it bends round (hardly), as a torus's. */
+ * upside down: the point (x + L, y) is then the point (x, W − y). Its tiles as they are, whatever its length:
+ * its width follows it (the circle L tile edges round, its radius 1). */
 function mobiusPoint(x, y, L, W, m) {
-  const flat = (L * MOBIUS_WIDTH) / (2 * Math.PI * W), X0 = (x / L - 0.5) * 2 * Math.PI;
-  const X = X0 * (flat + (1 - flat) * m), S = (y / W - 0.5) * MOBIUS_WIDTH;  // along, across (the circle's radius 1)
-  const tw = (m * X0) / 2, w = S * Math.cos(tw), h = S * Math.sin(tw);  // across: outwards and up
+  const X = (x / L - 0.5) * 2 * Math.PI, S = ((y - W / 2) * 2 * Math.PI) / L;  // along, across (the circle's radius 1)
+  const tw = (m * X) / 2, w = S * Math.cos(tw), h = S * Math.sin(tw);  // across: outwards and up
   if (m < 1e-6) return [X, -w, h];
   const rr = 1 / m, ph = X / rr;
   return [(rr + w) * Math.sin(ph), rr - m - (rr + w) * Math.cos(ph), h];
@@ -5229,7 +5228,7 @@ function morphStep(dt) {
 const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048],  // (every multiple of 24 up to 192: an icon's whole size)
   sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
 const CELLS = [256, 100000], START = { surface: 2688, solid: 6144 };
-const mobiusRadius = (kind, s) => mobiusCount(kind, s).W / MOBIUS_WIDTH;  // (its width: no tile built)  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
+const mobiusRadius = (kind, s) => mobiusCount(kind, s).L / (2 * Math.PI);  // (its length: no tile built)  // a Möbius strip's circle, L tile edges round
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
           tiles: (n) => 6 * n * n, unit: 'squares' },
