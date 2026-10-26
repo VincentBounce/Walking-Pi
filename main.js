@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1251';
+const VERSION = '0.1.1252';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7287,7 +7287,7 @@ function iconSquare(kind, N) {
     const m = cellMiddle(kind, x, y), u = m[0] - o[0] - 0.5, v = m[1] - o[1] - 0.5, px = Math.floor((u * cs + v * sn) / k + P / 2), py = Math.floor((v * cs - u * sn) / k + P / 2);
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
-  const dx = Math.floor(Math.min(...under.map((c) => c[0])) / per) * per, dy = Math.min(...under.map((c) => c[1]));
+  const dx = Math.floor(under.reduce((m, c) => Math.min(m, c[0]), Infinity) / per) * per, dy = under.reduce((m, c) => Math.min(m, c[1]), Infinity);  // (not spread: a square of 512 cells across, 262,144 of them)
   const square = { key, box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };  // (its middle, moved as its cells: o + ½, ½)
   if (iconPatternMemo.size > 32) iconPatternMemo.clear();
   iconPatternMemo.set(key, square);
@@ -7929,8 +7929,8 @@ function orientPattern(kind, rle, turn, flip) {
     const c = planeCellAt(kind, V, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos);
     if (c) cells.push([...c, v]);
   }
-  const square = (x) => Math.floor(x / per), i0 = Math.min(...cells.map((c) => square(c[0])));
-  let j0 = Math.min(...cells.map((c) => c[1]));
+  const square = (x) => Math.floor(x / per), i0 = cells.reduce((e, c) => Math.min(e, square(c[0])), Infinity);
+  let j0 = cells.reduce((e, c) => Math.min(e, c[1]), Infinity);
   if (kind === 'cairo' && (i0 + j0) & 1) j0--;  // the tiling repeats every other square
   return cells.map(([x, y, v]) => [x - per * i0, y - j0, v]);
 }
@@ -7962,8 +7962,8 @@ function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells(), to
   const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = (d) => cells.mid?.[d] ?? (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2;  // (an icon's: its square's, see iconSquare)
   to ??= cellMiddle(kind, cx, cy);
   const D = a[0] * b[1] - a[1] * b[0], ex = to[0] - mid(0), ey = to[1] - mid(1), near = (v) => Math.ceil(v - 0.5 - 1e-9);
-  let i = kind === 'cairo' ? square(cx) - ((Math.max(...cells.map((c) => square(c[0]))) + 1) >> 1) : near((ex * b[1] - ey * b[0]) / D);
-  let j = kind === 'cairo' ? cy - ((Math.max(...cells.map((c) => c[1])) + 1) >> 1) : near((a[0] * ey - a[1] * ex) / D);
+  let i = kind === 'cairo' ? square(cx) - ((cells.reduce((e, c) => Math.max(e, square(c[0])), -Infinity) + 1) >> 1) : near((ex * b[1] - ey * b[0]) / D);
+  let j = kind === 'cairo' ? cy - ((cells.reduce((e, c) => Math.max(e, c[1]), -Infinity) + 1) >> 1) : near((a[0] * ey - a[1] * ex) / D);
   if (kind === 'cairo' && (i + j) & 1) j--;
   for (const [dx, dy, v] of cells) {
     let x = per * i + dx, y = j + dy;
@@ -9448,22 +9448,19 @@ const ICON_SETS = { icon: { bits: ICON_BITS, names: ICON_NAMES, word: 'icon', la
 let gridCount = 0;
 const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.torus}` : `#${(walk.geo.gridId ??= ++gridCount)}`);
 const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
-const ICON_MAX = [192, 168, 144, 120, 96, 72, 48, 24];  // (Icon max, Punk max on squares: the widest of these that fits, a pixel whole cells; up to 192, as elsewhere)
-// Icon max, Punk max: the widest that fits (see iconLay); on squares, of ICON_MAX; elsewhere (no cells on its pixels anyway)
-// to the cell, from 16 (a picture of 24 pixels a little merged) up to 192, by halves (wider fits no less); 24 where none (greyed)
+// Icon max, Punk max: the widest that fits (see iconLay), never capped: on squares a multiple of 24 (a pixel whole cells);
+// elsewhere (no cells on its pixels anyway) any width, from 16 (a picture of 24 pixels a little merged); doubled, then halved
+// back between the last two (wider fits no less); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = () => {
-  const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}`;
+  const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}`, u = patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
-  let N = 24;
-  if (patternKind() === 'square') N = ICON_MAX.find((n) => iconFits(n)) ?? 24;
-  else if (iconFits(16)) {
-    let hi = 32;
-    N = 16;
-    while (hi <= 192 && iconFits(hi)) { N = hi; hi *= 2; }
-    for (hi = Math.min(hi, 193); hi - N > 1; ) { const m = (N + hi) >> 1; if (iconFits(m)) N = m; else hi = m; }
-  }
-  return (iconMaxMemo = { key, N }).N;
+  let lo = u === 24 ? 1 : 16, hi = 2 * lo;  // (in u's; its square's cells no more than the grid's)
+  const fits = (k) => (k * u) ** 2 <= cells && iconFits(k * u);
+  if (!fits(lo)) return (iconMaxMemo = { key, N: 24 }).N;
+  while (fits(hi)) { lo = hi; hi *= 2; }
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (fits(m)) lo = m; else hi = m; }
+  return (iconMaxMemo = { key, N: lo * u }).N;
 };
 const iconSize = (zone) => (!isIcon(zone) ? 0 : zone.endsWith('Max') ? iconMax() : 24);  // (an icon's width in cells; max: greyed where none fits, 16 off squares)
 const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : 'icon'];
@@ -9966,7 +9963,7 @@ const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i
 // plane or the torus (a lattice, see huntParts), the middle of its face of the cube
 function patternAt(i, K, cells, partial = false) {  // partial: its cells there only, past a torus's edges cut off (an icon's square, see iconLay)
   const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [];
-  const w = Math.max(...cells.map((c) => c[0])) + 1, h = Math.max(...cells.map((c) => c[1])) + 1;
+  const w = cells.reduce((e, c) => Math.max(e, c[0]), -Infinity) + 1, h = cells.reduce((e, c) => Math.max(e, c[1]), -Infinity) + 1;
   if (walk.plane) {
     const { kind, row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : planeFrame().cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows);
     const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), cs = K === 1 && !wallSlices(K) ? planeCentre().map(mid) : null;  // (one colour: the grid's very middle)
@@ -13553,7 +13550,7 @@ function lifeRle() {
   const at = (t) => { const x = t % row, y = Math.floor(t / row); if (!R) return [x, y]; const s = x % m, I = Math.floor(x / m); return [R.nat[s][0] + per * (I * sp + y * sr), R.nat[s][1] + I * sq + y * st]; };  // (its grid's cell)
   L.alive.forEach((v, t) => { if (v) cells.push([...at(t), v <= K ? 1 : 1 + Math.floor((v - 1) / K)]); });
   if (!cells.length) return null;
-  const x0 = per * Math.floor(Math.min(...cells.map((c) => c[0])) / per), y0 = Math.min(...cells.map((c) => c[1])) - (base === 'cairo' && (x0 / 2 + Math.min(...cells.map((c) => c[1]))) & 1 ? 1 : 0);
+  const x0 = per * Math.floor(cells.reduce((e, c) => Math.min(e, c[0]), Infinity) / per), y0 = cells.reduce((e, c) => Math.min(e, c[1]), Infinity) - (base === 'cairo' && (x0 / 2 + cells.reduce((e, c) => Math.min(e, c[1]), Infinity)) & 1 ? 1 : 0);
   const pop = new Map([[key(0, 0), 0], ...cells.map(([x, y, v]) => [key(x - x0, y - y0), v])]);  // (a dead cell at its lattice cell's corner: the rows start there)
   const xs = [...pop.keys()].map((k) => cellXY(k)[0]), ys = [...pop.keys()].map((k) => cellXY(k)[1]);
   let body = populationRle(pop).replace(/^[^:]*:/, '');
