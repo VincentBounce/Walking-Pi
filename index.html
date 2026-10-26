@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261124u">
+  <link rel="stylesheet" href="style.css?v=20261124v">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -36,12 +36,14 @@
         <div id="torusTiles" class="nav-shapes" hidden title="The tiles of the surface" role="tablist"></div>
         <div id="sizeRow" hidden>  <!-- a surface's size, under its tiles -->
           <div class="field-label">Size</div>
-          <div class="stepper">
-            <button id="sizeDown">−</button>
-            <span id="sizeLabel"></span>
-            <button id="sizeUp">+</button>
+          <div id="sizeBox">  <!-- − + its label and its slider, one block: hovered, its motif and its tooltip (see sizeTips) -->
+            <div class="stepper">
+              <button id="sizeDown">−</button>
+              <span id="sizeLabel"></span>
+              <button id="sizeUp">+</button>
+            </div>
+            <div id="sizeGauge" class="size-gauge" hidden></div>
           </div>
-          <div id="sizeGauge" class="size-gauge" hidden></div>
           <select id="sphereF" hidden></select>
         </div>
         <div id="planeRow" hidden>  <!-- Life on the plane: its outline and walls or a torus, its size -->
@@ -49,12 +51,14 @@
             <div class="field-label">Outline</div>
           </div>
           <div class="field-label">Size</div>
-          <div class="stepper">
-            <button id="planeDown">−</button>
-            <span id="planeLabel"></span>
-            <button id="planeUp">+</button>
+          <div id="planeBox">  <!-- as the surfaces' (sizeBox) -->
+            <div class="stepper">
+              <button id="planeDown">−</button>
+              <span id="planeLabel"></span>
+              <button id="planeUp">+</button>
             </div>
-          <div id="planeGauge" class="size-gauge" hidden></div>
+            <div id="planeGauge" class="size-gauge" hidden></div>
+          </div>
         </div>
         <div id="sphereRow" hidden>
           <div id="startRow" class="stepper" title="Turned copies of a start draw the same walk, turned: one start per different walk. Hover to see them all" hidden>
@@ -751,9 +755,9 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261124u"></script>
-  <script src="punks.js?v=20261124u"></script>
-  <script src="emoji.js?v=20261124u"></script>
-  <script src="main.js?v=20261124u"></script>
+  <script src="pixelarticons.js?v=20261124v"></script>
+  <script src="punks.js?v=20261124v"></script>
+  <script src="emoji.js?v=20261124v"></script>
+  <script src="main.js?v=20261124v"></script>
 </body>
 </html>

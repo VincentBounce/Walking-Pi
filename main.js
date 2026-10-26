@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1292';
+const VERSION = '0.1.1293';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5410,20 +5410,17 @@ function gridSize(kind, f) {
 const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[kind] || shaped(kind) ? `⌀ ${fmt(f)}` : d ? `${fmt(d[0])} × ${fmt(d[1])}` : `Edge ${fmt(SPHERES[kind]?.edge?.(f) ?? f)}`; };  // (a circle: its diameter; a solid: its edge, a frame's and a sponge's their cube's)
 // how its cells are counted (the size's tooltip): its own words (Pits, Frame, Menger, theirs as tetrakis triangles), else its
 // count's form, c × f² (+ k: a sphere of hexagons' 12 pentagons, see goldberg), else the grid's rows × cells a row
-// a size's tooltip on all its controls, − + its label and its slider, as its motif shows on them (see drawMotif); its words
+// a size's tooltip on its block, − + its label and its slider, as its motif shows on it (see drawMotif); its words
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's yellow, a face's red, the walls' ochre
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifYellow = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 const sizeTips = (row, total, text) => {
   const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskb]):([^}]*)\}/g, (_, c, w) => `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`);
   total = marks(total);
   const plain = text.replace(/\{[yroskb]:([^}]*)\}/g, '$1'), html = marks(text).replace(/\n/g, '<br>');  // ({b:…}: bold alone)
-  for (const id of ['Down', 'Label', 'Up', 'Gauge']) {  // (its name and its total first, as a control's; shown again at once if hovered: − + clicked)
-    const el = $(`${row}${id}`);
-    el.removeAttribute('title');
-    el.dataset.tip = plain;
-    el.dataset.tipHtml = `<b class="tip-name">Size: ${total}</b>${html}`;
-    if (el.matches(':hover')) $('tip').innerHTML = el.dataset.tipHtml;
-  }
+  const box = $(`${row}Box`);  // (− + its label and its slider, one block; its name and its total first, as a control's; shown again at once if hovered: − + clicked)
+  box.dataset.tip = plain;
+  box.dataset.tipHtml = `<b class="tip-name">Size: ${total}</b>${html}`;
+  if (box.matches(':hover')) $('tip').innerHTML = box.dataset.tipHtml;
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
@@ -13769,7 +13766,7 @@ $('startRow').addEventListener('mouseleave', () => {
   if ($('autoFit').checked) fitWhole();
 });
 const startField = $('startLabel').parentElement;
-for (const el of [$('planeLabel').parentElement, $('planeGauge'), $('sizeLabel').parentElement, $('sizeGauge')]) el.onmouseenter = el.onmouseleave = (e) => { motifShown = e.type === 'mouseenter'; needsFull = true; };  // a size hovered: its motif shown (see drawMotif)
+for (const el of [$('sizeBox'), $('planeBox')]) el.onmouseenter = el.onmouseleave = (e) => { motifShown = e.type === 'mouseenter'; needsFull = true; };  // a size hovered: its motif shown (see drawMotif)
 startField.addEventListener('mouseenter', () => { startsShown = true; needsFull = true; });
 startField.addEventListener('mouseleave', () => { startsShown = false; needsFull = true; });
 // Upright: the view from the front exactly, level (its heading kept), a drag turning it round the vertical only
