@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1248';
+const VERSION = '0.1.1249';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2007,7 +2007,8 @@ const ICONS = (() => {
     sideLight: pathEl('M2.5 10.2H7.5V13.8H2.5Z') + pathEl('M7.5 9.6L10 8.2V15.8L7.5 14.4Z') + pathEl('M12.5 8.6L21 4.8M13 12H21.5M12.5 15.4L21 19.2'),
     viewDefault: pathEl('M12 3L20 7.5V16.5L12 21L4 16.5V7.5Z') + pathEl('M4 7.5L12 12L20 7.5M12 12V21'),  // (a cube from its usual corner)
     upright: pathEl('M12 3V17M8 7L12 3L16 7M4 20.5H20'),  // (up, over a level line)
-    free: pathEl('M11.5 20.2A3 9.5 0 1 1 12.8 8.8') + pathEl('M13.9 6.8L12.8 8.8L11.4 7.1') + pathEl('M4.7 15.1A9.5 3.2 0 1 1 16.8 15.8') + pathEl('M18.3 14.2L16.8 15.8L18.8 16.7'),  // (turned any way: round up and round across)
+    free: pathEl('M12 7L16.3 9.5V14.5L12 17L7.7 14.5V9.5Z') + pathEl('M12 7V12M7.7 14.5L12 12L16.3 14.5')  // (a cube turned any way by hand: two arrows round it)
+      + pathEl('M2.5 12.8A9.5 9.5 0 0 1 15.2 3.1') + pathEl('M13.9 1.1L15.2 3.1L12.9 3.7') + pathEl('M21.5 11.2A9.5 9.5 0 0 1 8.8 20.9') + pathEl('M10.1 22.9L8.8 20.9L11.1 20.3'),
     fit: pathEl('M4 9V4H9M15 4H20V9M20 15V20H15M9 20H4V15') + '<rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',  // (the view framed round the walk)
     sound: pathEl('M3.5 9.5H7.5L12.5 5V19L7.5 14.5H3.5Z') + pathEl('M15.5 9.2A4 4 0 0 1 15.5 14.8M18.2 6.5A8 8 0 0 1 18.2 17.5'),  // (a speaker, its waves)
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
