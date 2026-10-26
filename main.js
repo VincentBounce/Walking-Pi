@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1264';
+const VERSION = '0.1.1265';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -3425,14 +3425,14 @@ document.addEventListener('mouseover', (e) => {
   if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
   const tip = el?.dataset.tip ?? '', named = el?.matches('button, label');
   const name = named ? (el.querySelector('.mode-name') ?? el.querySelector('span') ?? el).textContent.trim() : '';
-  const bold = (text) => Object.assign(document.createElement('b'), { textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
+  const bold = (text) => Object.assign(document.createElement('b'), { className: 'tip-name', textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
   // its default: a tile's (see setTile), a box's (its checkbox as the page starts)
   const box = el?.matches('label') ? el.querySelector('input[type=checkbox]') : null, d = el?.dataset.default ?? (box ? (box.defaultChecked ? 'on' : 'off') : '');
   const line = (text) => Object.assign(document.createElement('div'), { className: 'tip-default', textContent: text });  // (on a line of its own, fainter)
   const told = [...(d ? [line(d === 'yes' ? 'By default' : d === 'on' ? 'On by default' : d === 'off' ? 'Off by default' : d)] : []),  // (a default that depends, told in full)
     ...(el?.dataset.greyed ? [line(`Greyed ${el.dataset.greyed}`)] : [])];  // (when it cannot be clicked)
   if (el?.dataset.tipHtml) $('tip').innerHTML = el.dataset.tipHtml;  // (a size's: its words in colour, see sizeTips)
-  else $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(tip.slice(0, name.length)), tip.slice(name.length), ...told] : [bold(name), `: ${tip}`, ...told]));  // (no words of its own: its name and its default)
+  else $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(name), tip.slice(name.length).replace(/^[:\s]+/, '').replace(/^./, (c) => c.toUpperCase()), ...told] : [bold(name), tip, ...told]));  // (no words of its own: its name and its default; else its name, then its words under it)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
 // the hint, as the tooltips (each action in bold, then its gesture): the zoom first, against the view framed (×1: all of
@@ -5406,7 +5406,7 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 const MOTIF_YELLOW = '#ffd60a', FACE_RED = '#e5484d';
 const sizeTips = (row, text) => {
   const plain = text.replace(/\{[yro]:([^}]*)\}/g, '$1'), html = text.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yro]):([^}]*)\}/g, (_, c, w) => `<b style="color: ${{ y: MOTIF_YELLOW, r: FACE_RED, o: LIFE_WALL }[c]}">${w}</b>`).replace(/\n/g, '<br>');
-  for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = html; }
+  for (const id of ['Down', 'Label', 'Up', 'Gauge']) { const el = $(`${row}${id}`); el.removeAttribute('title'); el.dataset.tip = plain; el.dataset.tipHtml = `<b class="tip-name">Size</b>${html}`; }  // (its name first, as a control's)
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 const sizeHow = (kind, f) => howCounted(kind, f).replace(/^./, (c) => c.toUpperCase());  // (a tooltip's first line: capitalised)
