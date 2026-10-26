@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1265';
+const VERSION = '0.1.1266';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8128,28 +8128,32 @@ function drawMotif(ctx) {
   else drawMotifFace(ctx);
 }
 // a solid of hexagons (its walls at its corners, see goldberg): its face round the motif, in red, from corner to corner
-// through the middles of the tiles between them (a straight row, the shortest way along its neighbours), as the shape has
-// them now (inflated or not, as a start's edge is drawn), the tiles facing the viewer
+// along its cells' sides (as a start's edges, see gridGraph): the shortest way from wall to wall, of those the corners nearest
+// the plane through its middle and both walls (the face's straight side), as the shape has them now, the sides facing the viewer
 function drawMotifFace(ctx) {
   const g = walk.geo, sh = walk.shape, k = g.sides, [t0] = motifTiles();
   if (SPHERES[surfaceOf(MODES[$('mode').value])]?.unit !== 'hexagons' || !g.walls?.length || t0 === undefined) return;
-  const at = (t) => [0, 1, 2].map((d) => sh.cen[3 * t + d] * walk.R), d2 = (p, q) => p.reduce((sum, v, i) => sum + (v - q[i]) ** 2, 0), m = at(t0);
-  const [a, b, c] = [...g.walls].sort((p, q) => d2(at(p), m) - d2(at(q), m)).slice(0, 3), proj = projector(), { scale: s, ox, oy } = view;
-  const way = (from, to) => {  // (its tiles, breadth first along its neighbours)
-    const back = new Map([[from, -1]]);
-    for (let queue = [from], i = 0; i < queue.length && !back.has(to); i++) for (let j = 0; j < k; j++) { const n = g.nbr[k * queue[i] + j]; if (n >= 0 && !back.has(n)) { back.set(n, queue[i]); queue.push(n); } }
-    const tiles = [];
-    for (let t = to; t >= 0; t = back.get(t)) tiles.push(t);
-    return tiles;
+  const G = gridGraph(g), base = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], d2 = (p, q) => p.reduce((sum, v, i) => sum + (v - q[i]) ** 2, 0);
+  const [a, b, c] = [...g.walls].sort((p, q) => d2(base(p), base(t0)) - d2(base(q), base(t0))).slice(0, 3), proj = projector(), { scale: s, ox, oy } = view;
+  const cornersOf = (t) => [...new Set(Array.from({ length: k }, (_, j) => g.poly[k * t + j]))];
+  const way = (p, q) => {  // (its corners: as far from q as can be, a step nearer each time, by the one nearest the plane)
+    const n = unit(cross(base(p), base(q))), off = (v) => Math.abs(g.verts[3 * v] * n[0] + g.verts[3 * v + 1] * n[1] + g.verts[3 * v + 2] * n[2]), far = new Map(), queue = cornersOf(q);
+    for (const v of queue) far.set(v, 0);
+    for (let i = 0; i < queue.length; i++) for (const w of G.nbrs[queue[i]]) if (!far.has(w)) { far.set(w, far.get(queue[i]) + 1); queue.push(w); }
+    let v = cornersOf(p).sort((x, y) => far.get(x) - far.get(y) || off(x) - off(y))[0];
+    const corners = [v];
+    while (far.get(v) > 0) corners.push((v = G.nbrs[v].filter((w) => far.get(w) === far.get(v) - 1).sort((x, y) => off(x) - off(y))[0]));
+    return corners;
   };
+  const at = (v) => { const i = 3 * (k * G.tileOf[v] + G.cornerOf[v]); return [sh.corners[i], sh.corners[i + 1], sh.corners[i + 2]].map((x) => x * walk.R); };  // (as the shape has it, see drawStarts)
   ctx.strokeStyle = FACE_RED;
   ctx.beginPath();
   for (const [p, q] of [[a, b], [b, c], [c, a]]) {
     let down = false;
-    for (const t of way(p, q)) {
-      if (!planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t))) { down = false; continue; }  // (behind: lifted)
-      const [u, v] = proj(...at(t));
-      ctx[down ? 'lineTo' : 'moveTo'](ox + u * s, oy + v * s);
+    for (const v of way(p, q)) {
+      if (!planeVisible(unit([0, 1, 2].map((d) => G.normal[3 * v + d])), at(v))) { down = false; continue; }  // (behind: lifted)
+      const [u, w] = proj(...at(v));
+      ctx[down ? 'lineTo' : 'moveTo'](ox + u * s, oy + w * s);
       down = true;
     }
   }
