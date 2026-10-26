@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1222';
+const VERSION = '0.1.1223';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -10542,6 +10542,7 @@ function applySetup(s) {
   $('fillAreas').checked = String(s.fa ?? 1) !== '0';  // the one display choice kept: it changes what is drawn
   $('perspective').checked = perspectiveFor(MODES[s.w], MODES[s.w].round ? 1 : 0);
   Object.assign(cam, CAM0);
+  $('upright').checked = false;  // (the default view: free, on each surface)
   pendingChampion = s.ch || null;
   compute();  // a champion follows once the walk is built
   return true;
@@ -12947,7 +12948,8 @@ function tick(now = performance.now()) {
     // the turn from one frame to the next, Q = M(t + dt)·M(t)ᵀ, as a rotation vector on the screen's axes
     let k = 1;  // easing in after a Gallery setup's start
     if (spinRamp) { const t = Math.min(1, (now - spinRamp) / SPIN_EASE); k = t * t * (3 - 2 * t); if (t >= 1) spinRamp = 0; }
-    const A = spinAt(spinTime), B = spinAt(spinTime += dt * k);
+    if ($('upright').checked) rotateView([0, 0, SPIN_PER_FRAME[1] * (dt * k) / frameMin]);  // Upright: round the vertical only, level
+    const A = spinAt(spinTime), B = spinAt(spinTime += $('upright').checked ? 0 : dt * k);
     const Q = B.map((row) => [0, 1, 2].map((j) => row[0] * A[j][0] + row[1] * A[j][1] + row[2] * A[j][2]));
     const angle = Math.acos(Math.min(1, Math.max(-1, (Q[0][0] + Q[1][1] + Q[2][2] - 1) / 2))), sin = Math.sin(angle);
     if (angle > 1e-9) {
