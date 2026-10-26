@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1327';
+const VERSION = '0.1.1328';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8119,7 +8119,7 @@ function drawLifePlane() {
     }
     planeColours = new Uint32Array(planeImage.data.buffer);
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
-  const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
+  const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(motifShown ? faded(c, 0.25) : c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };  // (the motif shown: the cells pale under its outlines, as on a surface)
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
   const painted = L.paint ? [0, ...blockPalette().map(pack)] : null;  // (blocks: each cell its colour)
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
