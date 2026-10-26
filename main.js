@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1323';
+const VERSION = '0.1.1324';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7228,12 +7228,12 @@ function insidePolygon(pts, u, v) {
 // the cell at a world point, or null outside the grid
 const cellAtMemo = {};  // (a tiling's lattice cell's polygons, at lattice cell 0: see planeCellAt)
 function planeCellAt(kind, W, wx, wy) {
-  let x, y;
+  let x, y, row = planeRow(kind, W);  // (W rows, row cells each: see planeCols)
   if (tilingOf(kind)) {  // its lattice cell's polygons, and those of the cells round it (the point moved back by the lattice step: its polygons' corners once)
     const [a, b] = tilingOf(kind).basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = tilingOf(kind).polys.length;
     const cell0 = (cellAtMemo[kind] ??= Array.from({ length: m }, (_, k) => planeCorners(kind, k, 0)));
     for (let j = Math.floor(v) - 1; j <= Math.floor(v) + 1; j++) for (let i = Math.floor(u) - 1; i <= Math.floor(u) + 1; i++) {
-      if (i >= 0 && j >= 0 && i < W && j < W) for (let k = 0; k < m; k++) if (insidePolygon(cell0[k], wx - i * a[0] - j * b[0], wy - i * a[1] - j * b[1])) return [i * m + k, j];
+      if (i >= 0 && j >= 0 && i * m < row && j < W) for (let k = 0; k < m; k++) if (insidePolygon(cell0[k], wx - i * a[0] - j * b[0], wy - i * a[1] - j * b[1])) return [i * m + k, j];
     }
     return null;
   }
@@ -7241,7 +7241,7 @@ function planeCellAt(kind, W, wx, wy) {
   if (kind === 'cairo') {  // the pentagon holding the point, among those of the squares around
     const i0 = Math.round(wx / CAIRO), j0 = Math.round(wy / CAIRO);
     for (let j = j0 - 2; j <= j0 + 2; j++) for (let i = i0 - 2; i <= i0 + 2; i++) for (const o of [0, 1]) {
-      if (i >= 0 && j >= 0 && i < W && j < W && insidePolygon(planeCorners(kind, 2 * i + o, j), wx, wy)) return [2 * i + o, j];
+      if (i >= 0 && j >= 0 && 2 * i < row && j < W && insidePolygon(planeCorners(kind, 2 * i + o, j), wx, wy)) return [2 * i + o, j];
     }
     return null;
   }
@@ -7261,7 +7261,7 @@ function planeCellAt(kind, W, wx, wy) {
       x = q; y = r;
     } else { const i = Math.floor(a), j = Math.floor(b); x = 2 * i + (a - i + b - j < 1 ? 0 : 1); y = j; }
   }
-  return x >= 0 && y >= 0 && x < planeRow(kind, W) && y < W ? [x, y] : null;
+  return x >= 0 && y >= 0 && x < row && y < W ? [x, y] : null;
 }
 // a number in [0, 1) for cell i of a seed's soup (a hash: the same cell, the same draw)
 function cellRandom(seed, i) {
