@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1298';
+const VERSION = '0.1.1299';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5437,7 +5437,8 @@ const howCounted = (kind, f) => {
     if (3 * m * m * per === N) return `a hexagon of its lattice, ${m} a side round its ${middle()}: 3 × ${m}² rhombi${per > 1 ? ` × ${per} ${d[3]} each` : ''} = ${fmt(N)} ${d[3]}`;
     return `the cells in a hexagon round its ${middle()} (a point it turns onto by a sixth), as far as each other all in or all out: ${fmt(N)} ${d[3]}`;
   }
-  if (d && APERIODIC[kind]) return `the ${fmt(d[0])}² ${d[3]} nearest its ${middle()} (a disc: it never repeats, no rows)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
+  // (a disc ⌀ side: as big as a square of side × √π / 2, in whole rows of its items, see sideW: W² of them nearest its middle)
+  if (d && APERIODIC[kind]) return `a disc ⌀ ${fmt(f)} round its ${middle()} (it never repeats: no rows)\n= the ${fmt(d[0])}² ${d[3]} nearest it (${fmt(d[0])} ≈ ${fmt(f)} × √π / 2: a square as big as the disc)${d[0] ** 2 > d[2] ? ` − ${fmt(d[0] ** 2 - d[2])} in the wall` : ''} = ${fmt(d[2])} ${d[3]}`;
   if (d && TORI.includes(kind)) {  // a sheet's (a torus, a Möbius strip, a Klein bottle): its rows × its lattice cells (its motif, yellow) × their cells (green)
     const m = PER_RHOMBUS[cellKind((facesMemo[kind] ??= S.mesh(S.sizes[0])))] ?? 1, L = d[2] / d[0] / m, whole = Number.isInteger(L);
     return `(Edge=${fmt(d[0])}) rows × {y:${whole ? '' : '≈ '}${fmt(Math.round(L * 10) / 10)} ${m > 1 ? 'lattice cells' : d[3]}} a row${whole ? '' : ' (its edges cut them)'}${m > 1 ? ` × {k:${m} ${d[3]} each}` : ''} = ${fmt(d[2])} ${d[3]}`;
