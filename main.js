@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1219';
+const VERSION = '0.1.1220';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5124,13 +5124,14 @@ function morphStep(dt) {
 
 
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
-/* Sizes, one way for every grid and surface: one ladder, the squares' sides on the plane (SIDES), their squares' cells
- * everywhere else, each family up to what it runs well at (a torus, a Möbius strip or a Klein bottle; a solid), and each
+/* Sizes, one way for every grid and surface: one ladder of sides (SIDES), the plane a square of one, a solid as many cells
+ * as a cube of that edge (6 of those squares), a torus, a Möbius strip or a Klein bottle as one, each family up to what it
+ * runs well at, and each
  * surface's sizes the allowed ones (rows a multiple of steps[0], from least) whose cells are nearest them: a step of
  * the size is about as many cells whatever the tiling (cells stay regular, so not exactly). Each step about doubles the
  * cells (×2.25, then ×1.78). A new surface needs only its tiles(size) and its steps. */
-const SIDES = [16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], cellsUpTo = (lo, hi) => SIDES.map((f) => f * f).filter((n) => n >= lo && n <= hi);
-const SIZE_LADDERS = { surface: { counts: cellsUpTo(576, 10000), start: 2688 }, solid: { counts: cellsUpTo(256, 100000), start: 6144 } };
+const SIDES = [8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
+const SIZE_LADDERS = { surface: { counts: sidesIn(24, 96).map((f) => f * f), start: 2688 }, solid: { counts: sidesIn(8, 128).map((f) => 6 * f * f), start: 6144 } };
 const mobiusRadius = (kind, s) => mobiusSheet(kind, s).W / MOBIUS_WIDTH;  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -6317,7 +6318,7 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 // the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
-const PLANE_SIDES = {}, sidesTo = (most) => SIDES.filter((f) => f <= most);
+const PLANE_SIDES = {}, sidesTo = (most) => sidesIn(16, most);
 for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', 'hat', 'penrose', 'spectre', 'ammann', 'rhombs12', 'rhombs14', ...Object.keys(TILINGS)]) PLANE_SIDES[kind] = sidesTo({ square: 2048, hex: 512, tri: 256, cairo: 256 }[kind] ?? 128);
 for (const kind of ['pinwheel', 'flower', 'flower3', 'flower4', 'flower5', 'flower7', 'flower8', 'flower9', 'flower10', 'mirror7', 'ring7', 'ring8', 'ring9', 'ring10', 'ring12']) PLANE_SIDES[kind] = sidesTo(64);
 // the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
