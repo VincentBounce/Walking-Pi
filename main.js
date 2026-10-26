@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1277';
+const VERSION = '0.1.1278';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5410,7 +5410,7 @@ const sizeTips = (row, total, text) => {
 };
 const facesMemo = {};  // (a solid's least mesh: its faces, see howCounted)
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
-const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{]/.test(how) ? `= ${how}` : how.replace(/^./, (c) => c.toUpperCase()); };
+const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{]/.test(how) ? `= ${how.replace(/ × /g, '\n× ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor on its line)
 const howCounted = (kind, f) => {
   const S = SPHERES[kind], d = gridSize(kind, f), n = S?.tiles?.(f) ?? d?.[2], unit = S?.unit ?? d?.[3];
   if (S?.how) return `${S.how(f)} = ${fmt(n)} ${unit}`;
