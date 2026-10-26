@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1303';
+const VERSION = '0.1.1304';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -1628,7 +1628,7 @@ function renderTrailButton() {
 // is worked out by, outlined over the cells (see drawBlocks); Ising's squares in turn are no blocks: greyed
 let showBlocks = false, blocksButton = null;
 function renderBlocksButton() {
-  blocksButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="13" y="13" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+  blocksButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="13" y="13" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" style="stroke: var(--sector)" stroke-width="1.8"/></svg>',  // (its outline the blocks' blue)
     text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
