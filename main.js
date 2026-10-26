@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1234';
+const VERSION = '0.1.1235';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5155,14 +5155,12 @@ function morphStep(dt) {
 
 
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
-/* Sizes, one way for every grid and surface: one ladder of sides (SIDES), the plane a square of one, a solid as many cells
- * as a cube of that edge (6 of those squares), a torus, a Möbius strip or a Klein bottle as one, each family up to what it
- * runs well at, and each
- * surface's sizes the allowed ones (rows a multiple of steps[0], from least) whose cells are nearest them: a step of
- * the size is about as many cells whatever the tiling (cells stay regular, so not exactly). Each step about doubles the
- * cells (×2.25, then ×1.78). A new surface needs only its tiles(size) and its steps. */
-const SIDES = [8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
-const SIZE_LADDERS = { surface: { counts: sidesIn(24, 256).map((f) => f * f), start: 2688 }, solid: { counts: sidesIn(8, 128).map((f) => 6 * f * f), start: 6144 } };
+/* Sizes, one way for every grid and surface: one ladder (SIDES), each its own size the ladder's (the plane's side, a
+ * solid's edge, a torus's, a Möbius strip's or a Klein bottle's rows; a tiling's, its sheet's), those it allows (a multiple
+ * of steps[0], from least to most) with 256 cells at least and 100,000 at most (CELLS). A new surface needs only its
+ * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
+const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048], sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
+const CELLS = [256, 100000], START = { surface: 2688, solid: 6144 };
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).W / MOBIUS_WIDTH;  // (its width: no tile built)  // a Möbius strip's circle, its width MOBIUS_WIDTH times its radius
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -5363,7 +5361,7 @@ const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
-// (each family's last size kept, see SIZE_LADDERS: on another tiling or surface of it, the size with about as many cells)
+// (each family's last size kept: on another tiling or surface of it, the size with about as many cells)
 const familyCells = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial} ${lifeColours}`, [was] = (sel.dataset.kind ?? '').split(' ');  // (a torus's sizes: its columns as its colours, see ringColumns)
@@ -5415,29 +5413,20 @@ const TORI = ['klein', 'kleinHex', 'kleinTri', 'kleinCairo', 'kleinKite', 'klein
   ...foldedIn('torus')];  // sized by rows × tiles per row
 // their sizes on screen by their own tubes (see TUBE_SHAPE; their radii said for TORUS_TUBE's)
 for (const kind of TORI) if (!MOBIUS_KINDS.includes(kind) && !kind.startsWith('mobius')) { const S = SPHERES[kind], r = S.radius; S.radius = (s) => (r(s) * TORUS_TUBE) / tubeOf(S.mesh(s)); }
-// each surface's sizes and its first one, from its family's ladder (see SIZE_LADDERS), when first asked for
+// each surface's sizes and its first one, from the ladder (see SIDES), when first asked for
 for (const [kind, S] of Object.entries(SPHERES)) {
-  const { counts, start } = SIZE_LADDERS[TORI.includes(kind) ? 'surface' : 'solid'];
-  let near;
-  const nearest = () => near ??= (() => {
-    // (a torus's rows any: its colours greyed where their blocks round the tube are not whole, see colourFairOwn); the size
-    // with about n cells: guessed from the cells growing as its size squared, then walked a step at a time to the nearest
-    // (a size's cells once)
-    const step = S.steps?.[0] ?? 1, f0 = Math.ceil(Math.max(S.least ?? 2, 2) / step) * step, most = S.most ?? Infinity, cells = new Map();
-    const tiles = (f) => cells.get(f) ?? cells.set(f, S.tiles(f)).get(f), off = (f, n) => Math.abs(Math.log(tiles(f) / n));
-    return (n) => {
-      let f = Math.min(most, Math.max(f0, Math.round(f0 * Math.sqrt(n / tiles(f0)) / step) * step));
-      for (const d of [step, -step]) while (f + d >= f0 && f + d <= most && off(f + d, n) < off(f, n)) f += d;
-      return f;
-    };
-  })();
+  const step = S.steps?.[0] ?? 1, ladder = () => {  // (its cells growing with its size: none counted past the most)
+    const sizes = [];
+    for (const f of SIDES) if (f % step === 0 && f >= (S.least ?? 2) && f <= (S.most ?? Infinity)) { const n = S.tiles(f); if (n > CELLS[1]) break; if (n >= CELLS[0]) sizes.push(f); }
+    return sizes;
+  };
   let list;
   const edged = (sizes) => {  // (edges: its squares' sides as the icons' widths, each in place of the size nearest it)
     for (const e of S.edges ?? []) { const k = sizes.reduce((best, f, i) => (Math.abs(Math.log(S.tiles(f) / S.tiles(e))) < Math.abs(Math.log(S.tiles(sizes[best]) / S.tiles(e))) ? i : best), 0); sizes[k] = e; }
     return sizes;
   };
-  Object.defineProperty(S, 'sizes', { get: () => (list ??= edged([...new Set(counts.map(nearest()))])) });
-  Object.defineProperty(S, 'initial', { get: () => nearest()(start) });
+  Object.defineProperty(S, 'sizes', { get: () => (list ??= edged(ladder())) });
+  Object.defineProperty(S, 'initial', { get: () => S.near(START[TORI.includes(kind) ? 'surface' : 'solid']) });
   S.near = (n) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / n)) < Math.abs(Math.log(S.tiles(a) / n)) ? b : a));  // the usual size with about n cells
   S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
 }
@@ -6564,7 +6553,7 @@ function cellCopies(kind, W, t) {
 }
 const ROOT3_2 = Math.sqrt(3) / 2;
 // The rows of a grid of side `side` (the squares' side): about as many cells as side × side squares (as the surfaces'
-// sizes, see SIZE_LADDERS), its cells regular: triangles 2 a rhombus, Cairo pentagons 2 a square (an even side, so
+// sizes, see SIDES), its cells regular: triangles 2 a rhombus, Cairo pentagons 2 a square (an even side, so
 // that it wraps round), kites 6 a rhombus (on triangles twice as big)
 const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penrose's rhombi never wrap round: they never repeat
 const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, rhombs14: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, flower9: 1, flower10: 1, ring7: 1, ring8: 1, ring9: 1, ring10: 1, ring12: 1 };
