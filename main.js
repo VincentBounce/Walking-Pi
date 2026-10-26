@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1285';
+const VERSION = '0.1.1286';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -11867,10 +11867,11 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
   const { scale: s, ox, oy } = view, proj = projector();
   const dir = cam.v, L = lightDir(), H = halfway(L);  // towards the viewer; the light
   const eye = P ? dir.map((v, d) => P.c[d] + v * P.D) : null;
-  const twoSided = twoSidedNow();
+  // (their backs as WebGL draws them, see glSurface: an open sheet's plain, a Klein bottle's in their colours)
+  const g = walk.geo, open = g.torus && !g.mobius && !g.klein && sh.m < 1, backs = twoSidedNow() || open || !!g.klein, plain = open && undersideColour();
   const visible = [];
   for (let t = 0; t < n; t++) {
-    if (!twoSided && !tileVisible(t)) continue;
+    if (!backs && !tileVisible(t)) continue;
     const c = [sh.cen[3 * t] * R, sh.cen[3 * t + 1] * R, sh.cen[3 * t + 2] * R];
     const near = eye ? -Math.hypot(c[0] - eye[0], c[1] - eye[1], c[2] - eye[2]) : c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2];
     visible.push([near, t]);
@@ -11885,7 +11886,7 @@ function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
     const [dark, glint] = tileLight(f * sh.nrm[3 * t], f * sh.nrm[3 * t + 1], f * sh.nrm[3 * t + 2], L, H);
     // 64 shades: fine enough that a tile's colour turns smoothly with the view (8 made visible
     // jumps of about 7 % in brightness), coarse enough to keep the cache of shaded colours small
-    ctx.fillStyle = shaded(level ? palette[level] : UNLIT, Math.round(dark * 64) / 64, Math.round(glint * 64) / 64);
+    ctx.fillStyle = shaded(plain && !tileVisible(t) ? plain : level ? palette[level] : UNLIT, Math.round(dark * 64) / 64, Math.round(glint * 64) / 64);
     ctx.beginPath();
     const corners = [];  // on the screen
     for (let q = 0; q < k; q++) {
