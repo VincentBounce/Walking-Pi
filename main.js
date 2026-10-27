@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1361';
+const VERSION = '0.1.1362';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7373,6 +7373,7 @@ function iconPatterns(sq, set = ICON_SETS.icon, turn = 0) {
   iconPatternMemo.set(key, patterns);
   return patterns;
 }
+const FLAT = 0.999;  // a face looking up or down: its normal this near the world's up (only a level one, where a marble stays: a face 21° off it has its down)
 // On a surface, the turn an icon laid there shows upright: its top towards the world's up (z, the axes' Up), not mirrored
 // seen from outside (its right: up × the outward normal); on a face looking up or down (no up there), towards the north (y,
 // the axes' N: its bottom south). Its turn (of the square's 8) and what that leaves: the angle its bottom is still off down
@@ -7381,7 +7382,7 @@ function iconTurn({ at, js, sq: { pix } }, P) {
   const g = walk.geo, p = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], laid = js.map((j) => at[j]);
   const C = [0, 1, 2].map((d) => laid.reduce((s, t) => s + p(t)[d], 0) / laid.length);
   const n = unit([0, 1, 2].map((d) => laid.reduce((s, t) => s + g.nrm[3 * t + d], 0)));
-  const top = Math.abs(n[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1], up = unit(top.map((v, d) => v - dot3(top, n) * n[d])), right = cross(up, n), m = (P - 1) / 2;
+  const top = Math.abs(n[2]) > FLAT ? [0, 1, 0] : [0, 0, 1], up = unit(top.map((v, d) => v - dot3(top, n) * n[d])), right = cross(up, n), m = (P - 1) / 2;
   const axes = (T) => { const R = [0, 0, 0], D = [0, 0, 0]; js.forEach((j, q) => { const [ax, ay] = T(pix[j][0], pix[j][1], P), c = p(laid[q]); for (let d = 0; d < 3; d++) { R[d] += (ax - m) * (c[d] - C[d]); D[d] += (ay - m) * (c[d] - C[d]); } }); return [unit(R), unit(D)]; };  // (the icon's own right and down, in space)
   let best = 0, score = -Infinity;
   ICON_TURNS.forEach((T, k) => { const [R, D] = axes(T), s = dot3(R, right) - dot3(D, up); if (s > score + 1e-9) { score = s; best = k; } });
@@ -7390,10 +7391,10 @@ function iconTurn({ at, js, sq: { pix } }, P) {
 }
 // Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
 // rest cut off: a torus's or a bottle's at its sheet's edges as drawn flat, never round it), upright (see iconTurn: on a
-// solid's face spun by what its quarter turns leave). No search, its place worked out: on a triangle face, on its median, its
-// middle, or its bottom (its cross's, square on its level side) on that side when wider than a third of it (the widest a
-// triangle takes: its middle 1/(1 + √3) of the way up, 0.37); in a hexagon's walls, each colour's along its slice's middle
-// line, its bottom out (a sixth of a turn at a time) on the wall. Its cells (each of the square's, -1 off the grid or on its
+// solid's face spun by what its quarter turns leave). No search, its place worked
+// out: on a triangle face, on its median, its middle, or its bottom (its cross's, square on its level side) on that side
+// when wider than a third of it (the widest a triangle takes: its middle 1/(1 + √3) of the way up, 0.37); in a hexagon's
+// walls, each colour's along its slice's middle line, its bottom out, square on the wall. Its cells (each of the square's, -1 off the grid or on its
 // wall), its square, its turn. Null where it doesn't fit: its middle row or column (its pixels 11 and 12) not all laid, each
 // on a cell of its own (its whole width and height: cut off in its corners only), or the colours' squares on each other's
 // (but for a row of their margins)
@@ -7401,7 +7402,7 @@ function iconLay(N, P = 24) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K);
-  const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
+  const tri = !walk.plane && !g.torus && triFaced(g, K), o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
   const lay = (sq, i, to, away) => {
     const at = new Int32Array(sq.box.length).fill(-1), cells = Object.assign(sq.box.map(([x, y], j) => [x, y, j]), { mid: sq.mid });
     const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true, away);
@@ -7412,12 +7413,13 @@ function iconLay(N, P = 24) {
   };
   const lays = Array.from({ length: K }, (_, i) => {
     if (walled) {
-      const ang = walled.angles[i], sq = iconSquare(kind, N, Math.round((ang - Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3), P), d = walled.walls[i] - sq.side / 2;  // (its bottom out: down, a sixth of a turn at a time)
+      const ang = walled.angles[i], sq = iconSquare(kind, N, Math.PI / 2 - ang, P), d = walled.walls[i] - sq.side / 2;  // (its bottom out: its slice's middle, square on its wall, a hexagon's flat or pointy; its angle as seen, the other way round from a spin)
       return { ...lay(sq, i, [walled.mid[0] + d * Math.cos(ang), walled.mid[1] + d * Math.sin(ang)]), turn: 0 };
     }
     const l = lay(iconSquare(kind, N, 0, P), i);
     if (walk.plane || g.torus || !l.js.length) return { ...l, turn: 0 };
-    const sq = iconSquare(kind, N, iconTurn(l, P).off, P), m = lay(sq, i, null, g.size && Math.max(g.size / 3, sq.side / 2 / rowStep));  // (spun by what its face leaves: its bottom right down)
+    const sq = iconSquare(kind, N, iconTurn(l, P).off, P);  // (spun by what its face leaves: its bottom right down, as a marble rolls)
+    const m = lay(sq, i, null, tri && Math.max(g.size / 3, sq.side / 2 / rowStep));
     return { ...m, turn: m.js.length ? iconTurn(m, P).turn : 0 };
   });
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
@@ -9623,17 +9625,16 @@ const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an i
 // A picture laid two ways (each colour's: see iconLay, its square's cells, see iconSquare): on squares, an icon's or a punk's
 // 24 pixels each a whole count of cells, 24 × N wide (pixels whole); elsewhere, and an emoji or a word anywhere, its pixels
 // sampled by the cells, any width from 16 (a picture merged a little, its cross whole). Icon max, Punk max, an emoji, a word:
-// the widest that fits, never capped; doubled, then halved back between the last two (wider fits no less); 24 where none (greyed)
+// the widest that fits, from the widest a colour's share of the cells could hold down (not halved: a triangle's cells let 36 in,
+// not 32); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = (set = ICON_SETS.icon) => {
   const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
-  let lo = u === 24 ? 1 : 16, hi = 2 * lo;  // (in u's; its square's cells no more than the grid's)
-  const fits = (k) => (k * u) ** 2 <= cells && iconFits(k * u, set.P);
-  if (!fits(lo)) return (iconMaxMemo = { key, N: 24 }).N;
-  while (fits(hi)) { lo = hi; hi *= 2; }
-  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (fits(m)) lo = m; else hi = m; }
-  return (iconMaxMemo = { key, N: lo * u }).N;
+  const lo = u === 24 ? 1 : 16;  // (in u's)
+  let k = Math.floor(Math.sqrt(cells / walk.life.colours) / u);
+  while (k >= lo && !iconFits(k * u, set.P)) k--;
+  return (iconMaxMemo = { key, N: k >= lo ? k * u : 24 }).N;
 };
 const iconSize = (zone) => (!isIcon(zone) ? 0 : zone === 'emoji' || zone.endsWith('Max') ? iconMax(iconSet(zone)) : 24);  // (a picture's width in cells; max: greyed where none fits, 16 off squares)
 const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : zone === 'emoji' ? 'emoji' : 'icon'];
@@ -10144,6 +10145,8 @@ const cellKind = (g) => g.tiling ?? (g.squares ? 'tetrakis' : g.kite ? 'kite' : 
 const patternKind = () => walk.plane?.kind ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' && !walk.geo.tiling ? 'tri' : cellKind(walk.geo));
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
+// a solid whose colours' patterns lie on its triangle faces (kites: 3 a triangle, as on the plane; a hull solid's: its colours' triangles)
+const triFaced = (g, K) => (g.sides === 3 && !g.squares) || g.kite || hullColours(MODES[$('mode').value].sphere, K)?.kind === 'tri';
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
 // plane or the torus (a lattice, see huntParts), the middle of its face of the cube
 function patternAt(i, K, cells, partial = false, away = null) {  // partial: its cells there only, past a torus's edges cut off (an icon's square, see iconLay); away: on a triangle face, its middle that many rows off its level side (else a third: the face's middle)
@@ -10157,14 +10160,14 @@ function patternAt(i, K, cells, partial = false, away = null) {  // partial: its
   }
   if (g.torus) return sheetPatternAt(famousSpot(i, K), cells, partial);  // a sheet: a torus, a Möbius strip, a Klein bottle (its rows the plane's, round the ring)
   const hull = hullColours(MODES[$('mode').value].sphere, K);  // (a hull solid's colour: its first face, see hullColourings)
-  if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; a hull solid's: its colours' triangles
+  if (triFaced(g, K)) {  // a triangle face: its own rows and triangles, the pattern round its middle
     const sphere = MODES[$('mode').value].sphere, d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
     const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size);
     // its rows along its side most level (on a face looking up or down, along x; kites: AB's), the face's rows from that
     // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back)
-    const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, n = unit(cross(sub(B, A), sub(C, A))), flat = Math.abs(n[2]) > 0.9;
+    const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, n = unit(cross(sub(B, A), sub(C, A))), flat = Math.abs(n[2]) > FLAT;
     const level = flat ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n)), turns = [[A, B, C], [B, C, A], [C, A, B]];
     const q = [0, 1, 2].reduce((b, q) => (Math.abs(dot3(unit(sub(turns[q][1], turns[q][0])), level)) > Math.abs(dot3(unit(sub(turns[b][1], turns[b][0])), level)) + 1e-9 ? q : b), 0), r = per > 1 ? 0 : q;
     const f = g.size, back = ([i, j], o) => [f - 1 - o - i - j, i];
@@ -10213,7 +10216,7 @@ function hexFaceAt(c0, cells, partial) {
   const g = walk.geo, P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], N3 = (t) => [g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]];
   const C = P3(c0), n = N3(c0), { start, list } = walk.life.nbr, out = [];
   const nbrs = [...list.subarray(start[c0], start[c0 + 1])].map((t) => [t, Math.hypot(...P3(t).map((v, d) => v - C[d]))]), s = Math.min(...nbrs.map((q) => q[1]));
-  const right = Math.abs(n[2]) > 0.9 ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n));  // (the face's level, as iconTurn's: up × n)
+  const right = Math.abs(n[2]) > FLAT ? [1, 0, 0] : unit(cross([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]], n));  // (the face's level, as iconTurn's: up × n)
   const along = nbrs.filter((q) => q[1] < 1.05 * s).map(([t]) => { const e = P3(t).map((v, d) => v - C[d]); return unit(e.map((v, d) => v - dot3(e, n) * n[d])); });
   const u = along.reduce((best, e) => (dot3(e, right) > dot3(best, right) ? e : best)), w = cross(n, u);  // (its rows the most level of its 6 ways)
   if (!g.hexIndex) {  // (the cells by where they are, in boxes a cell wide: once a mesh, its cells a little apart from one to another)
