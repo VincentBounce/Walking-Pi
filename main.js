@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1366';
+const VERSION = '0.1.1367';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4285,12 +4285,8 @@ function hullColourings(sphere) {
   return (hullColourMemo[sphere] = out);
 }
 const hullColours = (sphere, K) => (HULL_SOLIDS[sphere] && K > 1 ? hullColourings(sphere)[K] ?? null : null);
-// a face's cells, and those nearest its middle (its square's 1 or 4, its triangle's)
+// a face's cells
 const hullFaceCells = (q) => Array.from({ length: walk.geo.size ** 2 }, (_, k) => q * walk.geo.size ** 2 + k);
-const hullFaceMiddle = (q, mid) => {
-  const g = walk.geo, cs = hullFaceCells(q), far = (t) => Math.hypot(g.cen[3 * t] - mid[0], g.cen[3 * t + 1] - mid[1], g.cen[3 * t + 2] - mid[2]), least = Math.min(...cs.map(far));
-  return cs.filter((t) => far(t) < least + 1e-9);
-};
 
 /* ---- 7.3 Polyhedra with triangular faces ----------------------------------------------------- */
 /* Flat polyhedra with triangular faces, each face cut into f² triangles (not inflated):
@@ -7251,15 +7247,17 @@ function insidePolygon(pts, u, v) {
   }
   return inside;
 }
-// the cell at a world point, or null outside the grid
+// the cell at a world point: how 'in', in the grid (else null); 'round', on its torus (the cell there on the plane, its
+// numbers round it: x round its row, y round its W rows); 'free', on the plane, its numbers as they are
 const cellAtMemo = {};  // (a tiling's lattice cell's polygons, at lattice cell 0: see planeCellAt)
-function planeCellAt(kind, W, wx, wy) {
+function planeCellAt(kind, W, wx, wy, how = 'in') {
   let x, y, row = planeRow(kind, W);  // (W rows, row cells each: see planeCols)
+  const on = (x, y) => (how === 'free' ? [x, y] : how === 'round' ? [((x % row) + row) % row, ((y % W) + W) % W] : x >= 0 && y >= 0 && x < row && y < W ? [x, y] : null);
   if (tilingOf(kind)) {  // its lattice cell's polygons, and those of the cells round it (the point moved back by the lattice step: its polygons' corners once)
     const [a, b] = tilingOf(kind).basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = tilingOf(kind).polys.length;
     const cell0 = (cellAtMemo[kind] ??= Array.from({ length: m }, (_, k) => planeCorners(kind, k, 0)));
     for (let j = Math.floor(v) - 1; j <= Math.floor(v) + 1; j++) for (let i = Math.floor(u) - 1; i <= Math.floor(u) + 1; i++) {
-      if (i >= 0 && j >= 0 && i * m < row && j < W) for (let k = 0; k < m; k++) if (insidePolygon(cell0[k], wx - i * a[0] - j * b[0], wy - i * a[1] - j * b[1])) return [i * m + k, j];
+      for (let k = 0; k < m; k++) if (insidePolygon(cell0[k], wx - i * a[0] - j * b[0], wy - i * a[1] - j * b[1])) return on(i * m + k, j);
     }
     return null;
   }
@@ -7267,15 +7265,14 @@ function planeCellAt(kind, W, wx, wy) {
   if (kind === 'cairo') {  // the pentagon holding the point, among those of the squares around
     const i0 = Math.round(wx / CAIRO), j0 = Math.round(wy / CAIRO);
     for (let j = j0 - 2; j <= j0 + 2; j++) for (let i = i0 - 2; i <= i0 + 2; i++) for (const o of [0, 1]) {
-      if (i >= 0 && j >= 0 && 2 * i < row && j < W && insidePolygon(planeCorners(kind, 2 * i + o, j), wx, wy)) return [2 * i + o, j];
+      if (insidePolygon(planeCorners(kind, 2 * i + o, j), wx, wy)) return on(2 * i + o, j);
     }
     return null;
   }
   if (kind === 'kite') {  // its triangle's, then the kite round the corner nearest
-    const t = planeCellAt('tri', W, wx, wy);
-    if (!t) return null;
-    for (let k = 0; k < 3; k++) if (insidePolygon(planeCorners('kite', 3 * t[0] + k, t[1]), wx, wy)) return [3 * t[0] + k, t[1]];
-    return [3 * t[0], t[1]];
+    const t = planeCellAt('tri', W, wx, wy, 'free');  // (its triangle on the plane)
+    for (let k = 0; k < 3; k++) if (insidePolygon(planeCorners('kite', 3 * t[0] + k, t[1]), wx, wy)) return on(3 * t[0] + k, t[1]);
+    return on(3 * t[0], t[1]);
   }
   if (kind === 'square') { x = Math.round(wx); y = Math.round(wy); }
   else {
@@ -7287,7 +7284,7 @@ function planeCellAt(kind, W, wx, wy) {
       x = q; y = r;
     } else { const i = Math.floor(a), j = Math.floor(b); x = 2 * i + (a - i + b - j < 1 ? 0 : 1); y = j; }
   }
-  return x >= 0 && y >= 0 && x < row && y < W ? [x, y] : null;
+  return on(x, y);
 }
 // a number in [0, 1) for cell i of a seed's soup (a hash: the same cell, the same draw)
 function cellRandom(seed, i) {
@@ -7995,26 +7992,25 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
 // A pattern turned and mirrored, as cells [dx, dy, state] from its first square (Cairo: an even one): the
 // middles of its cells mirrored across an upright line the grid is mirrored across, turned about a point
 // the grid turns about (the middle of a square or a hexagon, a corner of triangles or of 4 pentagons),
-// then the cells found there, on a grid big enough
+// then the cells found there, on the plane (its numbers as they are, see planeCellAt)
 const canMirror = (kind) => (RECTS[kind] ? canMirror(RECTS[kind].base) : TILINGS[kind] ? TILINGS[kind].mirror : !APERIODIC[kind]);
 function orientPattern(kind, rle, turn, flip) {
   if (RECTS[kind]) {  // a rectangle's: turned on its grid, then laid cell by cell where it is (whole lattice cells along)
-    const { base, basis: [U, B] } = RECTS[kind], out = [], per = PER_RHOMBUS[kind], far = [64 * (U[0] + B[0]), 64 * (U[1] + B[1])];  // (64 of its lattice cells in, both ways)
-    for (const [x, y, v] of orientPattern(base, rle, turn, flip)) { const m = cellMiddle(base, x, y), c = planeCellAt(kind, 256, m[0] + far[0], m[1] + far[1]); if (c) out.push([...c, v]); }
+    const { base } = RECTS[kind], per = PER_RHOMBUS[kind], out = orientPattern(base, rle, turn, flip).flatMap(([x, y, v]) => { const c = planeCellAt(kind, 1, ...cellMiddle(base, x, y), 'free'); return c ? [[...c, v]] : []; });
     const i0 = Math.min(...out.map((c) => Math.floor(c[0] / per))), j0 = Math.min(...out.map((c) => c[1]));
     return out.map(([x, y, v]) => [x - per * i0, y - j0, v]);
   }
-  const V = 256, T = 128, per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
-  const pivot = kind === 'square' ? [T, T] : kind === 'cairo' ? grid(T, T) : TILINGS[kind] ? tilingWorld(kind, [T + TILINGS[kind].pivot[0], T + TILINGS[kind].pivot[1]]) : latticeAt(T, T);
-  const axis = kind === 'cairo' ? grid(T + 0.5, T)[0] : pivot[0];
+  const per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
+  const pivot = kind === 'square' ? [0, 0] : kind === 'cairo' ? grid(0, 0) : TILINGS[kind] ? tilingWorld(kind, TILINGS[kind].pivot) : latticeAt(0, 0);
+  const axis = kind === 'cairo' ? grid(0.5, 0)[0] : pivot[0];
   const a = (2 * Math.PI * turn) / PATTERN_TURNS[kind], cos = Math.cos(a), sin = Math.sin(a), cells = [];
   for (const [k, v] of populationOf(`0,0:${rle}`)) {
     const [x, y] = cellXY(k);
-    let [u, w] = cellMiddle(kind, x + per * T, y + T);
+    let [u, w] = cellMiddle(kind, x, y);
     if (flip && canMirror(kind)) u = 2 * axis - u;
     u -= pivot[0];
     w -= pivot[1];
-    const c = planeCellAt(kind, V, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos);
+    const c = planeCellAt(kind, 1, pivot[0] + u * cos - w * sin, pivot[1] + u * sin + w * cos, 'free');
     if (c) cells.push([...c, v]);
   }
   const square = (x) => Math.floor(x / per), i0 = cells.reduce((e, c) => Math.min(e, square(c[0])), Infinity);
@@ -8028,37 +8024,12 @@ function brushCells() {
   if (brushMemo?.k !== k) brushMemo = { k, cells: brush.id === 'cell' ? [[0, 0, 1]] : orientPattern(kind, DRAW_BY_ID.get(brush.id)[4], brush.turn, brush.flip) };
   return brushMemo.cells;
 }
-// where the brush's cells go, round the cell pointed at (Cairo: from an even square): wrapping round the
-// grid, or the ones inside it; [x, y, state]
-function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells(), to = null, cut = false) {  // to: the middle there instead; cut: on a torus too, past its edges cut off, not round (an icon: see patternAt)
-  if (!cells) return [[cx, cy, 1]];  // one cell: the one pointed at, whichever way it lies
-  const { kind, W } = walk.plane, torus = walk.plane.torus && !cut, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
-  if (RECTS[kind]) {  // a rectangle's: laid where it is, its middle on the cell pointed at to a lattice cell of its grid (not a whole rectangle)
-    const { base, basis: [U, V] } = RECTS[kind], a = latticeStep(base), o = cellMiddle(base, 0, 0), b = cellMiddle(base, 0, 1).map((c, d) => c - o[d]);
-    const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), c = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), at = to ?? cellMiddle(kind, cx, cy);
-    const D = a[0] * b[1] - a[1] * b[0], dx = at[0] - c[0], dy = at[1] - c[1], n = Math.round((dx * b[1] - dy * b[0]) / D), m = Math.round((a[0] * dy - a[1] * dx) / D);
-    const DU = U[0] * V[1] - U[1] * V[0], wrap = ([x, y]) => {  // (a torus: round its W × W rectangles)
-      const u = (x * V[1] - y * V[0]) / DU, v = (U[0] * y - U[1] * x) / DU, du = Math.floor(u / W) * W, dv = Math.floor(v / W) * W;
-      return [x - du * U[0] - dv * V[0], y - du * U[1] - dv * V[1]];
-    };
-    cells.forEach(([, , st], i) => { const w = [ms[i][0] + n * a[0] + m * b[0], ms[i][1] + n * a[1] + m * b[1]], q = planeCellAt(kind, W, ...(torus ? wrap(w) : w)); if (q) out.push([...q, st]); });
-    return out;
-  }
-  // its middle (its cells' middles' box's) on the cell pointed at, to a lattice step (a slanted lattice's rows: by where they
-  // are, not their numbers; a half step back); Cairo by its squares' numbers (not a lattice of its cells)
-  const square = (x) => Math.floor(x / per), o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]);
-  const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = (d) => cells.mid?.[d] ?? (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2;  // (an icon's: its square's, see iconSquare)
-  to ??= cellMiddle(kind, cx, cy);
-  const D = a[0] * b[1] - a[1] * b[0], ex = to[0] - mid(0), ey = to[1] - mid(1), near = (v) => Math.ceil(v - 0.5 - 1e-9);
-  let i = kind === 'cairo' ? square(cx) - ((cells.reduce((e, c) => Math.max(e, square(c[0])), -Infinity) + 1) >> 1) : near((ex * b[1] - ey * b[0]) / D);
-  let j = kind === 'cairo' ? cy - ((cells.reduce((e, c) => Math.max(e, c[1]), -Infinity) + 1) >> 1) : near((a[0] * ey - a[1] * ex) / D);
-  if (kind === 'cairo' && (i + j) & 1) j--;
-  for (const [dx, dy, v] of cells) {
-    let x = per * i + dx, y = j + dy;
-    if (torus) { x = ((x % row) + row) % row; y = ((y % W) + W) % W; }
-    if (x >= 0 && y >= 0 && x < row && y < W) out.push([x, y, v]);
-  }
-  return out;
+// where the brush's cells go, round the cell pointed at (see patternAt: moved by whole steps, its middle nearest that
+// cell's; round a torus, else cut off at the grid's edges): [x, y, state]
+function brushAt([cx, cy]) {
+  if (brush.id === 'cell') return [[cx, cy, 1]];  // one cell: the one pointed at, whichever way it lies
+  const { kind, row } = walk.plane;
+  return patternAt(0, 1, brushCells(), true, cellMiddle(kind, cx, cy), true).map(([t, v]) => [t % row, Math.floor(t / row), v]);
 }
 // the brush under the pointer, half seen
 function drawGhost() {
@@ -9867,13 +9838,13 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  
   const parts = Array.from({ length: K }, () => []);
   if (walk.plane) {
     const F = planeFrame(), block = (t) => F.block(t, cols, rows);
-    if (wallSlices(K)) { const { part, spots } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]]?.push(t); return parts; } return spots.map((t) => lifePatch(r, t)); }
+    if (wallSlices(K)) { const { part } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]]?.push(t); return parts; } return parts.map((_, i) => lifePatch(r, middleCells(i, K))); }
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
     return parts.map((_, i) => lifePatch(r, near
       ? F.cell(0.5 + ((2 * (i % cols) - (cols - 1)) * side) / 2 / F.across, 0.5 + ((2 * Math.floor(i / cols) - (rows - 1)) * side) / 2 / F.down)
-      : F.cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows)));
+      : middleCells(i, K)));
   }
   // a Möbius strip: the colours' parts in turn along it twice round (its two sides one strip, 2L, see
   // mobiusLoop: s and s + L are one place, its two sides), each its stretch, 2L / K long, a patch at its
@@ -9883,17 +9854,17 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  
     // (a tile whose middle is on a stretch's end, the sheet's end for one: in the stretch it starts, whatever the rounding)
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch + 1e-9))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
-    return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k + 0.5) * stretch, g.W / 2)));  // at their stretches' middles
+    return parts.map((_, k) => lifePatch(r, middleCells(k, K)));  // at their stretches' middles
   }
   if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its brick's middle is in
     const [a, b] = torusBlocks(K), at = (x, m, k) => Math.max(0, Math.min(k - 1, Math.floor((x * k) / m + 1e-6)));
     const block = (t) => { const [u, v] = brickPlaces(g).subarray(2 * t, 2 * t + 2); return at(u, g.nu, a) * b + at(v, g.nv, b); };  // (a tile where its brick is)
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
-    return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
+    return parts.map((_, i) => lifePatch(r, middleCells(i, K)));  // at their middles (a tile there, as on the plane)
   }
   const hull = hullColours(MODES[$('mode').value].sphere, K);
   if (hull) {  // a hull solid (see hullColourings): Wild, a colour's faces its own (two opposite faces a colour: its first), the others' cells each to the nearest colour's face's middle; Mirror, its two faces; a zone, round each colour's first face's middle
-    if (r) return hull.groups.map((gr) => lifePatch(r, hullFaceMiddle(gr[0], hull.mids[gr[0]])));
+    if (r) return hull.groups.map((_, i) => lifePatch(r, middleCells(i, K)));
     if (mirror) return hull.groups.map((gr) => gr.flatMap(hullFaceCells));  // (Mirror: its two opposite faces only)
     const own = hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [hull.mids[q], k])), owner = new Map(hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [q, k])));
     for (let t = 0; t < n; t++) {
@@ -10207,14 +10178,14 @@ function patternPlace(i, K) {
   if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {
     const d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
-    const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
+    const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(frontCell() / perFace);
     const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, m = cross(sub(B, A), sub(C, A)), n = unit(dot3(m, mid(faces[face])) > 0 ? m : m.map((v) => -v)), level = levelOf(n), turns = [[A, B, C], [B, C, A], [C, A, B]];  // (its normal out, whichever way its corners run)
     const q = [0, 1, 2].reduce((b, q) => (Math.abs(dot3(unit(sub(turns[q][1], turns[q][0])), level)) > Math.abs(dot3(unit(sub(turns[b][1], turns[b][0])), level)) + 1e-9 ? q : b), 0), per = g.kite ? 3 : 1, r = per > 1 ? 0 : q;
     return { on: 'tri', face, perFace, per, q, r, corners: turns[r], n };
   }
   if (g.squareFaces) return { on: 'square', f: hull ? hull.groups[i][0] : g.squareFaces.reduce((b, fc, k) => (dot3(fc.n, AXES[3]) > dot3(g.squareFaces[b].n, AXES[3]) + 1e-9 ? k : b), 0) };  // (one colour: the square most in front)
   if (g.hexagons) {  // (the face most its way, its middle: a stella's tip, a face of it; one colour, the front's)
-    const base = FACE_BASE[sphere] ?? sphere, c = K === 1 ? patchCentre() : -1, d = unit(K === 1 ? [0, 1, 2].map((a) => g.cen[3 * c + a]) : triFace(base, K, i) ?? patchSpots(sphere, K)[i]);
+    const base = FACE_BASE[sphere] ?? sphere, c = K === 1 ? frontCell() : -1, d = unit(K === 1 ? [0, 1, 2].map((a) => g.cen[3 * c + a]) : triFace(base, K, i) ?? patchSpots(sphere, K)[i]);
     return { on: 'hex', c0: centreCells(POLYHEDRA[base] ? middles(base).reduce((b, m) => (dot3(m, d) > dot3(b, d) ? m : b)) : d)[0] };
   }
   const dir = K === 1 ? AXES[3] : patchSpots('cube', K)[i];  // the cube: its face (a corner's: its first)
@@ -10237,9 +10208,9 @@ function hexAxes(c0) {
 }
 // Colour i's frame, by construction (see patternPlace): the plane laid on its part as its cells are. at: a plane point's
 // place there (on the plane, itself; on a sheet, in its units, see sheetUnits and sheetOrigin; on a solid, in space on its
-// face), from: back; cellAt: the cell at a place (on its face only; partial, an icon's: none past the plane's or a sheet's
+// face), from: back; cellAt: the cell at a place (on its face only; cut, an icon's: none past the plane's or a sheet's
 // edges, as drawn flat, else round a torus's), -1 none; centre: its part's very middle, there (a block's, a slice's, a
-// stretch's, a face's); ex, ey, n: the plane's x and y steps there and the face's outward normal (a sheet's: on it unrolled,
+// stretch's, a face's), and far, a cell's way from a place (round a sheet the shortest way); ex, ey, n: the plane's x and y steps there and the face's outward normal (a sheet's: on it unrolled,
 // flat, seen from above), for its pictures' way (see iconWay); on: its face's cells; face: a triangle face's point by its
 // rows (i along AB, j along AC, see patternAt's icons)
 function patternFrame(i, K) {
@@ -10248,19 +10219,20 @@ function patternFrame(i, K) {
   const back = (X, Y) => (q) => { const xx = dot(X, X), xy = dot(X, Y), yy = dot(Y, Y), dx = dot(q, X), dy = dot(q, Y), D = xx * yy - xy * xy; return [(dx * yy - dy * xy) / D, (dy * xx - dx * xy) / D]; };
   const dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0), [cols, rows] = COLOUR_GRID[K];
   if (place.on === 'plane') {
-    const { W, row } = walk.plane, c0 = cellMiddle(kind, 0, 0), [A, B] = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((c) => sub(c, c0));  // (its torus's two periods: cell 0's copies one round on)
-    const wrap = (q) => { const [u, v] = back(A, B)(sub(q, c0)).map(Math.floor); return [q[0] - u * A[0] - v * B[0], q[1] - u * A[1] - v * B[1]]; };
-    const slices = wallSlices(K) && planeSlices(K), mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row));
-    const centre = slices ? mid(slices.spots[i]) : K === 1 ? mean(planeCentre().map(mid)) : planeFrame().middle(i, cols, rows);  // (one colour: the grid's very middle)
-    return { at: (p) => p, from: (q) => q, centre, ex: [1, 0], ey: [0, 1], cellAt: (q, partial) => { const c = planeCellAt(kind, W, ...(walk.plane.torus && !partial ? wrap(q) : q)); return c ? c[1] * row + c[0] : -1; } };
+    const { W, row } = walk.plane;
+    const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), box = () => { const ms = Array.from({ length: row * W }, (_, t) => mid(t)); return [0, 1].map((d) => ms.reduce(([lo, hi], m) => [Math.min(lo, m[d]), Math.max(hi, m[d])], [Infinity, -Infinity])).map(([lo, hi]) => (lo + hi) / 2); };
+    // (its centre: a slice's spot; one colour's, the grid's very middle: a grid that never repeats, its circle's; in a hexagon, its centre of turns; else its frame's middle)
+    const centre = () => (wallSlices(K) ? mid(planeSlices(K).spots[i]) : K > 1 ? planeFrame().middle(i, cols, rows) : APERIODIC[kind] ? [(W - 1) / 2, (W - 1) / 2] : planeShape(kind, W)?.o ?? box());
+    return { at: (p) => p, from: (q) => q, get centre() { return centre(); }, far: (t, c) => Math.hypot(mid(t)[0] - c[0], mid(t)[1] - c[1]), ex: [1, 0], ey: [0, 1], cellAt: (q, cut) => { const c = planeCellAt(kind, W, ...q, walk.plane.torus && !cut ? 'round' : 'in'); return c ? c[1] * row + c[0] : -1; } };
   }
   if (place.on === 'sheet') {  // (its rows the plane's, round the ring; unrolled, it lies flat: its orientation's)
     const L = sheetUnits(g, kind), O = sheetOrigin(g, kind), X = sub(L([1, 0]), L([0, 0])), Y = sub(L([0, 1]), L([0, 0])), { find } = sheetIndex(g);
     const F = sheetPoint(g, 0, 0, 0), Fu = sub(sheetPoint(g, 1, 0, 0), F), Fv = sub(sheetPoint(g, 0, 1, 0), F), flat = ([u, v]) => Fu.map((c, d) => u * c + v * Fv[d]), up = unit(cross(Fu, Fv));
     const [a, b] = torusBlocks(K), s0 = g.mobius && mobiusMiddle(g) - g.L / 2;
     const centre = g.mobius ? [K === 1 ? mobiusMiddle(g) : s0 + ((i + 0.5) * 2 * g.L) / K, g.W / 2] : K === 1 ? [g.nu / 2, g.nv / 2] : [((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b];  // (a block's, a stretch's middle: as huntParts')
-    return { at: (p) => { const q = L(p); return [q[0] + O[0], q[1] + O[1]]; }, from: (q) => back(X, Y)(sub(q, O)), centre, ex: flat(X), ey: flat(Y), n: up[2] < 0 ? up.map((v) => -v) : up,  // (its top, the side seen)
-      cellAt: ([u, v], partial) => (partial && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? -1 : find([u, v]) ?? -1) };
+    const round = (d, m) => d - m * Math.round(d / m), far = (t, [cu, cv]) => { const [u, v] = sheetPlace(g, t); return g.mobius ? Math.hypot(round(u - cu, 2 * g.L), v - cv) : Math.hypot(round(u - cu, g.nu), round(v - cv, g.nv)); };  // (round it the shortest way: a Möbius strip's loop, see mobiusLoop)
+    return { at: (p) => { const q = L(p); return [q[0] + O[0], q[1] + O[1]]; }, from: (q) => back(X, Y)(sub(q, O)), centre, far, ex: flat(X), ey: flat(Y), n: up[2] < 0 ? up.map((v) => -v) : up,  // (its top, the side seen)
+      cellAt: ([u, v], cut) => (cut && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? -1 : find([u, v]) ?? -1) };
   }
   // a solid: its face in space; the plane's lattice steps (a along, b a row up) as its face's, its point o as a face's cell's
   let A3, B3, o3, op, n, on, centre, face;
@@ -10284,20 +10256,20 @@ function patternFrame(i, K) {
   }
   const D = a[0] * b[1] - a[1] * b[0], lin = ([x, y]) => { const al = (x * b[1] - y * b[0]) / D, be = (a[0] * y - a[1] * x) / D; return A3.map((v, d) => al * v + be * B3[d]); };  // (a plane step: its parts along a and b, the same parts of theirs)
   const ex = lin([1, 0]), ey = lin([0, 1]), O = o3.map((v, d) => v - lin(op)[d]), { find } = cellIndex(g);
-  return { at: (p) => O.map((v, d) => v + p[0] * ex[d] + p[1] * ey[d]), from: (q) => back(ex, ey)(sub(q, O)), centre, ex, ey, n, on, face, cellAt: (q) => find(q, on) };
+  return { at: (p) => O.map((v, d) => v + p[0] * ex[d] + p[1] * ey[d]), from: (q) => back(ex, ey)(sub(q, O)), centre, far: (t, c) => Math.hypot(...sub(cen(t), c)), ex, ey, n, on, face, cellAt: (q) => find(q, on) };
 }
 // the move by whole steps (see translations) nearest a plane vector e
 const latticeNear = (kind, e) => { const [A, B] = translations(kind), D = A[0] * B[1] - A[1] * B[0], near = (v) => Math.ceil(v - 0.5 - 1e-9), k = near((e[0] * B[1] - e[1] * B[0]) / D), l = near((A[0] * e[1] - A[1] * e[0]) / D); return [k * A[0] + l * B[0], k * A[1] + l * B[1]]; };
 // colour i's cells [cell, pattern state], the pattern moved by whole steps (see translations: its shape kept) to lie its
-// middle nearest its part's (see patternFrame), or to, a place there; each cell the one at its place (partial, an icon's:
-// those there only; else all, or none)
-function patternAt(i, K, cells, partial = false, to = null) {
+// middle nearest its part's (see patternFrame), or to, a place there; each cell the one at its place (partial, an icon's,
+// a brush's: those there only; else all, or none)
+function patternAt(i, K, cells, partial = false, to = null, round = !partial) {  // round: round a torus (else cut off at its edges: an icon)
   if (!cells.length) return [];  // (an icon with no cell at that size)
   const kind = patternKind(), F = patternFrame(i, K), ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = cells.mid ?? [0, 1].map((d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2);  // (an icon's: its square's, see iconSquare)
   const p = F.from(to ?? F.centre), d = latticeNear(kind, [p[0] - mid[0], p[1] - mid[1]]);
   const out = [];
   for (let c = 0; c < cells.length; c++) {
-    const t = F.cellAt(F.at([ms[c][0] + d[0], ms[c][1] + d[1]]), partial);
+    const t = F.cellAt(F.at([ms[c][0] + d[0], ms[c][1] + d[1]]), !round);
     if (t >= 0) out.push([t, cells[c][2]]);
     else if (!partial) return [];
   }
@@ -10599,28 +10571,9 @@ function laidChoices(centred, any = false) {  // any: the first one of each colo
 }
 
 /* ---- 9.2 Patches ----------------------------------------------------------------------------- */
-// The plane's middle cells: those nearest its middle, all as near (a grid that never repeats: its circle's middle, as its core;
-// in a hexagon, its centre of turns; else its frame's middle: an even side of squares, the 4 round a corner), the wall's none
-let centreMemo = null;
-function planeCentre() {
-  const { kind, W, row } = walk.plane, key = `${kind}|${W}|${walk.plane.torus}`;
-  if (centreMemo?.key === key) return centreMemo.cells;
-  const n = row * W, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row))), wall = new Set(walk.geo.walls);
-  const box = (d) => mids.reduce(([a, b], m) => [Math.min(a, m[d]), Math.max(b, m[d])], [Infinity, -Infinity]).reduce((a, b) => (a + b) / 2);
-  const o = APERIODIC[kind] ? [(W - 1) / 2, (W - 1) / 2] : planeShape(kind, W)?.o ?? [box(0), box(1)], far = mids.map(([u, v], t) => (wall.has(t) ? Infinity : Math.hypot(u - o[0], v - o[1])));
-  const best = far.reduce((a, b) => Math.min(a, b), Infinity), cells = [...far.keys()].filter((t) => far[t] < best + 1e-6);
-  return (centreMemo = { key, cells }).cells;
-}
-// The cell where small starts go: the middle of the unrolled torus, of the cube face in front,
-// else the tile that faces the default camera
-function patchCentre() {
-  if (walk.plane) return planeCentre()[0];  // the plane: its middle cell
-  const g = walk.geo, mid = (k) => Math.floor((k - 1) / 2);
-  if (g.mobius || g.cairo || (g.torus && (g.kite || g.tiling || g.sides === 3))) return centreCells()[0];
-  if (g.torus) return mid(g.nu) * g.nv + mid(g.nv);
-  if (g.sides === 4 && g.perFace && !g.kite) return 3 * g.perFace + mid(g.size) * g.size + mid(g.size);  // the cube (not the one with pits)
-  if (g.floors) { const a = g.floorSize; return g.floors[3 * a * a + (a >> 1) * a + (a >> 1)]; }  // the cube with pits: the front pit's floor
-  const dir = CAM0.v;
+// a solid's cell that faces the default camera most (its face in front: one colour's, see patternPlace)
+function frontCell() {
+  const g = walk.geo, dir = CAM0.v;
   let best = 0, bestDot = -Infinity;
   for (let t = 0; t < g.n; t++) {
     const c = g.cen.subarray(3 * t, 3 * t + 3), dot = (c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2]) / Math.hypot(...c);
@@ -10645,39 +10598,34 @@ function mobiusLoop(g, t) {
   const [a, b] = sheetMiddle(g, t % g.front);
   return t < g.front ? [a, b] : [g.L + a, g.W - b];
 }
-// the tiles nearest the point (s, y) of that loop, all as near (round it the shortest way)
-function mobiusNearest(s, y) {
-  const g = walk.geo, far = new Float64Array(g.n), round = (d) => d - 2 * g.L * Math.round(d / (2 * g.L));
-  for (let t = 0; t < g.n; t++) { const [a, b] = mobiusLoop(g, t); far[t] = Math.hypot(round(a - s), b - y); }
-  const best = far.reduce((m, d) => Math.min(m, d), Infinity);
-  return [...far.keys()].filter((t) => far[t] < best + 1e-9);
-}
 // the middle of the face the starting view shows, on that loop: the front's middle, or the back's
 function mobiusMiddle(g) {
   let t = 0, best = Infinity;
   for (let q = 0; q < g.front; q++) { const [a, b] = sheetMiddle(g, q), d = Math.hypot(a - g.L / 2, b - g.W / 2); if (d < best) { best = d; t = q; } }
   return dot3(Array.from(g.nrm.subarray(3 * t, 3 * t + 3)), CAM0.v) * shapeSign(g) >= 0 ? g.L / 2 : (3 * g.L) / 2;
 }
-function sheetNearest(u, v, upto = walk.geo.n) {
-  const g = walk.geo, far = new Float64Array(upto), round = (d, n) => (g.mobius ? d : d - n * Math.round(d / n));
-  for (let t = 0; t < upto; t++) { const [a, b] = sheetMiddle(g, t); far[t] = Math.hypot(round(a - u, g.nu), round(b - v, g.nv)); }
-  const best = far.reduce((m, d) => Math.min(m, d), Infinity);
-  return [...far.keys()].filter((t) => far[t] < best + 1e-9);
+// Colour i's cells at its part's very middle (see patternFrame: its centre), all as near (one, or those round a corner: an
+// even side's 4 squares), open ones (no wall's), on its face; one colour's, the grid's (on a solid, its face in front; a
+// dodecahedron's, its pentagon's: see centreCells). Kept per grid
+const middleMemo = new Map();
+function middleCells(i = 0, K = 1) {
+  const key = `${gridKey()}|${patternKind()}|${i}|${K}`;
+  if (middleMemo.has(key)) return middleMemo.get(key);
+  const g = walk.geo, { start } = walk.life.nbr, n = walk.life.alive.length;
+  if (K === 1 && !walk.plane && !g.torus && g.faces && facesPer() > 1) return centreCells(frontPentagon());  // (its pentagon's middle)
+  const F = patternFrame(i, K), c = F.centre, far = new Float64Array(n).fill(Infinity);
+  for (let t = 0; t < n; t++) if (start[t] < start[t + 1] && (F.on?.(t) ?? true)) far[t] = F.far(t, c);
+  const best = far.reduce((m, v) => Math.min(m, v), Infinity), cells = [...far.keys()].filter((t) => far[t] < best + 1e-6);
+  if (middleMemo.size > 64) middleMemo.clear();
+  middleMemo.set(key, cells);
+  return cells;
 }
-// The cells at the middle: one, or the ones round it all as near when it is a corner (an even side:
-// 2 × 2 squares); on a solid, the open cells nearest a direction (the front, else a colour's spot)
+// the pentagon in front's middle, as a direction (a dodecahedron's: 5 of its triangle faces)
+const frontPentagon = () => { const g = walk.geo, per = facesPer(), f0 = Math.floor(Math.floor(frontCell() / g.perFace) / per) * per; return [0, 1, 2].map((a) => g.faces.slice(f0, f0 + per).reduce((sum, fc) => sum + fc.corners.reduce((s, c) => s + c[a], 0), 0)); };
+// The cells at the middle (one colour's: see middleCells); on a solid, the open cells nearest a direction d (a colour's spot)
 function centreCells(d) {
-  const g = walk.geo, four = (u, v, nv) => [u - 1, u].flatMap((i) => [i * nv + v - 1, i * nv + v]);
-  if (walk.plane) return planeCentre();
-  if (g.mobius) return mobiusNearest(mobiusMiddle(g), g.W / 2);  // the middle of the face in view
-  if (g.cairo || (g.torus && (g.kite || g.tiling || g.sides === 3))) return sheetNearest(g.nu / 2, g.nv / 2);
-  if (g.torus) return g.nu % 2 === 0 && g.nv % 2 === 0 ? four(g.nu / 2, g.nv / 2, g.nv) : [patchCentre()];
-  if (!d && g.faces) {  // a solid of triangles: the middle of the face in front (a dodecahedron's pentagon)
-    const per = facesPer(), f0 = Math.floor(Math.floor(patchCentre() / g.perFace) / per) * per;
-    d = [0, 1, 2].map((a) => g.faces.slice(f0, f0 + per).reduce((sum, fc) => sum + fc.corners.reduce((s, c) => s + c[a], 0), 0));
-  }
-  if (!d && !(g.sides === 4 && !g.kite && (g.perFace || g.floors)) && !g.squares) return [patchCentre()];
-  d = unit(d ?? AXES[3]);  // the cube's front face
+  if (!d) return middleCells();
+  const g = walk.geo;
   // (each direction once a grid: a hunt asks for the same few, at every radius; plain numbers, as it runs over every cell)
   const key = d.join(), known = (g.centres ??= new Map()).get(key);
   if (known) return known;
