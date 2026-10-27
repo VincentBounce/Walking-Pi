@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1353';
+const VERSION = '0.1.1354';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5456,7 +5456,7 @@ const sizeSides = (kind, f) => {
   // plane's cols × rows; in a circle or a hexagon, its slice as a square)
   const K = ringColours(), [x, y] = [Math.sqrt(d[2] * r), Math.sqrt(d[2] / r)], [a, b] = !S ? (wallSlices(K, kind) ? [Math.sqrt(K), Math.sqrt(K)] : COLOUR_GRID[K])
     : /^(mobius|klein)/.test(kind) ? [K, 1] : torusBlocks(K, { nv: torusDims(kind, f)[0] });
-  return `{g:≈ ${fmt(Math.round(x))} × ${fmt(Math.round(y))} ${d[3]}}${K > 1 ? `\n{g:≈ ${fmt(Math.round(x / a))} × ${fmt(Math.round(y / b))} ${d[3]} per colour × ${K} colours}` : ''}`;
+  return `{g:≈ ${fmt(Math.round(x))} × ${fmt(Math.round(y))} ${d[3]}}${K > 1 ? `\n\n{b:${K} colours: ${fmt(Math.round(d[2] / K))} ${d[3]} per colour}\n{g:≈ ${fmt(Math.round(x / a))} × ${fmt(Math.round(y / b))} ${d[3]} per colour}` : ''}`;
 };
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
 const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
