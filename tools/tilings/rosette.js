@@ -53,82 +53,30 @@ function ROSETTE(n, grow = null, hole = false) {  // grow: its own tiles (Hirsch
 }
 /* Hirschhorn's flower (Wikimedia: Hirschhorn_6-fold-rotational_symmetry_pentagonal_tiling.svg): the rosettes' pentagon for 6
  * turns, its sides all 1, each a multiple of 20° (A B C D E: 140° 60° 160° 80° 100°), so each corner a whole sum of the 18
- * ways ζᵏ (ζ = e^(iπ/9)): 6 whole numbers (ζ⁶ = ζ³ − 1), the same corner the same numbers however reached. Its middle as
- * Wikimedia draws it (21 tiles a sixth, read off it: each its corner A, mirrored or not, the way of its side AB), then out 6
- * tiles at a time (its turns): at the open corner most filled, its first side with a tile on one side only, the first tile
- * that fits (edge to edge, overlapping none, the room left at each corner one the angles can fill: 0, or 60° and more) */
+ * ways ζᵏ (ζ = e^(iπ/9)): 6 whole numbers (ζ⁶ = ζ³ − 1). Its middle as Wikimedia draws it (21 tiles a sixth, read off it:
+ * each its corner A, mirrored or not, the way of its side AB); round it 18 wedges, each the one before turned 20°, as
+ * Sugimoto's (see ROSETTE's direct): pairs mirrored on their side DE, in rows of 3, 4, 5… pairs (those of 2 in its middle), a pair to the next 1 along
+ * DE, a row to the next −ζ³ − ζ⁴ − ζ⁵ (½ back, 2.84 out) */
 const FLOWER_SEED = [[[0,0,0,1,0,0],0,12],[[1,1,0,0,0,0],0,10],[[1,1,1,-1,-1,-2],1,3],[[1,1,0,0,0,0],0,17],[[2,1,1,-1,-1,-1],1,4],[[1,2,1,0,-1,-1],1,5],[[1,2,2,1,-1,-1],0,12],[[1,2,1,0,-1,-1],1,0],[[1,2,2,1,0,-1],0,13],[[1,1,2,0,0,-1],1,1],[[2,2,2,-1,-1,-1],0,11],[[2,2,2,0,-1,-1],0,12],[[2,1,1,-1,-1,-1],1,17],[[2,2,2,-1,-1,-2],0,11],[[2,2,1,-1,-1,-2],0,10],[[3,2,2,-1,-1,-2],1,17],[[3,2,2,-1,-1,-1],1,17],[[2,2,2,-1,-1,-3],1,16],[[2,3,2,0,-1,-1],1,0],[[1,3,2,1,-1,-1],1,0],[[1,2,3,1,0,-1],1,1]];
 function HIRSCHHORN(R) {
   const times = ([a, b, c, d, e, f]) => [-f, a, b, c + f, d, e], ZETA = [[1, 0, 0, 0, 0, 0]];  // (× ζ)
   for (let k = 1; k < 18; k++) ZETA.push(times(ZETA[k - 1]));
-  const mod = (k) => ((k % 18) + 18) % 18, key = (p) => p.join(), CS = [Math.cos, Math.sin].map((f) => [0, 1, 2, 3, 4, 5].map((i) => f((i * Math.PI) / 9)));
-  const xy = (p) => CS.map((c) => p.reduce((t, v, i) => t + v * c[i], 0));
+  const mod = (k) => ((k % 18) + 18) % 18, turn = (p, k) => { for (let r = 0; r < mod(k); r++) p = times(p); return p; };  // (k 20°s)
+  const CS = [Math.cos, Math.sin].map((f) => [0, 1, 2, 3, 4, 5].map((i) => f((i * Math.PI) / 9))), xy = (p) => CS.map((c) => p.reduce((t, v, i) => t + v * c[i], 0));
   const WAYS = [[0, 6, 7, 12, 16], [15, 2, 3, 9, 11]];  // its sides' ways (AB BC CD DE EA), mirrored (E'D' D'C' C'B' B'A' A'E'), counterclockwise
-  const mid = (X) => [0, 1].map((d) => X.reduce((t, q) => t + q[d], 0) / 5), cellOf = (m) => `${Math.floor(m[0] / 2)},${Math.floor(m[1] / 2)}`;
-  const tile = (p, m, d, s = 0) => {  // from p, its corner s, its sides' ways turned d: its corners and their angles (in 20°s)
-    const W = [0, 1, 2, 3, 4].map((i) => WAYS[m][(s + i) % 5]), P = [p];
-    for (let i = 0; i < 4; i++) P.push(P[i].map((v, j) => v + ZETA[mod(W[i] + d)][j]));
-    const X = P.map(xy);
-    return { P, X, m: mid(X), A: W.map((w, i) => 9 - mod(w - W[(i + 4) % 5])) };
+  const tile = (p, m, d, s = 0) => {  // from p, its corner s, its sides' ways turned d: its corners
+    const P = [p];
+    for (let i = 0; i < 4; i++) P.push(P[i].map((v, j) => v + ZETA[mod(WAYS[m][(s + i) % 5] + d)][j]));
+    return P.map(xy);
   };
-  const REACH = (({ X, m }) => Math.max(...X.map((q) => Math.hypot(q[0] - m[0], q[1] - m[1]))))(tile([0, 0, 0, 0, 0, 0], 0, 0));  // (its corner furthest from its middle)
-  const sixth = ([a, b, c, d, e, f]) => [-d, -e, -f, a + d, b + e, c + f];  // (× ζ³: a sixth of a turn)
-  const turn = (T, k) => { const P = T.P.map((p) => { for (let r = 0; r < k; r++) p = sixth(p); return p; }); const X = P.map(xy); return { P, X, m: mid(X), A: T.A }; };  // (k sixths)
-  const overlap = (P, Q) => {  // convex, their insides meeting (no axis of a side between them)
-    for (const poly of [P, Q]) for (let i = 0; i < 5; i++) {
-      const [x1, y1] = poly[i], [x2, y2] = poly[(i + 1) % 5], nx = y1 - y2, ny = x2 - x1;
-      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
-      for (const [x, y] of P) { const d = nx * x + ny * y; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }
-      for (const [x, y] of Q) { const d = nx * x + ny * y; b0 = Math.min(b0, d); b1 = Math.max(b1, d); }
-      if (a1 <= b0 + 1e-7 || b1 <= a0 + 1e-7) return false;
-    }
-    return true;
-  };
-  const tiles = [], grid = new Map(), at = new Map(), open = new Set();
-  const add = (T) => {
-    const j = tiles.length, c = cellOf(T.m);
-    tiles.push(T);
-    (grid.get(c) ?? grid.set(c, []).get(c)).push(j);
-    T.P.forEach((p, i) => { const k = key(p), e = at.get(k) ?? at.set(k, { sum: 0, uses: [] }).get(k); e.sum += T.A[i]; e.uses.push([j, i]); if (e.sum < 18 && Math.hypot(...T.X[i]) <= R) open.add(k); else open.delete(k); });
-  };
-  const fits = (T) => {
-    const [cx, cy] = T.m.map((v) => Math.floor(v / 2));
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${cx + dx},${cy + dy}`) ?? []) {
-      const U = tiles[j]; if (Math.hypot(U.m[0] - T.m[0], U.m[1] - T.m[1]) < 2 * REACH && overlap(T.X, U.X)) return false;
-    }
-    return T.P.every((p, i) => { const left = 18 - (at.get(key(p))?.sum ?? 0) - T.A[i]; return left === 0 || left >= 3; });
-  };
-  const remove = () => {
-    const j = tiles.length - 1, T = tiles.pop(), g = grid.get(cellOf(T.m));
-    g.splice(g.indexOf(j), 1);
-    T.P.forEach((p, i) => { const k = key(p), e = at.get(k); e.sum -= T.A[i]; e.uses.pop(); if (!e.uses.length) { at.delete(k); open.delete(k); } else if (Math.hypot(...T.X[i]) <= R) open.add(k); });
-  };
-  const frame = () => {  // at the open corner most filled (the first opened), its first side with a tile on one side only (that tile on its left): each shape laid on it the other way, b to a
-    let best = null;
-    for (const k of open) { const e = at.get(k); if (!best || e.sum > best.sum) best = e; }
-    if (!best) return null;  // (none left: done)
-    const sides = new Map();
-    for (const [j, i] of best.uses) { const P = tiles[j].P; for (const [a, b] of [[P[i], P[(i + 1) % 5]], [P[(i + 4) % 5], P[i]]]) sides.set(`${key(a)}|${key(b)}`, [a, b]); }
-    const free = [...sides].find(([s]) => !sides.has(s.split('|').reverse().join('|')));
-    if (!free) return { tries: [], i: 0, added: 0 };  // (no side free, the corner not full: a dead end)
-    const [a, b] = free[1], way = ZETA.findIndex((z) => z.every((v, j) => v === a[j] - b[j]));
-    return { tries: [0, 1].flatMap((m) => [0, 1, 2, 3, 4].map((s) => tile(b, m, way - WAYS[m][s], s))), i: 0, added: 0 };
-  };
-  for (let k = 0; k < 6; k++) for (const [p, m, d] of FLOWER_SEED) add(turn(tile(p, m, d), k));
-  // depth first, a step a frame of a stack (not a call: thousands of them deep): a dead end, back to the last frame
-  for (const stack = [frame()]; stack.length;) {
-    const top = stack.at(-1);
-    for (; top.added; top.added--) remove();  // (its last try undone)
-    if (top.i >= top.tries.length) { stack.pop(); continue; }
-    const T = top.tries[top.i++];
-    if (!fits(T)) continue;  // (its turns fit as it does: all as far from the middle, the rest 6-fold too)
-    for (let k = 0; k < 6; k++) add(turn(T, k));
-    top.added = 6;
-    const next = frame();
-    if (!next) return tiles.map((T) => T.X);
-    stack.push(next);
+  const tiles = [];
+  for (let k = 0; k < 18; k += 3) for (const [p, m, d] of FLOWER_SEED) tiles.push(tile(turn(p, k), m, d + k));
+  const first = [-1, -1, -1, -3, -3, -2], up = [0, 0, 0, -1, -1, -1];  // (wedge 0: its first pair's D, DE along ζ⁰; a row to the next)
+  for (let w = 0; w < 18; w++) for (let r = 0; 8.51 + 2.84 * r < R + 3; r++) for (let i = 0; i < r + 3; i++) {
+    const D = turn(first.map((v, j) => v + i * ZETA[0][j] + r * up[j]), w);
+    if (Math.hypot(...xy(D)) < R + 3) tiles.push(tile(D, 0, w - WAYS[0][3], 3), tile(D.map((v, j) => v + ZETA[w][j]), 1, w + 9 - WAYS[1][0]));  // (its pair: D to E along ζʷ, E to D mirrored)
   }
-  throw new Error('Hirschhorn: stuck');
+  return tiles;
 }
 const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, HIRSCHHORN)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)], flower9: [9, ROSETTE(9)], flower10: [10, ROSETTE(10)],
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],

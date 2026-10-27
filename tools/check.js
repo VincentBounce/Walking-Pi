@@ -115,12 +115,12 @@ function checkMeshes(fail) {
     const W0 = sideW(kind, 32), want = (Math.PI / 4) * planeRow(kind, W0) * W0;  // (as a disc of ⌀ 32's, see shapeW; a grid of few big lattice cells: by big steps)
     if (Math.abs(live.length / want - 1) > 0.3 + 4 / W) fail(`${what}: ${live.length} cells, ${Math.round(want)} wanted`);
   }
-  // every grid that repeats, as a torus (its sides round: a rectangle's columns not its rows): each cell's neighbours
+  // every grid that repeats, as a torus (its sides round: a rectangle's columns not its rows; its size as Life's, whatever the mode): each cell's neighbours
   // touching it, a few cells' width away at most the shortest way round (not glued to far ones, as v0.1.1305's to 1371's)
   for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', ...Object.keys(TILINGS), ...Object.keys(RECTS)]) {
     if (!tilingOf(kind) && !PLANE_PER[kind] || APERIODIC[kind]) continue;
     Object.assign(plane, { torus: true });
-    const W = planeW(kind, 32), row = planeRow(kind, W), { start, list } = planeNeighbours(kind, W, true), c0 = cellMiddle(kind, 0, 0);
+    const W = colourW(kind, sideW(kind, 32)), row = planeRow(kind, W), { start, list } = planeNeighbours(kind, W, true), c0 = cellMiddle(kind, 0, 0);
     const P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((c) => [c[0] - c0[0], c[1] - c0[1]]), mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), reach = 3 * cellWidth(kind);
     let far = 0;
     for (let t = 0; t < row * W; t++) for (let q = start[t]; q < start[t + 1]; q++) {
