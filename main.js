@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1352';
+const VERSION = '0.1.1353';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5452,7 +5452,11 @@ const sizeSides = (kind, f) => {
   if (kind.startsWith('mobius')) { const { L, W } = mobiusCount(kind, f); r = (2 * L) / W; }
   else if (FOLDED[kind]?.fold === 'klein') { const { n, step, W } = kleinLength(kind, f); r = (n * step) / W; }
   else if (S) { const g = (facesMemo[kind] ??= S.mesh(S.sizes[0])), [nv, nu] = torusDims(kind, f); r = (nu * g.nv) / (nv * g.nu * tubeOf(g)); }
-  return `{g:≈ ${fmt(Math.round(Math.sqrt(d[2] * r)))} × ${fmt(Math.round(Math.sqrt(d[2] / r)))} ${d[3]}}`;
+  // (and a colour's, Life's in colours: its block of the rectangle, a ring's a × b (a bottle's, a strip's, slices along it), the
+  // plane's cols × rows; in a circle or a hexagon, its slice as a square)
+  const K = ringColours(), [x, y] = [Math.sqrt(d[2] * r), Math.sqrt(d[2] / r)], [a, b] = !S ? (wallSlices(K, kind) ? [Math.sqrt(K), Math.sqrt(K)] : COLOUR_GRID[K])
+    : /^(mobius|klein)/.test(kind) ? [K, 1] : torusBlocks(K, { nv: torusDims(kind, f)[0] });
+  return `{g:≈ ${fmt(Math.round(x))} × ${fmt(Math.round(y))} ${d[3]}}${K > 1 ? `\n{g:≈ ${fmt(Math.round(x / a))} × ${fmt(Math.round(y / b))} ${d[3]} per colour × ${K} colours}` : ''}`;
 };
 // (its total out of it, in the tooltip's title, see sizeTips: = its count, a formula's; else its words, capitalised)
 const sizeHow = (kind, f) => { const how = howCounted(kind, f).replace(/ = [\d,]+ [a-z ]+$/, ''); return /^[\d{(]/.test(how) ? `= ${how.replace(/ ([×+]) /g, '\n$1 ')}` : how.replace(/^./, (c) => c.toUpperCase()); };  // (a formula: each factor, each term on its line)
@@ -9796,7 +9800,7 @@ const patchSpots = (sphere, K) => { const c = colouring(sphere, K); return c.pat
 // angle from it, as many in each (a colour from the middle out to the wall, as much wall as the others); a slice's
 // spot: its cell nearest halfway out along its middle angle. Kept per grid
 let sliceMemo = null;
-const wallSlices = (K) => walk.plane && !walk.plane.torus && K > 1 && ((K !== 2 && K !== 4) || !!APERIODIC[walk.plane.kind] || !!planeShape(walk.plane.kind, walk.plane.W));  // (in a circle or a hexagon: always)
+const wallSlices = (K, kind = walk.plane?.kind) => !!kind && !planeTorus(kind) && K > 1 && ((K !== 2 && K !== 4) || !!APERIODIC[kind] || shaped(kind));  // (in a circle or a hexagon: always; kind: the plane's in use, else a size's to tell)
 function planeSlices(K) {
   const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${row}|${K}|${turn}`;
   if (sliceMemo?.key === key) return sliceMemo;
