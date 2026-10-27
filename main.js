@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1365';
+const VERSION = '0.1.1366';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4645,7 +4645,7 @@ function mobiusSheet(kind0, size) {
 function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counted, not built ({ L, W, n }: see mobiusCount)
   if (kind0.startsWith('mobiusKite')) {  // the triangles', cut in 3
     if (count) { const t = mobiusCount(kind0.replace('Kite', 'Tri'), size); return { ...t, n: 3 * t.n }; }
-    const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf) };
+    const t = mobiusSheet(kind0.replace('Kite', 'Tri'), size); return { ...t, tiles: t.tiles.flatMap(kitesOf), originCell: t.originCell && [3 * t.originCell[0] + 2, t.originCell[1]] };  // (its first triangle's first kite, from its corner: the plane's third of it)
   }
   const tiling = MOBIUS_STRIPS[kind0]?.kind;
   if (tiling) return count ? { ...stripFrame(tiling, kind0, size), n: stripCount(tiling, kind0, size) } : tilingStrip(tiling, kind0, size);
@@ -4707,7 +4707,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
         if (a + 1 >= 0 && a + 1 < L) put(() => [[a + 0.5, y1], [a + 1, y0], [a + 1.5, y1]]);       // ▼, at a + 1
       }
     }
-    return done(L, W);
+    return { ...done(L, W), originCell: [-1, 0] };  // (its first tile: row 0's ▼ at a = −1, the plane's triangle −1)
   }
   const L = steps(nv);
   for (let i = 0; i < L; i++) for (let j = 0; j < nv; j++) put(() => [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]);
@@ -4722,12 +4722,12 @@ function tilingStrip(kind, kind0, size) {
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) for (let k = 0; k < m; k++) {
     const P = cells(i, j, k), [x, y] = [0, 1].map((d) => P.reduce((s2, p) => s2 + p[d], 0) / P.length);
     if (x < -1e-9 || x >= L - 1e-9 || y < -1e-9 || y > W + 1e-9) continue;
-    laid.push({ P, x, y, brick: Math.floor(y / by + 1e-6) * cols + Math.floor(x / la + 1e-6) });
+    laid.push({ P, x, y, cell: [k + i * m, j], brick: Math.floor(y / by + 1e-6) * cols + Math.floor(x / la + 1e-6) });  // (cell: the plane's, its x and y)
   }
   // brick by brick from its corner: a row of b (its sides mirrors, as y = 0), |a| along it, m tiles each; a mirror through
   // tiles, those on its far edge after; a glide's twist, half a brick at its end
   laid.sort((p, q) => p.brick - q.brick);
-  return { L, W, sides, tiles: laid.map(({ P }) => [...P, ...Array(sides - P.length).fill(P.at(-1))]), mids: laid.flatMap(({ x, y }) => [x, y]), bricks: laid.map(({ brick }) => brick) };
+  return { L, W, sides, tiles: laid.map(({ P }) => [...P, ...Array(sides - P.length).fill(P.at(-1))]), mids: laid.flatMap(({ x, y }) => [x, y]), bricks: laid.map(({ brick }) => brick), originCell: laid[0].cell };
 }
 // a tiling's strip's frame: its length (the usual one, the counts' nearest that the twist allows), its width, its cells'
 // corners on a fine grid (in steps along and rows across from the middle: the twist (x + L, y) → (x, W − y) maps the grid
@@ -4773,7 +4773,7 @@ function kleinTilingSheet(kindK, size) {
   return (kleinMemo[`${kindK}|${size}|${ringColours()}`] ??= (() => {
     const { kind, strip, turn, nv, n, W, step, by, a } = kleinLength(kindK, size);
     const s = tilingStrip(kind, strip, `${nv}x${n}`), keep = s.tiles.map((_, i) => i).filter((i) => s.mids[2 * i + 1] < W - 1e-9);
-    return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]), bricks: keep.map((i) => s.bricks[i]) };
+    return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]), bricks: keep.map((i) => s.bricks[i]), originCell: s.originCell };
   })());
 }
 // its frame, without its tiles: its strip, its rows and its length (see kleinTilingSheet); its tiles' count (see stripCount)
@@ -4789,7 +4789,7 @@ function kleinLength(kindK, size) {
 function kleinTilingMesh(kindK, size) {
   const key = `${kindK}${size}|${ringColours()}`;  // (its length its colours': see kleinLength)
   if (meshCache[key]) return meshCache[key];
-  const { kind, turn, L, W, n, nv, step, by, la, sides, tiles, mids, bricks } = kleinTilingSheet(kindK, size), Q = 12000, ids = new Map(), verts = [];
+  const { kind, turn, L, W, n, nv, step, by, la, sides, tiles, mids, bricks, originCell } = kleinTilingSheet(kindK, size), Q = 12000, ids = new Map(), verts = [];
   const id = ([x, y]) => {  // a corner by its place on tilingStrip's fine grid, brought within the sheet (turned over past its end)
     let i = Math.round((x / step) * Q), j = Math.round((y / by) * Q);
     const k = Math.floor(i / (n * Q));
@@ -4800,7 +4800,7 @@ function kleinTilingMesh(kindK, size) {
     return ids.get(i * nv * Q + j);
   };
   const sheet = tiles.map(turnOver), mesh = finishMesh(verts, sheet.map((t) => t.map(id)), sides, nv, null);  // one-sided: as listed, turned over (see kleinMesh)
-  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(sheet.flat(2)), uvMid: new Float64Array(mids), bricks }));
+  return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, nu: L, nv: W, tube: W / L, period: MOBIUS_ALONG[FOLDED[kindK].strip].copy, tiling: kind, stripTurn: turn, uv: new Float64Array(sheet.flat(2)), uvMid: new Float64Array(mids), bricks, originCell }));
 }
 // a tile's corners the other way round, its last one repeated still last (a tile with fewer corners than the strip's:
 // repeated first, its normal, from its first corners, was none, and the back's tiles all but black)
@@ -4811,7 +4811,7 @@ const turnOver = (c) => { let d = c.length; while (d > 1 && c[d - 1] === c[d - 2
 function mobiusMesh(kind, size) {
   const key = `${kind}${size}|${ringColours()}`, nv = mobiusSize(size)[0];  // (its length its colours': see stripSteps)
   if (meshCache[key]) return meshCache[key];
-  const { L, W, tiles: sheet, mids, bricks } = mobiusSheet(kind, size), k = sheet[0].length;
+  const { L, W, tiles: sheet, mids, bricks, originCell } = mobiusSheet(kind, size), k = sheet[0].length;
   const { verts, add } = vertexStore();
   const ids = sheet.map((t) => t.map(([x, y]) => add(...mobiusPoint(x, y, L, W, 1))));  // the glued ends share corners
   const n0 = verts.length / 3, uses = new Map(), onEdge = new Uint8Array(n0), home = new Float64Array(n0).fill(NaN);
@@ -4846,7 +4846,7 @@ function mobiusMesh(kind, size) {
       delta.set(a * N + b, [dx, dy]); delta.set(b * N + a, [-dx, -dy]);
     }
   });
-  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_STRIPS[kind]?.kind, stripTurn: MOBIUS_STRIPS[kind] && -Math.atan2(MOBIUS_STRIPS[kind].basis[0][1], MOBIUS_STRIPS[kind].basis[0][0]), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length,
+  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_STRIPS[kind]?.kind, stripTurn: MOBIUS_STRIPS[kind] && -Math.atan2(MOBIUS_STRIPS[kind].basis[0][1], MOBIUS_STRIPS[kind].basis[0][0]), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length, originCell,
     ...(mids && { uvMid: new Float64Array([...mids, ...mids]), bricks: [...bricks, ...bricks] }) }));  // (a tiling's: its tiles' own middles, see sheetMiddle)
 }
 // The sheet point of a surface: a torus, or a Möbius strip
@@ -4908,11 +4908,12 @@ function tilingPolys(kind) {
 }
 // A torus sheet's cells (its sides 1), by its sides: its lattice cell's, its 2D rectangle's (see RECTS), or those of the one
 // it is turned by 90° from (B along)
-function sheetCells(kind, [[p, q], [r, s]]) {
+function sheetCells(kind, [[p, q], [r, s]]) {  // (and each one's cell of the plane, its x and y)
   const R = RECTS[`${kind}Rect`], same = (x) => x && x[0][0] === p && x[0][1] === q && x[1][0] === r && x[1][1] === s;
-  if (same([[1, 0], [0, 1]])) return TILINGS[kind].polys;
-  if (same(R?.step)) return R.polys;  // (the 2D rectangle's: the slanted grids', or along the cells' sides)
-  return sheetCells(kind, [[-r, -s], [p, q]]).map((P) => P.map(([u, v]) => [v, 1 - u]));
+  if (same([[1, 0], [0, 1]])) return { polys: TILINGS[kind].polys, nat: TILINGS[kind].polys.map((_, k) => [k, 0]) };
+  if (same(R?.step)) return R;  // (the 2D rectangle's: the slanted grids', or along the cells' sides)
+  const { polys, nat } = sheetCells(kind, [[-r, -s], [p, q]]);
+  return { polys: polys.map((P) => P.map(([u, v]) => [v, 1 - u])), nat };
 }
 // A tiling's torus (see TILINGS: sheet): its cell A round the ring nu times, B round the tube nv times (A ⟂ B: its tiles
 // even once rolled up, as many of each as the sheet's sides ask); the lattice cells whose corner is in that rectangle,
@@ -4923,7 +4924,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
   if (meshCache[key]) return meshCache[key];
   const t = TILINGS[kind], sheet = torusSheets(kind)[turned ? 'turned' : 'plain'], sides = Math.max(...t.polys.map((P) => P.length));
   // the 2D sheet's cells (its sides 1), their middle (by area) on the sheet's (unrolled, it lies round its middle); turned: B along
-  const frame = sheetCells(kind, sheet), area = (P) => Math.abs(P.reduce((x, p, i) => x + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
+  const { polys: frame, nat } = sheetCells(kind, sheet), area = (P) => Math.abs(P.reduce((x, p, i) => x + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0)) / 2;
   const c = [0, 1].map((d) => frame.reduce((x, P) => x + area(P) * P.reduce((y, p) => y + p[d], 0) / P.length, 0) / frame.reduce((x, P) => x + area(P), 0));
   const polys = frame.map((P) => P.map(([u, v]) => [u + 0.5 - c[0], v + 0.5 - c[1]]));
   const { verts, add } = vertexStore(), tiles = [], uv = [], mid = [], ids = new Map(), [[p, q], [r, s]] = sheet, [a, b] = t.basis;
@@ -4940,7 +4941,7 @@ function tilingTorusMesh(kind, nv, nu, turned = false) {  // turned: B round the
     tiles.push(c.map(([i, j]) => corner(i, j)));
     uv.push(...c.flat());
   }
-  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid, true), { tiling: kind, sheet, tube, uvMid: new Float64Array(mid) }));
+  return (meshCache[key] = Object.assign(finishTorus(verts, tiles, sides, nu, nv, uv, mid, true), { tiling: kind, sheet, tube, uvMid: new Float64Array(mid), originCell: nat[0] }));
 }
 
 /* Sphere of hexagons (a Goldberg polyhedron, the football's pattern): the dual of the icosahedron
@@ -4980,6 +4981,7 @@ function hexSolidMesh(solid, f) {
   const sub = (p, q) => p.map((v, d) => v - q[d]), { P, faces } = POLYHEDRA[solid], normals = faces.map(([a, b, c]) => unit(cross(sub(P[b], P[a]), sub(P[c], P[a]))));
   const plane = normals.map((n) => normals.findIndex((m) => m.every((v, d) => Math.abs(v - n[d]) < 1e-9)));  // (the same, but for the float's last digits)
   mesh.planeOf = Int32Array.from(cells, (tris) => (tris.every((t) => plane[Math.floor(t / (f * f))] === plane[Math.floor(tris[0] / (f * f))]) ? plane[Math.floor(tris[0] / (f * f))] : -1));
+  mesh.planeMid = normals.map((_, k) => { const vs = [...new Set(faces.flatMap((fc, j) => (plane[j] === k ? fc : [])))]; return vs.length ? [0, 1, 2].map((d) => vs.reduce((sum, v) => sum + P[v][d], 0) / vs.length) : null; });  // (its corners' middle)
   return (meshCache[key] = mesh);
 }
 
@@ -7331,25 +7333,24 @@ let iconMemo = null;
 const iconPatternMemo = new Map();  // (a few at once: each colour's square its own tilt)
 // an icon's pixel (of its 24 × 24), on or off
 const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0; };
+// a cell's width: the root of its grid's cells' mean area (a lattice cell's, two rows of them)
+const cellWidth = (kind) => { const per = PER_RHOMBUS[kind] ?? 1, area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2; return Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per)); };
 // The square's cells, N cells wide (a cell as wide as the root of its mean area: its lattice cell's), a patch round cell 0 of
-// the grid: the cells under the picture (box, moved by whole lattice steps: its cells' shapes kept), and their pixel (pix).
+// the grid: the cells under the picture (box, as the plane's: laid by patternAt), and their pixel (pix).
 // tilt: the plane's angle its x (its rows) lies along, its bottom a quarter turn on (the plane's y: down as drawn); P: its
 // pixels across
-function iconSquare(kind, N, tilt, P = 24) {
-  const cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}`;
+function iconSquare(kind, N, tilt, P = 24, shift = [0, 0]) {  // shift: its middle off cell 0's lattice cell's (o + ½, ½) by less than a step (see iconLay: its very place)
+  const cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}|${shift}`;
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
-  const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
-  const cells = [0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))), k = (N / P) * Math.sqrt(cells.reduce((sum, v) => sum + v, 0) / cells.length);
+  const per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [], a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), k = (N / P) * cellWidth(kind);  // (a, b: its cells' numbers' steps, a row's lattice cell along and a row up)
   // (the lattice cells it can cover: its half diagonal, P·k/√2, in lattice steps either way, and 2 more; not N + 4 lattice cells
   // of a lattice of 30 cells, Dual 314's, 30 times too many)
   const det = Math.abs(a[0] * b[1] - a[1] * b[0]), half = (P * k) / Math.SQRT2, Ru = Math.ceil((half * Math.hypot(...b)) / det) + 2, Rv = Math.ceil((half * Math.hypot(...a)) / det) + 2;
   for (let y = -Rv; y <= Rv; y++) for (let x = -Ru * per; x <= Ru * per; x++) {
-    const m = cellMiddle(kind, x, y), u = m[0] - o[0] - 0.5, v = m[1] - o[1] - 0.5, px = Math.floor((u * cs + v * sn) / k + P / 2), py = Math.floor((v * cs - u * sn) / k + P / 2);
+    const m = cellMiddle(kind, x, y), u = m[0] - o[0] - 0.5 - shift[0], v = m[1] - o[1] - 0.5 - shift[1], px = Math.floor((u * cs + v * sn) / k + P / 2), py = Math.floor((v * cs - u * sn) / k + P / 2);
     if (px >= 0 && py >= 0 && px < P && py < P) under.push([x, y, px, py]);
   }
-  const dx = Math.floor(under.reduce((m, c) => Math.min(m, c[0]), Infinity) / per) * per, dy = under.reduce((m, c) => Math.min(m, c[1]), Infinity);  // (not spread: a square of 512 cells across, 262,144 of them)
-  const square = { key, side: P * k, box: under.map(([x, y]) => [x - dx, y - dy, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [0, 1].map((d) => o[d] + 0.5 - (dx / per) * a[d] - dy * b[d]) };  // (its width; its middle, moved as its cells: o + ½, ½)
+  const square = { key, side: P * k, box: under.map(([x, y]) => [x, y, 1]), pix: under.map(([, , px, py]) => [px, py]), mid: [o[0] + 0.5 + shift[0], o[1] + 0.5 + shift[1]] };  // (its width; its middle)
   if (iconPatternMemo.size > 32) iconPatternMemo.clear();
   iconPatternMemo.set(key, square);
   return square;
@@ -7397,16 +7398,11 @@ function iconWay(i, K) {
 // height. Their least
 function iconRoom(K) {
   const kind = patternKind(), g = walk.geo, part = iconPartOf(K), dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0);
-  const area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2, per = PER_RHOMBUS[kind] ?? 1;
-  const cw = Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per));  // (a cell's width: the root of its mean area, as iconSquare's)
+  const cw = cellWidth(kind);
   const at = walk.plane ? (t) => cellMiddle(kind, t % walk.plane.row, Math.floor(t / walk.plane.row)) : g.torus ? (t) => sheetPoint(g, ...sheetPlace(g, t), 0) : (t) => Array.from(g.cen.subarray(3 * t, 3 * t + 3));  // (where it is: on the plane, on the sheet unrolled, in space)
   return Math.min(...Array.from({ length: K }, (_, i) => {
-    const { ex, ey, tilt } = iconWay(i, K), place = patternPlace(i, K), go = ([u, v]) => ex.map((c, d) => u * c + v * ey[d]);
+    const { ex, ey, tilt, on = () => true } = iconWay(i, K), place = patternPlace(i, K), go = ([u, v]) => ex.map((c, d) => u * c + v * ey[d]);  // (on: its face's cells)
     const R = go([Math.cos(tilt), Math.sin(tilt)]), Dn = go([-Math.sin(tilt), Math.cos(tilt)]), scale = Math.hypot(...R), Ru = R.map((v) => v / scale), Du = Dn.map((v) => v / Math.hypot(...Dn));
-    const first = place.on === 'tri' ? (g.triFirst ?? 0) + place.face * (g.triFaces ? g.size * g.size : g.perFace) : place.on === 'square' ? place.f * g.size * g.size : 0;
-    const squares = place.on === 'cube' && (() => { const { a, square } = cubeFace(place.f), s = new Set(); for (let r = 0; r < a; r++) for (let c = 0; c < a; c++) s.add(square(r, c)); return s; })();
-    const on = place.on === 'tri' ? (t) => t >= first && t < first + (g.triFaces ? g.size * g.size : g.perFace) : place.on === 'square' ? (t) => t >= first && t < first + g.size * g.size
-      : place.on === 'hex' ? (t) => g.planeOf[t] === g.planeOf[place.c0] : place.on === 'cube' ? (t) => squares.has(g.squares ? t >> 2 : t) : () => true;  // (its face's cells)
     let r0 = Infinity, r1 = -Infinity, d0 = Infinity, d1 = -Infinity;
     for (let t = 0; t < part.length; t++) if (part[t] === i && on(t)) { const p = at(t), r = dot(p, Ru), d = dot(p, Du); r0 = Math.min(r0, r); r1 = Math.max(r1, r); d0 = Math.min(d0, d); d1 = Math.max(d1, d); }
     const w = (r1 - r0) / scale + cw, h = (d1 - d0) / scale + cw, triangle = place.on === 'tri' || place.on === 'hex' || (walk.plane && K === 6 && shaped(kind));
@@ -7426,25 +7422,28 @@ function iconLay(N, P = 24) {
   if (!picturesOn()) return null;
   const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K), part = iconPartOf(K);
   const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
-  const dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0), lay = (sq, i, to, away) => {
+  const lay = (sq, i, to) => {
     const at = new Int32Array(sq.box.length).fill(-1), cells = Object.assign(sq.box.map(([x, y], j) => [x, y, j]), { mid: sq.mid });
-    const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true, away);
+    const laid = patternAt(i, K, cells, true, to);
     for (const [t, j] of laid) if (!dead.has(t) && part[t] === i) at[j] = t;
     const cross = sq.box.flatMap((_, j) => (sq.pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
     const js = sq.box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
     return { at, sq, js, whole: cross.every((t) => t >= 0) && new Set(cross).size === cross.length };
   };
   const lays = Array.from({ length: K }, (_, i) => {
-    const { tilt, mirror } = iconWay(i, K), sq = iconSquare(kind, N, tilt, P), place = patternPlace(i, K);
-    if (walled) {  // (against its wall, its lattice step's half kept in; its slice's angle as seen, the plane turned by planeTurn)
-      const out = turnPoint([Math.cos(walled.angles[i]), Math.sin(walled.angles[i])], -planeTurn()), mid = turnPoint(walled.mid, -planeTurn());
-      const d = walled.walls[i] - sq.side / 2 - (Math.abs(dot(a, out)) + Math.abs(dot(b, out))) / 2;
-      return { ...lay(sq, i, mid.map((v, k) => v + d * out[k])), mirror };
+    const { tilt, mirror } = iconWay(i, K), F = patternFrame(i, K), place = patternPlace(i, K), half = (N * cellWidth(kind)) / 2;
+    let to = F.centre;
+    if (walled) {  // (against its wall; its slice's angle as seen, the plane turned by planeTurn)
+      const out = turnPoint([Math.cos(walled.angles[i]), Math.sin(walled.angles[i])], -planeTurn()), mid = turnPoint(walled.mid, -planeTurn()), d = walled.walls[i] - half;
+      to = mid.map((v, k) => v + d * out[k]);
+    } else if (place.on === 'tri') {  // (its middle on the median from its level side, e rows off it, its cross's arm most across it on it: the turned face's AB; kites' not turned, AB, BC or CA)
+      const side = [a, b.map((v, d) => v - a[d]), b.map((v) => -v)][place.per > 1 ? place.q : 0], phi = tilt - Math.atan2(side[1], side[0]), f = g.size;
+      const e = Math.max(f / 3, (half * Math.max(Math.abs(Math.cos(phi)), Math.abs(Math.sin(phi)))) / rowStep);
+      to = F.face([[(f - e) / 2, e], [(f - e) / 2, (f - e) / 2], [e, (f - e) / 2]][place.per > 1 ? place.q : 0]);
     }
-    if (place.on !== 'tri') return { ...lay(sq, i), mirror };
-    // a triangle: its cross's reach off its level side (its arm most across it), in rows, and a row's half (its corner rounded)
-    const side = [a, b.map((v, d) => v - a[d]), b.map((v) => -v)][place.per > 1 ? place.q : 0], phi = tilt - Math.atan2(side[1], side[0]), reach = (sq.side / 2) * Math.max(Math.abs(Math.cos(phi)), Math.abs(Math.sin(phi)));
-    return { ...lay(sq, i, null, Math.max(g.size / 3, reach / rowStep + 0.5)), mirror };
+    // its square sampled round its very place: its middle off cell 0's (o + ½, ½) by the rest of a whole step's move there
+    const p = F.from(to), o = cellMiddle(kind, 0, 0), e = [p[0] - o[0] - 0.5, p[1] - o[1] - 0.5], d = latticeNear(kind, e);
+    return { ...lay(iconSquare(kind, N, tilt, P, [e[0] - d[0], e[1] - d[1]]), i, to), mirror };
   });
   return lays.every((l) => l.whole) ? lays : null;
 }
@@ -10168,12 +10167,34 @@ const patternsOn = () => {
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const cellKind = (g) => g.tiling ?? (g.squares ? 'tetrakis' : g.kite ? 'kite' : (g.hexagons ? 'hex' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[g.sides]) ?? 'square');  // (a mesh's cells, as the plane's grids)
 const patternKind = () => walk.plane?.kind ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' && !walk.geo.tiling ? 'tri' : cellKind(walk.geo));
-// a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
-const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
 // a face's level way (its normal n: across it, square to the world's up; a face looking straight up or down, east) and the
 // way down it, as a marble rolls (a face looking straight up or down: south)
 const levelOf = (n) => { const l = cross([0, 0, 1], n); return Math.hypot(...l) < 1e-9 ? [1, 0, 0] : unit(l); };
 const downOn = (n) => { const d = [n[2] * n[0], n[2] * n[1], n[2] * n[2] - 1]; return Math.hypot(...d) < 1e-9 ? unit([n[1] * n[0], n[1] * n[1] - 1, n[1] * n[2]]) : unit(d); };
+// a grid's two least moves that keep its tiles as they are (a pattern moved by whole ones keeps its shape): a lattice step
+// along a row and a row up; Cairo's, a square along and a row up or down (its pentagons' turn by the parity of their square
+// and row); a rectangle's (a slanted grid's straight sheet), its own grid's
+const translations = (kind) => {
+  const k = RECTS[kind]?.base ?? kind, o = cellMiddle(k, 0, 0), step = (x, y) => cellMiddle(k, x, y).map((c, d) => c - o[d]), per = PER_RHOMBUS[k] ?? 1;
+  return k === 'cairo' ? [step(per, 1), step(per, -1)] : [step(per, 0), step(0, 1)];
+};
+// a solid's cell at a place in space: the one whose middle is there (within a third of its step to its nearest neighbour:
+// its places as the plane's, by construction), of those ok, else -1; in boxes a cell wide, once a mesh
+function cellIndex(g) {
+  if (g.cellIndex) return g.cellIndex;
+  const P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], { start, list } = walk.life.nbr, c0 = [...Array(g.n).keys()].find((t) => start[t] < start[t + 1]);
+  const b = Math.min(...[...list.subarray(start[c0], start[c0 + 1])].map((t) => Math.hypot(...P3(t).map((v, d) => v - P3(c0)[d])))), boxes = new Map(), key = (x, y, z) => (x * 4096 + y) * 4096 + z;
+  for (let t = 0; t < g.n; t++) { const k = key(...P3(t).map((v) => Math.round(v / b))); if (!boxes.has(k)) boxes.set(k, []); boxes.get(k).push(t); }
+  return (g.cellIndex = { find: ([px, py, pz], ok) => {
+    const x = Math.round(px / b), y = Math.round(py / b), z = Math.round(pz / b), c = g.cen;
+    let best = -1, far = (b / 3) ** 2;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) for (const t of boxes.get(key(x + i, y + j, z + k)) ?? []) {
+      const d = (c[3 * t] - px) ** 2 + (c[3 * t + 1] - py) ** 2 + (c[3 * t + 2] - pz) ** 2;
+      if (d < far && ok(t)) { far = d; best = t; }
+    }
+    return best;
+  } });
+}
 // Colour i's place for its pattern, once for every use (its cells, see patternAt; its frame, see patternFrame): on the plane,
 // its spot; on a sheet (a torus, a Möbius strip, a Klein bottle), its spot; on a triangle face (kites: 3 a triangle, as on the
 // plane; a hull solid's: its colours' triangles), the face, its corners turned so that AB is its side most level (kites' not
@@ -10181,7 +10202,7 @@ const downOn = (n) => { const d = [n[2] * n[0], n[2] * n[1], n[2] * n[2] - 1]; r
 function patternPlace(i, K) {
   const g = walk.geo, sphere = MODES[$('mode').value].sphere;
   if (walk.plane) return { on: 'plane' };
-  if (g.torus) return { on: 'sheet', spot: famousSpot(i, K) };
+  if (g.torus) return { on: 'sheet' };
   const hull = hullColours(sphere, K);  // (a hull solid's colour: its first face, see hullColourings)
   if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {
     const d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
@@ -10206,77 +10227,6 @@ function cubeFace(f) {
   const square = (r, c) => (S.floors ? S.floors[f * a * a + r * a + c] : f * S.perFace + r * a + c);
   return { a, square, at: (r, c) => Array.from(S.cen.subarray(3 * square(r, c), 3 * square(r, c) + 3)) };
 }
-// Colour i's frame, by construction: where the plane's x and y (its unit steps) go there, and the face's outward normal. On
-// a solid, in space on its face; on a sheet (a torus, a Möbius strip, a Klein bottle), on it unrolled (a face looking up);
-// on the plane, as they are
-function patternFrame(i, K) {
-  const g = walk.geo, kind = patternKind(), place = patternPlace(i, K), sub = (p, q) => p.map((v, d) => v - q[d]);
-  if (place.on === 'plane') return { ex: [1, 0], ey: [0, 1] };
-  if (place.on === 'sheet') {  // (in the sheet's units, see sheetUnits, then as it lies unrolled: flat, seen from above)
-    const L = sheetUnits(g, kind), o = L([0, 0]), F = sheetPoint(g, 0, 0, 0), Fu = sub(sheetPoint(g, 1, 0, 0), F), Fv = sub(sheetPoint(g, 0, 1, 0), F), flat = ([u, v]) => Fu.map((c, d) => u * c + v * Fv[d]);
-    const n = unit(cross(Fu, Fv));
-    return { ex: flat(sub(L([1, 0]), o)), ey: flat(sub(L([0, 1]), o)), n: n[2] < 0 ? n.map((v) => -v) : n };  // (its top, the side seen)
-  }
-  if (place.on === 'hex') { const { n, s, u, w } = hexAxes(place.c0); return { ex: u.map((v) => s * v), ey: w.map((v) => s * v), n }; }
-  // the others: the plane's lattice steps (a along, b a row up) as the face's, then x and y from them
-  let A3, B3, n;
-  if (place.on === 'tri') { const [T0, T1, T2] = place.corners; A3 = sub(T1, T0).map((v) => v / g.size); B3 = sub(T2, T0).map((v) => v / g.size); n = place.n; }
-  else {
-    const { at, a } = place.on === 'square' ? { a: g.size, at: (r, c) => Array.from(g.cen.subarray(3 * (place.f * g.size * g.size + r * g.size + c), 3 * (place.f * g.size * g.size + r * g.size + c) + 3)) } : cubeFace(place.f), m = a >> 1;
-    A3 = sub(at(m, m + 1), at(m, m)); B3 = sub(at(m + 1, m), at(m, m)); n = place.on === 'square' ? g.squareFaces[place.f].n : AXES[place.f];
-  }
-  const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), D = a[0] * b[1] - a[1] * b[0];
-  const step = ([x, y]) => { const al = (x * b[1] - y * b[0]) / D, be = (a[0] * y - a[1] * x) / D; return A3.map((v, d) => al * v + be * B3[d]); };  // (a plane step: its parts along a and b, the same parts of theirs)
-  return { ex: step([1, 0]), ey: step([0, 1]), n };
-}
-// colour i's cells [cell, pattern state], the pattern centred on its spot (see patternPlace): the middle of its block of the
-// plane or the torus (a lattice, see huntParts), the middle of its face of the cube
-function patternAt(i, K, cells, partial = false, away = null) {  // partial: its cells there only, past a torus's edges cut off (an icon's square, see iconLay); away: on a triangle face, its middle that many rows off its level side (else a third: the face's middle)
-  const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [], place = patternPlace(i, K);
-  const w = cells.reduce((e, c) => Math.max(e, c[0]), -Infinity) + 1, h = cells.reduce((e, c) => Math.max(e, c[1]), -Infinity) + 1;
-  if (place.on === 'plane') {
-    const { kind, row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : planeFrame().cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows);
-    const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), cs = K === 1 && !wallSlices(K) ? planeCentre().map(mid) : null;  // (one colour: the grid's very middle)
-    const to = cs ? [0, 1].map((d) => cs.reduce((sum, m) => sum + m[d], 0) / cs.length) : wallSlices(K) ? null : planeFrame().middle(i, cols, rows);  // (a colour's: its block's very middle, not a cell's)
-    return brushAt([t % row, Math.floor(t / row)], cells, to, partial).map(([x, y, v]) => [y * row + x, v]);
-  }
-  if (place.on === 'sheet') return sheetPatternAt(place.spot, cells, partial);  // (its rows the plane's, round the ring)
-  if (place.on === 'hex') return hexFaceAt(place.c0, cells, partial);
-  if (place.on === 'tri') {  // its own rows and triangles from its corner T0 (the turned face's: a cell's (i, j) of it, the face's back r turns)
-    const { face, perFace, per, q, r } = place, f = g.size, wt = Math.ceil(w / per), at = triFaceIndex(f), back = ([i, j], o) => [f - 1 - o - i - j, i];
-    // its middle on the median from its level side (the turned face's AB; kites' not turned: AB, BC or CA), away rows off it
-    const e = away ?? f / 3, c = [[(f - e) / 2, e], [(f - e) / 2, (f - e) / 2], [e, (f - e) / 2]][per > 1 ? q : 0], i0 = Math.round(c[0] - wt / 4), j0 = Math.round(c[1] - h / 2);  // (its corner from its middle: a pair of triangles a step along, a row a step up)
-    for (const [x, y, v] of cells) {
-      const I = Math.floor(x / per) + 2 * i0, o = I & 1;
-      let ij = [I >> 1, y + j0];
-      for (let k = 0; k < r; k++) ij = back(ij, o);
-      const k = at.get(`${2 * ij[0] + o},${ij[1]}`);
-      if (k !== undefined) out.push([(g.triFirst ?? 0) + face * perFace + per * k + (x % per), v]);
-    }
-    return out;
-  }
-  if (place.on === 'square') {  // a hull solid: on its colour's first square, as the cube's
-    const m = g.size >> 1;
-    for (const [x, y, v] of cells) {
-      const r = m + y - (h >> 1), c = m + x - (w >> 1);
-      if (r >= 0 && c >= 0 && r < g.size && c < g.size) out.push([place.f * g.size * g.size + r * g.size + c, v]);
-    }
-    return out;
-  }
-  // the cube: its face's squares; tetrakis triangles: a cell x of the pattern triangle x % 4 (the plane's: its square's left,
-  // bottom, top, right) of square x / 4, the one on that side of the face's square
-  const { a, square, at } = cubeFace(place.f), per = g.squares ? 4 : 1, m = a >> 1, wq = Math.ceil(w / per);
-  const X = per > 1 && at(m, a - 1).map((v, d) => v - at(m, 0)[d]), Y = per > 1 && at(a - 1, m).map((v, d) => v - at(0, m)[d]), sides = per > 1 && [X.map((v) => -v), Y.map((v) => -v), Y, X];
-  const side = (s, q) => [0, 1, 2, 3].reduce((b, k) => (dot3(g.cen.subarray(3 * (4 * s + k)), sides[q]) > dot3(g.cen.subarray(3 * (4 * s + b)), sides[q]) ? k : b), 0) + 4 * s;
-  for (const [x, y, v] of cells) {
-    const r = m + y - (h >> 1), c = m + Math.floor(x / per) - (wq >> 1);
-    if (r >= 0 && c >= 0 && r < a && c < a) out.push([per > 1 ? side(square(r, c), x % per) : square(r, c), v]);
-  }
-  return out;
-}
-// A pattern on a solid of hexagons (see hexSolidMesh), round its cell c0: the plane's hexagons on its face's, the plane's
-// rows (a neighbour 1 along) towards c0's neighbour most level, the pattern's cell nearest its middle on c0; each cell the one there
-// (within a third of a cell), on c0's face (its plane, see hexSolidMesh), else cut off (partial: an icon's) or none at all
 // its frame round c0: its middle C, its normal n, a cell's step s, the plane's x along u (its rows: the most level of its 6
 // ways), its y along w
 function hexAxes(c0) {
@@ -10285,27 +10235,70 @@ function hexAxes(c0) {
   const u = unit(e(t).map((v, d) => v - dot3(e(t), n) * n[d]));
   return { C, n, s: Math.hypot(...e(t)), u, w: cross(n, u) };
 }
-function hexFaceAt(c0, cells, partial) {
-  const g = walk.geo, P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
-  const { C, s, u, w } = hexAxes(c0), out = [];
-  if (!g.hexIndex) {  // (the cells by where they are, in boxes a cell wide: once a mesh, its cells a little apart from one to another)
-    const b = s, boxes = new Map(), key = (x, y, z) => (x * 4096 + y) * 4096 + z;  // (a box by its numbers: no string to make at each look)
-    for (let t = 0; t < g.n; t++) { const k = key(...P3(t).map((v) => Math.round(v / b))); if (!boxes.has(k)) boxes.set(k, []); boxes.get(k).push(t); }
-    g.hexIndex = { find: ([px, py, pz], near) => {
-      const x = Math.round(px / b), y = Math.round(py / b), z = Math.round(pz / b), c = g.cen;
-      let best = -1, far = near * near;
-      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) for (const t of boxes.get(key(x + i, y + j, z + k)) ?? []) {
-        const d = (c[3 * t] - px) ** 2 + (c[3 * t + 1] - py) ** 2 + (c[3 * t + 2] - pz) ** 2;
-        if (d < far) { far = d; best = t; }
-      }
-      return best;
-    } };
+// Colour i's frame, by construction (see patternPlace): the plane laid on its part as its cells are. at: a plane point's
+// place there (on the plane, itself; on a sheet, in its units, see sheetUnits and sheetOrigin; on a solid, in space on its
+// face), from: back; cellAt: the cell at a place (on its face only; partial, an icon's: none past the plane's or a sheet's
+// edges, as drawn flat, else round a torus's), -1 none; centre: its part's very middle, there (a block's, a slice's, a
+// stretch's, a face's); ex, ey, n: the plane's x and y steps there and the face's outward normal (a sheet's: on it unrolled,
+// flat, seen from above), for its pictures' way (see iconWay); on: its face's cells; face: a triangle face's point by its
+// rows (i along AB, j along AC, see patternAt's icons)
+function patternFrame(i, K) {
+  const g = walk.geo, kind = patternKind(), place = patternPlace(i, K), sub = (p, q) => p.map((v, d) => v - q[d]), mean = (ps) => ps[0].map((_, d) => ps.reduce((sum, p) => sum + p[d], 0) / ps.length);
+  // a linear map's inverse by its two steps' images (their dot products, solved: on a face in space as on the plane)
+  const back = (X, Y) => (q) => { const xx = dot(X, X), xy = dot(X, Y), yy = dot(Y, Y), dx = dot(q, X), dy = dot(q, Y), D = xx * yy - xy * xy; return [(dx * yy - dy * xy) / D, (dy * xx - dx * xy) / D]; };
+  const dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0), [cols, rows] = COLOUR_GRID[K];
+  if (place.on === 'plane') {
+    const { W, row } = walk.plane, c0 = cellMiddle(kind, 0, 0), [A, B] = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((c) => sub(c, c0));  // (its torus's two periods: cell 0's copies one round on)
+    const wrap = (q) => { const [u, v] = back(A, B)(sub(q, c0)).map(Math.floor); return [q[0] - u * A[0] - v * B[0], q[1] - u * A[1] - v * B[1]]; };
+    const slices = wallSlices(K) && planeSlices(K), mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row));
+    const centre = slices ? mid(slices.spots[i]) : K === 1 ? mean(planeCentre().map(mid)) : planeFrame().middle(i, cols, rows);  // (one colour: the grid's very middle)
+    return { at: (p) => p, from: (q) => q, centre, ex: [1, 0], ey: [0, 1], cellAt: (q, partial) => { const c = planeCellAt(kind, W, ...(walk.plane.torus && !partial ? wrap(q) : q)); return c ? c[1] * row + c[0] : -1; } };
   }
-  const ms = cells.map(([x, y]) => cellMiddle('hex', x, y)), mid = cells.mid ?? [0, 1].map((d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2);
-  const a = ms.reduce((best, m, k) => (Math.hypot(m[0] - mid[0], m[1] - mid[1]) < Math.hypot(ms[best][0] - mid[0], ms[best][1] - mid[1]) ? k : best), 0);
-  for (let k = 0; k < cells.length; k++) {
-    const x = ms[k][0] - ms[a][0], y = ms[k][1] - ms[a][1], t = g.hexIndex.find(C.map((c, d) => c + s * (x * u[d] + y * w[d])), s / 3);
-    if (t >= 0 && g.planeOf[t] === g.planeOf[c0]) out.push([t, cells[k][2]]);
+  if (place.on === 'sheet') {  // (its rows the plane's, round the ring; unrolled, it lies flat: its orientation's)
+    const L = sheetUnits(g, kind), O = sheetOrigin(g, kind), X = sub(L([1, 0]), L([0, 0])), Y = sub(L([0, 1]), L([0, 0])), { find } = sheetIndex(g);
+    const F = sheetPoint(g, 0, 0, 0), Fu = sub(sheetPoint(g, 1, 0, 0), F), Fv = sub(sheetPoint(g, 0, 1, 0), F), flat = ([u, v]) => Fu.map((c, d) => u * c + v * Fv[d]), up = unit(cross(Fu, Fv));
+    const [a, b] = torusBlocks(K), s0 = g.mobius && mobiusMiddle(g) - g.L / 2;
+    const centre = g.mobius ? [K === 1 ? mobiusMiddle(g) : s0 + ((i + 0.5) * 2 * g.L) / K, g.W / 2] : K === 1 ? [g.nu / 2, g.nv / 2] : [((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b];  // (a block's, a stretch's middle: as huntParts')
+    return { at: (p) => { const q = L(p); return [q[0] + O[0], q[1] + O[1]]; }, from: (q) => back(X, Y)(sub(q, O)), centre, ex: flat(X), ey: flat(Y), n: up[2] < 0 ? up.map((v) => -v) : up,  // (its top, the side seen)
+      cellAt: ([u, v], partial) => (partial && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? -1 : find([u, v]) ?? -1) };
+  }
+  // a solid: its face in space; the plane's lattice steps (a along, b a row up) as its face's, its point o as a face's cell's
+  let A3, B3, o3, op, n, on, centre, face;
+  const [a, b] = [latticeStep(kind), cellMiddle(kind, 0, 1).map((c, d) => c - cellMiddle(kind, 0, 0)[d])], cen = (t) => Array.from(g.cen.subarray(3 * t, 3 * t + 3));
+  if (place.on === 'tri') {  // (the plane's triangle 0, its 1 or 3 cells, on the turned face's triangle (0, 0): corner T0, its sides along AB and AC)
+    const [T0, T1, T2] = place.corners, f = g.size, first = (g.triFirst ?? 0) + place.face * place.perFace;
+    [A3, B3, n] = [sub(T1, T0).map((v) => v / f), sub(T2, T0).map((v) => v / f), place.n];
+    face = ([al, be]) => T0.map((v, d) => v + al * A3[d] + be * B3[d]);
+    [o3, op, centre] = [face([1 / 3, 1 / 3]), mean(Array.from({ length: place.per }, (_, x) => cellMiddle(kind, x, 0))), mean([T0, T1, T2])];
+    on = (t) => t >= first && t < first + place.perFace;
+  } else if (place.on === 'hex') {  // (the plane's x along u, y along w, a cell's step s each; its cell 0 on c0; its face's middle)
+    const { C, s, u, w, n: m } = hexAxes(place.c0), pl = g.planeOf[place.c0], step = (v) => u.map((x, d) => s * (v[0] * x + v[1] * w[d]));
+    [A3, B3, n, o3, op, centre] = [step(a), step(b), m, C, cellMiddle(kind, 0, 0), g.planeMid[pl]];
+    on = (t) => g.planeOf[t] === pl;
+  } else {  // a face of squares (a hull solid's, the cube's): its square (0, 0) the plane's lattice cell (0, 0), along its columns and rows
+    const fq = place.f, sq = place.on === 'square' ? { a: g.size, square: (r, c) => fq * g.size * g.size + r * g.size + c, at: (r, c) => cen(fq * g.size * g.size + r * g.size + c) } : cubeFace(fq), per = PER_RHOMBUS[kind] ?? 1;
+    [A3, B3, n, o3, op] = [sub(sq.at(0, 1), sq.at(0, 0)), sub(sq.at(1, 0), sq.at(0, 0)), place.on === 'square' ? g.squareFaces[fq].n : AXES[fq], sq.at(0, 0), mean(Array.from({ length: per }, (_, x) => cellMiddle(kind, x, 0)))];
+    centre = mean([sq.at(0, 0), sq.at(sq.a - 1, sq.a - 1)]);
+    const own = new Set(); for (let r = 0; r < sq.a; r++) for (let c = 0; c < sq.a; c++) own.add(sq.square(r, c));
+    on = (t) => own.has(g.squares ? t >> 2 : t);  // (tetrakis: its triangles, 4 a square)
+  }
+  const D = a[0] * b[1] - a[1] * b[0], lin = ([x, y]) => { const al = (x * b[1] - y * b[0]) / D, be = (a[0] * y - a[1] * x) / D; return A3.map((v, d) => al * v + be * B3[d]); };  // (a plane step: its parts along a and b, the same parts of theirs)
+  const ex = lin([1, 0]), ey = lin([0, 1]), O = o3.map((v, d) => v - lin(op)[d]), { find } = cellIndex(g);
+  return { at: (p) => O.map((v, d) => v + p[0] * ex[d] + p[1] * ey[d]), from: (q) => back(ex, ey)(sub(q, O)), centre, ex, ey, n, on, face, cellAt: (q) => find(q, on) };
+}
+// the move by whole steps (see translations) nearest a plane vector e
+const latticeNear = (kind, e) => { const [A, B] = translations(kind), D = A[0] * B[1] - A[1] * B[0], near = (v) => Math.ceil(v - 0.5 - 1e-9), k = near((e[0] * B[1] - e[1] * B[0]) / D), l = near((A[0] * e[1] - A[1] * e[0]) / D); return [k * A[0] + l * B[0], k * A[1] + l * B[1]]; };
+// colour i's cells [cell, pattern state], the pattern moved by whole steps (see translations: its shape kept) to lie its
+// middle nearest its part's (see patternFrame), or to, a place there; each cell the one at its place (partial, an icon's:
+// those there only; else all, or none)
+function patternAt(i, K, cells, partial = false, to = null) {
+  if (!cells.length) return [];  // (an icon with no cell at that size)
+  const kind = patternKind(), F = patternFrame(i, K), ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), mid = cells.mid ?? [0, 1].map((d) => (Math.min(...ms.map((m) => m[d])) + Math.max(...ms.map((m) => m[d]))) / 2);  // (an icon's: its square's, see iconSquare)
+  const p = F.from(to ?? F.centre), d = latticeNear(kind, [p[0] - mid[0], p[1] - mid[1]]);
+  const out = [];
+  for (let c = 0; c < cells.length; c++) {
+    const t = F.cellAt(F.at([ms[c][0] + d[0], ms[c][1] + d[1]]), partial);
+    if (t >= 0) out.push([t, cells[c][2]]);
     else if (!partial) return [];
   }
   return out;
@@ -10314,6 +10307,9 @@ function hexFaceAt(c0, cells, partial) {
 // pattern's cells from the plane's geometry brought to the sheet's units (hexagons: the plane's pointy ones
 // turned by 30°, as the sheets' flat ones), laid with the one nearest their middle on a tile near the spot
 // and every other one on a tile too (a tiling's cells of several kinds: the first tile that fits them all)
+// where the plane's origin lies on a sheet, in its units (see sheetUnits): its tile 0 is the plane's cell originCell (0, 0
+// but for a tiling's sheets: see tilingTorusMesh, tilingStrip), by construction
+const sheetOrigin = (g, kind) => { const L = sheetUnits(g, kind), s = sheetPlace(g, 0), c = L(cellMiddle(kind, ...(g.originCell ?? [0, 0]))); return [s[0] - c[0], s[1] - c[1]]; };
 function sheetUnits(g, kind) {  // a point of the plane (its world units) in the sheet's
   if (TILINGS[kind] && (g.mobius || g.klein)) return (p) => turnPoint(p, g.stripTurn);  // (a strip, a bottle: the plane turned, see tilingStrip)
   if (TILINGS[kind]) {  // its lattice's units, then the sheet's cell's (see tilingTorusMesh)
@@ -10356,18 +10352,6 @@ function sheetIndex(g) {
   const find = (p) => at.get(key(p)) ?? [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([a, b]) => at.get(key([p[0] + a * 1e-4, p[1] + b * 1e-4]))).find((t) => t !== undefined);
   return (g.famousIndex = { find });
 }
-// colour i's spot: the middle (one colour), else the middle of its block (a torus, a Klein bottle) or of its
-// stretch (a Möbius strip), as the zones' (see huntParts)
-function famousSpot(i, K) {
-  const g = walk.geo, memo = (g.spots ??= {}), key = `${i}|${K}`;  // (once a grid: its colours' spots, a search through its cells each)
-  return (memo[key] ??= spotOf(g, i, K));
-}
-function spotOf(g, i, K) {
-  if (K === 1) return centreCells()[0];
-  if (g.mobius) return mobiusNearest(mobiusMiddle(g) - g.L / 2 + ((i + 0.5) * 2 * g.L) / K, g.W / 2)[0];  // (as huntParts)
-  const [a, b] = torusBlocks(K);
-  return sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0];
-}
 // a cell's shape on the sheet: its corners round their middle (once each), to tell apart cells whose middles lie as
 // far apart (a tetrakis triangle and its neighbour turned); a tile's corners there
 const shapeOf = (pts) => {
@@ -10378,29 +10362,6 @@ const tileCorners = (g, t) => {  // (a Möbius strip's back: its front's, turned
   const back = g.mobius && t >= g.front, s = back ? t - g.front : t;
   return Array.from({ length: g.sides }, (_, q) => { const u = g.uv[2 * (g.sides * s + q)], v = g.uv[2 * (g.sides * s + q) + 1]; return back ? [u, g.W - v] : [u, v]; });
 };
-const sheetPts = new WeakMap();  // (a pattern's cells' places on the sheet, see sheetPatternAt)
-function sheetPatternAt(spot, cells, partial = false) {  // partial: its cells there only, past a torus's or a bottle's sheet cut off (as drawn flat), not round it
-  if (!cells.length) return [];  // (an icon with no cell at that size)
-  const g = walk.geo, kind = patternKind(), unitsOf = sheetUnits(g, kind), { find } = sheetIndex(g), seen = sheetPts.get(cells);
-  const pts = seen?.g === g ? seen.pts : sheetPts.set(cells, { g, pts: cells.map(([x, y]) => unitsOf(cellMiddle(kind, x, y))) }).get(cells).pts;  // (the same pattern for every colour: once)
-  const mid = [0, 1].map((d) => pts.reduce((sum, p) => sum + p[d], 0) / pts.length);
-  const a = pts.reduce((best, p, k) => (Math.hypot(p[0] - mid[0], p[1] - mid[1]) < Math.hypot(pts[best][0] - mid[0], pts[best][1] - mid[1]) ? k : best), 0), anchor = pts[a];
-  const shape = shapeOf(planeCorners(kind, cells[a][0], cells[a][1]).map(unitsOf));
-  let most = [];  // (partial: the tile that lays the most)
-  const reach = Math.ceil(Math.sqrt(TILINGS[kind]?.polys.length ?? 1)) + 1;  // (a lattice cell's tiles round the spot, nearest first: a cell's shape there twice, Dual 314's, its twin in it too)
-  for (const T of lifePatch(reach, [spot])) {  // the spot, then the tiles round it
-    if (shapeOf(tileCorners(g, T)) !== shape) continue;  // (a cell of the same shape, the same way round, as the pattern's there)
-    const [tu, tv] = sheetPlace(g, T), out = [];
-    for (let k = 0; k < pts.length; k++) {
-      const u = pts[k][0] - anchor[0] + tu, v = pts[k][1] - anchor[1] + tv, t = partial && !g.mobius && (u < 0 || v < 0 || u >= g.nu || v >= g.nv) ? undefined : find([u, v]);
-      if (t === undefined) { if (partial) continue; break; }
-      out.push([t, cells[k][2]]);
-    }
-    if (out.length === pts.length) return out;
-    if (partial && out.length > most.length) most = out;
-  }
-  return most;
-}
 // Famous anywhere: the cells' places (the plane's middles, a sheet's: see sheetIndex), the cell at a place (a torus:
 // round it too), each cell's shape (see shapeOf), a pattern's cells' places and shapes; null on a solid (Famous
 // centred alone), once a grid
