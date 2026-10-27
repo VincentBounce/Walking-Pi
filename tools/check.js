@@ -317,6 +317,23 @@ async function coloursOffered(fail) {
   return checked;
 }
 
+// a grid that never repeats, round (by its own measure: Ammann's an octagon): in each of 72 ways from its middle, its cells as far out as the median less 3 at most (a
+// disc of its patch, never cut by the patch's edge: the pinwheel's big triangle's, v0.1.1386's), its sizes up to 128
+function checkDiscs(fail) {
+  let checked = 0;
+  for (const kind of Object.keys(APERIODIC)) for (const side of planeSides(kind).filter((f) => f <= 128)) {
+    const W = planeW(kind, side), o = (W - 1) / 2, far = new Array(72).fill(0), { polys, norm } = APERIODIC[kind](W);
+    for (const p of polys) {
+      const [u, v] = [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length - o), k = Math.floor(((Math.atan2(v, u) + Math.PI) / (2 * Math.PI)) * 72) % 72;
+      far[k] = Math.max(far[k], norm(u, v));
+    }
+    const sorted = [...far].sort((a, b) => a - b);
+    checked++;
+    if (sorted[36] - sorted[0] > 3) fail(`${kind} at ${side}: its disc cut, ${(sorted[36] - sorted[0]).toFixed(1)} cells short ${far.indexOf(sorted[0]) * 5 - 180}° from its middle`);
+  }
+  return checked;
+}
+
 // a torus of blocks: whether its sets go round, as a side of the same remainder mod 6 does (see blocksWrap)
 function checkBlockWraps(fail) {
   let checked = 0;
@@ -329,7 +346,7 @@ function checkBlockWraps(fail) {
 
 window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, colours = false, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
-  let checked = checkMeshes(fail) + checkBlockWraps(fail);
+  let checked = checkMeshes(fail) + checkBlockWraps(fail) + checkDiscs(fail);
   if (andCrawl) checked += await crawl(fail);
   if (actions) checked += await fuzz(fail, actions, seed, cold);
   if (colours) checked += await coloursOffered(fail);

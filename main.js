@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1386';
+const VERSION = '0.1.1388';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -695,10 +695,10 @@ const PALETTES = {
   // digits: for the walks whose digits are no direction, in the same colours; grey: a spiral's 0
   dark: { light: 60, digits: ['#4f7bff', '#f0609f', '#f2b630', '#2fbdb7', '#9270f5', '#7fc244', '#f28042', '#d466f0'], grey: '#e6edf3', mono: '#f0b429',
           directions: { '←': '#4f7bff', '↑': '#f2b630', '→': '#f0609f', '↓': '#2fbdb7', '↖': '#7fc244', '↗': '#d466f0', '↘': '#f28042', '↙': '#9270f5', '⊙': '#f06b6b', '⊗': '#45c8f0' },
-          unlit: '#1f2630', trail: '#6b7f99', fade: '#c98f1f', alive: '#e6edf3', edge: 'rgba(255, 255, 255, 0.25)', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
+          unlit: '#1f2630', trail: '#6b7f99', fade: '#c98f1f', alive: '#e6edf3', edgeRgb: [255, 255, 255], edgeAlpha: 0.25, shade: 0.6, fadeEdges: true },
   light: { light: 48, digits: ['#2f5bea', '#e8438a', '#e0a100', '#13a8a2', '#7c4dff', '#5fa82a', '#f0702a', '#c03fe0'], grey: '#6e7781', mono: '#bf8700',
            directions: { '←': '#2f5bea', '↑': '#e0a100', '→': '#e8438a', '↓': '#13a8a2', '↖': '#5fa82a', '↗': '#c03fe0', '↘': '#f0702a', '↙': '#7c4dff', '⊙': '#e5484d', '⊗': '#1aa3d6' },
-           unlit: '#eef1f5', trail: '#7d8896', fade: '#c98a10', alive: '#1f2328', edge: 'rgba(0, 0, 0, 0.11)', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.35, fadeEdges: true, tileLift: 0.22 },
+           unlit: '#eef1f5', trail: '#7d8896', fade: '#c98a10', alive: '#1f2328', edgeRgb: [0, 0, 0], edgeAlpha: 0.11, shade: 0.35, fadeEdges: true, tileLift: 0.22 },
 };
 const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], LIFE_FADE = [], DIRECTION_COLOURS = {};
 // Life's colours (civilisations), as bright as the walks' rainbow in each theme (its saturation and
@@ -708,11 +708,11 @@ const GRADIENT = [], DIGIT_COLORS = [], LIFE_TRAIL = [], LIFE_FADE = [], DIRECTI
 // strip, 6 × 2 round a torus (the last pair next to the first), 3 × 4 on a square torus, 4 × 3 on the plane
 const LIFE_HUES = [2, 222, 48, 135, 275, 185, 318, 25, 90, 340, 245, 160], LIFE_COLOURS = [];
 let GREY;
-let MONO, UNLIT, LIFE_ALIVE, EDGE, EDGE_RGB, EDGE_ALPHA, SHADE, FADE_EDGES, TILE_LIFT;  // TILE_LIFT: the tiles' rainbow mixed with white  // EDGE: the surfaces' tile edges; SHADE: how dark a tile turned away gets
+let MONO, UNLIT, LIFE_ALIVE, EDGE_RGB, EDGE_ALPHA, SHADE, FADE_EDGES, TILE_LIFT;  // TILE_LIFT: the tiles' rainbow mixed with white  // EDGE_RGB, EDGE_ALPHA: the tile edges; SHADE: how dark a tile turned away gets
 function setPalette(theme) {
   const P = PALETTES[theme];
   // the surfaces' tile edges light on a dark page, dark on a light one, as the 2D grid
-  UNLIT = P.unlit; LIFE_ALIVE = P.alive; EDGE = P.edge; EDGE_RGB = P.edgeRgb; EDGE_ALPHA = P.edgeAlpha;
+  UNLIT = P.unlit; LIFE_ALIVE = P.alive; EDGE_RGB = P.edgeRgb; EDGE_ALPHA = P.edgeAlpha;
   SHADE = P.shade; FADE_EDGES = !!P.fadeEdges; TILE_LIFT = P.tileLift ?? 0;
   const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)), [a, b] = [hex(P.trail), hex(P.unlit)];
   // the 8 shades of a dying Life cell (a Generations rule's stages), from the trail colour to unlit; and of
@@ -3210,7 +3210,6 @@ function buildWalkOf() {
   walk.ant = 0; walk.highway = null; walk.bridges = null;  // set by an ant's walk only
   walk.plane = null;  // set by Life on the plane only
   $('fillTooBig').hidden = true;
-  fillDone = 0;
   layers.fill.clearRect(0, 0, cw, ch);
   walk.shape = null;  // only tiled surfaces that can change shape get one (see initShape)
   const { head, frac } = digitsInUse();
@@ -5228,8 +5227,7 @@ function morphStep(dt) {
  * solid's edge, a torus's, a Möbius strip's or a Klein bottle's rows; a tiling's, its sheet's), those it allows (a multiple
  * of steps[0], from least to most) with 2⁸ cells at least and 2¹⁸ at most (CELLS). A new surface needs only its
  * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
-const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048],  // (every multiple of 24 up to 192: an icon's whole size)
-  sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
+const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048];  // (every multiple of 24 up to 192: an icon's whole size)
 const CELLS = [2 ** 8, 2 ** 18], START = { surface: 2688, solid: 6144 };
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).L / (2 * Math.PI);  // (its length: no tile built)  // a Möbius strip's circle, L tile edges round
 const SPHERES = {
@@ -6750,10 +6748,11 @@ const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triang
 // about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
 function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls in a circle: the items nearest the middle (norm: another way to measure, Ammann's octagon)
-  // the middle (middle, else): where a square of W² items' room (a cell about 1 square unit) and 4 units more all round (its
-  // walls' room) holds the most of them, the nearest the patch's centre (its outline is ragged: a corner may be bare)
+  // the middle (middle, else): where the square round a disc of W² items' room (a cell about 1 square unit: its radius W / √π)
+  // and 4 units more all round (its walls' room) holds the most of them, the nearest the patch's centre (its outline is
+  // ragged: a corner may be bare)
   const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
-  const half = (Math.sqrt(W * W) * 1.05) / 2, centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
+  const half = W / Math.sqrt(Math.PI), centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
   // (the items by unit cells of a grid over the patch, summed from a corner: a box's count at once)
   const nx = Math.ceil(bx[1] - bx[0]) + 2, ny = Math.ceil(by[1] - by[0]) + 2, sum = new Int32Array((nx + 1) * (ny + 1));
   for (const h of items) sum[(Math.floor(h.m[1] - by[0]) + 1) * (nx + 1) + Math.floor(h.m[0] - bx[0]) + 1]++;
@@ -6791,7 +6790,7 @@ function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls
   // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
   const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
   const dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
-  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead, core: rows.filter((h) => h.core).map((h) => at(h.p)) };
+  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead, core: rows.filter((h) => h.core).map((h) => at(h.p)), norm };  // (norm: its way to measure, its disc's)
 }
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
@@ -6976,9 +6975,11 @@ const SPECTRE = (() => {
 const PINWHEEL = (() => {
   const cache = {}, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   return (W) => cache[W] ??= (() => {
+    // the big triangle, its legs 2L and L, inflated n times (L = √5ⁿ: its tiles' legs 2 and 1, a square unit each), its
+    // incircle (radius L (3 − √5) / 2, its middle that far from both legs) round the disc of W² tiles (radius W / √π) and its walls
     let n = 0;
-    while (5 ** (n / 2) < 1.6 * W + 12) n++;  // (its square of W² tiles and their walls inside the big triangle)
-    const L = 5 ** (n / 2);  // (its tiles' legs 2 and 1: a square unit each)
+    while ((5 ** (n / 2) * (3 - Math.sqrt(5))) / 2 < W / Math.sqrt(Math.PI) + 5) n++;
+    const L = 5 ** (n / 2), r = (L * (3 - Math.sqrt(5))) / 2;
     let tris = [[[0, 0], [2 * L, 0], [0, L]]];  // a tile: its right angle's corner, its long leg's end, its short leg's
     for (let k = 0; k < n; k++) tris = tris.flatMap(([R, P, Q]) => {
       const d = [Q[0] - P[0], Q[1] - P[1]], t = ((R[0] - P[0]) * d[0] + (R[1] - P[1]) * d[1]) / (d[0] ** 2 + d[1] ** 2), H = [P[0] + t * d[0], P[1] + t * d[1]];
@@ -7002,7 +7003,7 @@ const PINWHEEL = (() => {
       });
       return { p, m: [0, 1].map((d) => (T[0][d] + T[1][d] + T[2][d]) / 3) };
     });
-    return discPatch(items, W, (h) => h.p);
+    return discPatch(items, W, (h) => h.p, [r, r]);  // (round its incircle's middle)
   })();
 })();
 /* De Bruijn's multigrids (1981): N families of lines a unit apart, their normals 180°/N apart, all moved by ½ (no three
@@ -7278,7 +7279,7 @@ const roundWalls = (K) => !!walk.plane && K > 1 && wallSlices(K) && (shaped(walk
 // landing there seen from the other side). Its bottom: down as drawn on the plane; out in a hexagon's walls; on a solid's
 // face or a sheet (unrolled: a level face), down it as a marble rolls (a level face: south)
 function iconWay(i, K) {
-  const kind = patternKind(), frame = patternFrame(i, K), { ex, ey, n } = frame;
+  const frame = patternFrame(i, K), { ex, ey, n } = frame;
   if (walk.plane) { const w = roundWalls(K) && planeSlices(K); return { ...frame, tilt: (w ? w.angles[i] - Math.PI / 2 : 0) - planeTurn(), mirror: false }; }  // (as drawn: the plane turned by planeTurn)
   // (its bottom's way there, by its parts along ex and ey: their dot products, solved)
   const down = downOn(n), xx = dot3(ex, ex), xy = dot3(ex, ey), yy = dot3(ey, ey), dx = dot3(down, ex), dy = dot3(down, ey), D = xx * yy - xy * xy;
@@ -11215,12 +11216,6 @@ function drawHexGrid(ctx, pointy) {
   }
 }
 
-function styleKey(i) {
-  switch ($('colorMode').value) {
-    case 'digit': return walk.keys[i];
-    default: return Math.floor((roundStep(i) * BANDS) / rainbowLength());
-  }
-}
 
 // An ant's cells by their state: a ramp from pale to deep in the order of its colours (the cells it
 // never walked are the background), per theme: Ink (Langton's black on white, softened), Amber.
@@ -11251,12 +11246,6 @@ const digitColour = (k) => walk.ant ? (antRamp ? rampColour(k, walk.ant) : antTu
   : walk.skipZeros ? (k ? DIGIT_COLORS[0] : GREY)  // a spiral: 1 blue, drawn; 0 grey, moved without drawing
   : arrowsOf(current.mode)[k] ? (['Turtle', 'Pivot', 'Parity'].includes(NAV[current.mode]?.[3]) ? antTurnColour : (a) => DIRECTION_COLOURS[a])(arrowsOf(current.mode)[k])  // fixed directions: by the compass
   : walk.base <= DIGIT_COLORS.length ? DIGIT_COLORS[k] : `hsl(${(k * 360) / walk.base}, 80%, 62%)`;
-function styleColor(k) {
-  switch ($('colorMode').value) {
-    case 'digit': return digitColour(k);
-    default: return GRADIENT[k];
-  }
-}
 
 /* ---- 11.4 Surfaces --------------------------------------------------------------------------- */
 const sphereDraw = { at: 0, cost: 0 };
@@ -11349,11 +11338,6 @@ function lightDir() {
   return l.map((x) => x / m);
 }
 const halfway = (L) => { const h = L.map((x, d) => x + cam.v[d]), m = Math.hypot(...h); return h.map((x) => x / m); };
-// [darkness ∈ [0, 1], glint] of a unit normal facing the viewer, by the light L and the half-way H
-function tileLight(nx, ny, nz, L, H) {
-  const diff = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]), h = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]);
-  return [1 - diff, glint() * h ** LIGHT_SHINE];
-}
 // Is a plane (outward normal n through point p) facing us? Orthographic: n points towards the
 // viewer. Perspective: n points towards the camera position, seen from p.
 function planeVisible(n, p) {
@@ -11378,18 +11362,7 @@ function drawSphere() {
   const ctx = layers.path;
   ctx.clearRect(0, 0, cw, ch);
   layers.line.clearRect(0, 0, cw, ch);  // the 2D path over cells, if any was left
-  const { geo: g, R, visits, maxVisits } = walk;
-  const { scale: s, ox, oy } = view;
-  const nv = g.verts.length / 3, proj = projector();
-  // flat solids: visibility is decided once per face, and faces are drawn as single polygons
-  const facePath = (f, close = true) => {
-    ctx.beginPath();
-    f.corners.forEach((c, i) => {
-      const [x, y] = proj(c[0] * R, c[1] * R, c[2] * R);
-      ctx[i ? 'lineTo' : 'moveTo'](ox + x * s, oy + y * s);
-    });
-    if (close) ctx.closePath();
-  };
+  const { geo: g, visits, maxVisits } = walk;
   const LEVELS = 32;
   // the rainbow of the tiles (lighter on a light page; the path keeps the plain rainbow)
   const lift = (c) => { if (!TILE_LIFT) return c; const v = rgbOf(c).map((x) => Math.round(x + (255 - x) * TILE_LIFT)); return `rgb(${v})`; };
@@ -11455,70 +11428,14 @@ function drawSphere() {
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
   if (motifShown) palette = palette.map((c) => c && (c === LIFE_WALL ? c : faded(c, FADING)));  // (the motif shown: the cells pale under its outlines, the walls not: ochre, as its tooltip says them)
-  if (!startsShown && glSurface(palette, levelOf, path)) { drawMotif(ctx); return; }  // WebGL, when the browser has it (see 11.4b); the motif's outlines over it
-  glClear();
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
     const wall = new Set(g.walls);
-    drawShapeTiles(ctx, walk.shape, g.sides, [null, LIFE_WALL], (t) => (wall.has(t) ? 1 : 0));
+    glSurface([null, LIFE_WALL], (t) => (wall.has(t) ? 1 : 0), false);
     drawStarts(ctx);
     return;
   }
-  if (g.torus || !g.faces || g.concave || walk.shape.m > 0) {  // the line goes with its tiles, so that nearer tiles hide it
-    drawShapeTiles(ctx, walk.shape, g.sides, palette, levelOf, path && pathHalves());
-    drawMotif(ctx);
-    return;
-  }
-  const px = new Float32Array(nv), py = new Float32Array(nv);  // the corners on the screen
-  for (let v = 0; v < nv; v++) {
-    const [x, y] = proj(g.verts[3 * v] * R, g.verts[3 * v + 1] * R, g.verts[3 * v + 2] * R);
-    px[v] = ox + x * s; py[v] = oy + y * s;
-  }
-  const faceVisible = g.faces.map((f) => planeVisible(f.normal, f.corners[0].map((v) => v * R)));
-  const buckets = Array.from({ length: palette.length }, () => []);
-  for (let t = 0; t < g.n; t++) {
-    if (faceVisible[Math.floor(t / g.perFace)]) buckets[levelOf(t)].push(t);
-  }
-  const k = g.sides;
-  const outline = (list) => {
-    ctx.beginPath();
-    for (const t of list) {
-      const first = g.poly[k * t];
-      ctx.moveTo(px[first], py[first]);
-      for (let j = 1; j < k; j++) ctx.lineTo(px[g.poly[k * t + j]], py[g.poly[k * t + j]]);
-      ctx.lineTo(px[first], py[first]);  // back to the first corner: closePath slows a long path down more and more
-    }
-  };
-  // background: anti-aliasing seams between tiles show this colour instead of black
-  ctx.fillStyle = UNLIT;
-  g.faces.forEach((f, i) => { if (faceVisible[i]) { facePath(f); ctx.fill(); } });
-  buckets.forEach((list, level) => {
-    if (!list.length || level === 0) return;
-    outline(list);
-    ctx.fillStyle = palette[level];
-    ctx.fill();
-  });
-  if ($('showGrid').checked && s > 6) {  // tile edges: long straight lines across each visible face
-    ctx.beginPath();
-    g.faces.forEach((f, i) => {
-      if (!faceVisible[i]) return;
-      for (const [a, b] of f.lines) {
-        const [x1, y1] = proj(a[0] * R, a[1] * R, a[2] * R), [x2, y2] = proj(b[0] * R, b[1] * R, b[2] * R);
-        ctx.moveTo(ox + x1 * s, oy + y1 * s);
-        ctx.lineTo(ox + x2 * s, oy + y2 * s);
-      }
-    });
-    ctx.strokeStyle = EDGE;
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-  }
-  // shading: each flat face darker the more it turns away from the viewer
-  g.faces.forEach((f, i) => {
-    if (!faceVisible[i]) return;
-    facePath(f);
-    ctx.fillStyle = `rgba(0, 0, 0, ${(0.55 * (1 - towardViewer(...f.normal))).toFixed(3)})`;
-    ctx.fill();
-  });
-  if (path) drawSurfacePath(ctx);
+  glSurface(palette, levelOf, path);  // (see 11.4b); the motif's outlines over it
+  drawMotif(ctx);
 }
 
 // The step of the first visit of each tile (−1: never visited), once per walk
@@ -11609,60 +11526,7 @@ const surfaceLineWidth = () => {  // about a fifth of a tile edge on screen
   const sc = walk.shape.corners;
   return Math.max(1, Math.min(walk.R * Math.hypot(sc[0] - sc[3], sc[1] - sc[4], sc[2] - sc[5]) * view.scale * 0.2, 3));
 };
-// A step is in sight when its tiles face the viewer: both its ends' tiles, or along the grid one of
-// the two tiles beside its edge
-const stepVisible = (i) => (walk.stepTiles ? tileVisible(walk.stepTiles[2 * i]) || tileVisible(walk.stepTiles[2 * i + 1])
-  : facing(i) && facing(i + 1));
-// On a flat polyhedron (convex, faces drawn whole): every step in sight
-function drawSurfacePath(ctx) {
-  const { xs, ys, n } = walk, { scale: s, ox, oy } = view;
-  ctx.lineWidth = surfaceLineWidth();
-  ctx.lineJoin = ctx.lineCap = 'round';
-  let band = -1;
-  for (let i = 0; i < cur; i++) {
-    const b = Math.floor((i * BANDS) / n);
-    if (b !== band) {
-      if (band >= 0) ctx.stroke();
-      band = b;
-      ctx.strokeStyle = GRADIENT[b];
-      ctx.beginPath();
-    }
-    if (!stepVisible(i)) continue;
-    ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
-    ctx.lineTo(ox + xs[i + 1] * s, oy + ys[i + 1] * s);
-  }
-  if (band >= 0) ctx.stroke();
-}
-// On a torus or an inflated shape (drawn tile by tile, far to near): each step split in two halves,
-// from each tile centre to the middle of the step, listed by tile so that drawShapeTiles draws a
-// tile's halves right after the tile, and nearer tiles cover them. A half longer than its tile is
-// a jump across the sheet of an unrolled torus: it is left out. Along the grid, a step is an edge:
-// drawn whole after each of the two tiles beside it.
-function pathHalves() {
-  const halves = Array.from({ length: walk.geo.n }, () => []), { tile, wx, wy, wz } = walk;
-  const c = walk.shape.corners, k = walk.geo.sides;
-  const size = (t) => {  // the first edge of tile t
-    const a = 3 * k * t;
-    return walk.R * Math.hypot(c[a] - c[a + 3], c[a + 1] - c[a + 4], c[a + 2] - c[a + 5]);
-  };
-  for (let i = 0; i < cur; i++) {
-    const [a, b] = walk.stepTiles ? [walk.stepTiles[2 * i], walk.stepTiles[2 * i + 1]] : [tile[i], tile[i + 1]];
-    if (walk.stepTiles) {  // the whole edge, with each of its tiles, drawn from their own corners (see drawHalves)
-      halves[a].push(i, i + 1, i + 1, i);
-      if (b !== a) halves[b].push(i, i + 1, i + 1, i);
-    } else {
-      const half = Math.hypot(wx[i + 1] - wx[i], wy[i + 1] - wy[i], wz[i + 1] - wz[i]) / 2;
-      if (half > size(a) || half > size(b)) continue;  // across the seam of an unrolled torus
-      halves[a].push(i, i + 1);  // from point i towards the middle of step i, on its tile
-      halves[b].push(i + 1, i);
-    }
-  }
-  return halves;
-}
 
-// Torus tiles: the visible ones sorted from far to near (painter's algorithm), each filled with
-// its colour darkened by how much it turns away from the viewer, then outlined if large enough
-const shadeCache = new Map();
 const colourProbe = document.createElement('canvas').getContext('2d');
 const rgbOf = (colour) => {  // [r, g, b] of any CSS colour (the canvas normalises it to #rrggbb)
   colourProbe.fillStyle = colour;
@@ -11698,90 +11562,17 @@ function edgeAlpha(sh) {
   const px = walk.R * sh.cellSize * view.scale;
   return EDGE_ALPHA * Math.min(1, Math.max(0.15, (px - 4) / 50));  // as faint at every surface's usual size, stronger zoomed in
 }
-function shaded(colour, shade, glint) {  // colour darkened by shade ∈ [0, 1], with a glint of white, as an rgb() string
-  const key = `${colour}|${shade}|${glint}|${SHADE}`;
-  if (!shadeCache.has(key)) {
-    const k = 1 - SHADE * shade, [r, g, b] = rgbOf(colour).map((v) => Math.min(255, Math.round(v * k + 255 * glint)));
-    shadeCache.set(key, `rgb(${r}, ${g}, ${b})`);
-  }
-  return shadeCache.get(key);
-}
 
-// Tiles of a shape (torus, or an inflated polyhedron): the visible ones sorted from far to near
-// (painter's algorithm: a torus is not convex, so tiles facing us can hide each other), each
-// filled with its colour darkened by how much it turns away from the viewer, then outlined
-function drawShapeTiles(ctx, sh, k, palette, levelOf, halves = null) {
-  const R = walk.R, P = walk.persp, n = walk.geo.n;
-  const { scale: s, ox, oy } = view, proj = projector();
-  const dir = cam.v, L = lightDir(), H = halfway(L);  // towards the viewer; the light
-  const eye = P ? dir.map((v, d) => P.c[d] + v * P.D) : null;
-  // (their backs as WebGL draws them, see glSurface: an open sheet's plain, a Klein bottle's in their colours)
-  const g = walk.geo, open = g.torus && !g.mobius && !g.klein && sh.m < 1, backs = twoSidedNow() || open || !!g.klein, plain = open && undersideColour();
-  const visible = [];
-  for (let t = 0; t < n; t++) {
-    if (!backs && !tileVisible(t)) continue;
-    const c = [sh.cen[3 * t] * R, sh.cen[3 * t + 1] * R, sh.cen[3 * t + 2] * R];
-    const near = eye ? -Math.hypot(c[0] - eye[0], c[1] - eye[1], c[2] - eye[2]) : c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2];
-    visible.push([near, t]);
-  }
-  visible.sort((a, b) => a[0] - b[0]);
-  const grid = $('showGrid').checked && s > 6;
-  ctx.lineWidth = 0.6;
-  ctx.strokeStyle = `rgba(${EDGE_RGB.join(', ')}, ${edgeAlpha(sh)})`;
-  for (const [, t] of visible) {
-    const level = levelOf(t);
-    const f = towardViewer(sh.nrm[3 * t], sh.nrm[3 * t + 1], sh.nrm[3 * t + 2]) < 0 ? -1 : 1;  // the back of a tile is lit like its front
-    const [dark, glint] = tileLight(f * sh.nrm[3 * t], f * sh.nrm[3 * t + 1], f * sh.nrm[3 * t + 2], L, H);
-    // 64 shades: fine enough that a tile's colour turns smoothly with the view (8 made visible
-    // jumps of about 7 % in brightness), coarse enough to keep the cache of shaded colours small
-    ctx.fillStyle = shaded(plain && !tileVisible(t) ? plain : level ? palette[level] : UNLIT, Math.round(dark * 64) / 64, Math.round(glint * 64) / 64);
-    ctx.beginPath();
-    const corners = [];  // on the screen
-    for (let q = 0; q < k; q++) {
-      const i = 3 * (k * t + q), [x, y] = proj(sh.corners[i] * R, sh.corners[i + 1] * R, sh.corners[i + 2] * R);
-      corners.push(ox + x * s, oy + y * s);
-      ctx[q ? 'lineTo' : 'moveTo'](ox + x * s, oy + y * s);
-    }
-    ctx.closePath();
-    ctx.fill();
-    if (grid) ctx.stroke();
-    if (halves && halves[t].length) drawHalves(ctx, halves[t], t, corners);
-  }
-}
-// The halves of steps on one tile (pairs of point indices: from the first towards the middle). A walk
-// along the grid draws them from the tile's own corners (on the screen: corners): a corner on the seam
-// of an unrolled torus has one position, on one side of the sheet only.
-function drawHalves(ctx, list, t, corners) {
-  const { n } = walk, { scale: s, ox, oy } = view, k = walk.geo.sides;
-  const xs = [], ys = [];  // the points of the steps on this tile
-  for (const p of list) {
-    if (walk.vert && corners) {
-      const q = walk.geo.poly.subarray(k * t, k * t + k).indexOf(walk.vert[p]);
-      xs[p] = (corners[2 * q] - ox) / s; ys[p] = (corners[2 * q + 1] - oy) / s;
-    } else { xs[p] = walk.xs[p]; ys[p] = walk.ys[p]; }
-  }
-  ctx.save();
-  ctx.lineWidth = surfaceLineWidth();
-  ctx.lineCap = 'round';
-  for (let j = 0; j < list.length; j += 2) {
-    const p = list[j], q = list[j + 1];
-    ctx.strokeStyle = GRADIENT[Math.floor((Math.min(p, q) * BANDS) / n)];
-    ctx.beginPath();
-    ctx.moveTo(ox + xs[p] * s, oy + ys[p] * s);
-    ctx.lineTo(ox + (xs[p] + xs[q]) * s / 2, oy + (ys[p] + ys[q]) * s / 2);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
 
 /* ---- 11.4b Surfaces in WebGL ----------------------------------------------------------------
  * The tiles, their grid and the rainbow path on a surface, drawn by the graphics card (WebGL 2) in
  * one go, its depth buffer hiding what lies behind (no sorting of the tiles, no path cut in halves):
  * fast enough to turn a big surface smoothly. The same projection as projectPoint (orthographic, or
- * perspective around walk.persp), the same colours and shading as drawShapeTiles; the walker's arrow,
- * the starts and the sky stay on their 2D layers. Without WebGL 2, drawSphere draws in 2D as before.
- *  - tiles: each tile a fan of triangles, its colour per corner (rebuilt at each drawing: the walk
- *    paints tiles as it goes), its normal for the shading (rebuilt when the shape changes);
+ * perspective around walk.persp); the walker's arrow, the starts and the sky stay on their 2D layers.
+ * Everything is drawn by WebGL 2: without it, nothing (every browser of the last years has it).
+ *  - tiles: each tile a fan of triangles, its number with each corner, its colour a texel (sent at each drawing: the
+ *    walk paints tiles as it goes), its normal for the shading (rebuilt when the shape changes); the shadows again only
+ *    when the shape, the light or the view moves;
  *  - grid: the tile edges as lines, pulled a little towards the viewer;
  *  - path: one instance per step, a quad from point i to point i + 1, as wide on screen as
  *    surfaceLineWidth, coloured by its band of the rainbow; the points are stored once. */
@@ -11839,9 +11630,10 @@ in vec2 aPos;${GL_PLANE_AT}
 void main() { gl_Position = planeAt(aPos); }`, `#version 300 es
 precision mediump float; uniform vec4 uRgba; out vec4 o; void main() { o = uRgba; }`],
   tile: [`#version 300 es
-in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform vec4 uPlain;${GL_PROJECT}${GL_LIGHT}
-void main() {
-  light(uPlain.a > 0.0 ? uPlain.rgb : aCol, aNrm, aPos);  // uPlain: the back of an open sheet
+in vec3 aPos; in vec3 aNrm; in float aId; uniform vec4 uPlain; uniform sampler2D uTileCol;${GL_PROJECT}${GL_LIGHT}
+void main() {  // its colour its tile's texel (1024 a row, see glSurface); uPlain: the back of an open sheet
+  int id = int(aId);
+  light(uPlain.a > 0.0 ? uPlain.rgb : texelFetch(uTileCol, ivec2(id % 1024, id / 1024), 0).rgb, aNrm, aPos);
   gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, GL_SHADOWED],
   // the depths seen from the light (see glShadows): a tile's corner, or a cube's at its point
@@ -11935,7 +11727,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), planePos: buf(), planeIds: buf(), planeEdges: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), tileIds: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), planePos: buf(), planeIds: buf(), planeEdges: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -12015,10 +11807,21 @@ function glView(gl, p, depth) {
   gl.uniform1i(u('uShadow'), 1);
   return u;
 }
+// A texture of a texel an item (a cell, a tile: see glPlane, glSurface), 1024 a row; its texels from a packed array (RGBA a
+// value), its full rows, then what is left of its last
+const glTexels = (gl, n) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, 1024, Math.max(1, Math.ceil(n / 1024))); return t; };
+function glPut(gl, tex, data) {
+  const full = Math.floor(data.length / 1024), rest = data.length % 1024, bytes = new Uint8Array(data.buffer, data.byteOffset, 4 * data.length);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  if (full) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1024, full, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 0);
+  if (rest) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, full, rest, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 4096 * full);
+}
 // The shadows: the depths of what the light sees (draw draws it with the program depth; nothing, Light unchecked), in a
 // texture on unit 1 (SHADOW_SIZE square), which the tiles and cubes then compare their own depths from the light with
-function glShadows(depth, draw) {
+function glShadows(depth, draw, key = null) {  // key: what they depend on (the shape, the light, the view): the same, kept
   const S = GLS, { gl } = S;
+  if (key !== null && S.keys.shadow === key) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex); gl.activeTexture(gl.TEXTURE0); return; }
+  S.keys.shadow = key;
   if (!S.shadow) {
     const tex = gl.createTexture(), fb = gl.createFramebuffer();
     gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -12084,25 +11887,27 @@ function glSurface(palette, levelOf, path) {
       const fan = new Uint32Array(3 * (k - 2) * n);
       for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, fan, gl.STATIC_DRAW);
+      const ids = new Float32Array(k * n);  // (each corner its tile's number: its colour's texel)
+      for (let t = 0; t < n; t++) ids.fill(t, k * t, k * t + k);
+      gl.bindBuffer(gl.ARRAY_BUFFER, S.tileIds); gl.bufferData(gl.ARRAY_BUFFER, ids, gl.STATIC_DRAW);
+      if (S.tileCol) gl.deleteTexture(S.tileCol);
+      S.tileCol = glTexels(gl, n);
       S.fanCount = fan.length;
       S.keys.topo = `${n}|${k}`;
     }
-    S.keys.geo = geoKey; S.keys.geoObj = g;
+    S.keys.geo = geoKey; S.keys.geoObj = g; S.geoGen = (S.geoGen ?? 0) + 1;  // (its corners sent again: its shadows too)
   }
-  // each tile's colour, from its level in the palette (0: the dark background of unlit tiles)
-  const col = new Uint8Array(3 * k * n), rgb = palette.map((c) => rgbCached(c ?? UNLIT));
-  for (let t = 0; t < n; t++) {
-    const c = rgb[levelOf(t)] ?? rgb[0];
-    for (let q = 0; q < k; q++) col.set(c, 3 * (k * t + q));
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, S.col); gl.bufferData(gl.ARRAY_BUFFER, col, gl.DYNAMIC_DRAW);
+  // each tile's colour, from its level in the palette (0: the dark background of unlit tiles): its texel
+  const rgb = palette.map((c) => { const [r, gr, b] = rgbCached(c ?? UNLIT); return ((255 << 24) | (b << 16) | (gr << 8) | r) >>> 0; }), col = new Uint32Array(n);
+  for (let t = 0; t < n; t++) col[t] = rgb[levelOf(t)] ?? rgb[0];
+  glPut(gl, S.tileCol, col);
   const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
   glShadows(depth, (aPos) => {  // every tile, both its sides
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan);
     gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
     gl.disableVertexAttribArray(aPos);
-  });
+  }, `${S.geoGen}|${lightDir()}|${cam.r}|${depth}|${lamp()}`);  // (again when the shape, the light or the view moves, not the colours)
   // the frame, the projection and the view
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clearColor(0, 0, 0, 0);
@@ -12131,7 +11936,8 @@ function glSurface(palette, levelOf, path) {
   gl.uniform4f(u('uPlain'), 0, 0, 0, 0);
   attrib(prog.tile, 'aPos', S.pos, 3);
   attrib(prog.tile, 'aNrm', S.nrm, 3);
-  attrib(prog.tile, 'aCol', S.col, 3, gl.UNSIGNED_BYTE, true);
+  attrib(prog.tile, 'aId', S.tileIds, 1);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, S.tileCol); gl.uniform1i(u('uTileCol'), 2); gl.activeTexture(gl.TEXTURE0);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan);
   if (!g.klein) gl.enable(gl.CULL_FACE);
   gl.cullFace(front);
@@ -12142,7 +11948,7 @@ function glSurface(palette, levelOf, path) {
     gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
   }
   gl.disable(gl.CULL_FACE);
-  off(prog.tile, ['aPos', 'aNrm', 'aCol']);
+  off(prog.tile, ['aPos', 'aNrm', 'aId']);
   // grid: the tile edges, when the tiles are big enough on screen
   if ($('showGrid').checked && view.scale > 6) {
     gl.enable(gl.BLEND);
@@ -12189,7 +11995,7 @@ function glSurface(palette, levelOf, path) {
 
 /* Flat drawings by WebGL as well: the 2D walks, and the 3D walks once projected (their projection
  * is redone on the CPU when the view turns). The whole walk so far is redrawn at each frame, fast
- * enough to pan, zoom and turn walks of millions of steps smoothly. As drawSegments and drawFill:
+ * enough to pan, zoom and turn walks of millions of steps smoothly:
  *  - fill: one instance per enclosed vertex of the fill (see computeFill), in the colour of the step
  *    that closed it;
  *  - cells: one instance per point (Fill cells, the heatmap of visits, the spirals' marks), painted in
@@ -12200,8 +12006,6 @@ function glSurface(palette, levelOf, path) {
 // (a colour per digit; an ant's turns or states); along the lines, none: its line (a look left from cells, its colours)
 const flatCellsOn = () => greyed('line') || (!!MODES[current.mode]?.cells && (($('colorMode').value === 'cells' && shows('cells'))
   || ($('colorMode').value === 'visits' && useful('visits')) || ($('colorMode').value === 'digit' && shows('cells'))));
-const glFlatApply = () => !walk.sphere && Number.isFinite(walk.n)
-  && !($('colorMode').value === 'digit' && walk.base > 255);
 // the templates of the polygons around a cell's centre, per tiling, and which one a cell takes
 const CELL_TEMPLATES = {
   square: [[[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]],
@@ -12442,13 +12246,6 @@ function glPlane(px) {
   const S = glSetup();
   if (!S) return;
   const { gl, prog } = S, { kind, W, row, torus } = walk.plane, n = W * row, { scale: s, ox, oy } = view, key = `${kind}|${W}|${row}|${torus}`;
-  const texture = (rows) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, 1024, rows); return t; };
-  const upload = (tex, data) => {  // (its full rows, then what is left of its last)
-    const full = Math.floor(data.length / 1024), rest = data.length % 1024, bytes = new Uint8Array(data.buffer, data.byteOffset, 4 * data.length);
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    if (full) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1024, full, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 0);
-    if (rest) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, full, rest, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 4096 * full);
-  };
   if (S.keys.plane !== key) {
     const walls = torus ? [] : APERIODIC[kind] ? APERIODIC[kind](W).walls : (planeShape(kind, W)?.walls ?? planeWalls(kind, W)).map(([x, y]) => planeCorners(kind, x, y));  // (in a hexagon: its own)
     const polys = [...Array.from({ length: n }, (_, t) => planeCorners(kind, t % row, Math.floor(t / row))), ...walls], pos = [], ids = [];
@@ -12456,18 +12253,17 @@ function glPlane(px) {
     gl.bindBuffer(gl.ARRAY_BUFFER, S.planePos); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pos), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.planeIds); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ids), gl.STATIC_DRAW);
     for (const t of [S.planeBase, S.planeCol]) if (t) gl.deleteTexture(t);
-    const rows = Math.ceil(polys.length / 1024);
-    Object.assign(S, { planeCount: ids.length, planePolys: polys, planeBase: texture(rows), planeCol: texture(rows), planeLines: null });
+    Object.assign(S, { planeCount: ids.length, planePolys: polys, planeBase: glTexels(gl, polys.length), planeCol: glTexels(gl, polys.length), planeLines: null });
     S.keys.plane = key;
     S.keys.planeBase = null;
   }
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff', wall = new Set(walk.geo.walls);
   if (S.keys.planeBase !== bg) {  // (the page's colour on the cells but the wall's, the walls')
     const pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; }, page = pack(bg), walled = pack(LIFE_WALL);
-    upload(S.planeBase, Uint32Array.from(S.planePolys, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
+    glPut(gl, S.planeBase, Uint32Array.from(S.planePolys, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
     S.keys.planeBase = bg;
   }
-  upload(S.planeCol, px);
+  glPut(gl, S.planeCol, px);
   const outline = $('showGrid').checked && s >= 6;
   if (outline && !S.planeLines) {  // (each side once, but the wall cells')
     const seen = new Set(), ends = [];
@@ -12502,22 +12298,6 @@ function glPlane(px) {
 }
 
 /* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
-// Fill cells: the tile around a point of a 2D walk, as a path on the canvas (world → screen)
-function tilePath(ctx, x, y) {
-  const { scale: s, ox, oy } = view, X = (u) => ox + u * s, Y = (v) => oy + v * s;
-  if (walk.lattice === 'square') { ctx.rect(X(x - 0.5), Y(y - 0.5), s, s); return; }
-  let pts;
-  if (walk.lattice === 'cairo') pts = CELL_TEMPLATES.cairo[cellTemplate('cairo', x, y)].map(([dx, dy]) => [x + dx, y + dy]);
-  else if (walk.lattice === 'tri') {  // ▲ has its centre 2/3 down its row, ▼ 1/3 (see triStepper)
-    const top = TRI_Y0 + Math.floor((y - TRI_Y0) / H) * H, up = y - top > H / 2;
-    pts = up ? [[x, top], [x + 0.5, top + H], [x - 0.5, top + H]] : [[x - 0.5, top], [x + 0.5, top], [x, top + H]];
-  } else {  // flat-topped hexagon of radius 1/√3 (see hexStepper)
-    pts = [0, 1, 2, 3, 4, 5].map((k) => [x + Math.cos((k * Math.PI) / 3) / Math.sqrt(3), y - Math.sin((k * Math.PI) / 3) / Math.sqrt(3)]);
-  }
-  ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
-  for (let k = 1; k < pts.length; k++) ctx.lineTo(X(pts[k][0]), Y(pts[k][1]));
-  ctx.lineTo(X(pts[0][0]), Y(pts[0][1]));  // back to the first corner: closePath slows a path of many tiles down more and more
-}
 
 // Visits: the cell of every point and the most visits of any cell over the whole walk, which fixes
 // the log scale once, so a painted cell only changes colour when the walk comes back to it
@@ -12539,59 +12319,6 @@ function visitCells() {
   return (visitData = { cell, max, seen: new Int32Array(total.length) });
 }
 
-// Draw segments [from, to): segment i joins point i to point i+1.
-function drawSegments(from, to) {
-  if (to <= from) return;
-  let ctx = layers.path;
-  const { xs, ys } = walk;
-  const { scale: s, ox, oy } = view;
-  const mode = $('colorMode').value;
-  let overCells = false;  // Show path: a thinner rainbow line over the coloured cells, seen where it crosses older ones
-  if (flatCellsOn()) {
-    // the tile of each point: Fill cells and the marks of the point modes in their step's colour,
-    // Visits by the visits so far (log scale)
-    let colourOf = (p) => styleColor(styleKey(Math.max(0, p - 1)));
-    if (mode === 'visits') {
-      const V = visitCells(), scale = (BANDS - 1) / Math.log(Math.max(2, V.max));
-      if (from === 0) V.seen.fill(0);
-      colourOf = (p) => GRADIENT[Math.round(Math.log(++V.seen[V.cell[p]]) * scale)];
-    }
-    // one path per run of tiles of the same colour, filled when the colour changes, and outlined in it
-    // by a pixel: no seam of the background along an edge two runs share
-    let batch = null;
-    const flush = () => { if (batch) { ctx.fillStyle = ctx.strokeStyle = batch; ctx.lineWidth = 1; ctx.fill(); ctx.stroke(); } };
-    // a spiral's 0 draws nothing
-    for (let p = from === 0 ? 0 : from + 1; p <= to; p++) {
-      if (walk.skipZeros && p > 0 && walk.digits[p - 1] === 0) continue;
-      const c = colourOf(p);
-      if (c !== batch) { flush(); ctx.beginPath(); batch = c; }
-      tilePath(ctx, xs[p], ys[p]);
-    }
-    flush();
-    if (!$('showPath').checked || $('showPath').disabled) return;
-    overCells = true;
-    ctx = layers.line;
-  }
-  ctx.lineWidth = overCells ? Math.max(0.6, Math.min(s * 0.12, 3)) : Math.max(0.6, Math.min(s * 0.3, 6));
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  // over cells (Path): the rainbow along the walk, whatever colours the cells
-  const keyOf = overCells ? (j) => Math.floor((roundStep(j) * BANDS) / rainbowLength()) : styleKey, colourOfKey = overCells ? (k) => GRADIENT[k] : styleColor;
-  let i = from;
-  while (i < to) {
-    const k = keyOf(i);
-    ctx.strokeStyle = colourOfKey(k);
-    ctx.beginPath();
-    ctx.moveTo(ox + xs[i] * s, oy + ys[i] * s);
-    while (i < to && keyOf(i) === k) {
-      const x = ox + xs[i + 1] * s, y = oy + ys[i + 1] * s;
-      if (walk.skipZeros && walk.digits[i] === 0) ctx.moveTo(x, y);  // spiral: 0 = no line
-      else ctx.lineTo(x, y);
-      i++;
-    }
-    ctx.stroke();
-  }
-}
 
 /* ---- Fill areas ------------------------------------------------------------------------------ */
 // The regions the path closes off are filled, each at the step that closes it and in the path's
@@ -12604,7 +12331,6 @@ function drawSegments(from, to) {
 // under the path. A vertex is painted as the polygon of the tile centres around it: those polygons
 // tile the plane, so the fill follows the path exactly.
 let fill = null;                   // { at, cx, cy, tpl, templates, count, tooBig } for the current walk (see computeFill)
-let fillDone = 0;                  // how many of the fill's polygons are painted on the fill layer
 // Fill areas goes with the colours where the path has one colour per step (not Visits, not By digit)
 const fillAreasApply = () => useful('fill') && MODES[$('mode').value].fill !== false && !['visits', 'digit'].includes($('colorMode').value);
 // (the walk drawn may still be the last mode's while the new one is computed: a tiling with a fill)
@@ -12746,28 +12472,6 @@ function computeFill() {
   return { at, cx, cy, tpl, templates: G.templates, tooBig: false, count: total };
 }
 
-// Paint the regions closed by the walk up to step to (from where the fill layer got to), opaque,
-// in the path's colour at the step that closed them. Polygons of one colour go 64 to a path: the
-// time to fill a path grows faster than its size (all of a colour at once took 21 s for 170,000
-// polygons, by 64 under 0.1 s)
-const FILL_BATCH = 64;
-function drawFill(to) {
-  fillNow();
-  const ctx = layers.fill, { scale: s, ox, oy } = view, { at, cx, cy, tpl, templates } = fill;
-  const colourAt = (k) => styleColor(styleKey(at[k] - 1));
-  while (fillDone < fill.count && at[fillDone] <= to) {
-    const colour = colourAt(fillDone);
-    ctx.beginPath();
-    for (let b = 0; b < FILL_BATCH && fillDone < fill.count && at[fillDone] <= to && colourAt(fillDone) === colour; b++, fillDone++) {
-      const pts = templates[tpl[fillDone]], X = cx[fillDone], Y = cy[fillDone];
-      ctx.moveTo(ox + (X + pts[0][0]) * s, oy + (Y + pts[0][1]) * s);
-      for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + (X + pts[k][0]) * s, oy + (Y + pts[k][1]) * s);
-      ctx.lineTo(ox + (X + pts[0][0]) * s, oy + (Y + pts[0][1]) * s);  // not closePath (see tilePath)
-    }
-    ctx.fillStyle = colour;
-    ctx.fill();
-  }
-}
 
 function drawOverlay() {
   const ctx = layers.overlay;
@@ -13174,20 +12878,12 @@ function tick(now = performance.now()) {
     layers.line.clearRect(0, 0, cw, ch);
     layers.fill.clearRect(0, 0, cw, ch);
     drawn = 0;
-    fillDone = 0;
   }
-  // a line walk in WebGL, redrawn whole when anything changes (see glFlat); else in 2D, step by step
-  let flat = walk.n && glFlatApply() && GLS !== false;
-  if (needsFull && !flat) glClear();
-  if (flat && (needsFull || drawn !== cur)) {
-    flat = glFlat(cur);
-    if (flat && drawn !== cur) { drawn = cur; statsDirty = true; }
-  }
-  if (!flat && fillOn()) drawFill(cur);  // each region when it closes, under the path
-  if (!flat && walk.n && drawn < cur) {
-    drawSegments(drawn, cur);
-    drawn = cur;
-    statsDirty = true;
+  // a walk in WebGL, redrawn whole when anything changes (see glFlat)
+  if (needsFull && !walk.n) glClear();
+  if (walk.n && (needsFull || drawn !== cur)) {
+    glFlat(cur);
+    if (drawn !== cur) { drawn = cur; statsDirty = true; }
   }
   if (needsFull || statsDirty) {
     drawOverlay();
