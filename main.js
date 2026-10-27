@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1388';
+const VERSION = '0.1.1389';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2700,7 +2700,7 @@ const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'an
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
 // the spaces, in turn, each its name and picture (Life's 4: its plane's grids that repeat, walls in a hexagon too, and its
 // round ones, never repeating; its solids, its surfaces: a sheet rolled up; see APERIODIC)
-const SPACES = { '2D': ['2D', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'penrose'], Surfaces: ['3D', 'cube'],
+const SPACES = { '2D': ['2D', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'], Surfaces: ['3D', 'cube'],
                  '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Space', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
 function tilingIcon(kind) {
