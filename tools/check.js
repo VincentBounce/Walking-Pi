@@ -55,7 +55,7 @@ function checkMeshes(fail) {
   // the strips: away from their edges (a lattice side and a half), as on the torus
   for (const kind of MOBIUS_KINDS) {
     const g = SPHERES[kind].mesh(6), torus = ref[torusOfStrip(kind)], far = g.tiling ? 1.5 * Math.max(...TILINGS[g.tiling].basis.map((v) => Math.hypot(...v))) : 2;
-    const y = (t) => { const c = tileCorners(g, t); return c.reduce((s, p) => s + p[1], 0) / c.length; };
+    const y = (t) => sheetMiddle(g, t)[1];  // (its middle across the strip)
     const inside = neighbourCounts(g, (t) => t < g.front && y(t) > far && y(t) < g.W - far);
     checked++;
     if (SPHERES[kind].tiles(6) !== g.n) fail(`${kind}: ${g.n} cells, said ${SPHERES[kind].tiles(6)}`);
