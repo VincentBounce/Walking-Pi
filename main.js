@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1349';
+const VERSION = '0.1.1350';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -9901,8 +9901,7 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
     if (K === 1) return [lifePatch(r)];
     return parts.map((_, k) => lifePatch(r, mobiusNearest(s0 + (k + 0.5) * stretch, g.W / 2)));  // at their stretches' middles
   }
-  if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its middle is in
-    // (a Klein bottle's tile across the seam, its middle past the sheet's end: in the block at that end)
+  if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its brick's middle is in
     const [a, b] = torusBlocks(K), at = (x, m, k) => Math.max(0, Math.min(k - 1, Math.floor((x * k) / m + 1e-6)));
     const block = (t) => { const [u, v] = brickPlaces(g).subarray(2 * t, 2 * t + 2); return at(u, g.nu, a) * b + at(v, g.nv, b); };  // (a tile where its brick is)
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
