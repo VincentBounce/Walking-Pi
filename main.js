@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1374';
+const VERSION = '0.1.1376';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2698,7 +2698,10 @@ MODE_ICONS.lifeFrame = 'frame';
 }
 const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
-const NAV_SPACES = ['2D', 'Surfaces', '3D'], SPACE_NAMES = { '2D': '2D', Surfaces: '3D', '3D': 'Space' };
+// the spaces, in turn, each its name and picture (Life's 4: its plane's grids that repeat, walls in a hexagon too, and its
+// round ones, never repeating; its solids, its surfaces: a sheet rolled up; see APERIODIC)
+const SPACES = { '2D': ['2D', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'penrose'], Surfaces: ['3D', 'cube'],
+                 '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Space', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
 function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
@@ -2722,12 +2725,6 @@ const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
-// Life's grids in 4 tabs, a picture and a name each: the plane's that repeat (squares, parallelograms, rhombi: walls in a
-// hexagon too), its round ones (none repeating: walls only), the solids, the surfaces (a sheet rolled up); each its space
-// and its shapes (by name, by the plane's kind); last: each one's mode last shown, to come back to
-const SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
-const LIFE_TABS = [['2D squares', 'grid', '2D', (sh, pl) => !APERIODIC[pl]], ['2D circles', 'penrose', '2D', (sh, pl) => !!APERIODIC[pl]],
-                   ['3D solids', 'cube', 'Surfaces', (sh) => !SHEETS.includes(sh)], ['3D surfaces', 'torus', 'Surfaces', (sh) => SHEETS.includes(sh)]], lifeTabLast = [];
 // the section's title
 const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
@@ -2896,27 +2893,19 @@ function renderModePicker() {
   }));
   $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
     + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
-  // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space); Life's, its 4 tabs
-  const planeOf = (sh, sp = space) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === sp && NAV[m][2] === sh)]?.plane;
-  const life = kind === 'Life', inTab = (t, sh) => LIFE_TABS[t][3](sh, planeOf(sh, LIFE_TABS[t][2])), tab = life ? LIFE_TABS.findIndex(([, , sp], t) => sp === space && inTab(t, shape)) : -1;
-  if (life) lifeTabLast[tab] = w;
-  $('navSpace').className = life ? 'nav-shapes' : 'choice-row';
-  $('navSpace').replaceChildren(...(life ? LIFE_TABS.map(([name, pic, sp], t) => button(`${icon(pic)}<span>${name}</span>`, t === tab, () => {
-    if (t === tab) return;
-    const to = lifeTabLast[t] ?? navPick(1, sp, navValues(2, [kind, sp]).find((sh) => inTab(t, sh)));  // (its last, else its first shape)
-    $('mode').value = to;
-    $('mode').dispatchEvent(new Event('change'));
-  })) : NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp)))));
+  // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Space)
+  const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
+  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp)))));
   // the shapes, as pictures with their (short) names
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
   // then the surfaces (a sheet rolled up: Torus, Möbius, Klein)
-  const shapes = navValues(2, [kind, space]).filter((sh) => !life || inTab(tab, sh));  // (Life: its tab's)
+  const shapes = navValues(2, [kind, space]), flat = space.startsWith('2D'), solid = space === 'Surfaces' || space.startsWith('3D ');
   // (in 3D: the regular solids, the cubes carved, the solids of squares and triangles, the surfaces)
   const CARVED = ['Pits', 'Bumps', 'Frame', 'Sponge'], MIXED = ['Cuboctahedron', 'Rhombicuboctahedron', 'Bicupola', 'Pyramid'];
-  const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => SHEETS.includes(sh);
+  const grouped = flat && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => SHEETS.includes(sh);
   const groups = grouped ? [1, 3, 0, 2].map((i) => [SHAPE_GROUPS[i][0], (sh) => groupOf(sh) === SHAPE_GROUPS[i][0]])  // (squares, parallelograms, the circles, rhombi)
-    : space === 'Surfaces' ? [['Solid', (sh) => !sheet(sh) && !CARVED.includes(sh) && !MIXED.includes(sh)], ['Carved cubes', (sh) => CARVED.includes(sh)], ['Squares & triangles', (sh) => MIXED.includes(sh)], ['Surface', sheet]]
+    : solid ? [['Solid', (sh) => !sheet(sh) && !CARVED.includes(sh) && !MIXED.includes(sh)], ['Carved cubes', (sh) => CARVED.includes(sh)], ['Squares & triangles', (sh) => MIXED.includes(sh)], ['Surface', sheet]]
     : [[null, () => true]];
   const some = groups.filter(([, has]) => shapes.some(has)).length;  // (one group: its title none, its tab's name says it)
   $('navShapes').replaceChildren(...groups.flatMap(([g, has]) => {
@@ -2938,8 +2927,8 @@ function renderModePicker() {
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
   $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles; an ant's: its shape, then its creatures)
-  $('shapesLabel').hidden = grouped || space === 'Surfaces';  // (always there, but in groups: their own titles)
-  $('shapesLabel').textContent = space === '2D' ? 'Shape' : 'Lattice';  // (Space: the cubes', the diamond's)
+  $('shapesLabel').hidden = grouped || solid;  // (always there, but in groups: their own titles)
+  $('shapesLabel').textContent = flat ? 'Shape' : 'Lattice';  // (Space: the cubes', the diamond's)
   if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
     const { F, tab } = inFamily;
@@ -7185,6 +7174,8 @@ const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: 
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
+// Life's grids in their spaces (see SPACES): the plane's round ones (these) or the others; the surfaces' sheets or solids
+for (const [w, n] of Object.entries(NAV)) if (n[0] === 'Life') n[1] = n[1] === '2D' ? (APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares') : SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
@@ -7288,8 +7279,11 @@ function picturePixel(text, P) {
 let iconMemo = null;
 // an icon's pixel (of its 24 × 24), on or off
 const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0; };
-// a cell's width: the root of its grid's cells' mean area (a lattice cell's, two rows of them)
-const cellWidth = (kind) => { const per = PER_RHOMBUS[kind] ?? 1; return Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => polyArea(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per)); };
+// a cell's width: the root of its grid's cells' mean area (a lattice cell's, two rows of them; a grid that never repeats,
+// all its cells')
+const cellWidth = (kind) => {
+  if (APERIODIC[kind]) { const P = APERIODIC[kind](walk.plane.W).polys; return Math.sqrt(P.reduce((sum, q) => sum + polyArea(q), 0) / P.length); }
+  const per = PER_RHOMBUS[kind] ?? 1; return Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => polyArea(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per)); };
 // a list of n items, each made when first read (its length, its items by index: the 10,000 punks' cells not all at once, only
 // those drawn; a hunt's, all: see huntClick)
 const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
@@ -10829,7 +10823,7 @@ function writeSetups(list) {
 }
 // What tells a saved setup apart: its walk, then its surface's size, start, turn and rule
 // a setup's row: 2D, 3D or Space, the walk, size, start, turn and rule (Life's rule is its title)
-const setupDetail = (s) => [SPACE_NAMES[NAV[s.w]?.[1]], walkName(s.w), s.s && `size ${String(s.s).replace('x', ' × ')}`, s.st > 1 && `start ${s.st}`,
+const setupDetail = (s) => [SPACES[NAV[s.w]?.[1]]?.[0], walkName(s.w), s.s && `size ${String(s.s).replace('x', ' × ')}`, s.st > 1 && `start ${s.st}`,
   Number(s.o) === 1 && 'turned 30°', Number(s.q) === 1 && 'square sheet', s.r && !MODES[s.w]?.life && `rule ${s.r}`].filter(Boolean).join(' · ');
 // its title: a walk's number; a Game of Life's rule (its name) and colours, its number being only its start
 const setupTitle = (x) => {
