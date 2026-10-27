@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1395';
+const VERSION = '0.1.1396';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6468,7 +6468,7 @@ function buildLife(seq, mode) {
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
-                alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
+                alive: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
@@ -7474,9 +7474,9 @@ function buildLifePlane(seq) {
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
-                seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
+                seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
-  if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see blockStep)
+  if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
   lifeStart = null;
@@ -7982,7 +7982,7 @@ function drawLifePlane() {
   drawMotif(ctx);
   drawGhost();
 }
-// Reversible's blocks (Blocks on): those of the set the generation shown goes on by, its next (see blockStep), each outlined, the
+// Reversible's blocks (Blocks on): those of the set the generation shown goes on by, its next (see GL_SHADERS.blockRule), each outlined, the
 // sides of its cells not shared by two of them; masked by the grid's outline: its sides on it never drawn (a block cut by the
 // torus's edges: its parts' sides between them only)
 let outlineMemo = null;
@@ -8116,13 +8116,12 @@ let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the 
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
 const negative = (L) => !!L.margolus?.flips && cur % 2 === 1;
-// the cells in a block (of any phase): the only ones shown negative (a wall's, out of every block, as they are); skipped,
-// each phase's others of them (by a wall)
+// the cells in a block (of any phase): the only ones shown negative (a wall's, out of every block, as they are), and turned
+// over by a phase leaving them out (by a wall), as their block would (see GL_SHADERS.blockRule)
 function blockCells(M, n) {
   if (M.cells) return M.cells;
   const c = new Uint8Array(n);
   for (const turn of M.turns) for (const t of turn) c[t] = 1;
-  c.skipped = M.turns.map((turn) => { const here = new Set(turn); return [...c.keys()].filter((t) => c[t] && !here.has(t)); });
   return (M.cells = c);
 }
 const ruleColours = () => lifeColours;
@@ -8855,7 +8854,7 @@ function lifeTrack(gen) {
   const L = walk.life;
   if (L.margolus) { if (!L.stable && blockBack(L, gen)) { L.stable = { T: 0, P: gen, extinct: false }; renderRuleSection(); } return; }  // (blocks: see blockBack; its page told)
   if (L.stable || L.seen.size >= LIFE_TRACK) return;
-  const key = L.key ?? lifeFingerprint(L.alive);  // (the graphics card's, if it stepped)
+  const key = L.key;  // (the graphics card's)
   const first = L.seen.get(key);
   if (first === undefined) L.seen.set(key, gen);
   else L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 };
@@ -8866,7 +8865,7 @@ function lifeTrack(gen) {
 // generation, however far (no generations kept); at most its states × its phases, 2^n × p, or with a rule keeping its
 // live cells (Billiard balls, Single rotation, Swirl), C(n, m) × p (m alive)
 // (its key its start's first, then cell for cell)
-const blockBack = (L, gen) => gen > 0 && gen % L.margolus.turns.length === 0 && (L.key ?? lifeFingerprint(L.alive)) === L.seedKey && L.alive.every((v, t) => v === L.seed[t]);
+const blockBack = (L, gen) => gen > 0 && gen % L.margolus.turns.length === 0 && L.key === L.seedKey && L.alive.every((v, t) => v === L.seed[t]);
 const blockKeeps = (to) => to.length > 0 && to.every((v, st) => ringAlive(v) === ringAlive(st));  // (each block as many alive after)
 function blockBound(L, to = L.margolus.to, phases = L.margolus.turns.length) {  // its log10
   const n = L.seed.length, m = L.seedAlive, keeps = blockKeeps(to);
@@ -9020,19 +9019,6 @@ const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; 
 // a block rule whose cells could carry colours: one that keeps them (its rule's card in colour); Tron makes and unmakes
 // cells, Q2R's never move: black and white
 const carriesColours = (rule) => !!rule?.margolus && !rule.ising && blockKind(rule.margolus).keeps;
-function blockStep({ k, turns, to, move, ising, sides, flips, cells }, a, b, g) {
-  if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
-  if (move) a = Uint8Array.from(move, (m) => a[m]);  // (stellated: across first)
-  const blocks = turns[g % turns.length];
-  b.set(a);
-  for (let i = 0; i < blocks.length; i += k) {
-    let st = 0;
-    for (let j = 0; j < k; j++) if (a[blocks[i + j]]) st |= 1 << j;
-    const n = to[st];
-    for (let j = 0; j < k; j++) b[blocks[i + j]] = (n >> j) & 1;
-  }
-  if (flips) for (const t of cells.skipped[g % turns.length]) b[t] = a[t] ? 0 : 1;  // (a cell this phase leaves out, by a wall: turned over, as its block would, so shown as it is)
-}
 // The block rules, on a ring of k cells (the same on every grid with blocks of k, each turned as its block): their
 // name, the blocks they fit, their words, the state a state turns into, their picture
 const ringTurn = (st, r, k) => { r = mod(r, k); return ((st << r) | (st >> (k - r))) & ((1 << k) - 1); };
@@ -9095,102 +9081,19 @@ for (const [kind, names] of Object.entries(BLOCK_ORDER)) {
   const mine = [...$('lifePreset').options].filter((o) => o.text.startsWith(`${BLOCK_MARKS[kind]} `));
   for (const name of names) { const o = mine.find((x) => x.dataset.name === name); if (o) $('lifePreset').insertBefore(o, $('lifePreset').querySelector('option[value="custom"]')); }
 }
-// A generation's rule (on the processor: see GL_SHADERS.lifeRule, the same on the graphics card): each cell's next state in b, from a
-function lifeRule(L, a, b) {
-  const { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
-  const around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
-  for (let t = 0; t < a.length; t++) {
-    const was = a[t];
-    let now;
-    if (start[t] === start[t + 1]) {
-      now = 0;  // a wall (a pentagon of the hexagon sphere)
-    } else if (was > K) {
-      now = was + K <= last ? was + K : 0;  // one more dying stage, or dead
-    } else {
-      let c = 0;
-      around.fill(0);
-      if (ring) {  // where the live neighbours sit around it (6 round a hexagon, 8 round a square)
-        for (let q = 0; q < R; q++) {
-          let v = ring[R * t + q];
-          if (more && !(v >= 0 && a[v] && a[v] <= K)) for (let i = more.start[R * t + q]; i < more.start[R * t + q + 1]; i++) if (a[more.list[i]] && a[more.list[i]] <= K) { v = more.list[i]; break; }  // (round a fold: any of its)
-          if (v >= 0 && a[v] && a[v] <= K) { c |= 1 << q; around[a[v]]++; }
-        }
-        c += 16;
-      } else if (side) {  // the flowers' letters: the live ones by a corner only, apart (see parseRule)
-        let k = 0;
-        for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; if (!side[q]) k++; } }
-        c = 16 + 4 * c + Math.min(k, 3);
-      } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (v && v <= K) { c++; around[v]++; } }
-      if (was) now = L.S[c] ? was : C > 2 ? was + K : 0;
-      else if (!L.B[c]) now = 0;
-      else if (!two) now = 1;
-      else {  // the colour most of its live neighbours have; on a tie, the one missing, else no birth
-        let most = 0, tied = 0, missing = 0, gone = 0;
-        for (let k = 1; k <= K; k++) {
-          if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] === most) tied++;
-          if (!around[k]) { gone++; missing = k; }
-        }
-        if (tied > 1) now = gone === 1 ? missing : 0;
-      }
-    }
-    b[t] = now;
-  }
-}
 function lifeStep() {
   const L = walk.life, gen = cur + 1, K = L.colours, two = K > 1;
   const born0 = L.born, dead0 = L.dead;  // before this generation
-  L.gen++;
   const G = lifeStepGPU(L, gen);  // (on the graphics card: its sums back, its cells kept there)
-  let alive = 0, dying = 0, byColour = new Int32Array(K + 1);
-  L.key = G ? G.key : null;
-  if (G) {
-    ({ alive, dying } = G);
-    if (two) byColour = G.byColour;
-    L.born += G.born;
-    L.dead += G.dead;
-    L.everAlive += G.everNew;
-    L.maxActivity = Math.max(L.maxActivity, G.maxAct);
-    if (two) for (let k = 1; k <= K; k++) { L.bornBy[k] += G.bornBy[k]; L.deadBy[k] += G.deadBy[k]; L.everBy[k] += G.everBy[k]; }
-  } else {  // (here: no WebGL 2)
-    const a = L.alive, b = L.next, { age, activity, ever, everMask, died } = L;
-    if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
-    else lifeRule(L, a, b);
-    for (let t = 0; t < a.length; t++) {
-      const was = a[t], now = b[t];
-      const live = now > 0 && now <= K, wasLive = was > 0 && was <= K;
-      if (two && live !== wasLive) {  // a colour's births, deaths, and cells it has had
-        if (live) { L.bornBy[now]++; if (!(everMask[t] & (1 << now))) { everMask[t] |= 1 << now; L.everBy[now]++; } }
-        else L.deadBy[was]++;
-      }
-      if (live) alive++;
-      else if (now) dying++;
-      if (two && live) byColour[now]++;
-      if (now === was) {
-        if (live && age[t] < 65535) age[t]++;
-        continue;
-      }
-      L.maxActivity = Math.max(L.maxActivity, ++activity[t]);
-      if (live) {
-        L.born++;
-        age[t] = 1;
-        if (!ever[t]) { ever[t] = 1; L.everAlive++; }
-      } else if (wasLive) {
-        L.dead++;
-        age[t] = 0;
-        died[t] = L.gen;
-      }
-    }
-    if (L.margolus?.flips) {  // (every other generation shown negative: its cells shown alive, born and died, see negative)
-      const sa = gen % 2 === 0 ? 1 : 0, sb = 1 - sa, c = blockCells(L.margolus, a.length);  // (a: generation gen − 1, b: gen)
-      let born = 0, dead = 0;
-      alive = 0;
-      for (let t = 0; t < a.length; t++) { const x = (a[t] ? 1 : 0) ^ (sa & c[t]), y = (b[t] ? 1 : 0) ^ (sb & c[t]); if (y && !x) born++; else if (x && !y) dead++; alive += y; }
-      L.born = born0 + born;
-      L.dead = dead0 + dead;
-    }
-    L.alive = b;  // (the card's copy old: see lifeCells)
-    L.next = a;
-  }
+  if (!G) return;  // (no WebGL 2)
+  const { alive, dying } = G, byColour = two ? G.byColour : new Int32Array(K + 1);
+  L.gen++;
+  L.key = G.key;
+  L.born += G.born;
+  L.dead += G.dead;
+  L.everAlive += G.everNew;
+  L.maxActivity = Math.max(L.maxActivity, G.maxAct);
+  if (two) for (let k = 1; k <= K; k++) { L.bornBy[k] += G.bornBy[k]; L.deadBy[k] += G.deadBy[k]; L.everBy[k] += G.everBy[k]; }
   L.aliveCount = alive;
   L.dyingCount = dying;
   L.byColour = byColour;
@@ -9216,35 +9119,13 @@ function lifeStep() {
 // back (the trace's)
 const blockInverse = (M) => (M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length)));
 function lifeBack() {
-  const L = walk.life, M = L.margolus, g = cur - 1, K = L.colours, G = lifeStepGPU(L, g, true);  // (there: its births and deaths forth, back)
-  if (G) lifeBackCounts(L, G.dead, G.born);
-  else lifeBackHere(L, M, g);
+  const L = walk.life, K = L.colours, G = lifeStepGPU(L, cur - 1, true);  // (there: its births and deaths forth, back)
+  if (G) { L.born -= G.dead; L.dead -= G.born; L.bornNow = G.dead; L.deadNow = G.born; }
   for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
   L.gen--;
   cur--;
   L.aliveCount = L.trace.alive[cur];
   L.byColour = L.trace.by[cur] ?? L.byColour;
-}
-const lifeBackCounts = (L, born, dead) => { L.born -= born; L.dead -= dead; L.bornNow = born; L.deadNow = dead; };
-function lifeBackHere(L, M, g) {  // (no WebGL 2)
-  const a = L.alive, b = L.next;
-  if (M.ising) blockStep(M, a, b, g);
-  else {
-    blockStep({ ...M, to: blockInverse(M), move: null }, a, b, g);
-    if (M.move) { const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; }); }
-  }
-  let born = 0, dead = 0;
-  const sa = M.flips && cur % 2 === 1 ? 1 : 0, sb = M.flips ? 1 - sa : 0, c = M.flips ? blockCells(M, a.length) : null;  // (shown negative every other generation, see negative)
-  for (let t = 0; t < a.length; t++) {
-    const x = (a[t] ? 1 : 0) ^ (sa & (c?.[t] ?? 0)), y = (b[t] ? 1 : 0) ^ (sb & (c?.[t] ?? 0));
-    if (x && !y) born++; else if (y && !x) dead++;  // (forth: born, died)
-    if (a[t] === b[t]) { if (b[t]) L.age[t] = Math.max(1, L.age[t] - 1); continue; }  // (its changes as forth: its own, not as shown)
-    L.age[t] = b[t] ? 1 : 0;
-    if (L.activity[t]) L.activity[t]--;
-  }
-  L.alive = b;
-  L.next = a;
-  lifeBackCounts(L, born, dead);
 }
 
 /* ==============================================================================================
@@ -11657,7 +11538,7 @@ bool shown(int v, int t, bool neg) { return live(v) != (neg && I(uIn, t) > 0); }
 uint mixed(uint x) { x = (x ^ (x >> 16)) * 0x7feb352du; x = (x ^ (x >> 15)) * 0x846ca68bu; return x ^ (x >> 16); }
 int baseOf(int t) { return t / uStride * uStride; }`;
 const GL_SHADERS = {
-  // a generation of Life (as lifeRule): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's numbers (its
+  // a generation of Life (see lifeStep's words): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's numbers (its
   // neighbours' lists, rings, folds, letters, B and S) one a texel, 4096 a row
   lifeRule: [GL_QUAD, `${GL_LIFE}
 uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode; uniform bool uMore; out vec4 o;
@@ -11699,7 +11580,7 @@ void main() {
   t -= base;
   o = vec4(next(t), next(t + 1), next(t + 2), next(t + 3)) / 255.0;
 }`],
-  // a generation of a block rule (as blockStep; see lifeStepGPU): a cell's place this phase (uWhere, a phase's n after the
+  // a generation of a block rule (see planeBlocks, blockPass): a cell's place this phase (uWhere, a phase's n after the
   // last's): its block's, in the blocks' cells (uTurns, its block from the k-th before), Ising's, its 4 sides there (−1:
   // none); none, -1 (with flips, a cell of a block another phase turned over); stellated, the cells moved across first
   // (uMove), back after (uBack: the rule's inverse in uTo)
@@ -12491,7 +12372,7 @@ function glPlane(paint) {
 
 // Life on the graphics card (see GL_LIFE), its own textures (L's): the grid's numbers sent once; the states (now and next, 4
 // a texel) and the cells' counts (age, changes, last death, colours had; now and next) kept there, sent again when the
-// processor wrote them (L.gpuOld), read back when read here (see lifeCells); null without WebGL 2 (lifeRule then)
+// processor wrote them (L.gpuOld), read back when read here (see lifeCells); null without WebGL 2 (no Life then)
 function lifeGPU(L) {
   const S = glSetup();
   if (!S || S.life?.L === L) return S?.life ?? null;
