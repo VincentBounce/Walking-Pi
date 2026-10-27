@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1384';
+const VERSION = '0.1.1385';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3414,6 +3414,23 @@ const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const signedArea = (P) => P.reduce((sum, p, i) => sum + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) / 2;
 const polyArea = (P) => Math.abs(signedArea(P));
+// a polygon's triangles, its corners' indices three by three: a convex one fanned; else ear by ear (a corner turning its way
+// with no other corner in its triangle cut off; one in line with its neighbours dropped), a hat's, a spectre's too
+const ears = (P) => {
+  const turn = (a, b, c) => ((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0])) * Math.sign(signedArea(P)), L = P.length, out = [];
+  if (P.every((_, i) => turn((i + L - 1) % L, i, (i + 1) % L) >= 0)) { for (let i = 1; i < L - 1; i++) out.push(0, i, i + 1); return out; }
+  const left = [...P.keys()];
+  while (left.length > 3) {
+    const m = left.length, at = (i) => [left[(i + m - 1) % m], left[i], left[(i + 1) % m]];
+    const ear = left.findIndex((_, i) => { const [a, b, c] = at(i); return turn(a, b, c) > 1e-12 && !left.some((j) => j !== a && j !== b && j !== c && insidePolygon([P[a], P[b], P[c]], ...P[j])); });
+    const flat = ear < 0 ? left.findIndex((_, i) => Math.abs(turn(...at(i))) <= 1e-12) : -1;
+    if (ear < 0 && flat < 0) break;  // (none: not a simple polygon)
+    if (ear >= 0) out.push(...at(ear));
+    left.splice(ear >= 0 ? ear : flat, 1);
+  }
+  if (left.length === 3) out.push(...left);
+  return out;
+};
 // A rotation vector given on the screen's axes (right, up, towards the viewer) → in world coordinates
 const screenTurn = (a, b, c) => [0, 1, 2].map((i) => a * cam.r[i] + b * cam.u[i] + c * cam.v[i]);
 
@@ -7661,64 +7678,14 @@ function planeWalls(kind, W) {
   }
   return (wallsMemo = { key: `${kind}|${W}|${planeRow(kind, W)}`, cells }).cells;
 }
-// Behind the grid (grid layer, at each view): the sky or the page outside it, the page inside it, and,
-// zoomed in enough, its cells' outlines; dead edges, its border
+// Behind the grid (grid layer, at each view): the sky or the page outside it (the grid itself, its page, its walls and its
+// outlines, see glPlane)
 function drawPlaneGrid() {
-  const ctx = layers.grid, { kind, W, row } = walk.plane, { scale: s, ox, oy } = view;
-  ctx.clearRect(0, 0, cw, ch);
-  drawSky(ctx);
-  turnLayer(ctx);  // (back as it is at the end)
-  const X = (u) => ox + u * s, Y = (v) => oy + v * s, outline = $('showGrid').checked && s >= 6, turn = planeTurn();
-  const inSight = (p) => { const [u, v] = turnPoint(p, turn); return X(u) > -2 * s && Y(v) > -2 * s && X(u) < cw + 2 * s && Y(v) < ch + 2 * s; };
-  const cell = (x, y) => {  // a cell's outline, added to the path
-    const c = planeCorners(kind, x, y);
-    ctx.moveTo(X(c[0][0]), Y(c[0][1]));
-    for (let k = 1; k < c.length; k++) ctx.lineTo(X(c[k][0]), Y(c[k][1]));
-    ctx.lineTo(X(c[0][0]), Y(c[0][1]));
-  };
-  // the page inside, to the cells' own outline: the square; the rhombus the triangles fill; the rhombus
-  // through the outer hexagons' centres, and those hexagons
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff';
-  ctx.beginPath();
-  const wall = new Set(walk.geo.walls);
-  if (kind === 'square' && !wall.size) ctx.rect(X(-0.5), Y(-0.5), W * s, W * s);
-  else if (kind === 'cairo' || kind === 'kite' || APERIODIC[kind] || tilingOf(kind) || wall.size) {  // ragged all round: the cells in sight (not the wall's)
-    for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
-      if (!wall.has(y * row + x) && inSight(planeCorners(kind, x, y)[0])) cell(x, y);
-    }
-  } else {
-    const e = kind === 'hex' ? W - 1 : W;
-    [[0, 0], [e, 0], [e, e], [0, e]].forEach(([a, b], k) => { const [u, v] = latticeAt(a, b); ctx[k ? 'lineTo' : 'moveTo'](X(u), Y(v)); });
-    if (kind === 'hex') { ctx.fill(); ctx.beginPath(); for (let k = 0; k < W; k++) { cell(k, 0); cell(k, W - 1); cell(0, k); cell(W - 1, k); } }  // apart: the windings do not cancel
-  }
-  ctx.fill();
-  // dead edges: a wall round the grid, a cell thick, in the colour of the hexagon sphere's walls
-  if (!walk.plane.torus) {
-    ctx.fillStyle = LIFE_WALL;
-    ctx.beginPath();
-    if (kind === 'square' && !wall.size) { ctx.rect(X(-1.5), Y(-1.5), (W + 2) * s, (W + 2) * s); ctx.rect(X(W - 0.5), Y(-0.5), -W * s, W * s); }
-    else if (APERIODIC[kind]) for (const p of APERIODIC[kind](W).walls) { ctx.moveTo(X(p[0][0]), Y(p[0][1])); for (const [u, v] of p) ctx.lineTo(X(u), Y(v)); ctx.closePath(); }  // the hats round them
-    else for (const [x, y] of planeShape(kind, W)?.walls ?? planeWalls(kind, W)) cell(x, y);  // (in a hexagon: its own)
-    ctx.fill('evenodd');
-  }
-  if (!outline) return turnLayer(ctx, 0);
-  ctx.strokeStyle = `rgba(${EDGE_RGB.join(', ')}, ${EDGE_ALPHA})`;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  if (kind === 'square' && !wall.size) for (let k = 0; k <= W; k++) { ctx.moveTo(X(k - 0.5), Y(-0.5)); ctx.lineTo(X(k - 0.5), Y(W - 0.5)); ctx.moveTo(X(-0.5), Y(k - 0.5)); ctx.lineTo(X(W - 0.5), Y(k - 0.5)); }
-  else for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {  // the cells in sight (not the wall's)
-    const c = planeCorners(kind, x, y);
-    if (wall.has(y * row + x) || !inSight(c[0])) continue;
-    ctx.moveTo(X(c[0][0]), Y(c[0][1]));
-    for (let k = 1; k < c.length; k++) ctx.lineTo(X(c[k][0]), Y(c[k][1]));
-    ctx.closePath();
-  }
-  ctx.stroke();
-  turnLayer(ctx, 0);
+  layers.grid.clearRect(0, 0, cw, ch);
+  drawSky(layers.grid);
 }
-// the grid's cells in the Life colours (Display), each generation: squares as one picture, a pixel a
-// cell; hexagons and triangles as polygons, one path a colour
-let planeCanvas = null, planeImage = null, planeColours = null;
+// the grid's cells in the Life colours (Display), each generation: a colour a cell, drawn by glPlane
+let planeColours = null;
 // A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
 const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, rhombs14: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, flower9: 1, flower10: 1, ring7: 1, ring8: 1, ring9: 1, ring10: 1, ring12: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
@@ -7922,16 +7889,9 @@ function cellsIcon(kind, rle) {
     .map(([pts, v]) => `<polygon points="${pts.map((p) => p.map((c) => c.toFixed(2)).join(',')).join(' ')}"${v > 1 ? ' class="dim"' : ''}/>`).join('')}</svg>`;
 }
 function drawLifePlane() {
-  const L = walk.life, { kind, W, row } = walk.plane, ctx = layers.path, { scale: s, ox, oy } = view, n = row * W;
+  const L = walk.life, { W, row } = walk.plane, ctx = layers.path, n = row * W;
   for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
-  if (kind === 'square') {
-    if (!planeCanvas || planeCanvas.width !== W) {
-      planeCanvas = document.createElement('canvas');
-      planeCanvas.width = planeCanvas.height = W;
-      planeImage = planeCanvas.getContext('2d').createImageData(W, W);
-    }
-    planeColours = new Uint32Array(planeImage.data.buffer);
-  } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
+  if (planeColours?.length !== n) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(motifShown ? faded(c, FADING) : c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
@@ -7949,53 +7909,10 @@ function drawLifePlane() {
       : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
       : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
-  if (kind === 'square') {
-    planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
-  } else {  // the others a picture too, at the screen's resolution: each pixel its cell's colour (see cellPixels), none a dead cell's
-    const { idx, image } = cellPixels(), out = new Uint32Array(image.data.buffer);
-    for (let i = 0; i < idx.length; i++) out[i] = idx[i] ? px[idx[i] - 1] : 0;
-    ctx.putImageData(image, 0, 0);
-  }
+  glPlane(px);
   drawBlocks(ctx);
   drawMotif(ctx);
   drawGhost();
-}
-// Which cell each pixel of the view shows (its number + 1; 0, none), for the cells' picture (see drawLifePlane): each cell
-// filled as it is seen (turned, see turnLayer), a row of pixels at a time, between its sides' crossings two by two (any
-// polygon, a hat's too), a pixel its cell's when its middle is in it. Once a view and a grid
-let pixelMemo = null, cornersMemo = null;
-function cellPixels() {
-  const { kind, W, row } = walk.plane, { scale: s, ox, oy } = view, d = window.devicePixelRatio || 1, a = planeTurn(), { width: w, height: h } = layers.path.canvas;
-  const key = `${kind}|${W}|${row}|${s}|${ox}|${oy}|${a}|${w}|${h}`;
-  if (pixelMemo?.key === key) return pixelMemo;
-  const idx = pixelMemo?.idx.length === w * h ? pixelMemo.idx.fill(0) : new Int32Array(w * h), image = pixelMemo?.idx.length === w * h ? pixelMemo.image : new ImageData(w, h);
-  const c = d * s * Math.cos(a), sn = d * s * Math.sin(a), X = [], Y = [], xs = [];
-  if (cornersMemo?.key !== `${kind}|${W}|${row}`) {  // (the cells' corners, once a grid: from start[t] to start[t + 1], u then v)
-    const start = new Int32Array(W * row + 1), uv = [];
-    for (let t = 0; t < W * row; t++) { for (const [u, v] of planeCorners(kind, t % row, Math.floor(t / row))) uv.push(u, v); start[t + 1] = uv.length / 2; }
-    cornersMemo = { key: `${kind}|${W}|${row}`, start, uv: Float64Array.from(uv) };
-  }
-  const { start, uv } = cornersMemo;
-  for (let t = 0; t < W * row; t++) {
-    const L = start[t + 1] - start[t];
-    let lo = Infinity, hi = -Infinity, left = Infinity, right = -Infinity;
-    for (let k = 0; k < L; k++) {
-      const u = uv[2 * (start[t] + k)], v = uv[2 * (start[t] + k) + 1], x = (X[k] = d * ox + c * u - sn * v), y = (Y[k] = d * oy + sn * u + c * v);
-      lo = Math.min(lo, y); hi = Math.max(hi, y); left = Math.min(left, x); right = Math.max(right, x);
-    }
-    const y0 = Math.max(0, Math.ceil(lo - 0.5)), y1 = Math.min(h, Math.ceil(hi - 0.5));
-    if (y0 >= y1 || right < 0 || left > w) continue;  // (out of sight, or between two rows of pixels' middles)
-    for (let y = y0; y < y1; y++) {
-      const m = y + 0.5;
-      xs.length = 0;
-      for (let k = 0, j = L - 1; k < L; j = k++) if (Y[j] <= m !== Y[k] <= m) xs.push(X[j] + ((m - Y[j]) / (Y[k] - Y[j])) * (X[k] - X[j]));
-      xs.sort((p, q) => p - q);
-      for (let k = 0; k + 1 < xs.length; k += 2) for (let x = Math.max(0, Math.ceil(xs[k] - 0.5)), e = Math.min(w, Math.ceil(xs[k + 1] - 0.5)); x < e; x++) idx[y * w + x] = t + 1;
-    }
-  }
-  return (pixelMemo = { key, idx, image });
 }
 // Reversible's blocks (Blocks on): those of the set the generation shown goes on by, its next (see blockStep), each outlined, the
 // sides of its cells not shared by two of them; masked by the grid's outline: its sides on it never drawn (a block cut by the
@@ -11875,7 +11792,28 @@ void main() {
   for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) s += texture(uShadow, vec3(vSh.xy + vec2(i, j) * t, vSh.z - 2.0 * t));
   o = vec4(vDark + vLit * s / 9.0, 1.0);
 }`;
+// Life on the plane (see glPlane): world (u, v) turned by uTurn (its cos and sin), then to pixels by uView (scale, ox, oy)
+const GL_PLANE_AT = `
+uniform vec3 uView; uniform vec2 uScreen, uTurn;
+vec4 planeAt(vec2 p) {
+  vec2 q = uView.yz + vec2(uTurn.x * p.x - uTurn.y * p.y, uTurn.y * p.x + uTurn.x * p.y) * uView.x;
+  return vec4(q.x / uScreen.x * 2.0 - 1.0, 1.0 - q.y / uScreen.y * 2.0, 0.0, 1.0);
+}`;
 const GL_SHADERS = {
+  // a cell's triangles, its number with each corner: its colour a texel of uCol (1024 a row), none where it is clear
+  planeCells: [`#version 300 es
+in vec2 aPos; in float aId; uniform sampler2D uCol; flat out vec4 vCol;${GL_PLANE_AT}
+void main() {
+  int id = int(aId);
+  vCol = texelFetch(uCol, ivec2(id % 1024, id / 1024), 0);
+  gl_Position = vCol.a < 0.5 ? vec4(2.0, 2.0, 2.0, 1.0) : planeAt(aPos);  // (clear: off the screen)
+}`, `#version 300 es
+precision mediump float; flat in vec4 vCol; out vec4 o; void main() { o = vCol; }`],
+  // the cells' outlines, in one colour (premultiplied)
+  planeLines: [`#version 300 es
+in vec2 aPos;${GL_PLANE_AT}
+void main() { gl_Position = planeAt(aPos); }`, `#version 300 es
+precision mediump float; uniform vec4 uRgba; out vec4 o; void main() { o = uRgba; }`],
   tile: [`#version 300 es
 in vec3 aPos; in vec3 aNrm; in vec3 aCol; uniform vec4 uPlain;${GL_PROJECT}${GL_LIGHT}
 void main() {
@@ -11973,7 +11911,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), col: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), planePos: buf(), planeIds: buf(), planeEdges: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -12470,6 +12408,73 @@ function glCubes(to) {
   gl.disable(gl.DEPTH_TEST);
   S.drawn = true;
   return true;
+}
+
+// Life on the plane in WebGL (see drawLifePlane): the cells' triangles, and the walls' round them, once a grid; then at each
+// drawing, under all, the page's colour on the cells and the walls' on the walls (a texture once a grid and a theme), zoomed
+// in enough the cells' outlines (once a grid), over all the generation's colours (px: a cell's, 0 dead: clear). A move or a
+// zoom moves nothing but uView. A texel a cell, 1024 a row
+function glPlane(px) {
+  const S = glSetup();
+  if (!S) return;
+  const { gl, prog } = S, { kind, W, row, torus } = walk.plane, n = W * row, { scale: s, ox, oy } = view, key = `${kind}|${W}|${row}|${torus}`;
+  const texture = (rows) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, 1024, rows); return t; };
+  const upload = (tex, data) => {  // (its full rows, then what is left of its last)
+    const full = Math.floor(data.length / 1024), rest = data.length % 1024, bytes = new Uint8Array(data.buffer, data.byteOffset, 4 * data.length);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    if (full) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1024, full, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 0);
+    if (rest) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, full, rest, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 4096 * full);
+  };
+  if (S.keys.plane !== key) {
+    const walls = torus ? [] : APERIODIC[kind] ? APERIODIC[kind](W).walls : (planeShape(kind, W)?.walls ?? planeWalls(kind, W)).map(([x, y]) => planeCorners(kind, x, y));  // (in a hexagon: its own)
+    const polys = [...Array.from({ length: n }, (_, t) => planeCorners(kind, t % row, Math.floor(t / row))), ...walls], pos = [], ids = [];
+    polys.forEach((P, t) => { for (const i of ears(P)) { pos.push(...P[i]); ids.push(t); } });
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planePos); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pos), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeIds); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ids), gl.STATIC_DRAW);
+    for (const t of [S.planeBase, S.planeCol]) if (t) gl.deleteTexture(t);
+    const rows = Math.ceil(polys.length / 1024);
+    Object.assign(S, { planeCount: ids.length, planePolys: polys, planeBase: texture(rows), planeCol: texture(rows), planeLines: null });
+    S.keys.plane = key;
+    S.keys.planeBase = null;
+  }
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff', wall = new Set(walk.geo.walls);
+  if (S.keys.planeBase !== bg) {  // (the page's colour on the cells but the wall's, the walls')
+    const pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; }, page = pack(bg), walled = pack(LIFE_WALL);
+    upload(S.planeBase, Uint32Array.from(S.planePolys, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
+    S.keys.planeBase = bg;
+  }
+  upload(S.planeCol, px);
+  const outline = $('showGrid').checked && s >= 6;
+  if (outline && !S.planeLines) {  // (each side once, but the wall cells')
+    const seen = new Set(), ends = [];
+    S.planePolys.slice(0, n).forEach((P, t) => { if (!wall.has(t)) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); if (!seen.has(k)) { seen.add(k); ends.push(...p, ...q); } }); });
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeEdges); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ends), gl.STATIC_DRAW);
+    S.planeLines = ends.length / 2;
+  }
+  gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  const draw = (p, buffers, mode, count, more) => {  // (its attributes: aPos, and aId for the cells)
+    gl.useProgram(p);
+    gl.uniform3f(gl.getUniformLocation(p, 'uView'), s, ox, oy);
+    gl.uniform2f(gl.getUniformLocation(p, 'uScreen'), cw, ch);
+    gl.uniform2f(gl.getUniformLocation(p, 'uTurn'), Math.cos(planeTurn()), Math.sin(planeTurn()));
+    more();
+    const locs = buffers.map(([name, buffer, size]) => { const loc = gl.getAttribLocation(p, name); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0); return loc; });
+    gl.drawArrays(mode, 0, count);
+    locs.forEach((loc) => gl.disableVertexAttribArray(loc));
+  };
+  const cells = (tex) => draw(prog.planeCells, [['aPos', S.planePos, 2], ['aId', S.planeIds, 1]], gl.TRIANGLES, S.planeCount, () => {
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(gl.getUniformLocation(prog.planeCells, 'uCol'), 0);
+  });
+  cells(S.planeBase);
+  if (outline) {
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    draw(prog.planeLines, [['aPos', S.planeEdges, 2]], gl.LINES, S.planeLines, () => gl.uniform4f(gl.getUniformLocation(prog.planeLines, 'uRgba'), ...EDGE_RGB.map((c) => (c / 255) * EDGE_ALPHA), EDGE_ALPHA));
+    gl.disable(gl.BLEND);
+  }
+  cells(S.planeCol);
+  S.drawn = true;
 }
 
 /* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
