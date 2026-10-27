@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1356';
+const VERSION = '0.1.1357';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6454,6 +6454,7 @@ function lifeReseed() {
 // grid (see huntParts)
 function startColours(seed) {
   const K = walk.life.colours;
+  if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
   const fits = huntFits(), r = hunt.zone === 'realm' || hunt.zone === 'full' ? Infinity : zoneRadius(hunt.zone);  // (Wild greyed, its parts unlike: the widest radius)
@@ -6536,7 +6537,7 @@ for (const kind of ['pinwheel', 'flower', 'flower3', 'flower4', 'flower5', 'flow
 // (two sides the same grid, as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least;
 // a hexagon's by its side alone, each its own: its hexagon fitted only when shown, see shapeW, not 512's 6 times to list it)
 const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]).filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));  // (grid: as built, its rows, its row)
-const plane = { side: 48, torus: true, gens: 2000, text: 'π', emoji: '🙂', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
+const plane = { side: 48, torus: true, gens: 2000, text: 'π', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -7288,84 +7289,33 @@ function cellRandom(seed, i) {
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
-// A drawing on the grid: painted on a canvas of its own (paint(ctx, S, box): its cells' middles' box, 80 % of it the room
-// to fill; at: a place of the grid on the canvas, 4 pixels a cell at least), a cell alive where its middle falls on the
-// drawing, and, an emoji's colours, on its darker half
-// a grid's cells as a drawing sees them, once a grid: their middles (a grid that never repeats, its patch's own, the grid
-// not built yet), the box of those not of a wall (a hexagon's: the drawing as big as it), and for the dithering their reading order (top down, left to
-// right) and the 6 nearest after each
-let drawnMemo = null;
-function drawnGrid(kind, W, row) {
-  const key = `${kind}|${W}|${row}|${planeTorus(kind)}`;
-  if (drawnMemo?.key === key) return drawnMemo;
-  const polys = APERIODIC[kind]?.(W).polys, mid = (P) => [0, 1].map((d) => P.reduce((t, p) => t + p[d], 0) / P.length);
-  const n = row * W, mids = Array.from({ length: n }, (_, t) => (polys ? (polys[t] ? mid(polys[t]) : [Infinity, Infinity]) : cellMiddle(kind, t % row, Math.floor(t / row))));
-  const wall = new Set(planeDead(kind, W) ?? []), real = mids.filter((m, t) => Number.isFinite(m[0]) && !wall.has(t)), [x0, x1, y0, y1] = [0, 1].flatMap((d) => [Math.min(...real.map((m) => m[d])), Math.max(...real.map((m) => m[d]))]);
-  const order = [...mids.keys()].sort((p, q) => mids[p][1] - mids[q][1] || mids[p][0] - mids[q][0]), rank = new Int32Array(n), bins = new Map(), bin = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`;
-  order.forEach((t, r) => { rank[t] = r; (bins.get(bin(...mids[t])) ?? bins.set(bin(...mids[t]), []).get(bin(...mids[t]))).push(t); });
-  const next = mids.map(([x, y], t) => {
-    const d = (u) => Math.hypot(mids[u][0] - x, mids[u][1] - y), near = [];
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const u of bins.get(bin(x + 2 * i, y + 2 * j)) ?? []) if (rank[u] > rank[t] && d(u) < 2.5) near.push(u);
-    return near.sort((p, q) => d(p) - d(q) || rank[p] - rank[q]).slice(0, 6);
-  });
-  return (drawnMemo = { key, n, mids, x0, x1, y0, y1, order, next });
-}
-function drawnCells(kind, W, row, paint, colours = false) {  // colours: each cell's colour where the drawing is (see blockPicture)
-  const { n, mids, x0, x1, y0, y1, order, next } = drawnGrid(kind, W, row);
-  const S = Math.min(4096, Math.max(400, 4 * Math.ceil(Math.max(x1 - x0, y1 - y0)))), cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), scale = S / Math.max(x1 - x0, y1 - y0, 1);
-  cv.width = cv.height = S;
-  ctx.fillStyle = '#000';
-  paint(ctx, S, { x0, x1, y0, y1, at: (x, y) => [(x - (x0 + x1) / 2) * scale + S / 2, (y - (y0 + y1) / 2) * scale + S / 2], scale });
-  const px = ctx.getImageData(0, 0, S, S).data, at = ([x, y]) => 4 * (Math.min(S - 1, Math.max(0, Math.round((y - (y0 + y1) / 2) * scale + S / 2))) * S + Math.min(S - 1, Math.max(0, Math.round((x - (x0 + x1) / 2) * scale + S / 2))));
-  const lum = (i) => 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2];
-  if (colours) return mids.map((p) => { if (!Number.isFinite(p[0])) return null; const i = at(p); return px[i + 3] > 128 ? [px[i], px[i + 1], px[i + 2]] : null; });
-  // black and white, dithered as Atkinson's (the first Macintosh): the cells in reading order (their middles, top down, left to
-  // right), each its ink (how dark, how opaque) and the error carried to it, alive from a half; an eighth of its error to each
-  // of the 6 nearest after it (on squares, Atkinson's own: 2 on the right, 3 below, 1 two below), three quarters in all
-  const ink = Float64Array.from(mids, (p) => { if (!Number.isFinite(p[0])) return 0; const i = at(p); return (px[i + 3] / 255) * (1 - lum(i) / 255); }), out = new Uint8Array(n);
-  for (const t of order) {
-    out[t] = ink[t] >= 0.5 ? 1 : 0;
-    for (const u of next[t]) ink[u] += (ink[t] - out[t]) / 8;
-  }
-  return out;
-}
-// Text: a word or an emoji drawn as big as fits in the middle of the grid
-// (its ink, found on a draft: an emoji's picture has a margin of its own, its box as the font says it larger; as big as the
-// grid's box holds it, in its middle)
-const textCells = (kind, W, row, text, colours = false) => drawnCells(kind, W, row, (ctx, S, { x0, x1, y0, y1, scale }) => {
-  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 50px system-ui, sans-serif';
+// A word or an emoji as a picture, P × P pixels (as an icon's, laid as one: see iconPatterns): its ink as big as fits in
+// its middle, a pixel on where the drawing is dark (its marks) or on its edge (its outline, as a punk's line drawing)
+const pictureMemo = new Map();
+function picturePixel(text, P) {
+  const key = `${text}|${P}`;
+  if (pictureMemo.has(key)) return pictureMemo.get(key);
+  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 50px system-ui, sans-serif', D = 200;
   dc.font = font;
-  const D = 200, w = Math.ceil(dc.measureText(text).width) + 150;
+  const w = Math.ceil(dc.measureText(text).width) + 150;
   draft.width = w; draft.height = D;
   dc.font = font;  // (a canvas sized again: its font too)
   dc.fillText(text, 75, 125);  // (50 px, room all round)
-  const px = dc.getImageData(0, 0, w, D).data;
+  const ink = dc.getImageData(0, 0, w, D).data;
   let l = w, r = -1, t = D, b = -1;
-  for (let y = 0; y < D; y++) for (let x = 0; x < w; x++) if (px[4 * (y * w + x) + 3] > 32) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
-  if (r < 0) return;  // (nothing drawn)
-  const f = Math.min(((x1 - x0 + 1) * scale) / (r - l + 1), ((y1 - y0 + 1) * scale) / (b - t + 1));
-  ctx.font = `bold ${50 * f}px system-ui, sans-serif`;
-  ctx.fillText(text, S / 2 + (75 - (l + r + 1) / 2) * f, S / 2 + (125 - (t + b + 1) / 2) * f);
-}, colours);
-// Emoji: the one picked (plane.emoji), as Text draws it, in its colours if any (see blockPicture)
-const emojiCells = () => { const { kind, W, row } = walk.plane; return blockPicture ? blockPicture.idx.map((c) => (c ? 1 : 0)) : textCells(kind, W, row, plane.emoji); };
-// Reversible, Text: an emoji in its own colours, every cell of it alive, each its colour carried along by the blocks (as
-// see blockStep; the rules that keep their cells' count bring them back whole): its colours to 255 at most
-// (each of r, g, b to 8 levels, else 4), { pal, idx } (idx: a cell's colour, 1 on; 0, dead); null for one colour (a text)
-let blockPicture = null;
-function pictureOf(kind, W, row, text) {
-  const rgb = textCells(kind, W, row, text, true);
-  for (const levels of [8, 4]) {
-    const q = (v) => Math.round((v / 255) * (levels - 1)), keys = new Map(), pal = [], idx = new Uint8Array(rgb.length);
-    rgb.forEach((c, t) => {
-      if (!c) return;
-      const k = c.map(q).join();
-      if (!keys.has(k)) { keys.set(k, keys.size + 1); pal.push(`#${c.map((v) => Math.round((q(v) * 255) / (levels - 1)).toString(16).padStart(2, '0')).join('')}`); }
-      idx[t] = keys.get(k);
-    });
-    if (pal.length <= 255) return pal.length > 1 ? { pal, idx } : null;
+  for (let y = 0; y < D; y++) for (let x = 0; x < w; x++) if (ink[4 * (y * w + x) + 3] > 32) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d', { willReadFrequently: true }), f = r < 0 ? 1 : P / Math.max(r - l + 1, b - t + 1);
+  cv.width = cv.height = P;
+  if (r >= 0) ctx.drawImage(draft, l, t, r - l + 1, b - t + 1, (P - (r - l + 1) * f) / 2, (P - (b - t + 1) * f) / 2, (r - l + 1) * f, (b - t + 1) * f);
+  const d = ctx.getImageData(0, 0, P, P).data, solid = (x, y) => x >= 0 && y >= 0 && x < P && y < P && d[4 * (y * P + x) + 3] > 128, on = new Uint8Array(P * P);
+  for (let y = 0; y < P; y++) for (let x = 0; x < P; x++) {
+    const i = 4 * (y * P + x), dark = 1 - (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255 > 0.5;
+    on[y * P + x] = solid(x, y) && (dark || !solid(x - 1, y) || !solid(x + 1, y) || !solid(x, y - 1) || !solid(x, y + 1)) ? 1 : 0;
   }
-  return null;
+  const pixel = (x, y) => on[y * P + x] === 1;
+  if (pictureMemo.size > 64) pictureMemo.clear();
+  pictureMemo.set(key, pixel);
+  return pixel;
 }
 // Icon 12, 24, 48: Pixelarticons' (pixelarticons.js), N cells wide: their 24 × 24 pixels a cell each, 2 × 2 each (48), or
 // halved (12: a cell alive where 2 of its 4 pixels are). An icon as a pattern of the grid's cells (iconPatterns: the cells
@@ -7384,13 +7334,13 @@ const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.char
 // pixel (pix). On a tiling's torus, its square along the tiling's own turn (of its turns) nearest the ring: as the tiles lie
 // there (not along its sheet's lattice side, a turn away: 120°, 180°…), turned with them when they are; on the plane's rectangle
 // (a slanted grid's straight sheet, see planeKind), along its side U, as the view shows it (see planeTurn)
-function iconSquare(kind, N, spin = 0) {  // spin: turned on more (a hexagon's colours: its bottom out, see iconLay)
+function iconSquare(kind, N, spin = 0, P = 24) {  // spin: turned on more (a hexagon's colours: its bottom out, see iconLay); P: its pixels across
   const g = walk.geo, sheet = !walk.plane && g?.torus && g.tiling === kind && !g.mobius && !g.klein ? g.sheet : null, t = TILINGS[kind];
   const strip = !walk.plane && g?.tiling === kind && g.stripTurn !== undefined;  // (a strip's, a bottle's: the plane turned by stripTurn, its side along it)
   const A = sheet ? [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]) : strip ? [Math.cos(-g.stripTurn), Math.sin(-g.stripTurn)] : null, step = (2 * Math.PI) / (t?.turns ?? 1);
-  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : walk.plane ? spin - planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
+  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : walk.plane ? spin - planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = 24, per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
+  const per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
   const cells = [0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))), k = (N / P) * Math.sqrt(cells.reduce((sum, v) => sum + v, 0) / cells.length);
   // (the lattice cells it can cover: its half diagonal, P·k/√2, in lattice steps either way, and 2 more; not N + 4 lattice cells
@@ -7412,9 +7362,9 @@ const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : 
 function iconPatterns(sq, set = ICON_SETS.icon, turn = 0) {
   const key = `${sq.key}|${set.source}|${turn}`;  // (its square's: its tilt too, a torus's not the plane's)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
-  const P = 24, { box, pix } = sq;
-  const patterns = lazyList(set.bits.length, (i) => {  // each icon: its cells' places in the square
-    const pixel = iconPixel(set.bits[i]);
+  const P = set.P, { box, pix } = sq;
+  const patterns = lazyList(set.names.length, (i) => {  // each picture: its cells' places in the square
+    const pixel = set.pixel(i);
     return pix.flatMap(([px, py], j) => (pixel(...ICON_TURNS[turn](px, py, P)) ? [j] : []));
   });
   patterns.box = box;
@@ -7447,8 +7397,8 @@ function iconTurn(laid, pix, P) {
 // turn. Null where it doesn't fit: its middle row or column (its pixels 11 and 12) not all laid, each on a cell of its own
 // (its whole width and height: cut off in its corners only), or the colours' squares on each other's (but for a row of
 // their margins)
-function iconLay(N) {
-  const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
+function iconLay(N, P = 24) {
+  const kind = patternKind(), K = walk.life.colours, g = walk.geo;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K);
   const lay = (sq, i, to) => {
@@ -7460,19 +7410,19 @@ function iconLay(N) {
     return { at, sq, js, whole: cross.every((t) => t >= 0) && new Set(cross).size === cross.length };
   };
   const lays = Array.from({ length: K }, (_, i) => {
-    if (!walled) { const l = lay(iconSquare(kind, N), i); return { ...l, turn: walk.plane || g.torus || !l.js.length ? 0 : iconTurn(l.js.map((j) => [l.at[j]]), l.js.map((j) => l.sq.pix[j]), P) }; }
-    const a = walled.angles[i], sq = iconSquare(kind, N, Math.round((a - Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3));  // (its bottom out: down, a sixth of a turn at a time)
+    if (!walled) { const l = lay(iconSquare(kind, N, 0, P), i); return { ...l, turn: walk.plane || g.torus || !l.js.length ? 0 : iconTurn(l.js.map((j) => [l.at[j]]), l.js.map((j) => l.sq.pix[j]), P) }; }
+    const a = walled.angles[i], sq = iconSquare(kind, N, Math.round((a - Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3), P);  // (its bottom out: down, a sixth of a turn at a time)
     for (let d = walled.reach * 2; d > 0; d -= 0.5) { const l = lay(sq, i, [walled.mid[0] + d * Math.cos(a), walled.mid[1] + d * Math.sin(a)]); if (l.whole) return { ...l, turn: 0 }; }
     return { ...lay(sq, i, walled.mid), turn: 0 };
   });
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
   return lays.every((l) => l.whole) && new Set(all).size >= 0.95 * all.length ? lays : null;
 }
-const iconFits = (N) => !!iconLay(N);
+const iconFits = (N, P = 24) => !!iconLay(N, P);
 function iconChoices(N, set) {
   const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMix}`;
   if (iconMemo?.key === key) return iconMemo.choices;
-  const lays = iconLay(N);  // (each icon its cells of the colour's square)
+  const lays = iconLay(N, set.P);  // (each icon its cells of the colour's square)
   const choices = Array.from({ length: K }, (_, i) => {
     if (!lays) return [];
     const patterns = iconPatterns(lays[i].sq, set, lays[i].turn);
@@ -7504,11 +7454,6 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   // drawn copied to all of them
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
-  else if (plane.start === 'text') {
-    blockPicture = MODES[$('mode').value].margolus && carriesColours(parseRule(ruleBody($('lifeRule').value))) ? pictureOf(kind, W, row, plane.text) : null;  // (Reversible: an emoji in its colours, carried by the cells, see carriesColours)
-    const on = blockPicture?.idx ?? textCells(kind, W, row, plane.text);
-    for (let t = 0; t < n; t++) seed[t] = on[t] ? 1 : 0;
-  }
   else if (plane.start === 'random') {
     const p = plane.density / 100;
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
@@ -7559,20 +7504,17 @@ function buildLifePlane(seq) {
   if (MODES[current.mode].margolus) lifeColours = 1;  // (blocks: one colour)
   fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
-  blockPicture = null;  // (planeSeed: an emoji's, Reversible)
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && rule.iso !== 'vertex' && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares (v: any plane)
     rule = parseRule('B3/S23');
     $('lifePreset').value = rule.text;
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
-  if (plane.start === 'random' && hunt.zone === 'emoji' && MODES[current.mode].margolus && carriesColours(rule)) blockPicture = pictureOf(kind, W, row, plane.emoji);  // (Emoji: in its colours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
-                died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n),
-                paint: MODES[current.mode].margolus && carriesColours(rule) && blockPicture ? new Uint8Array(n) : null };  // (blocks: an emoji's colours, see carriesColours)
+                died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see blockStep)
   countSeed(walk.life);
   lifeStart = null;
@@ -7633,7 +7575,6 @@ for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 function zoneWords(zone) {
   const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
-  if (zone === 'emoji') return `The emoji ${plane.emoji} (Unicode)`;
   if (zone === 'mirror') return `Each colour a soup of its two opposite parts, ${d} % alive`;
   if (zone === 'realm' && !r) return 'Each colour random cells on its face';
   if (isIcon(zone)) { const set = iconSet(zone); return `${K === 1 ? `The ${set.word} ${set.label(plane.icons[0])}` : `The ${set.word}s ${plane.icons.slice(0, K).map(set.label).join(', ')}`} (${set.source}), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`; }
@@ -7662,7 +7603,6 @@ function planeFromSetup(s) {
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
     if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
-    if (hunt.zone === 'emoji') plane.emoji = String(s.pop).slice(6) || '🙂';  // (pop=emoji.🦊)
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
   population = plane.start === 'draw' ? populationOf(s.p) : population;
@@ -8130,7 +8070,6 @@ function drawLifePlane() {
   } else if (!planeColours || planeColours.length !== n || planeColours.buffer === planeImage?.data.buffer) planeColours = new Uint32Array(n);
   const px = planeColours, pack = (c) => { const [r, g, b] = rgbOf(motifShown ? faded(c, FADING) : c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
-  const painted = L.paint ? [0, ...blockPalette().map(pack)] : null;  // (blocks: each cell its colour)
   const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
@@ -8142,7 +8081,7 @@ function drawLifePlane() {
     const st = a[t];
     px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? (painted ? painted[L.paint[t]] : alive) : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
       : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
       : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
   }
@@ -8325,7 +8264,6 @@ function blockCells(M, n) {
   return (M.cells = c);
 }
 const shownCells = (L) => { if (!negative(L)) return L.alive; const c = blockCells(L.margolus, L.alive.length); return L.alive.map((v, t) => (c[t] ? (v ? 0 : 1) : v)); };
-const blockPalette = () => blockPicture.pal;  // (an emoji's own, see pictureOf)
 const ruleColours = () => lifeColours;
 const ruleBody = (rule) => rule.replace(/\/(Immigration|Colours\d+)$/i, '');  // births, survivals (and dying stages), no colours
 const lifeRuleNow = () => {
@@ -8994,7 +8932,6 @@ function fitRuleToShape() {
 function lifeReset() {
   const L = walk.life;
   L.alive.set(L.seed);  // cell states: 0 dead, 1 alive, 2 … C−1 dying (two civilisations: 1 red, 2 blue)
-  if (L.paint) L.paint.set(blockPicture.idx);  // (an emoji's colours)
   for (let t = 0; t < L.alive.length; t++) {
     const live = L.alive[t] > 0 && L.alive[t] <= L.colours;
     L.age[t] = L.ever[t] = live ? 1 : 0;
@@ -9194,20 +9131,16 @@ const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; 
 // never move: black and white
 const carriesColours = (rule) => !!rule?.margolus && !rule.ising && blockKind(rule.margolus).keeps;
 // back: run backwards (a, the generation after b; see lifeBack)
-function blockStep({ k, turns, to, move, ising, sides, flips, cells }, a, b, g, paint = null, back = false) {
+function blockStep({ k, turns, to, move, ising, sides, flips, cells }, a, b, g) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
-  if (move) { a = Uint8Array.from(move, (m) => a[m]); if (paint) paint.set(Uint8Array.from(move, (m) => paint[m])); }  // (stellated: across first)
-  const blocks = turns[g % turns.length], cs = [], odd = flips && g % 2 === 1 ? 1 : 0, even = flips && g % 2 === 0 ? 1 : 0, sa = back ? even : odd, sb = back ? odd : even;  // (each side shown negative or not: generation g odd, g + 1 even, or back)
+  if (move) a = Uint8Array.from(move, (m) => a[m]);  // (stellated: across first)
+  const blocks = turns[g % turns.length];
   b.set(a);
   for (let i = 0; i < blocks.length; i += k) {
     let st = 0;
-    cs.length = 0;
-    for (let j = 0; j < k; j++) { if (a[blocks[i + j]]) st |= 1 << j; if (paint && (a[blocks[i + j]] ? 1 : 0) ^ sa) cs.push(paint[blocks[i + j]]); }
+    for (let j = 0; j < k; j++) if (a[blocks[i + j]]) st |= 1 << j;
     const n = to[st];
-    for (let j = 0, m = 0; j < k; j++) {
-      b[blocks[i + j]] = (n >> j) & 1;
-      if (paint && ((n >> j) & 1) ^ sb) paint[blocks[i + j]] = cs[m++];
-    }
+    for (let j = 0; j < k; j++) b[blocks[i + j]] = (n >> j) & 1;
   }
   if (flips) for (const t of cells.skipped[g % turns.length]) b[t] = a[t] ? 0 : 1;  // (a cell this phase leaves out, by a wall: turned over, as its block would, so shown as it is)
 }
@@ -9278,7 +9211,7 @@ function lifeStep() {
   const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  if (L.margolus) blockStep(L.margolus, a, b, gen - 1, L.paint);
+  if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
   let alive = 0, dying = 0;
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
@@ -9377,11 +9310,8 @@ function lifeBack() {
   if (M.ising) blockStep(M, a, b, g);
   else {
     M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length));
-    blockStep({ ...M, to: M.inverse, move: null }, a, b, g, L.paint, true);
-    if (M.move) {
-      const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; });
-      if (L.paint) { const p = Uint8Array.from(L.paint); M.move.forEach((m, t) => { L.paint[m] = p[t]; }); }
-    }
+    blockStep({ ...M, to: M.inverse, move: null }, a, b, g);
+    if (M.move) { const c = Uint8Array.from(b); M.move.forEach((m, t) => { b[m] = c[t]; }); }
   }
   let born = 0, dead = 0;
   const sa = M.flips && cur % 2 === 1 ? 1 : 0, sb = M.flips ? 1 - sa : 0, c = M.flips ? blockCells(M, a.length) : null;  // (shown negative every other generation, see negative)
@@ -9662,7 +9592,7 @@ const huntId = (r) => `${r.T}|${r.end}`;
 // patterns (Famous); their random starts each as dense as drawn between 10 and 70 % (the records often
 // come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
 const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], punk24: [null, 'Punk 24'], punkMax: [null, 'Punk max'],  // (Punk: a CryptoPunk, as an icon)  // one of Pixelarticons' icons at random, 12, 24 or 48 cells wide (see iconCells)
-                     emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as the grid (the plane, one colour; see emojiCells)
+                     emoji: [null, 'Emoji'],  // one of Unicode's at random, as big as fits, a picture as an icon (see ICON_SETS)
                      radius1: ['zone1', 'Spark'], radius2: ['zone2', 'Seed'], radius3: ['zone3', 'Sprout'], radius4: ['zone4', 'Bloom'],
                      radius5: ['zone5', 'Grove'], radius6: ['zone6', 'Meadow'], radius7: ['zone7', 'Forest'], radius8: ['zone8', 'Jungle'],
                      realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere its part, the colours apart (see realmParts)
@@ -9674,29 +9604,34 @@ const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], pun
 const famousZone = (zone) => zone === 'patterns' || zone === 'centred';
 // the Icon and Punk zones' pictures (pixelarticons.js, punks.js): 24 × 24 bits each, their names (a link's: an icon's, a
 // punk's number), what one is called, where they come from
-const ICON_SETS = { icon: { bits: ICON_BITS, names: ICON_NAMES, word: 'icon', label: (i) => `“${ICON_NAMES[i]}”`, source: 'Pixelarticons' },
-                    punk: { bits: PUNK_BITS, names: PUNK_BITS.map((_, i) => String(i)), word: 'CryptoPunk', label: (i) => `#${i}`, source: 'CryptoPunks' } };
+const ICON_SETS = { icon: { P: 24, pixel: (i) => iconPixel(ICON_BITS[i]), names: ICON_NAMES, word: 'icon', label: (i) => `“${ICON_NAMES[i]}”`, source: 'Pixelarticons' },
+                    punk: { P: 24, pixel: (i) => iconPixel(PUNK_BITS[i]), names: PUNK_BITS.map((_, i) => String(i)), word: 'CryptoPunk', label: (i) => `#${i}`, source: 'CryptoPunks' },
+                    // (Emoji: those this browser draws, each as a picture of 48 pixels, see picturePixel)
+                    emoji: { P: 48, pixel: (i) => picturePixel(ICON_SETS.emoji.names[i], 48), get names() { return (this.drawn ??= EMOJIS.filter(emojiDrawn)); }, word: 'emoji', label: (i) => ICON_SETS.emoji.names[i], source: 'Unicode' } };
+// Text: its word as a picture of 64 pixels, a set of one (see picturePixel)
+const textSet = () => ({ P: 64, pixel: () => picturePixel(plane.text, 64), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text}` });
 // the grid in use, for the caches built on it (not its mode's name: Turned, another grid of the same mode): the plane's,
 // by its kind, side and torus; a surface's, its mesh, a number of its own
 let gridCount = 0;
 const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.row}|${walk.plane.torus}` : `#${(walk.geo.gridId ??= ++gridCount)}`);
-const isIcon = (zone) => /^(?:icon|punk)/.test(zone);
-// Icon max, Punk max: the widest that fits (see iconLay), never capped: on squares a multiple of 24 (a pixel whole cells);
-// elsewhere (no cells on its pixels anyway) any width, from 16 (a picture of 24 pixels a little merged); doubled, then halved
-// back between the last two (wider fits no less); 24 where none (greyed)
+const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an icon, a punk, an emoji)
+// A picture laid two ways (each colour's: see iconLay, its square's cells, see iconSquare): on squares, an icon's or a punk's
+// 24 pixels each a whole count of cells, 24 × N wide (pixels whole); elsewhere, and an emoji or a word anywhere, its pixels
+// sampled by the cells, any width from 16 (a picture merged a little, its cross whole). Icon max, Punk max, an emoji, a word:
+// the widest that fits, never capped; doubled, then halved back between the last two (wider fits no less); 24 where none (greyed)
 let iconMaxMemo = null;
-const iconMax = () => {
-  const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}`, u = patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
+const iconMax = (set = ICON_SETS.icon) => {
+  const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   let lo = u === 24 ? 1 : 16, hi = 2 * lo;  // (in u's; its square's cells no more than the grid's)
-  const fits = (k) => (k * u) ** 2 <= cells && iconFits(k * u);
+  const fits = (k) => (k * u) ** 2 <= cells && iconFits(k * u, set.P);
   if (!fits(lo)) return (iconMaxMemo = { key, N: 24 }).N;
   while (fits(hi)) { lo = hi; hi *= 2; }
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (fits(m)) lo = m; else hi = m; }
   return (iconMaxMemo = { key, N: lo * u }).N;
 };
-const iconSize = (zone) => (!isIcon(zone) ? 0 : zone.endsWith('Max') ? iconMax() : 24);  // (an icon's width in cells; max: greyed where none fits, 16 off squares)
-const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : 'icon'];
+const iconSize = (zone) => (!isIcon(zone) ? 0 : zone === 'emoji' || zone.endsWith('Max') ? iconMax(iconSet(zone)) : 24);  // (a picture's width in cells; max: greyed where none fits, 16 off squares)
+const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : zone === 'emoji' ? 'emoji' : 'icon'];
 const iconIndex = (name, set = iconSet(hunt.zone)) => Math.max(0, set.names.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
 const density = () => DENSITY[0] + Math.random() * (DENSITY[1] - DENSITY[0]);
@@ -9966,10 +9901,6 @@ const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntPar
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
-  if (hunt.zone === 'emoji') {  // (every emoji drawn, once drawn: see emojiChoices)
-    const m = emojiMemo?.done && emojiMemo.key === `${walk.plane.kind}|${walk.plane.W}|${walk.plane.row}|${walk.plane.torus}` ? emojiMemo : null;
-    return { cells: [], copies: [], choices: m ? m.choices : null, perColour: m ? m.list.length : EMOJIS.length, density: 0, all: m ? m.list.length : EMOJIS.length };
-  }
   if (famousZone(hunt.zone) || isIcon(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
     const choices = isIcon(hunt.zone) ? iconChoices(iconSize(hunt.zone), iconSet(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
     return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
@@ -10004,8 +9935,7 @@ function huntFits() {
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
     if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
-    if (isIcon(zone)) return [zone, iconFits(iconSize(zone))];
-    if (zone === 'emoji') return [zone, !!walk.plane && K === 1];  // (as Centered: whole at each spot)
+    if (isIcon(zone)) return [zone, iconFits(iconSize(zone), iconSet(zone).P)];
     if (zone === 'full' && hullColours(MODES[$('mode').value].sphere, K)) { const p = huntParts(0, K, false); return [zone, !peakHunt() && p.every((x) => x.length === p[0].length)]; }  // (a hull solid's Wild: its parts alike, else greyed)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
@@ -10013,8 +9943,7 @@ function huntFits() {
   })));
 }
 // when a zone is greyed (as huntFits finds it), its tooltip's words
-const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'emoji' ? 'on a surface and in colours'
-  : zone === 'realm' ? 'in Classic, with Mixed, where a colour has no whole face, and on a grid too small to keep the colours apart' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
+const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'realm' ? 'in Classic, with Mixed, where a colour has no whole face, and on a grid too small to keep the colours apart' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
   : famousZone(zone) ? 'where the rule has no famous patterns, or they cannot fit' : zone === 'full' ? 'hunting the highest peak (a soup full already), and on a solid of squares and triangles where its colours\' parts differ'
   : 'where its patch cannot fit each colour\'s part');
 // blocks: the search for its return, whatever the start (see searchBack)
@@ -10044,7 +9973,6 @@ function renderHunt() {
   // runs, what it found after
   const L = walk.life, life = !L.margolus, d = plane.density, z = hunt.zone, N = iconSize(z), r = zoneRadius(z), names = plane.icons.slice(0, K).map(iconSet(z).label).join(', ');
   const shown = z === 'custom' ? `A start ${life ? 'found by a hunt, ' : ''}from a link (${fmt(L.seedAlive)} cells)`
-    : z === 'emoji' ? `Emoji ${plane.emoji}, as big as the grid · ${fmt(L.seedAlive)} cells alive${life ? '' : L.paint ? ' · in its colours' : ' · black & white'}`
     : N ? (K === 1 ? `${iconSet(z).word[0].toUpperCase()}${iconSet(z).word.slice(1)} ${names}, ${N} cells wide` : `${iconSet(z).word[0].toUpperCase()}${iconSet(z).word.slice(1)}s ${names}, ${N} cells wide, one a colour`)
     : z === 'patterns' ? `${K === 1 ? 'A pattern' : 'Patterns'} of the rule, anywhere${K > 1 ? ', one a colour' : ''} (${fmt(perColour)} ways and places)`
     : z === 'centred' ? `${K === 1 ? 'A pattern of the rule, in the middle' : "Patterns of the rule, each at its colour's spot"} (${fmt(perColour)} of them)`
@@ -10095,7 +10023,7 @@ function playHuntResult(r) {
   if (hunt.worker) stopHunt();  // a result played: the hunt stops there
   hunt.picked = huntId(r);
   if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }
-  if (hunt.zone === 'emoji' && r.pick && emojiMemo?.done) { plane.emoji = emojiMemo.list[r.pick[0]]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }  // (its emoji, by name)  // (icons: by their names, pop=icon24.star.heart)
+  // (icons: by their names, pop=icon24.star.heart; an emoji's, pop=emoji.🙂)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
 }
@@ -10117,7 +10045,6 @@ function stopHunt() {
 // a random start in the zone (hunt.zone): patterns, one of each colour's; a radius, its patches half
 // alive; null for the whole grid (its soup, see startColours)
 function zoneSeed() {
-  if (hunt.zone === 'emoji') return emojiCells();
   if (isIcon(hunt.zone)) return iconCells(iconSize(hunt.zone), iconSet(hunt.zone));
   if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'realm') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
@@ -10134,14 +10061,12 @@ function zoneSeed() {
   return seed;
 }
 function pickZone(zone) {
-  if (zone === 'emoji') { hunt.zone = zone; hunt.top = []; hunt.status = ''; plane.emoji = randomEmoji(); compute(true); return; }  // (built again: its colours, see blockPicture)
   hunt.zone = zone;
   hunt.top = [];
   hunt.status = '';
   plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
   plane.icons = Array.from({ length: walk.life.colours }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
-  if (blockPicture) { compute(true); return; }  // (from an emoji's colours: built again, its colours gone)
   if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
@@ -10153,7 +10078,6 @@ function huntClick() {
     if (r) { playHuntResult(r); play(true); }
     return;
   }
-  if (hunt.zone === 'emoji' && !emojiChoices().done) return;  // (Emoji: all of them drawn first, see emojiChoices)
   // as many workers as the computer has cores (one left for the page), on and on until stopped (or, few
   // enough starts, each with every parts-th of them); their best merged
   const L = walk.life, { cells, copies, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
@@ -10831,7 +10755,7 @@ function decodeCells(code, n) {
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase().replace(/ /g, '') : 'random');  // (Icon 24: icon24)
 // a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart;
 // a Punk zone's, their numbers: pop=punk24.7804)
-const zonePop = () => (lifeStart?.zone === 'emoji' ? `emoji.${plane.emoji}` : isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
+const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
@@ -11692,10 +11616,6 @@ function drawSphere() {
       const civ = civColours(L.colours, L.C);
       palette = [null, ...civ, ...LIFE_FADE];
       levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
-    } else if (colour === 'mono' && L.paint) {  // blocks: each cell its colour, then the trail of the dead
-      const pal = blockPalette(), A = shownCells(L);
-      palette = [null, ...pal, ...LIFE_FADE];
-      levelOf = (t) => (A[t] ? L.paint[t] : trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? pal.length + L.gen - L.died[t] : 0);
     } else if (colour === 'mono') {
       const A = shownCells(L);
       palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
@@ -13630,7 +13550,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: each colour's two opposite faces (a solid where a colour has two), random soups in them"
-    : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as big as the grid: in its colours where the rule's cells carry them (Reversible), else dithered: a click, another"
+    : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as wide as fits, its outline and dark marks alive, in the middle of each colour's part: a click, another"
     : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
     : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
     : zone === 'realm' ? "Realm: on a solid, each colour's whole face (greyed when its spots are corners or edges); elsewhere, its whole part but its cells next to another's: random starts in it (two colours or more)"
@@ -13650,34 +13570,6 @@ function emojiDrawn(e) {
   const px = ctx.getImageData(0, 0, 24, 24).data;
   for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) > 40) return true;
   return false;
-}
-function randomEmoji() {
-  for (let tries = 0; ; tries++) { const e = EMOJIS[Math.floor(Math.random() * EMOJIS.length)]; if (emojiDrawn(e) || tries >= 20) return e; }
-}
-// Emoji's hunt: every emoji this browser draws, each a choice (as Icon's), drawn 40 at a time (the page alive between), once
-// a grid; then the hunt, all of them tried
-let emojiMemo = null;
-function emojiChoices() {
-  const { kind, W, row } = walk.plane, key = `${kind}|${W}|${row}|${walk.plane.torus}`;
-  if (emojiMemo?.key === key) return emojiMemo;
-  const m = (emojiMemo = { key, list: [], choices: [[]], done: false });
-  let i = 0;
-  const step = () => {
-    if (emojiMemo !== m) return;  // (another grid meanwhile)
-    for (const end = Math.min(EMOJIS.length, i + 40); i < end; i++) {
-      if (!emojiDrawn(EMOJIS[i])) continue;
-      const cs = [];
-      textCells(kind, W, row, EMOJIS[i]).forEach((v, t) => { if (v) cs.push(t, 1); });
-      if (cs.length) { m.list.push(EMOJIS[i]); m.choices[0].push(Int32Array.from(cs)); }
-    }
-    m.done = i >= EMOJIS.length;
-    hunt.status = m.done ? '' : `Drawing the emoji: ${fmt(i)} / ${fmt(EMOJIS.length)}`;
-    if (!m.done) setTimeout(step, 0);
-    else if (hunt.zone === 'emoji') huntClick();  // (then the hunt, if still asked for)
-    renderHunt();
-  };
-  step();
-  return m;
 }
 stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
 stage.addEventListener('pointerup', (e) => {
