@@ -70,12 +70,12 @@ function checkMeshes(fail) {
   // wall), sizes 16 to 64
   const sarea = (P) => P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0);
   for (const kind of Object.keys(APERIODIC)) for (const W of [16, 24, 32, 48, 64]) {
-    const h = APERIODIC[kind](W), all = [...h.polys, ...h.walls], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
+    const h = APERIODIC[kind](W), all = Array.from({ length: h.m }, (_, k) => h.poly(k)), grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
     all.forEach((P, j) => { const c = cell(P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
     const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
     let gaps = 0;
     const dead = new Set(h.dead);
-    for (const P of h.polys.filter((P, t) => !dead.has(t))) {  // (the live cells)
+    for (const P of all.slice(0, W * W).filter((P, t) => !dead.has(t))) {  // (the live cells)
       const o = sarea(P) > 0 ? 1 : -1;
       for (let i = 0; i < P.length; i++) {
         const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -324,9 +324,9 @@ async function coloursOffered(fail) {
 function checkDiscs(fail) {
   let checked = 0;
   for (const kind of Object.keys(APERIODIC)) for (const side of planeSides(kind).filter((f) => f <= 128)) {
-    const W = planeW(kind, side), o = (W - 1) / 2, far = new Array(72).fill(0), { polys, norm } = APERIODIC[kind](W);
-    for (const p of polys) {
-      const [u, v] = [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length - o), k = Math.floor(((Math.atan2(v, u) + Math.PI) / (2 * Math.PI)) * 72) % 72;
+    const W = planeW(kind, side), o = (W - 1) / 2, far = new Array(72).fill(0), { poly, norm } = APERIODIC[kind](W);
+    for (let t = 0; t < W * W; t++) {
+      const p = poly(t), [u, v] = [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length - o), k = Math.floor(((Math.atan2(v, u) + Math.PI) / (2 * Math.PI)) * 72) % 72;
       far[k] = Math.max(far[k], norm(u, v));
     }
     const sorted = [...far].sort((a, b) => a - b);

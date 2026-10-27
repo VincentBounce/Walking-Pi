@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1397';
+const VERSION = '0.1.1398';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -610,6 +610,7 @@ function formulaWorker() {
 // a place again however it was computed
 const roundOff = (x, k = 1000) => Math.round(x * k + 0.37);
 const pointKey = ([x, y], k = 1000) => `${roundOff(x, k)},${roundOff(y, k)}`;
+const pointId = (x, y) => roundOff(x) * 67108864 + roundOff(y);  // (as a number: within 33,000 units of the origin, as pointKey)
 
 /* ---- 1.6 Helpers shared by the page and the worker ------------------------------------------- */
 // A worker cannot see this file's functions: compute() builds its source from the text of
@@ -5228,7 +5229,7 @@ function morphStep(dt) {
  * of steps[0], from least to most) with 2⁸ cells at least and 2¹⁸ at most (CELLS). A new surface needs only its
  * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
 const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048];  // (every multiple of 24 up to 192: an icon's whole size)
-const CELLS = [2 ** 8, 2 ** 18], START = { surface: 2688, solid: 6144 };
+const CELLS = { least: 2 ** 8, mesh: 2 ** 18, plane: 2 ** 20 }, START = { surface: 2688, solid: 6144 };  // (the plane's most: its corners flat, see planeFlat; a mesh's not yet)
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).L / (2 * Math.PI);  // (its length: no tile built)  // a Möbius strip's circle, L tile edges round
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -5598,7 +5599,7 @@ for (const kind of TORI) if (!MOBIUS_KINDS.includes(kind) && !kind.startsWith('m
 for (const [kind, S] of Object.entries(SPHERES)) {
   const step = S.steps?.[0] ?? 1, ladder = () => {  // (its cells growing with its size: none counted past the most)
     const sizes = [];
-    for (const f of SIDES) if (f % step === 0 && f >= (S.least ?? 2) && f <= (S.most ?? Infinity)) { const n = S.tiles(f); if (n > CELLS[1]) break; if (n >= CELLS[0]) sizes.push(f); }
+    for (const f of SIDES) if (f % step === 0 && f >= (S.least ?? 2) && f <= (S.most ?? Infinity)) { const n = S.tiles(f); if (n > CELLS.mesh) break; if (n >= CELLS.least) sizes.push(f); }
     return sizes;
   };
   let list;
@@ -6503,12 +6504,12 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-// the plane's sizes: the squares' sides (see SIDES), every grid as many cells (see planeW), its cells 2⁸ to 2¹⁸ (see CELLS:
-// the surfaces' too); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
+// the plane's sizes: the squares' sides (see SIDES), every grid as many cells (see planeW), its cells 2⁸ to 2²⁰ (see CELLS:
+// the surfaces' 2¹⁸); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
 // as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least; a hexagon's by its side
 // alone, each its own (its hexagon fitted only when shown, see shapeW)
 const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), cells = (f) => W(f) * planeRow(k, W(f)), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) =>
-  [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS[0] && cells(f) <= CELLS[1])].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
+  [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS.least && cells(f) <= CELLS.plane)].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
 const plane = { picked: 48, get side() { const sides = planeSides(planeKind(MODES[$('mode').value].plane)); return sides.reduce((a, b) => (Math.abs(b - this.picked) < Math.abs(a - this.picked) ? b : a)); },
@@ -6746,35 +6747,24 @@ const planeRow = (kind, W) => (tilingOf(kind) ? tilingOf(kind).polys.length * pl
 const kiteCorners = (x, y) => { const t = Math.floor(x / 3), i = t >> 1; return kitesOf(t & 1 ? [[i + 1, y], [i + 1, y + 1], [i, y + 1]] : [[i, y], [i + 1, y], [i, y + 1]])[((x % 3) + 3) % 3]; };
 const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triangles, a centre of the hexagons
 // An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
-// about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
+// about a square unit; p: its corners, flat, x and y in turn, or each(item, f) for them), the W² items nearest a middle (a disc), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
 // a substitution's triangles near a disc only (round o, R): those whose corners' circle round their middle reaches it
-const trianglesNear = (tris, o, R, corners = (T) => T) => tris.filter((T) => {
-  const P = corners(T), m = [0, 1].map((d) => P.reduce((t, q) => t + q[d], 0) / P.length);
-  return Math.hypot(m[0] - o[0], m[1] - o[1]) - Math.max(...P.map((q) => Math.hypot(q[0] - m[0], q[1] - m[1]))) <= R;
+const trianglesNear = (tris, o, R, first = 0) => tris.filter((T) => {  // (first: its first corner's place in it)
+  let x = 0, y = 0, r = -Infinity;
+  for (let i = first; i < first + 3; i++) { x += T[i][0]; y += T[i][1]; }
+  x /= 3; y /= 3;
+  for (let i = first; i < first + 3; i++) r = Math.max(r, Math.hypot(T[i][0] - x, T[i][1] - y));
+  return Math.hypot(x - o[0], y - o[1]) - r <= R;
 });
-function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls in a circle: the items nearest the middle (norm: another way to measure, Ammann's octagon)
-  // the middle (middle, else): where the square round a disc of W² items' room (a cell about 1 square unit: its radius W / √π)
-  // and 4 units more all round (its walls' room) holds the most of them, the nearest the patch's centre (its outline is
-  // ragged: a corner may be bare)
-  const box = (d) => items.reduce(([a, b], h) => [Math.min(a, h.m[d]), Math.max(b, h.m[d])], [Infinity, -Infinity]), [bx, by] = [box(0), box(1)];
-  const half = W / Math.sqrt(Math.PI), centre = [(bx[0] + bx[1]) / 2, (by[0] + by[1]) / 2];
-  // (the items by unit cells of a grid over the patch, summed from a corner: a box's count at once)
-  const nx = Math.ceil(bx[1] - bx[0]) + 2, ny = Math.ceil(by[1] - by[0]) + 2, sum = new Int32Array((nx + 1) * (ny + 1));
-  for (const h of items) sum[(Math.floor(h.m[1] - by[0]) + 1) * (nx + 1) + Math.floor(h.m[0] - bx[0]) + 1]++;
-  for (let y = 1; y <= ny; y++) for (let x = 1; x <= nx; x++) sum[y * (nx + 1) + x] += sum[(y - 1) * (nx + 1) + x] + sum[y * (nx + 1) + x - 1] - sum[(y - 1) * (nx + 1) + x - 1];
-  const count = (x0, y0, x1, y1) => sum[y1 * (nx + 1) + x1] - sum[y0 * (nx + 1) + x1] - sum[y1 * (nx + 1) + x0] + sum[y0 * (nx + 1) + x0];
-  const k = Math.ceil(2 * half) + 1;
-  let mid = middle ?? centre, best = -1;
-  if (!middle) for (let y = 4; y + k + 4 <= ny; y++) for (let x = 4; x + k + 4 <= nx; x++) {
-    const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
-    if (score > best) { best = score; mid = c; }
-  }
+const discReach = (W) => 0.6 * W + 6;  // (how far from its middle a disc of W² cells and its walls' room reach: a patch's items within it are enough)
+const flatEach = (h, f) => { for (let i = 0; i < h.p.length; i += 2) f(h.p[i], h.p[i + 1]); };  // (an item's corners: its own, flat)
+function discPatch(items, W, mid, norm = Math.hypot, each = flatEach) {  // walls in a circle: the items nearest the middle mid (norm: another way to measure, Ammann's octagon; each(item, f): f(x, y) for each of its corners)
   // by their distance (each its distance once), only those near it sorted (the patch, its hats' substitution's, up to 40 times
   // as big as wanted): all those within the W²-th's distance and 3 more (its walls'), the radius widened till so
   for (const h of items) h.far = norm(h.m[0] - mid[0], h.m[1] - mid[1]);
   const far = (h) => h.far;
-  for (let r = 0.6 * W + 6; ; r *= 1.25) {
+  for (let r = discReach(W); ; r *= 1.25) {
     const near = items.filter((h) => h.far < r).sort((a, b) => a.far - b.far);
     if (near.length === items.length || (near.length > W * W && near[W * W - 1].far + 3 < r)) { items = near; break; }
   }
@@ -6786,18 +6776,31 @@ function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls
   // its core: the items nearest the middle, all those as far (then the next ones, till one alive)
   for (let k = 0; k < 1 || !items.slice(0, k).some((h) => !h.dead);) { const d = far(items[k]); while (far(items[k]) - d < 1e-6) items[k++].core = true; }
   const cells = items.slice(0, W * W).sort((a, b) => a.m[1] - b.m[1]), rows = [];
-  cells.forEach(poly);
   for (let y = 0; y < W; y++) rows.push(...cells.slice(y * W, (y + 1) * W).sort((a, b) => a.m[0] - b.m[0]));
-  // the walls: the cells of the wall and the items beyond touching a live one (sharing a corner)
-  const inside = new Set(rows.filter((h) => !h.dead).flatMap((h) => h.p.map((p) => pointKey(p))));
+  // the walls: the cells of the wall and the items beyond touching a live one (sharing a corner: the few ones' corners, those
+  // of a live cell among them)
   const edge = far(items[W * W - 1]) + 3, near = [];  // (the items just beyond: the next ones by distance)
   for (let k = W * W; k < items.length && far(items[k]) < edge; k++) near.push(items[k]);
-  const walls = [...rows.filter((h) => h.dead), ...near].filter((h) => poly(h).some((q) => inside.has(pointKey(q)))).map((h) => h.p);
-  // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place
-  const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], at = (p) => p.map(([u, v]) => [u - o[0], v - o[1]]);
-  const dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
-  return { polys: rows.map((h) => at(h.p)), walls: walls.map(at), dead, core: rows.filter((h) => h.core).map((h) => at(h.p)), norm };  // (norm: its way to measure, its disc's)
+  const out = [...rows.filter((h) => h.dead), ...near], ids = (h) => { const r = []; each(h, (x, y) => r.push(pointId(x, y))); return r; };
+  const theirs = new Set(out.flatMap(ids)), touched = new Set();
+  // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place; its
+  // cells then its walls, flat (see flatPolys), its cells' corners written straight (those of a live one among the others' noted)
+  const o = [mid[0] - (W - 1) / 2, mid[1] - (W - 1) / 2], start = new Int32Array(W * W + out.length + 1);
+  let size = 0, at = 0, k = 0;
+  for (const h of [...rows, ...out]) each(h, () => size++);
+  const xy = new Float64Array(2 * size), put = (h, live) => {
+    each(h, (x, y) => { if (live) { const id = pointId(x, y); if (theirs.has(id)) touched.add(id); } xy[at++] = x - o[0]; xy[at++] = y - o[1]; });
+    start[++k] = at / 2;
+  };
+  for (const h of rows) put(h, !h.dead);
+  for (const h of out) if (ids(h).some((id) => touched.has(id))) put(h, false);
+  const F = flatPolys(k, start.subarray(0, k + 1), xy.subarray(0, at)), dead = rows.flatMap((h, t) => (h.dead ? [t] : []));  // (cells of the wall among them: a ring's hole)
+  let area = 0;
+  for (let t = 0; t < W * W; t++) area += polyArea(F.poly(t));
+  return { ...F, dead, core: rows.flatMap((h, t) => (h.core ? [F.poly(t)] : [])), norm, width: Math.sqrt(area / (W * W)) };  // (norm: its way to measure, its disc's; width: its cells', see cellWidth)
 }
+// a grid that never repeats, built once a size: kept while in use (its polygons some hundred MB at a million cells: the plane's, see walk.plane.flat)
+const discMemo = (build) => { const cache = {}; return (W) => cache[W]?.deref() ?? (cache[W] = new WeakRef(build(W))).deref(); };
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
  * (github.com/isohedral/hatviz, BSD 3-clause): four metatiles (H, T, P, F) are laid in a patch, which gives four
@@ -6906,24 +6909,23 @@ const HAT = (() => {
     return out;
   };
   const S = 0.54;  // world units a hatviz unit: a hat about as big as a square
-  const cache = {};
-  return (W) => cache[W] ??= (() => {
+  return discMemo((W) => {
     // the patch: as many as 20 W² hats (the disc well inside); round its hats' mean place, the disc of W² (radius W / √π) and
     // its walls' room only
     let shapes = { H: H0, T: T0, P: P0, F: F0 };
     while (sizeOf(patchOf(shapes)).n < 20 * W * W) shapes = metatilesOf(patchOf(shapes));
     const patch = patchOf(shapes), mid = sizeOf(patch).c;
-    const hats = hatsNear(patch, ident, mid, (W / Math.sqrt(Math.PI) + 6) / S, []).map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S], flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
-    const poly = (h) => (h.p ??= corners.map((q) => transPt(h.T, q)).map((q) => [q.x * S, -q.y * S]));  // (its corners only when wanted)
-    return discPatch(hats, W, poly, [mid.x * S, -mid.y * S]);
-  })();
+    const hats = hatsNear(patch, ident, mid, (W / Math.sqrt(Math.PI) + 6) / S, []).map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S] }; });
+    const each = (h, f) => { const { T } = h; for (const q of corners) f((T[0] * q.x + T[1] * q.y + T[2]) * S, -(T[3] * q.x + T[4] * q.y + T[5]) * S); };  // (its corners only when wanted: as transPt's)
+    return discPatch(hats, W, [mid.x * S, -mid.y * S], Math.hypot, each);
+  });
 })();
 /* Penrose's rhombi (P3): a wheel of 10 Robinson triangles cut again and again (a thin one in 2, a thick one in 3, each
  * time φ smaller; about φ² as many), two of a colour sharing their base a rhombus (thick: 72°, thin: 36°): a tiling that
  * never repeats, with five-fold symmetry. As the hats' (see discPatch); each rhombus about a square unit */
 const PENROSE = (() => {
-  const phi = (1 + Math.sqrt(5)) / 2, cache = {}, lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-  return (W) => cache[W] ??= (() => {
+  const phi = (1 + Math.sqrt(5)) / 2, lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+  return discMemo((W) => {
     let n = 0;
     while (10 * phi ** (2 * n) < 14 * W * W) n++;  // (about 6 W² rhombi, 2 triangles each)
     const R = 1.11 * phi ** n;  // the rhombi's sides 1.11: their mean area 1
@@ -6935,16 +6937,16 @@ const PENROSE = (() => {
       if (c === 0) { const P = lerp(A, B, 1 / phi); return [[0, C, P, B], [1, P, C, A]]; }
       const Q = lerp(B, A, 1 / phi), S = lerp(B, C, 1 / phi);
       return [[1, S, C, A], [1, Q, S, B], [0, S, Q, A]];
-    }), [0, 0], W / Math.sqrt(Math.PI) + 6, (T) => T.slice(1));  // (round the disc of W² and its walls' room only)
-    const key = (p) => pointKey(p, 1e4), half = new Map(), items = [];
+    }), [0, 0], W / Math.sqrt(Math.PI) + 6, 1);  // (round the disc of W² and its walls' room only)
+    const half = [new Map(), new Map()], items = [];  // (a colour's halves by their base's middle: a rhombus's, its own)
     for (const [c, A, B, C] of tris) {
-      const k = `${c}|${[key(B), key(C)].sort().join('|')}`, other = half.get(k);
-      if (!other) { half.set(k, A); continue; }
+      const k = pointId((B[0] + C[0]) / 2, (B[1] + C[1]) / 2), other = half[c].get(k);
+      if (!other) { half[c].set(k, A); continue; }
       const p = [A, B, other, C];
-      items.push({ p, m: [(B[0] + C[0]) / 2, (B[1] + C[1]) / 2] });
+      items.push({ p: p.flat(), m: [(B[0] + C[0]) / 2, (B[1] + C[1]) / 2] });
     }
-    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round the wheel's middle: five-fold)
-  })();
+    return discPatch(items, W, [0, 0]);  // (round the wheel's middle: five-fold)
+  });
 })();
 /* The Spectre (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 14 sides all 1 long, that tiles the plane
  * only without ever repeating, and never turned over (its mirror image not needed). Built by substitution, as Kaplan's
@@ -7000,16 +7002,15 @@ const SPECTRE = (() => {
     return out;
   };
   const S = 1 / Math.sqrt(Math.abs(spectre.reduce((a, p, i) => a + p[0] * spectre[(i + 1) % 14][1] - spectre[(i + 1) % 14][0] * p[1], 0) / 2));  // a spectre a square unit
-  const cache = {};
-  return (W) => cache[W] ??= (() => {
+  return discMemo((W) => {
     // as many as 20 W² spectres (the disc well inside); round their mean place, the disc of W² (radius W / √π) and its walls'
     // room only
     let sys = base;
     while (sizeOf(sys.Delta).n < 20 * W * W) sys = supertiles(sys);
     const mid = sizeOf(sys.Delta).c;
-    const items = spectresNear(sys.Delta, ident, mid, (W / Math.sqrt(Math.PI) + 6) / S, []).map((T) => { const p = spectre.map((q) => at(T, q)).map(([x, y]) => [x * S, -y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / 14) }; });
-    return discPatch(items, W, (h) => h.p, [mid[0] * S, -mid[1] * S]);
-  })();
+    const items = spectresNear(sys.Delta, ident, mid, (W / Math.sqrt(Math.PI) + 6) / S, []).map((T) => { const p = spectre.map((q) => at(T, q)).map(([x, y]) => [x * S, -y * S]); return { p: p.flat(), m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / 14) }; });
+    return discPatch(items, W, [mid[0] * S, -mid[1] * S]);
+  });
 })();
 /* The pinwheel (Conway and Radin, 1994): a right triangle, its legs 1 and 2, cut in 5 of itself √5 smaller (the altitude to its
  * hypotenuse, then the larger part in 4), again and again: a tiling that never repeats, its tiles turned every way (no
@@ -7017,8 +7018,8 @@ const SPECTRE = (() => {
  * corner of that side too (its neighbours by a shared corner, as the hats'). As the hats' (see discPatch): a tile a square
  * unit, the W² nearest a middle with room all round */
 const PINWHEEL = (() => {
-  const cache = {}, mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  return (W) => cache[W] ??= (() => {
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  return discMemo((W) => {
     // the big triangle, its legs 2L and L, inflated n times (L = √5ⁿ: its tiles' legs 2 and 1, a square unit each), its
     // incircle (radius L (3 − √5) / 2, its middle that far from both legs) round the disc of W² tiles (radius W / √π) and its walls
     let n = 0;
@@ -7045,10 +7046,10 @@ const PINWHEEL = (() => {
         }
         return [a, ...on.sort((x, y) => x[0] - y[0]).map(([, q]) => q)];
       });
-      return { p, m: [0, 1].map((d) => (T[0][d] + T[1][d] + T[2][d]) / 3) };
+      return { p: p.flat(), m: [0, 1].map((d) => (T[0][d] + T[1][d] + T[2][d]) / 3) };
     });
-    return discPatch(items, W, (h) => h.p, [r, r]);  // (round its incircle's middle)
-  })();
+    return discPatch(items, W, [r, r]);  // (round its incircle's middle)
+  });
 })();
 /* De Bruijn's multigrids (1981): N families of lines a unit apart, their normals 180°/N apart, all moved by ½ (no three
  * meeting, the whole 2N-fold round the middle); each crossing of two a tile, its corners the sum of the lattice steps of
@@ -7059,20 +7060,23 @@ const DEBRUIJN = (N) => {
   const e = [...Array(N).keys()].map((m) => [Math.cos((m * Math.PI) / N), Math.sin((m * Math.PI) / N)]), pairs = [];
   for (let j = 0; j < N; j++) for (let l = j + 1; l < N; l++) pairs.push([j, l, Math.abs(e[j][0] * e[l][1] - e[j][1] * e[l][0])]);
   const crossings = pairs.reduce((t, [, , s]) => t + s, 0), S = 1 / Math.sqrt(pairs.reduce((t, [, , s]) => t + s * s, 0) / crossings);  // (crossings a unit; their mean area 1)
-  const cache = {};
-  return (W) => cache[W] ??= (() => {
-    const K = Math.ceil(Math.sqrt((6 * W * W) / (crossings * Math.PI))) + 3, items = [];  // (6 W² tiles)
+  return discMemo((W) => {
+    // the tiles within the disc's reach (see discReach; by its 2N-gon's measure, as far as reach / cos(90°/N) away) only: a
+    // crossing x's tile's middle S (N/2) x, give or take S (N/2 + 1) (each of its numbers x's own ½ off, its corners 1 more),
+    // its lines' numbers within x's and 1
+    const reach = discReach(W), X = (reach / Math.cos(Math.PI / (2 * N)) / S + N / 2 + 1) / (N / 2), K = Math.ceil(X) + 1, items = [], norm = (x, y) => Math.max(...e.map(([a, b]) => Math.abs(a * x + b * y)));
     for (const [j, l] of pairs) for (let kj = -K; kj <= K; kj++) for (let kl = -K; kl <= K; kl++) {
       const [a, b] = [e[j], e[l]], d = a[0] * b[1] - a[1] * b[0], r1 = kj + 0.5, r2 = kl + 0.5, x = [(r1 * b[1] - r2 * a[1]) / d, (a[0] * r2 - b[0] * r1) / d];
-      if (Math.hypot(...x) > K - 2) continue;  // (round the grid's middle: its tiles whole)
+      if (Math.hypot(...x) > X) continue;
       const k = e.map((em, m) => (m === j ? kj : m === l ? kl : Math.ceil(x[0] * em[0] + x[1] * em[1] - 0.5)));
-      const v = (da, db) => [0, 1].map((t) => k.reduce((sum, km, m) => sum + (km + (m === j ? da : m === l ? db : 0)) * e[m][t], 0) * S);
+      const v = (da, db) => { let u = 0, w = 0; for (let m = 0; m < N; m++) { const c = k[m] + (m === j ? da : m === l ? db : 0); u += c * e[m][0]; w += c * e[m][1]; } return [u * S, w * S]; };
       const p = [v(0, 0), v(1, 0), v(1, 1), v(0, 1)];
       if (p.reduce((sum, q, i) => sum + q[0] * p[(i + 1) % 4][1] - p[(i + 1) % 4][0] * q[1], 0) < 0) p.reverse();
-      items.push({ p, m: [0, 1].map((t) => p.reduce((sum, q) => sum + q[t], 0) / 4) });
+      const m = [0, 1].map((t) => p.reduce((sum, q) => sum + q[t], 0) / 4);
+      if (norm(...m) < reach) items.push({ p: p.flat(), m });
     }
-    return discPatch(items, W, (h) => h.p, [0, 0], (x, y) => Math.max(...e.map(([a, b]) => Math.abs(a * x + b * y))));
-  })();
+    return discPatch(items, W, [0, 0], norm);
+  });
 };
 const AMMANN = DEBRUIJN(4), RHOMBS12 = DEBRUIJN(6), RHOMBS14 = DEBRUIJN(7);  // (Rhombs 14: 7 families, fourteenfold, three kinds of rhombi)
 /* Rosettes: Sugimoto's pentagon for n-fold turns (Sugimoto, arXiv 2005.08470: A = 180° − 240°/n, B = 360°/n, C = 180° −
@@ -7089,7 +7093,7 @@ function ROSETTE(n, grow = null, hole = false) {  // grow: its own tiles (Hirsch
   const det = u[3][0] * u[4][1] - u[3][1] * u[4][0], e = (-D3[0] * u[4][1] + D3[1] * u[4][0]) / det, f = (-u[3][0] * D3[1] + u[3][1] * D3[0]) / det;  // (DE·u3 + EA·u4 = −(AB + BC + CD))
   const side = [1, 1, 1, e, f], P0 = [[0, 0]];
   for (let i = 0; i < 4; i++) P0.push([P0[i][0] + side[i] * u[i][0], P0[i][1] + side[i] * u[i][1]]);
-  const mid = (P) => [0, 1].map((d) => P.reduce((t, q) => t + q[d], 0) / P.length), len = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const len = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
   // Sugimoto's own construction (his Figure 4), any n: the tiles in pairs mirrored on their side DE (his
   // Octa-units), in wedges of rows of 1, 2, 3… pairs (a pair to the next along DE, e; a row to the next e / 2 along and H
   // across, H the heights of B and C over DE); a wedge's first pair from the one before by its A mirrored, turned 120°/q (q
@@ -7124,12 +7128,15 @@ function ROSETTE(n, grow = null, hole = false) {  // grow: its own tiles (Hirsch
     return [[...Array(n).keys()].map((k) => [r * Math.cos(((2 * k + 1) * Math.PI) / n - Math.PI / 2), r * Math.sin(((2 * k + 1) * Math.PI) / n - Math.PI / 2)]), ...tiles];
   };
   const U = 1 / Math.sqrt(polyArea(P0));  // (a tile a square unit)
-  const cache = {};
-  return (W) => cache[W] ??= (() => {
-    const R = (0.525 * W * Math.SQRT2 + 5) / U;  // (round the W² tiles' square, its walls too)
-    const items = (grow ?? direct)(R).map((P, i) => { const p = P.map(([x, y]) => [x * U, y * U]); return { p, m: mid(p), dead: hole && i === 0 }; });  // (the hole: a cell of the wall)
-    return discPatch(items, W, (h) => h.p, [0, 0]);  // (round its middle)
-  })();
+  return discMemo((W) => {
+    const R = discReach(W) / U;  // (round the disc and its walls' room: see discReach)
+    const items = (grow ?? direct)(R).map((P, i) => {  // (the hole: a cell of the wall)
+      const p = [], m = [0, 0];
+      for (const [x, y] of P) { p.push(x * U, y * U); m[0] += x * U; m[1] += y * U; }
+      return { p, m: [m[0] / P.length, m[1] / P.length], dead: hole && i === 0 };
+    });
+    return discPatch(items, W, [0, 0]);  // (round its middle)
+  });
 }
 /* Hirschhorn's flower (Wikimedia: Hirschhorn_6-fold-rotational_symmetry_pentagonal_tiling.svg): the rosettes' pentagon for 6
  * turns, its sides all 1, each a multiple of 20° (A B C D E: 140° 60° 160° 80° 100°), so each corner a whole sum of the 18
@@ -7142,19 +7149,22 @@ function HIRSCHHORN(R) {
   const times = ([a, b, c, d, e, f]) => [-f, a, b, c + f, d, e], ZETA = [[1, 0, 0, 0, 0, 0]];  // (× ζ)
   for (let k = 1; k < 18; k++) ZETA.push(times(ZETA[k - 1]));
   const mod = (k) => ((k % 18) + 18) % 18, turn = (p, k) => { for (let r = 0; r < mod(k); r++) p = times(p); return p; };  // (k 20°s)
-  const CS = [Math.cos, Math.sin].map((f) => [0, 1, 2, 3, 4, 5].map((i) => f((i * Math.PI) / 9))), xy = (p) => CS.map((c) => p.reduce((t, v, i) => t + v * c[i], 0));
+  const CS = [Math.cos, Math.sin].map((f) => [0, 1, 2, 3, 4, 5].map((i) => f((i * Math.PI) / 9))), xy = (p) => { let x = 0, y = 0; for (let i = 0; i < 6; i++) { x += p[i] * CS[0][i]; y += p[i] * CS[1][i]; } return [x, y]; };
   const WAYS = [[0, 6, 7, 12, 16], [15, 2, 3, 9, 11]];  // its sides' ways (AB BC CD DE EA), mirrored (E'D' D'C' C'B' B'A' A'E'), counterclockwise
   const tile = (p, m, d, s = 0) => {  // from p, its corner s, its sides' ways turned d: its corners
     const P = [p];
-    for (let i = 0; i < 4; i++) P.push(P[i].map((v, j) => v + ZETA[mod(WAYS[m][(s + i) % 5] + d)][j]));
+    for (let i = 0; i < 4; i++) { const z = ZETA[mod(WAYS[m][(s + i) % 5] + d)], q = []; for (let j = 0; j < 6; j++) q.push(P[i][j] + z[j]); P.push(q); }
     return P.map(xy);
   };
   const tiles = [];
   for (let k = 0; k < 18; k += 3) for (const [p, m, d] of FLOWER_SEED) tiles.push(tile(turn(p, k), m, d + k));
   const first = [-1, -1, -1, -3, -3, -2], up = [0, 0, 0, -1, -1, -1];  // (wedge 0: its first pair's D, DE along ζ⁰; a row to the next)
-  for (let w = 0; w < 18; w++) for (let r = 0; 8.51 + 2.84 * r < R + 3; r++) for (let i = 0; i < r + 3; i++) {
-    const D = turn(first.map((v, j) => v + i * ZETA[0][j] + r * up[j]), w);
-    if (Math.hypot(...xy(D)) < R + 3) tiles.push(tile(D, 0, w - WAYS[0][3], 3), tile(D.map((v, j) => v + ZETA[w][j]), 1, w + 9 - WAYS[1][0]));  // (its pair: D to E along ζʷ, E to D mirrored)
+  for (let w = 0; w < 18; w++) {
+    const [A, B, C] = [first, ZETA[0], up].map((p) => turn(p, w));  // (turning a whole sum: its parts turned, whole numbers alike)
+    for (let r = 0; 8.51 + 2.84 * r < R + 3; r++) for (let i = 0; i < r + 3; i++) {
+      const D = A.map((v, j) => v + i * B[j] + r * C[j]);
+      if (Math.hypot(...xy(D)) < R + 3) tiles.push(tile(D, 0, w - WAYS[0][3], 3), tile(D.map((v, j) => v + ZETA[w][j]), 1, w + 9 - WAYS[1][0]));  // (its pair: D to E along ζʷ, E to D mirrored)
+    }
   }
   return tiles;
 }
@@ -7169,18 +7179,17 @@ function HOUSES(n) {
   const house = (x0, y, out) => (out  // (along its axis, x0 its near end: in, its top there; out, its rectangle)
     ? [[x0 + 1 + h, y], [x0 + 1 + h / 2, y - b / 4], [x0 + 1, y - b / 2], [x0, y - b / 2], [x0, y + b / 2], [x0 + 1, y + b / 2], [x0 + 1 + h / 2, y + b / 4]]
     : [[x0, y], [x0 + h / 2, y + b / 4], [x0 + h, y + b / 2], [x0 + h + 1, y + b / 2], [x0 + h + 1, y - b / 2], [x0 + h, y - b / 2], [x0 + h / 2, y - b / 4]]);
-  const cache = {};
-  return (W) => cache[W] ??= (() => {
-    const J = Math.ceil((0.525 * W * Math.SQRT2 + 5) / U / P) + 2, items = [];  // (rows enough round the W² tiles' square)
+  return discMemo((W) => {
+    const J = Math.ceil(discReach(W) / U / P) + 2, items = [];  // (rows enough round the disc and its walls' room: see discReach)
     for (let k = 0; k < 2 * n; k++) {
       const c = Math.cos(k * t), s = Math.sin(k * t), off = k % 2 ? 0 : 2;  // (on the axes through a tile, from the middle)
       for (let j = 1; j <= J; j++) for (const out of [false, true]) for (let i = 0; i < j; i++) {
         const p = house(off + (j - 1) * P + (out ? h + 1 : 0), (i - (j - 1) / 2) * b, out).map(([x, y]) => [(c * x - s * y) * U, (s * x + c * y) * U]);
-        items.push({ p, m: [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length) });
+        items.push({ p: p.flat(), m: [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length) });
       }
     }
-    return discPatch(items, W, (it) => it.p, [0, 0]);
-  })();
+    return discPatch(items, W, [0, 0]);
+  });
 }
 // the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 3-, 4-, 5-, 7- and 8-fold (from their stars), the
 // 7- and 8-fold rings (round a hole)
@@ -7198,7 +7207,7 @@ function planeCorners(kind, x, y) {  // a cell's corners, in world units
   }
   if (kind === 'kite') return kiteCorners(x, y).map(([a, b]) => latticeAt(a, b));
   if (tilingOf(kind)) return tilingAt(kind, x, y).map((p) => tilingWorld(kind, p));
-  if (APERIODIC[kind]) return APERIODIC[kind](walk.plane.W).polys[y * walk.plane.W + x];
+  if (APERIODIC[kind]) return APERIODIC[kind](walk.plane.W).poly(y * walk.plane.W + x);
   const i = x >> 1;
   if (kind === 'cairo') return cairoCorners(i, y, x & 1).map(([u, v]) => [(u - CAIRO_0[0]) * CAIRO, (v - CAIRO_0[1]) * CAIRO]);  // the walks' pentagons
   return x & 1 ? [latticeAt(i + 1, y), latticeAt(i + 1, y + 1), latticeAt(i, y + 1)] : [latticeAt(i, y), latticeAt(i + 1, y), latticeAt(i, y + 1)];
@@ -7227,10 +7236,15 @@ function planeCellAt(kind, W, wx, wy, how = 'in') {
     return null;
   }
   if (APERIODIC[kind]) {  // the tile holding it among those whose middles are in its square of 2 or round it (a tile about a square unit, its corners within 2 of its middle)
-    const polys = APERIODIC[kind](W).polys, near = tilesNear.get(polys) ?? tilesNear.set(polys, new Map()).get(polys), key = (i, j) => `${i},${j}`;
-    if (!near.size) polys.forEach((p, t) => { const k = key(...[0, 1].map((d) => Math.floor(p.reduce((sum, q) => sum + q[d], 0) / p.length / 2))); (near.get(k) ?? near.set(k, []).get(k)).push(t); });
+    const F = APERIODIC[kind](W), near = tilesNear.get(F) ?? tilesNear.set(F, new Map()).get(F), key = (i, j) => i * 67108864 + j;
+    if (!near.size) for (let t = 0; t < W * W; t++) {
+      let x = 0, y = 0;
+      for (let i = F.start[t]; i < F.start[t + 1]; i++) { x += F.xy[2 * i]; y += F.xy[2 * i + 1]; }
+      const k = key(Math.floor(x / (F.start[t + 1] - F.start[t]) / 2), Math.floor(y / (F.start[t + 1] - F.start[t]) / 2));
+      (near.get(k) ?? near.set(k, []).get(k)).push(t);
+    }
     const i0 = Math.floor(wx / 2), j0 = Math.floor(wy / 2);
-    for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) for (const t of near.get(key(i, j)) ?? []) if (insidePolygon(polys[t], wx, wy)) return [t % W, Math.floor(t / W)];
+    for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) for (const t of near.get(key(i, j)) ?? []) if (insidePolygon(F.poly(t), wx, wy)) return [t % W, Math.floor(t / W)];
     return null;
   }
   if (kind === 'cairo') {  // the pentagon holding the point, among those of the squares around
@@ -7302,18 +7316,31 @@ const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.char
 // a cell's width: the root of its grid's cells' mean area (a lattice cell's, two rows of them; a grid that never repeats,
 // all its cells')
 const cellWidth = (kind) => {
-  if (APERIODIC[kind]) { const P = APERIODIC[kind](walk.plane.W).polys; return Math.sqrt(P.reduce((sum, q) => sum + polyArea(q), 0) / P.length); }
+  if (APERIODIC[kind]) return APERIODIC[kind](walk.plane.W).width;
   const per = PER_RHOMBUS[kind] ?? 1; return Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => polyArea(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per)); };
 // a list of n items, each made when first read (its length, its items by index: the 10,000 punks' cells not all at once, only
 // those drawn; a hunt's, all: see huntClick)
 const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
 // each cell's colour's place (see huntParts; Mixed's too, each colour's own): a picture cut off at its own, as at the grid's
 // edges. Kept per grid
-let iconPartMemo = null;
+let iconPartMemo = null, iconCellsMemo = null;
 const iconPartOf = (K) => {
   const key = `${gridKey()}|${K}`;
   if (iconPartMemo?.key !== key) { const part = new Int32Array(walk.life.seed.length).fill(-1); huntParts(0, K, false, false).forEach((p, k) => { for (const t of p) part[t] = k; }); iconPartMemo = { key, part }; }
   return iconPartMemo.part;
+};
+// each colour's cells a picture may take (its part's live ones on its face, see iconLay) and their places on its frame (see
+// patternFrame), once a grid and its colours: its pictures' sizes only scale them; the wall's cells (a set)
+const iconCellsOf = (K) => {
+  const key = `${gridKey()}|${K}`;
+  if (iconCellsMemo?.key === key) return iconCellsMemo;
+  const kind = patternKind(), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : walk.geo.walls) ?? []), part = iconPartOf(K);
+  const of = Array.from({ length: K }, (_, i) => {
+    const F = patternFrame(i, K), cells = [], uv = [];
+    for (let t = 0; t < part.length; t++) if (part[t] === i && !dead.has(t) && (F.on?.(t) ?? true)) { cells.push(t); uv.push(...F.from(F.place(t))); }
+    return { cells: Int32Array.from(cells), uv: Float64Array.from(uv) };
+  });
+  return (iconCellsMemo = { key, dead, of });
 };
 // the plane's colours cut round its middle in walls a hexagon's or a circle's (a grid that never repeats): their pictures
 // out, against their walls (see iconLay)
@@ -7355,7 +7382,7 @@ function iconRoom(K) {
 function iconLay(N, P = 24) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo;
   if (!patternsOn()) return null;
-  const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = roundWalls(K) && planeSlices(K), part = iconPartOf(K), live = (t, i) => t >= 0 && part[t] === i && !dead.has(t);
+  const { dead, of } = iconCellsOf(K), walled = roundWalls(K) && planeSlices(K), part = iconPartOf(K), live = (t, i) => t >= 0 && part[t] === i && !dead.has(t);
   const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
   const k = (N / P) * cellWidth(kind), half = (N * cellWidth(kind)) / 2;  // (a pixel's width, the picture's half)
   const lays = Array.from({ length: K }, (_, i) => {
@@ -7371,11 +7398,10 @@ function iconLay(N, P = 24) {
     }
     const c = F.from(to), R = [Math.cos(tilt), Math.sin(tilt)], D = [-Math.sin(tilt), Math.cos(tilt)];  // (its x, its down: on the plane)
     const at = (px, py) => F.at([0, 1].map((d) => c[d] + ((px + 0.5 - P / 2) * R[d] + (py + 0.5 - P / 2) * D[d]) * k));  // (a pixel's middle, there)
-    const cells = [], pix = [];
-    for (let t = 0; t < part.length; t++) {
-      if (!live(t, i) || !(F.on?.(t) ?? true)) continue;
-      const [u, v] = sub(F.from(F.place(t)), c), px = Math.floor(dot([u, v], R) / k + P / 2), py = Math.floor(dot([u, v], D) / k + P / 2);
-      if (px >= 0 && py >= 0 && px < P && py < P) { cells.push(t); pix.push([px, py]); }
+    const cells = [], pix = [], { cells: own, uv } = of[i];
+    for (let j = 0; j < own.length; j++) {
+      const u = uv[2 * j] - c[0], v = uv[2 * j + 1] - c[1], px = Math.floor((u * R[0] + v * R[1]) / k + P / 2), py = Math.floor((u * D[0] + v * D[1]) / k + P / 2);
+      if (px >= 0 && py >= 0 && px < P && py < P) { cells.push(own[j]); pix.push([px, py]); }
     }
     const whole = [P / 2 - 1, P / 2].every((m) => Array.from({ length: P }, (_, q) => q).every((q) => live(F.cellOf(at(q, m)), i) && live(F.cellOf(at(m, q)), i)));
     return { cells, pix, mirror, whole };
@@ -7442,21 +7468,24 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
   const cornersOf = (x, y) => (kind === 'square' ? [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]
     : kind === 'hex' ? HEX.map(([a, b], q) => [x + (a + HEX[(q + 1) % 6][0]) / 3, y + (b + HEX[(q + 1) % 6][1]) / 3])
       : kind === 'tri' ? (x & 1 ? [[(x >> 1) + 1, y], [(x >> 1) + 1, y + 1], [x >> 1, y + 1]] : [[x >> 1, y], [(x >> 1) + 1, y], [x >> 1, y + 1]])
-        : tilingOf(kind) ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : APERIODIC[kind] ? APERIODIC[kind](W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
+        : tilingOf(kind) ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice; a grid that never repeats: its own, flat)
   // a corner's id: squares, triangles and hexagons have theirs on a grid of 1/q units, numbered in an array; the others
   // by a map (their corners to 1/1000)
   const q = { square: 1, tri: 1, hex: 3 }[kind] ?? 1000, P = [(row / (PER_RHOMBUS[kind] ?? 1)) * q, W * q], S = Math.max(...P) + 4 * q;
   const r = (a, d) => { const k = Math.round(a * q); return torus ? ((k % P[d]) + P[d]) % P[d] : k + 2 * q; };
-  const byGrid = q < 1000 ? new Int32Array(S * S).fill(-1) : null, byMap = new Map(), cStart = new Int32Array(n + 1), cList = [];
-  let nv = 0;
+  const F = APERIODIC[kind]?.(W), byGrid = q < 1000 ? new Int32Array(S * S).fill(-1) : null, byMap = new Map(), cStart = new Int32Array(n + 1), cList = [];
+  let nv = 0, at = 0;
+  const add = (u, v) => {
+    let id;
+    if (byGrid) { const k = r(u, 0) * S + r(v, 1); id = byGrid[k] < 0 ? (byGrid[k] = nv++) : byGrid[k]; }
+    else { const k = r(u, 0) * 8388608 + r(v, 1); id = byMap.get(k); if (id === undefined) byMap.set(k, (id = nv++)); }
+    cList[at++] = id;
+  };
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
-    for (const [u, v] of cornersOf(x, y)) {
-      let id;
-      if (byGrid) { const k = r(u, 0) * S + r(v, 1); id = byGrid[k] < 0 ? (byGrid[k] = nv++) : byGrid[k]; }
-      else { const k = r(u, 0) * 8388608 + r(v, 1); id = byMap.get(k); if (id === undefined) byMap.set(k, (id = nv++)); }
-      cList.push(id);
-    }
-    cStart[y * row + x + 1] = cList.length;
+    const t = y * row + x;
+    if (F) for (let i = F.start[t]; i < F.start[t + 1]; i++) add(F.xy[2 * i], F.xy[2 * i + 1]);
+    else for (const [u, v] of cornersOf(x, y)) add(u, v);
+    cStart[t + 1] = at;
   }
   return cellNeighbours(cStart, Int32Array.from(cList), nv, baseOf(kind) === 'hex' ? 6 : hensel && kind === 'square' ? 8 : 0);  // (a rectangle of hexagons: theirs too)
 }
@@ -7483,7 +7512,7 @@ function buildLifePlane(seq) {
   const one = new Float64Array(1);
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: MODES[current.mode].margolus ? plane.gens : Infinity, digits: seq, wx: one, wy: one, wz: null, is3d: false, cells: null,
                         maxDist: null, base: rule.base, counts: null, lattice: 'square', skipZeros: false, points: false,
-                        keys: seq, sphere: false, geo: { n, walls: planeDead(kind, W) }, plane: { kind, W, row, torus: planeTorus(kind) }, tile: null,
+                        keys: seq, sphere: false, geo: { n, walls: planeDead(kind, W) }, plane: { kind, W, row, torus: planeTorus(kind), flat: planeFlat(kind, W, row, planeTorus(kind)) }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
   startColours(walk.life.seed);  // in colours, each in its part
   countSeed(walk.life);
@@ -7511,11 +7540,11 @@ function turnLayer(ctx, a = planeTurn()) {
 function planeBounds(turn = planeTurn()) {
   const { kind, W, row } = walk.plane, b = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   const per = PER_RHOMBUS[kind] ?? 1, corner = [[0, 0], [row - per, 0], [0, W - 1], [row - per, W - 1]].flatMap(([x, y]) => Array.from({ length: per }, (_, k) => [x + k, y]));  // (a corner rhombus's or lattice cell's all)
-  const ends = APERIODIC[kind] ? [...APERIODIC[kind](W).polys.keys()].map((t) => [t % W, Math.floor(t / W)]) : planeShape(kind, W)?.walls ?? corner;  // (hats: all of them; a circle or a hexagon: its wall)
-  for (const [x, y] of ends) for (const p of planeCorners(kind, x, y)) {
-    const [u, v] = turnPoint(p, turn);
-    b.minX = Math.min(b.minX, u); b.maxX = Math.max(b.maxX, u); b.minY = Math.min(b.minY, v); b.maxY = Math.max(b.maxY, v);
-  }
+  const grow = ([u, v]) => { b.minX = Math.min(b.minX, u); b.maxX = Math.max(b.maxX, u); b.minY = Math.min(b.minY, v); b.maxY = Math.max(b.maxY, v); };
+  if (APERIODIC[kind]) {  // (a circle: all its cells' corners, flat)
+    const { start, xy } = APERIODIC[kind](W), c = Math.cos(turn), s = Math.sin(turn);
+    for (let i = 0; i < start[W * W]; i++) grow([xy[2 * i] * c - xy[2 * i + 1] * s, xy[2 * i] * s + xy[2 * i + 1] * c]);
+  } else for (const [x, y] of planeShape(kind, W)?.walls ?? corner) for (const p of planeCorners(kind, x, y)) grow(turnPoint(p, turn));  // (a hexagon: its wall)
   return b;
 }
 // the same grid, another start (a density, a seed, a symmetry, a pattern, a cell drawn): no new digits
@@ -7663,10 +7692,16 @@ function renderPlaneRow() {
 // each neighbour of each cell (as nbr lists them) by a side, 1 (two corners or more shared), or by a corner only, 0: the
 // flowers' letters (see parseRule)
 function sideOf(kind, W, nbr) {
-  const row = planeRow(kind, W), at = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row)));  // (its own size: walk.plane not yet it)
-  const corners = Array.from({ length: row * W }, (_, t) => new Set(at(t).map((p) => pointKey(p))));
+  const row = planeRow(kind, W), at = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).poly(t) : planeCorners(kind, t % row, Math.floor(t / row)));  // (its own size: walk.plane not yet it)
+  const start = new Int32Array(row * W + 1), ids = [];  // (each cell's corners' ids, see pointId)
+  for (let t = 0; t < row * W; t++) { for (const [x, y] of at(t)) ids.push(pointId(x, y)); start[t + 1] = ids.length; }
   const side = new Uint8Array(nbr.list.length);
-  for (let t = 0; t < row * W; t++) for (let q = nbr.start[t]; q < nbr.start[t + 1]; q++) { let shared = 0; for (const k of corners[nbr.list[q]]) shared += corners[t].has(k); side[q] = shared >= 2 ? 1 : 0; }
+  for (let t = 0; t < row * W; t++) for (let q = nbr.start[t]; q < nbr.start[t + 1]; q++) {
+    const u = nbr.list[q];
+    let shared = 0;
+    for (let i = start[u]; i < start[u + 1]; i++) for (let j = start[t]; j < start[t + 1]; j++) shared += ids[i] === ids[j];
+    side[q] = shared >= 2 ? 1 : 0;
+  }
   return side;
 }
 // A six-fold grid with walls in a hexagon (its natural outline: rings of cells round its middle), not a torus: its cells
@@ -8470,7 +8505,7 @@ function ruleTutorial(option) {
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? Object.keys(TILINGS).find((k) => TILINGS[k].mark === mark) ?? 'tri';
   const W = APERIODIC[kind] ? 16 : 8, rule = parseRule(option.value), row = planeRow(kind, W), dead = APERIODIC[kind]?.(W).dead;  // (one that never repeats: room for all its ways)
   const nb = withoutCells(planeNeighbours(kind, W, false, rule.iso === 'hensel'), dead);  // (walls: a cell with them all is inside; the wall's cells none)
-  const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).polys[t] : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
+  const turn = planeTurn(kind), corners = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).poly(t) : planeCorners(kind, t % row, Math.floor(t / row))).map((p) => turnPoint(p, turn));  // (turned as the 2D grid is)
   // its cells' kinds: by their shape (its true corners' sides and angles, mirrored or turned the same) and their count of neighbours (the
   // same shape may have several, by where it lies: Stein's pentagon 7, 6 or 5), of the cells all round by others (each corner
   // a whole turn of cells: its neighbours all there), the wall's left out; the one shown picked by its bubble (tutShape), at
@@ -10203,9 +10238,15 @@ const CENTRED = {
 function centredChoices(kind, K, rule, mine, any, centred = true) {
   const { W, row } = walk.plane, o = (W - 1) / 2, n = figureTurns(kind), out = Array.from({ length: K }, () => []);
   if (K > 1 && n % K) return out;
-  // the cell whose middle is at a place, within 0.05 (its middles by squares of 0.1: the 9 round a place looked in)
+  const sets = centred ? [(K > 1 ? CENTRED_OFF : CENTRED)[kind]] : [CENTRED[kind], CENTRED_OFF[kind]], figs = sets.flatMap((x) => x ?? []).filter((p) => mine || p[0] === rule);
+  // the cell whose middle is at a place, within 0.05 (its middles by squares of 0.1: the 9 round a place looked in; those within
+  // the figures' reach only)
+  const reach = Math.max(0, ...figs.flatMap(([, , cells]) => cells.map(([x, y]) => Math.hypot(x, y)))) + 1;
   const box = new Map(), mid = [], sq = (x, y) => `${Math.floor(x * 10)},${Math.floor(y * 10)}`;
-  for (let t = 0; t < W * row; t++) { const m = cellMiddle(kind, t % row, Math.floor(t / row)); mid[t] = [m[0] - o, m[1] - o]; (box.get(sq(...mid[t])) ?? box.set(sq(...mid[t]), []).get(sq(...mid[t]))).push(t); }
+  for (let t = 0; t < W * row; t++) {
+    const m = cellMiddle(kind, t % row, Math.floor(t / row)), p = [m[0] - o, m[1] - o];
+    if (Math.hypot(...p) < reach) { mid[t] = p; (box.get(sq(...p)) ?? box.set(sq(...p), []).get(sq(...p))).push(t); }
+  }
   const at = { get: (x, y) => { for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const t of box.get(sq(x + i / 10, y + j / 10)) ?? []) if (Math.hypot(mid[t][0] - x, mid[t][1] - y) < 0.05) return t; } };
   const laid = (cells, a, i) => {  // (its cells turned by a, in colour i's states; none if one falls off)
     const c = Math.cos(a), s = Math.sin(a), cs = [];
@@ -10218,8 +10259,7 @@ function centredChoices(kind, K, rule, mine, any, centred = true) {
   // Famous (not centred): all of them, the middle's and those off it, every way the figure turns them, each copy whole in its
   // colour's part
   const parts = !centred ? huntParts(0, K).map((p) => new Set(p)) : null, inPart = (cs, i) => !parts || cs.every((t, j) => j % 2 || parts[i].has(t));
-  const sets = centred ? [(K > 1 ? CENTRED_OFF : CENTRED)[kind]] : [CENTRED[kind], CENTRED_OFF[kind]];
-  for (const [, , cells] of sets.flatMap((x) => x ?? []).filter((p) => mine || p[0] === rule)) {
+  for (const [, , cells] of figs) {
     const own = Math.atan2(cells.reduce((a, c) => a + c[1], 0), cells.reduce((a, c) => a + c[0], 0));  // (its way from the middle)
     for (let k = 0; k < (centred && K > 1 ? 1 : n); k++) {
       const per = Array.from({ length: K }, (_, i) => laid(cells, centred && K > 1 ? Math.round((mids[i] - own) / step) * step : k * step + (2 * Math.PI * i) / K, i));
@@ -11796,7 +11836,7 @@ function glSetup() {
     const quad = buf();
     gl.bindBuffer(gl.ARRAY_BUFFER, quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 0, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), tileIds: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), planePos: buf(), planeIds: buf(), planeEdges: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
+    GLS = { gl, prog, grad, quad, pos: buf(), nrm: buf(), tileIds: buf(), fan: buf(), ePos: buf(), eN1: buf(), eN2: buf(), ribbon: buf(), flatPts: buf(), flatKeys: buf(), flatFill: buf(), flatCells: buf(), planePos: buf(), planeIds: buf(), planeTris: buf(), planeEdges: buf(), pal: gl.createTexture(), keys: {}, drawn: false };
   } catch (e) {
     console.warn('WebGL surfaces off:', e.message);
     GLS = false;
@@ -12317,8 +12357,11 @@ function glCubes(to) {
 // a cell's, 0 dead: clear). A move or a zoom moves nothing but uView. A texel a cell, 1024 a row
 // A plane's polygons, its cells' then its walls', flat: their corners' x, y in turn (polygon k's from start[k] to start[k + 1]),
 // no array of arrays kept (2^20 hexagons: 50 MB, not 300); poly(k), one's corners
-function planeFlat(kind, W, row, torus) {
-  const walls = torus ? [] : APERIODIC[kind] ? APERIODIC[kind](W).walls : (planeShape(kind, W)?.walls ?? planeWalls(kind, W)).map(([x, y]) => planeCorners(kind, x, y));  // (in a hexagon: its own)
+// polygons flat: their corners x and y in turn, each one's start (start[k] to start[k + 1]); poly(k) one's
+const flatPolys = (m, start, xy) => ({ m, start, xy, poly: (k) => { const P = []; for (let i = start[k]; i < start[k + 1]; i++) P.push([xy[2 * i], xy[2 * i + 1]]); return P; } });
+function planeFlat(kind, W, row, torus) {  // a plane's cells then its walls (a grid that never repeats: its own)
+  if (APERIODIC[kind]) return APERIODIC[kind](W);
+  const walls = torus ? [] : (planeShape(kind, W)?.walls ?? planeWalls(kind, W)).map(([x, y]) => planeCorners(kind, x, y));  // (in a hexagon: its own)
   const n = W * row, m = n + walls.length, start = new Int32Array(m + 1);
   let xy = new Float64Array(12 * m), at = 0;
   for (let k = 0; k < m; k++) {
@@ -12327,54 +12370,63 @@ function planeFlat(kind, W, row, torus) {
     for (const [x, y] of P) { xy[at++] = x; xy[at++] = y; }
     start[k + 1] = at / 2;
   }
-  const poly = (k) => { const P = []; for (let i = start[k]; i < start[k + 1]; i++) P.push([xy[2 * i], xy[2 * i + 1]]); return P; };
-  return { m, start, xy: xy.subarray(0, at), poly };
+  return flatPolys(m, start, xy.subarray(0, at));
 }
 function glPlane(paint) {
   const S = glSetup();
   if (!S) return;
   const { gl, prog } = S, { kind, W, row, torus } = walk.plane, n = W * row, { scale: s, ox, oy } = view, key = `${kind}|${W}|${row}|${torus}`;
-  if (S.keys.plane !== key) {  // (its triangles: at most 3 a corner past 2, each with its polygon's number)
-    const F = planeFlat(kind, W, row, torus), pos = new Float32Array(6 * F.start[F.m]), ids = new Float32Array(3 * F.start[F.m]);
-    let c = 0;
-    for (let k = 0; k < F.m; k++) { const P = F.poly(k); for (const i of ears(P)) { pos[2 * c] = P[i][0]; pos[2 * c + 1] = P[i][1]; ids[c++] = k; } }
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.planePos); gl.bufferData(gl.ARRAY_BUFFER, pos.subarray(0, 2 * c), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeIds); gl.bufferData(gl.ARRAY_BUFFER, ids.subarray(0, c), gl.STATIC_DRAW);
+  if (S.keys.plane !== key) {  // (its polygons' corners that turn, each with its polygon's number; their triangles by them: 3 numbers a corner past 2)
+    const F = walk.plane.flat, N = F.start[F.m], pos = new Float32Array(2 * N), ids = new Float32Array(N), tris = new Uint32Array(3 * N);
+    const straight = (P, i) => { const [a, b, c] = [P.at(i - 1), P[i], P[(i + 1) % P.length]]; return Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) <= 1e-12; };  // (a hat's side cut where a neighbour's corner can be: none drawn)
+    let v = 0, c = 0;
+    for (let k = 0; k < F.m; k++) {
+      const P = F.poly(k).filter((_, i, P) => !straight(P, i)), v0 = v;
+      for (const [x, y] of P) { pos[2 * v] = x; pos[2 * v + 1] = y; ids[v++] = k; }
+      for (const i of ears(P)) tris[c++] = v0 + i;
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planePos); gl.bufferData(gl.ARRAY_BUFFER, pos.subarray(0, 2 * v), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeIds); gl.bufferData(gl.ARRAY_BUFFER, ids.subarray(0, v), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.planeTris); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, tris.subarray(0, c), gl.STATIC_DRAW);
     for (const t of [S.planeBase, S.planeCol]) if (t) gl.deleteTexture(t);
-    Object.assign(S, { planeCount: c, planeFlat: F, planeBase: glTexels(gl, F.m), planeCol: glTexels(gl, F.m), planeLines: null });
+    Object.assign(S, { planeCount: c, planeBase: glTexels(gl, F.m), planeCol: glTexels(gl, F.m), planeLines: null });
     S.keys.plane = key;
     S.keys.planeBase = null;
   }
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff', wall = new Set(walk.geo.walls);
   if (S.keys.planeBase !== bg) {  // (the page's colour on the cells but the wall's, the walls')
     const pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; }, page = pack(bg), walled = pack(LIFE_WALL);
-    glPut(gl, S.planeBase, Uint32Array.from({ length: S.planeFlat.m }, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
+    glPut(gl, S.planeBase, Uint32Array.from({ length: walk.plane.flat.m }, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
     S.keys.planeBase = bg;
   }
-  paint(S.planeCol, S.planeFlat.m);
+  paint(S.planeCol, walk.plane.flat.m);
   const outline = $('showGrid').checked && s >= 6;
-  if (outline && !S.planeLines) {  // (each side once, but the wall cells')
-    const seen = new Set(), ends = [];
-    for (let t = 0; t < n; t++) if (!wall.has(t)) { const P = S.planeFlat.poly(t); P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); if (!seen.has(k)) { seen.add(k); ends.push(...p, ...q); } }); }
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeEdges); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ends), gl.STATIC_DRAW);
-    S.planeLines = ends.length / 2;
+  if (outline && !S.planeLines) {  // (each side once, but the wall cells': by its middle, a side's own, as sides never cross)
+    const { start, xy } = walk.plane.flat, seen = new Set(), ends = new Float32Array(4 * start[n]);
+    let e = 0;
+    for (let t = 0; t < n; t++) if (!wall.has(t)) for (let i = start[t]; i < start[t + 1]; i++) {
+      const j = i + 1 < start[t + 1] ? i + 1 : start[t], k = pointId((xy[2 * i] + xy[2 * j]) / 2, (xy[2 * i + 1] + xy[2 * j + 1]) / 2);
+      if (!seen.has(k)) { seen.add(k); ends.set([xy[2 * i], xy[2 * i + 1], xy[2 * j], xy[2 * j + 1]], 4 * e++); }
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeEdges); gl.bufferData(gl.ARRAY_BUFFER, ends.subarray(0, 4 * e), gl.STATIC_DRAW);
+    S.planeLines = 2 * e;
   }
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  const draw = (p, buffers, mode, count, more) => {  // (its attributes: aPos, and aId for the cells)
+  const draw = (p, buffers, mode, count, more, tris = null) => {  // (its attributes: aPos, and aId for the cells; tris: its corners by their numbers)
     gl.useProgram(p);
     gl.uniform3f(gl.getUniformLocation(p, 'uView'), s, ox, oy);
     gl.uniform2f(gl.getUniformLocation(p, 'uScreen'), cw, ch);
     gl.uniform2f(gl.getUniformLocation(p, 'uTurn'), Math.cos(planeTurn()), Math.sin(planeTurn()));
     more();
     const locs = buffers.map(([name, buffer, size]) => { const loc = gl.getAttribLocation(p, name); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0); return loc; });
-    gl.drawArrays(mode, 0, count);
+    if (tris) { gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tris); gl.drawElements(mode, count, gl.UNSIGNED_INT, 0); } else gl.drawArrays(mode, 0, count);
     locs.forEach((loc) => gl.disableVertexAttribArray(loc));
   };
   const cells = (tex) => draw(prog.planeCells, [['aPos', S.planePos, 2], ['aId', S.planeIds, 1]], gl.TRIANGLES, S.planeCount, () => {
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(gl.getUniformLocation(prog.planeCells, 'uCol'), 0);
-  });
+  }, S.planeTris);
   cells(S.planeBase);
   if (outline) {
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
