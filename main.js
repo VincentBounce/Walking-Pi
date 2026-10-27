@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1359';
+const VERSION = '0.1.1360';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7399,9 +7399,10 @@ function iconLay(N, P = 24) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K);
-  const lay = (sq, i, to) => {
+  const shifts = !walk.plane && !g.torus && onTriFaces(g, hullColours(MODES[$('mode').value].sphere, K)) ? triShifts(g.size) : [[0, 0]];
+  const lay = (sq, i, to, shift) => {
     const at = new Int32Array(sq.box.length).fill(-1), cells = Object.assign(sq.box.map(([x, y], j) => [x, y, j]), { mid: sq.mid });
-    const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true);
+    const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true, shift);
     for (const [t, j] of laid) if (!dead.has(t)) at[j] = t;
     const cross = sq.box.flatMap((_, j) => (sq.pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
     const js = sq.box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
@@ -7411,7 +7412,9 @@ function iconLay(N, P = 24) {
     if (!walled) {
       const l = lay(iconSquare(kind, N, 0, P), i);
       if (walk.plane || g.torus || !l.js.length) return { ...l, turn: 0 };
-      const m = lay(iconSquare(kind, N, iconTurn(l, P).off, P), i);  // (spun by what its face leaves: its bottom right down)
+      const sq = iconSquare(kind, N, iconTurn(l, P).off, P);  // (spun by what its face leaves: its bottom right down)
+      let m;
+      for (const d of shifts) if ((m = lay(sq, i, null, d)).whole) break;  // (on a triangle, where its cross fits nearest its middle: the widest's one place)
       return { ...m, turn: m.js.length ? iconTurn(m, P).turn : 0 };
     }
     const a = walled.angles[i], sq = iconSquare(kind, N, Math.round((a - Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3), P);  // (its bottom out: down, a sixth of a turn at a time)
@@ -10139,9 +10142,14 @@ const cellKind = (g) => g.tiling ?? (g.squares ? 'tetrakis' : g.kite ? 'kite' : 
 const patternKind = () => walk.plane?.kind ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' && !walk.geo.tiling ? 'tri' : cellKind(walk.geo));
 // a triangle face's cells: (i, j, o) as the plane's triangle 2i + o of row j, its index in the face
 const triFaceIndex = (f) => { const at = new Map(); let k = 0; for (let i = 0; i < f; i++) for (let j = 0; i + j < f; j++) { at.set(`${2 * i},${j}`, k++); if (i + j < f - 1) at.set(`${2 * i + 1},${j}`, k++); } return at; };
+// a solid whose colours' patterns lie on its triangle faces (kites: 3 a triangle, as on the plane; a hull solid's: its colours' triangles)
+const onTriFaces = (g, hull) => (g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri';
+// a pattern's shifts on a triangle face, nearest its middle first: in its rows' steps (i along a row, j a row up: 60° apart),
+// as far as a third of its side
+const triShifts = (f) => { const r = Math.ceil(f / 3), out = []; for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) out.push([a, b]); return out.sort(([a, b], [c, d]) => (a + b / 2) ** 2 + 0.75 * b * b - (c + d / 2) ** 2 - 0.75 * d * d); };
 // colour i's cells [cell, pattern state], the pattern centred on its spot: the middle of its block of the
 // plane or the torus (a lattice, see huntParts), the middle of its face of the cube
-function patternAt(i, K, cells, partial = false) {  // partial: its cells there only, past a torus's edges cut off (an icon's square, see iconLay)
+function patternAt(i, K, cells, partial = false, shift = [0, 0]) {  // partial: its cells there only, past a torus's edges cut off (an icon's square, see iconLay); shift: on a triangle face, moved off its middle (see triShifts)
   const g = walk.geo, [cols, rows] = COLOUR_GRID[K], out = [];
   const w = cells.reduce((e, c) => Math.max(e, c[0]), -Infinity) + 1, h = cells.reduce((e, c) => Math.max(e, c[1]), -Infinity) + 1;
   if (walk.plane) {
@@ -10152,11 +10160,11 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
   }
   if (g.torus) return sheetPatternAt(famousSpot(i, K), cells, partial);  // a sheet: a torus, a Möbius strip, a Klein bottle (its rows the plane's, round the ring)
   const hull = hullColours(MODES[$('mode').value].sphere, K);  // (a hull solid's colour: its first face, see hullColourings)
-  if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {  // a triangle face: its own rows and triangles (kites: 3 a triangle, as on the plane), the pattern round its middle; a hull solid's: its colours' triangles
+  if (onTriFaces(g, hull)) {  // a triangle face: its own rows and triangles, the pattern round its middle
     const sphere = MODES[$('mode').value].sphere, d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces, perFace = g.triFaces ? g.size * g.size : g.perFace;
     const mid = (fc) => unit([0, 1, 2].map((a) => fc.corners.reduce((sum, c) => sum + c[a], 0)));  // a face's middle, as a direction
     const face = hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(mid(fc), d) > dot3(mid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(patchCentre() / perFace);
-    const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1), j0 = Math.round(g.size / 3) - (h >> 1);
+    const per = g.kite ? 3 : 1, wt = Math.ceil(w / per), at = triFaceIndex(g.size), i0 = Math.round(g.size / 3) - (((wt >> 1) + 1) >> 1) + shift[0], j0 = Math.round(g.size / 3) - (h >> 1) + shift[1];
     // its rows along its side most level (on a face looking up or down, along x; kites: AB's), the face's rows from that
     // side's corner (r turns of its corners: a cell's (i, j) of the turned face's, the face's back)
     const sub = (p, q) => p.map((v, d) => v - q[d]), [A, B, C] = faces[face].corners, n = unit(cross(sub(B, A), sub(C, A))), flat = Math.abs(n[2]) > 0.9;
