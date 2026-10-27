@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1351';
+const VERSION = '0.1.1352';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -8056,8 +8056,8 @@ function brushAt([cx, cy], cells = brush.id === 'cell' ? null : brushCells(), to
   const { kind, W } = walk.plane, torus = walk.plane.torus && !cut, row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, out = [];
   if (RECTS[kind]) {  // a rectangle's: laid where it is, its middle on the cell pointed at to a lattice cell of its grid (not a whole rectangle)
     const { base, basis: [U, V] } = RECTS[kind], a = latticeStep(base), o = cellMiddle(base, 0, 0), b = cellMiddle(base, 0, 1).map((c, d) => c - o[d]);
-    const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), c = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), to = cellMiddle(kind, cx, cy);
-    const D = a[0] * b[1] - a[1] * b[0], dx = to[0] - c[0], dy = to[1] - c[1], n = Math.round((dx * b[1] - dy * b[0]) / D), m = Math.round((a[0] * dy - a[1] * dx) / D);
+    const ms = cells.map(([x, y]) => cellMiddle(kind, x, y)), c = [0, 1].map((d) => ms.reduce((t, m) => t + m[d], 0) / ms.length), at = to ?? cellMiddle(kind, cx, cy);
+    const D = a[0] * b[1] - a[1] * b[0], dx = at[0] - c[0], dy = at[1] - c[1], n = Math.round((dx * b[1] - dy * b[0]) / D), m = Math.round((a[0] * dy - a[1] * dx) / D);
     const DU = U[0] * V[1] - U[1] * V[0], wrap = ([x, y]) => {  // (a torus: round its W × W rectangles)
       const u = (x * V[1] - y * V[0]) / DU, v = (U[0] * y - U[1] * x) / DU, du = Math.floor(u / W) * W, dv = Math.floor(v / W) * W;
       return [x - du * U[0] - dv * V[0], y - du * U[1] - dv * V[1]];
@@ -9849,10 +9849,16 @@ function planeFrame() {
     for (const v of arr) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
     for (let t = 0; t < n; t++) { const f = (arr[t] - lo) / (hi - lo || 1); arr[t] = flip ? 1 - f : f; }
   }
-  const lc = Math.hypot(...c), lr = Math.hypot(...r);  // (their lengths: a place's nearest cell in true distances)
+  const lc = Math.hypot(...c), lr = Math.hypot(...r), middles = {};  // (their lengths: a place's nearest cell in true distances)
+  const block = (t, cols, rows) => Math.min(rows - 1, Math.floor(D[t] * rows)) * cols + Math.min(cols - 1, Math.floor(A[t] * cols));
   return (frameMemo = {
     key,
-    block: (t, cols, rows) => Math.min(rows - 1, Math.floor(D[t] * rows)) * cols + Math.min(cols - 1, Math.floor(A[t] * cols)),
+    block,
+    middle: (i, cols, rows) => (middles[`${cols}x${rows}`] ??= (() => {  // (a block's very middle, its cells' middles': an even block's, between them)
+      const sums = Array.from({ length: cols * rows }, () => [0, 0, 0]);
+      for (let t = 0; t < n; t++) { const sum = sums[block(t, cols, rows)], m = cellMiddle(kind, t % row, Math.floor(t / row)); sum[0] += m[0]; sum[1] += m[1]; sum[2]++; }
+      return sums.map(([x, y, k]) => [x / k, y / k]);
+    })())[i],
     cell: (across, down) => {
       let best = 0, far = Infinity;
       for (let t = 0; t < n; t++) { const d = ((A[t] - across) * lc) ** 2 + ((D[t] - down) * lr) ** 2; if (d < far) { far = d; best = t; } }
@@ -10204,7 +10210,7 @@ function patternAt(i, K, cells, partial = false) {  // partial: its cells there 
   if (walk.plane) {
     const { kind, row } = walk.plane, t = wallSlices(K) ? planeSlices(K).spots[i] : planeFrame().cell(((i % cols) + 0.5) / cols, (Math.floor(i / cols) + 0.5) / rows);
     const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), cs = K === 1 && !wallSlices(K) ? planeCentre().map(mid) : null;  // (one colour: the grid's very middle)
-    const to = cs && [0, 1].map((d) => cs.reduce((sum, m) => sum + m[d], 0) / cs.length);
+    const to = cs ? [0, 1].map((d) => cs.reduce((sum, m) => sum + m[d], 0) / cs.length) : wallSlices(K) ? null : planeFrame().middle(i, cols, rows);  // (a colour's: its block's very middle, not a cell's)
     return brushAt([t % row, Math.floor(t / row)], cells, to, partial).map(([x, y, v]) => [y * row + x, v]);
   }
   if (g.torus) return sheetPatternAt(famousSpot(i, K), cells, partial);  // a sheet: a torus, a Möbius strip, a Klein bottle (its rows the plane's, round the ring)
