@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1377';
+const VERSION = '0.1.1378';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6481,14 +6481,12 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-// the plane's sizes: the squares' side, every grid as many cells (see planeW), each up to what it runs well at
-const PLANE_SIDES = {}, sidesTo = (most) => sidesIn(16, most);
-for (const kind of ['square', 'hex', 'tri', 'cairo', 'kite', 'hat', 'penrose', 'spectre', 'ammann', 'rhombs12', 'rhombs14', ...Object.keys(TILINGS)]) PLANE_SIDES[kind] = sidesTo({ square: 2048, hex: 512, tri: 256, cairo: 256 }[kind] ?? 128);
-for (const kind of ['pinwheel', 'flower', 'flower3', 'flower4', 'flower5', 'flower7', 'flower8', 'flower9', 'flower10', 'mirror7', 'ring7', 'ring8', 'ring9', 'ring10', 'ring12']) PLANE_SIDES[kind] = sidesTo(64);
-// the sizes offered: blocks, small ones too (6 and 8: a start's return to see, its period short)
-// (two sides the same grid, as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least;
-// a hexagon's by its side alone, each its own: its hexagon fitted only when shown, see shapeW, not 512's 6 times to list it)
-const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]).filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));  // (grid: as built, its rows, its row)
+// the plane's sizes: the squares' sides (see SIDES), every grid as many cells (see planeW), its cells 2⁸ to 2¹⁷ (see CELLS:
+// the surfaces' too); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
+// as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least; a hexagon's by its side
+// alone, each its own (its hexagon fitted only when shown, see shapeW)
+const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), cells = (f) => W(f) * planeRow(k, W(f)), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) =>
+  [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS[0] && cells(f) <= CELLS[1])].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
 const plane = { side: 48, torus: true, gens: 2000, text: APP_TITLE, icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
@@ -7904,7 +7902,6 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     return R;
   };
   [PER_RHOMBUS[kind], PLANE_PER[kind], RECT_ASPECT[kind]] = [Math.abs(best.det) * per, Math.abs(best.det) * per, Math.hypot(...best.V) / Math.hypot(...best.U)];  // (its tables at once: its size said before it is built; its height over its width, see planeCols)
-  PLANE_SIDES[kind] = PLANE_SIDES[base];
   PATTERN_TURNS[kind] = PATTERN_TURNS[base];
   PLANE_CELLS[kind] = PLANE_CELLS[base];
   PLANE_SYMMETRIES[kind] = ['none'];  // (a rhombus's half turn: not a rectangle's)
