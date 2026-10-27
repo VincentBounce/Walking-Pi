@@ -198,7 +198,6 @@ button.primary {
    the choice buttons, from the left, and edited alike, in plain monospace on a yellow-framed field, ↵
    at its end; the steppers' (digits, start) centred at rest, written out ("20,000 digits") */
 .field input { background: transparent; border-color: var(--border); text-align: left; }
-#antRuleRow .field { margin-bottom: 10px; }  /* apart from Grid | Cells under it */
 .stepper .field input:not(:focus) { text-align: center; }
 .field input:hover { border-color: var(--muted); }
 .field input:focus {
@@ -369,10 +368,6 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 #clearDrawn { width: 64px; height: 34px; }  /* Clear, or Undo: the same room */.turn-row button { flex: 1; }  /* the turns, always there (greyed for a cell) */
 .colour-swatches span { font-size: 12px; color: var(--muted); font-weight: 400; }
 #lifeStartTabs button { padding-left: 2px; padding-right: 2px; font-size: 11.5px; }  /* the starts on one row */
-.soup-row { align-items: center; margin: 8px 0 0; }
-.soup-row input { flex: 1; margin: 0; }
-.soup-row span { min-width: 3.5em; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
-.soup-row button { flex: none; width: 34px; padding: 4px 0; }
 .stage.dragging { cursor: grabbing; }
 .stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* The two boxes over the view (Play bottom left, Display top right): the same frame and
@@ -425,9 +420,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 #walkOn .mode-detail { font-weight: 400; }
 #walkOn button.active .mode-base { border-color: var(--accent); color: var(--accent); }
 /* the ant's rules to start from, written as they are typed */
-.ant-presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 4px; margin-bottom: 10px; }
-.ant-presets button { padding: 5px 4px; font: 12px ui-monospace, Menlo, monospace; background: var(--panel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ant-presets button.active { border-color: var(--accent); color: var(--accent); }
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
 .stage-bar { left: 12px; bottom: 12px; width: 330px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; outline: none; }  /* grows upwards: the Play row stays at the bottom (no focus ring: a tap opens it, see index.html) */
 .stage-bar:hover { width: 680px; }
