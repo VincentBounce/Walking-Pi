@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1390';
+const VERSION = '0.1.1391';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1714,7 +1714,7 @@ function lifeMusic(L) {  // (a generation's moments, see Sound)
   const now = music.ctx.currentTime, born = L.bornNow;
   if (!L.aliveCount) { if (!music.stopped) for (let s = 0; s < 8; s++) tone(76 - 2 * s, now + 0.07 * s, 0.1, 'square', 0.05); music.stopped = true; return; }
   music.stopped = false;
-  if (music.avg !== null && born > 2.5 * music.avg && born > 0.01 * L.alive.length) noise(now, 0.6, 3000, Math.min(0.25, (0.05 * born) / Math.max(1, music.avg)), 60);
+  if (music.avg !== null && born > 2.5 * music.avg && born > 0.01 * L.seed.length) noise(now, 0.6, 3000, Math.min(0.25, (0.05 * born) / Math.max(1, music.avg)), 60);
   music.avg = music.avg === null ? born : 0.9 * music.avg + 0.1 * born;
   music.soft = born === 0;
   if (L.colours > 1) for (let k = 1; k <= L.colours; k++) if (L.extinctAt[k] === L.gen) tone(81, now, 0.3, 'square', 0.05, 45);
@@ -6470,6 +6470,7 @@ function buildLife(seq, mode) {
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
                 alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
+  lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
   lifeStart = null;  // the number's digits
   const one = new Float64Array(1);
@@ -7433,6 +7434,7 @@ function buildLifePlane(seq) {
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n), next: new Uint8Array(n), age: new Uint16Array(n),
                 died: new Int32Array(n), activity: new Uint32Array(n), ever: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see blockStep)
+  lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
@@ -7925,16 +7927,29 @@ function drawLifePlane() {
   const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[31 - level(a + 1, 65)]);  // the rainbow backwards: warm newborns, cold old cells
   const byActivity = colour === 'digit' ? Uint32Array.from({ length: Math.min(L.maxActivity, 65535) + 1 }, (_, v) => (v ? grad[level(v + 1, L.maxActivity + 1)] : 0)) : null;
   const byDying = Uint32Array.from({ length: L.C }, (_, st) => (st < 2 ? 0 : trail[Math.min(trail.length - 1, Math.round(((st - 1) / (L.C - 1)) * trail.length))]));
-  const { age, activity, died } = L, a = shownCells(L), fade = L.C === 2 && trailOn() ? trail.length : 0;  // the trail after death (Trail)
-  for (let t = 0; t < n; t++) {
-    const st = a[t];
-    px[t] = L.colours > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
-      : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
-      : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
-      : st && st <= L.colours ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / L.colours)]  // (in colours too: k + K × stage)
-      : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
+  const fade = L.C === 2 && trailOn() ? trail.length : 0, K = L.colours;  // the trail after death (Trail)
+  if (!L.margolus && lifeGPU(L)) {  // (its colours by the graphics card, by these tables, see lifeLookGPU)
+    const table = new Uint32Array(4096 * 17);
+    for (let st = 1; st < 256; st++) {
+      table[st] = colour !== 'mono' ? 0 : K > 1 ? civ[st] ?? 0 : st === 1 ? alive : 0;
+      table[256 + st] = colour === 'mono' && K > 1 ? civ[st] ?? 0 : colour === 'mono' ? byDying[st] ?? 0 : byDying[1 + Math.floor((st - 1) / K)] ?? 0;
+    }
+    table.set(byAge, 512);
+    table.set(inked.slice(0, fade), 1024);
+    if (byActivity) table.set(byActivity, 4096);
+    glPlane((tex, size) => lifeLookGPU(L, tex, Math.ceil(size / 1024), { table, by: colour === 'digit' ? 2 : colour === 'mono' ? 0 : 1, trail: fade, wall: [0, 0, 0, 0], dead: [0, 0, 0, 0] }));
+  } else {  // (here: blocks)
+    const { age, activity, died } = L, a = shownCells(L);
+    for (let t = 0; t < n; t++) {
+      const st = a[t];
+      px[t] = K > 1 && colour === 'mono' ? civ[st] || (L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+        : colour === 'digit' ? byActivity[Math.min(activity[t], 65535)]
+        : colour === 'mono' ? (st === 1 ? alive : st ? byDying[st] : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0)
+        : st && st <= K ? byAge[Math.min(age[t], 64)] : st ? byDying[1 + Math.floor((st - 1) / K)]  // (in colours too: k + K × stage)
+        : L.gen - died[t] < fade ? inked[L.gen - died[t]] : 0;  // age of live cells, a trail fading after death (in Ink)
+    }
+    glPlane((tex) => glPut(GLS.gl, tex, px));
   }
-  glPlane(px);
   drawBlocks(ctx);
   drawMotif(ctx);
   drawGhost();
@@ -8786,27 +8801,32 @@ function lifeReset() {
   L.loopMax = new Float64Array(L.colours + 1);
   L.loopAvg = null;
   L.trace = { alive: [L.seedAlive], by: [L.seedByColour] };  // each generation's live cells (each colour's too; see drawActivity)
+  L.gpuOld = true;  // (written here: the graphics card's copy old)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
  * back at generation g after first appearing at generation T, the pattern loops from T with
  * period g − T (1 = frozen). With N cells there are 2^N states, so this always happens eventually. */
 const LIFE_TRACK = 200000;  // generations remembered before giving up
+// (two sums over the cells not dead, each a cell's number and state mixed: in any order, as the graphics card sums them, see
+// GL_LIFE's key)
+const lifeMix = (x) => { x = Math.imul(x ^ (x >>> 16), 0x7feb352d); x = Math.imul(x ^ (x >>> 15), 0x846ca68b); return (x ^ (x >>> 16)) >>> 0; };
 function lifeFingerprint(state) {
-  let h1 = 0x811c9dc5, h2 = 0x01000193;
-  for (let t = 0; t < state.length; t++) {
-    h1 = Math.imul(h1 ^ state[t], 0x01000193);
-    h2 = Math.imul(h2 ^ (state[t] + t), 0x5bd1e995);
+  let h1 = 0, h2 = 0;
+  for (let t = 0; t < state.length; t++) if (state[t]) {
+    h1 = (h1 + lifeMix((Math.imul(t, 0x9e3779b9) + state[t]) | 0)) >>> 0;
+    h2 = (h2 + lifeMix(Math.imul(t, 0x85ebca6b) ^ Math.imul(state[t], 0xc2b2ae35))) >>> 0;
   }
-  return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
+  return lifeKey(h1, h2);
 }
+const lifeKey = (h1, h2) => h1 * 2097152 + (h2 & 0x1fffff);
 
 // Record generation gen (state already in L.alive) and detect the first repeat
 function lifeTrack(gen) {
   const L = walk.life;
   if (L.margolus) { if (!L.stable && blockBack(L, L.alive, gen)) { L.stable = { T: 0, P: gen, extinct: false }; renderRuleSection(); } return; }  // (blocks: see blockBack; its page told)
   if (L.stable || L.seen.size >= LIFE_TRACK) return;
-  const key = lifeFingerprint(L.alive);
+  const key = L.key ?? lifeFingerprint(L.alive);  // (the graphics card's, if it stepped)
   const first = L.seen.get(key);
   if (first === undefined) L.seen.set(key, gen);
   else L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 };
@@ -9068,48 +9088,60 @@ function lifeRule(L, a, b) {
   }
 }
 function lifeStep() {
-  const L = walk.life, a = L.alive, b = L.next, gen = cur + 1, K = L.colours, two = K > 1;
-  const byColour = new Int32Array(K + 1);
+  const L = walk.life, gen = cur + 1, K = L.colours, two = K > 1;
   const born0 = L.born, dead0 = L.dead;  // before this generation
   L.gen++;
-  if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
-  else if (!lifeRuleGPU(L, a, b)) lifeRule(L, a, b);  // (on the graphics card, else here)
-  let alive = 0, dying = 0;
-  for (let t = 0; t < a.length; t++) {
-    const was = a[t], now = b[t];
-    const live = now > 0 && now <= K, wasLive = was > 0 && was <= K;
-    if (two && live !== wasLive) {  // a colour's births, deaths, and cells it has had
-      if (live) { L.bornBy[now]++; if (!(L.everMask[t] & (1 << now))) { L.everMask[t] |= 1 << now; L.everBy[now]++; } }
-      else L.deadBy[was]++;
+  const G = !L.margolus && lifeStepGPU(L, gen);  // (on the graphics card: its sums back, its cells kept there)
+  let alive = 0, dying = 0, byColour = new Int32Array(K + 1);
+  L.key = G ? G.key : null;
+  if (G) {
+    ({ alive, dying } = G);
+    if (two) byColour = G.byColour;
+    L.born += G.born;
+    L.dead += G.dead;
+    L.everAlive += G.everNew;
+    L.maxActivity = Math.max(L.maxActivity, G.maxAct);
+    if (two) for (let k = 1; k <= K; k++) { L.bornBy[k] += G.bornBy[k]; L.deadBy[k] += G.deadBy[k]; L.everBy[k] += G.everBy[k]; }
+  } else {  // (here: blocks, or no WebGL 2)
+    const a = L.alive, b = L.next, { age, activity, ever, everMask, died } = L;
+    if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
+    else lifeRule(L, a, b);
+    for (let t = 0; t < a.length; t++) {
+      const was = a[t], now = b[t];
+      const live = now > 0 && now <= K, wasLive = was > 0 && was <= K;
+      if (two && live !== wasLive) {  // a colour's births, deaths, and cells it has had
+        if (live) { L.bornBy[now]++; if (!(everMask[t] & (1 << now))) { everMask[t] |= 1 << now; L.everBy[now]++; } }
+        else L.deadBy[was]++;
+      }
+      if (live) alive++;
+      else if (now) dying++;
+      if (two && live) byColour[now]++;
+      if (now === was) {
+        if (live && age[t] < 65535) age[t]++;
+        continue;
+      }
+      L.maxActivity = Math.max(L.maxActivity, ++activity[t]);
+      if (live) {
+        L.born++;
+        age[t] = 1;
+        if (!ever[t]) { ever[t] = 1; L.everAlive++; }
+      } else if (wasLive) {
+        L.dead++;
+        age[t] = 0;
+        died[t] = L.gen;
+      }
     }
-    if (live) alive++;
-    else if (now) dying++;
-    if (two && live) byColour[now]++;
-    if (now === was) {
-      if (live && L.age[t] < 65535) L.age[t]++;
-      continue;
+    if (L.margolus?.flips) {  // (every other generation shown negative: its cells shown alive, born and died, see negative)
+      const sa = gen % 2 === 0 ? 1 : 0, sb = 1 - sa, c = blockCells(L.margolus, a.length);  // (a: generation gen − 1, b: gen)
+      let born = 0, dead = 0;
+      alive = 0;
+      for (let t = 0; t < a.length; t++) { const x = (a[t] ? 1 : 0) ^ (sa & c[t]), y = (b[t] ? 1 : 0) ^ (sb & c[t]); if (y && !x) born++; else if (x && !y) dead++; alive += y; }
+      L.born = born0 + born;
+      L.dead = dead0 + dead;
     }
-    L.maxActivity = Math.max(L.maxActivity, ++L.activity[t]);
-    if (live) {
-      L.born++;
-      L.age[t] = 1;
-      if (!L.ever[t]) { L.ever[t] = 1; L.everAlive++; }
-    } else if (wasLive) {
-      L.dead++;
-      L.age[t] = 0;
-      L.died[t] = L.gen;
-    }
+    L.alive = b;  // (the card's copy old: see lifeCells)
+    L.next = a;
   }
-  if (L.margolus?.flips) {  // (every other generation shown negative: its cells shown alive, born and died, see negative)
-    const sa = gen % 2 === 0 ? 1 : 0, sb = 1 - sa, c = blockCells(L.margolus, a.length);  // (a: generation gen − 1, b: gen)
-    let born = 0, dead = 0;
-    alive = 0;
-    for (let t = 0; t < a.length; t++) { const x = (a[t] ? 1 : 0) ^ (sa & c[t]), y = (b[t] ? 1 : 0) ^ (sb & c[t]); if (y && !x) born++; else if (x && !y) dead++; alive += y; }
-    L.born = born0 + born;
-    L.dead = dead0 + dead;
-  }
-  L.alive = b;
-  L.next = a;
   L.aliveCount = alive;
   L.dyingCount = dying;
   L.byColour = byColour;
@@ -9161,6 +9193,7 @@ function lifeBack() {
   cur--;
   L.aliveCount = L.trace.alive[cur];
   L.byColour = L.trace.by[cur] ?? L.byColour;
+  L.gpuOld = true;
 }
 
 /* ==============================================================================================
@@ -11389,29 +11422,25 @@ function drawSphere() {
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
       : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
+  // Life: its colours by the graphics card (see lifeLookGPU), each a palette's place by its state (live, dying), its age, its
+  // generations since it died (its trail, so many: trail), or all by its changes
+  let lifeAt = null;
   if (L) {
-    const colour = $('colorMode').value;
+    const colour = $('colorMode').value, K = L.colours, trail = trailOn() && L.C === 2 ? LIFE_TRAIL.length + 1 : 0;  // (the trail: so many generations after a death)
     // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
     const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
-    if (L.colours > 1 && colour === 'mono') {  // each civilisation in its colour, then the trail of the dead (Trail)
-      const civ = civColours(L.colours, L.C);
+    if (K > 1 && colour === 'mono') {  // each civilisation in its colour, then the trail of the dead (Trail)
+      const civ = civColours(K, L.C);
       palette = [null, ...civ, ...LIFE_FADE];
-      levelOf = (t) => L.alive[t] || (trailOn() && L.gen - L.died[t] <= LIFE_TRAIL.length ? civ.length + L.gen - L.died[t] : 0);
-    } else if (colour === 'mono') {
-      const A = shownCells(L);
-      palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];  // the trail in Ink, the dying stages grey
-      levelOf = (t) => (A[t] === 1 ? 1 : A[t] ? 1 + dyingShade(A[t])
-        : trailOn() && L.C === 2 && L.gen - L.died[t] <= LIFE_TRAIL.length ? 1 + L.gen - L.died[t] : 0);  // the trail after death (Trail)
+      lifeAt = { live: (st) => st, dying: (st) => st, trail: trailOn() ? LIFE_TRAIL.length + 1 : 0, after: (d) => civ.length + d };
+    } else if (colour === 'mono') {  // the trail in Ink, the dying stages grey
+      palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];
+      lifeAt = { live: () => 1, dying: (st) => 1 + dyingShade(st), trail, after: (d) => 1 + d };
     } else if (colour === 'digit') {  // activity: how many times the cell changed state
-      levelOf = (t) => (L.activity[t] ? logLevel(L.activity[t], L.maxActivity) : 0);
+      lifeAt = { changes: (v) => (v ? logLevel(v, L.maxActivity) : 0) };
     } else {  // age of live cells, the rainbow backwards (orange = newborn … cyan = old); dying stages, or a trail fading after death
       palette = [null, ...[...grad].reverse(), ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];
-      levelOf = (t) => {
-        const st = L.alive[t];
-        if (st && st <= L.colours) return Math.min(LEVELS, logLevel(L.age[t], 64));  // (in colours too)
-        if (st) return LEVELS + dyingShade(1 + Math.floor((st - 1) / L.colours));
-        return trailOn() && L.C === 2 && L.gen - L.died[t] <= LIFE_TRAIL.length ? LEVELS + L.gen - L.died[t] : 0;
-      };
+      lifeAt = { age: (a) => Math.min(LEVELS, logLevel(a, 64)), dying: (st) => LEVELS + dyingShade(1 + Math.floor((st - 1) / K)), trail, after: (d) => LEVELS + d };
     }
   }
   // an ant's cells, as in 2D (see CELL_MODES): by their colour in Ink or Amber (the times it was on each, the
@@ -11428,22 +11457,25 @@ function drawSphere() {
     palette = [null, ...arrows.map(antTurnColour)];
     levelOf = (t) => (visits[t] && last[t] >= 0 ? 1 + last[t] : 0);
   }
-  if (L && g.walls) {  // the pentagons of the hexagon sphere: walls, in stone grey
-    const inner = levelOf, wall = new Set(g.walls);
-    palette = [...palette, LIFE_WALL];
-    levelOf = (t) => (wall.has(t) ? palette.length - 1 : inner(t));
-  }
   // the torus, and any polyhedron that is not flat, is drawn tile by tile from its current form;
   // a flat polyhedron is drawn face by face below
   if (motifShown) palette = palette.map((c) => c && (c === LIFE_WALL ? c : faded(c, FADING)));  // (the motif shown: the cells pale under its outlines, the walls not: ochre, as its tooltip says them)
   if (startsShown) {  // an empty globe under the distinct starts, its 12 pentagons as the walls they are in a Life run
     const wall = new Set(g.walls);
-    glSurface([null, LIFE_WALL], (t) => (wall.has(t) ? 1 : 0), false);
+    glSurface(paintLevels([null, LIFE_WALL], (t) => (wall.has(t) ? 1 : 0)), false);
     drawStarts(ctx);
     return;
   }
-  glSurface(palette, levelOf, path);  // (see 11.4b); the motif's outlines over it
-  drawMotif(ctx);
+  if (lifeAt) {  // (its tables: a palette's colours by each place; the walls, the pentagons of the hexagon sphere, in stone grey)
+    const colourOf = (i) => packed(palette[i] ?? UNLIT), table = new Uint32Array(4096 * 17), { live, dying, age, changes, trail = 0, after } = lifeAt;
+    for (let st = 1; st < 256; st++) { if (live) table[st] = colourOf(live(st)); if (dying) table[256 + st] = colourOf(dying(st)); }
+    if (age) for (let a = 0; a <= 64; a++) table[512 + a] = colourOf(age(a));
+    for (let d = 0; d < trail; d++) table[1024 + d] = colourOf(after(d));
+    if (changes) for (let v = 0; v <= Math.min(L.maxActivity, 65535); v++) table[4096 + v] = colourOf(changes(v));
+    const rgba = (c) => [...rgbCached(c).map((x) => x / 255), 1];
+    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), { table, by: changes ? 2 : age ? 1 : 0, trail, wall: rgba(LIFE_WALL), dead: rgba(UNLIT) }), path);
+  } else glSurface(paintLevels(palette, levelOf), path);  // (see 11.4b)
+  drawMotif(ctx);  // the motif's outlines over it
 }
 
 // The step of the first visit of each tile (−1: never visited), once per walk
@@ -11622,17 +11654,24 @@ vec4 planeAt(vec2 p) {
   vec2 q = uView.yz + vec2(uTurn.x * p.x - uTurn.y * p.y, uTurn.y * p.x + uTurn.x * p.y) * uView.x;
   return vec4(q.x / uScreen.x * 2.0 - 1.0, 1.0 - q.y / uScreen.y * 2.0, 0.0, 1.0);
 }`;
+// Life on the graphics card (see lifeStepGPU): a quad over its target; the states 4 a texel (RGBA, /255), 1024 a row (4096
+// cells); the grid's numbers and the cells' counts one a texel, 4096 a row
+const GL_QUAD = `#version 300 es
+void main() { gl_Position = vec4(gl_VertexID % 2 == 0 ? -1.0 : 1.0, gl_VertexID < 2 ? -1.0 : 1.0, 0.0, 1.0); }`;
+const GL_LIFE = `#version 300 es
+precision highp float; precision highp int; precision highp isampler2D; precision highp usampler2D;
+uniform sampler2D uA; uniform isampler2D uStart; uniform int uN, uK;
+int I(isampler2D s, int i) { return texelFetch(s, ivec2(i & 4095, i >> 12), 0).r; }
+uint U(usampler2D s, int i) { return texelFetch(s, ivec2(i & 4095, i >> 12), 0).r; }
+int state(sampler2D s, int t) { return int(round(texelFetch(s, ivec2((t >> 2) & 1023, t >> 12), 0)[t & 3] * 255.0)); }
+bool live(int v) { return v > 0 && v <= uK; }
+uint mixed(uint x) { x = (x ^ (x >> 16)) * 0x7feb352du; x = (x ^ (x >> 15)) * 0x846ca68bu; return x ^ (x >> 16); }`;
 const GL_SHADERS = {
   // a generation of Life (see lifeRuleGPU, as lifeRule): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's
   // numbers (its neighbours' lists, rings, folds, letters, B and S) one a texel, 4096 a row
-  lifeRule: [`#version 300 es
-void main() { gl_Position = vec4(gl_VertexID % 2 == 0 ? -1.0 : 1.0, gl_VertexID < 2 ? -1.0 : 1.0, 0.0, 1.0); }`, `#version 300 es
-precision highp float; precision highp int; precision highp isampler2D;
-uniform sampler2D uA; uniform isampler2D uStart, uList, uRing, uMoreStart, uMoreList, uSide, uB, uS;
-uniform int uN, uK, uC, uR, uMode; uniform bool uMore; out vec4 o;
-int I(isampler2D s, int i) { return texelFetch(s, ivec2(i & 4095, i >> 12), 0).r; }
-int A(int t) { return int(round(texelFetch(uA, ivec2((t >> 2) & 1023, t >> 12), 0)[t & 3] * 255.0)); }
-bool live(int v) { return v > 0 && v <= uK; }
+  lifeRule: [GL_QUAD, `${GL_LIFE}
+uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode; uniform bool uMore; out vec4 o;
+int A(int t) { return state(uA, t); }
 int next(int t) {
   if (t >= uN) return 0;
   int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
@@ -11676,6 +11715,77 @@ void main() {
   gl_Position = vCol.a < 0.5 ? vec4(2.0, 2.0, 2.0, 1.0) : planeAt(aPos);  // (clear: off the screen)
 }`, `#version 300 es
 precision mediump float; flat in vec4 vCol; out vec4 o; void main() { o = vCol; }`],
+  // a generation's counts, a cell at a time (see lifeStepGPU): before (uA, uAge, uAct, uDied, uEver) and after (uB): its
+  // age, its changes, its last death, the colours it had (bit 0: it ever lived)
+  lifeBook: [GL_QUAD, `${GL_LIFE}
+uniform sampler2D uB; uniform usampler2D uAge, uAct, uEver; uniform isampler2D uDied; uniform int uGen;
+layout(location = 0) out uint oAge; layout(location = 1) out uint oAct; layout(location = 2) out int oDied; layout(location = 3) out uint oEver;
+void main() {
+  int t = int(gl_FragCoord.y) * 4096 + int(gl_FragCoord.x);
+  if (t >= uN) { oAge = 0u; oAct = 0u; oDied = 0; oEver = 0u; return; }
+  int was = state(uA, t), now = state(uB, t);
+  uint age = U(uAge, t), act = U(uAct, t), ever = U(uEver, t); int died = I(uDied, t);
+  bool on = live(now), wasOn = live(was);
+  if (uK > 1 && on && !wasOn) ever |= 1u << now;
+  if (now == was) { if (on && age < 65535u) age++; }
+  else { act++; if (on) { age = 1u; ever |= 1u; } else if (wasOn) { age = 0u; died = uGen; } }
+  oAge = age; oAct = act; oDied = died; oEver = ever;
+}`],
+  // 64 cells' sums (a row's 64 blocks; see lifeStepGPU): 16 a pass (uFrom), its 4 targets' 4 each: alive, dying, born, dead,
+  // newly ever alive, the most changes (a max), the key's two sums, then each colour's alive, born, dead, newly had
+  lifeCount: [GL_QUAD, `${GL_LIFE}
+uniform sampler2D uB; uniform usampler2D uEver, uEverNow, uActNow; uniform int uFrom;
+layout(location = 0) out uvec4 o0; layout(location = 1) out uvec4 o1; layout(location = 2) out uvec4 o2; layout(location = 3) out uvec4 o3;
+void main() {
+  uint v[16];
+  for (int i = 0; i < 16; i++) v[i] = 0u;
+  int from = int(gl_FragCoord.y) * 4096 + int(gl_FragCoord.x) * 64;
+  for (int x = 0; x < 64; x++) {
+    int t = from + x;
+    if (t >= uN) break;
+    int was = state(uA, t), now = state(uB, t);
+    bool on = live(now), wasOn = live(was);
+    uint e0 = U(uEver, t), e1 = U(uEverNow, t);
+    for (int i = 0; i < 16; i++) {
+      int j = uFrom + i, k = (j - 8) / 4 + 1, q = (j - 8) % 4;
+      uint c = j == 0 ? uint(on) : j == 1 ? uint(now > 0 && !on) : j == 2 ? uint(on && now != was) : j == 3 ? uint(wasOn && !on)
+        : j == 4 ? uint((e0 & 1u) == 0u && (e1 & 1u) == 1u) : j == 5 ? 0u
+        : j == 6 ? (now > 0 ? mixed(uint(t) * 0x9e3779b9u + uint(now)) : 0u) : j == 7 ? (now > 0 ? mixed(uint(t) * 0x85ebca6bu ^ uint(now) * 0xc2b2ae35u) : 0u)
+        : k > uK ? 0u : q == 0 ? uint(on && now == k) : q == 1 ? uint(on && !wasOn && now == k) : q == 2 ? uint(wasOn && !on && was == k)
+        : uint((e0 & (1u << k)) == 0u && (e1 & (1u << k)) != 0u);
+      v[i] = j == 5 ? max(v[i], U(uActNow, t)) : v[i] + c;
+    }
+  }
+  o0 = uvec4(v[0], v[1], v[2], v[3]); o1 = uvec4(v[4], v[5], v[6], v[7]); o2 = uvec4(v[8], v[9], v[10], v[11]); o3 = uvec4(v[12], v[13], v[14], v[15]);
+}`],
+  // and a row's: its 64 blocks' added (the most changes, the most of theirs), into one
+  lifeSum: [GL_QUAD, `#version 300 es
+precision highp float; precision highp int; precision highp usampler2D;
+uniform usampler2D uC0, uC1, uC2, uC3; uniform int uFrom;
+layout(location = 0) out uvec4 o0; layout(location = 1) out uvec4 o1; layout(location = 2) out uvec4 o2; layout(location = 3) out uvec4 o3;
+uvec4 add(usampler2D s, int i) {
+  uvec4 v = uvec4(0u);
+  for (int x = 0; x < 64; x++) { uvec4 c = texelFetch(s, ivec2(x, int(gl_FragCoord.y)), 0); v = uFrom + 4 * i == 4 ? uvec4(v.x + c.x, max(v.y, c.y), v.z + c.z, v.w + c.w) : v + c; }  // (its 5th: the most changes)
+  return v;
+}
+void main() { o0 = add(uC0, 0); o1 = add(uC1, 1); o2 = add(uC2, 2); o3 = add(uC3, 3); }`],
+  // each cell's colour (see lifeLookGPU), a texel a cell, 1024 a row: by uLook's tables (4096 a row: its live states' from 0,
+  // its dying states' from 256, its ages' from 512, its trail's from 1024 (uTrail long: generations since it died), its
+  // changes' from 4096); a wall's uWall, a dead one's uDead
+  lifeLook: [GL_QUAD, `${GL_LIFE}
+uniform usampler2D uAge, uAct; uniform isampler2D uDied; uniform sampler2D uLook; uniform int uGen, uTrail, uBy; uniform vec4 uWall, uDead; out vec4 o;
+vec4 look(int i) { return texelFetch(uLook, ivec2(i & 4095, i >> 12), 0); }
+void main() {
+  int t = int(gl_FragCoord.y) * 1024 + int(gl_FragCoord.x);
+  if (t >= uN) { o = vec4(0.0); return; }
+  if (I(uStart, t) == I(uStart, t + 1)) { o = uWall; return; }
+  int st = state(uA, t);
+  if (uBy == 2) { o = look(4096 + int(min(U(uAct, t), 65535u))); return; }  // (its changes)
+  if (live(st)) { o = uBy == 1 ? look(512 + int(min(U(uAge, t), 64u))) : look(st); return; }  // (its age, or its state)
+  if (st > 0) { o = look(256 + st); return; }
+  int d = uGen - I(uDied, t);
+  o = d >= 0 && d < uTrail ? look(1024 + d) : uDead;
+}`],
   // the cells' outlines, in one colour (premultiplied)
   planeLines: [`#version 300 es
 in vec2 aPos;${GL_PLANE_AT}
@@ -11803,6 +11913,7 @@ function glClear() {
 }
 const glColour = new Map();  // CSS colour → [r, g, b]
 const rgbCached = (c) => { if (!glColour.has(c)) glColour.set(c, rgbOf(c)); return glColour.get(c); };
+const packed = (c) => { const [r, g, b] = rgbCached(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };  // (RGBA in a number, a texel's)
 // The path on a surface, in its current form, printed flat on its tiles: from tile to tile, each
 // step as two halves, from a tile's centre to the middle of the edge it crosses, then on to the next
 // tile's centre, each in its own tile's plane (over a solid's edge, it folds round it); along the
@@ -11897,7 +12008,13 @@ function glShadows(depth, draw, key = null) {  // key: what they depend on (the 
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex);
   gl.activeTexture(gl.TEXTURE0);
 }
-function glSurface(palette, levelOf, path) {
+// a surface's tiles' colours from a palette (null: unlit) and each tile's place in it (out of it: unlit), into their texture
+const paintLevels = (palette, levelOf) => (tex, n) => {
+  const rgb = palette.map((c) => packed(c ?? UNLIT)), col = new Uint32Array(n);
+  for (let t = 0; t < n; t++) col[t] = rgb[levelOf(t)] ?? rgb[0];
+  glPut(GLS.gl, tex, col);
+};
+function glSurface(paint, path) {  // paint: its tiles' colours into their texture (see paintLevels, lifeLookGPU)
   const S = glSetup();
   if (!S) return false;
   const { gl, prog } = S, g = walk.geo, sh = walk.shape, R = walk.R, k = g.sides, n = g.n;
@@ -11949,10 +12066,7 @@ function glSurface(palette, levelOf, path) {
     }
     S.keys.geo = geoKey; S.keys.geoObj = g; S.geoGen = (S.geoGen ?? 0) + 1;  // (its corners sent again: its shadows too)
   }
-  // each tile's colour, from its level in the palette (0: the dark background of unlit tiles): its texel
-  const rgb = palette.map((c) => { const [r, gr, b] = rgbCached(c ?? UNLIT); return ((255 << 24) | (b << 16) | (gr << 8) | r) >>> 0; }), col = new Uint32Array(n);
-  for (let t = 0; t < n; t++) col[t] = rgb[levelOf(t)] ?? rgb[0];
-  glPut(gl, S.tileCol, col);
+  paint(S.tileCol, n);  // (each tile's colour: its texel)
   const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
   glShadows(depth, (aPos) => {  // every tile, both its sides
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
@@ -12292,9 +12406,9 @@ function glCubes(to) {
 
 // Life on the plane in WebGL (see drawLifePlane): the cells' triangles, and the walls' round them, once a grid; then at each
 // drawing, under all, the page's colour on the cells and the walls' on the walls (a texture once a grid and a theme), zoomed
-// in enough the cells' outlines (once a grid), over all the generation's colours (px: a cell's, 0 dead: clear). A move or a
-// zoom moves nothing but uView. A texel a cell, 1024 a row
-function glPlane(px) {
+// in enough the cells' outlines (once a grid), over all the generation's colours (paint: into their texture, its texels;
+// a cell's, 0 dead: clear). A move or a zoom moves nothing but uView. A texel a cell, 1024 a row
+function glPlane(paint) {
   const S = glSetup();
   if (!S) return;
   const { gl, prog } = S, { kind, W, row, torus } = walk.plane, n = W * row, { scale: s, ox, oy } = view, key = `${kind}|${W}|${row}|${torus}`;
@@ -12315,7 +12429,7 @@ function glPlane(px) {
     glPut(gl, S.planeBase, Uint32Array.from(S.planePolys, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
     S.keys.planeBase = bg;
   }
-  glPut(gl, S.planeCol, px);
+  paint(S.planeCol, S.planePolys.length);
   const outline = $('showGrid').checked && s >= 6;
   if (outline && !S.planeLines) {  // (each side once, but the wall cells')
     const seen = new Set(), ends = [];
@@ -12349,47 +12463,141 @@ function glPlane(px) {
   S.drawn = true;
 }
 
-// Life on the graphics card (see GL_SHADERS.lifeRule): the grid's numbers sent once a Life (its own: L), then a generation
-// the states sent, worked out and read back (b), 4 a texel; false without WebGL 2 (lifeRule then)
-function lifeRuleGPU(L, a, b) {
-  const S = glSetup();
-  if (!S || a.length > 4096 * 4096) return false;
-  const { gl } = S, n = a.length, rows = Math.ceil(n / 4096);
-  if (S.life?.L !== L) {
-    if (S.life) { for (const t of S.life.tex) gl.deleteTexture(t); gl.deleteFramebuffer(S.life.fb); }
-    const ints = (data) => {  // (a texture of whole numbers, one a texel, 4096 a row)
-      const h = Math.max(1, Math.ceil(data.length / 4096)), all = new Int32Array(4096 * h), t = gl.createTexture();
-      all.set(data);
-      gl.bindTexture(gl.TEXTURE_2D, t);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32I, 4096, h, 0, gl.RED_INTEGER, gl.INT, all);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  // (one level: whole)
-      return t;
-    };
-    const states = () => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, 1024, rows); return t; };
-    const table = (T) => ints(Int32Array.from({ length: Math.max(1024, T.length ?? 0) }, (_, c) => (T[c] ? 1 : 0)));  // (B, S: by the count, its letters' code)
-    const { start, list } = L.nbr, none = new Int32Array(1), more = L.ringMore;
-    const tex = [states(), states(), ints(start), ints(list), ints(L.ring ?? none), ints(more?.start ?? none), ints(more?.list ?? none), ints(L.side ? Int32Array.from(L.side, Number) : none), table(L.B), table(L.S)];
-    const fb = gl.createFramebuffer();
-    S.life = { L, tex, fb, pad: new Uint8Array(4096 * rows) };
-  }
-  const E = S.life, [A, B] = E.tex, p = S.prog.lifeRule;
-  E.pad.set(a);
-  gl.bindTexture(gl.TEXTURE_2D, A);
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1024, rows, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
+// Life on the graphics card (see GL_LIFE), its own textures (L's): the grid's numbers sent once; the states (now and next, 4
+// a texel) and the cells' counts (age, changes, last death, colours had; now and next) kept there, sent again when the
+// processor wrote them (L.gpuOld), read back when read here (see lifeCells); null without WebGL 2 (lifeRule then)
+function lifeGPU(L) {
+  const S = glSetup(), n = L.seed.length;
+  if (!S || n > 4096 * 4096) return null;
+  if (S.life?.L === L) return S.life;
+  const { gl } = S, rows = Math.ceil(n / 4096);
+  if (S.life) { for (const t of S.life.all) gl.deleteTexture(t); gl.deleteFramebuffer(S.life.fb); }
+  const all = [], keep = (t) => { all.push(t); return t; };
+  const store = (format, w = 4096, h = rows) => {  // (read texel by texel: whole numbers' textures not whole else)
+    const t = keep(gl.createTexture());
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, format, w, h);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    return t;
+  };
+  const ints = (data) => {  // (whole numbers, one a texel, 4096 a row)
+    const h = Math.max(1, Math.ceil(data.length / 4096)), t = store(gl.R32I, 4096, h), padded = new Int32Array(4096 * h);
+    padded.set(data);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, h, gl.RED_INTEGER, gl.INT, padded);
+    return t;
+  };
+  const table = (T) => ints(Int32Array.from({ length: Math.max(1024, T.length ?? 0) }, (_, c) => (T[c] ? 1 : 0)));  // (B, S: by the count, its letters' code)
+  const cells = () => ({ state: store(gl.RGBA8, 1024), age: store(gl.R32UI), act: store(gl.R32UI), died: store(gl.R32I), ever: store(gl.R32UI) });
+  const { start, list } = L.nbr, none = new Int32Array(1), more = L.ringMore;
+  S.life = { L, n, rows, all, fb: gl.createFramebuffer(), now: cells(), next: cells(), pad: new Uint8Array(4096 * rows), u32: new Uint32Array(4096 * rows), i32: new Int32Array(4096 * rows),
+             start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
+             side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)), sum: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 1)), look: store(gl.RGBA8, 4096, 17) };
+  L.gpuOld = true;
+  return S.life;
+}
+// a pass: its program, its textures by their uniforms' names, its whole numbers (and more: its other uniforms), into its
+// targets (w × h), drawn over them
+function lifePass(E, program, textures, ints, targets, w, h, more = () => {}) {
+  const { gl, prog } = GLS, p = prog[program], u = (name) => gl.getUniformLocation(p, name);
   gl.bindFramebuffer(gl.FRAMEBUFFER, E.fb);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, B, 0);
-  gl.viewport(0, 0, 1024, rows);
+  targets.forEach((t, i) => gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, t, 0));
+  for (let i = targets.length; i < 4; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0);
+  gl.drawBuffers(targets.map((_, i) => gl.COLOR_ATTACHMENT0 + i));
+  gl.viewport(0, 0, w, h);
   gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST);
   gl.useProgram(p);
-  const u = (name) => gl.getUniformLocation(p, name);
-  ['uA', 'uStart', 'uList', 'uRing', 'uMoreStart', 'uMoreList', 'uSide', 'uB', 'uS'].forEach((name, i) => { gl.activeTexture(gl.TEXTURE3 + i); gl.bindTexture(gl.TEXTURE_2D, E.tex[i === 0 ? 0 : i + 1]); gl.uniform1i(u(name), 3 + i); });
-  gl.uniform1i(u('uN'), n); gl.uniform1i(u('uK'), L.colours); gl.uniform1i(u('uC'), L.C);
-  gl.uniform1i(u('uR'), L.ring ? L.ring.length / n : 0); gl.uniform1i(u('uMode'), L.ring ? 1 : L.side ? 2 : 0); gl.uniform1i(u('uMore'), L.ringMore ? 1 : 0);
+  Object.entries(textures).forEach(([name, t], i) => { gl.activeTexture(gl.TEXTURE3 + i); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(u(name), 3 + i); });
+  for (const [name, v] of Object.entries(ints)) gl.uniform1i(u(name), v);
+  more(u);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  gl.readPixels(0, 0, 1024, rows, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.activeTexture(gl.TEXTURE0);
-  b.set(E.pad.subarray(0, n));
+}
+// the processor's cells sent there (now): states 4 a texel, counts one a texel (colours had: bit 0 ever alive)
+function lifeToGPU(L, E) {
+  const { gl } = GLS, c = L.cells, put = (t, format, type, data) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format === gl.RGBA ? 1024 : 4096, E.rows, format, type, data); };
+  E.pad.fill(0); E.pad.set(c.alive); put(E.now.state, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
+  E.u32.fill(0); E.u32.set(c.age); put(E.now.age, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32);
+  E.u32.fill(0); E.u32.set(c.activity); put(E.now.act, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32);
+  E.i32.fill(0); E.i32.set(c.died); put(E.now.died, gl.RED_INTEGER, gl.INT, E.i32);
+  E.u32.fill(0); for (let t = 0; t < E.n; t++) E.u32[t] = c.ever[t] | c.everMask[t]; put(E.now.ever, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32);
+  L.gpuOld = false;
+}
+// and back (see lifeCells): what a texture holds, read as its kind reads (one or four numbers a texel)
+function lifeFromGPU(L) {
+  const E = GLS.life, { gl } = GLS, c = L.cells;
+  L.onGPU = false;
+  if (E?.L !== L) return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, E.fb);
+  for (let i = 1; i < 4; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0);  // (its size the least of its targets')
+  const read = (t, w, format, type, out) => {
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.readBuffer(gl.COLOR_ATTACHMENT0);
+    if (format === gl.RGBA) { gl.readPixels(0, 0, w, E.rows, format, type, out); return out; }
+    const one = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT) === gl.RED_INTEGER, buf = new out.constructor(w * E.rows * (one ? 1 : 4));
+    gl.readPixels(0, 0, w, E.rows, one ? gl.RED_INTEGER : gl.RGBA_INTEGER, type, buf);
+    return one ? buf : buf.filter((_, i) => i % 4 === 0);
+  };
+  c.alive.set(read(E.now.state, 1024, gl.RGBA, gl.UNSIGNED_BYTE, E.pad).subarray(0, E.n));
+  const age = read(E.now.age, 4096, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32), act = read(E.now.act, 4096, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32.slice());
+  const died = read(E.now.died, 4096, gl.RED_INTEGER, gl.INT, E.i32), ever = read(E.now.ever, 4096, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32.slice());
+  for (let t = 0; t < E.n; t++) { c.age[t] = age[t]; c.activity[t] = act[t]; c.died[t] = died[t]; c.ever[t] = ever[t] & 1; c.everMask[t] = ever[t] & ~1; }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+// Life's cells' arrays (states, ages, last deaths, changes, ever alive, colours had): the processor's copies (L.cells), made
+// current from the graphics card's when read after it stepped (L.onGPU); written here (a step here, lifeReset), sent there
+// again before its next (L.gpuOld)
+const LIFE_CELLS = ['alive', 'age', 'died', 'activity', 'ever', 'everMask'];
+function lifeCells(L) {
+  L.cells = {};
+  for (const name of LIFE_CELLS) {
+    L.cells[name] = L[name];
+    Object.defineProperty(L, name, { get: () => { if (L.onGPU) lifeFromGPU(L); return L.cells[name]; }, set: (v) => { L.cells[name] = v; L.gpuOld = true; }, enumerable: true, configurable: true });
+  }
+  L.gpuOld = true;
+  L.onGPU = false;
+}
+// a generation there: its rule, its cells' counts, its sums (8 + 4 a colour, 16 a pass: 64 cells', a row's, added up here); null
+// without WebGL 2. The cells stay there (L.onGPU)
+function lifeStepGPU(L, gen) {
+  const E = lifeGPU(L);
+  if (!E || !L.cells) return null;
+  const { gl } = GLS, K = L.colours, { now, next } = E, base = { uN: E.n, uK: K };
+  if (L.gpuOld) lifeToGPU(L, E);
+  lifePass(E, 'lifeRule', { uA: now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S },
+    { ...base, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [next.state], 1024, E.rows);
+  lifePass(E, 'lifeBook', { uA: now.state, uStart: E.start, uB: next.state, uAge: now.age, uAct: now.act, uDied: now.died, uEver: now.ever }, { ...base, uGen: gen }, [next.age, next.act, next.died, next.ever], 4096, E.rows);
+  const V = 8 + 4 * K, sum = new Float64Array(16 * Math.ceil(V / 16)), out = new Uint32Array(4 * E.rows);
+  for (let from = 0; from < V; from += 16) {
+    lifePass(E, 'lifeCount', { uA: now.state, uStart: E.start, uB: next.state, uEver: now.ever, uEverNow: next.ever, uActNow: next.act }, { ...base, uFrom: from }, E.count, 64, E.rows);
+    lifePass(E, 'lifeSum', { uC0: E.count[0], uC1: E.count[1], uC2: E.count[2], uC3: E.count[3] }, { uFrom: from }, E.sum, 1, E.rows);
+    for (let i = 0; i < 4; i++) {
+      gl.readBuffer(gl.COLOR_ATTACHMENT0 + i);
+      gl.readPixels(0, 0, 1, E.rows, gl.RGBA_INTEGER, gl.UNSIGNED_INT, out);
+      for (let r = 0; r < E.rows; r++) for (let q = 0; q < 4; q++) {
+        const j = from + 4 * i + q, x = out[4 * r + q];
+        sum[j] = j === 5 ? Math.max(sum[j], x) : j === 6 || j === 7 ? (sum[j] + x) % 4294967296 : sum[j] + x;
+      }
+    }
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  [E.now, E.next] = [next, now];
+  L.onGPU = true;
+  const by = (q) => Int32Array.from({ length: K + 1 }, (_, k) => (k ? sum[8 + 4 * (k - 1) + q] : 0));
+  return { alive: sum[0], dying: sum[1], born: sum[2], dead: sum[3], everNew: sum[4], maxAct: sum[5], key: lifeKey(sum[6], sum[7]), byColour: by(0), bornBy: by(1), deadBy: by(2), everBy: by(3) };
+}
+// its colours into a texture (target: a texel a cell, 1024 a row; see lifeLook), by a look: its tables (look.table: packed
+// RGBA, see GL_SHADERS.lifeLook), how it colours its live cells (look.by: 0 by state, 1 by age, 2 all by their changes), its
+// trail's length, a wall's and a dead cell's colours
+function lifeLookGPU(L, target, rows, look) {
+  const E = lifeGPU(L);
+  if (!E) return false;
+  const { gl } = GLS;
+  if (L.gpuOld) lifeToGPU(L, E);
+  gl.bindTexture(gl.TEXTURE_2D, E.look);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, look.table.length / 4096, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(look.table.buffer));
+  lifePass(E, 'lifeLook', { uA: E.now.state, uStart: E.start, uAge: E.now.age, uAct: E.now.act, uDied: E.now.died, uLook: E.look }, { uN: E.n, uK: L.colours, uGen: L.gen, uTrail: look.trail, uBy: look.by }, [target], 1024, rows,
+    (u) => { gl.uniform4fv(u('uWall'), look.wall); gl.uniform4fv(u('uDead'), look.dead); });
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   return true;
 }
 /* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
