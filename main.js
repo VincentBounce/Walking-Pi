@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1385';
+const VERSION = '0.1.1386';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3415,10 +3415,15 @@ const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a
 const signedArea = (P) => P.reduce((sum, p, i) => sum + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0) / 2;
 const polyArea = (P) => Math.abs(signedArea(P));
 // a polygon's triangles, its corners' indices three by three: a convex one fanned; else ear by ear (a corner turning its way
-// with no other corner in its triangle cut off; one in line with its neighbours dropped), a hat's, a spectre's too
+// with no other corner in its triangle cut off; one in line with its neighbours dropped), a hat's, a spectre's too: once a
+// shape (its sides and its turns, in their order: the same, turned or mirrored, the same triangles)
+const earsMemo = new Map();
 const ears = (P) => {
-  const turn = (a, b, c) => ((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0])) * Math.sign(signedArea(P)), L = P.length, out = [];
+  const way = Math.sign(signedArea(P)), turn = (a, b, c) => ((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0])) * way, L = P.length, out = [];
   if (P.every((_, i) => turn((i + L - 1) % L, i, (i + 1) % L) >= 0)) { for (let i = 1; i < L - 1; i++) out.push(0, i, i + 1); return out; }
+  const shape = P.map((p, i) => `${Math.round(Math.hypot(P[(i + 1) % L][0] - p[0], P[(i + 1) % L][1] - p[1]) * 1e4)},${Math.round(turn(i, (i + 1) % L, (i + 2) % L) * 1e4)}`).join(';');
+  if (earsMemo.has(shape)) return earsMemo.get(shape);
+  earsMemo.set(shape, out);
   const left = [...P.keys()];
   while (left.length > 3) {
     const m = left.length, at = (i) => [left[(i + m - 1) % m], left[i], left[(i + 1) % m]];
@@ -5221,11 +5226,11 @@ function morphStep(dt) {
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
 /* Sizes, one way for every grid and surface: one ladder (SIDES), each its own size the ladder's (the plane's side, a
  * solid's edge, a torus's, a Möbius strip's or a Klein bottle's rows; a tiling's, its sheet's), those it allows (a multiple
- * of steps[0], from least to most) with 2⁸ cells at least and 2¹⁷ at most (CELLS). A new surface needs only its
+ * of steps[0], from least to most) with 2⁸ cells at least and 2¹⁸ at most (CELLS). A new surface needs only its
  * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
 const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048],  // (every multiple of 24 up to 192: an icon's whole size)
   sidesIn = (lo, hi) => SIDES.filter((f) => f >= lo && f <= hi);
-const CELLS = [2 ** 8, 2 ** 17], START = { surface: 2688, solid: 6144 };
+const CELLS = [2 ** 8, 2 ** 18], START = { surface: 2688, solid: 6144 };
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).L / (2 * Math.PI);  // (its length: no tile built)  // a Möbius strip's circle, L tile edges round
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -6499,7 +6504,7 @@ function buildLife(seq, mode) {
  * runs as the surfaces' Life does, its neighbours those sharing an edge or a corner (8 squares, 6
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
-// the plane's sizes: the squares' sides (see SIDES), every grid as many cells (see planeW), its cells 2⁸ to 2¹⁷ (see CELLS:
+// the plane's sizes: the squares' sides (see SIDES), every grid as many cells (see planeW), its cells 2⁸ to 2¹⁸ (see CELLS:
 // the surfaces' too); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
 // as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least; a hexagon's by its side
 // alone, each its own (its hexagon fitted only when shown, see shapeW)
@@ -6760,8 +6765,14 @@ function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls
     const c = [bx[0] + x + k / 2, by[0] + y + k / 2], score = count(x - 4, y - 4, x + k + 4, y + k + 4) - 1e-3 * Math.hypot(c[0] - centre[0], c[1] - centre[1]);
     if (score > best) { best = score; mid = c; }
   }
-  const far = (h) => norm(h.m[0] - mid[0], h.m[1] - mid[1]);
-  items.sort((a, b) => far(a) - far(b));
+  // by their distance (each its distance once), only those near it sorted (the patch, its hats' substitution's, up to 40 times
+  // as big as wanted): all those within the W²-th's distance and 3 more (its walls'), the radius widened till so
+  for (const h of items) h.far = norm(h.m[0] - mid[0], h.m[1] - mid[1]);
+  const far = (h) => h.far;
+  for (let r = 0.6 * W + 6; ; r *= 1.25) {
+    const near = items.filter((h) => h.far < r).sort((a, b) => a.far - b.far);
+    if (near.length === items.length || (near.length > W * W && near[W * W - 1].far + 3 < r)) { items = near; break; }
+  }
   // the items under a radius, never a ring of them as far (within 10⁻⁶) cut in two: the last of the W² ones and
   // those as far out of it; the rest of the W² cells of the wall (and a ring's hole: its middle)
   let live = W * W;
@@ -7691,7 +7702,20 @@ const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, pe
 for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
 const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
-const cellMiddle = (kind, x, y) => { const p = planeCorners(kind, x, y); return [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length); };
+// a cell's middle, its corners' mean; the grid's own cells' once a grid (walk.plane: a new one each grid; a middle its kind's
+// and its place's only, see planeCorners)
+let gridMiddles = null;
+const cellMiddle = (kind, x, y) => {
+  const g = walk.plane, mean = (p) => [0, 1].map((a) => p.reduce((sum, q) => sum + q[a], 0) / p.length);
+  if (g?.kind !== kind || !(x >= 0 && y >= 0 && x < g.row && y < g.W) || (x | 0) !== x || (y | 0) !== y) return mean(planeCorners(kind, x, y));
+  if (gridMiddles?.g !== g) {
+    const m = new Float64Array(2 * g.W * g.row);
+    for (let t = 0; t < g.W * g.row; t++) m.set(mean(planeCorners(kind, t % g.row, Math.floor(t / g.row))), 2 * t);
+    gridMiddles = { g, m };
+  }
+  const i = 2 * (y * g.row + x);
+  return [gridMiddles.m[i], gridMiddles.m[i + 1]];
+};
 // A slanted lattice's smallest motif (a, b its sides): a rectangle of whole steps at right angles (or within 3°), a side along
 // one of its turns' copies of a (straight, as its tiles lie), as few cells as can be, then the nearest a square: { U, V, det,
 // step: [[p, q], [r, t]] } (U = p·a + q·b across, V = r·a + t·b a quarter turn clockwise from it, y down: never mirrored)
