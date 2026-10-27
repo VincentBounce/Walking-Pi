@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1354';
+const VERSION = '0.1.1356';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7384,11 +7384,11 @@ const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.char
 // pixel (pix). On a tiling's torus, its square along the tiling's own turn (of its turns) nearest the ring: as the tiles lie
 // there (not along its sheet's lattice side, a turn away: 120°, 180°…), turned with them when they are; on the plane's rectangle
 // (a slanted grid's straight sheet, see planeKind), along its side U, as the view shows it (see planeTurn)
-function iconSquare(kind, N) {
+function iconSquare(kind, N, spin = 0) {  // spin: turned on more (a hexagon's colours: its bottom out, see iconLay)
   const g = walk.geo, sheet = !walk.plane && g?.torus && g.tiling === kind && !g.mobius && !g.klein ? g.sheet : null, t = TILINGS[kind];
   const strip = !walk.plane && g?.tiling === kind && g.stripTurn !== undefined;  // (a strip's, a bottle's: the plane turned by stripTurn, its side along it)
   const A = sheet ? [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]) : strip ? [Math.cos(-g.stripTurn), Math.sin(-g.stripTurn)] : null, step = (2 * Math.PI) / (t?.turns ?? 1);
-  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : walk.plane ? -planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
+  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : walk.plane ? spin - planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const P = 24, per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
@@ -7409,8 +7409,8 @@ function iconSquare(kind, N) {
 // a list of n items, each made when first read (its length, its items by index: the 10,000 punks' cells not all at once, only
 // those drawn; a hunt's, all: see huntClick)
 const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
-function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
-  const sq = iconSquare(kind, N), key = `${sq.key}|${set.source}|${turn}`;  // (its square's: its tilt too, a torus's not the plane's)
+function iconPatterns(sq, set = ICON_SETS.icon, turn = 0) {
+  const key = `${sq.key}|${set.source}|${turn}`;  // (its square's: its tilt too, a torus's not the plane's)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const P = 24, { box, pix } = sq;
   const patterns = lazyList(set.bits.length, (i) => {  // each icon: its cells' places in the square
@@ -7424,13 +7424,13 @@ function iconPatterns(kind, N, set = ICON_SETS.icon, turn = 0) {
   return patterns;
 }
 // On a surface, the turn an icon laid there shows upright: its top towards the world's up (z, the axes' Up), not mirrored
-// seen from outside (its right: up × the outward normal); on a face looking up or down (no up there), as laid
+// seen from outside (its right: up × the outward normal); on a face looking up or down (no up there), towards the north (y,
+// the axes' N: its bottom south)
 function iconTurn(laid, pix, P) {
   const g = walk.geo, at = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
   const C = [0, 1, 2].map((d) => laid.reduce((s, [t]) => s + at(t)[d], 0) / laid.length);
   const n = unit([0, 1, 2].map((d) => laid.reduce((s, [t]) => s + g.nrm[3 * t + d], 0)));
-  if (Math.abs(n[2]) > 0.9) return 0;
-  const up = unit([-n[2] * n[0], -n[2] * n[1], 1 - n[2] * n[2]]), right = cross(up, n), m = (P - 1) / 2;
+  const top = Math.abs(n[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1], up = unit(top.map((v, d) => v - dot3(top, n) * n[d])), right = cross(up, n), m = (P - 1) / 2;
   let best = 0, score = -Infinity;
   ICON_TURNS.forEach((T, k) => {
     const R = [0, 0, 0], D = [0, 0, 0];  // (the icon's own right and down, in space)
@@ -7441,23 +7441,29 @@ function iconTurn(laid, pix, P) {
   return best;
 }
 // Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
-// rest cut off: a torus's or a bottle's at its sheet's edges as drawn flat, never round it), upright (see iconTurn): its
-// cells (each of the square's, -1 off the grid or on its wall), its turn. Null where it doesn't fit: its middle row or column
-// (its pixels 11 and 12) not all laid, each on a cell of its own (its whole width and height: cut off in its corners only),
-// or the colours' squares on each other's (but for a row of their margins)
+// rest cut off: a torus's or a bottle's at its sheet's edges as drawn flat, never round it), upright (see iconTurn); in a
+// hexagon's walls, each colour's by the wall of its slice, its bottom out (a sixth of a turn at a time): the farthest out
+// along its slice's middle that it fits. Its cells (each of the square's, -1 off the grid or on its wall), its square, its
+// turn. Null where it doesn't fit: its middle row or column (its pixels 11 and 12) not all laid, each on a cell of its own
+// (its whole width and height: cut off in its corners only), or the colours' squares on each other's (but for a row of
+// their margins)
 function iconLay(N) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo, P = 24;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
-  const { box, pix } = iconSquare(kind, N), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []);
-  const cells = Object.assign(box.map(([x, y], j) => [x, y, j]), { mid: iconSquare(kind, N).mid });  // (one for all the colours: its places on the sheet once, see sheetPatternAt)
+  const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K);
+  const lay = (sq, i, to) => {
+    const at = new Int32Array(sq.box.length).fill(-1), cells = Object.assign(sq.box.map(([x, y], j) => [x, y, j]), { mid: sq.mid });
+    const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true);
+    for (const [t, j] of laid) if (!dead.has(t)) at[j] = t;
+    const cross = sq.box.flatMap((_, j) => (sq.pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
+    const js = sq.box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
+    return { at, sq, js, whole: cross.every((t) => t >= 0) && new Set(cross).size === cross.length };
+  };
   const lays = Array.from({ length: K }, (_, i) => {
-    const at = new Int32Array(box.length).fill(-1);
-    for (const [t, j] of patternAt(i, K, cells, true)) if (!dead.has(t)) at[j] = t;
-    const cross = box.flatMap((_, j) => (pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
-    const whole = cross.every((t) => t >= 0) && new Set(cross).size === cross.length;
-    const js = box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
-    const turn = walk.plane || g.torus || !js.length ? 0 : iconTurn(js.map((j) => [at[j]]), js.map((j) => pix[j]), P);
-    return { at, turn, js, whole };
+    if (!walled) { const l = lay(iconSquare(kind, N), i); return { ...l, turn: walk.plane || g.torus || !l.js.length ? 0 : iconTurn(l.js.map((j) => [l.at[j]]), l.js.map((j) => l.sq.pix[j]), P) }; }
+    const a = walled.angles[i], sq = iconSquare(kind, N, Math.round((a - Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3));  // (its bottom out: down, a sixth of a turn at a time)
+    for (let d = walled.reach * 2; d > 0; d -= 0.5) { const l = lay(sq, i, [walled.mid[0] + d * Math.cos(a), walled.mid[1] + d * Math.sin(a)]); if (l.whole) return { ...l, turn: 0 }; }
+    return { ...lay(sq, i, walled.mid), turn: 0 };
   });
   const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
   return lays.every((l) => l.whole) && new Set(all).size >= 0.95 * all.length ? lays : null;
@@ -7469,7 +7475,7 @@ function iconChoices(N, set) {
   const lays = iconLay(N);  // (each icon its cells of the colour's square)
   const choices = Array.from({ length: K }, (_, i) => {
     if (!lays) return [];
-    const patterns = iconPatterns(kind, N, set, lays[i].turn);
+    const patterns = iconPatterns(lays[i].sq, set, lays[i].turn);
     return lazyList(patterns.length, (k) => Int32Array.from(patterns[k].flatMap((j) => (lays[i].at[j] >= 0 ? [lays[i].at[j], i + 1] : []))));
   });
   iconMemo = { key, choices };
@@ -9831,7 +9837,7 @@ function planeSlices(K) {
     for (let t = 0; t < n; t++) { const d = (at[t][0] - p[0]) ** 2 + (at[t][1] - p[1]) ** 2; if (d < near) { near = d; best = t; } }
     return best;
   });
-  return (sliceMemo = { key, part, spots });
+  return (sliceMemo = { key, part, spots, mid, reach, angles: Array.from({ length: K }, (_, i) => from + ((i + 0.5) * 2 * Math.PI) / K) });  // (and its middle, a slice's middle angles, as seen)
 }
 // The plane's colour blocks as seen: their columns along the grid's side that runs most across the screen, left to
 // right, their rows along the other, top to bottom, whichever way its lattice lies (turned too, see planeTurn). Each
