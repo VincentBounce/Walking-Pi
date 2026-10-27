@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1369';
+const VERSION = '0.1.1370';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -5621,10 +5621,14 @@ function torusStarts(g) {
     const [u, w] = at(v), d = Math.hypot(((u - nu / 2) / nu) * 2 * Math.PI, ((w - nv / 2) / nv) * 2 * Math.PI * tubeOf(g));
     if (d < best) { best = d; v0 = v; }
   }
-  const heading = ([e, n]) => (Math.atan2(e, n) * 180) / Math.PI;  // clockwise from north, −180 … 180
-  const starts = new Map();  // heading (0 … 180) → [corner, the corner it arrives from]
+  return edgeStarts(G, v0, (f) => step(f, v0));
+}
+// a walk's starts round corner v0: one per direction of its edges (way(f): the step from f to v0, east and north), from
+// north (or the nearest after it) clockwise to south, each [corner, the corner it arrives from]
+function edgeStarts(G, v0, way) {
+  const starts = new Map();  // heading (0 … 180) → its start
   for (const f of G.nbrs[v0]) {
-    const h = heading(step(f, v0)), key = Math.round(((h % 180) + 180) % 180) % 180;  // its direction, either way
+    const [e, n] = way(f), h = (Math.atan2(e, n) * 180) / Math.PI, key = Math.round(((h % 180) + 180) % 180) % 180;  // (clockwise from north, −180 … 180; its direction, either way)
     if (!starts.has(key)) starts.set(key, Math.abs(h - key) < 90 ? [v0, f] : [f, v0]);  // else from v0 to f, the other way
   }
   return [...starts.keys()].sort((a, b) => a - b).map((key) => starts.get(key));
@@ -5641,13 +5645,7 @@ function mobiusStarts(g) {
     const d = Math.hypot(g.uv[2 * q] - g.L / 2, g.uv[2 * q + 1] - g.W / 2);
     if (d < best) { best = d; v0 = g.poly[q]; }
   }
-  const starts = new Map();
-  for (const f of G.nbrs[v0]) {
-    const [e, n] = g.delta.get(f * N + v0), h = (Math.atan2(e, n) * 180) / Math.PI;  // clockwise from north
-    const key = Math.round(((h % 180) + 180) % 180) % 180;  // its direction, either way
-    if (!starts.has(key)) starts.set(key, Math.abs(h - key) < 90 ? [v0, f] : [f, v0]);
-  }
-  return [...starts.keys()].sort((a, b) => a - b).map((key) => starts.get(key));
+  return edgeStarts(G, v0, (f) => g.delta.get(f * N + v0));
 }
 
 // The rotations (3×3 matrices, by rows) that map a solid onto itself, from its corners' directions:
@@ -6103,35 +6101,57 @@ function surfaceSteps(g, mode) {
   };
 }
 
+// A walk on a surface recorded step by step (see buildGridWalk, buildSphereWalk): its points (on the unit surface, R times),
+// its tiles, its places seen (corners or tiles, nodes of them) and the step it has seen them all, its farthest from its
+// start, its digits' counts; begin(key), step(i, digit, key): stopped where it goes round (key, its state: see loopWatch;
+// null, none watched); finish: the walk laid out (more: its own), its shape and its view
+function walkRecorder(seq, ahead, base, R, nodes) {
+  const n = seq.length + 1, wx = new Float64Array(n), wy = new Float64Array(n), wz = new Float64Array(n), tile = new Int32Array(n), cells = new Int32Array(n);
+  const maxDist = new Float64Array(n), counts = new Int32Array(base * n), seen = new Uint8Array(nodes), looped = loopWatch(seq, ahead);
+  let distinct = 0, coverStep = -1, far = 0, start = null, steps = seq.length, loop = null;
+  return {
+    put(i, place, t, p) {  // step i: its place (a corner, a tile), its tile, its point
+      if (!seen[place]) { seen[place] = 1; if (++distinct === nodes && i) coverStep = i; }
+      start ??= p;
+      wx[i] = p[0] * R; wy[i] = p[1] * R; wz[i] = p[2] * R; tile[i] = t; cells[i] = distinct;
+      maxDist[i] = far = Math.max(far, R * Math.hypot(p[0] - start[0], p[1] - start[1], p[2] - start[2]));  // (from the start, in a straight line)
+    },
+    begin: (key) => looped(0, key),
+    step(i, digit, key) {  // whether it goes round there
+      for (let c = 0; c < base; c++) counts[base * i + c] = counts[base * (i - 1) + c];
+      counts[base * i + digit]++;
+      const earlier = key === null ? null : looped(i, key);
+      if (earlier !== null) { steps = i; loop = { from: earlier }; }
+      return earlier !== null;
+    },
+    finish(kind, g, more) {
+      Object.assign(walk, { n: steps, loop, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts, lattice: 'sphere', skipZeros: false, keys: seq,
+                            sphere: true, geo: g, R, tile, nodes, coverStep, visits: new Int32Array(g.n), maxVisits: 0, life: null,
+                            xs: new Float64Array(n), ys: new Float64Array(n), ...more });
+      initShape(kind);
+      setPerspective();
+      project();
+      updateHint();
+      restart();
+      if (walk.shape) applyShape();
+    },
+  };
+}
+// a walk along a surface's grid: from corner to corner along its edges, turning by the digits (see nextCorner)
 function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
   const { turns, base, initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
   const { mesh, radius } = SPHERES[kind];
-  const size = sphereSize(), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts;
-  const len = seq.length, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
-  const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
-  const vert = new Int32Array(len + 1), tile = new Int32Array(len + 1), cells = new Int32Array(len + 1);
-  const maxDist = new Float64Array(len + 1), counts = new Int32Array(base * (len + 1)), stepTiles = new Int32Array(2 * len);
-  const seen = new Uint8Array(G.nv), angles = turns.map((a) => (a * Math.PI) / 180);
+  const size = sphereSize(), g = mesh(size), R = radius(size), G = gridGraph(g), V = g.verts, len = seq.length, at = (v) => [V[3 * v], V[3 * v + 1], V[3 * v + 2]];
+  const rec = walkRecorder(seq, ahead, base, R, G.nv), vert = new Int32Array(len + 1), stepTiles = new Int32Array(2 * len), angles = turns.map((a) => (a * Math.PI) / 180);
   let [v, from] = STARTS_ON.includes(kind) ? startList(g)[startNo() - 1] : firstStart(g, G);
   // p: a pivot walk's turns on the spot since its last step, a parity walk's turn asked by its last digit
   // (1 right, −1 left), in notches (N a whole turn); q: the parity of the digits a parity walk has read
   const N = mode.pivot ?? mode.parity ?? 1;
-  let distinct = 1, m = 0, coverStep = -1, p = 0, q = 0;
-  const key = () => ((v * G.nv + from) * N + ((p + N) % N)) * 2 + q;
-  seen[v] = 1;
-  const start = at(v);
-  const put = (i) => {
-    const p = at(v);
-    wx[i] = p[0] * R; wy[i] = p[1] * R; wz[i] = p[2] * R;
-    vert[i] = v; tile[i] = G.tileOf[v]; cells[i] = distinct;
-    m = Math.max(m, R * Math.hypot(p[0] - start[0], p[1] - start[1], p[2] - start[2]));
-    maxDist[i] = m;
-  };
+  let p = 0, q = 0;
+  const key = () => ((v * G.nv + from) * N + ((p + N) % N)) * 2 + q, put = (i) => { rec.put(i, v, G.tileOf[v], at(v)); vert[i] = v; };
   put(0);
-  const looped = loopWatch(seq, ahead);  // (corner, the corner it came from)
-  looped(0, key());
-  let steps = len, loop = null;
+  rec.begin(key());  // (corner, the corner it came from)
   for (let i = 0; i < len; i++) {
     if (mode.pivot && seq[i]) {  // a turn on the spot: no step
       p = (p + 1) % mode.pivot;
@@ -6143,26 +6163,12 @@ function buildGridWalk(seq, mode, ahead = new Uint8Array(0)) {
       from = v; v = next; p = 0;
       if (mode.parity) { q ^= 1; p = seq[i] ? (q ? 1 : -1) : 0; }
     }
-    if (!seen[v]) { seen[v] = 1; distinct++; if (distinct === G.nv) coverStep = i + 1; }
     put(i + 1);
-    for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + seq[i]]++;
-    const earlier = looped(i + 1, key());
-    if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
+    if (rec.step(i + 1, seq[i], key())) break;
   }
-  Object.assign(walk, { n: steps, loop, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts,
-                        lattice: 'sphere', skipZeros: false, keys: seq,
-                        sphere: true, geo: g, R, tile, vert, stepTiles, nodes: G.nv, coverStep,
-                        visits: new Int32Array(g.n), maxVisits: 0, life: null,
-                        xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
-  initShape(kind);
-  setPerspective();
-  project();
-  updateHint();
-  restart();
-  if (walk.shape) applyShape();
+  rec.finish(kind, g, { vert, stepTiles });
 }
-
+// a walk on a surface's tiles: from tile to tile by the digits (see surfaceSteps), or an ant's, by its turns
 function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
   const { initial } = mode, kind = surfaceOf(mode);
   fillSphereSizes(kind, initial);
@@ -6171,47 +6177,17 @@ function buildSphereWalk(seq, mode, ahead = new Uint8Array(0)) {
   const len = seq.length, w = current.mode, ant = !!mode.antOf;
   // an ant: it walks the surface's cells by its turns, the cells keeping their colours (see antStepper)
   const antStep = ant ? antStepper(w, (d) => { state = S.step(state, d); return state; }, S.start(startNo() - 1)[0]) : null;
-  const base = ant && !antByDigits ? antStep.colours : mode.base, turns = ant ? new Uint8Array(len) : null;
-  const wx = new Float64Array(len + 1), wy = new Float64Array(len + 1), wz = new Float64Array(len + 1);
-  const tile = new Int32Array(len + 1), cells = new Int32Array(len + 1), maxDist = new Float64Array(len + 1);
-  const counts = new Int32Array(base * (len + 1));
-  const seen = new Uint8Array(g.n);
-  let state = S.start(startNo() - 1), t = state[0], distinct = 1, m = 0, coverStep = -1;
-  seen[t] = 1;
-  const c0 = [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
-  const put = (i) => {
-    wx[i] = g.cen[3 * t] * R; wy[i] = g.cen[3 * t + 1] * R; wz[i] = g.cen[3 * t + 2] * R;
-    tile[i] = t;
-    cells[i] = distinct;
-    // distance from the start, in a straight line
-    m = Math.max(m, R * Math.hypot(g.cen[3 * t] - c0[0], g.cen[3 * t + 1] - c0[1], g.cen[3 * t + 2] - c0[2]));
-    maxDist[i] = m;
-  };
+  const base = ant && !antByDigits ? antStep.colours : mode.base, turns = ant ? new Uint8Array(len) : null, rec = walkRecorder(seq, ahead, base, R, g.n);
+  let state = S.start(startNo() - 1);
+  const put = (i) => { const t = state[0]; rec.put(i, t, t, [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]]); };
   put(0);
-  const looped = loopWatch(seq, ahead);  // (tile, the edge it came in by); not an ant's, whose state is all its cells
-  looped(0, S.key(state));
-  let steps = len, loop = null;
+  rec.begin(S.key(state));  // (tile, the edge it came in by)
   for (let i = 0; i < len; i++) {
     if (ant) { antStep(seq[i]); turns[i] = antStep.turn; } else state = S.step(state, seq[i]);
-    t = state[0];
-    if (!seen[t]) { seen[t] = 1; distinct++; if (distinct === g.n) coverStep = i + 1; }
     put(i + 1);
-    for (let c = 0; c < base; c++) counts[base * (i + 1) + c] = counts[base * i + c];
-    counts[base * (i + 1) + (ant ? antStep.took : seq[i])]++;
-    const earlier = ant ? null : looped(i + 1, S.key(state));
-    if (earlier !== null) { steps = i + 1; loop = { from: earlier }; break; }
+    if (rec.step(i + 1, ant ? antStep.took : seq[i], ant ? null : S.key(state))) break;  // (an ant's state: all its cells, not watched)
   }
-  Object.assign(walk, { n: steps, digits: seq, wx, wy, wz, is3d: true, cells, maxDist, base, counts, ant: ant ? antStep.colours : 0, turns,
-                        lattice: 'sphere', skipZeros: false, keys: seq,
-                        sphere: true, geo: g, R, tile, vert: null, stepTiles: null, loop, nodes: g.n, coverStep,
-                        visits: new Int32Array(g.n), maxVisits: 0,
-                        life: null, xs: new Float64Array(len + 1), ys: new Float64Array(len + 1) });
-  initShape(kind);
-  setPerspective();
-  project();
-  updateHint();
-  restart();
-  if (walk.shape) applyShape();
+  rec.finish(kind, g, { ant: ant ? antStep.colours : 0, turns, vert: null, stepTiles: null });
 }
 
 /* ==============================================================================================
