@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1389';
+const VERSION = '0.1.1390';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9026,18 +9026,14 @@ for (const [kind, names] of Object.entries(BLOCK_ORDER)) {
   const mine = [...$('lifePreset').options].filter((o) => o.text.startsWith(`${BLOCK_MARKS[kind]} `));
   for (const name of names) { const o = mine.find((x) => x.dataset.name === name); if (o) $('lifePreset').insertBefore(o, $('lifePreset').querySelector('option[value="custom"]')); }
 }
-function lifeStep() {
-  const L = walk.life, { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, a = L.alive, b = L.next, gen = cur + 1, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
-  const byColour = new Int32Array(K + 1), around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
-  const born0 = L.born, dead0 = L.dead;  // before this generation
-  L.gen++;
-  if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
-  let alive = 0, dying = 0;
+// A generation's rule (on the processor: see lifeRuleGPU, the same on the graphics card): each cell's next state in b, from a
+function lifeRule(L, a, b) {
+  const { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
+  const around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
   for (let t = 0; t < a.length; t++) {
     const was = a[t];
     let now;
-    if (L.margolus) now = b[t];  // (worked out by blocks)
-    else if (start[t] === start[t + 1]) {
+    if (start[t] === start[t + 1]) {
       now = 0;  // a wall (a pentagon of the hexagon sphere)
     } else if (was > K) {
       now = was + K <= last ? was + K : 0;  // one more dying stage, or dead
@@ -9069,6 +9065,18 @@ function lifeStep() {
       }
     }
     b[t] = now;
+  }
+}
+function lifeStep() {
+  const L = walk.life, a = L.alive, b = L.next, gen = cur + 1, K = L.colours, two = K > 1;
+  const byColour = new Int32Array(K + 1);
+  const born0 = L.born, dead0 = L.dead;  // before this generation
+  L.gen++;
+  if (L.margolus) blockStep(L.margolus, a, b, gen - 1);
+  else if (!lifeRuleGPU(L, a, b)) lifeRule(L, a, b);  // (on the graphics card, else here)
+  let alive = 0, dying = 0;
+  for (let t = 0; t < a.length; t++) {
+    const was = a[t], now = b[t];
     const live = now > 0 && now <= K, wasLive = was > 0 && was <= K;
     if (two && live !== wasLive) {  // a colour's births, deaths, and cells it has had
       if (live) { L.bornBy[now]++; if (!(L.everMask[t] & (1 << now))) { L.everMask[t] |= 1 << now; L.everBy[now]++; } }
@@ -11615,6 +11623,50 @@ vec4 planeAt(vec2 p) {
   return vec4(q.x / uScreen.x * 2.0 - 1.0, 1.0 - q.y / uScreen.y * 2.0, 0.0, 1.0);
 }`;
 const GL_SHADERS = {
+  // a generation of Life (see lifeRuleGPU, as lifeRule): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's
+  // numbers (its neighbours' lists, rings, folds, letters, B and S) one a texel, 4096 a row
+  lifeRule: [`#version 300 es
+void main() { gl_Position = vec4(gl_VertexID % 2 == 0 ? -1.0 : 1.0, gl_VertexID < 2 ? -1.0 : 1.0, 0.0, 1.0); }`, `#version 300 es
+precision highp float; precision highp int; precision highp isampler2D;
+uniform sampler2D uA; uniform isampler2D uStart, uList, uRing, uMoreStart, uMoreList, uSide, uB, uS;
+uniform int uN, uK, uC, uR, uMode; uniform bool uMore; out vec4 o;
+int I(isampler2D s, int i) { return texelFetch(s, ivec2(i & 4095, i >> 12), 0).r; }
+int A(int t) { return int(round(texelFetch(uA, ivec2((t >> 2) & 1023, t >> 12), 0)[t & 3] * 255.0)); }
+bool live(int v) { return v > 0 && v <= uK; }
+int next(int t) {
+  if (t >= uN) return 0;
+  int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
+  if (s0 == s1) return 0;  // (a wall)
+  if (was > uK) return was + uK <= last ? was + uK : 0;  // (one more dying stage, or dead)
+  int around[13];
+  for (int k = 0; k < 13; k++) around[k] = 0;
+  int c = 0;
+  if (uMode == 1) {  // (a ring: where its live neighbours sit; round a fold, any of its)
+    for (int q = 0; q < uR; q++) {
+      int v = I(uRing, uR * t + q);
+      if (uMore && !(v >= 0 && live(A(v)))) for (int i = I(uMoreStart, uR * t + q); i < I(uMoreStart, uR * t + q + 1); i++) if (live(A(I(uMoreList, i)))) { v = I(uMoreList, i); break; }
+      if (v >= 0 && live(A(v))) { c |= 1 << q; around[A(v)]++; }
+    }
+    c += 16;
+  } else if (uMode == 2) {  // (the flowers' letters: the live ones by a corner only, apart)
+    int k = 0;
+    for (int q = s0; q < s1; q++) { int v = A(I(uList, q)); if (live(v)) { c++; around[v]++; if (I(uSide, q) == 0) k++; } }
+    c = 16 + 4 * c + min(k, 3);
+  } else for (int q = s0; q < s1; q++) { int v = A(I(uList, q)); if (live(v)) { c++; around[v]++; } }
+  if (was > 0) return I(uS, c) > 0 ? was : uC > 2 ? was + uK : 0;
+  if (I(uB, c) == 0) return 0;
+  if (uK < 2) return 1;
+  int now = 0, most = 0, tied = 0, missing = 0, gone = 0;  // (the colour most of its live neighbours have; on a tie, the one missing, else none)
+  for (int k = 1; k <= uK; k++) {
+    if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] == most) tied++;
+    if (around[k] == 0) { gone++; missing = k; }
+  }
+  return tied > 1 ? (gone == 1 ? missing : 0) : now;
+}
+void main() {
+  int t = 4 * (int(gl_FragCoord.y) * 1024 + int(gl_FragCoord.x));
+  o = vec4(next(t), next(t + 1), next(t + 2), next(t + 3)) / 255.0;
+}`],
   // a cell's triangles, its number with each corner: its colour a texel of uCol (1024 a row), none where it is clear
   planeCells: [`#version 300 es
 in vec2 aPos; in float aId; uniform sampler2D uCol; flat out vec4 vCol;${GL_PLANE_AT}
@@ -12297,6 +12349,49 @@ function glPlane(px) {
   S.drawn = true;
 }
 
+// Life on the graphics card (see GL_SHADERS.lifeRule): the grid's numbers sent once a Life (its own: L), then a generation
+// the states sent, worked out and read back (b), 4 a texel; false without WebGL 2 (lifeRule then)
+function lifeRuleGPU(L, a, b) {
+  const S = glSetup();
+  if (!S || a.length > 4096 * 4096) return false;
+  const { gl } = S, n = a.length, rows = Math.ceil(n / 4096);
+  if (S.life?.L !== L) {
+    if (S.life) { for (const t of S.life.tex) gl.deleteTexture(t); gl.deleteFramebuffer(S.life.fb); }
+    const ints = (data) => {  // (a texture of whole numbers, one a texel, 4096 a row)
+      const h = Math.max(1, Math.ceil(data.length / 4096)), all = new Int32Array(4096 * h), t = gl.createTexture();
+      all.set(data);
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32I, 4096, h, 0, gl.RED_INTEGER, gl.INT, all);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);  // (one level: whole)
+      return t;
+    };
+    const states = () => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, 1024, rows); return t; };
+    const table = (T) => ints(Int32Array.from({ length: Math.max(1024, T.length ?? 0) }, (_, c) => (T[c] ? 1 : 0)));  // (B, S: by the count, its letters' code)
+    const { start, list } = L.nbr, none = new Int32Array(1), more = L.ringMore;
+    const tex = [states(), states(), ints(start), ints(list), ints(L.ring ?? none), ints(more?.start ?? none), ints(more?.list ?? none), ints(L.side ? Int32Array.from(L.side, Number) : none), table(L.B), table(L.S)];
+    const fb = gl.createFramebuffer();
+    S.life = { L, tex, fb, pad: new Uint8Array(4096 * rows) };
+  }
+  const E = S.life, [A, B] = E.tex, p = S.prog.lifeRule;
+  E.pad.set(a);
+  gl.bindTexture(gl.TEXTURE_2D, A);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1024, rows, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, E.fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, B, 0);
+  gl.viewport(0, 0, 1024, rows);
+  gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(p);
+  const u = (name) => gl.getUniformLocation(p, name);
+  ['uA', 'uStart', 'uList', 'uRing', 'uMoreStart', 'uMoreList', 'uSide', 'uB', 'uS'].forEach((name, i) => { gl.activeTexture(gl.TEXTURE3 + i); gl.bindTexture(gl.TEXTURE_2D, E.tex[i === 0 ? 0 : i + 1]); gl.uniform1i(u(name), 3 + i); });
+  gl.uniform1i(u('uN'), n); gl.uniform1i(u('uK'), L.colours); gl.uniform1i(u('uC'), L.C);
+  gl.uniform1i(u('uR'), L.ring ? L.ring.length / n : 0); gl.uniform1i(u('uMode'), L.ring ? 1 : L.side ? 2 : 0); gl.uniform1i(u('uMore'), L.ringMore ? 1 : 0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  gl.readPixels(0, 0, 1024, rows, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.activeTexture(gl.TEXTURE0);
+  b.set(E.pad.subarray(0, n));
+  return true;
+}
 /* ---- 11.5 Path, overlay and stats ------------------------------------------------------------ */
 
 // Visits: the cell of every point and the most visits of any cell over the whole walk, which fixes
