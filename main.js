@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1348';
+const VERSION = '0.1.1349';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -2426,8 +2426,6 @@ function renderNumberPicker(active) {
   }));
 }
 
-const isRandomDigits = () => /^random\(\d+\)$/.test(formulaInUse);
-
 
 /* ---- 4.7 Sequences and digit helpers --------------------------------------------------------- */
 // Digits of a sequence (kind 'seq'), computed on the main thread
@@ -2563,10 +2561,7 @@ function numberText(limit = Infinity) {
 // list. Picking a choice sets the menu and fires its change event, so the rest of the page only
 // ever deals with the menu.
 let modeTab = null;  // the menu group of the mode in use (its display defaults, its digits)
-// The icon of each tab (the menu's group labels are the tab names) and of each walk mode's shape.
-// Filled: the relative modes (turn from your heading); outlined: the fixed directions.
-const TAB_ICONS = { '2D walks': 'walk2d', '3D walks': 'cube', 'Walks on surfaces': 'torus',
-                    'Automata on the plane': 'glider', 'Automata on surfaces': 'glider', '2D spirals': 'spiral' };
+// The icon of each walk mode's shape. Filled: the relative modes (turn from your heading); outlined: the fixed directions.
 const MODE_ICONS = {
   turtle: 'grid', cardinal: 'compass', triTurtle: 'triangleFilled', triFixed: 'triangle', hexTurtle: 'hexagonFilled', hexFixed: 'hexagon',
   turtleCells: 'grid', cardinalCells: 'compass', triTurtleCells: 'triangleFilled', triFixedCells: 'triangle', hexTurtleCells: 'hexagonFilled', hexFixedCells: 'hexagon',
