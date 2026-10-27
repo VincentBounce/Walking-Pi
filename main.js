@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1358';
+const VERSION = '0.1.1359';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7338,7 +7338,7 @@ function iconSquare(kind, N, spin = 0, P = 24) {  // spin: turned on more (a hex
   const g = walk.geo, sheet = !walk.plane && g?.torus && g.tiling === kind && !g.mobius && !g.klein ? g.sheet : null, t = TILINGS[kind];
   const strip = !walk.plane && g?.tiling === kind && g.stripTurn !== undefined;  // (a strip's, a bottle's: the plane turned by stripTurn, its side along it)
   const A = sheet ? [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]) : strip ? [Math.cos(-g.stripTurn), Math.sin(-g.stripTurn)] : null;
-  const tilt = A ? Math.atan2(A[1], A[0]) : walk.plane ? spin - planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}`;  // (along its sheet's side: the mesh seen straight, whatever its tiles' turn)
+  const tilt = A ? Math.atan2(A[1], A[0]) : walk.plane ? spin - planeTurn(kind) : spin, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}`;  // (along its sheet's side: the mesh seen straight, whatever its tiles' turn)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
@@ -7375,20 +7375,18 @@ function iconPatterns(sq, set = ICON_SETS.icon, turn = 0) {
 }
 // On a surface, the turn an icon laid there shows upright: its top towards the world's up (z, the axes' Up), not mirrored
 // seen from outside (its right: up × the outward normal); on a face looking up or down (no up there), towards the north (y,
-// the axes' N: its bottom south)
-function iconTurn(laid, pix, P) {
-  const g = walk.geo, at = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
-  const C = [0, 1, 2].map((d) => laid.reduce((s, [t]) => s + at(t)[d], 0) / laid.length);
-  const n = unit([0, 1, 2].map((d) => laid.reduce((s, [t]) => s + g.nrm[3 * t + d], 0)));
+// the axes' N: its bottom south). Its turn (of the square's 8) and what that leaves: the angle its bottom is still off down
+// (a face at 60°, a tetrahedron's, its tiles' square not square with it), the square to be spun by
+function iconTurn({ at, js, sq: { pix } }, P) {
+  const g = walk.geo, p = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], laid = js.map((j) => at[j]);
+  const C = [0, 1, 2].map((d) => laid.reduce((s, t) => s + p(t)[d], 0) / laid.length);
+  const n = unit([0, 1, 2].map((d) => laid.reduce((s, t) => s + g.nrm[3 * t + d], 0)));
   const top = Math.abs(n[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1], up = unit(top.map((v, d) => v - dot3(top, n) * n[d])), right = cross(up, n), m = (P - 1) / 2;
+  const axes = (T) => { const R = [0, 0, 0], D = [0, 0, 0]; js.forEach((j, q) => { const [ax, ay] = T(pix[j][0], pix[j][1], P), c = p(laid[q]); for (let d = 0; d < 3; d++) { R[d] += (ax - m) * (c[d] - C[d]); D[d] += (ay - m) * (c[d] - C[d]); } }); return [unit(R), unit(D)]; };  // (the icon's own right and down, in space)
   let best = 0, score = -Infinity;
-  ICON_TURNS.forEach((T, k) => {
-    const R = [0, 0, 0], D = [0, 0, 0];  // (the icon's own right and down, in space)
-    laid.forEach(([t], j) => { const [ax, ay] = T(pix[j][0], pix[j][1], P), p = at(t); for (let d = 0; d < 3; d++) { R[d] += (ax - m) * (p[d] - C[d]); D[d] += (ay - m) * (p[d] - C[d]); } });
-    const s = dot3(unit(R), right) - dot3(unit(D), up);
-    if (s > score + 1e-9) { score = s; best = k; }
-  });
-  return best;
+  ICON_TURNS.forEach((T, k) => { const [R, D] = axes(T), s = dot3(R, right) - dot3(D, up); if (s > score + 1e-9) { score = s; best = k; } });
+  const [R, D] = axes(ICON_TURNS[0]), down = up.map((v) => -v), off = Math.atan2(dot3(cross(D, down), n), dot3(D, down));
+  return { turn: best, off: dot3(cross(R, D), n) > 0 ? off : -off };
 }
 // Each colour's icon square laid at its spot, as Centered's patterns (see patternAt: its cells where the grid has them, the
 // rest cut off: a torus's or a bottle's at its sheet's edges as drawn flat, never round it), upright (see iconTurn); in a
@@ -7410,7 +7408,12 @@ function iconLay(N, P = 24) {
     return { at, sq, js, whole: cross.every((t) => t >= 0) && new Set(cross).size === cross.length };
   };
   const lays = Array.from({ length: K }, (_, i) => {
-    if (!walled) { const l = lay(iconSquare(kind, N, 0, P), i); return { ...l, turn: walk.plane || g.torus || !l.js.length ? 0 : iconTurn(l.js.map((j) => [l.at[j]]), l.js.map((j) => l.sq.pix[j]), P) }; }
+    if (!walled) {
+      const l = lay(iconSquare(kind, N, 0, P), i);
+      if (walk.plane || g.torus || !l.js.length) return { ...l, turn: 0 };
+      const m = lay(iconSquare(kind, N, iconTurn(l, P).off, P), i);  // (spun by what its face leaves: its bottom right down)
+      return { ...m, turn: m.js.length ? iconTurn(m, P).turn : 0 };
+    }
     const a = walled.angles[i], sq = iconSquare(kind, N, Math.round((a - Math.PI / 2) / (Math.PI / 3)) * (Math.PI / 3), P);  // (its bottom out: down, a sixth of a turn at a time)
     for (let d = walled.reach * 2; d > 0; d -= 0.5) { const l = lay(sq, i, [walled.mid[0] + d * Math.cos(a), walled.mid[1] + d * Math.sin(a)]); if (l.whole) return { ...l, turn: 0 }; }
     return { ...lay(sq, i, walled.mid), turn: 0 };
