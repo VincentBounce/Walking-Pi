@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1391';
+const VERSION = '0.1.1392';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -10100,6 +10100,7 @@ function hexAxes(c0) {
 // cell holding a place there (any, not only a middle: cut off past the plane's or a sheet's edges), -1 none; ex, ey, n: the plane's x and y steps there and the face's outward normal (a sheet's: on it unrolled,
 // flat, seen from above), for its pictures' way (see iconWay); on: its face's cells; face: a triangle face's point by its
 // rows (i along AB, j along AC, see patternAt's icons)
+let boxMemo = null;
 function patternFrame(i, K, place = patternPlace(i, K)) {  // place: another face's (see cellPlace)
   const g = walk.geo, kind = patternKind(), holding = (F) => ({ ...F, cellOf: (q) => { const c = planeCellAt(kind, 1, ...F.from(q), 'free'); return c ? F.cellAt(F.at(cellMiddle(kind, ...c)), true) : -1; } }), mean = (ps) => ps[0].map((_, d) => ps.reduce((sum, p) => sum + p[d], 0) / ps.length);  // (holding: cellOf, the cell holding a place: the plane's there, its middle laid)
   // a linear map's inverse by its two steps' images (their dot products, solved: on a face in space as on the plane)
@@ -10107,7 +10108,12 @@ function patternFrame(i, K, place = patternPlace(i, K)) {  // place: another fac
   const [cols, rows] = COLOUR_GRID[K];
   if (place.on === 'plane') {
     const { W, row } = walk.plane;
-    const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), box = () => { const ms = Array.from({ length: row * W }, (_, t) => mid(t)); return [0, 1].map((d) => ms.reduce(([lo, hi], m) => [Math.min(lo, m[d]), Math.max(hi, m[d])], [Infinity, -Infinity])).map(([lo, hi]) => (lo + hi) / 2); };
+    const mid = (u) => cellMiddle(kind, u % row, Math.floor(u / row)), box = () => {  // (its cells' middles' box's middle, once a grid: walk.plane a new one each)
+      if (boxMemo?.g === walk.plane) return boxMemo.box;
+      const lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
+      for (let t = 0; t < row * W; t++) { const m = mid(t); for (const d of [0, 1]) { lo[d] = Math.min(lo[d], m[d]); hi[d] = Math.max(hi[d], m[d]); } }
+      return (boxMemo = { g: walk.plane, box: [0, 1].map((d) => (lo[d] + hi[d]) / 2) }).box;
+    };
     // (its centre: a slice's spot; one colour's, the grid's very middle: a grid that never repeats, its circle's; in a hexagon, its centre of turns; else its frame's middle)
     const centre = () => (wallSlices(K) ? mid(planeSlices(K).spots[i]) : K > 1 ? planeFrame().middle(i, cols, rows) : APERIODIC[kind] ? [(W - 1) / 2, (W - 1) / 2] : planeShape(kind, W)?.o ?? box());
     return { at: (p) => p, from: (q) => q, place: mid, get centre() { return centre(); }, far: (t, c) => Math.hypot(mid(t)[0] - c[0], mid(t)[1] - c[1]), ex: [1, 0], ey: [0, 1], cellAt: (q, cut) => { const c = planeCellAt(kind, W, ...q, walk.plane.torus && !cut ? 'round' : 'in'); return c ? c[1] * row + c[0] : -1; }, cellOf: (q) => { const c = planeCellAt(kind, W, ...q); return c ? c[1] * row + c[0] : -1; } };
