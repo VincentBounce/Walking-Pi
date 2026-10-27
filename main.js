@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1383';
+const VERSION = '0.1.1384';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7953,36 +7953,49 @@ function drawLifePlane() {
     planeCanvas.getContext('2d').putImageData(planeImage, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(planeCanvas, ox - 0.5 * s, oy - 0.5 * s, W * s, W * s);
-    drawBlocks(ctx);
-    drawMotif(ctx);
-    drawGhost();
-    return;
+  } else {  // the others a picture too, at the screen's resolution: each pixel its cell's colour (see cellPixels), none a dead cell's
+    const { idx, image } = cellPixels(), out = new Uint32Array(image.data.buffer);
+    for (let i = 0; i < idx.length; i++) out[i] = idx[i] ? px[idx[i] - 1] : 0;
+    ctx.putImageData(image, 0, 0);
   }
-  const groups = new Map();
-  for (let t = 0; t < n; t++) if (px[t]) (groups.get(px[t]) ?? groups.set(px[t], []).get(px[t])).push(t);
-  const small = s < 3;  // a few pixels a cell: a square at its centre does as well, and faster
-  turnLayer(ctx);
-  for (const [c, ts] of groups) {
-    ctx.beginPath();
-    for (const t of ts) {
-      const x = t % row, pts = planeCorners(kind, x, (t - x) / row);
-      if (small) {
-        let u = 0, v = 0;
-        for (const [a, b] of pts) { u += a; v += b; }
-        ctx.rect(ox + (u / pts.length) * s - s / 2, oy + (v / pts.length) * s - s / 2, s, s);
-        continue;
-      }
-      ctx.moveTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
-      for (let k = 1; k < pts.length; k++) ctx.lineTo(ox + pts[k][0] * s, oy + pts[k][1] * s);
-      ctx.lineTo(ox + pts[0][0] * s, oy + pts[0][1] * s);
-    }
-    ctx.fillStyle = `rgb(${c & 255}, ${(c >> 8) & 255}, ${(c >> 16) & 255})`;
-    ctx.fill();
-  }
-  turnLayer(ctx, 0);
   drawBlocks(ctx);
   drawMotif(ctx);
   drawGhost();
+}
+// Which cell each pixel of the view shows (its number + 1; 0, none), for the cells' picture (see drawLifePlane): each cell
+// filled as it is seen (turned, see turnLayer), a row of pixels at a time, between its sides' crossings two by two (any
+// polygon, a hat's too), a pixel its cell's when its middle is in it. Once a view and a grid
+let pixelMemo = null, cornersMemo = null;
+function cellPixels() {
+  const { kind, W, row } = walk.plane, { scale: s, ox, oy } = view, d = window.devicePixelRatio || 1, a = planeTurn(), { width: w, height: h } = layers.path.canvas;
+  const key = `${kind}|${W}|${row}|${s}|${ox}|${oy}|${a}|${w}|${h}`;
+  if (pixelMemo?.key === key) return pixelMemo;
+  const idx = pixelMemo?.idx.length === w * h ? pixelMemo.idx.fill(0) : new Int32Array(w * h), image = pixelMemo?.idx.length === w * h ? pixelMemo.image : new ImageData(w, h);
+  const c = d * s * Math.cos(a), sn = d * s * Math.sin(a), X = [], Y = [], xs = [];
+  if (cornersMemo?.key !== `${kind}|${W}|${row}`) {  // (the cells' corners, once a grid: from start[t] to start[t + 1], u then v)
+    const start = new Int32Array(W * row + 1), uv = [];
+    for (let t = 0; t < W * row; t++) { for (const [u, v] of planeCorners(kind, t % row, Math.floor(t / row))) uv.push(u, v); start[t + 1] = uv.length / 2; }
+    cornersMemo = { key: `${kind}|${W}|${row}`, start, uv: Float64Array.from(uv) };
+  }
+  const { start, uv } = cornersMemo;
+  for (let t = 0; t < W * row; t++) {
+    const L = start[t + 1] - start[t];
+    let lo = Infinity, hi = -Infinity, left = Infinity, right = -Infinity;
+    for (let k = 0; k < L; k++) {
+      const u = uv[2 * (start[t] + k)], v = uv[2 * (start[t] + k) + 1], x = (X[k] = d * ox + c * u - sn * v), y = (Y[k] = d * oy + sn * u + c * v);
+      lo = Math.min(lo, y); hi = Math.max(hi, y); left = Math.min(left, x); right = Math.max(right, x);
+    }
+    const y0 = Math.max(0, Math.ceil(lo - 0.5)), y1 = Math.min(h, Math.ceil(hi - 0.5));
+    if (y0 >= y1 || right < 0 || left > w) continue;  // (out of sight, or between two rows of pixels' middles)
+    for (let y = y0; y < y1; y++) {
+      const m = y + 0.5;
+      xs.length = 0;
+      for (let k = 0, j = L - 1; k < L; j = k++) if (Y[j] <= m !== Y[k] <= m) xs.push(X[j] + ((m - Y[j]) / (Y[k] - Y[j])) * (X[k] - X[j]));
+      xs.sort((p, q) => p - q);
+      for (let k = 0; k + 1 < xs.length; k += 2) for (let x = Math.max(0, Math.ceil(xs[k] - 0.5)), e = Math.min(w, Math.ceil(xs[k + 1] - 0.5)); x < e; x++) idx[y * w + x] = t + 1;
+    }
+  }
+  return (pixelMemo = { key, idx, image });
 }
 // Reversible's blocks (Blocks on): those of the set the generation shown goes on by, its next (see blockStep), each outlined, the
 // sides of its cells not shared by two of them; masked by the grid's outline: its sides on it never drawn (a block cut by the
