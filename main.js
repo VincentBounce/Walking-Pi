@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1364';
+const VERSION = '0.1.1365';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7378,24 +7378,55 @@ const iconPartOf = (K) => {
   if (iconPartMemo?.key !== key) { const part = new Int32Array(walk.life.alive.length).fill(-1); huntParts(0, K, false, false).forEach((p, k) => { for (const t of p) part[t] = k; }); iconPartMemo = { key, part }; }
   return iconPartMemo.part;
 };
-// Each colour's picture square, its way and place known by construction (see patternFrame: where the plane's x and y go
-// there), laid once (see patternAt: its cells where the grid has them, the rest cut off, a torus's or a bottle's at its
-// sheet's edges as drawn flat, never round it). Its bottom: down as drawn on the plane; out, square on the wall, in a
-// hexagon's walls; on a solid's face or a sheet (unrolled: a level face), down it as a marble rolls (a level face: south);
-// mirrored where the plane lands there seen from the other side. Its place: its spot (see
+// pictures laid at all: the colours' patterns (see patternsOn), and a grid that repeats (its lattice: a picture's square)
+const picturesOn = () => patternsOn() && !(walk.plane && APERIODIC[patternKind()]);
+// Colour i's picture's way, by construction (see patternFrame: where the plane's x and y go there): tilt, the plane's angle
+// its x lies along (its bottom a quarter turn on: the plane's y down as drawn), and whether it shows mirrored (the plane
+// landing there seen from the other side). Its bottom: down as drawn on the plane; out in a hexagon's walls; on a solid's
+// face or a sheet (unrolled: a level face), down it as a marble rolls (a level face: south)
+function iconWay(i, K) {
+  const kind = patternKind(), frame = patternFrame(i, K), { ex, ey, n } = frame;
+  if (walk.plane) { const w = K > 1 && shaped(kind) && planeSlices(K); return { ...frame, tilt: (w ? w.angles[i] - Math.PI / 2 : 0) - planeTurn(), mirror: false }; }  // (as drawn: the plane turned by planeTurn)
+  // (its bottom's way there, by its parts along ex and ey: their dot products, solved)
+  const down = downOn(n), xx = dot3(ex, ex), xy = dot3(ex, ey), yy = dot3(ey, ey), dx = dot3(down, ex), dy = dot3(down, ey), D = xx * yy - xy * xy;
+  return { ...frame, tilt: Math.atan2((dy * xx - dx * xy) / D, (dx * yy - dy * xy) / D) - Math.PI / 2, mirror: dot3(cross(ex, ey), n) > 0 };
+}
+// The widest picture the colours' places take, in cells, by construction: each colour's place's cells on its face (see
+// patternPlace) spread along its picture's x and down (their middles' extent, and a cell's width); a rectangle's (a block, a
+// face of squares) its narrower; a triangle's (a face of triangles, a hexagon's sixth) its cross's widest, 2/(1 + √3) of its
+// height. Their least
+function iconRoom(K) {
+  const kind = patternKind(), g = walk.geo, part = iconPartOf(K), dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0);
+  const area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2, per = PER_RHOMBUS[kind] ?? 1;
+  const cw = Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => area(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per));  // (a cell's width: the root of its mean area, as iconSquare's)
+  const at = walk.plane ? (t) => cellMiddle(kind, t % walk.plane.row, Math.floor(t / walk.plane.row)) : g.torus ? (t) => sheetPoint(g, ...sheetPlace(g, t), 0) : (t) => Array.from(g.cen.subarray(3 * t, 3 * t + 3));  // (where it is: on the plane, on the sheet unrolled, in space)
+  return Math.min(...Array.from({ length: K }, (_, i) => {
+    const { ex, ey, tilt } = iconWay(i, K), place = patternPlace(i, K), go = ([u, v]) => ex.map((c, d) => u * c + v * ey[d]);
+    const R = go([Math.cos(tilt), Math.sin(tilt)]), Dn = go([-Math.sin(tilt), Math.cos(tilt)]), scale = Math.hypot(...R), Ru = R.map((v) => v / scale), Du = Dn.map((v) => v / Math.hypot(...Dn));
+    const first = place.on === 'tri' ? (g.triFirst ?? 0) + place.face * (g.triFaces ? g.size * g.size : g.perFace) : place.on === 'square' ? place.f * g.size * g.size : 0;
+    const squares = place.on === 'cube' && (() => { const { a, square } = cubeFace(place.f), s = new Set(); for (let r = 0; r < a; r++) for (let c = 0; c < a; c++) s.add(square(r, c)); return s; })();
+    const on = place.on === 'tri' ? (t) => t >= first && t < first + (g.triFaces ? g.size * g.size : g.perFace) : place.on === 'square' ? (t) => t >= first && t < first + g.size * g.size
+      : place.on === 'hex' ? (t) => g.planeOf[t] === g.planeOf[place.c0] : place.on === 'cube' ? (t) => squares.has(g.squares ? t >> 2 : t) : () => true;  // (its face's cells)
+    let r0 = Infinity, r1 = -Infinity, d0 = Infinity, d1 = -Infinity;
+    for (let t = 0; t < part.length; t++) if (part[t] === i && on(t)) { const p = at(t), r = dot(p, Ru), d = dot(p, Du); r0 = Math.min(r0, r); r1 = Math.max(r1, r); d0 = Math.min(d0, d); d1 = Math.max(d1, d); }
+    const w = (r1 - r0) / scale + cw, h = (d1 - d0) / scale + cw, triangle = place.on === 'tri' || place.on === 'hex' || (walk.plane && K === 6 && shaped(kind));
+    return (triangle ? (2 * h) / (1 + Math.sqrt(3)) : Math.min(w, h)) / cw;
+  }));
+}
+// Each colour's picture square turned its way (see iconWay), laid once (see patternAt: its cells where the grid has them, the
+// rest cut off, a torus's or a bottle's at its sheet's edges as drawn flat, never round it). Its place: its spot (see
 // patternPlace); in a hexagon's walls against its slice's wall; on a triangle face on its median, its middle, or against its
 // level side when wider than a third of it (the widest a triangle takes: its middle 1/(1 + √3) of the way up, 0.37). Laid to
 // a lattice step (its tiles' shapes kept): off its place by half a step at most, kept in by that. Its cells (each of the
-// square's, -1 off the grid, on its wall or past its colour's place), its square, mirrored or not. Null where it doesn't fit: its middle row or column
-// (its pixels 11 and 12) not all laid in its colour's place (see huntParts), each on a cell of its own (its whole width and
-// height: cut off in its corners only)
+// square's, -1 off the grid, on its wall or past its colour's place), its square, mirrored or not. Null where it doesn't
+// fit: its middle row or column (its pixels 11 and 12) not all laid in its colour's place (see huntParts), each on a cell of
+// its own (its whole width and height: cut off in its corners only)
 function iconLay(N, P = 24) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo;
-  if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
-  const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K);
-  const part = iconPartOf(K);
+  if (!picturesOn()) return null;
+  const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K), part = iconPartOf(K);
   const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
-  const angle = ([x, y]) => Math.atan2(y, x), dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0), lay = (sq, i, to, away) => {
+  const dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0), lay = (sq, i, to, away) => {
     const at = new Int32Array(sq.box.length).fill(-1), cells = Object.assign(sq.box.map(([x, y], j) => [x, y, j]), { mid: sq.mid });
     const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true, away);
     for (const [t, j] of laid) if (!dead.has(t) && part[t] === i) at[j] = t;
@@ -7404,21 +7435,15 @@ function iconLay(N, P = 24) {
     return { at, sq, js, whole: cross.every((t) => t >= 0) && new Set(cross).size === cross.length };
   };
   const lays = Array.from({ length: K }, (_, i) => {
-    const { ex, ey, n } = patternFrame(i, K);
-    // the plane's way its bottom goes (its x then a quarter turn back), from the way it should go there: on a solid or a sheet,
-    // its parts along ex and ey (a face's: by their dot products, solved)
-    const towards = (down) => { const xx = dot(ex, ex), xy = dot(ex, ey), yy = dot(ey, ey), dx = dot(down, ex), dy = dot(down, ey), D = xx * yy - xy * xy; return angle([(dx * yy - dy * xy) / D, (dy * xx - dx * xy) / D]) - Math.PI / 2; };
-    if (walk.plane) {  // (as drawn: the plane turned by planeTurn)
-      if (!walled) return { ...lay(iconSquare(kind, N, -planeTurn(), P), i), mirror: false };
-      const ang = walled.angles[i], sq = iconSquare(kind, N, ang - Math.PI / 2 - planeTurn(), P), out = turnPoint([Math.cos(ang), Math.sin(ang)], -planeTurn()), mid = turnPoint(walled.mid, -planeTurn());
-      const d = walled.walls[i] - sq.side / 2 - (Math.abs(dot(a, out)) + Math.abs(dot(b, out))) / 2;  // (against its wall, its lattice step's half kept in)
-      return { ...lay(sq, i, mid.map((v, k) => v + d * out[k])), mirror: false };
+    const { tilt, mirror } = iconWay(i, K), sq = iconSquare(kind, N, tilt, P), place = patternPlace(i, K);
+    if (walled) {  // (against its wall, its lattice step's half kept in; its slice's angle as seen, the plane turned by planeTurn)
+      const out = turnPoint([Math.cos(walled.angles[i]), Math.sin(walled.angles[i])], -planeTurn()), mid = turnPoint(walled.mid, -planeTurn());
+      const d = walled.walls[i] - sq.side / 2 - (Math.abs(dot(a, out)) + Math.abs(dot(b, out))) / 2;
+      return { ...lay(sq, i, mid.map((v, k) => v + d * out[k])), mirror };
     }
-    const tilt = towards(downOn(n)), sq = iconSquare(kind, N, tilt, P), mirror = dot3(cross(ex, ey), n) > 0;  // (the plane's x then y turning against the face's outside: seen from the other side)
-    const place = patternPlace(i, K);
     if (place.on !== 'tri') return { ...lay(sq, i), mirror };
     // a triangle: its cross's reach off its level side (its arm most across it), in rows, and a row's half (its corner rounded)
-    const side = [a, b.map((v, d) => v - a[d]), b.map((v) => -v)][place.per > 1 ? place.q : 0], phi = tilt - angle(side), reach = (sq.side / 2) * Math.max(Math.abs(Math.cos(phi)), Math.abs(Math.sin(phi)));
+    const side = [a, b.map((v, d) => v - a[d]), b.map((v) => -v)][place.per > 1 ? place.q : 0], phi = tilt - Math.atan2(side[1], side[0]), reach = (sq.side / 2) * Math.max(Math.abs(Math.cos(phi)), Math.abs(Math.sin(phi)));
     return { ...lay(sq, i, null, Math.max(g.size / 3, reach / rowStep + 0.5)), mirror };
   });
   return lays.every((l) => l.whole) ? lays : null;
@@ -9623,15 +9648,17 @@ const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an i
 // A picture laid two ways (each colour's: see iconLay, its square's cells, see iconSquare): on squares, an icon's or a punk's
 // 24 pixels each a whole count of cells, 24 × N wide (pixels whole); elsewhere, and an emoji or a word anywhere, its pixels
 // sampled by the cells, any width from 16 (a picture merged a little, its cross whole). Icon max, Punk max, an emoji, a word:
-// the widest that fits, from the widest a colour's share of the cells could hold down (not halved: a triangle's cells let 36 in,
-// not 32); 24 where none (greyed)
+// the widest that fits: its room worked out (see iconRoom), then a step or two for the cells' rounding (wider fitting no less
+// not always: a triangle's cells let 36 in, not 32); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = (set = ICON_SETS.icon) => {
   const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   const lo = u === 24 ? 1 : 16;  // (in u's)
-  let k = Math.floor(Math.sqrt(cells / walk.life.colours) / u);
-  while (k >= lo && !iconFits(k * u, set.P)) k--;
+  if (!picturesOn()) return (iconMaxMemo = { key, N: 24 }).N;
+  let k = Math.max(lo, Math.round(iconRoom(walk.life.colours) / u));  // (its room, then the cells' rounding: a step or two up or down)
+  if (iconFits(k * u, set.P)) while ((k + 1) * u <= Math.sqrt(cells) && iconFits((k + 1) * u, set.P)) k++;
+  else while (--k >= lo && !iconFits(k * u, set.P));
   return (iconMaxMemo = { key, N: k >= lo ? k * u : 24 }).N;
 };
 const iconSize = (zone) => (!isIcon(zone) ? 0 : zone === 'emoji' || zone.endsWith('Max') ? iconMax(iconSet(zone)) : 24);  // (a picture's width in cells; max: greyed where none fits, 16 off squares)
