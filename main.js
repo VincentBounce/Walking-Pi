@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1357';
+const VERSION = '0.1.1358';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -7331,14 +7331,14 @@ const ICON_TURNS = [(x, y) => [x, y], (x, y, S) => [S - 1 - y, x], (x, y, S) => 
 const iconPixel = (b64) => { const bits = atob(b64); return (x, y) => (bits.charCodeAt((24 * y + x) >> 3) & (128 >> (x & 7))) !== 0; };
 // the square's cells, N cells wide (a cell as wide as the root of its mean area: its lattice cell's), a patch
 // round cell 0 of the grid: the cells under the icon (box, moved by whole lattice steps: its cells' shapes kept), and their
-// pixel (pix). On a tiling's torus, its square along the tiling's own turn (of its turns) nearest the ring: as the tiles lie
-// there (not along its sheet's lattice side, a turn away: 120°, 180°…), turned with them when they are; on the plane's rectangle
+// pixel (pix). On a tiling's torus, a strip's, a bottle's, its square along the sheet's side round the ring: laid on the mesh
+// as made, seen straight (its tiles' own turn not followed, only Famous follows it); on the plane's rectangle
 // (a slanted grid's straight sheet, see planeKind), along its side U, as the view shows it (see planeTurn)
 function iconSquare(kind, N, spin = 0, P = 24) {  // spin: turned on more (a hexagon's colours: its bottom out, see iconLay); P: its pixels across
   const g = walk.geo, sheet = !walk.plane && g?.torus && g.tiling === kind && !g.mobius && !g.klein ? g.sheet : null, t = TILINGS[kind];
   const strip = !walk.plane && g?.tiling === kind && g.stripTurn !== undefined;  // (a strip's, a bottle's: the plane turned by stripTurn, its side along it)
-  const A = sheet ? [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]) : strip ? [Math.cos(-g.stripTurn), Math.sin(-g.stripTurn)] : null, step = (2 * Math.PI) / (t?.turns ?? 1);
-  const tilt = A ? Math.round((Math.atan2(A[1], A[0]) + (sideTurn(kind, A) * Math.PI) / 180) / step) * step : walk.plane ? spin - planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}`;  // (the turn its tiles lie at, see sideTurn: a half step exactly, clockwise, as theirs)
+  const A = sheet ? [0, 1].map((d) => sheet[0][0] * t.basis[0][d] + sheet[0][1] * t.basis[1][d]) : strip ? [Math.cos(-g.stripTurn), Math.sin(-g.stripTurn)] : null;
+  const tilt = A ? Math.atan2(A[1], A[0]) : walk.plane ? spin - planeTurn(kind) : 0, cs = Math.cos(tilt), sn = Math.sin(tilt), key = `${kind}|${N}|${tilt}|${P}`;  // (along its sheet's side: the mesh seen straight, whatever its tiles' turn)
   if (iconPatternMemo.has(key)) return iconPatternMemo.get(key);
   const per = PER_RHOMBUS[kind] ?? 1, o = cellMiddle(kind, 0, 0), under = [];
   const a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), area = (q) => Math.abs(q.reduce((sum, p, i) => sum + p[0] * q[(i + 1) % q.length][1] - q[(i + 1) % q.length][0] * p[1], 0)) / 2;
