@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1371';
+const VERSION = '0.1.1372';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7442,22 +7442,23 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
 function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 8 neighbours in order too
   const row = planeRow(kind, W), n = row * W, HEX = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]];
   // each cell's corners in grid units (a hexagon's: the middles of the triangles round its centre), wrapping round the
-  // grid every W units; the same corner of two cells, one id
+  // grid every its columns' units along (row / its cells a lattice step: a rectangle's not W), W up; the same corner of
+  // two cells, one id
   const cornersOf = (x, y) => (kind === 'square' ? [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]
     : kind === 'hex' ? HEX.map(([a, b], q) => [x + (a + HEX[(q + 1) % 6][0]) / 3, y + (b + HEX[(q + 1) % 6][1]) / 3])
       : kind === 'tri' ? (x & 1 ? [[(x >> 1) + 1, y], [(x >> 1) + 1, y + 1], [x >> 1, y + 1]] : [[x >> 1, y], [(x >> 1) + 1, y], [x >> 1, y + 1]])
         : tilingOf(kind) ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : APERIODIC[kind] ? APERIODIC[kind](W).polys[y * W + x] : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice)
   // a corner's id: squares, triangles and hexagons have theirs on a grid of 1/q units, numbered in an array; the others
   // by a map (their corners to 1/1000)
-  const q = { square: 1, tri: 1, hex: 3 }[kind] ?? 1000, P = W * q, S = P + 4 * q;
-  const r = (a) => { const k = Math.round(a * q); return torus ? ((k % P) + P) % P : k + 2 * q; };
+  const q = { square: 1, tri: 1, hex: 3 }[kind] ?? 1000, P = [(row / (PER_RHOMBUS[kind] ?? 1)) * q, W * q], S = Math.max(...P) + 4 * q;
+  const r = (a, d) => { const k = Math.round(a * q); return torus ? ((k % P[d]) + P[d]) % P[d] : k + 2 * q; };
   const byGrid = q < 1000 ? new Int32Array(S * S).fill(-1) : null, byMap = new Map(), cStart = new Int32Array(n + 1), cList = [];
   let nv = 0;
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
     for (const [u, v] of cornersOf(x, y)) {
       let id;
-      if (byGrid) { const k = r(u) * S + r(v); id = byGrid[k] < 0 ? (byGrid[k] = nv++) : byGrid[k]; }
-      else { const k = r(u) * 8388608 + r(v); id = byMap.get(k); if (id === undefined) byMap.set(k, (id = nv++)); }
+      if (byGrid) { const k = r(u, 0) * S + r(v, 1); id = byGrid[k] < 0 ? (byGrid[k] = nv++) : byGrid[k]; }
+      else { const k = r(u, 0) * 8388608 + r(v, 1); id = byMap.get(k); if (id === undefined) byMap.set(k, (id = nv++)); }
       cList.push(id);
     }
     cStart[y * row + x + 1] = cList.length;
