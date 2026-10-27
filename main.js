@@ -37,7 +37,8 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1370';
+const VERSION = '0.1.1371';
+const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -6482,7 +6483,7 @@ for (const kind of ['pinwheel', 'flower', 'flower3', 'flower4', 'flower5', 'flow
 // (two sides the same grid, as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least;
 // a hexagon's by its side alone, each its own: its hexagon fitted only when shown, see shapeW, not 512's 6 times to list it)
 const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) => (MODES[$('mode').value]?.margolus ? [6, 8, ...PLANE_SIDES[kind]] : PLANE_SIDES[kind]).filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));  // (grid: as built, its rows, its row)
-const plane = { side: 48, torus: true, gens: 2000, text: 'π', icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
+const plane = { side: 48, torus: true, gens: 2000, text: APP_TITLE, icons: [0],  // icons: an Icon zone's, one a colour (or one for all)
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -7572,7 +7573,7 @@ function planeFromSetup(s) {
     plane.seed = Number(b) || 1;
     if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'text' ? kind : 'random';
-  if (kind === 'text') plane.text = String(s.pop).slice(5) || 'π';
+  if (kind === 'text') plane.text = String(s.pop).slice(5) || APP_TITLE;
   population = plane.start === 'draw' ? populationOf(s.p) : population;
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
@@ -7586,6 +7587,7 @@ function renderPlaneRow() {
     b.disabled = false;
     if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
     b.hidden = b.dataset.start === 'text' && !kind;  // (Text: on the plane)
+    if (b.dataset.start === 'text') { b.disabled = !!kind && (!!APERIODIC[kind] || (walk.plane?.kind === kind && !iconFits(iconMax(textSet()), 64))); b.title = b.disabled ? 'Text: greyed on a grid that never repeats (no lattice to lay its picture on), or too small for it' : ''; }  // (too small: once its grid is built)
   }
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
   if (!kind) {
@@ -9069,10 +9071,9 @@ function isingOf(kind, W) {
 // billiard balls, the gases, Critters: their cells carry their colours, back by the inverse)
 const ones = (v) => { let c = 0; for (; v; v &= v - 1) c++; return c; };
 const blockKind = (to) => { const full = to.length - 1, flips = to[0] === full; return { flips, keeps: to.every((n, st) => ones(flips ? full ^ n : n) === ones(st)) }; };
-// a block rule whose cells carry colours (an emoji's): one that keeps them; Tron makes and unmakes cells, Q2R's
-// never move: black and white
+// a block rule whose cells could carry colours: one that keeps them (its rule's card in colour); Tron makes and unmakes
+// cells, Q2R's never move: black and white
 const carriesColours = (rule) => !!rule?.margolus && !rule.ising && blockKind(rule.margolus).keeps;
-// back: run backwards (a, the generation after b; see lifeBack)
 function blockStep({ k, turns, to, move, ising, sides, flips, cells }, a, b, g) {
   if (ising) { b.set(a); for (const t of turns[g % 2]) { let c = 0; for (const u of sides[t]) c += a[u] ? 1 : 0; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (move) a = Uint8Array.from(move, (m) => a[m]);  // (stellated: across first)
