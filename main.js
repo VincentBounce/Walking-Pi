@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1381';
+const VERSION = '0.1.1382';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -5333,8 +5333,7 @@ function syncSizeStepper() {
   const label = (f) => { $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`; };
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
-  const family = ladderOf(kind) === 'surface' ? 'torus, Möbius strip or Klein bottle' : 'solid';
-  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? `${sizeHow(kind, f)}\n${sizeSides(kind, f)}`.trim() : '', sought[ladderOf(kind)] ? `\n{b:Last picked size: ${fmt(sought[ladderOf(kind)])} cells}\nEach ${family} at the size closest to it (picked with − + or the slider)` : ''].filter(Boolean).join('\n'));
+  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? `${sizeHow(kind, f)}\n${sizeSides(kind, f)}`.trim() : '', sought[ladderOf(kind)] ? `\n${lastPicked(sought[ladderOf(kind)])}` : ''].filter(Boolean).join('\n'));
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5405,6 +5404,8 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // a size's tooltip on its block, − + its label and its slider, as its motif shows on it (see drawMotif); its words
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's violet, a face's red, the walls' ochre
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifColour = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
+// a size's tooltip's end: what was last picked, kept from grid to grid (each takes the nearest it offers)
+const lastPicked = (cells) => `{b:Last picked}\nSize: {b:${fmt(cells)} cells} (picked with − + or the slider)${MODES[$('mode').value]?.life ? `\nPopulation: {b:${COLOUR_STEP_NAMES[coloursPicked]}${colourMix && coloursPicked > 1 ? ' mixed' : ''}} (picked in the section)` : ''}`;
 const sizeTips = (row, total, text) => {
   const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskbg]):([^}]*)\}/g, (_, c, w) => (c === 'g' ? `<span class="tip-default">${w}</span>` : `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`));  // ({g:…}: grey, as a default)
   total = marks(total);
@@ -7417,7 +7418,8 @@ function buildLifePlane(seq) {
   hunt.top = [];  // a new grid, rule or colours: the starts found were another game's
   hunt.status = '';
   stopHunt();
-  renderColours();  // the blocks a figure fits, now that it is built
+  renderColours();  // the blocks a figure fits, and its size's words (its colours fitted), now that it is built
+  renderPlaneRow();
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
@@ -7529,7 +7531,7 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  sizeTips('plane', sizeCells(planeKind(kind), plane.side), `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n${sizeSides(planeKind(kind), plane.side)}\n\n` : ''}{b:Last picked size: ${fmt(Math.round((APERIODIC[kind] || shaped(kind) ? Math.PI / 4 : 1) * plane.picked ** 2))} cells}\nEach grid at the size closest to it${APERIODIC[kind] || shaped(kind) ? `, a disc ${fmt(plane.side)} across` : ''} (picked with − + or the slider)`);  // (⌀: a disc's, see shapeW)
+  sizeTips('plane', sizeCells(planeKind(kind), plane.side), `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n${sizeSides(planeKind(kind), plane.side)}\n\n` : ''}${lastPicked(Math.round((APERIODIC[kind] || shaped(kind) ? Math.PI / 4 : 1) * plane.picked ** 2))}`);  // (⌀: a disc's, see shapeW)
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.picked = sides[k]; compute(true); });
@@ -8112,7 +8114,7 @@ const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.pl
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4", see lifeRuleNow)
-let lifeColours = 1, colourMix = false;  // colourMix: Mixed, the colours mixed in one place (see huntParts)
+let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the most the figure fits up to the last picked (see fitColours); colourMix: Mixed, the colours mixed in one place (see huntParts)
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
 const negative = (L) => !!L.margolus?.flips && cur % 2 === 1;
@@ -8178,9 +8180,9 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
   if (g?.nu) { const [u, v] = torusBlocks(k, g); return u <= g.nu && v <= g.nv; }  // a torus: its blocks (see torusBlocks)
   return false;
 }
-// a new figure that cannot place as many colours: the most it can, fewer
+// a new figure: as many colours as last picked, else the most it can place, fewer (the pick kept for the next)
 function fitColours(g) {
-  if (!coloursFit(lifeColours, g)) lifeColours = COLOUR_STEPS.findLast((k) => k < lifeColours && coloursFit(k, g));
+  lifeColours = COLOUR_STEPS.findLast((k) => k <= coloursPicked && coloursFit(k, g));
 }
 const colourBlock = (k) => {  // (its colours squares all, as many a row as their blocks, else as near a square: 5, 3 and 2, a hole)
   const cols = { 5: 3, 7: 4, 10: 4 }[k] ?? COLOUR_GRID[k][0], rows = Math.ceil(k / cols), cs = k === 1 ? [LIFE_ALIVE] : LIFE_COLOURS.slice(0, k);
@@ -8222,7 +8224,7 @@ const colourMissing = (K) => {
 function renderColours() {
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
-    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), byDefault: k === 1 ? 'yes' : '', greyed: k > 1 ? 'where the shape has no parts alike for so many colours' : '', click: () => { if (k !== lifeColours) { lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
+    on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), byDefault: k === 1 ? 'yes' : '', greyed: k > 1 ? 'where the shape has no parts alike for so many colours' : '', click: () => { if (k !== lifeColours) { coloursPicked = lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
     // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
     tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
       title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic', on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
@@ -10661,7 +10663,7 @@ function applySetup(s) {
       if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
       if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
     }
-    lifeColours = Number(s.k) || 1;
+    coloursPicked = lifeColours = Number(s.k) || 1;
     $('lifeTrail').checked = lifeColours === 1;  // (Trail: on in Classic, off in colours, at first)
     colourMix = Number(s.mx) === 1;
     if (s.r) { ruleFittedTo = s.w; setRuleText(ruleBody(s.r)); }  // a link's rule as it is
