@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1392';
+const VERSION = '0.1.1393';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6748,6 +6748,11 @@ const latticeAt = (a, b) => [a + b / 2, b * ROOT3_2];  // a corner of the triang
 // An aperiodic tiling's grid of side W (the hats, Penrose's rhombi): from a patch of it (items: their middles m, each
 // about a square unit; poly(item): its corners), the W² items nearest a middle (a disc), in W bands from the top,
 // each by x (a cell (x, y) as on the other grids); the items round them, its walls
+// a substitution's triangles near a disc only (round o, R): those whose corners' circle round their middle reaches it
+const trianglesNear = (tris, o, R, corners = (T) => T) => tris.filter((T) => {
+  const P = corners(T), m = [0, 1].map((d) => P.reduce((t, q) => t + q[d], 0) / P.length);
+  return Math.hypot(m[0] - o[0], m[1] - o[1]) - Math.max(...P.map((q) => Math.hypot(q[0] - m[0], q[1] - m[1]))) <= R;
+});
 function discPatch(items, W, poly, middle = null, norm = Math.hypot) {  // walls in a circle: the items nearest the middle (norm: another way to measure, Ammann's octagon)
   // the middle (middle, else): where the square round a disc of W² items' room (a cell about 1 square unit: its radius W / √π)
   // and 4 units more all round (its walls' room) holds the most of them, the nearest the patch's centre (its outline is
@@ -6881,18 +6886,36 @@ const HAT = (() => {
     for (const m of [H, P, F, T]) m.recentre();
     return { H, T, P, F };
   }
-  // every hat of a metatile: its transform
-  const hatsOf = (geom, T, out) => { if (geom.hat) out.push(T); else for (const ch of geom.children) hatsOf(ch.geom, mul(T, ch.T), out); return out; };
+  // a metatile's hats: how many, their mean place, how far from its origin they reach (once a metatile; a transform's
+  // stretch at most its linear part's size)
+  const c0 = corners.reduce((s, q) => padd(s, q), pt(0, 0)), c = pt(c0.x / corners.length, c0.y / corners.length), stretch = (T) => Math.hypot(T[0], T[1], T[3], T[4]);
+  const sizes = new WeakMap(), one = { n: 1, c, r: Math.max(...corners.map((q) => Math.hypot(q.x, q.y))) };
+  const sizeOf = (geom) => {
+    if (geom.hat) return one;
+    if (sizes.has(geom)) return sizes.get(geom);
+    let n = 0, x = 0, y = 0, r = 0;
+    for (const ch of geom.children) { const z = sizeOf(ch.geom), m = transPt(ch.T, z.c), o = transPt(ch.T, pt(0, 0)); n += z.n; x += z.n * m.x; y += z.n * m.y; r = Math.max(r, Math.hypot(o.x, o.y) + stretch(ch.T) * z.r); }
+    const z = { n, c: pt(x / n, y / n), r };
+    sizes.set(geom, z);
+    return z;
+  };
+  // its hats within R of a place (its metatiles reaching there only): their transforms
+  const hatsNear = (geom, T, mid, R, out) => {
+    if (geom.hat) { out.push(T); return out; }
+    for (const ch of geom.children) { const M = mul(T, ch.T), o = transPt(M, pt(0, 0)); if (Math.hypot(o.x - mid.x, o.y - mid.y) - stretch(M) * sizeOf(ch.geom).r <= R) hatsNear(ch.geom, M, mid, R, out); }
+    return out;
+  };
   const S = 0.54;  // world units a hatviz unit: a hat about as big as a square
   const cache = {};
   return (W) => cache[W] ??= (() => {
-    let shapes = { H: H0, T: T0, P: P0, F: F0 }, all;
-    for (;;) { all = hatsOf(patchOf(shapes), ident, []); if (all.length >= 6 * W * W) break; shapes = metatilesOf(patchOf(shapes)); }
-    // each hat: its middle (its corners' mean, moved), its corners only when wanted
-    const c0 = corners.reduce((s, q) => padd(s, q), pt(0, 0)), c = pt(c0.x / corners.length, c0.y / corners.length);
-    const hats = all.map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S], flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
-    const poly = (h) => (h.p ??= corners.map((q) => transPt(h.T, q)).map((q) => [q.x * S, -q.y * S]));
-    return discPatch(hats, W, poly);
+    // the patch: as many as 20 W² hats (the disc well inside); round its hats' mean place, the disc of W² (radius W / √π) and
+    // its walls' room only
+    let shapes = { H: H0, T: T0, P: P0, F: F0 };
+    while (sizeOf(patchOf(shapes)).n < 20 * W * W) shapes = metatilesOf(patchOf(shapes));
+    const patch = patchOf(shapes), mid = sizeOf(patch).c;
+    const hats = hatsNear(patch, ident, mid, (W / Math.sqrt(Math.PI) + 6) / S, []).map((T) => { const q = transPt(T, c); return { T, m: [q.x * S, -q.y * S], flip: T[0] * T[4] - T[1] * T[3] < 0 }; });
+    const poly = (h) => (h.p ??= corners.map((q) => transPt(h.T, q)).map((q) => [q.x * S, -q.y * S]));  // (its corners only when wanted)
+    return discPatch(hats, W, poly, [mid.x * S, -mid.y * S]);
   })();
 })();
 /* Penrose's rhombi (P3): a wheel of 10 Robinson triangles cut again and again (a thin one in 2, a thick one in 3, each
@@ -6908,11 +6931,11 @@ const PENROSE = (() => {
       const B = [R * Math.cos(((2 * i - 1) * Math.PI) / 10), R * Math.sin(((2 * i - 1) * Math.PI) / 10)], C = [R * Math.cos(((2 * i + 1) * Math.PI) / 10), R * Math.sin(((2 * i + 1) * Math.PI) / 10)];
       return i % 2 ? [0, [0, 0], C, B] : [0, [0, 0], B, C];
     });
-    for (let k = 0; k < n; k++) tris = tris.flatMap(([c, A, B, C]) => {
+    for (let k = 0; k < n; k++) tris = trianglesNear(tris.flatMap(([c, A, B, C]) => {
       if (c === 0) { const P = lerp(A, B, 1 / phi); return [[0, C, P, B], [1, P, C, A]]; }
       const Q = lerp(B, A, 1 / phi), S = lerp(B, C, 1 / phi);
       return [[1, S, C, A], [1, Q, S, B], [0, S, Q, A]];
-    });
+    }), [0, 0], W / Math.sqrt(Math.PI) + 6, (T) => T.slice(1));  // (round the disc of W² and its walls' room only)
     const key = (p) => pointKey(p, 1e4), half = new Map(), items = [];
     for (const [c, A, B, C] of tris) {
       const k = `${c}|${[key(B), key(C)].sort().join('|')}`, other = half.get(k);
@@ -6957,15 +6980,35 @@ const SPECTRE = (() => {
     const Tr = Ts.map((T) => mul(R, T)), sq = [at(Tr[6], q[2]), at(Tr[5], q[1]), at(Tr[3], q[2]), at(Tr[0], q[1])];
     return Object.fromEntries(NAMES.map((n) => [n, { parts: RULES[n].map((k, i) => (k ? [Tr[i], sys[k]] : null)).filter(Boolean), quad: sq }]));
   }
-  const spectresOf = (g, T, out) => { for (const [M, sub] of g.parts) { const TM = mul(T, M); if (sub) spectresOf(sub, TM, out); else out.push(TM); } return out; };
-  const count = (g) => g.parts.reduce((s, [, sub]) => s + (sub ? count(sub) : 1), 0);
+  // a kind's spectres: how many, their mean place, how far from its origin they reach (once a kind; its parts turned, not
+  // stretched), and those within R of a place (its parts reaching there only)
+  const sizes = new WeakMap(), one = { n: 1, c: [0, 1].map((d) => spectre.reduce((t, q) => t + q[d], 0) / 14), r: Math.max(...spectre.map((q) => Math.hypot(...q))) };
+  const sizeOf = (g) => {
+    if (sizes.has(g)) return sizes.get(g);
+    let n = 0, x = 0, y = 0, r = 0;
+    for (const [M, sub] of g.parts) { const z = sub ? sizeOf(sub) : one, m = at(M, z.c); n += z.n; x += z.n * m[0]; y += z.n * m[1]; r = Math.max(r, Math.hypot(M[2], M[5]) + z.r); }
+    const z = { n, c: [x / n, y / n], r };
+    sizes.set(g, z);
+    return z;
+  };
+  const spectresNear = (g, T, mid, R, out) => {
+    for (const [M, sub] of g.parts) {
+      const TM = mul(T, M);
+      if (Math.hypot(TM[2] - mid[0], TM[5] - mid[1]) - (sub ? sizeOf(sub) : one).r > R) continue;
+      if (sub) spectresNear(sub, TM, mid, R, out); else out.push(TM);
+    }
+    return out;
+  };
   const S = 1 / Math.sqrt(Math.abs(spectre.reduce((a, p, i) => a + p[0] * spectre[(i + 1) % 14][1] - spectre[(i + 1) % 14][0] * p[1], 0) / 2));  // a spectre a square unit
   const cache = {};
   return (W) => cache[W] ??= (() => {
+    // as many as 20 W² spectres (the disc well inside); round their mean place, the disc of W² (radius W / √π) and its walls'
+    // room only
     let sys = base;
-    while (count(sys.Delta) < 10 * W * W) sys = supertiles(sys);  // (room for the walls all round too)
-    const items = spectresOf(sys.Delta, ident, []).map((T) => { const p = spectre.map((q) => at(T, q)).map(([x, y]) => [x * S, -y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / 14) }; });
-    return discPatch(items, W, (h) => h.p);
+    while (sizeOf(sys.Delta).n < 20 * W * W) sys = supertiles(sys);
+    const mid = sizeOf(sys.Delta).c;
+    const items = spectresNear(sys.Delta, ident, mid, (W / Math.sqrt(Math.PI) + 6) / S, []).map((T) => { const p = spectre.map((q) => at(T, q)).map(([x, y]) => [x * S, -y * S]); return { p, m: [0, 1].map((d) => p.reduce((s, q) => s + q[d], 0) / 14) }; });
+    return discPatch(items, W, (h) => h.p, [mid[0] * S, -mid[1] * S]);
   })();
 })();
 /* The pinwheel (Conway and Radin, 1994): a right triangle, its legs 1 and 2, cut in 5 of itself √5 smaller (the altitude to its
@@ -6982,12 +7025,12 @@ const PINWHEEL = (() => {
     while ((5 ** (n / 2) * (3 - Math.sqrt(5))) / 2 < W / Math.sqrt(Math.PI) + 5) n++;
     const L = 5 ** (n / 2), r = (L * (3 - Math.sqrt(5))) / 2;
     let tris = [[[0, 0], [2 * L, 0], [0, L]]];  // a tile: its right angle's corner, its long leg's end, its short leg's
-    for (let k = 0; k < n; k++) tris = tris.flatMap(([R, P, Q]) => {
+    for (let k = 0; k < n; k++) tris = trianglesNear(tris.flatMap(([R, P, Q]) => {
       const d = [Q[0] - P[0], Q[1] - P[1]], t = ((R[0] - P[0]) * d[0] + (R[1] - P[1]) * d[1]) / (d[0] ** 2 + d[1] ** 2), H = [P[0] + t * d[0], P[1] + t * d[1]];
       const Mr = mid(H, R), Mp = mid(H, P), Mh = mid(R, P);  // (H: the altitude's foot; the part R H P in 4: its corners at R and P,
       // and the rectangle between cut along H Mh, its two the mirror of the others: both hands, its turns ever more)
       return [[H, R, Q], [Mr, Mh, R], [Mp, P, Mh], [Mr, Mh, H], [Mp, H, Mh]];
-    });
+    }), [r, r], W / Math.sqrt(Math.PI) + 6);  // (round the disc of W² and its walls' room only)
     // the corners on another's side: each side's, in its order (a grid of unit cells over the corners, the ones near a side)
     const at = new Map(), cell = ([x, y]) => `${Math.floor(x)},${Math.floor(y)}`;
     for (const T of tris) for (const p of T) (at.get(cell(p)) ?? at.set(cell(p), []).get(cell(p))).push(p);
