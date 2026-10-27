@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1394';
+const VERSION = '0.1.1395';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9095,7 +9095,7 @@ for (const [kind, names] of Object.entries(BLOCK_ORDER)) {
   const mine = [...$('lifePreset').options].filter((o) => o.text.startsWith(`${BLOCK_MARKS[kind]} `));
   for (const name of names) { const o = mine.find((x) => x.dataset.name === name); if (o) $('lifePreset').insertBefore(o, $('lifePreset').querySelector('option[value="custom"]')); }
 }
-// A generation's rule (on the processor: see lifeRuleGPU, the same on the graphics card): each cell's next state in b, from a
+// A generation's rule (on the processor: see GL_SHADERS.lifeRule, the same on the graphics card): each cell's next state in b, from a
 function lifeRule(L, a, b) {
   const { start, list } = L.nbr, ring = L.ring, more = L.ringMore, side = L.side, C = L.C, K = L.colours, two = K > 1, R = ring ? ring.length / a.length : 0;
   const around = new Int32Array(K + 1), last = K * (C - 1);  // last: the last dying state
@@ -9258,7 +9258,7 @@ function lifeBackHere(L, M, g) {  // (no WebGL 2)
  * of the grid) for each colour, at fair spots of the figure (see huntPatches).
  */
 
-/* ---- 9.1 The hunt worker, its zones, its results --------------------------------------------- */
+/* ---- 9.1 The hunt's runs, its zones, its results ---------------------------------------------- */
 /* Life in 1 to 12 colours, on any grid, one hunt: on and on until stopped, one start in 3 at random in
  * the zone, the others a tweak of one of the 8 best (1 to 3 cells changed; patterns: one colour's);
  * the 8 best kept. The zone: see huntPlan (the whole grid as dense as said, patches of a radius,
@@ -9271,213 +9271,165 @@ function lifeBackHere(L, M, g) {  // (no WebGL 2)
  *   1 − CV / √(K − 1), CV the standard deviation of the S_c over their mean (1: all even, 0: one colour
  *   spreading alone); score = the generations with two colours side by side, before the run repeats
  *   (or the cap), × the balance.
- * In a worker with its own copy of the step (as lifeStep's). */
-function huntWorker() {
-  self.onmessage = (e) => {
-    const { n, start, list, ring, more, side, B, S, C, K, cells: flat, copies, dense, cap, all, choices, part, parts, goal, swaps = true } = e.data;  // goal: one colour's (see HUNT_GOALS); dense: a start's density, drawn between these
-    const around = new Int32Array(K + 1), last = K * (C - 1), live = (v) => v > 0 && v <= K, R = ring ? ring.length / n : 0;
-    // a cell's next state (as lifeStep), from the states a; a newborn's colour into born
-    const next = (a, t, gen, born) => {
-      const was = a[t];
-      if (start[t] === start[t + 1]) return 0;  // a wall (a pentagon of the hexagon sphere)
-      if (was > K) return was + K <= last ? was + K : 0;  // one more dying stage, or dead
-      let c = 0;
-      around.fill(0);
-      if (ring) {
-        for (let q = 0; q < R; q++) {
-          let v = ring[R * t + q];
-          if (more && !(v >= 0 && live(a[v]))) for (let i = more.start[R * t + q]; i < more.start[R * t + q + 1]; i++) if (live(a[more.list[i]])) { v = more.list[i]; break; }
-          if (v >= 0 && live(a[v])) { c |= 1 << q; around[a[v]]++; }
-        }
-        c += 16;
-      } else if (side) {  // (the flowers' letters, as lifeStep's)
-        let k = 0;
-        for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (live(v)) { c++; around[v]++; if (!side[q]) k++; } }
-        c = 16 + 4 * c + Math.min(k, 3);
-      } else for (let q = start[t]; q < start[t + 1]; q++) { const v = a[list[q]]; if (live(v)) { c++; around[v]++; } }
-      if (was) return S[c] ? was : C > 2 ? was + K : 0;
-      if (!B[c]) return 0;
-      if (K === 1) return 1;
-      let most = 0, tied = 0, now = 0, missing = 0, gone = 0;  // the colour most of its live neighbours have; on a tie, the one missing, else no birth
-      for (let k = 1; k <= K; k++) {
-        if (around[k] > most) { most = around[k]; tied = 1; now = k; } else if (around[k] === most) tied++;
-        if (!around[k]) { gone++; missing = k; }
-      }
-      if (tied > 1) now = gone === 1 ? missing : 0;
-      if (now) born[now]++;
-      return now;
-    };
-    // A cell whose own state and whose neighbours' did not change keeps its state: each generation only
-    // the cells changed and their neighbours are worked out (all of them where a cell with no live
-    // neighbour is born: B0). The fingerprint of a state (two Zobrist hashes, a value per cell and state)
-    // and the pairs of neighbours alive in two colours are kept up to date from the changes alone.
-    const everyCell = B[0] || ((ring || side) && B[16]), all_ = Int32Array.from({ length: n }, (_, t) => t);
-    const zob = (t, v, seed) => { let h = Math.imul((t * 64 + v) ^ seed, 0x9e3779b1); h = Math.imul(h ^ (h >>> 15), 0x85ebca6b); return (h ^ (h >>> 13)) >>> 0; };
-    const odd = (x, y) => live(x) && live(y) && x !== y;  // two colours side by side
-    const mark = new Uint32Array(n);
-    let stamp = 0;
-    // the cells a start chooses, with their colour; then, with a symmetry, the copies of these (cell, the
-    // cell copied, the copy's colour: the colour of its part)
-    const cells = Array.from({ length: flat.length / 2 }, (_, i) => [flat[2 * i], flat[2 * i + 1]]);
-    const copy = (s) => { for (let i = 0; i < copies.length; i += 3) s[copies[i]] = s[copies[i + 1]] ? (K > 1 ? copies[i + 2] : s[copies[i + 1]]) : 0; return s; };
-    // a run: its lifetime T (the generation it starts repeating from, P later), its end state, and its score
-    const run = (seed) => {
-      let a = Uint8Array.from(seed), b = new Uint8Array(n), T = cap, P = 0, h1 = 0, h2 = 0, pairs = 0, contacts = 0, active = all_, nActive = n;
-      let alive = 0, peak = 0, peakAt = 0;  // the live cells, the most at once and when
-      // Reach all: the cells alive once (walls never), and the generation all of them were
-      const cover = goal === 'cover', ever = cover ? Uint8Array.from(seed, (v) => live(v)) : null;
-      let reached = cover ? ever.reduce((x, y) => x + y, 0) : 0, allAt = 0;
-      const cells_ = cover ? Array.from({ length: n }, (_, t) => t).filter((t) => start[t] !== start[t + 1]).length : 0;
-      // a battle: the live cells of each colour, how many colours have some, and from when only one has (its winner)
-      const byColour = new Int32Array(K + 1);
-      for (let t = 0; t < n; t++) if (live(a[t])) byColour[a[t]]++;
-      let colours = byColour.filter((c, k) => k && c).length, alone = 0;
-      const spread = new Float64Array(K + 1), born = new Int32Array(K + 1), changed = new Int32Array(n), list2 = new Int32Array(n);
-      for (let t = 0; t < n; t++) alive += live(a[t]);
-      peak = alive;
-      for (let t = 0; t < n; t++) if (a[t]) {
-        h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965);
-        if (K > 1) for (let q = start[t]; q < start[t + 1]; q++) pairs += odd(a[t], a[list[q]]);
-      }
-      const key = () => h1 * 2097152 + (h2 & 0x1fffff), seen = new Map([[key(), 0]]), inContact = [0];  // contacts up to each generation
-      let end = key();
-      for (let g = 1; g <= cap; g++) {
-        born.fill(0);
-        b.set(a);
-        let nc = 0;
-        for (let i = 0; i < nActive; i++) { const t = active[i], v = next(a, t, g, born); if (v !== a[t]) { b[t] = v; changed[nc++] = t; } }
-        if (K > 1) {  // the generation was in contact if its state (a) was; then the pairs of the new one
-          contacts += pairs > 0;
-          inContact.push(contacts);
-          stamp++;
-          for (let i = 0; i < nc; i++) mark[changed[i]] = stamp;
-          for (let i = 0; i < nc; i++) {
-            const t = changed[i];
-            for (let q = start[t]; q < start[t + 1]; q++) { const u = list[q]; pairs += (odd(b[t], b[u]) - odd(a[t], a[u])) * (mark[u] === stamp ? 1 : 2); }
-          }
-        }
-        for (let k = 1; k <= K; k++) spread[k] += g * born[k];
-        for (let i = 0; i < nc; i++) {
-          const t = changed[i];
-          if (cover && live(b[t]) && !ever[t]) { ever[t] = 1; reached++; }
-          alive += live(b[t]) - live(a[t]);
-          if (K > 1 && live(a[t]) && --byColour[a[t]] === 0) colours--;
-          if (K > 1 && live(b[t]) && byColour[b[t]]++ === 0) colours++;
-          if (a[t]) { h1 ^= zob(t, a[t], 0x2545f491); h2 ^= zob(t, a[t], 0x6c078965); }
-          if (b[t]) { h1 ^= zob(t, b[t], 0x2545f491); h2 ^= zob(t, b[t], 0x6c078965); }
-        }
-        [a, b] = [b, a];
-        if (alive > peak) { peak = alive; peakAt = g; }
-        if (cover && reached === cells_) { allAt = g; T = g; break; }  // (all reached: no need to go on)
-        if (K > 1) alone = colours <= 1 ? alone || g : 0;
-        end = key();
-        if (seen.has(end)) { T = seen.get(end); P = g - T; break; }
-        seen.set(end, g);
-        if (everyCell) continue;
-        stamp++;  // next: the cells changed and their neighbours
-        nActive = 0;
-        for (let i = 0; i < nc; i++) {
-          const t = changed[i];
-          if (mark[t] !== stamp) { mark[t] = stamp; list2[nActive++] = t; }
-          for (let q = start[t]; q < start[t + 1]; q++) { const u = list[q]; if (mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
-          if (ring) for (let q = 0; q < R; q++) { const u = ring[R * t + q]; if (u >= 0 && mark[u] !== stamp) { mark[u] = stamp; list2[nActive++] = u; } }
-        }
-        active = list2;
-      }
-      if (K === 1) {
-        let first = 0;  // the start's cells
-        for (let t = 0; t < n; t++) first += seed[t] > 0;
-        const extinct = !a.some((v) => v);
-        // (Reach all: the sooner the better, ahead of any that never does, those by the cells they reached)
-        const score = goal === 'peak' ? peak - first / 1e6 : goal === 'cover' ? (allAt ? 1e9 - allAt : reached / n) - first / 1e9 : goal === 'dies' && !extinct ? -Infinity : T - first / 1e6;  // (as good: fewer cells first)
-        return { score, T, P, end, live: first, extinct, peak, peakAt, allAt, reached };  // peak: the most alive at once, at generation peakAt; allAt: all cells reached by then
-      }
-      const S_ = Array.from(spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
-      const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
-      // (no contact at all: the longer first)
-      const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1)), touching = inContact[Math.min(T, inContact.length - 1)];  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
-      const winner = colours === 1 ? byColour.findIndex((c, k) => k && c) : 0;
-      return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance, winner, alone };
-    };
-    // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as drawn
-    // (each colour at least one cell alive: a colour of few cells would else often start with none)
-    const randomSeed = () => {
-      const s = new Uint8Array(n), density = dense[0] + Math.random() * (dense[1] - dense[0]);
-      for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));  // colours: live cells only
-      for (let k = 1; k <= K; k++) {
-        const mine = cells.filter((c) => (K > 1 ? c[1] === k : true));
-        if (mine.length && !mine.some(([t]) => s[t] === (K > 1 ? k : 1))) s[mine[Math.floor(Math.random() * mine.length)][0]] = K > 1 ? k : 1;
-      }
-      return copy(s);
-    };
-    const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
-      const s = new Uint8Array(n);
-      for (const [t] of cells) { s[t] = k % C; k = Math.floor(k / C); }
-      return copy(s);
-    };
-    // Patterns: for each colour, its choices (a pattern, turned or mirrored, at its spot: [cell, state…]);
-    // a start, one choice a colour (pick)
-    const fromPick = (pick) => {
-      const s = new Uint8Array(n);
-      pick.forEach((c, i) => { const f = choices[i][c]; for (let q = 0; q < f.length; q += 2) s[f[q]] = f[q + 1]; });
-      s.pick = pick;
-      return s;
-    };
-    const randomPick = () => fromPick(choices.map((c) => Math.floor(Math.random() * c.length)));
-    const nthPick = (k) => fromPick(choices.map((c) => { const d = k % c.length; k = Math.floor(k / c.length); return d; }));
-    const top = [];  // the 8 best: { ...run, seed }
-    const keep = (r, seed) => {
-      if (r.score === -Infinity || (top.length === 8 && r.score <= top[7].score)) return false;
-      // the same run: ending alike at the same T; one colour, as long with the same period and peak (a turned copy,
-      // or cells that change nothing), the fewer cells kept; colours, as long in contact as evenly (turned)
-      const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P && x.peak === r.peak : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
-      if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
-      if (same >= 0) top.splice(same, 1);
-      top.push({ ...r, seed, pick: seed.pick });
-      top.sort((x, y) => y.score - x.score);
-      top.length = Math.min(top.length, 8);
-      return true;
-    };
-    let done = 0;  // this worker's starts so far
-    const report = (changed) => {
-      if (changed || done % 10 === 0) self.postMessage({ type: 'progress', i: done, top: changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null });
-    };
-    // few enough starts: all of them, every parts-th from this worker's, then done
-    if (all) {
-      for (let i = 1 + part; i <= all; i += parts) { const seed = choices ? nthPick(i - 1) : nthSeed(i - 1); done++; report(keep(run(seed), seed)); }
-      self.postMessage({ type: 'done' });
-      return;
-    }
-    // else on and on, until stopped: one start in 3 at random, to look elsewhere; the others a tweak of one
-    // of the best (patterns: one colour's choice changed; else 1 to 3 cells flipped, or, one tweak in 2, 1 to 3
-    // live cells swapped with dead ones of their colour: as many alive, elsewhere), to make it better
-    for (;;) {
-      let seed;
-      if (!top.length || done % 3 === 0) seed = choices ? randomPick() : randomSeed();
-      else {
-        const base = top[Math.floor(Math.random() * top.length)];
-        if (choices) {
-          const pick = base.pick.slice(), c = Math.floor(Math.random() * K);
-          pick[c] = Math.floor(Math.random() * choices[c].length);
-          seed = fromPick(pick);
-        } else {
-          seed = base.seed.slice();
-          const swap = swaps && Math.random() < 0.5, any = () => cells[Math.floor(Math.random() * cells.length)];
-          for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
-            if (!swap) { const [t, k] = any(); seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C); continue; }
-            let t = -1, k = 0;  // a live cell (a few tries), to a dead one of its colour
-            for (let tries = 0; tries < 20 && t < 0; tries++) { const [u, j] = any(); if (seed[u]) [t, k] = [u, j]; }
-            for (let tries = 0; t >= 0 && tries < 20; tries++) { const [u, j] = any(); if (!seed[u] && (K === 1 || j === k)) { seed[u] = seed[t]; seed[t] = 0; break; } }
-          }
-          copy(seed);
-        }
-      }
-      done++;
-      report(keep(run(seed), seed));
+ * On the graphics card, in batches (see lifeEngine): the starts side by side, a generation of them all at once, their sums
+ * (alive, the key, born of each colour, cells beside another colour's) kept HUNT_H generations, read back then; a run
+ * ended (repeating, all reached, or the cap), its place a new start's. */
+const HUNT_H = 16;
+function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // goal: one colour's (see HUNT_GOALS)
+  const n = L.seed.length, K = L.colours, C = L.C, { start, list } = L.nbr, dense = DENSITY, live = (v) => v > 0 && v <= K;
+  const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), HUNT_H);
+  if (!E) return null;
+  const { gl } = GLS, cover = goal === 'cover', open = Array.from({ length: n }, (_, t) => t).filter((t) => start[t] !== start[t + 1]).length;
+  // a start's cells into run r's place (its counts as a start's: lifeReset's), now
+  const put = (tex, w, format, type, data, r) => {  // (a run's span of texels, along its rows)
+    const k = w === 1024 ? 4 : 1, from = (r * E.stride) / k, len = E.stride / k;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    for (let i = 0; i < len; ) {
+      const x = (from + i) % w, y = Math.floor((from + i) / w), m = Math.min(w - x, len - i);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, m, 1, format, type, data.subarray(i * k, (i + m) * k));
+      i += m;
     }
   };
+  const zero = new Uint32Array(E.stride), state = new Uint8Array(E.stride), ever = new Uint32Array(E.stride);
+  const upload = (seed, r) => {
+    state.set(seed);
+    for (let t = 0; t < n; t++) ever[t] = live(seed[t]) ? 1 : 0;
+    put(E.now.state, 1024, gl.RGBA, gl.UNSIGNED_BYTE, state, r);
+    for (const tex of [E.now.age, E.now.act]) put(tex, 4096, gl.RED_INTEGER, gl.UNSIGNED_INT, zero, r);
+    put(E.now.died, 4096, gl.RED_INTEGER, gl.INT, new Int32Array(zero.buffer), r);
+    put(E.now.ever, 4096, gl.RED_INTEGER, gl.UNSIGNED_INT, ever, r);
+  };
+  // a run: from its start (generation 0), then a generation at a time from its sums (see step)
+  const begin = (seed) => {
+    const byColour = new Int32Array(K + 1);
+    let alive = 0, contact = false;
+    for (let t = 0; t < n; t++) if (live(seed[t])) {
+      alive++;
+      byColour[seed[t]]++;
+      if (K > 1) for (let q = start[t]; q < start[t + 1]; q++) if (live(seed[list[q]]) && seed[list[q]] !== seed[t]) contact = true;
+    }
+    const key = lifeFingerprint(seed);
+    return { seed, g: 0, T: cap, P: 0, end: key, seen: new Map([[key, 0]]), alive, dying: 0, peak: alive, peakAt: 0, reached: alive, allAt: 0, byColour,
+             colours: byColour.filter((c, k) => k && c).length, alone: 0, contact, contacts: 0, inContact: [0], spread: new Float64Array(K + 1) };
+  };
+  // its next generation, by its sums (v: sum j); true once ended
+  const step = (s, v) => {
+    const g = ++s.g;
+    if (K > 1) { s.contacts += s.contact; s.inContact.push(s.contacts); s.contact = v(8) > 0; }  // (the generation was in contact if its state before was)
+    s.colours = 0;
+    for (let k = 1; k <= K; k++) { s.byColour[k] = v(9 + 4 * (k - 1)); s.spread[k] += g * v(10 + 4 * (k - 1)); if (s.byColour[k]) s.colours++; }
+    s.alive = v(0);
+    s.dying = v(1);
+    s.reached += v(4);
+    if (s.alive > s.peak) { s.peak = s.alive; s.peakAt = g; }
+    if (cover && s.reached === open) { s.allAt = g; s.T = g; return true; }  // (all reached: no need to go on)
+    if (K > 1) s.alone = s.colours <= 1 ? s.alone || g : 0;
+    s.end = lifeKey(v(6), v(7));
+    if (s.seen.has(s.end)) { s.T = s.seen.get(s.end); s.P = g - s.T; return true; }
+    s.seen.set(s.end, g);
+    return g >= cap;
+  };
+  // its score
+  const result = (s) => {
+    const { T, P, end, seed } = s;
+    if (K === 1) {
+      let first = 0;  // the start's cells
+      for (let t = 0; t < n; t++) first += seed[t] > 0;
+      const extinct = s.alive + s.dying === 0, { peak, peakAt, allAt, reached } = s;
+      // (Reach all: the sooner the better, ahead of any that never does, those by the cells they reached)
+      const score = goal === 'peak' ? peak - first / 1e6 : cover ? (allAt ? 1e9 - allAt : reached / n) - first / 1e9 : goal === 'dies' && !extinct ? -Infinity : T - first / 1e6;  // (as good: fewer cells first)
+      return { score, T, P, end, live: first, extinct, peak, peakAt, allAt, reached };  // peak: the most alive at once, at generation peakAt; allAt: all cells reached by then
+    }
+    const S_ = Array.from(s.spread.subarray(1)), mean = S_.reduce((x, y) => x + y, 0) / K;
+    const cv = mean ? Math.sqrt(S_.reduce((x, y) => x + (y - mean) ** 2, 0) / K) / mean : Infinity;
+    // (no contact at all: the longer first)
+    const balance = Math.max(0, 1 - cv / Math.sqrt(K - 1)), touching = s.inContact[Math.min(T, s.inContact.length - 1)];  // 1 all even, 0 one colour doing it all (CV at most √(K − 1))
+    const winner = s.colours === 1 ? s.byColour.findIndex((c, k) => k && c) : 0;
+    return { score: touching * balance + T / 1e6, contacts: touching, T, P, end, balance, winner, alone: s.alone };
+  };
+  // the cells a start chooses, with their colour; then, with a symmetry, the copies of these (cell, the cell copied, the
+  // copy's colour: the colour of its part)
+  const copy = (s) => { for (const [t, u, k] of copies) s[t] = s[u] ? (K > 1 ? k : s[u]) : 0; return s; };
+  // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as drawn
+  // (each colour at least one cell alive: a colour of few cells would else often start with none)
+  const randomSeed = () => {
+    const s = new Uint8Array(n), density = dense[0] + Math.random() * (dense[1] - dense[0]);
+    for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));  // colours: live cells only
+    for (let k = 1; k <= K; k++) {
+      const mine = cells.filter((c) => (K > 1 ? c[1] === k : true));
+      if (mine.length && !mine.some(([t]) => s[t] === (K > 1 ? k : 1))) s[mine[Math.floor(Math.random() * mine.length)][0]] = K > 1 ? k : 1;
+    }
+    return copy(s);
+  };
+  const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
+    const s = new Uint8Array(n);
+    for (const [t] of cells) { s[t] = k % C; k = Math.floor(k / C); }
+    return copy(s);
+  };
+  // Patterns: for each colour, its choices (a pattern, turned or mirrored, at its spot: [cell, state…]);
+  // a start, one choice a colour (pick)
+  const fromPick = (pick) => {
+    const s = new Uint8Array(n);
+    pick.forEach((c, i) => { const f = choices[i][c]; for (let q = 0; q < f.length; q += 2) s[f[q]] = f[q + 1]; });
+    s.pick = pick;
+    return s;
+  };
+  const randomPick = () => fromPick(choices.map((c) => Math.floor(Math.random() * c.length)));
+  const nthPick = (k) => fromPick(choices.map((c) => { const d = k % c.length; k = Math.floor(k / c.length); return d; }));
+  const top = [];  // the 8 best: { ...result, seed }
+  const keep = (r, seed) => {
+    if (r.score === -Infinity || (top.length === 8 && r.score <= top[7].score)) return false;
+    // the same run: ending alike at the same T; one colour, as long with the same period and peak (a turned copy,
+    // or cells that change nothing), the fewer cells kept; colours, as long in contact as evenly (turned)
+    const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P && x.peak === r.peak : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
+    if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
+    if (same >= 0) top.splice(same, 1);
+    top.push({ ...r, seed, pick: seed.pick });
+    top.sort((x, y) => y.score - x.score);
+    top.length = Math.min(top.length, 8);
+    return true;
+  };
+  // the next start: few enough, each in turn, then none; else on and on, one in 3 at random, to look elsewhere; the others a
+  // tweak of one of the best (patterns: one colour's choice changed; else 1 to 3 cells flipped, or, one tweak in 2, 1 to 3
+  // live cells swapped with dead ones of their colour: as many alive, elsewhere), to make it better
+  let made = 0, tried = 0;
+  const nextSeed = () => {
+    if (all) return made < all ? (choices ? nthPick(made++) : nthSeed(made++)) : null;
+    if (!top.length || made++ % 3 === 0) return choices ? randomPick() : randomSeed();
+    const base = top[Math.floor(Math.random() * top.length)];
+    if (choices) {
+      const pick = base.pick.slice(), c = Math.floor(Math.random() * K);
+      pick[c] = Math.floor(Math.random() * choices[c].length);
+      return fromPick(pick);
+    }
+    const seed = base.seed.slice(), swap = Math.random() < 0.5, any = () => cells[Math.floor(Math.random() * cells.length)];
+    for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
+      if (!swap) { const [t, k] = any(); seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C); continue; }
+      let t = -1, k = 0;  // a live cell (a few tries), to a dead one of its colour
+      for (let tries = 0; tries < 20 && t < 0; tries++) { const [u, j] = any(); if (seed[u]) [t, k] = [u, j]; }
+      for (let tries = 0; t >= 0 && tries < 20; tries++) { const [u, j] = any(); if (!seed[u] && (K === 1 || j === k)) { seed[u] = seed[t]; seed[t] = 0; break; } }
+    }
+    return copy(seed);
+  };
+  const runs = new Array(E.runs).fill(null), hunt = { stopped: false, stop: () => { hunt.stopped = true; lifeFree(E); } };
+  const slice = () => {
+    if (hunt.stopped) return;
+    for (let r = 0; r < E.runs; r++) if (!runs[r]) { const seed = nextSeed(); if (seed) { runs[r] = begin(seed); upload(seed, r); } }  // (its place free: the next start)
+    if (runs.every((s) => !s)) { report(top, tried, true); return; }  // (all tried)
+    for (let x = 0; x < HUNT_H; x++) { lifeRulePass(E); lifeTally(E, 0, false, false, false, x); }
+    const v = lifeRead(E);
+    let changed = false;
+    runs.forEach((s, r) => {
+      if (!s) return;
+      for (let x = 0; x < HUNT_H; x++) if (step(s, (j) => v(j, r, x))) { tried++; changed = keep(result(s), s.seed) || changed; runs[r] = null; break; }
+    });
+    report(changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null, tried, false);
+    setTimeout(slice, 0);
+  };
+  setTimeout(slice, 0);
+  return hunt;
 }
-const hunt = { worker: null, zone: 'full', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest, dies, peak or cover (colours: a battle)
+const hunt = { run: null, zone: 'full', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest, dies, peak or cover (colours: a battle)
 // What the hunt looks for in one colour: the longest life, the longest till it dies out, the most cells alive at once,
 // or every cell alive once the soonest (seen in Activity); the last two from a start in a zone, not the whole grid
 // (colours: the longest battle, the goals hidden). Each: its mark, its name, its words
@@ -9878,7 +9830,7 @@ function renderHunt() {
   if ($('huntRow').hidden) return;
   $('huntBtn').hidden = !!walk.life.margolus;  // (the hunt's own step: births and survivals; blocks, their zones' starts only)
 
-  const K = walk.life.colours, { perColour, all } = huntPlan(), busy = !!hunt.worker, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
+  const K = walk.life.colours, { perColour, all } = huntPlan(), busy = !!hunt.run, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? 'the longest battle' : { longest: 'the longest life', dies: 'the longest death', peak: 'the highest peak', cover: 'the fastest to reach all cells' }[hunt.goal];
   $('huntGoals').hidden = $('huntModeLabel').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
@@ -9930,7 +9882,7 @@ function renderHunt() {
       : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: ${((100 * r.peak) / n / r.live).toFixed(2)} % of the grid a starting cell (green from 1 %, orange from 0.2 %, else red)`;
     const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now)
     b.dataset.tipHtml = `<b class="tip-name">${name}</b>${detail}<br><span style="color:${colour}">●</span> ${word}, ${why}`;  // (its light in its tooltip, in its colour)
-    const pick = () => (huntId(r) === hunt.picked && !hunt.worker ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
+    const pick = () => (huntId(r) === hunt.picked && !hunt.run ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
     b.addEventListener('click', (e) => { if (!e.detail) pick(); });  // from the keyboard
     return b;
@@ -9938,25 +9890,16 @@ function renderHunt() {
 }
 // a result played: its start, kept picked (lit) until another one is
 function playHuntResult(r) {
-  if (hunt.worker) stopHunt();  // a result played: the hunt stops there
+  if (hunt.run) stopHunt();  // a result played: the hunt stops there
   hunt.picked = huntId(r);
   if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }
   // (icons: by their names, pop=icon24.star.heart; an emoji's, pop=emoji.🙂)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
 }
-// the best of several workers: the same run once (as the worker's keep), the 8 best
-function mergeTops(all, K) {
-  const top = [];
-  for (const r of all.sort((x, y) => y.score - x.score)) {
-    const same = top.some((x) => x.T === r.T && (K === 1 ? x.P === r.P : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
-    if (!same && top.length < 8) top.push(r);
-  }
-  return top;
-}
 function stopHunt() {
-  hunt.worker?.forEach((w) => w.terminate());
-  hunt.worker = null;
+  hunt.run?.stop();
+  hunt.run = null;
   renderHunt();
 }
 // a zone picked: one random start in it at once (the whole grid alone: the soup)
@@ -9990,40 +9933,26 @@ function pickZone(zone) {
   renderHunt();
 }
 function huntClick() {
-  if (hunt.worker) {  // Stop hunt and play: the one picked if still among the best, else the best
+  if (hunt.run) {  // Stop hunt and play: the one picked if still among the best, else the best
     stopHunt();
     const r = hunt.top.find((x) => huntId(x) === hunt.picked) ?? hunt.top[0];
     if (r) { playHuntResult(r); play(true); }
     return;
   }
-  // as many workers as the computer has cores (one left for the page), on and on until stopped (or, few
-  // enough starts, each with every parts-th of them); their best merged
-  const L = walk.life, { cells, copies, all, choices } = huntPlan(), K = L.colours, parts = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
-  const tops = [], done = new Int32Array(parts);
-  let finished = 0;
+  // on and on until stopped (or, few enough starts, each of them), on the graphics card
+  const L = walk.life, K = L.colours, plan = huntPlan(), all = plan.all;
   hunt.top = [];
-  hunt.worker = Array.from({ length: parts }, (_, part) => {
-    const w = new Worker(URL.createObjectURL(new Blob([`(${huntWorker.toString()})()`], { type: 'text/javascript' })));
-    w.onmessage = (e) => {
-      const d = e.data;
-      if (d.type === 'done') {
-        if (++finished < parts) return;
-        hunt.status = `All ${fmt(all)} tried · ${hunt.top.length ? `${fmt(hunt.top.length)} kept` : K > 1 ? 'no battle' : hunt.goal === 'dies' ? 'none dies out' : 'nothing lasts'}`;
-        stopHunt();
-        return;
-      }
-      if (d.top) { tops[part] = d.top; hunt.top = mergeTops(tops.flat(), K); }
-      done[part] = d.i;
-      const n = done.reduce((x, y) => x + y, 0);
-      hunt.status = `${all ? `${fmt(n)} / ${fmt(all)}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
-      renderHunt();
-    };
-    w.postMessage({ n: L.seed.length, start: L.nbr.start, list: L.nbr.list, ring: L.ring, more: L.ringMore, side: L.side, B: L.B, S: L.S, C: L.C, K,
-                    cells: Int32Array.from(cells.flat()), copies: Int32Array.from(copies.flat()), dense: DENSITY, all, choices: choices?.map((c) => Array.from({ length: c.length }, (_, k) => c[k])),
-                    cap: K === 1 ? 50000 : 4000, part, parts, goal: K === 1 ? hunt.goal : null });
-    return w;
+  hunt.run = huntRuns(L, plan, K === 1 ? 50000 : 4000, K === 1 ? hunt.goal : null, (top, n, done) => {
+    if (top) hunt.top = top;
+    if (done) {
+      hunt.status = `All ${fmt(all)} tried · ${hunt.top.length ? `${fmt(hunt.top.length)} kept` : K > 1 ? 'no battle' : hunt.goal === 'dies' ? 'none dies out' : 'nothing lasts'}`;
+      stopHunt();
+      return;
+    }
+    hunt.status = `${all ? `${fmt(n)} / ${fmt(all)}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
+    renderHunt();
   });
-  hunt.status = 'Starting…';
+  hunt.status = hunt.run ? 'Starting…' : 'Too big to hunt';
   renderHunt();
 }
 
@@ -11711,26 +11640,29 @@ vec4 planeAt(vec2 p) {
   vec2 q = uView.yz + vec2(uTurn.x * p.x - uTurn.y * p.y, uTurn.y * p.x + uTurn.x * p.y) * uView.x;
   return vec4(q.x / uScreen.x * 2.0 - 1.0, 1.0 - q.y / uScreen.y * 2.0, 0.0, 1.0);
 }`;
-// Life on the graphics card (see lifeStepGPU): a quad over its target; the states 4 a texel (RGBA, /255), 1024 a row (4096
-// cells); the grid's numbers and the cells' counts one a texel, 4096 a row
+// Life on the graphics card (see lifeEngine): a quad over its target; the states 4 a texel (RGBA, /255), 1024 a row (4096
+// cells); the grid's numbers and the cells' counts one a texel, 4096 a row; runs of its cells side by side (a hunt's starts,
+// see huntRuns), uStride apart (its n rounded up to 64), a cell t its run's t − base
 const GL_QUAD = `#version 300 es
 void main() { gl_Position = vec4(gl_VertexID % 2 == 0 ? -1.0 : 1.0, gl_VertexID < 2 ? -1.0 : 1.0, 0.0, 1.0); }`;
 const GL_LIFE = `#version 300 es
 precision highp float; precision highp int; precision highp isampler2D; precision highp usampler2D;
-uniform sampler2D uA; uniform isampler2D uStart; uniform int uN, uK;
+uniform sampler2D uA; uniform isampler2D uStart; uniform int uN, uK, uStride;
 int I(isampler2D s, int i) { return texelFetch(s, ivec2(i & 4095, i >> 12), 0).r; }
 uint U(usampler2D s, int i) { return texelFetch(s, ivec2(i & 4095, i >> 12), 0).r; }
 int state(sampler2D s, int t) { return int(round(texelFetch(s, ivec2((t >> 2) & 1023, t >> 12), 0)[t & 3] * 255.0)); }
 bool live(int v) { return v > 0 && v <= uK; }
 uniform isampler2D uIn;  // (blocks: the cells in one, shown negative every other generation, see negative)
 bool shown(int v, int t, bool neg) { return live(v) != (neg && I(uIn, t) > 0); }
-uint mixed(uint x) { x = (x ^ (x >> 16)) * 0x7feb352du; x = (x ^ (x >> 15)) * 0x846ca68bu; return x ^ (x >> 16); }`;
+uint mixed(uint x) { x = (x ^ (x >> 16)) * 0x7feb352du; x = (x ^ (x >> 15)) * 0x846ca68bu; return x ^ (x >> 16); }
+int baseOf(int t) { return t / uStride * uStride; }`;
 const GL_SHADERS = {
-  // a generation of Life (see lifeRuleGPU, as lifeRule): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's
-  // numbers (its neighbours' lists, rings, folds, letters, B and S) one a texel, 4096 a row
+  // a generation of Life (as lifeRule): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's numbers (its
+  // neighbours' lists, rings, folds, letters, B and S) one a texel, 4096 a row
   lifeRule: [GL_QUAD, `${GL_LIFE}
 uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode; uniform bool uMore; out vec4 o;
-int A(int t) { return state(uA, t); }
+int base;  // (its run's first cell: t below its run's)
+int A(int t) { return state(uA, base + t); }
 int next(int t) {
   if (t >= uN) return 0;
   int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
@@ -11762,7 +11694,9 @@ int next(int t) {
   return tied > 1 ? (gone == 1 ? missing : 0) : now;
 }
 void main() {
-  int t = 4 * (int(gl_FragCoord.y) * 1024 + int(gl_FragCoord.x));
+  int t = 4 * (int(gl_FragCoord.y) * 1024 + int(gl_FragCoord.x));  // (its 4 in one run: uStride a multiple of 64)
+  base = baseOf(t);
+  t -= base;
   o = vec4(next(t), next(t + 1), next(t + 2), next(t + 3)) / 255.0;
 }`],
   // a generation of a block rule (as blockStep; see lifeStepGPU): a cell's place this phase (uWhere, a phase's n after the
@@ -11806,7 +11740,7 @@ uniform sampler2D uB; uniform usampler2D uAge, uAct, uEver; uniform isampler2D u
 layout(location = 0) out uint oAge; layout(location = 1) out uint oAct; layout(location = 2) out int oDied; layout(location = 3) out uint oEver;
 void main() {
   int t = int(gl_FragCoord.y) * 4096 + int(gl_FragCoord.x);
-  if (t >= uN) { oAge = 0u; oAct = 0u; oDied = 0; oEver = 0u; return; }
+  if (t - baseOf(t) >= uN) { oAge = 0u; oAct = 0u; oDied = 0; oEver = 0u; return; }
   int was = state(uA, t), now = state(uB, t);
   uint age = U(uAge, t), act = U(uAct, t), ever = U(uEver, t); int died = I(uDied, t);
   bool on = live(now), wasOn = live(was);
@@ -11818,42 +11752,45 @@ void main() {
   }
   oAge = age; oAct = act; oDied = died; oEver = ever;
 }`],
-  // 64 cells' sums (a row's 64 blocks; see lifeStepGPU): 16 a pass (uFrom), its 4 targets' 4 each: alive, dying, born, dead,
-  // newly ever alive, the most changes (a max), the key's two sums, then each colour's alive, born, dead, newly had; alive,
-  // born and dead as shown (uNegA, uNegB: a block rule's generation before, after, shown negative)
+  // 64 cells' sums (see lifeTally): 16 a pass (uFrom), its 4 targets' 4 each: alive, dying, born, dead, newly ever alive,
+  // the most changes (a max), the key's two sums, the live cells beside another colour's, then each colour's alive, born,
+  // dead, newly had; alive, born and dead as shown (uNegA, uNegB: a block rule's generation before, after, shown negative)
   lifeCount: [GL_QUAD, `${GL_LIFE}
-uniform sampler2D uB; uniform usampler2D uEver, uEverNow, uActNow; uniform int uFrom; uniform bool uNegA, uNegB;
+uniform sampler2D uB; uniform isampler2D uList; uniform usampler2D uEver, uEverNow, uActNow; uniform int uFrom; uniform bool uNegA, uNegB;
 layout(location = 0) out uvec4 o0; layout(location = 1) out uvec4 o1; layout(location = 2) out uvec4 o2; layout(location = 3) out uvec4 o3;
 void main() {
   uint v[16];
   for (int i = 0; i < 16; i++) v[i] = 0u;
-  int from = int(gl_FragCoord.y) * 4096 + int(gl_FragCoord.x) * 64;
+  int from = (int(gl_FragCoord.y) * 64 + int(gl_FragCoord.x)) * 64, base = baseOf(from);  // (its 64 in one run)
+  bool beside = uK > 1 && uFrom <= 8 && uFrom + 16 > 8;
   for (int x = 0; x < 64; x++) {
-    int t = from + x;
-    if (t >= uN) break;
+    int t = from + x, c = t - base;
+    if (c >= uN) break;
     int was = state(uA, t), now = state(uB, t);
-    bool on = shown(now, t, uNegB), wasOn = shown(was, t, uNegA);
+    bool on = shown(now, t, uNegB), wasOn = shown(was, t, uNegA), odd = false;
+    if (beside && live(now)) for (int q = I(uStart, c); q < I(uStart, c + 1); q++) { int u = state(uB, base + I(uList, q)); if (live(u) && u != now) { odd = true; break; } }
     uint e0 = U(uEver, t), e1 = U(uEverNow, t);
     for (int i = 0; i < 16; i++) {
-      int j = uFrom + i, k = (j - 8) / 4 + 1, q = (j - 8) % 4;
-      uint c = j == 0 ? uint(on) : j == 1 ? uint(now > 0 && !live(now)) : j == 2 ? uint(on && !wasOn) : j == 3 ? uint(wasOn && !on)
+      int j = uFrom + i, k = (j - 9) / 4 + 1, q = (j - 9) % 4;
+      uint n = j == 0 ? uint(on) : j == 1 ? uint(now > 0 && !live(now)) : j == 2 ? uint(on && !wasOn) : j == 3 ? uint(wasOn && !on)
         : j == 4 ? uint((e0 & 1u) == 0u && (e1 & 1u) == 1u) : j == 5 ? 0u
-        : j == 6 ? (now > 0 ? mixed(uint(t) * 0x9e3779b9u + uint(now)) : 0u) : j == 7 ? (now > 0 ? mixed(uint(t) * 0x85ebca6bu ^ uint(now) * 0xc2b2ae35u) : 0u)
-        : k > uK ? 0u : q == 0 ? uint(on && now == k) : q == 1 ? uint(on && !wasOn && now == k) : q == 2 ? uint(wasOn && !on && was == k)
+        : j == 6 ? (now > 0 ? mixed(uint(c) * 0x9e3779b9u + uint(now)) : 0u) : j == 7 ? (now > 0 ? mixed(uint(c) * 0x85ebca6bu ^ uint(now) * 0xc2b2ae35u) : 0u)
+        : j == 8 ? uint(odd) : k > uK ? 0u : q == 0 ? uint(on && now == k) : q == 1 ? uint(on && !wasOn && now == k) : q == 2 ? uint(wasOn && !on && was == k)
         : uint((e0 & (1u << k)) == 0u && (e1 & (1u << k)) != 0u);
-      v[i] = j == 5 ? max(v[i], U(uActNow, t)) : v[i] + c;
+      v[i] = j == 5 ? max(v[i], U(uActNow, t)) : v[i] + n;
     }
   }
   o0 = uvec4(v[0], v[1], v[2], v[3]); o1 = uvec4(v[4], v[5], v[6], v[7]); o2 = uvec4(v[8], v[9], v[10], v[11]); o3 = uvec4(v[12], v[13], v[14], v[15]);
 }`],
-  // and a row's: its 64 blocks' added (the most changes, the most of theirs), into one
+  // and a run's: its uBlocks sums of 64 added (the most changes, the most of theirs), a row a run (its column: a hunt's
+  // generation, see huntRuns)
   lifeSum: [GL_QUAD, `#version 300 es
 precision highp float; precision highp int; precision highp usampler2D;
-uniform usampler2D uC0, uC1, uC2, uC3; uniform int uFrom;
+uniform usampler2D uC0, uC1, uC2, uC3; uniform int uFrom, uBlocks;
 layout(location = 0) out uvec4 o0; layout(location = 1) out uvec4 o1; layout(location = 2) out uvec4 o2; layout(location = 3) out uvec4 o3;
 uvec4 add(usampler2D s, int i) {
   uvec4 v = uvec4(0u);
-  for (int x = 0; x < 64; x++) { uvec4 c = texelFetch(s, ivec2(x, int(gl_FragCoord.y)), 0); v = uFrom + 4 * i == 4 ? uvec4(v.x + c.x, max(v.y, c.y), v.z + c.z, v.w + c.w) : v + c; }  // (its 5th: the most changes)
+  for (int b = int(gl_FragCoord.y) * uBlocks, e = b + uBlocks; b < e; b++) { uvec4 c = texelFetch(s, ivec2(b & 63, b >> 6), 0); v = uFrom + 4 * i == 4 ? uvec4(v.x + c.x, max(v.y, c.y), v.z + c.z, v.w + c.w) : v + c; }  // (its 5th: the most changes)
   return v;
 }
 void main() { o0 = add(uC0, 0); o1 = add(uC1, 1); o2 = add(uC2, 2); o3 = add(uC3, 3); }`],
@@ -12556,11 +12493,18 @@ function glPlane(paint) {
 // a texel) and the cells' counts (age, changes, last death, colours had; now and next) kept there, sent again when the
 // processor wrote them (L.gpuOld), read back when read here (see lifeCells); null without WebGL 2 (lifeRule then)
 function lifeGPU(L) {
-  const S = glSetup(), n = L.seed.length;
-  if (!S || n > 4096 * 4096) return null;
-  if (S.life?.L === L) return S.life;
-  const { gl } = S, rows = Math.ceil(n / 4096);
-  if (S.life) { for (const t of S.life.all) gl.deleteTexture(t); for (const f of [S.life.fb, ...S.life.fbs.values()]) gl.deleteFramebuffer(f); }
+  const S = glSetup();
+  if (!S || S.life?.L === L) return S?.life ?? null;
+  if (S.life) lifeFree(S.life);
+  S.life = lifeEngine(L);
+  L.gpuOld = true;
+  return S.life;
+}
+// its textures: runs of its cells side by side (a hunt's starts, see huntRuns), each its n rounded up to 64 (stride: a sum's
+// 64 cells in one run); each generation's sums a run's, h of them kept (a column each, see lifeTally)
+function lifeEngine(L, runs = 1, h = 1) {
+  const S = glSetup(), n = L.seed.length, stride = Math.ceil(n / 64) * 64, rows = Math.ceil((runs * stride) / 4096), { gl } = S;
+  if (rows > gl.getParameter(gl.MAX_TEXTURE_SIZE)) return null;
   const all = [], keep = (t) => { all.push(t); return t; };
   const store = (format, w = 4096, h = rows) => {  // (read texel by texel: whole numbers' textures not whole else)
     const t = keep(gl.createTexture());
@@ -12578,12 +12522,16 @@ function lifeGPU(L) {
   const table = (T) => ints(Int32Array.from({ length: Math.max(1024, T.length ?? 0) }, (_, c) => (T[c] ? 1 : 0)));  // (B, S: by the count, its letters' code)
   const cells = () => ({ state: store(gl.RGBA8, 1024), age: store(gl.R32UI), act: store(gl.R32UI), died: store(gl.R32I), ever: store(gl.R32UI) });
   const { start, list } = L.nbr, none = new Int32Array(1), more = L.ringMore, M = L.margolus;
-  S.life = { L, n, rows, all, fb: gl.createFramebuffer(), fbs: new Map(), now: cells(), next: cells(), pad: new Uint8Array(4096 * rows), u32: new Uint32Array(4096 * rows), i32: new Int32Array(4096 * rows),
-             start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
-             side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)), sum: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 1)), look: store(gl.RGBA8, 4096, 17),
-             in: ints(M ? Int32Array.from(blockCells(M, n)) : none), ...(M && { ...blockGPU(M, n, ints), seed: store(gl.RGBA8, 1024), search: [store(gl.RGBA8, 1024), store(gl.RGBA8, 1024)] }) };
-  L.gpuOld = true;
-  return S.life;
+  return { L, n, runs, stride, rows, h, all, fb: gl.createFramebuffer(), fbs: new Map(), now: cells(), next: cells(), pad: new Uint8Array(4096 * rows), u32: new Uint32Array(4096 * rows), i32: new Int32Array(4096 * rows),
+           start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
+           side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)),
+           sum: Array.from({ length: Math.ceil((9 + 4 * L.colours) / 16) }, () => [0, 1, 2, 3].map(() => store(gl.RGBA32UI, h, runs))), look: store(gl.RGBA8, 4096, 17),
+           in: ints(M ? Int32Array.from(blockCells(M, n)) : none), ...(M && { ...blockGPU(M, n, ints), seed: store(gl.RGBA8, 1024), search: [store(gl.RGBA8, 1024), store(gl.RGBA8, 1024)] }) };
+}
+function lifeFree(E) {
+  const { gl } = GLS;
+  for (const t of E.all) gl.deleteTexture(t);
+  for (const f of [E.fb, ...E.fbs.values()]) gl.deleteFramebuffer(f);
 }
 // a block rule's numbers there (see GL_SHADERS.blockRule): each cell's place each phase, the blocks' cells (Ising: each
 // cell's 4 sides, −1 none), the cells across (stellated), its rule and its inverse
@@ -12600,7 +12548,7 @@ function blockGPU(M, n, ints) {
 // a pass: its program, its textures by their uniforms' names, its whole numbers (and more: its other uniforms), into its
 // targets (w × h), drawn over them. A framebuffer a set of targets (by its first: each in one set), its uniforms' places
 // a program's, made once (a pass then a few microseconds, not 40: see searchBack)
-function lifePass(E, program, textures, ints, targets, w, h, more = () => {}) {
+function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x = 0) {  // (x: its targets' first column)
   const { gl, prog } = GLS, p = prog[program], at = (GLS.uniforms ??= new Map()), u = (name) => { const k = `${program}|${name}`; if (!at.has(k)) at.set(k, gl.getUniformLocation(p, name)); return at.get(k); };
   if (!E.fbs.has(targets[0])) {
     E.fbs.set(targets[0], gl.createFramebuffer());
@@ -12609,7 +12557,7 @@ function lifePass(E, program, textures, ints, targets, w, h, more = () => {}) {
     gl.drawBuffers(targets.map((_, i) => gl.COLOR_ATTACHMENT0 + i));
   }
   gl.bindFramebuffer(gl.FRAMEBUFFER, E.fbs.get(targets[0]));
-  gl.viewport(0, 0, w, h);
+  gl.viewport(x, 0, w, h);
   gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST);
   gl.useProgram(p);
   Object.entries(textures).forEach(([name, t], i) => { gl.activeTexture(gl.TEXTURE3 + i); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(u(name), 3 + i); });
@@ -12663,35 +12611,46 @@ function lifeCells(L) {
   L.gpuOld = true;
   L.onGPU = false;
 }
-// a generation there: its rule (a block rule's, back: its inverse's, see lifeBack), its cells' counts, its sums (8 + 4 a
-// colour, 16 a pass: 64 cells', a row's, added up here); null without WebGL 2. The cells stay there (L.onGPU)
+// a generation there: its rule (a block rule's, back: its inverse's, see lifeBack), its cells' counts, its sums (9 + 4 a
+// colour); null without WebGL 2. The cells stay there (L.onGPU)
 function lifeStepGPU(L, gen, back = false) {
   const E = lifeGPU(L);
   if (!E || !L.cells) return null;
-  const { gl } = GLS, K = L.colours, M = L.margolus, { now, next } = E, base = { uN: E.n, uK: K }, neg = !!M?.flips;
+  const K = L.colours, M = L.margolus, neg = !!M?.flips;
   if (L.gpuOld) lifeToGPU(L, E);
-  if (M) blockPass(L, E, now.state, next.state, back ? gen : gen - 1, back);
-  else lifePass(E, 'lifeRule', { uA: now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S },
-    { ...base, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [next.state], 1024, E.rows);
-  lifePass(E, 'lifeBook', { uA: now.state, uStart: E.start, uB: next.state, uAge: now.age, uAct: now.act, uDied: now.died, uEver: now.ever }, { ...base, uGen: gen, uBack: back ? 1 : 0 }, [next.age, next.act, next.died, next.ever], 4096, E.rows);
-  const V = 8 + 4 * K, sum = new Float64Array(16 * Math.ceil(V / 16)), out = new Uint32Array(4 * E.rows);
-  for (let from = 0; from < V; from += 16) {  // (shown negative: a generation odd)
-    lifePass(E, 'lifeCount', { uA: now.state, uB: next.state, uIn: E.in, uEver: now.ever, uEverNow: next.ever, uActNow: next.act }, { ...base, uFrom: from, uNegA: neg && gen % 2 === 0 ? 1 : 0, uNegB: neg && gen % 2 === 1 ? 1 : 0 }, E.count, 64, E.rows);
-    lifePass(E, 'lifeSum', { uC0: E.count[0], uC1: E.count[1], uC2: E.count[2], uC3: E.count[3] }, { uFrom: from }, E.sum, 1, E.rows);
-    for (let i = 0; i < 4; i++) {
-      gl.readBuffer(gl.COLOR_ATTACHMENT0 + i);
-      gl.readPixels(0, 0, 1, E.rows, gl.RGBA_INTEGER, gl.UNSIGNED_INT, out);
-      for (let r = 0; r < E.rows; r++) for (let q = 0; q < 4; q++) {
-        const j = from + 4 * i + q, x = out[4 * r + q];
-        sum[j] = j === 5 ? Math.max(sum[j], x) : j === 6 || j === 7 ? (sum[j] + x) % 4294967296 : sum[j] + x;
-      }
-    }
-  }
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  [E.now, E.next] = [next, now];
+  if (M) blockPass(L, E, E.now.state, E.next.state, back ? gen : gen - 1, back);
+  else lifeRulePass(E);
+  lifeTally(E, gen, back, neg && gen % 2 === 0, neg && gen % 2 === 1);  // (shown negative: a generation odd)
   L.onGPU = true;
-  const by = (q) => Int32Array.from({ length: K + 1 }, (_, k) => (k ? sum[8 + 4 * (k - 1) + q] : 0));
-  return { alive: sum[0], dying: sum[1], born: sum[2], dead: sum[3], everNew: sum[4], maxAct: sum[5], key: lifeKey(sum[6], sum[7]), byColour: by(0), bornBy: by(1), deadBy: by(2), everBy: by(3) };
+  const v = lifeRead(E), by = (q) => Int32Array.from({ length: K + 1 }, (_, k) => (k ? v(9 + 4 * (k - 1) + q, 0) : 0));
+  return { alive: v(0, 0), dying: v(1, 0), born: v(2, 0), dead: v(3, 0), everNew: v(4, 0), maxAct: v(5, 0), key: lifeKey(v(6, 0), v(7, 0)), byColour: by(0), bornBy: by(1), deadBy: by(2), everBy: by(3) };
+}
+// Life's rule, from E.now's states into E.next's
+function lifeRulePass(E) {
+  const L = E.L;
+  lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S },
+    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [E.next.state], 1024, E.rows);
+}
+// then its cells' counts (back: see lifeBack) and its runs' sums, into column x of E.sum (negA, negB: shown negative), now
+// and next swapped
+function lifeTally(E, gen, back = false, negA = false, negB = false, x = 0) {
+  const { now, next } = E, base = { uN: E.n, uK: E.L.colours, uStride: E.stride };
+  lifePass(E, 'lifeBook', { uA: now.state, uB: next.state, uAge: now.age, uAct: now.act, uDied: now.died, uEver: now.ever }, { ...base, uGen: gen, uBack: back ? 1 : 0 }, [next.age, next.act, next.died, next.ever], 4096, E.rows);
+  E.sum.forEach((targets, p) => {
+    lifePass(E, 'lifeCount', { uA: now.state, uB: next.state, uIn: E.in, uStart: E.start, uList: E.list, uEver: now.ever, uEverNow: next.ever, uActNow: next.act }, { ...base, uFrom: 16 * p, uNegA: negA ? 1 : 0, uNegB: negB ? 1 : 0 }, E.count, 64, E.rows);
+    lifePass(E, 'lifeSum', { uC0: E.count[0], uC1: E.count[1], uC2: E.count[2], uC3: E.count[3] }, { uFrom: 16 * p, uBlocks: E.stride / 64 }, targets, 1, E.runs, undefined, x);
+  });
+  GLS.gl.bindFramebuffer(GLS.gl.FRAMEBUFFER, null);
+  [E.now, E.next] = [next, now];
+}
+// its sums read back: sum j of run r at column x (see GL_SHADERS.lifeCount)
+function lifeRead(E) {
+  const { gl } = GLS, w = E.h, out = E.sum.map((targets) => {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, E.fbs.get(targets[0]));
+    return targets.map((_, i) => { const b = new Uint32Array(4 * w * E.runs); gl.readBuffer(gl.COLOR_ATTACHMENT0 + i); gl.readPixels(0, 0, w, E.runs, gl.RGBA_INTEGER, gl.UNSIGNED_INT, b); return b; });
+  });
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return (j, r, x = 0) => out[j >> 4][(j >> 2) & 3][4 * (r * w + x) + (j & 3)];
 }
 // a block rule's generation g (its phase's), from the states a into b (back: by its inverse)
 function blockPass(L, E, a, b, g, back = false) {

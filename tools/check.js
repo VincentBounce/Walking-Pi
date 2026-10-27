@@ -5,9 +5,11 @@
 //   await walkingCheck({ fuzz: 100, cold: true });                          // and after each, its link loaded cold beside: the same menus offered
 //   await walkingCheck({ colours: true });                                 // every Life surface offers colours (more than Classic) at one of its sizes at least
 //   await walkingCheck({ deep: true });                                    // every grid's rules (yours too), How it works, colours, zones, smallest size: a night's
+//   await walkingCheck({ known: true });                                   // Life's known results, played on the graphics card: a minute
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
-// said; the grids that never repeat, their walls closed; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count.
+// said; the grids that never repeat, their walls closed; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count. Known:
+// Life's oscillators' periods and methuselahs' loops (PATTERNS.md's), a hunt's best, reversible rules' returns to their start.
 
 const neighbourCounts = (g, keep = () => true) => {  // how many cells have k neighbours, as shares
   const { start } = cornerNeighbours(g), walls = new Set(g.walls ?? []), c = {};
@@ -344,9 +346,59 @@ function checkBlockWraps(fail) {
   return checked;
 }
 
-window.walkingCheck = async ({ crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, colours = false, seed = Date.now() % 1e6, from, only } = {}) => {
+// Life's known results (its only engine the graphics card's: none here to compare with): a link's start played till it
+// repeats, from generation T with period P (null: not checked); PATTERNS.md's records, and reversible rules' returns to their
+// start (from a seeded start: played, and Find its return's); a hunt's 8 best of all a zone's starts (the processor's
+// worker's, v0.1.1394)
+const KNOWN = [
+  ['#w=life2d&r=B3678/S34678&s=64&pop=draw&p=32,32:.A$.A$2A$A!', null, 16],
+  ['#w=life2d&r=B3678/S34678&s=64&pop=draw&p=32,32:2.A$2A2.A$2A2.A$A.2A$2A.2A!', 219, null],
+  ['#w=life2d&r=B36/S23&s=64&pop=draw&p=32,32:5.A2.A$2A2.A3.A$2A2.2A.2A!', null, 10],
+  ['#w=life2d&r=B2/S/C3&s=64&pop=draw&p=32,32:3.2A$A$.4A$4.A$3A.A!', 2595, null],
+  ['#w=life2d&r=B36/S23&s=64&pop=draw&p=32,32:A.2A$3.2A$2A$3.2A$3A!', 2652, 2],
+  ['#w=life2d&r=B3/S12345&s=64&pop=draw&p=32,32:A3.A$2.A$2A$5A!', 430, 1],
+  ['#w=blocks2d&r=M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0&s=6&g=2000&pop=random.30.6', 0, 70],
+  ['#w=blocks2d&r=Q2R&s=6&g=2000&pop=random.30.6', 0, 116],
+  ['#w=blocks2dTetrakis&r=M0,4,8,12,1,10,9,13,2,6,5,14,3,7,11,15*&s=8&g=2000&pop=random.30.8', 0, 84],
+];
+async function checkKnown(fail) {
+  let checked = 0;
+  for (const [link, T, P] of KNOWN) {
+    location.hash = link;
+    await wait(800);
+    const L = walk.life;
+    lifeReset();
+    cur = 0;
+    for (const far = (T ?? 600) + (P ?? 600); !L.stable && cur < far; cur++) lifeStep();
+    checked++;
+    if ((T !== null && L.stable?.T !== T) || (P !== null && L.stable?.P !== P)) fail(`${link}: repeats from ${L.stable?.T} with period ${L.stable?.P}, known ${T} and ${P}`);
+  }
+  // Find its return, past the generations played (Swirl on hexagons: 1,428)
+  location.hash = '#w=blocks2dHex&r=M0,2,4,5,1,6,3,7&s=6&g=2000&pop=random.30.6';
+  await wait(800);
+  lifeReset();
+  cur = 0;
+  searchBack(true);
+  for (let i = 0; i < 300 && backSearch.life; i++) await wait(50);
+  checked++;
+  if (backSearch.found !== 1428) fail(`Swirl on hexagons: its return found at ${backSearch.found}, known 1,428`);
+  searchBack(false);
+  // a hunt: of the 2^14 starts of 14 cells (radius 2's first), the 8 longest
+  location.hash = '#w=life2d&r=B3/S23&s=48&pop=random.49.5';
+  await wait(800);
+  hunt.zone = 'radius2';
+  const plan = { cells: huntPlan().cells.slice(0, 14), copies: [], all: 2 ** 14 };
+  const top = await new Promise((done) => { const h = huntRuns(walk.life, plan, 50000, 'longest', (best, n, end) => { if (best) h.best = best; if (end) { h.stop(); done(h.best); } }); });
+  checked++;
+  const lives = top.map((r) => `${r.T}/${r.P}`).join(' ');
+  if (lives !== '2401/2 2400/2 1942/2 1758/2 1757/2 1756/2 1755/2 1754/2') fail(`a hunt's 8 longest: ${lives}`);
+  return checked;
+}
+
+window.walkingCheck = async ({ known = false, crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, colours = false, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
   let checked = checkMeshes(fail) + checkBlockWraps(fail) + checkDiscs(fail);
+  if (known) checked += await checkKnown(fail);
   if (andCrawl) checked += await crawl(fail);
   if (actions) checked += await fuzz(fail, actions, seed, cold);
   if (colours) checked += await coloursOffered(fail);
