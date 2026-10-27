@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1350';
+const VERSION = '0.1.1351';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4122,7 +4122,7 @@ function tetrakisOf(key, g) {
     verts.push(g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]);
     for (let q = 0; q < 4; q++) tiles.push([c[q], c[(q + 1) % 4], mid]);
   }
-  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 3, g.size, null), { squares: g }));  // (as listed: its squares' turn; triangle t of square t >> 2)
+  return (meshCache[key] = Object.assign(finishMesh(verts, tiles, 3, g.size, null), { squares: g }, g.perFace && { perFace: 4 * g.perFace }));  // (as listed: its squares' turn; triangle t of square t >> 2; the cube's: a face's 4 times as many)
 }
 
 /* Cube with pits: each face of the cube (n × n squares, n a multiple of 6) with a pit in its middle,
@@ -5488,7 +5488,7 @@ const howCounted = (kind, f) => {
     for (const c in by) if (!by[c]) delete by[c];
     if (Object.entries(by).reduce((sum, [c, k]) => sum + k * (round[c] ?? 1) * f * f * cut, 0) === n)
     {
-      const red = redFaces(g, base) && (base === kind || kind === 'cubeTetrakis'), mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells violet)
+      const red = redFaces(base === kind ? g : (facesMemo[kind] ??= S.mesh(S.sizes[0]))), mark = (c, w) => (red ? `{${c}:${w}}` : w);  // (in the colours drawn: its faces red, its motif's cells violet)
       return `${Object.entries(by).map(([c, k]) => `${mark('r', `${k} ${adj[c]} face${k > 1 ? 's' : ''}`)} × ${round[c] ? `${round[c]} × ` : ''}${mark(g.triFaces && c === '4' ? 's' : 'y', `(Edge=${fmt(f)})² ${cells[c]}`)}`).join(' + ')}${cut > 1 ? ` × ${mark('k', `${cut} ${unit} each`)}` : ''} = ${fmt(n)} ${unit}`;
     }
   }
@@ -8251,7 +8251,7 @@ function outlineTiles(ctx, colour, tiles) {
 // each; none but on flat faces of cells (a solid of hexagons: its faces' sides through its hexagons' middles)
 function faceOf(g, kind, t) {
   if (g.triFaces) { const sq = g.size ** 2, tri = t >= g.triFirst, lo = (tri ? g.triFirst : 0) + Math.floor((tri ? t - g.triFirst : t) / sq) * sq; return { face: [lo, lo + sq] }; }
-  const per = g.perFace ?? (kind === 'cubeTetrakis' ? g.n / 6 : 0);  // (the cube's tetrakis triangles, 4 a square, its squares a face at a time)
+  const per = g.perFace ?? 0;  // (the cube's tetrakis triangles: 4 a square, its squares a face at a time)
   if (!per) return null;
   const fi = Math.floor(t / per), flat = (i) => g.faces?.[i] && dot3(g.faces[i].normal, g.faces[fi].normal) > 0.999;
   let lo = fi, hi = fi;
@@ -8259,7 +8259,7 @@ function faceOf(g, kind, t) {
   while (flat(hi + 1)) hi++;
   return { face: [lo * per, (hi + 1) * per], sector: hi > lo ? [fi * per, (fi + 1) * per] : null };
 }
-const redFaces = (g, kind) => !!(g?.perFace || g?.triFaces || kind === 'cubeTetrakis');  // (the solids whose faces are drawn red, as their tooltip says them)
+const redFaces = (g) => !!(g?.perFace || g?.triFaces);  // (the solids whose faces are drawn red, as their tooltip says them)
 const tilesOf = ([from, to]) => Array.from({ length: to - from }, (_, j) => from + j);
 // a solid's face round the motif in red (its sector in blue), along its cells' sides
 function drawMotifFace(ctx, t0) {
@@ -8387,7 +8387,7 @@ const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].incl
 const colourFairOwn = (K, g) => {
   const mode = MODES[$('mode').value], kind = mode?.plane;
   if (K === 1) return true;
-  if (kind && (planeTorus(kind) || kind === 'hat' || kind === 'spectre' || kind === 'pinwheel')) return true;  // (a torus: blocks of its side, see colourW, all alike; a hat's or a spectre's circle, as many cells each, see planeSlices)
+  if (kind && (planeTorus(kind) || figureTurns(kind) === 1)) return true;  // (a torus: blocks of its side, see colourW, all alike; no turns, a hat's, a spectre's or a pinwheel's circle, as many cells each, see planeSlices)
   if (kind) {
     const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'rhombs12', 'rhombs14', 'penrose'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
     return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
@@ -9816,7 +9816,7 @@ function planeSlices(K) {
   const part = new Int32Array(n), reach = Math.min(b.maxX - b.minX, b.maxY - b.minY) / 4;
   // (the cell on its middle no one's, the slices all alike; on twice as many as its turns, each slice a mirror of the next,
   // the cells on the lines between them no one's either: all as many)
-  const halves = shape && K === 2 * figureTurns(kind), byCells = !shape || kind === 'hat' || kind === 'spectre' || kind === 'pinwheel';  // (no turns: as many cells each, round its middle)
+  const halves = shape && K === 2 * figureTurns(kind), byCells = !shape || figureTurns(kind) === 1;  // (no turns, a hat's, a spectre's, a pinwheel's: as many cells each, round its middle)
   if (!byCells) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
   else { const wall = new Set(walk.geo.walls), cells = [...angle.keys()].filter((t) => !wall.has(t)).sort((p, q) => angle[p] - angle[q]); part.fill(-1); cells.forEach((t, k) => { part[t] = Math.floor((k * K) / cells.length); }); }
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
