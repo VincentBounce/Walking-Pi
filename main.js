@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1396';
+const VERSION = '0.1.1397';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -12315,32 +12315,47 @@ function glCubes(to) {
 // drawing, under all, the page's colour on the cells and the walls' on the walls (a texture once a grid and a theme), zoomed
 // in enough the cells' outlines (once a grid), over all the generation's colours (paint: into their texture, its texels;
 // a cell's, 0 dead: clear). A move or a zoom moves nothing but uView. A texel a cell, 1024 a row
+// A plane's polygons, its cells' then its walls', flat: their corners' x, y in turn (polygon k's from start[k] to start[k + 1]),
+// no array of arrays kept (2^20 hexagons: 50 MB, not 300); poly(k), one's corners
+function planeFlat(kind, W, row, torus) {
+  const walls = torus ? [] : APERIODIC[kind] ? APERIODIC[kind](W).walls : (planeShape(kind, W)?.walls ?? planeWalls(kind, W)).map(([x, y]) => planeCorners(kind, x, y));  // (in a hexagon: its own)
+  const n = W * row, m = n + walls.length, start = new Int32Array(m + 1);
+  let xy = new Float64Array(12 * m), at = 0;
+  for (let k = 0; k < m; k++) {
+    const P = k < n ? planeCorners(kind, k % row, Math.floor(k / row)) : walls[k - n];
+    if (at + 2 * P.length > xy.length) { const more = new Float64Array(2 * xy.length + 2 * P.length); more.set(xy); xy = more; }
+    for (const [x, y] of P) { xy[at++] = x; xy[at++] = y; }
+    start[k + 1] = at / 2;
+  }
+  const poly = (k) => { const P = []; for (let i = start[k]; i < start[k + 1]; i++) P.push([xy[2 * i], xy[2 * i + 1]]); return P; };
+  return { m, start, xy: xy.subarray(0, at), poly };
+}
 function glPlane(paint) {
   const S = glSetup();
   if (!S) return;
   const { gl, prog } = S, { kind, W, row, torus } = walk.plane, n = W * row, { scale: s, ox, oy } = view, key = `${kind}|${W}|${row}|${torus}`;
-  if (S.keys.plane !== key) {
-    const walls = torus ? [] : APERIODIC[kind] ? APERIODIC[kind](W).walls : (planeShape(kind, W)?.walls ?? planeWalls(kind, W)).map(([x, y]) => planeCorners(kind, x, y));  // (in a hexagon: its own)
-    const polys = [...Array.from({ length: n }, (_, t) => planeCorners(kind, t % row, Math.floor(t / row))), ...walls], pos = [], ids = [];
-    polys.forEach((P, t) => { for (const i of ears(P)) { pos.push(...P[i]); ids.push(t); } });
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.planePos); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pos), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeIds); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ids), gl.STATIC_DRAW);
+  if (S.keys.plane !== key) {  // (its triangles: at most 3 a corner past 2, each with its polygon's number)
+    const F = planeFlat(kind, W, row, torus), pos = new Float32Array(6 * F.start[F.m]), ids = new Float32Array(3 * F.start[F.m]);
+    let c = 0;
+    for (let k = 0; k < F.m; k++) { const P = F.poly(k); for (const i of ears(P)) { pos[2 * c] = P[i][0]; pos[2 * c + 1] = P[i][1]; ids[c++] = k; } }
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planePos); gl.bufferData(gl.ARRAY_BUFFER, pos.subarray(0, 2 * c), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.planeIds); gl.bufferData(gl.ARRAY_BUFFER, ids.subarray(0, c), gl.STATIC_DRAW);
     for (const t of [S.planeBase, S.planeCol]) if (t) gl.deleteTexture(t);
-    Object.assign(S, { planeCount: ids.length, planePolys: polys, planeBase: glTexels(gl, polys.length), planeCol: glTexels(gl, polys.length), planeLines: null });
+    Object.assign(S, { planeCount: c, planeFlat: F, planeBase: glTexels(gl, F.m), planeCol: glTexels(gl, F.m), planeLines: null });
     S.keys.plane = key;
     S.keys.planeBase = null;
   }
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg') || '#fff', wall = new Set(walk.geo.walls);
   if (S.keys.planeBase !== bg) {  // (the page's colour on the cells but the wall's, the walls')
     const pack = (c) => { const [r, g, b] = rgbOf(c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; }, page = pack(bg), walled = pack(LIFE_WALL);
-    glPut(gl, S.planeBase, Uint32Array.from(S.planePolys, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
+    glPut(gl, S.planeBase, Uint32Array.from({ length: S.planeFlat.m }, (_, t) => (t >= n ? walled : wall.has(t) ? 0 : page)));
     S.keys.planeBase = bg;
   }
-  paint(S.planeCol, S.planePolys.length);
+  paint(S.planeCol, S.planeFlat.m);
   const outline = $('showGrid').checked && s >= 6;
   if (outline && !S.planeLines) {  // (each side once, but the wall cells')
     const seen = new Set(), ends = [];
-    S.planePolys.slice(0, n).forEach((P, t) => { if (!wall.has(t)) P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); if (!seen.has(k)) { seen.add(k); ends.push(...p, ...q); } }); });
+    for (let t = 0; t < n; t++) if (!wall.has(t)) { const P = S.planeFlat.poly(t); P.forEach((p, i) => { const q = P[(i + 1) % P.length], k = [pointKey(p), pointKey(q)].sort().join('|'); if (!seen.has(k)) { seen.add(k); ends.push(...p, ...q); } }); }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.planeEdges); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ends), gl.STATIC_DRAW);
     S.planeLines = ends.length / 2;
   }
