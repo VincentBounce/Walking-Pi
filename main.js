@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1373';
+const VERSION = '0.1.1374';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2722,20 +2722,27 @@ const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
+// Life's grids in 4 tabs, a picture and a name each: the plane's that repeat (squares, parallelograms, rhombi: walls in a
+// hexagon too), its round ones (none repeating: walls only), the solids, the surfaces (a sheet rolled up); each its space
+// and its shapes (by name, by the plane's kind); last: each one's mode last shown, to come back to
+const SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
+const LIFE_TABS = [['2D squares', 'grid', '2D', (sh, pl) => !APERIODIC[pl]], ['2D circles', 'penrose', '2D', (sh, pl) => !!APERIODIC[pl]],
+                   ['3D solids', 'cube', 'Surfaces', (sh) => !SHEETS.includes(sh)], ['3D surfaces', 'torus', 'Surfaces', (sh) => SHEETS.includes(sh)]], lifeTabLast = [];
 // the section's title
 const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
-// The mode for a choice at a level: the levels above as they are, the ones below kept where they can
-// be (a level it has none of: not kept), else the first (Grid before Cells); in a family, its tiling in use or last chosen
-function navPick(level, value) {
-  const want = [...NAV[$('mode').value]];
-  want[level] = value;
+// The mode for a choice at a level (values: from that level on, one or more: a space and its shape): the levels above as
+// they are, the ones below kept where they can be (a level it has none of: not kept), else the first (Grid before Cells); in
+// a family, its tiling in use or last chosen
+function navPick(level, ...values) {
+  const want = [...NAV[$('mode').value]], to = level + values.length;
+  want.splice(level, values.length, ...values);
   let best = null, top = -1;
   for (const [w, n] of Object.entries(NAV)) {
-    if (n.slice(0, level + 1).some((v, i) => v !== want[i])) continue;
+    if (n.slice(0, to).some((v, i) => v !== want[i])) continue;
     let score = 0;
-    for (let i = level + 1; i < 5; i++) score = score * 4 + (n[i] && n[i] === want[i] ? 2 : 0) + (i === 4 && n[i] && n[i] !== 'cells' ? 1 : 0);  // (none: no match)
+    for (let i = to; i < 5; i++) score = score * 4 + (n[i] && n[i] === want[i] ? 2 : 0) + (i === 4 && n[i] && n[i] !== 'cells' ? 1 : 0);  // (none: no match)
     const fam = familyOf(w);  // (its tiling in use; else the first of its tabs: a solid's Kites, Life only, then the next)
     if (fam) score += fam.F.modes[fam.F.tabs[fam.F.tab][0]].includes(w) ? 0.5 : 0.25 * (1 - fam.F.tabs.findIndex(([t]) => t === fam.m) / fam.F.tabs.length);
     if (score > top) { best = w; top = score; }
@@ -2744,8 +2751,8 @@ function navPick(level, value) {
 }
 // Walk, Ant, Life: each one's mode when left, to come back to (the number, the one followed by all)
 const kindLeft = {};
-function navGo(level, value) {
-  const from = $('mode').value, w = (level === 0 && kindLeft[value]) || navPick(level, value);
+function navGo(level, ...values) {
+  const from = $('mode').value, value = values[0], w = (level === 0 && kindLeft[value]) || navPick(level, ...values);
   if (!w || w === from) return;
   if (level === 0) kindLeft[NAV[from][0]] = from;
   const fam = familyOf(w);
@@ -2889,23 +2896,33 @@ function renderModePicker() {
   }));
   $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
     + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
-  // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space)
-  $('navSpace').replaceChildren(...NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp))));
+  // 2D, 3D (the surfaces), Space (a 3D lattice): only those it has (no ant nor automaton in Space); Life's, its 4 tabs
+  const planeOf = (sh, sp = space) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === sp && NAV[m][2] === sh)]?.plane;
+  const life = kind === 'Life', inTab = (t, sh) => LIFE_TABS[t][3](sh, planeOf(sh, LIFE_TABS[t][2])), tab = life ? LIFE_TABS.findIndex(([, , sp], t) => sp === space && inTab(t, shape)) : -1;
+  if (life) lifeTabLast[tab] = w;
+  $('navSpace').className = life ? 'nav-shapes' : 'choice-row';
+  $('navSpace').replaceChildren(...(life ? LIFE_TABS.map(([name, pic, sp], t) => button(`${icon(pic)}<span>${name}</span>`, t === tab, () => {
+    if (t === tab) return;
+    const to = lifeTabLast[t] ?? navPick(1, sp, navValues(2, [kind, sp]).find((sh) => inTab(t, sh)));  // (its last, else its first shape)
+    $('mode').value = to;
+    $('mode').dispatchEvent(new Event('change'));
+  })) : NAV_SPACES.filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(SPACE_NAMES[sp], sp === space, () => navGo(1, sp)))));
   // the shapes, as pictures with their (short) names
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
   // then the surfaces (a sheet rolled up: Torus, Möbius, Klein)
-  const shapes = navValues(2, [kind, space]), planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
+  const shapes = navValues(2, [kind, space]).filter((sh) => !life || inTab(tab, sh));  // (Life: its tab's)
   // (in 3D: the regular solids, the cubes carved, the solids of squares and triangles, the surfaces)
   const CARVED = ['Pits', 'Bumps', 'Frame', 'Sponge'], MIXED = ['Cuboctahedron', 'Rhombicuboctahedron', 'Bicupola', 'Pyramid'];
-  const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => ['Torus', 'Möbius strip', 'Klein bottle'].includes(sh);
+  const grouped = space === '2D' && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => SHEETS.includes(sh);
   const groups = grouped ? [1, 3, 0, 2].map((i) => [SHAPE_GROUPS[i][0], (sh) => groupOf(sh) === SHAPE_GROUPS[i][0]])  // (squares, parallelograms, the circles, rhombi)
     : space === 'Surfaces' ? [['Solid', (sh) => !sheet(sh) && !CARVED.includes(sh) && !MIXED.includes(sh)], ['Carved cubes', (sh) => CARVED.includes(sh)], ['Squares & triangles', (sh) => MIXED.includes(sh)], ['Surface', sheet]]
     : [[null, () => true]];
+  const some = groups.filter(([, has]) => shapes.some(has)).length;  // (one group: its title none, its tab's name says it)
   $('navShapes').replaceChildren(...groups.flatMap(([g, has]) => {
     const these = shapes.filter(has);
     if (!these.length) return [];
-    const title = g ? [Object.assign(document.createElement('div'), { className: 'block-label', textContent: g })] : [];
+    const title = g && some > 1 ? [Object.assign(document.createElement('div'), { className: 'block-label', textContent: g })] : [];
     return [...title, ...these.map((sh) => {
     const again = sh === shape && !!MODES[w].plane && !APERIODIC[MODES[w].plane], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
       if (!again) { navGo(2, sh); return; }
