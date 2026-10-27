@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1363';
+const VERSION = '0.1.1364';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4975,6 +4975,11 @@ function hexSolidMesh(solid, f) {
   // octagons) are walls: always dead, and no one's neighbour
   mesh.walls = cells.flatMap((c, v) => (c.length !== 6 ? [v] : []));
   mesh.hexagons = true;  // (its cells hexagons, whatever its walls' sides: the stella's octagons, see patternAt)
+  // each cell's plane: its solid's face its triangles are all on (f² triangles a face, in turn; faces in one plane, a
+  // pentagon's triangles, one), else -1 (folded over an edge)
+  const sub = (p, q) => p.map((v, d) => v - q[d]), { P, faces } = POLYHEDRA[solid], normals = faces.map(([a, b, c]) => unit(cross(sub(P[b], P[a]), sub(P[c], P[a]))));
+  const plane = normals.map((n) => normals.findIndex((m) => m.every((v, d) => Math.abs(v - n[d]) < 1e-9)));  // (the same, but for the float's last digits)
+  mesh.planeOf = Int32Array.from(cells, (tris) => (tris.every((t) => plane[Math.floor(t / (f * f))] === plane[Math.floor(tris[0] / (f * f))]) ? plane[Math.floor(tris[0] / (f * f))] : -1));
   return (meshCache[key] = mesh);
 }
 
@@ -7365,26 +7370,35 @@ function iconPatterns(sq, set = ICON_SETS.icon, mirror = false) {  // mirror: it
   iconPatternMemo.set(key, patterns);
   return patterns;
 }
+// each cell's colour's place (see huntParts; Mixed's too, each colour's own): a picture cut off at its own, as at the grid's
+// edges. Kept per grid
+let iconPartMemo = null;
+const iconPartOf = (K) => {
+  const key = `${gridKey()}|${K}`;
+  if (iconPartMemo?.key !== key) { const part = new Int32Array(walk.life.alive.length).fill(-1); huntParts(0, K, false, false).forEach((p, k) => { for (const t of p) part[t] = k; }); iconPartMemo = { key, part }; }
+  return iconPartMemo.part;
+};
 // Each colour's picture square, its way and place known by construction (see patternFrame: where the plane's x and y go
 // there), laid once (see patternAt: its cells where the grid has them, the rest cut off, a torus's or a bottle's at its
 // sheet's edges as drawn flat, never round it). Its bottom: down as drawn on the plane; out, square on the wall, in a
-// hexagon's walls; south on a sheet (its v down, as laid flat: u east, v north); on a solid's face, down it as a marble rolls
-// (a level face: south); mirrored where the plane lands there seen from the other side. Its place: its spot (see
+// hexagon's walls; on a solid's face or a sheet (unrolled: a level face), down it as a marble rolls (a level face: south);
+// mirrored where the plane lands there seen from the other side. Its place: its spot (see
 // patternPlace); in a hexagon's walls against its slice's wall; on a triangle face on its median, its middle, or against its
 // level side when wider than a third of it (the widest a triangle takes: its middle 1/(1 + √3) of the way up, 0.37). Laid to
 // a lattice step (its tiles' shapes kept): off its place by half a step at most, kept in by that. Its cells (each of the
-// square's, -1 off the grid or on its wall), its square, mirrored or not. Null where it doesn't fit: its middle row or column
-// (its pixels 11 and 12) not all laid, each on a cell of its own (its whole width and height: cut off in its corners only),
-// or the colours' squares on each other's (but for a row of their margins)
+// square's, -1 off the grid, on its wall or past its colour's place), its square, mirrored or not. Null where it doesn't fit: its middle row or column
+// (its pixels 11 and 12) not all laid in its colour's place (see huntParts), each on a cell of its own (its whole width and
+// height: cut off in its corners only)
 function iconLay(N, P = 24) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo;
   if (!patternsOn() || (walk.plane && APERIODIC[kind])) return null;
   const dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : g.walls) ?? []), walled = walk.plane && K > 1 && shaped(kind) && planeSlices(K);
+  const part = iconPartOf(K);
   const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
   const angle = ([x, y]) => Math.atan2(y, x), dot = (p, q) => p.reduce((sum, v, d) => sum + v * q[d], 0), lay = (sq, i, to, away) => {
     const at = new Int32Array(sq.box.length).fill(-1), cells = Object.assign(sq.box.map(([x, y], j) => [x, y, j]), { mid: sq.mid });
     const laid = to ? brushAt([0, 0], cells, to, true).map(([x, y, v]) => [y * walk.plane.row + x, v]) : patternAt(i, K, cells, true, away);
-    for (const [t, j] of laid) if (!dead.has(t)) at[j] = t;
+    for (const [t, j] of laid) if (!dead.has(t) && part[t] === i) at[j] = t;
     const cross = sq.box.flatMap((_, j) => (sq.pix[j].some((v) => Math.abs(v - (P - 1) / 2) < 1) ? [at[j]] : []));
     const js = sq.box.flatMap((_, j) => (at[j] >= 0 ? [j] : []));
     return { at, sq, js, whole: cross.every((t) => t >= 0) && new Set(cross).size === cross.length };
@@ -7400,10 +7414,6 @@ function iconLay(N, P = 24) {
       const d = walled.walls[i] - sq.side / 2 - (Math.abs(dot(a, out)) + Math.abs(dot(b, out))) / 2;  // (against its wall, its lattice step's half kept in)
       return { ...lay(sq, i, mid.map((v, k) => v + d * out[k])), mirror: false };
     }
-    if (g.torus) {  // (its sheet: u east, v north, as laid flat)
-      const sq = iconSquare(kind, N, towards([0, -1]), P);
-      return { ...lay(sq, i), mirror: ex[0] * ey[1] - ex[1] * ey[0] > 0 };  // (the plane's y down as drawn, the sheet's v north: the same way round when they turn against each other)
-    }
     const tilt = towards(downOn(n)), sq = iconSquare(kind, N, tilt, P), mirror = dot3(cross(ex, ey), n) > 0;  // (the plane's x then y turning against the face's outside: seen from the other side)
     const place = patternPlace(i, K);
     if (place.on !== 'tri') return { ...lay(sq, i), mirror };
@@ -7411,8 +7421,7 @@ function iconLay(N, P = 24) {
     const side = [a, b.map((v, d) => v - a[d]), b.map((v) => -v)][place.per > 1 ? place.q : 0], phi = tilt - angle(side), reach = (sq.side / 2) * Math.max(Math.abs(Math.cos(phi)), Math.abs(Math.sin(phi)));
     return { ...lay(sq, i, null, Math.max(g.size / 3, reach / rowStep + 0.5)), mirror };
   });
-  const all = lays.flatMap(({ at, js }) => js.map((j) => at[j]));
-  return lays.every((l) => l.whole) && new Set(all).size >= 0.95 * all.length ? lays : null;
+  return lays.every((l) => l.whole) ? lays : null;
 }
 const iconFits = (N, P = 24) => !!iconLay(N, P);
 function iconChoices(N, set) {
@@ -9822,8 +9831,8 @@ function brickPlaces(g) {
   for (let t = 0; t < g.n; t++) { const s = sums.get(key(t)); out[2 * t] = wrap(s[0] / s[4], P); out[2 * t + 1] = wrap(s[1] / s[4], Q); }
   return (g.brickPlaces = out);
 }
-function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mirror, see colouring)
-  if (colourMix && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
+function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  // (mirror: Wild mirror, see colouring; mixed: Mixed's, else each colour's own place)
+  if (mixed && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
     const parts = Array.from({ length: K }, () => []);
     for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(plane.seed + 7, t) * K)].push(t);
     return parts;
@@ -10170,12 +10179,17 @@ function cubeFace(f) {
   const square = (r, c) => (S.floors ? S.floors[f * a * a + r * a + c] : f * S.perFace + r * a + c);
   return { a, square, at: (r, c) => Array.from(S.cen.subarray(3 * square(r, c), 3 * square(r, c) + 3)) };
 }
-// Colour i's frame, by construction: where the plane's x and y (its unit steps) go there. On a solid, in space on its face,
-// and the face's outward normal; on a sheet, in the sheet's units (see sheetUnits); on the plane, as they are
+// Colour i's frame, by construction: where the plane's x and y (its unit steps) go there, and the face's outward normal. On
+// a solid, in space on its face; on a sheet (a torus, a Möbius strip, a Klein bottle), on it unrolled (a face looking up);
+// on the plane, as they are
 function patternFrame(i, K) {
   const g = walk.geo, kind = patternKind(), place = patternPlace(i, K), sub = (p, q) => p.map((v, d) => v - q[d]);
   if (place.on === 'plane') return { ex: [1, 0], ey: [0, 1] };
-  if (place.on === 'sheet') { const L = sheetUnits(g, kind), o = L([0, 0]); return { ex: sub(L([1, 0]), o), ey: sub(L([0, 1]), o) }; }
+  if (place.on === 'sheet') {  // (in the sheet's units, see sheetUnits, then as it lies unrolled: flat, seen from above)
+    const L = sheetUnits(g, kind), o = L([0, 0]), F = sheetPoint(g, 0, 0, 0), Fu = sub(sheetPoint(g, 1, 0, 0), F), Fv = sub(sheetPoint(g, 0, 1, 0), F), flat = ([u, v]) => Fu.map((c, d) => u * c + v * Fv[d]);
+    const n = unit(cross(Fu, Fv));
+    return { ex: flat(sub(L([1, 0]), o)), ey: flat(sub(L([0, 1]), o)), n: n[2] < 0 ? n.map((v) => -v) : n };  // (its top, the side seen)
+  }
   if (place.on === 'hex') { const { n, s, u, w } = hexAxes(place.c0); return { ex: u.map((v) => s * v), ey: w.map((v) => s * v), n }; }
   // the others: the plane's lattice steps (a along, b a row up) as the face's, then x and y from them
   let A3, B3, n;
@@ -10235,19 +10249,18 @@ function patternAt(i, K, cells, partial = false, away = null) {  // partial: its
 }
 // A pattern on a solid of hexagons (see hexSolidMesh), round its cell c0: the plane's hexagons on its face's, the plane's
 // rows (a neighbour 1 along) towards c0's neighbour most level, the pattern's cell nearest its middle on c0; each cell the one there
-// (within a third of a cell), on that face (its normal as c0's), else cut off (partial: an icon's) or none at all
+// (within a third of a cell), on c0's face (its plane, see hexSolidMesh), else cut off (partial: an icon's) or none at all
 // its frame round c0: its middle C, its normal n, a cell's step s, the plane's x along u (its rows: the most level of its 6
 // ways), its y along w
 function hexAxes(c0) {
   const g = walk.geo, P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], C = P3(c0), n = [g.nrm[3 * c0], g.nrm[3 * c0 + 1], g.nrm[3 * c0 + 2]], { start, list } = walk.life.nbr;
-  const nbrs = [...list.subarray(start[c0], start[c0 + 1])].map((t) => [t, Math.hypot(...P3(t).map((v, d) => v - C[d]))]), s = Math.min(...nbrs.map((q) => q[1])), level = levelOf(n);
-  const along = nbrs.filter((q) => q[1] < 1.05 * s).map(([t]) => { const e = P3(t).map((v, d) => v - C[d]); return unit(e.map((v, d) => v - dot3(e, n) * n[d])); });
-  const u = along.reduce((best, e) => (dot3(e, level) > dot3(best, level) ? e : best));
-  return { C, n, s, u, w: cross(n, u) };
+  const level = levelOf(n), e = (t) => P3(t).map((v, d) => v - C[d]), t = [...list.subarray(start[c0], start[c0 + 1])].reduce((b, t) => (dot3(e(t), level) > dot3(e(b), level) ? t : b));  // (its 6 neighbours by its sides)
+  const u = unit(e(t).map((v, d) => v - dot3(e(t), n) * n[d]));
+  return { C, n, s: Math.hypot(...e(t)), u, w: cross(n, u) };
 }
 function hexFaceAt(c0, cells, partial) {
-  const g = walk.geo, P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]], N3 = (t) => [g.nrm[3 * t], g.nrm[3 * t + 1], g.nrm[3 * t + 2]];
-  const { C, n, s, u, w } = hexAxes(c0), out = [];
+  const g = walk.geo, P3 = (t) => [g.cen[3 * t], g.cen[3 * t + 1], g.cen[3 * t + 2]];
+  const { C, s, u, w } = hexAxes(c0), out = [];
   if (!g.hexIndex) {  // (the cells by where they are, in boxes a cell wide: once a mesh, its cells a little apart from one to another)
     const b = s, boxes = new Map(), key = (x, y, z) => (x * 4096 + y) * 4096 + z;  // (a box by its numbers: no string to make at each look)
     for (let t = 0; t < g.n; t++) { const k = key(...P3(t).map((v) => Math.round(v / b))); if (!boxes.has(k)) boxes.set(k, []); boxes.get(k).push(t); }
@@ -10265,7 +10278,7 @@ function hexFaceAt(c0, cells, partial) {
   const a = ms.reduce((best, m, k) => (Math.hypot(m[0] - mid[0], m[1] - mid[1]) < Math.hypot(ms[best][0] - mid[0], ms[best][1] - mid[1]) ? k : best), 0);
   for (let k = 0; k < cells.length; k++) {
     const x = ms[k][0] - ms[a][0], y = ms[k][1] - ms[a][1], t = g.hexIndex.find(C.map((c, d) => c + s * (x * u[d] + y * w[d])), s / 3);
-    if (t >= 0 && dot3(N3(t), n) > 0.99) out.push([t, cells[k][2]]);
+    if (t >= 0 && g.planeOf[t] === g.planeOf[c0]) out.push([t, cells[k][2]]);
     else if (!partial) return [];
   }
   return out;
