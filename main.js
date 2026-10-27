@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1347';
+const VERSION = '0.1.1348';
 
 /* ==============================================================================================
  * PART 1 — DIGITS: THE FORMULA WORKER
@@ -4496,7 +4496,7 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   }
   if (kind === 'kleinKite' || kind === 'kleinKiteTurned') tiles.splice(0, tiles.length, ...tiles.flatMap(kitesOf));
   if (kind === 'kleinCairo') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
-    const c = cairoCorners(i, j, o);
+    const c = cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + 0.5]);  // (its first pair at the sheet's corner, as the torus's)
     tiles.push(c.reduce((a, [x, y], q) => a + x * c[(q + 1) % 5][1] - c[(q + 1) % 5][0] * y, 0) < 0 ? c.reverse() : c);
   }
   const ids = new Map(), verts = [], r6 = (v) => Math.round(v * 1e6) / 1e6, tube = tubeFor(kind, nv, nu);
@@ -4784,11 +4784,11 @@ function kleinTilingSheet(kindK, size) {
 // its frame, without its tiles: its strip, its rows and its length (see kleinTilingSheet); its tiles' count (see stripCount)
 const kleinCount = (kindK, size) => { const { kind, strip, nv, n } = kleinLength(kindK, size); return stripCount(kind, strip, `${nv}x${n}`, true); };
 function kleinLength(kindK, size) {
-  const { strip } = FOLDED[kindK], { kind, basis: [a, b] } = MOBIUS_STRIPS[strip], { step, ok, copy } = MOBIUS_ALONG[strip];
+  const { strip } = FOLDED[kindK], { kind, basis: [a, b] } = MOBIUS_STRIPS[strip], { step, ok } = MOBIUS_ALONG[strip];
   const [nv, own] = mobiusSize(size), turn = -Math.atan2(a[1], a[0]), by = turnPoint(b, turn)[1], W = nv * by;
-  // its length as a ring's (see ringLength): near its usual (W / TORUS_TUBE), its colours' slices square, each whole copies along
-  // (a glide's turned over: see colourFair), as the twist allows
-  const K = ringColours(), x = W / TORUS_TUBE / step, n = own ?? ringLength(x, x * TORUS_TUBE * K, K * Math.round(copy / step), (c) => ok(c, nv));
+  // its length as a ring's (see ringLength): near its usual (W / TORUS_TUBE), its colours' slices square, each whole bricks along
+  // (|a|: whole copies too, a glide's two; see brickPlaces), as the twist allows
+  const K = ringColours(), x = W / TORUS_TUBE / step, n = own ?? ringLength(x, x * TORUS_TUBE * K, K * Math.round(Math.hypot(...a) / step), (c) => ok(c, nv));
   return { kind, strip, turn, nv, n, W, step, by, a };
 }
 function kleinTilingMesh(kindK, size) {
@@ -9867,6 +9867,17 @@ function planeFrame() {
     across: RECTS[kind] ? (lc * planeCols(kind, W)) / (planeCols(kind, W) - 1) / Math.hypot(...latticeStep(RECTS[kind].base)) : xAcross ? row / per : W, down: RECTS[kind] ? (lr * W) / (W - 1) / Math.hypot(...latticeStep(RECTS[kind].base)) : xAcross ? W : row / per,  // (the cells, or lattice cells, along each: a share's step)
   });
 }
+// a sheet's tiles where their bricks are (see brickOf): each its brick's middle on the sheet (a Möbius strip's on its loop, 2L, a side
+// a brick), its tiles' middles the shortest way round from its first one's: its colours' blocks of whole bricks, as the plane's
+function brickPlaces(g) {
+  if (g.brickPlaces) return g.brickPlaces;
+  const m = brickOf(g), [P, Q] = g.mobius ? [2 * g.L, Infinity] : g.klein ? [Infinity, Infinity] : [g.nu, g.nv], near = (d, p) => (p < Infinity ? d - p * Math.round(d / p) : d);
+  const key = (t) => 2 * (g.bricks?.[t] ?? Math.floor((g.mobius ? t % g.front : t) / m)) + (g.mobius && t >= g.front ? 1 : 0), sums = new Map(), out = new Float64Array(2 * g.n);
+  for (let t = 0; t < g.n; t++) { const [u, v] = sheetPlace(g, t), s = sums.get(key(t)); if (!s) sums.set(key(t), [u, v, u, v, 1]); else { s[0] += s[2] + near(u - s[2], P); s[1] += s[3] + near(v - s[3], Q); s[4]++; } }
+  const wrap = (x, p) => (p < Infinity ? ((x % p) + p) % p : x);
+  for (let t = 0; t < g.n; t++) { const s = sums.get(key(t)); out[2 * t] = wrap(s[0] / s[4], P); out[2 * t + 1] = wrap(s[1] / s[4], Q); }
+  return (g.brickPlaces = out);
+}
 function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mirror, see colouring)
   if (colourMix && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
     const parts = Array.from({ length: K }, () => []);
@@ -9889,7 +9900,7 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
   // mobiusLoop: s and s + L are one place, its two sides), each its stretch, 2L / K long, a patch at its
   // middle; from the start of the face in view (red first), so that a face holds whole stretches when it can
   if (g.mobius) {
-    const s0 = mobiusMiddle(g) - g.L / 2, stretch = (2 * g.L) / K, along = (t) => (((mobiusLoop(g, t)[0] - s0) % (2 * g.L)) + 2 * g.L) % (2 * g.L);
+    const s0 = mobiusMiddle(g) - g.L / 2, stretch = (2 * g.L) / K, along = (t) => (((brickPlaces(g)[2 * t] - s0) % (2 * g.L)) + 2 * g.L) % (2 * g.L);  // (a tile where its brick is)
     // (a tile whose middle is on a stretch's end, the sheet's end for one: in the stretch it starts, whatever the rounding)
     if (!r) { for (let t = 0; t < n; t++) parts[Math.min(K - 1, Math.floor(along(t) / stretch + 1e-9))].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
@@ -9898,7 +9909,7 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror') {  // (mirror: Wild mi
   if (g.torus) {  // a torus, a Klein bottle: its blocks on the sheet (see torusBlocks), each tile in the one its middle is in
     // (a Klein bottle's tile across the seam, its middle past the sheet's end: in the block at that end)
     const [a, b] = torusBlocks(K), at = (x, m, k) => Math.max(0, Math.min(k - 1, Math.floor((x * k) / m + 1e-6)));
-    const block = (t) => { const [u, v] = sheetMiddle(g, t); return at(u, g.nu, a) * b + at(v, g.nv, b); };
+    const block = (t) => { const [u, v] = brickPlaces(g).subarray(2 * t, 2 * t + 2); return at(u, g.nu, a) * b + at(v, g.nv, b); };  // (a tile where its brick is)
     if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     return parts.map((_, i) => lifePatch(r, K === 1 ? centreCells() : sheetNearest(((Math.floor(i / b) + 0.5) * g.nu) / a, (((i % b) + 0.5) * g.nv) / b)[0]));  // at their middles (a tile there, as on the plane)
   }
