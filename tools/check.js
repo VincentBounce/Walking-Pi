@@ -67,7 +67,7 @@ function checkMeshes(fail) {
     else if (!within(inside, torus)) fail(`${kind}: inside ${show(inside)}, its torus ${show(torus)}`);
   }
   // the grids that never repeat: their walls closed round them (a point just past each side of a cell, a hundredth of the
-  // side out, in a cell or a wall; each tile in every square of 3 its box covers: the hyperbolic disc's, big and small), sizes 16 to 64
+  // side out, in a cell or a wall; each tile in every square of 3 its box covers), sizes 16 to 64
   const sarea = (P) => P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0);
   for (const kind of Object.keys(APERIODIC)) for (const W of [16, 24, 32, 48, 64]) {
     const h = APERIODIC[kind](W), all = Array.from({ length: h.m }, (_, k) => h.poly(k)), grid = new Map();

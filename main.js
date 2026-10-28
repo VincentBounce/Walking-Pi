@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1415';
+const VERSION = '0.1.1416';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1117,7 +1117,6 @@ const MODES = {
   life2dRing10: { base: 2, lattice: 'ring10', life: true, plane: 'ring10', where: "a patch of the 10-fold ring (Sugimoto's pentagon round a decagonal hole, never repeating)" },
   life2dRing9: { base: 2, lattice: 'ring9', life: true, plane: 'ring9', where: "a patch of the 9-fold ring (Sugimoto's pentagon round a regular 9-gon left empty, never repeating)" },
   life2dRing12: { base: 2, lattice: 'ring12', life: true, plane: 'ring12', where: "a patch of the 12-fold ring (Sugimoto's pentagon round a regular 12-gon left empty, never repeating)" },
-  life2dHyperbolic: { base: 2, lattice: 'hyperbolic', life: true, plane: 'hyperbolic', where: 'a disc of the hyperbolic plane (Poincaré\'s), heptagons three at a corner, ever smaller towards its edge' },
   life2dSpectre: { base: 2, lattice: 'spectre', life: true, plane: 'spectre', where: 'a patch of spectres, the tile that never repeats and is never turned over' },
   lifeTorusKite: { base: 2, lattice: 'sphere', sphere: 'torusKite', life: true, perspective: true, round: true, where: 'a torus of kites' },
   lifeMobiusKite: { base: 2, lattice: 'sphere', sphere: 'mobiusKite', life: true, perspective: true, round: true,
@@ -1973,7 +1972,6 @@ const ICONS = (() => {
     ring8: pathEl('M16.0 13.7L13.7 16.0L13.7 19.3L16.0 21.7L18.4 16.0ZM16.0 10.3L16.0 13.7L18.4 16.0L21.7 16.0L19.3 10.3ZM13.7 8.0L16.0 10.3L19.3 10.3L21.7 8.0L16.0 5.6ZM10.3 8.0L13.7 8.0L16.0 5.6L16.0 2.3L10.3 4.7ZM8.0 10.3L10.3 8.0L10.3 4.7L8.0 2.3L5.6 8.0ZM8.0 13.7L8.0 10.3L5.6 8.0L2.3 8.0L4.7 13.7ZM10.3 16.0L8.0 13.7L4.7 13.7L2.3 16.0L8.0 18.4ZM13.7 16.0L10.3 16.0L8.0 18.4L8.0 21.7L13.7 19.3Z'),  // the 8-fold ring: its hole's 8 pentagons
     ring10: pathEl('M13.2 15.6L15.1 14.2L17.0 15.6L17.7 17.9L13.9 17.9ZM15.1 9.8L13.2 8.4L13.9 6.1L15.8 4.7L17.0 8.4ZM8.9 14.2L10.8 15.6L10.1 17.9L8.2 19.3L7.0 15.6ZM13.2 8.4L10.8 8.4L10.1 6.1L10.8 3.9L13.9 6.1ZM8.2 12.0L8.9 14.2L7.0 15.6L4.6 15.6L5.8 12.0ZM10.8 8.4L8.9 9.8L7.0 8.4L6.3 6.1L10.1 6.1ZM8.9 9.8L8.2 12.0L5.8 12.0L3.9 10.6L7.0 8.4ZM15.8 12.0L15.1 9.8L17.0 8.4L19.4 8.4L18.2 12.0ZM10.8 15.6L13.2 15.6L13.9 17.9L13.2 20.1L10.1 17.9ZM15.1 14.2L15.8 12.0L18.2 12.0L20.1 13.4L17.0 15.6ZM13.2 20.1L15.1 21.5L17.0 20.1L17.7 17.9L13.9 17.9ZM20.1 13.4L22.0 12.0L21.3 9.8L19.4 8.4L18.2 12.0ZM15.8 4.7L15.1 2.5L12.7 2.5L10.8 3.9L13.9 6.1ZM19.4 8.4L20.1 6.1L18.2 4.7L15.8 4.7L17.0 8.4ZM6.3 6.1L3.9 6.1L3.2 8.4L3.9 10.6L7.0 8.4ZM4.6 15.6L3.9 17.9L5.8 19.3L8.2 19.3L7.0 15.6ZM8.2 19.3L8.9 21.5L11.3 21.5L13.2 20.1L10.1 17.9ZM17.7 17.9L20.1 17.9L20.8 15.6L20.1 13.4L17.0 15.6ZM3.9 10.6L2.0 12.0L2.7 14.2L4.6 15.6L5.8 12.0ZM10.8 3.9L8.9 2.5L7.0 3.9L6.3 6.1L10.1 6.1Z'),  // Ring 10's: its 20 pentagons round its hole
     ring9: pathEl('M13.7 7.8L10.7 7.8L9.2 5.2L9.7 2.3L14.2 4.9ZM15.9 9.7L13.7 7.8L14.2 4.9L16.4 3.0L18.2 7.8ZM10.7 7.8L8.4 9.7L5.6 8.7L4.1 6.1L9.2 5.2ZM16.4 12.6L15.9 9.7L18.2 7.8L21.2 7.8L19.4 12.6ZM8.4 9.7L7.9 12.6L5.1 13.6L2.3 12.6L5.6 8.7ZM7.9 12.6L9.4 15.2L7.9 17.8L5.1 18.8L5.1 13.6ZM15.0 15.2L16.4 12.6L19.4 12.6L21.7 14.5L17.2 17.1ZM9.4 15.2L12.2 16.2L12.7 19.1L11.2 21.7L7.9 17.8ZM12.2 16.2L15.0 15.2L17.2 17.1L17.7 20.0L12.7 19.1Z'),  // the 9-fold ring: its hole's 9 pentagons
-    hyperbolic: pathEl('M12.0 8.5L9.3 9.8L8.6 12.8L10.5 15.1L13.5 15.1L15.4 12.8L14.7 9.8ZM12.0 8.5L12.0 5.9L10.3 4.6L8.5 4.8L7.3 6.1L7.2 8.2L9.3 9.8ZM9.3 9.8L7.2 8.2L5.2 8.7L4.2 10.2L4.4 12.0L6.0 13.4L8.6 12.8ZM8.6 12.8L6.0 13.4L5.2 15.3L5.8 17.0L7.3 17.9L9.3 17.5L10.5 15.1ZM10.5 15.1L9.3 17.5L10.3 19.4L12.0 20.0L13.7 19.4L14.7 17.5L13.5 15.1ZM13.5 15.1L14.7 17.5L16.7 17.9L18.2 17.0L18.8 15.3L18.0 13.4L15.4 12.8ZM15.4 12.8L18.0 13.4L19.6 12.0L19.8 10.2L18.8 8.7L16.8 8.2L14.7 9.8ZM14.7 9.8L16.8 8.2L16.7 6.1L15.5 4.8L13.7 4.6L12.0 5.9L12.0 8.5Z'),  // the middle heptagon and its 7, as on Poincaré's disc
     ring12: pathEl('M13.3 7.1L10.7 7.2L10.7 4.6L12.0 2.3L14.6 4.9ZM8.4 8.4L7.2 10.7L4.9 9.4L3.6 7.2L7.1 6.2ZM10.7 7.2L8.4 8.4L7.1 6.2L7.1 3.6L10.7 4.6ZM15.6 8.4L13.3 7.2L14.6 4.9L16.9 3.6L17.8 7.2ZM7.1 10.7L7.1 13.3L4.6 13.3L2.3 12.0L4.9 9.4ZM16.9 10.7L15.6 8.4L17.8 7.2L20.4 7.2L19.4 10.7ZM7.1 13.3L8.4 15.6L6.2 16.8L3.6 16.9L4.6 13.3ZM16.9 13.3L16.9 10.7L19.4 10.7L21.7 12.0L19.1 14.6ZM8.4 15.6L10.7 16.9L9.4 19.1L7.2 20.4L6.2 16.9ZM13.3 16.9L15.6 15.6L16.9 17.8L16.9 20.4L13.3 19.4ZM15.6 15.6L16.9 13.3L19.1 14.6L20.4 16.8L16.9 17.8ZM10.7 16.9L13.3 16.9L13.3 19.4L12.0 21.7L9.4 19.1Z'),  // the 12-fold ring: its hole's 12 pentagons
     spectre: pathEl('M6 15L10 15L12 18.5L15.5 16.5L15.5 12.5L19.5 12.5L21.5 9L18 7L14.5 9L12.5 5.5L8.5 5.5L4.5 5.5L2.5 9L6 11Z'),  // the Spectre
     rhombs14: pathEl('M7.7 3.0L10.9 7.0L12.0 12.0L8.8 8.0ZM12.0 2.0L13.1 7.0L12.0 12.0L10.9 7.0ZM16.3 3.0L15.2 8.0L12.0 12.0L13.1 7.0ZM2.3 9.8L7.4 9.8L12.0 12.0L6.9 12.0ZM4.2 5.8L8.8 8.0L12.0 12.0L7.4 9.8ZM19.8 5.8L16.6 9.8L12.0 12.0L15.2 8.0ZM16.6 9.8L21.7 9.8L17.1 12.0L12.0 12.0ZM6.9 12.0L12.0 12.0L7.4 14.2L2.3 14.2ZM12.0 12.0L8.8 16.0L4.2 18.2L7.4 14.2ZM12.0 12.0L16.6 14.2L19.8 18.2L15.2 16.0ZM12.0 12.0L17.1 12.0L21.7 14.2L16.6 14.2ZM12.0 12.0L10.9 17.0L7.7 21.0L8.8 16.0ZM12.0 12.0L13.1 17.0L12.0 22.0L10.9 17.0ZM12.0 12.0L15.2 16.0L16.3 21.0L13.1 17.0Z'),  // Rhombs 14's star: its 14 thin rhombi at its middle
@@ -2585,7 +2583,7 @@ const MODE_ICONS = {
   tetraLR: 'tetrahedron', octaLR: 'octahedron', stellaLR: 'stella', stellaGrid: 'stella', lifeStella: 'stella', dodecaLR: 'dodecahedron', dodecaGrid: 'dodecahedron', lifeDodeca: 'dodecahedron', icosaLR: 'icosahedron',
   torusGrid: 'torus', torusTriGrid: 'torus', torusHexGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
-  life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dPinwheel: 'pinwheel', life2dSpectre: 'spectre', life2dAmmann: 'ammann', life2dRhombs12: 'rhombs12', life2dRhombs14: 'rhombs14', life2dFlower: 'flower', life2dFlower5: 'flower5', life2dFlower7: 'flower7', life2dMirror7: 'mirror7', life2dFlower3: 'flower3', life2dFlower4: 'flower4', life2dFlower8: 'flower8', life2dFlower9: 'flower9', life2dFlower10: 'flower10', life2dRing7: 'ring7', life2dRing8: 'ring8', life2dRing9: 'ring9', life2dRing10: 'ring10', life2dRing12: 'ring12', life2dHyperbolic: 'hyperbolic', lifeTorusKite: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
+  life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dPinwheel: 'pinwheel', life2dSpectre: 'spectre', life2dAmmann: 'ammann', life2dRhombs12: 'rhombs12', life2dRhombs14: 'rhombs14', life2dFlower: 'flower', life2dFlower5: 'flower5', life2dFlower7: 'flower7', life2dMirror7: 'mirror7', life2dFlower3: 'flower3', life2dFlower4: 'flower4', life2dFlower8: 'flower8', life2dFlower9: 'flower9', life2dFlower10: 'flower10', life2dRing7: 'ring7', life2dRing8: 'ring8', life2dRing9: 'ring9', life2dRing10: 'ring10', life2dRing12: 'ring12', lifeTorusKite: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
   life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', blocks2dTetrakis: 'tetrakis', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeTorusHex: 'torus', lifeTorusCairo: 'torus', lifeTorusTri: 'torus', torusCairoWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeStellaKite: 'stella', lifeDodecaKite: 'dodecahedron', lifeCubocta: 'cubocta', lifePyramid: 'pyramid', lifeRhombi: 'rhombi', lifeBicupola: 'bicupola', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
@@ -2635,7 +2633,7 @@ const NAV = {
   antHex: ['Ant', '2D', 'Hexagons', 'Ant', 'cells'], antCairo: ['Ant', '2D', 'Cairo', 'Ant', 'cells'],
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
-  life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dRhombs14: ['Life', '2D', 'Rhombs 14', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dFlower9: ['Life', '2D', 'Flower 9', 'Life', ''], life2dFlower10: ['Life', '2D', 'Flower 10', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing10: ['Life', '2D', 'Ring 10', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''], life2dHyperbolic: ['Life', '2D', 'Hyperbolic', 'Life', ''],
+  life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dRhombs14: ['Life', '2D', 'Rhombs 14', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dFlower9: ['Life', '2D', 'Flower 9', 'Life', ''], life2dFlower10: ['Life', '2D', 'Flower 10', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing10: ['Life', '2D', 'Ring 10', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
   life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeBumps: ['Life', 'Surfaces', 'Bumps', 'Life', ''], lifeFrame: ['Life', 'Surfaces', 'Frame', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeTorusHex: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTorusCairo: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTorusTri: ['Life', 'Surfaces', 'Torus', 'Life', ''],
@@ -2699,7 +2697,7 @@ MODE_ICONS.lifeFrame = 'frame';
 // Sphere before the Tetrahedron
 {
   const group = (n) => n.slice(0, 3).join(), first = [...new Set(Object.values(NAV).map(group))], rank = { Turtle: 0, Pivot: 1, Parity: 2 };
-  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Tetrakis', 1, 'Hexagons'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Hyperbolic', 1, 'Pinwheel'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus'], ['Pyramid', 1, 'Tetrahedron'], ['Rhombicuboctahedron', 1, 'Cuboctahedron'], ['Bicupola', 1, 'Rhombicuboctahedron']];  // (1 after, 0 before)
+  const moves = [['Cairo', 1, 'Squares'], ['Hexagons', 0, 'Triangles'], ['Tetrakis', 1, 'Hexagons'], ['Kites', 1, 'Triangles'], ['Penrose', 1, 'Kites'], ['Ammann', 1, 'Penrose'], ['Rhombs 12', 1, 'Ammann'], ['Rhombs 14', 1, 'Rhombs 12'], ['Flower 3', 1, 'Rhombs 14'], ['Flower 4', 1, 'Flower 3'], ['Flower 5', 1, 'Flower 4'], ['Flower 6', 1, 'Flower 5'], ['Flower 7', 1, 'Flower 6'], ['Flower 8', 1, 'Flower 7'], ['Flower 9', 1, 'Flower 8'], ['Flower 10', 1, 'Flower 9'], ['Mirror 7', 1, 'Flower 10'], ['Ring 7', 1, 'Mirror 7'], ['Ring 8', 1, 'Ring 7'], ['Ring 9', 1, 'Ring 8'], ['Ring 10', 1, 'Ring 9'], ['Ring 12', 1, 'Ring 10'], ['Hats', 1, 'Ring 12'], ['Spectre', 1, 'Hats'], ['Pinwheel', 1, 'Spectre'], ['Klein bottle', 1, 'Möbius strip'], ['Sphere', 0, 'Tetrahedron'], ['Hexagons', 1, 'Kites'], ['Cuboctahedron', 0, 'Torus'], ['Pyramid', 1, 'Tetrahedron'], ['Rhombicuboctahedron', 1, 'Cuboctahedron'], ['Bicupola', 1, 'Rhombicuboctahedron']];  // (1 after, 0 before)
   for (const [shape, after, other] of moves) for (const g of first.filter((x) => x.endsWith(`,${shape}`))) {
     const o = g.slice(0, -shape.length) + other;
     if (!first.includes(o)) continue;
@@ -2734,7 +2732,7 @@ for (const kind of Object.keys(TILINGS)) ICONS[`tiling-${kind}`] = tilingIcon(ki
 const SHAPE_GROUPS = [['Circles · Walls only', (k) => !!APERIODIC[k]], ['Natural squares', (k) => PATTERN_TURNS[k] % 4 === 0 || TILINGS[k]?.turns === 4],
                       ['Rectangle torus · Walled hexagon', (k) => [3, 6].includes(TILINGS[k]?.turns ?? PATTERN_TURNS[k])], ['Parallelograms', () => true]];
 const shapeGroup = (kind) => SHAPE_GROUPS.find(([, is]) => is(kind))[0];
-const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Rhombs 14': 'rhombs14', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Flower 9': 'flower9', 'Flower 10': 'flower10', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 10': 'ring10', 'Ring 12': 'ring12', Hyperbolic: 'hyperbolic', Cubes: 'cube', Diamond: 'tetrahedron',
+const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon', Cairo: 'pentagons', Kites: 'kites', Hats: 'hat', Penrose: 'penrose', Pinwheel: 'pinwheel', Spectre: 'spectre', Ammann: 'ammann', 'Rhombs 12': 'rhombs12', 'Rhombs 14': 'rhombs14', 'Flower 6': 'flower', 'Flower 5': 'flower5', 'Flower 7': 'flower7', 'Mirror 7': 'mirror7', 'Flower 3': 'flower3', 'Flower 4': 'flower4', 'Flower 8': 'flower8', 'Flower 9': 'flower9', 'Flower 10': 'flower10', 'Ring 7': 'ring7', 'Ring 8': 'ring8', 'Ring 9': 'ring9', 'Ring 10': 'ring10', 'Ring 12': 'ring12', Cubes: 'cube', Diamond: 'tetrahedron',
   Cube: 'cube', Torus: 'torus', 'Möbius strip': 'mobius', Tetrahedron: 'tetrahedron', Octahedron: 'octahedron', 'Stella octangula': 'stella',
   Dodecahedron: 'dodecahedron', Cuboctahedron: 'cubocta', Pyramid: 'pyramid', Rhombicuboctahedron: 'rhombi', Bicupola: 'bicupola', Sphere: 'icosahedron', Pits: 'pits', Bumps: 'bumps', Frame: 'frame', Sponge: 'menger', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
@@ -6722,7 +6720,7 @@ const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]))
 // triangles turned by half a turn is itself (Cairo pentagons: none of their own)
 const SYMMETRIES = { none: ['symNone', 'None', ''], mirror: ['symMirror', 'Mirror', 'mirrored'], rotate: ['symRotate', 'Rotate', 'turning'],
                      kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic'], half: ['symHalf', 'Half turn', 'turned by half a turn'] };
-const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'], kite: ['none'], hat: ['none'], penrose: ['none'], pinwheel: ['none'], spectre: ['none'], ammann: ['none'], rhombs12: ['none'], rhombs14: ['none'], flower: ['none'], flower5: ['none'], flower7: ['none'], mirror7: ['none'], flower3: ['none'], flower4: ['none'], flower8: ['none'], flower9: ['none'], flower10: ['none'], ring7: ['none'], ring8: ['none'], ring9: ['none'], ring10: ['none'], ring12: ['none'], hyperbolic: ['none'] };
+const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'], kite: ['none'], hat: ['none'], penrose: ['none'], pinwheel: ['none'], spectre: ['none'], ammann: ['none'], rhombs12: ['none'], rhombs14: ['none'], flower: ['none'], flower5: ['none'], flower7: ['none'], mirror7: ['none'], flower3: ['none'], flower4: ['none'], flower8: ['none'], flower9: ['none'], flower10: ['none'], ring7: ['none'], ring8: ['none'], ring9: ['none'], ring10: ['none'], ring12: ['none'] };
 for (const kind of Object.keys(TILINGS)) PLANE_SYMMETRIES[kind] = ['none'];
 const symmetryOf = (kind) => (PLANE_SYMMETRIES[kind].includes(plane.sym) ? plane.sym : 'none');
 // a cell and its copies under the grid's symmetry (index y × row + x)
@@ -6741,7 +6739,7 @@ const ROOT3_2 = Math.sqrt(3) / 2;
 // sizes, see SIDES), its cells regular: triangles 2 a rhombus, Cairo pentagons 2 a square (an even side, so
 // that it wraps round), kites 6 a rhombus (on triangles twice as big)
 const planeTorus = (kind) => plane.torus && !APERIODIC[kind];  // hats and Penrose's rhombi never wrap round: they never repeat
-const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, rhombs14: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, flower9: 1, flower10: 1, ring7: 1, ring8: 1, ring9: 1, ring10: 1, ring12: 1, hyperbolic: 1 };
+const PLANE_PER = { square: 1, hex: 1, tri: 2, cairo: 2, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, rhombs14: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, flower9: 1, flower10: 1, ring7: 1, ring8: 1, ring9: 1, ring10: 1, ring12: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_PER[kind] = t.polys.length;
 // (a grid that never repeats, in a circle: its size its diameter, its W² cells as many as the disc's, π side² / 4)
 const sideW = (kind, side) => (kind === 'cairo' ? 2 * Math.round(side / Math.SQRT2 / 2) : APERIODIC[kind] ? Math.round((side * Math.sqrt(Math.PI)) / 2) : Math.round(side / Math.sqrt(PLANE_PER[kind] * (RECT_ASPECT[kind] ?? 1))));  // (a rectangle's: W rows of W × its aspect motifs, see planeCols)
@@ -7213,103 +7211,12 @@ function HOUSES(n) {
     return discPatch(items, W, [0, 0]);
   });
 }
-/* The hyperbolic plane: Poincaré's disc tiled by regular heptagons, three at each corner ({7,3}, Escher's Circle Limit's kind), its
- * edges drawn straight (the geodesics' arcs between their corners). Built ring by ring round the middle heptagon: the rings so
- * far are bounded by a loop of corners, each of one heptagon inside it (an edge goes out from it) or two (none); between two
- * corners of one, the next ring's heptagon: the mirror image of the heptagon inside across the loop's first edge between them
- * (the tiling is its own mirror across any edge), its corners on the loop as they are, the others new; its outer side the next
- * loop (its ends shared with the heptagons on either side, of two; the corners between, of one). Each corner made once, and
- * numbered so (its cells' neighbours by these numbers, never by where they lie: the outer ones a thousandth across and less).
- * A ring about 2.6 times the one before (1, 7, 21, 56, 147, 385, 1,008…), made as far as asked. The grid of side W: its whole
- * rings, then the nearest of the next to make W² (those as near as the last of them: of the wall, as a ring's on the other
- * circles), in W bands from the top, each by x; its walls, the rest of that ring and the heptagons of the next on a live
- * one; a disc ⌀ 2W / √π as the other circles (its edge, the heptagons' limit, never reached) */
-const HYPERBOLIC = (() => {
-  const P = 7, r0 = Math.tanh(Math.acosh(1 / Math.tan(Math.PI / P) / Math.tan(Math.PI / 3)) / 2);  // (the middle heptagon's corners: cosh ρ = cot(π/7) cot(π/3))
-  // z across the geodesic through a and b (the disc moved: a to its middle, b on the real line; there, mirrored; moved back)
-  const mirror = (ax, ay, bx, by, zx, zy) => {
-    const to0 = (qx, qy) => { const nx = qx - ax, ny = qy - ay, dx = 1 - (ax * qx + ay * qy), dy = ay * qx - ax * qy, d = dx * dx + dy * dy; return [(nx * dx + ny * dy) / d, (ny * dx - nx * dy) / d]; };
-    const [tx, ty] = to0(bx, by), ux = tx * tx - ty * ty, uy = 2 * tx * ty, n = Math.hypot(ux, uy), [wx0, wy0] = to0(zx, zy), wx = (ux * wx0 + uy * wy0) / n, wy = (uy * wx0 - ux * wy0) / n;
-    const nx = wx + ax, ny = wy + ay, dx = 1 + ax * wx + ay * wy, dy = ax * wy - ay * wx, d = dx * dx + dy * dy;
-    return [(nx * dx + ny * dy) / d, (ny * dx - nx * dy) / d];
-  };
-  // the rings made so far: corners (x, y on the unit disc, by number), heptagons (7 corners each, counterclockwise), each ring's
-  // first heptagon, and the loop round each ring and those inside it (its corners, of one heptagon inside or not, the heptagon
-  // of the edge from each, where in it)
-  let xy = new Float64Array(1024), nc = 0, hept = new Int32Array(1024), nh = 0;
-  const firsts = [0, 1], loops = [];
-  const corner = (x, y) => { if (2 * nc + 2 > xy.length) { const m = new Float64Array(2 * xy.length); m.set(xy); xy = m; } xy[2 * nc] = x; xy[2 * nc + 1] = y; return nc++; };
-  const C = (h, k) => hept[P * h + (k % P)];
-  // the next ring round the loop: each heptagon given to made(its corners' numbers, the loop's edges i … i + m under it) when
-  // keep(i, m) says so (the walls': on a live one only); its corners new through corner (the walls': their places only)
-  function ring(loop, keep, made, make) {
-    const { c, one, h, at } = loop, n = c.length, ones = [];
-    for (let i = 0; i < n; i++) if (one[i]) ones.push(i);
-    const across = (i, s) => { const a = C(h[i], at[i]), b = C(h[i], at[i] + 1), z = C(h[i], at[i] + s); return mirror(xy[2 * a], xy[2 * a + 1], xy[2 * b], xy[2 * b + 1], xy[2 * z], xy[2 * z + 1]); };
-    const out = new Map(), outOf = (f) => out.get(f) ?? out.set(f, make(...across(ones[f], P - 1))).get(f);  // (an outgoing edge's far end, made once)
-    ones.forEach((i, f) => {
-      const m = (ones[(f + 1) % ones.length] - i + n) % n || n;
-      if (!keep(i, m)) return;
-      const fresh = [];
-      for (let s = P - 2; s >= m + 2; s--) fresh.push(make(...across(i, s)));
-      const cs = [c[i], outOf(f), ...fresh, outOf((f + 1) % ones.length)];
-      for (let s = 0; s < m; s++) cs.push(c[(i + m - s) % n]);
-      made(cs, fresh);
-    });
-  }
-  const rings = (count) => {  // whole rings, till they hold count heptagons
-    if (!nh) {
-      for (let k = 0; k < P; k++) hept[k] = corner(r0 * Math.cos(Math.PI / 2 + (2 * Math.PI * k) / P), r0 * Math.sin(Math.PI / 2 + (2 * Math.PI * k) / P));
-      nh = 1;
-      loops.push({ c: hept.slice(0, P), one: new Uint8Array(P).fill(1), h: new Int32Array(P), at: Int32Array.from({ length: P }, (_, k) => k) });
-    }
-    while (nh < count) {
-      const c = [], one = [], h = [], at = [];
-      ring(loops.at(-1), () => true, (cs, fresh) => {
-        if (P * nh + P > hept.length) { const m = new Int32Array(2 * hept.length); m.set(hept); hept = m; }
-        hept.set(cs, P * nh);
-        c.push(cs[1], ...fresh); one.push(0, ...fresh.map(() => 1)); h.push(nh, ...fresh.map(() => nh)); at.push(1, ...fresh.map((_, s) => 2 + s));
-        nh++;
-      }, corner);
-      loops.push({ c: Int32Array.from(c), one: Uint8Array.from(one), h: Int32Array.from(h), at: Int32Array.from(at) });
-      firsts.push(nh);
-    }
-  };
-  return discMemo((W) => {
-    const N = W * W;
-    rings(N);
-    const k = firsts.findIndex((f) => f >= N) - 1, R = W / Math.sqrt(Math.PI), o = (W - 1) / 2;
-    const mx = new Float64Array(firsts[k + 1]), my = new Float64Array(firsts[k + 1]);  // (its heptagons' middles, once)
-    for (let t = 0; t < mx.length; t++) for (let q = 0; q < P; q++) { mx[t] += xy[2 * C(t, q)] / P; my[t] += xy[2 * C(t, q) + 1] / P; }
-    const far = (t) => Math.hypot(mx[t], my[t]);
-    // its last ring's nearest, those as near as the last of them (to 10⁻¹²) of the wall
-    const last = Array.from({ length: firsts[k + 1] - firsts[k] }, (_, j) => firsts[k] + j).sort((a, b) => far(a) - far(b)), cut = N - firsts[k];
-    let live = cut;
-    while (live > 0 && live < last.length && far(last[live]) - far(last[live - 1]) < 1e-12) live--;
-    const cells = Int32Array.from([...Array.from({ length: firsts[k] }, (_, t) => t), ...last.slice(0, cut)]).sort((a, b) => my[a] - my[b]), rows = [];
-    for (let y = 0; y < W; y++) rows.push(...cells.subarray(y * W, (y + 1) * W).sort((a, b) => mx[a] - mx[b]));
-    const dead = new Set(last.slice(live, cut)), on = new Uint8Array(nc), alive = new Uint8Array(nh);
-    for (const t of rows) if (!dead.has(t)) { alive[t] = 1; for (let q = 0; q < P; q++) on[C(t, q)] = 1; }
-    // its polygons: the cells, then the walls (that ring's others on a live one, the next ring's on a live one); a cell's corners by number
-    const cs = [], walls = [];  // (its polygons' corners, 7 each, flat; a wall's own corners by their places, numbered −1, −2…)
-    for (const t of rows) for (let q = 0; q < P; q++) cs.push(C(t, q));
-    for (const t of last.slice(cut)) { let touch = false; for (let q = 0; q < P; q++) touch ||= !!on[C(t, q)]; if (touch) for (let q = 0; q < P; q++) cs.push(C(t, q)); }
-    const L = loops[k];
-    ring(L, (i, m) => { for (let s = 0; s < m; s++) if (alive[L.h[(i + s) % L.c.length]]) return true; return false; }, (h) => cs.push(...h), (x, y) => -(walls.push(x, y) / 2));
-    const m = cs.length / P, start = Int32Array.from({ length: m + 1 }, (_, j) => P * j), flat = new Float64Array(2 * cs.length);
-    cs.forEach((c, i) => { flat[2 * i] = R * (c >= 0 ? xy[2 * c] : walls[-2 - 2 * c]) + o; flat[2 * i + 1] = R * (c >= 0 ? xy[2 * c + 1] : walls[-1 - 2 * c]) + o; });
-    const F = flatPolys(m, start, flat), cid = Int32Array.from(cs.slice(0, P * N));
-    let area = 0;
-    for (let t = 0; t < N; t++) area += polyArea(F.poly(t));
-    return { ...F, cid, dead: rows.flatMap((t, j) => (dead.has(t) ? [j] : [])), core: [F.poly(rows.indexOf(0))], norm: Math.hypot, width: Math.sqrt(area / N) };
-  });
-})();
 // the rosettes offered: Hirschhorn's flower (6-fold, its middle as drawn), the 3-, 4-, 5-, 7- and 8-fold (from their stars), the
 // 7- and 8-fold rings (round a hole)
 const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: [5, ROSETTE(5)], flower: [6, ROSETTE(6, HIRSCHHORN)], flower7: [7, ROSETTE(7)], flower8: [8, ROSETTE(8)], flower9: [9, ROSETTE(9)], flower10: [10, ROSETTE(10)], mirror7: [7, HOUSES(7)],
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
-const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, hyperbolic: HYPERBOLIC, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
+const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
 // Life's grids in their spaces (see SPACES): the plane's round ones (these) or the others; the surfaces' sheets or solids
 for (const [w, n] of Object.entries(NAV)) if (n[0] === 'Life') n[1] = n[1] === '2D' ? (APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares') : SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
@@ -7348,7 +7255,7 @@ function planeCellAt(kind, W, wx, wy, how = 'in') {
     }
     return null;
   }
-  if (APERIODIC[kind]) {  // the tile holding it among those in its square of 2 (each tile in every square its box covers: the hyperbolic disc's, big and small)
+  if (APERIODIC[kind]) {  // the tile holding it among those in its square of 2 (each tile in every square its box covers)
     const F = APERIODIC[kind](W), near = tilesNear.get(F) ?? tilesNear.set(F, new Map()).get(F), key = (i, j) => i * 67108864 + j;
     if (!near.size) for (let t = 0; t < W * W; t++) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -7576,7 +7483,7 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
       : kind === 'tri' ? (x & 1 ? [[(x >> 1) + 1, y], [(x >> 1) + 1, y + 1], [x >> 1, y + 1]] : [[x >> 1, y], [(x >> 1) + 1, y], [x >> 1, y + 1]])
         : tilingOf(kind) ? tilingAt(kind, x, y) : kind === 'kite' ? kiteCorners(x, y) : cairoCorners(x >> 1, y, x & 1));  // (kites: on the triangles' lattice; a grid that never repeats: its own, flat)
   // a corner's id: squares, triangles and hexagons have theirs on a grid of 1/q units, numbered in an array; the others
-  // by a map (their corners to 1/1000; the hyperbolic plane's, by their numbers as made)
+  // by a map (their corners to 1/1000)
   const q = { square: 1, tri: 1, hex: 3 }[kind] ?? 1000, P = [(row / (PER_RHOMBUS[kind] ?? 1)) * q, W * q], S = Math.max(...P) + 4 * q;
   const r = (a, d) => { const k = Math.round(a * q); return torus ? ((k % P[d]) + P[d]) % P[d] : k + 2 * q; };
   const F = APERIODIC[kind]?.(W), byGrid = q < 1000 ? new Int32Array(S * S).fill(-1) : null, byMap = new Map(), cStart = new Int32Array(n + 1), cList = [];
@@ -7589,8 +7496,7 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
   };
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) {
     const t = y * row + x;
-    if (F?.cid) for (let i = F.start[t]; i < F.start[t + 1]; i++) { const c = F.cid[i]; let id = byMap.get(c); if (id === undefined) byMap.set(c, (id = nv++)); cList[at++] = id; }  // (corners numbered as made: the hyperbolic plane's)
-    else if (F) for (let i = F.start[t]; i < F.start[t + 1]; i++) add(F.xy[2 * i], F.xy[2 * i + 1]);
+    if (F) for (let i = F.start[t]; i < F.start[t + 1]; i++) add(F.xy[2 * i], F.xy[2 * i + 1]);
     else for (const [u, v] of cornersOf(x, y)) add(u, v);
     cStart[t + 1] = at;
   }
@@ -7692,7 +7598,7 @@ function planeReseed() {
   autoplay();
   syncLink();
 }
-const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons', kite: 'kites', hat: 'hats', penrose: 'rhombi', pinwheel: 'triangles', spectre: 'spectres', ammann: 'squares and rhombi', rhombs12: 'squares and rhombi', rhombs14: 'rhombi', flower: 'pentagons', flower5: 'pentagons', flower7: 'pentagons', mirror7: 'pentagons', flower3: 'pentagons', flower4: 'pentagons', flower8: 'pentagons', flower9: 'pentagons', flower10: 'pentagons', ring7: 'pentagons', ring8: 'pentagons', ring9: 'pentagons', ring10: 'pentagons', ring12: 'pentagons', hyperbolic: 'heptagons' };
+const PLANE_CELLS = { square: 'squares', hex: 'hexagons', tri: 'triangles', cairo: 'Cairo pentagons', kite: 'kites', hat: 'hats', penrose: 'rhombi', pinwheel: 'triangles', spectre: 'spectres', ammann: 'squares and rhombi', rhombs12: 'squares and rhombi', rhombs14: 'rhombi', flower: 'pentagons', flower5: 'pentagons', flower7: 'pentagons', mirror7: 'pentagons', flower3: 'pentagons', flower4: 'pentagons', flower8: 'pentagons', flower9: 'pentagons', flower10: 'pentagons', ring7: 'pentagons', ring8: 'pentagons', ring9: 'pentagons', ring10: 'pentagons', ring12: 'pentagons' };
 for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 // the description's lead: how the cells start, on which grid
 // a zone of the hunt, a random start in it, in words
@@ -7713,7 +7619,7 @@ function planeLead(number) {
   if (lifeStart?.radius) return `${number} the ${fmt(lifeStart.cells)} cells within radius ${lifeStart.radius} of the middle of a ${side} × ${side} grid of ${PLANE_CELLS[kind]}, the others dead`;
   if (found) return `${found} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}`;
   const how = { random: `A random soup, ${soup}${walk.life.colours > 1 ? `, each colour in its part (${COLOUR_PARTS[walk.life.colours]})` : ''},`, draw: `${fmt(walk.life.seedAlive)} cells drawn`, digits: `${number} the cells`, text: `“${plane.text}” drawn` }[plane.start].replace(/,?$/, sym ? `, ${sym},` : '$&');
-  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', hyperbolic: ' (the hyperbolic plane on Poincaré\'s disc: three at each corner, ever smaller towards its edge)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
+  return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
   if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side)
@@ -7910,7 +7816,7 @@ function drawPlaneGrid() {
   drawSky(layers.grid);
 }
 // A grid's turns: a pattern turns by a quarter on squares and Cairo pentagons, a sixth on hexagons and triangles
-const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, rhombs14: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, flower9: 1, flower10: 1, ring7: 1, ring8: 1, ring9: 1, ring10: 1, ring12: 1, hyperbolic: 1 };
+const PATTERN_TURNS = { square: 4, hex: 6, tri: 6, cairo: 4, kite: 6, hat: 1, penrose: 1, pinwheel: 1, spectre: 1, ammann: 1, rhombs12: 1, rhombs14: 1, flower: 1, flower5: 1, flower7: 1, mirror7: 1, flower3: 1, flower4: 1, flower8: 1, flower9: 1, flower10: 1, ring7: 1, ring8: 1, ring9: 1, ring10: 1, ring12: 1 };
 for (const [kind, t] of Object.entries(TILINGS)) PATTERN_TURNS[kind] = t.turns;
 const PER_RHOMBUS = { tri: 2, cairo: 2, kite: 6 };
 for (const [kind, t] of Object.entries(TILINGS)) PER_RHOMBUS[kind] = t.polys.length;  // a row's cells per step along it (a square of Cairo pentagons): patterns move by whole ones
@@ -8277,7 +8183,7 @@ const SURFACE_CELLS = { cube: '■', pits: '■', bumps: '■', frame: '■', me
                         torusCairo: '⬠', mobiusCairo: '⬠', kleinCairo: '⬠', ...Object.fromEntries(hexSolids.map((k) => [`${k}Hex`, '⬡'])), ...Object.fromEntries(Object.keys(TETRAKIS_SOLIDS).map((k) => [`${k}Tetrakis`, '◩'])), torusKite: '◆', mobiusKite: '◆', kleinKite: '◆', torusKiteTurned: '◆', mobiusKiteTurned: '◆', kleinKiteTurned: '◆', kleinHexTurned: '⬡', kleinTriTurned: '▲', tetraKite: '◆', octaKite: '◆', icosaKite: '◆', stellaKite: '◆', dodecaKite: '◆', cubocta: '◈', pyramid: '◈', rhombi: '◈', bicupola: '◈' };
 for (const [s, { kind }] of Object.entries(FOLDED)) SURFACE_CELLS[s] = TILINGS[kind].mark;
 // each plane's mark (its rules', see the rule menu), and the plane of a mark
-const PLANE_MARKS = { ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [k, t.mark])), square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈', hyperbolic: '✪' };
+const PLANE_MARKS = { ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [k, t.mark])), square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' };
 const PLANE_OF_MARK = Object.fromEntries(Object.entries(PLANE_MARKS).map(([k, m]) => [m, k]));
 const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
@@ -8362,7 +8268,7 @@ const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5:
 // with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
 // 1), on a torus any (its blocks); on a
 // solid, its fair spots (see colouring); on a torus, blocks that divide it; on a Möbius strip, any
-const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, rhombs14: 14, penrose: 5, hat: 1, spectre: 1, pinwheel: 1, hyperbolic: 7 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
+const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, rhombs14: 14, penrose: 5, hat: 1, spectre: 1, pinwheel: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
 // (twice a fair count: each part halved, 2 4 giving 8, 5 10, 3 6 12; 3 without 6, thrice: 9, each third in 3)
 const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g)) || (K === 9 && colourFairOwn(3, g) && !colourFairOwn(6, g));
 const colourFairOwn = (K, g) => {
@@ -8370,7 +8276,7 @@ const colourFairOwn = (K, g) => {
   if (K === 1) return true;
   if (kind && (planeTorus(kind) || figureTurns(kind) === 1)) return true;  // (a torus: blocks of its side, see colourW, all alike; no turns, a hat's, a spectre's or a pinwheel's circle, as many cells each, see planeSlices)
   if (kind) {
-    const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'rhombs12', 'rhombs14', 'penrose', 'hyperbolic'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
+    const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'rhombs12', 'rhombs14', 'penrose'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
     return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
   }
   if (solidCounts(mode?.sphere)) return solidCounts(mode.sphere).includes(K);
@@ -8402,7 +8308,7 @@ function renderColours() {
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
 // what it is known for: "o" alive, "+" dying); then your own, as chips (how many live neighbours give
 // birth, let survive) and the states, and the rule as text
-const NEIGHBOURS = { '◈': 12, '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '◺': 17, '✺': 7, '✵': 12, '❄': 12, '❅': 16, '❀': 8, '✾': 8, '✽': 10, '❊': 10, '✸': 7, '✷': 7, '✹': 11, '❇': 7, '✲': 7, '✻': 7, '✴': 7, '❈': 7, '✪': 7 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
+const NEIGHBOURS = { '◈': 12, '■': 8, '⬡': 6, '▲': 12, '⬠': 7, '◆': 9, '🎩': 7, '✧': 11, '◺': 17, '✺': 7, '✵': 12, '❄': 12, '❅': 16, '❀': 8, '✾': 8, '✽': 10, '❊': 10, '✸': 7, '✷': 7, '✹': 11, '❇': 7, '✲': 7, '✻': 7, '✴': 7, '❈': 7 };  // (hats: 6 or 7, a few 4 or 5; Penrose's rhombi: 7 to 11, a few fewer)
 for (const t of Object.values(TILINGS)) NEIGHBOURS[t.mark] = t.most;
 const RULE_ICONS = {
   'B3/S23': '.....,..o..,...o.,.ooo.', 'B36/S23': '..ooo,.o..o,o...o,o..o.,ooo..', 'B3678/S34678': 'ooooo,oo.oo,o...o,oo.oo,ooooo',
@@ -8464,8 +8370,6 @@ const RULE_ICONS = {
   'B39/S3457/C4': '.....,..o..,.+o+.,..+..,.....',  // (Rhombs 12 embers)
   'B378/S023': '.....,.o.o.,..o..,.o.o.,.....',  // (Rhombs 14 Life)
   'B26/S034/C4': '.....,..o..,.+o+.,..+..,.....',  // (Ring 10 embers)
-  'B236/S67': '.....,.o.o.,..o..,.o.o.,.....',  // (Hyperbolic Life: oscillators)
-  'B256/S024/C5': '.....,..o..,.+o+.,..+..,.....',  // (Hyperbolic embers)
   'B389/S1345/C5': '.....,..o..,.+o+.,..+..,.....',  // (Rhombs 14 embers)
   'B389/S0168': '.....,..o..,.o.o.,..o..,.....',  // (Pinwheel sparks)
   'B346/S0124': 'o...o,.o.o.,.....,.o.o.,o...o',  // (Hex war: thin)

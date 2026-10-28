@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261129v">
+  <link rel="stylesheet" href="style.css?v=20261129w">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -239,7 +239,6 @@
               <option value="life2dRing9">Life — a 9-fold ring of pentagons round a hole</option>
               <option value="life2dRing10">Life — a 10-fold ring of pentagons</option>
               <option value="life2dRing12">Life — a 12-fold ring of pentagons round a hole</option>
-              <option value="life2dHyperbolic">Life — the hyperbolic plane: heptagons on Poincaré's disc</option>
               <option value="life2dRhombille">Life — rhombille grid</option>
               <option value="life2dRhombitri">Life — rhombitrihexagonal grid</option>
               <option value="life2dFloret">Life — floret pentagons grid</option>
@@ -590,8 +589,6 @@
             <option value="B27/S0345/C5" data-name="Ring 10 sparks">✴ B27/S0345/C5 — soups settling after 218 to over 6,000 generations (3.27 % alive at the end), oscillators in two thirds of their ash (5 states)</option>
             <option value="B2/S0345/C5" data-name="Ring 12 sparks">❈ B2/S0345/C5 — soups settling after 439 to over 6,000 generations (3.71 % alive at the end), oscillators in 58 % of their ash (5 states)</option>
             <option value="B257/S0346/C4" data-name="Ring 12 embers">❈ B257/S0346/C4 — soups settling after 355 to 3,188 generations (3.25 % alive at the end), no oscillator in their ash (4 states)</option>
-            <option value="B236/S67" data-name="Hyperbolic Life">✪ B236/S67 — soups settling after 314 to 1,204 generations (1.49 % alive at the end), oscillators in all their ash</option>
-            <option value="B256/S024/C5" data-name="Hyperbolic embers">✪ B256/S024/C5 — soups settling after 115 to 2,625 generations (4.25 % alive at the end), oscillators in 83 % of their ash (5 states)</option>
             <option value="B356/S0345/C4" data-name="Ammann Life">✵ B356/S0345/C4 — soups settling after 336 to 1,174 generations (2.56 % alive at the end), oscillators in 25 % of their ash (4 states)</option>
             <option value="B2v024v03/S0347" data-name="Ammann duels">✵ B2v024v03/S0347 — battles turning round more than Life's: 4 changes of the lead a duel (Life: 3), soups settling after 580 generations or so (2 states)</option>
             <option value="B38/S013" data-name="Ammann blinkers">✵ B38/S013 — soups settling after 316 to 1,261 generations (4.83 % alive at the end), oscillators in 100 % of their ash (2 states)</option>
@@ -749,9 +746,9 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261129v"></script>
-  <script src="punks.js?v=20261129v"></script>
-  <script src="emoji.js?v=20261129v"></script>
-  <script src="main.js?v=20261129v"></script>
+  <script src="pixelarticons.js?v=20261129w"></script>
+  <script src="punks.js?v=20261129w"></script>
+  <script src="emoji.js?v=20261129w"></script>
+  <script src="main.js?v=20261129w"></script>
 </body>
 </html>
