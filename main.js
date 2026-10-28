@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1460';
+const VERSION = '0.1.1461';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1550,9 +1550,9 @@ function relabelColours(mode) {
 
 // Choices as buttons clicked directly (colours, sky); the (hidden) menu stays the source of truth
 // buttons joined in one frame, one choice among them (see .tile-group)
-function tileGroup(buttons) {
+function tileGroup(buttons, wide = false) {  // (wide: across its row, whatever its count, see .tile-group.wide: a section's big choice)
   const g = document.createElement('div');
-  g.className = 'tile-group';
+  g.className = wide ? 'tile-group wide' : 'tile-group';
   g.append(...buttons);
   return g;
 }
@@ -2717,8 +2717,9 @@ const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'an
 // in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Lattice"
 // the spaces, in turn, each its name and picture (Life's 4: its plane's grids that repeat, walls in a hexagon too, and its
 // round ones, never repeating; its solids, its surfaces: a sheet rolled up; see APERIODIC)
-const SPACES = { '2D': ['2D', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'], Surfaces: ['3D', 'cube'],
+const SPACES = { '2D': ['2D infinite', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'], Surfaces: ['3D', 'cube'],
                  '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Lattice', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
+const SPACES_GREYED = { Reversible: { '3D surfaces': 'in Reversible: its blocks on the plane only, for now' } };  // (a space it has not: greyed, why in its tooltip)
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
 function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
@@ -2912,7 +2913,8 @@ function renderModePicker() {
     + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Lattice)
   const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
-  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp)))));
+  const spaces = navValues(1, [kind]), greyed = SPACES_GREYED[kind] ?? {};
+  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => spaces.includes(sp) || greyed[sp]).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp), '', { can: spaces.includes(sp), greyed: greyed[sp] })), true));
   // the shapes, as pictures with their (short) names
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
