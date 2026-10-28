@@ -195,7 +195,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 
 ## Features
 
-- **Tabs** (top): the **Gallery**, then **Life**, **Ant** and **Walk**; under them their spaces: Life's and Reversible's 2D squares, 2D circles, 3D solids and 3D surfaces; Ant's and Walk's 2D infinite, 3D (the surfaces) and Lattice (a 3D lattice). Hover the Gallery to open it in the left pane, click it to keep it open.
+- **Tabs** (top): the **Gallery**, then **Life**, **Ant** and **Walk**; under them their spaces: Life's and Reversible's 2D squares, 2D circles, 3D solids and 3D surfaces; Ant's and Walk's 2D infinite, 3D solids, 3D surfaces and, Walk's, Lattice (a 3D lattice). Hover the Gallery to open it in the left pane, click it to keep it open.
   - **Treasures**: your setups, kept in this browser only, grouped as the tabs (Life, Ant, Walk). ☆ saves the setup in view (yellow while it is one of them), × deletes one, and the two arrows import or export them as a JSON file. On a first visit they hold a curated choice (rosettes, loops on surfaces, classics), yours to delete.
   - Hovering a setup shows it in the view, leaving the list brings back the one in use, a click keeps it and opens its parameters.
 - **Play card** (bottom left): the number, its loop (`↻`) and base, a step slider, ⏮ and ▶︎ play / pause.

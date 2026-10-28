@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1461';
+const VERSION = '0.1.1462';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2714,10 +2714,10 @@ MODE_ICONS.lifeFrame = 'frame';
   for (const [w, n] of sorted) NAV[w] = n;
 }
 const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
-// in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Lattice"
-// the spaces, in turn, each its name and picture (Life's 4: its plane's grids that repeat, walls in a hexagon too, and its
-// round ones, never repeating; its solids, its surfaces: a sheet rolled up; see APERIODIC)
-const SPACES = { '2D': ['2D infinite', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'], Surfaces: ['3D', 'cube'],
+// the spaces, in turn, each its name and picture: a walk's or an ant's plane without an edge; Life's grids on the plane, those
+// that repeat (walls in a hexagon too) and its round ones, never repeating (see APERIODIC); everyone's solids, and surfaces
+// (a sheet rolled up); the walks through a 3D lattice
+const SPACES = { '2D': ['2D infinite', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'],
                  '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Lattice', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
 const SPACES_GREYED = { Reversible: { '3D surfaces': 'in Reversible: its blocks on the plane only, for now' } };  // (a space it has not: greyed, why in its tooltip)
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
@@ -2919,7 +2919,7 @@ function renderModePicker() {
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
   // then the surfaces (a sheet rolled up: Torus, Möbius, Klein)
-  const shapes = navValues(2, [kind, space]), flat = space.startsWith('2D'), solid = space === 'Surfaces' || space.startsWith('3D ');
+  const shapes = navValues(2, [kind, space]), flat = space.startsWith('2D'), solid = space.startsWith('3D ');
   // (in 3D: the regular solids, the cubes carved, the solids of squares and triangles, the surfaces)
   const CARVED = ['Pits', 'Bumps', 'Frame', 'Sponge'], MIXED = ['Cuboctahedron', 'Rhombicuboctahedron', 'Bicupola', 'Pyramid'];
   const grouped = flat && shapes.length > 8, groupOf = (sh) => shapeGroup(planeOf(sh)), sheet = (sh) => SHEETS.includes(sh);
@@ -7238,8 +7238,12 @@ const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: 
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
-// Life's and Reversible's grids in their spaces (see SPACES): the plane's round ones (these) or the others; the surfaces' sheets or solids
-for (const [w, n] of Object.entries(NAV)) if (n[0] === 'Life' || n[0] === 'Reversible') n[1] = n[1] === '2D' ? (APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares') : SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
+// the grids in their spaces (see SPACES): Life's and Reversible's on the plane, its round ones (these) or the others; everyone's
+// surfaces, its sheets or its solids
+for (const [w, n] of Object.entries(NAV)) {
+  if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
+  else if (n[1] === '2D' && (n[0] === 'Life' || n[0] === 'Reversible')) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
+}
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
