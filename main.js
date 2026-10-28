@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1495';
+const VERSION = '0.1.1496';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9009,7 +9009,7 @@ function lifeTrack(gen) {
   const key = L.key;  // (the graphics card's)
   const first = L.seen.get(key);
   if (first === undefined) L.seen.set(key, gen);
-  else lifeFound(L, { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 });
+  else if (first !== gen) lifeFound(L, { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 });  // (played again from its start: its own, its record kept, see lifeReset)
 }
 
 // Blocks run back too: each state the only one before the next, so no lead-in on a finite grid, its first repeat the
