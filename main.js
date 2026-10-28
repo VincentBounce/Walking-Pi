@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1455';
+const VERSION = '0.1.1456';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8100,23 +8100,36 @@ const gridOutline = () => {  // (the grid's sides of one cell only, as keys: its
   for (let t = 0; t < W * row; t++) { const P = planeCorners(kind, t % row, Math.floor(t / row)); P.forEach((p, q) => { const k = [pointKey(...p), pointKey(...P[(q + 1) % P.length])].sort().join('|'); count.set(k, (count.get(k) ?? 0) + 1); }); }
   return (outlineMemo = { key, sides: new Set([...count].filter(([, c]) => c === 1).map(([k]) => k)) }).sides;
 };
+// a phase's blocks, their sides not shared within a block nor on the grid's outline: a path in the grid's units, made once
+// a grid and a rule (its phases in turn: 2 or 4 paths, drawn as they are at each generation)
+let blockPathsMemo = null;
+const blockPaths = (M) => {
+  const { kind, W, row } = walk.plane, key = `${kind}|${W}|${row}`;
+  if (blockPathsMemo?.M === M && blockPathsMemo.key === key) return blockPathsMemo.paths;
+  const outline = gridOutline(), paths = M.turns.map((blocks) => {
+    const path = new Path2D();
+    for (let i = 0; i < blocks.length; i += M.k) {
+      const sides = new Map();
+      for (let j = i; j < i + M.k; j++) {
+        const t = blocks[j], P = planeCorners(kind, t % row, Math.floor(t / row));
+        P.forEach((p, q) => { const r = P[(q + 1) % P.length], k = [pointKey(...p), pointKey(...r)].sort().join('|'); sides.set(k, sides.has(k) ? null : [p, r]); });
+      }
+      for (const [k, side] of sides) if (side && !outline.has(k)) { path.moveTo(...side[0]); path.lineTo(...side[1]); }
+    }
+    return path;
+  });
+  return (blockPathsMemo = { M, key, paths }).paths;
+};
 function drawBlocks(ctx) {
   const M = walk.life?.margolus;
   if (!showBlocks || !M || M.ising) return;
-  const { kind, row } = walk.plane, { scale: s, ox, oy } = view, blocks = M.turns[cur % M.turns.length], outline = gridOutline();
+  const { scale: s, ox, oy } = view;
   turnLayer(ctx);
+  ctx.translate(ox, oy);
+  ctx.scale(s, s);
   ctx.strokeStyle = cssColour('--sector');
-  ctx.lineWidth = Math.max(1, Math.min(s / 8, 3));
-  ctx.beginPath();
-  for (let i = 0; i < blocks.length; i += M.k) {
-    const sides = new Map();
-    for (let j = i; j < i + M.k; j++) {
-      const t = blocks[j], P = planeCorners(kind, t % row, Math.floor(t / row));
-      P.forEach((p, q) => { const r = P[(q + 1) % P.length], key = [pointKey(...p), pointKey(...r)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, r]); });
-    }
-    for (const [key, side] of sides) if (side && !outline.has(key)) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
-  }
-  ctx.stroke();
+  ctx.lineWidth = Math.max(1, Math.min(s / 8, 3)) / s;
+  ctx.stroke(blockPaths(M)[cur % M.turns.length]);
   turnLayer(ctx, 0);
 }
 // The grid's motif, outlined in violet while its size is hovered: what repeats, the sides of its cells not shared by two of
