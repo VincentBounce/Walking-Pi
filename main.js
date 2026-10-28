@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1435';
+const VERSION = '0.1.1436';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1316,7 +1316,7 @@ function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
   if (mode.life) return plane.start !== 'digits' ? 256 : mode.plane ? gridSize(planeKind(mode.plane), plane.side)[2] : SPHERES[surfaceOf(mode)].tiles(sphereSize());  // all the digits for a start by the digits (a cell each); else a hunt's patch
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
-  return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
+  return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : targetAsked();
 }
 
 // The Play card says what is shown: its title the number, the loop and the base; open, the walk and
@@ -1749,10 +1749,11 @@ const renderSkyButtons = () => {
   $('themeButtons').prepend(skyButton);  // first, before the themes
 };
 
-function requestedDigits() {
-  const n = Math.round(Number($('digits').value));
-  return Math.min(50_000_000, Math.max(10, n || 10));
-}
+// The length asked, one for every mode (the stepper under the player, d= in a link): a walk's digits (or steps), a reversible
+// rule's or Space-time's generations (gensShown); its ladder DIGIT_STEPS, generations up to 100,000
+let target = 20000;
+const targetMost = () => (gensShown() ? 100000 : 50_000_000);
+const targetAsked = () => Math.min(targetMost(), Math.max(10, Math.round(target) || 10));
 
 // The number of digits as a stepper, like the surface size: [ − ] 20,000 digits [ + ] goes through
 // DIGIT_STEPS and recomputes at once. The count can also be typed in the middle; any other count
@@ -1770,14 +1771,13 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 // The whole number in use, if any: its count of digits (in the field, not formulaInUse: while a new
 // number is read, that one is still the old)
 const wholeTotal = () => (current?.whole && current.formula === $('formula').value ? current.total : null);
-// A reversible one's length (its slider's, as a walk's digits), Space-time's height: [ − ] 2,000 generations [ + ], through
-// GEN_STEPS (the digits' own, to 100,000); going back, a reversible one plays again from its start; Space-time made again
-const GEN_STEPS = DIGIT_STEPS.filter((v) => v <= 100000);
+// In generations (a reversible one's length, its slider's; Space-time's height): [ − ] 2,000 generations [ + ]; going back, a
+// reversible one plays again from its start; Space-time made again
 const gensShown = () => !!MODES[$('mode').value].margolus || spaceTimeOn();
 function setGens(n) {
-  plane.gens = Math.min(GEN_STEPS.at(-1), Math.max(GEN_STEPS[0], Math.round(n) || 2000));
+  target = Math.min(targetMost(), Math.max(DIGIT_STEPS[0], Math.round(n) || 2000));
   if (spaceTimeOn()) { restart(); showAll(); }
-  else { walk.n = plane.gens; if (cur > walk.n) seekTo(walk.n); }
+  else { walk.n = target; if (cur > walk.n) seekTo(walk.n); }
   statsDirty = true;
   syncDigitsStepper();
   syncLink();
@@ -1785,13 +1785,13 @@ function setGens(n) {
 function syncDigitsStepper() {
   if (gensShown()) {  // (Space-time ended before: its generations max, and why, as a walk that loops)
     const end = spaceTimeOn() && stack?.end !== 'gens' ? STACK_ENDS[stack?.end] : null;
-    $('digitsLabel').value = end ? `${fmt(walk.n + 1)} generations max ${end[0]}` : `${fmt(plane.gens)} generations`;
-    $('digitsLabel').title = `${end ? `${end[1]}\n` : ''}Type a number of generations, from ${fmt(GEN_STEPS[0])} to ${fmt(GEN_STEPS.at(-1))}, then Enter`;
-    $('digitsDown').disabled = plane.gens <= GEN_STEPS[0];
-    $('digitsUp').disabled = plane.gens >= GEN_STEPS.at(-1) || !!end;
+    $('digitsLabel').value = end ? `${fmt(walk.n + 1)} generations max ${end[0]}` : `${fmt(targetAsked())} generations`;
+    $('digitsLabel').title = `${end ? `${end[1]}\n` : ''}Type a number of generations, from ${fmt(DIGIT_STEPS[0])} to ${fmt(targetMost())}, then Enter`;
+    $('digitsDown').disabled = targetAsked() <= DIGIT_STEPS[0];
+    $('digitsUp').disabled = targetAsked() >= targetMost() || !!end;
     return;
   }
-  const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
+  const size = randomPrimeSize(), n = size ?? targetAsked(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
   // a walk that loops uses only the digits of its first round on a surface (see buildGridWalk), of 8 rounds
   // in 2D and 3D: more would change nothing
   const L = !size && walk.loop, total = size ? null : L ? L.cap ?? walk.n : wholeTotal(), unit = readsDigits() ? 'digits' : 'steps';  // (a creature by its rule: steps, no digit read)
@@ -1821,13 +1821,13 @@ function loopText() {
       + ` it stops after ${rounds === 1 ? 'one round' : `${rounds} rounds`}, ${fmt(total)} digits, and more would draw nothing new.`;
 }
 function stepDigits(delta) {
-  if (gensShown()) { const next = delta > 0 ? GEN_STEPS.find((v) => v > plane.gens) : GEN_STEPS.findLast((v) => v < plane.gens); if (next !== undefined) setGens(next); return; }
+  if (gensShown()) { const next = delta > 0 ? DIGIT_STEPS.find((v) => v > targetAsked() && v <= targetMost()) : DIGIT_STEPS.findLast((v) => v < targetAsked()); if (next !== undefined) setGens(next); return; }
   const size = randomPrimeSize(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
-  const n = size ?? Math.min(requestedDigits(), wholeTotal() ?? Infinity);  // what is walked
+  const n = size ?? Math.min(targetAsked(), wholeTotal() ?? Infinity);  // what is walked
   const next = delta > 0 ? steps.find((v) => v > n) : steps.findLast((v) => v < n);
   if (next === undefined) return;
   if (size) setPrimeSize(next);
-  else { $('digits').value = next; compute(true); }
+  else { target = next; compute(true); }
 }
 // Another size for the random prime: a new prime of that size, from the same seed
 function setPrimeSize(size) {
@@ -3013,7 +3013,7 @@ function renderModePicker() {
 // back to what it was, for the new number, surface or start; see buildWalk)
 function compute(keepDigits = false) {
   if (!keepDigits && digitsBeforeLoop !== null) {
-    $('digits').value = digitsBeforeLoop;
+    target = digitsBeforeLoop;
     digitsBeforeLoop = null;
   }
   const mode = MODES[$('mode').value];
@@ -3021,7 +3021,7 @@ function compute(keepDigits = false) {
   renderModePicker();
   if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
   const n = digitsNeeded(), want = mode.life ? n : n + LOOP_AHEAD;  // a walk also reads the digits ahead
-  if (!mode.life && !randomPrimeSize()) $('digits').value = n;  // a random prime keeps the count for later
+  if (!mode.life && !randomPrimeSize()) target = n;  // a random prime keeps the count for later
   syncDigitsStepper();
   relabelColours(mode);
   $('automataSection').hidden = !mode.life;  // rule and hunt, for the cellular automata only
@@ -3239,9 +3239,9 @@ function buildWalkOf() {
   // a walk that loops takes only the digits of its first round: the count says so (and the link),
   // and the count asked comes back for the next number, surface or start (see compute)
   const loopCount = () => {
-    if (walk.loop && walk.n < requestedDigits()) {
-      digitsBeforeLoop ??= requestedDigits();
-      $('digits').value = walk.n;
+    if (walk.loop && walk.n < targetAsked()) {
+      digitsBeforeLoop ??= targetAsked();
+      target = walk.n;
     } else if (!walk.loop) digitsBeforeLoop = null;  // a count that does not loop is the one asked
     syncDigitsStepper();
   };
@@ -6077,8 +6077,8 @@ function browseLoop(delta) {
   if (!next) return;
   $('startNo').value = next.start;
   selectSize(surfaceOf(MODES[$('mode').value]), next.size);
-  digitsBeforeLoop ??= requestedDigits();  // the count asked comes back for the next number
-  $('digits').value = next.steps;
+  digitsBeforeLoop ??= targetAsked();  // the count asked comes back for the next number
+  target = next.steps;
   compute(true);
 }
 
@@ -6544,7 +6544,7 @@ const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW 
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
 const plane = { get side() { const k = planeKind(MODES[$('mode').value].plane); return nearCells(planeSides(k), (f) => planeCells(f, k), picked ?? planeCells(48, k)); },
-                torus: true, gens: 2000, text: APP_TITLE, icons: [0],
+                torus: true, text: APP_TITLE, icons: [0],
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -7532,7 +7532,7 @@ function buildLifePlane(seq) {
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
-  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: MODES[current.mode].margolus ? plane.gens : Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: false, cells: null,
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: MODES[current.mode].margolus ? targetAsked() : Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: false, cells: null,
                         maxDist: null, base: rule.base, counts: null, lattice: 'square', skipZeros: false, points: false,
                         keys: seq, sphere: false, geo: { n, walls: planeDead(kind, W) }, plane: { kind, W, row, torus: planeTorus(kind), flat: planeFlat(kind, W, row, planeTorus(kind)) }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
@@ -7549,7 +7549,7 @@ function buildLifePlane(seq) {
   autoplay();
 }
 // Space-time's cubes (see the Stacks tile beside Walls), a view of the game: Life on squares from its start, played on the card for its
-// generations asked (plane.gens; till all die, its loop gone round 5 times, or STACK_MOST cubes: STACK_ENDS), each generation's
+// generations asked (target; till all die, its loop gone round 5 times, or STACK_MOST cubes: STACK_ENDS), each generation's
 // live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
 // again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an
 // engine of its own, the game's left as it was, then set back at its start (each generation read back: on the game's own, its
@@ -7559,13 +7559,13 @@ const STACK_MOST = 2 ** 21;  // its cubes at most: drawn turning in 19 ms, shado
 const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['᪣', `Its memory full: ${fmt(STACK_MOST)} cubes at most (drawn turning in 19 ms, 40 MB)`] };  // (᪣: a chip, its memory; not ▣, read as Stop)
 function stackUp() {
   const L = walk.life, { W, row } = walk.plane, K = L.colours, S = glSetup(), game = S.life;
-  if (stack?.L === L && stack.gens === plane.gens && stack.seed.every((v, t) => v === L.seed[t])) return;
+  if (stack?.L === L && stack.gens === targetAsked() && stack.seed.every((v, t) => v === L.seed[t])) return;
   walk.n = Infinity;
   S.life = lifeEngine(L, 1, LIFE_H);
   L.gpuOld = true;
   const at = [], keys = [], layers = [];
   let end = 'gens';
-  for (let g = 0; g < plane.gens; g++) {
+  for (let g = 0; g < targetAsked(); g++) {
     lifeTo(g);
     const a = L.alive;  // (its states: 1 … K alive, of that colour; past them, dying)
     let alive = 0;
@@ -7574,11 +7574,11 @@ function stackUp() {
     if (keys.length + alive > STACK_MOST) { end = 'full'; break; }  // (a layer whole, or none)
     for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { at.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g); keys.push(a[t] - 1); }
     layers.push(keys.length - 1);
-    if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P && g + 1 < plane.gens) { end = 'loop'; break; }  // (its loop 5 times: a still life 5 layers)
+    if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P && g + 1 < targetAsked()) { end = 'loop'; break; }  // (its loop 5 times: a still life 5 layers)
   }
   const h = layers.length, mid = (h - 1) / 2;
   for (let i = 2; i < at.length; i += 3) at[i] -= mid;  // (its height round the middle)
-  stack = { L, gens: plane.gens, end, seed: L.seed.slice(), at: Float32Array.from(at), keys: Uint8Array.from(keys), layers: Int32Array.from(h ? layers : [-1]),
+  stack = { L, gens: targetAsked(), end, seed: L.seed.slice(), at: Float32Array.from(at), keys: Uint8Array.from(keys), layers: Int32Array.from(h ? layers : [-1]),
             box: [-(row - 1) / 2, (row - 1) / 2, -(W - 1) / 2, (W - 1) / 2, -mid, mid], reach: Math.hypot(row, W, h) / 2 };
   walk.n = Math.max(0, h - 1);
   lifeFree(S.life);
@@ -7653,7 +7653,6 @@ function planeFromSetup(s) {
   plane.torus = Number(s.e) !== 1;
   if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side; as its edges are: walls, a hexagon's cells)
   spaceTime = Number(s.sp) === 1 && !plane.torus;  // (3D: with walls only)
-  plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
   if (kind === 'random' || zoneOfWord(kind)) {
@@ -10574,7 +10573,7 @@ const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.ic
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
-  if (!mode.life) s.d = $('digits').value;
+  if (!mode.life || gensShown()) s.d = targetAsked();  // (the length asked: digits, or generations)
   if (mode.lattice === 'sphere') s.s = $('sphereF').value;
   if (modeStarts() && startNo() > 1) s.st = startNo();
   if (torusTurned && TURNED[mode.sphere]) s.o = 1;
@@ -10585,7 +10584,6 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    if (mode.margolus || spaceTimeOn()) s.g = plane.gens;  // (a reversible one's generations, Space-time's)
     s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
@@ -10607,7 +10605,7 @@ function applySetup(s) {
     if (readFormula().error) return false;
   }
   digitsBeforeLoop = null;  // a setup says its own count of digits
-  set('digits', s.d);
+  if (s.d !== undefined) target = Number(s.d);
   set('mode', s.w);
   $('startNo').value = s.st ?? 1;
   torusTurned = Number(s.o) === 1;
@@ -13359,7 +13357,7 @@ $('digitsUp').addEventListener('click', () => stepDigits(1));
 // the last valid formula; a rule as it was). Enter or ↵ leaves the field, and leaving it applies it;
 // but a wrong formula keeps you in the field, with its error. Esc undoes the edit: back to the value
 // in use. For ↵, mousedown keeps the focus from going to the button first.
-const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? requestedDigits()), startLabel: () => String(startNo()), speedLabel: () => String(speed),
+const valueInUse = { formula: () => formulaInUse, digitsLabel: () => String(randomPrimeSize() ?? targetAsked()), startLabel: () => String(startNo()), speedLabel: () => String(speed),
                      antRule: () => antRuleOf($('mode').value) };
 for (const input of document.querySelectorAll('.field input')) {
   let before = '';
@@ -13392,7 +13390,7 @@ $('digitsLabel').addEventListener('change', () => {
   if (!$('digitsLabel').value) return;  // emptied: the blur shows the current count again
   if (randomPrimeSize()) { setPrimeSize(Number($('digitsLabel').value)); return; }
   if (gensShown()) { setGens(Number($('digitsLabel').value)); $('digitsLabel').blur(); return; }
-  $('digits').value = $('digitsLabel').value;
+  target = Number($('digitsLabel').value);
   compute(true);
 });
 $('play').addEventListener('click', () => {
@@ -13955,10 +13953,10 @@ function displayDefaults() {
   displayTab = modeTabOf();
 }
 // Digits of a walk by default, per tab (20,000 elsewhere): on a surface, fewer digits already cover it
-const TAB_DIGITS = { 'Walks on surfaces': 10000 };
+const TAB_DIGITS = { 'Walks on surfaces': 10000, 'Automata on the plane': 2000 };  // (a reversible one's, Space-time's: generations)
 $('mode').addEventListener('change', () => {
   if (modeTabOf() !== displayTab) {
-    $('digits').value = TAB_DIGITS[modeTabOf()] ?? 20000;
+    target = TAB_DIGITS[modeTabOf()] ?? 20000;
     displayDefaults();
   }
   // the form of the view belongs to the walk mode: its perspective, the camera's starting angle
