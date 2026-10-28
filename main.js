@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1402';
+const VERSION = '0.1.1403';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9159,8 +9159,8 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
 // then the cells moved back across, stellated; Q2R, the same half step again: its other half unchanged), its counts set
 // back (the trace's)
 const blockInverse = (M) => (M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length)));
-function lifeBack() {
-  const L = walk.life, K = L.colours, G = lifeStepGPU(L, cur - 1, true)?.[0];  // (there: its births and deaths forth, back)
+function lifeBack(G = lifeStepGPU(walk.life, cur - 1, true)?.[0]) {  // (G: its sums there, its births and deaths forth, back)
+  const L = walk.life, K = L.colours;
   if (G) { L.born -= G.dead; L.dead -= G.born; L.bornNow = G.dead; L.deadNow = G.born; }
   for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
   L.gen--;
@@ -12599,8 +12599,8 @@ function lifeCells(L) {
   L.gpuOld = true;
   L.onGPU = false;
 }
-// k generations there (gen: the first one shown): its rule (a block rule's, back: its inverse's, see lifeBack; their phase
-// the generation shown's), its cells' counts, their sums (9 + 4 a colour) a column each, read back once (each
+// k generations there (gen: the first one shown; back, the first one undone's before it): its rule (a block rule's, back: its
+// inverse's, see lifeBack; their phase the generation shown's), its cells' counts, their sums (9 + 4 a colour) a column each, read back once (each
 // read waits for the card: 50 times a generation's own time on a small grid); its deaths dated by L.gen, the generations
 // played (as the look's, see lifeLookGPU: the shown one goes round a loop); null without WebGL 2. The cells stay there (L.onGPU)
 const LIFE_H = 16;
@@ -12610,7 +12610,7 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
   const K = L.colours, M = L.margolus, neg = !!M?.flips;
   if (L.gpuOld) lifeToGPU(L, E);
   for (let x = 0; x < k; x++) {
-    const g = back ? gen : gen + x;
+    const g = back ? gen - x : gen + x;
     if (M) blockPass(L, E, E.now.state, E.next.state, back ? g : g - 1, back);
     else lifeRulePass(E);
     lifeTally(E, L.gen + 1 + x, back, neg && g % 2 === 0, neg && g % 2 === 1, x);  // (shown negative: a generation odd)
@@ -13206,7 +13206,17 @@ function tick(now = performance.now()) {
     const k = Math.floor(acc);
     acc -= k;
     if (k > 0 && playing) advanceTo(cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
-    if (k > 0 && reversing && walk.life) { for (let i = 0; i < k && cur > 0; i++) lifeBack(); statsDirty = true; if (!cur) reverse(false); }
+    if (k > 0 && reversing && walk.life) {  // (as forth: in batches, see lifeStepGPU; its steps three quarters of the screen's frame at most)
+      for (let left = Math.min(k, cur); left > 0;) {
+        const batch = lifeStepGPU(walk.life, cur - 1, true, Math.min(left, LIFE_H));
+        if (!batch) break;
+        for (const G of batch) lifeBack(G);
+        left -= batch.length;
+        if (performance.now() >= now + 750 * frameMin) break;  // (a batch at least)
+      }
+      statsDirty = true;
+      if (!cur) reverse(false);
+    }
     else if (k > 0 && reversing) { walkBack(Math.max(0, cur - k)); if (!cur) reverse(false); }
   }
   includeBox();
