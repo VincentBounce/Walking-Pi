@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1476';
+const VERSION = '0.1.1477';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1216,11 +1216,6 @@ const MODES = {
   hexPivotCells: { base: 2, arrows: '↑→', lattice: 'hex', cells: true, pivot: 6, steps: 'hexFixedCells',
                    rule: 'from cell to cell of a hexagon grid: <b>0</b> step forward, <b>1</b> turn right on the spot (60°)' },
 };
-// Reversible on the tori: Life's, in blocks as the plane's (its blocks' grid, so many cells a block, see meshBlocks), 3 squares
-// round it (see ringColours), its start on the middle one (see startColours)
-const REVERSIBLE_TORI = [['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4]];
-const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
-for (const [w, life, blocks, k] of REVERSIBLE_TORI) MODES[w] = { ...MODES[life], margolus: true, blocks, where: `${MODES[life].where.split(' (')[0]} in blocks of ${k} round a corner, as the plane's, 3 squares round it, its start on the middle one` };
 // on the surfaces, as their turtle walks (along the grid or on cells) where a step straight on exists:
 // squares, hexagons (cells), triangles (the grid); [pivot walk, its turtle walk, notches, its twin]
 for (const [w, of, n, twin] of [['cubePivot', 'cubeFlat', 4, 'cubePivotGrid'], ['cubePivotGrid', 'cubeGrid', 4, 'cubePivot'],
@@ -2598,7 +2593,6 @@ const MODE_ICONS = {
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeStellaKite: 'stella', lifeDodecaKite: 'dodecahedron', lifeCubocta: 'cubocta', lifePyramid: 'pyramid', lifeRhombi: 'rhombi', lifeBicupola: 'bicupola', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
-for (const [w, life] of REVERSIBLE_TORI) MODE_ICONS[w] = MODE_ICONS[life];
 
 // "Cubes — base 5 (5 relative turns)" → name "Cubes", base "base 5", detail "5 relative turns"
 function splitModeLabel(text) {
@@ -2668,7 +2662,6 @@ const NAV = {
   cubesPivot: ['Walk', '3D', 'Cubes', 'Pivot', 'grid'], cubesPivotCells: ['Walk', '3D', 'Cubes', 'Pivot', 'cells'],
   triPivot: ['Walk', '2D', 'Triangles', 'Pivot', 'grid'], hexPivotCells: ['Walk', '2D', 'Hexagons', 'Pivot', 'cells'],
 };
-for (const [w] of REVERSIBLE_TORI) NAV[w] = ['Reversible', 'Surfaces', 'Torus', 'Blocks', ''];
 // the pivot and parity walks on the surfaces: where their turtle walks are (see MODES)
 // the tilings' Life on the plane (see TILINGS): their modes, after the hats
 const tilingMode = (kind) => `life2d${kind[0].toUpperCase()}${kind.slice(1)}`;
@@ -2694,6 +2687,15 @@ for (const [kind, t] of Object.entries(TILINGS)) {
     MODE_ICONS[m] = fold;
     NAV[m] = ['Life', 'Surfaces', F.name, 'Life', ''];
   }
+}
+// Reversible on the tori: Life's, in blocks as the plane's (its blocks' grid, so many cells a block, see meshBlocks), 3 squares
+// round it (see ringColours), its start on the middle one (see startColours)
+const REVERSIBLE_TORI = [['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4]];
+const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
+for (const [w, life, blocks, k] of REVERSIBLE_TORI) {
+  MODES[w] = { ...MODES[life], margolus: true, blocks, where: `${MODES[life].where.split(' (')[0]} in blocks of ${k} round a corner, as the plane's, 3 squares round it, its start on the middle one` };
+  MODE_ICONS[w] = MODE_ICONS[life];
+  NAV[w] = ['Reversible', 'Surfaces', 'Torus', 'Blocks', ''];
 }
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
@@ -2823,7 +2825,7 @@ for (const Fo of Object.values(FOLDS)) for (const kind of kitesNext([...MOBIUS_T
   const F = FAMILIES[Fo.family], turned = FOLDED[`${Fo.of(kind)}Turned`], { name } = TILINGS[kind];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, name, name]);
   if (turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, name, `${name}, turned by ${turned.deg}° (${Fo.way})`]);
-  F.modes.push([foldOf(`life${Fo.life}`, kind)]);
+  F.modes.push([foldOf(`life${Fo.life}`, kind), ...REVERSIBLE_TORI.filter(([, life]) => life === foldOf(`life${Fo.life}`, kind)).map(([w]) => w)]);
 }
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
 function familyOf(w) {
