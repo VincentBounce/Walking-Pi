@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1439';
+const VERSION = '0.1.1440';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8297,6 +8297,7 @@ const COLOUR_STEP_NAMES = { 1: 'Classic', 2: 'Duel', 3: 'Trio', 4: 'Quartet', 5:
 // with walls (K divides n; or K = 2n, a slice and its mirror, if it mirrors: hexagons 1, 2, 3, 6, 12; squares 1, 2, 4, 8; a hat
 // 1), on a torus any (its blocks); on a
 // solid, its fair spots (see colouring); on a torus, blocks that divide it; on a Möbius strip, any
+const MIRRORED_DISCS = ['ammann', 'rhombs12', 'rhombs14', 'penrose'];  // the discs that mirror (the rosettes turn as a spiral): their parts a turn's, from half of one (its corner)
 const figureTurns = (kind) => ROSETTES[kind]?.[0] ?? { ammann: 8, rhombs12: 12, rhombs14: 14, penrose: 5, hat: 1, spectre: 1, pinwheel: 1 }[kind] ?? PATTERN_TURNS[baseOf(kind)] ?? 1;
 // (twice a fair count: each part halved, 2 4 giving 8, 5 10, 3 6 12; 3 without 6, thrice: 9, each third in 3)
 const colourFair = (K, g = walk.geo) => colourFairOwn(K, g) || ([8, 10, 12].includes(K) && colourFairOwn(K / 2, g)) || (K === 9 && colourFairOwn(3, g) && !colourFairOwn(6, g));
@@ -8305,7 +8306,7 @@ const colourFairOwn = (K, g) => {
   if (K === 1) return true;
   if (kind && (planeTorus(kind) || figureTurns(kind) === 1)) return true;  // (a torus: blocks of its side, see colourW, all alike; no turns, a hat's, a spectre's or a pinwheel's circle, as many cells each, see planeSlices)
   if (kind) {
-    const n = figureTurns(kind), mirror = APERIODIC[kind] ? ['ammann', 'rhombs12', 'rhombs14', 'penrose'].includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
+    const n = figureTurns(kind), mirror = APERIODIC[kind] ? MIRRORED_DISCS.includes(kind) : canMirror(kind);  // (the rosettes turn as a spiral: no mirror)
     return n > 1 && (n % K === 0 || (mirror && K === 2 * n));
   }
   if (solidCounts(mode?.sphere)) return solidCounts(mode.sphere).includes(K);
@@ -9583,7 +9584,7 @@ function planeSlices(K) {
   // in a circle or a hexagon: round its own middle, slices of one angle each (a hexagon's from a corner: on 3, 6 or 12
   // colours, each a triangle's or two), their edges a hair before (a cell on one, the same slice's all round); else as
   // many cells in each, round the grid's frame's middle
-  const shape = planeShape(kind, W) ?? (APERIODIC[kind] ? { o: [(W - 1) / 2, (W - 1) / 2], ...({ ammann: { corner: Math.PI / 8, step: Math.PI / 4 }, rhombs12: { corner: Math.PI / 12, step: Math.PI / 6 }, rhombs14: { corner: Math.PI / 14, step: Math.PI / 7 } }[kind] ?? {}) } : null), slice = (2 * Math.PI) / K;  // (Ammann's octagon: from a corner too)
+  const shape = planeShape(kind, W) ?? (APERIODIC[kind] ? { o: [(W - 1) / 2, (W - 1) / 2], ...(MIRRORED_DISCS.includes(kind) ? { corner: Math.PI / figureTurns(kind), step: (2 * Math.PI) / figureTurns(kind) } : {}) } : null), slice = (2 * Math.PI) / K;  // (Ammann's octagon: from a corner too)
   const b = planeBounds(), mid = shape ? turnPoint(shape.o, turn) : [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2];
   // (in a circle, a hexagon or an octagon: from the left, a corner just over it, the same for any count: 2's edge one of
   // 4's and 8's, red's up and to the left; else red's middle up and to the left)
