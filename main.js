@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1438';
+const VERSION = '0.1.1439';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7679,6 +7679,7 @@ function renderPlaneRow() {
     if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
     if (b.dataset.start === 'text') { b.disabled = !!walk.life && current?.mode === $('mode').value && !iconFits(iconMax(textSet()), 64); b.title = b.disabled ? 'Text: greyed where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' : ''; }  // (its grid's, once built)
   }
+  $('startTextInput').value = plane.text;  // (its words, on any grid)
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
   if (!kind) {
     $('symmetryRow').hidden = true;
@@ -7715,7 +7716,6 @@ function renderPlaneRow() {
   }));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
-  $('startTextInput').value = plane.text;
   // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
   const rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? ''), mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
   const fits = (p) => p[0] === 'cell' || (p[1] === baseOf(kind) && (mine || p[2].includes(rule)));  // the rule's patterns; your own rule: all the grid's
@@ -13540,7 +13540,7 @@ for (const b of $('lifeStartTabs').children) {
     plane.start = b.dataset.start; cleared = null; compute(true);
   });
 }
-$('startTextInput').addEventListener('change', () => { plane.text = $('startTextInput').value.trim() || 'π'; compute(true); });
+$('startTextInput').addEventListener('change', () => { plane.text = $('startTextInput').value.trim() || APP_TITLE; compute(true); });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {
