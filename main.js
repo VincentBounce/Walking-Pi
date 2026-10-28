@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1467';
+const VERSION = '0.1.1468';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11513,7 +11513,7 @@ function drawSphere() {
     for (let d = 0; d < trail; d++) table[1024 + d] = colourOf(after(d));
     if (changes) for (let v = 0; v <= Math.min(L.maxActivity, 65535); v++) table[4096 + v] = colourOf(changes(v));
     const rgba = (c) => [...rgbCached(c).map((x) => x / 255), 1];
-    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), { table, by: changes ? 2 : age ? 1 : 0, trail, wall: rgba(LIFE_WALL), dead: rgba(UNLIT) }), path);
+    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), { table, by: changes ? 2 : age ? 1 : 0, neg: negative(L), trail, wall: rgba(LIFE_WALL), dead: rgba(UNLIT) }), path);
   } else glSurface(paintLevels(palette, levelOf), path);  // (see 11.4b)
   drawMotif(ctx);  // the motif's outlines over it
 }
