@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1506';
+const VERSION = '0.1.1507';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -962,6 +962,8 @@ const tilingOf = (kind) => TILINGS[kind] ?? RECTS[kind];
 const baseOf = (kind) => RECTS[kind]?.base ?? kind;
 const planeKind = (kind) => (STRAIGHT_RECTS.has(kind) && !(hexagonFits(kind) && !planeTorus(kind)) ? `${kind}Rect` : kind);  // the grid as it is built: a slanted one's, its straight sheet, a rectangle (its torus's laid flat); a six-fold one with walls, its hexagon
 const tilingAt = (kind, x, y) => { const P = tilingOf(kind).polys, m = P.length, i = Math.floor(x / m); return P[((x % m) + m) % m].map(([u, v]) => [u + i, v + y]); };  // lattice units
+// a grid's centre of its turns: a pattern turned about it (see orientPattern), a grid in a hexagon round it (see planeShape)
+const tilingPivot = (kind) => (kind === 'square' ? [0, 0] : kind === 'cairo' ? [-CAIRO_0[0] * CAIRO, -CAIRO_0[1] * CAIRO] : TILINGS[kind] ? tilingWorld(kind, TILINGS[kind].pivot) : latticeAt(0, 0));
 const tilingWorld = (kind, [u, v]) => { const [a, b] = tilingOf(kind).basis; return [u * a[0] + v * b[0], u * a[1] + v * b[1]]; };
 
 const MODES = {
@@ -7820,15 +7822,10 @@ function planeShape(kind, W) {
   const n = row * W, mids = [], cs = [];
   for (let t = 0; t < n; t++) { cs.push(planeCorners(kind, t % row, Math.floor(t / row))); mids.push(cellMiddle(kind, t % row, Math.floor(t / row))); }
   const box = (d) => mids.reduce(([a, b], m) => [Math.min(a, m[d]), Math.max(b, m[d])], [Infinity, -Infinity]).reduce((a, b) => (a + b) / 2), c0 = [box(0), box(1)], far = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
-  // the centre: of the middles, corners and sides' middles of the cells within a lattice cell of the grid's middle, the nearest it that the
-  // cells round turn onto (by a sixth of a turn)
-  const L = Math.max(2, ...(tilingOf(baseOf(kind))?.basis.map((v) => Math.hypot(...v)) ?? [])), near = mids.flatMap((m, t) => (far(m, c0) < L ? [t] : [])), k = ([u, v]) => `${Math.round(u * 1000 + 0.237)},${Math.round(v * 1000 + 0.237)}`;  // (off the halves: kites' sixteenths)
-  // (each cell by its middle and its shape, its corners' count and its size: a dodecagon turned onto a triangle's middle, no)
-  const sig = (t) => `${cs[t].length}|${Math.round(Math.abs(cs[t].reduce((a, p, i) => a + p[0] * cs[t][(i + 1) % cs[t].length][1] - cs[t][(i + 1) % cs[t].length][0] * p[1], 0)) * 50)}`;
-  const round = [...mids.keys()].filter((t) => far(mids[t], c0) < L + 4), known = new Set(round.map((t) => `${k(mids[t])}|${sig(t)}`)), a = Math.PI / 3;
-  const turnsOnto = (p) => round.every((t) => { const m = mids[t]; return far(m, p) > 3 || known.has(`${k([p[0] + (m[0] - p[0]) * Math.cos(a) - (m[1] - p[1]) * Math.sin(a), p[1] + (m[0] - p[0]) * Math.sin(a) + (m[1] - p[1]) * Math.cos(a)])}|${sig(t)}`); });
-  const tries = near.flatMap((t) => [mids[t], ...cs[t], ...cs[t].map((p, i) => [(p[0] + cs[t][(i + 1) % cs[t].length][0]) / 2, (p[1] + cs[t][(i + 1) % cs[t].length][1]) / 2])]).sort((p, q) => far(p, c0) - far(q, c0));
-  const o = tries.find(turnsOnto) ?? c0;
+  // the centre: the tiling's centre of its turns (see tilingPivot), a lattice step from it, the nearest the grid's middle
+  const P = tilingPivot(baseOf(kind)), [e1, e2] = tilingOf(baseOf(kind))?.basis ?? [[1, 0], latticeAt(0, 1)], D = e1[0] * e2[1] - e1[1] * e2[0];
+  const u = ((c0[0] - P[0]) * e2[1] - (c0[1] - P[1]) * e2[0]) / D, v = (e1[0] * (c0[1] - P[1]) - e1[1] * (c0[0] - P[0])) / D;
+  const o = [Math.floor(u), Math.ceil(u)].flatMap((i) => [Math.floor(v), Math.ceil(v)].map((j) => [P[0] + i * e1[0] + j * e2[0], P[1] + i * e1[1] + j * e2[1]])).reduce((a, b) => (far(b, c0) < far(a, c0) - 1e-9 || (far(b, c0) < far(a, c0) + 1e-9 && b[1] < a[1]) ? b : a));  // (as near two: the upper one)
   // its size: from its middle to a side (its sides along the lattice's rows)
   const b = tilingOf(baseOf(kind))?.basis[0] ?? [1, 0], th = Math.atan2(b[1], b[0]) + Math.PI / 2;
   const size = (p) => Math.max(...[0, 1, 2].map((j) => Math.abs((p[0] - o[0]) * Math.cos(th + (j * Math.PI) / 3) + (p[1] - o[1]) * Math.sin(th + (j * Math.PI) / 3))));
@@ -8033,7 +8030,7 @@ function orientPattern(kind, rle, turn, flip) {
     return out.map(([x, y, v]) => [x - per * i0, y - j0, v]);
   }
   const per = PER_RHOMBUS[kind] ?? 1, grid = (i, j) => [(i - CAIRO_0[0]) * CAIRO, (j - CAIRO_0[1]) * CAIRO];
-  const pivot = kind === 'square' ? [0, 0] : kind === 'cairo' ? grid(0, 0) : TILINGS[kind] ? tilingWorld(kind, TILINGS[kind].pivot) : latticeAt(0, 0);
+  const pivot = tilingPivot(kind);
   const axis = kind === 'cairo' ? grid(0.5, 0)[0] : pivot[0];
   const a = (2 * Math.PI * turn) / PATTERN_TURNS[kind], cos = Math.cos(a), sin = Math.sin(a), cells = [];
   for (const [k, v] of populationOf(`0,0:${rle}`)) {
