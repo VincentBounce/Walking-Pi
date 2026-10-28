@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1421';
+const VERSION = '0.1.1422';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1632,16 +1632,16 @@ function renderBlocksButton() {
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
 // Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
-// stackUp); on squares up to 128 a side only (STACK_MOST cubes at most)
+// stackUp); on squares (STACK_MOST cubes at most)
 let spaceTime = false, spaceButton = null;
-const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square' && plane.side <= 128; };
+const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square'; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
 function renderSpaceButton() {
   const cube = (x, y, c) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1" fill="${c}"/>`;
   spaceButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${cube(3, 15, GRADIENT[0]) + cube(7, 11, GRADIENT[Math.floor(BANDS / 3)]) + cube(11, 7, GRADIENT[Math.floor((2 * BANDS) / 3)]) + cube(15, 3, GRADIENT[BANDS - 1])}</svg>`,  // (a glider's cells, a generation higher each)
     text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, as many generations as asked (under the play buttons), played a generation at a time (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
     click: () => { spaceTime = !spaceTime; compute(true); } });
-  setTile(spaceButton, { on: spaceTimeOn(), can: spaceTimeApplies(), byDefault: 'off', greyed: 'but on squares up to 128 a side (not Reversible)' });
+  setTile(spaceButton, { on: spaceTimeOn(), can: spaceTimeApplies(), byDefault: 'off', greyed: 'but on squares (not Reversible)' });
 }
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 const defaultLook = (mode) => (mode.life ? 'mono' : 'gradient');  // (the simplest: Life's States, a walk's Rainbow)
@@ -7561,11 +7561,13 @@ function stackUp() {
   const at = [], keys = [], layers = [];
   let end = 'gens';
   for (let g = 0; g < plane.gens; g++) {
-    if (keys.length >= STACK_MOST) { end = 'full'; break; }
     lifeTo(g);
-    const a = L.alive, before = keys.length;  // (its states: 1 … K alive, of that colour; past them, dying)
+    const a = L.alive;  // (its states: 1 … K alive, of that colour; past them, dying)
+    let alive = 0;
+    for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) alive++;
+    if (!alive) { end = 'dead'; break; }
+    if (keys.length + alive > STACK_MOST) { end = 'full'; break; }  // (a layer whole, or none)
     for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { at.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g); keys.push(a[t] - 1); }
-    if (keys.length === before) { end = 'dead'; break; }
     layers.push(keys.length - 1);
     if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P && g + 1 < plane.gens) { end = 'loop'; break; }  // (its loop 5 times: a still life 5 layers)
   }
