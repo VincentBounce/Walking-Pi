@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1451';
+const VERSION = '0.1.1452';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6487,6 +6487,7 @@ function buildLife(seq, mode) {
   fillSphereSizes(kind, initial);
   fitColours(mesh(sphereSize()));
   fillSphereSizes(kind, initial);
+  syncSizeStepper();  // (its size said for them: compute said it for the colours before)
   const size = sphereSize();
   const g = mesh(size);
   const nbr = cornerNeighbours(g);
