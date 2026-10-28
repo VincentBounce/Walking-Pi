@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1468';
+const VERSION = '0.1.1469';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8103,7 +8103,7 @@ function drawLifePlane() {
   table.set(byAge, 512);
   table.set(inked.slice(0, fade), 1024);
   if (byActivity) table.set(byActivity, 4096);
-  glPlane((tex, size) => lifeLookGPU(L, tex, Math.ceil(size / 1024), { table, by: colour === 'digit' ? 2 : colour === 'mono' ? 0 : 1, neg: negative(L), trail: fade, wall: [0, 0, 0, 0], dead: [0, 0, 0, 0] }));
+  glPlane((tex, size) => lifeLookGPU(L, tex, Math.ceil(size / 1024), { table, by: colour === 'digit' ? 2 : colour === 'mono' ? 0 : 1, trail: fade, wall: [0, 0, 0, 0], dead: [0, 0, 0, 0] }));
   drawBlocks(ctx);
   drawMotif(ctx);
   drawGhost();
@@ -11513,7 +11513,7 @@ function drawSphere() {
     for (let d = 0; d < trail; d++) table[1024 + d] = colourOf(after(d));
     if (changes) for (let v = 0; v <= Math.min(L.maxActivity, 65535); v++) table[4096 + v] = colourOf(changes(v));
     const rgba = (c) => [...rgbCached(c).map((x) => x / 255), 1];
-    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), { table, by: changes ? 2 : age ? 1 : 0, neg: negative(L), trail, wall: rgba(LIFE_WALL), dead: rgba(UNLIT) }), path);
+    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), { table, by: changes ? 2 : age ? 1 : 0, trail, wall: rgba(LIFE_WALL), dead: rgba(UNLIT) }), path);
   } else glSurface(paintLevels(palette, levelOf), path);  // (see 11.4b)
   drawMotif(ctx);  // the motif's outlines over it
 }
@@ -12764,7 +12764,7 @@ function blockPass(L, E, a, b, g, back = false) {
 }
 // its colours into a texture (target: a texel a cell, 1024 a row; see lifeLook), by a look: its tables (look.table: packed
 // RGBA, see GL_SHADERS.lifeLook), how it colours its live cells (look.by: 0 by state, 1 by age, 2 all by their changes), its
-// cells in blocks shown negative (look.neg, see negative), its trail's length, a wall's and a dead cell's colours
+// cells in blocks shown negative every other generation (its own: see negative, on every grid), its trail's length, a wall's and a dead cell's colours
 function lifeLookGPU(L, target, rows, look) {
   const E = lifeGPU(L);
   if (!E) return false;
@@ -12772,7 +12772,7 @@ function lifeLookGPU(L, target, rows, look) {
   if (L.gpuOld) lifeToGPU(L, E);
   gl.bindTexture(gl.TEXTURE_2D, E.look);
   gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, look.table.length / 4096, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(look.table.buffer));
-  lifePass(E, 'lifeLook', { uA: E.now.state, uStart: E.start, uIn: E.in, uAge: E.now.age, uAct: E.now.act, uDied: E.now.died, uLook: E.look }, { uN: E.n, uK: L.colours, uGen: L.gen, uTrail: look.trail, uBy: look.by, uNeg: look.neg ? 1 : 0 }, [target], 1024, rows,
+  lifePass(E, 'lifeLook', { uA: E.now.state, uStart: E.start, uIn: E.in, uAge: E.now.age, uAct: E.now.act, uDied: E.now.died, uLook: E.look }, { uN: E.n, uK: L.colours, uGen: L.gen, uTrail: look.trail, uBy: look.by, uNeg: negative(L) ? 1 : 0 }, [target], 1024, rows,
     (u) => { gl.uniform4fv(u('uWall'), look.wall); gl.uniform4fv(u('uDead'), look.dead); });
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   return true;
