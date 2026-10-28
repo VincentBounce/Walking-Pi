@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1436';
+const VERSION = '0.1.1437';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6522,6 +6522,7 @@ function buildLife(seq, mode) {
   hunt.status = '';
   stopHunt();
   renderColours();  // the blocks a figure fits, now that it is built
+  renderPlaneRow();  // (its starts: Text where a picture can be laid)
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
@@ -7653,8 +7654,12 @@ function planeFromSetup(s) {
   plane.torus = Number(s.e) !== 1;
   if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side; as its edges are: walls, a hexagon's cells)
   spaceTime = Number(s.sp) === 1 && !plane.torus;  // (3D: with walls only)
-  const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
+  startFromSetup(s);
+}
+// a link's start (pop=), the plane's or a surface's: a soup or a zone's, from its seed; Draw (p=, the plane's), the digits, a text
+function startFromSetup(s) {
+  const [kind, a, b] = String(s.pop ?? 'random').split('.');
   if (kind === 'random' || zoneOfWord(kind)) {
     plane.start = 'random';
     plane.density = Math.min(70, Math.max(5, Number(a) || 30));  // (as the hunt draws them, see DENSITY)
@@ -7674,14 +7679,13 @@ function renderPlaneRow() {
     b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
     b.disabled = false;
     if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
-    b.hidden = b.dataset.start === 'text' && !kind;  // (Text: on the plane)
-    if (b.dataset.start === 'text') { b.disabled = !!kind && walk.plane?.kind === kind && !iconFits(iconMax(textSet()), 64); b.title = b.disabled ? 'Text: greyed on a grid too small for it' : ''; }  // (its grid's, once built)
+    if (b.dataset.start === 'text') { b.disabled = !!walk.life && current?.mode === $('mode').value && !iconFits(iconMax(textSet()), 64); b.title = b.disabled ? 'Text: greyed where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' : ''; }  // (its grid's, once built)
   }
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
   if (!kind) {
     $('symmetryRow').hidden = true;
     $('startDraw').hidden = !surfaceDraw;
-    $('startText').hidden = true;
+    $('startText').hidden = plane.start !== 'text' || surfaceDraw;
     if (!surfaceDraw) return;
     // a surface: the rule's patterns on its grid, greyed (they cannot be drawn here: Famous lays them)
     const cells = PLANE_OF_MARK[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
@@ -10584,12 +10588,11 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
     if (spaceTimeOn()) s.sp = 1;  // (Space-time)
   }
-  if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : zonePop();  // a surface's start
+  if (mode.life) s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;  // its start (a surface's no Draw)
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
   if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
   if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
@@ -10627,12 +10630,7 @@ function applySetup(s) {
     else if (antTurnsOf(s.w, s.r)) antRules[s.w] = s.r;
   } else if (s.r || MODES[s.w].life) {  // (Life: its size and start without a rule too, the grid's first then)
     if (MODES[s.w].plane) planeFromSetup(s);
-    else {  // a surface's start: a soup (none said: one), or its digits
-      const [kind, a, b] = String(s.pop ?? 'random').split('.');
-      plane.start = kind === 'random' || zoneOfWord(kind) ? 'random' : 'digits';
-      if (plane.start === 'random') { plane.density = Math.min(70, Math.max(5, Number(a) || 30)); plane.seed = Number(b) || 1; hunt.zone = zoneOfWord(kind) ?? 'full'; }
-      if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
-    }
+    else startFromSetup(s);  // (a surface's)
     coloursPicked = lifeColours = Number(s.k) || 1;
     $('lifeTrail').checked = lifeColours === 1;  // (Trail: on in Classic, off in colours, at first)
     colourMix = Number(s.mx) === 1;
