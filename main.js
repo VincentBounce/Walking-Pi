@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1509';
+const VERSION = '0.1.1510';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -5655,12 +5655,12 @@ for (const [kind, S] of Object.entries(SPHERES)) {
     for (const f of SIDES) if (f % step === 0 && f >= (S.least ?? 2) && f <= (S.most ?? Infinity)) { const n = S.tiles(f); if (n > CELLS.most) break; if (n >= CELLS.least) sizes.push(f); }
     return sizes;
   };
-  let list;
+  const lists = {};  // (by its colours: a torus's columns theirs, its cells, see stripKey; the first's kept for all before)
   const edged = (sizes) => {  // (edges: its squares' sides as the icons' widths, each in place of the size nearest it)
     for (const e of S.edges ?? []) { const k = sizes.reduce((best, f, i) => (Math.abs(Math.log(S.tiles(f) / S.tiles(e))) < Math.abs(Math.log(S.tiles(sizes[best]) / S.tiles(e))) ? i : best), 0); sizes[k] = e; }
     return sizes;
   };
-  Object.defineProperty(S, 'sizes', { get: () => (list ??= edged(ladder())) });
+  Object.defineProperty(S, 'sizes', { get: () => (lists[stripKey()] ??= edged(ladder())) });
   Object.defineProperty(S, 'initial', { get: () => S.near(START[TORI.includes(kind) ? 'surface' : 'solid']) });
   S.near = (n) => nearCells(S.sizes, S.tiles, n);  // the usual size with about n cells
   S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
