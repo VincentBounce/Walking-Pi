@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1409';
+const VERSION = '0.1.1410';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8900,45 +8900,42 @@ function blockBound(L, to = L.margolus.to, phases = L.margolus.turns.length) {  
   return { keeps, log: (keeps ? c : n * Math.LOG10E * Math.LN2) + Math.log10(phases) };
 }
 const bigWords = (log) => (log < 15 ? fmt(Math.round(10 ** log)) : `10^${fmt(Math.floor(log))}`);
-// the search for its return, past the generations played: the start stepped on its own, in slices (Find its return)
-// (there, the states in turn in its two textures; at each phase's end, a query: any cell not its start's, see
-// GL_SHADERS.lifeDiffer; told a slice later, never waited for)
-const backSearch = { life: null, gen: 0, a: null, asked: [], found: 0 };
+// the search for its return, past the generations played: the start stepped on its own, in slices (Find its return), on the
+// processor (one generation after another: a small grid's 20 times as fast as on the graphics card, a pass each; a large
+// grid's start hardly ever back, see backBtn's tip)
+const backSearch = { life: null, gen: 0, a: null, b: null, found: 0 };
 function searchBack(on) {
-  const L = walk.life, E = lifeGPU(L), { gl } = GLS ?? {};
-  for (const [, q] of backSearch.asked) gl.deleteQuery(q);
-  backSearch.asked = [];
-  if (!on || !E) { backSearch.life = null; renderHunt(); return; }
-  if (L.gpuOld) lifeToGPU(L, E);  // (its start there)
-  if (backSearch.life !== L) Object.assign(backSearch, { life: L, gen: 0, a: E.seed, found: 0 });
+  const L = walk.life;
+  if (!on) { backSearch.life = null; renderHunt(); return; }
+  if (backSearch.life !== L) Object.assign(backSearch, { life: L, gen: 0, a: L.seed.slice(), b: new Uint8Array(L.seed.length), found: 0 });
   const slice = () => {
     if (backSearch.life !== walk.life) return;  // (stopped, or another grid)
     const S = backSearch, end = performance.now() + 15, P = L.margolus.turns.length;
-    while (S.asked.length && gl.getQueryParameter(S.asked[0][1], gl.QUERY_RESULT_AVAILABLE)) {
-      const [g, q] = S.asked.shift(), differs = gl.getQueryParameter(q, gl.QUERY_RESULT);
-      gl.deleteQuery(q);
-      if (!differs) { S.found = g; break; }
+    while (performance.now() < end && !S.found) for (let i = 0; i < 64; i++) {
+      blockStep(L.margolus, S.a, S.b, S.gen);
+      [S.a, S.b] = [S.b, S.a];
+      if (++S.gen % P === 0 && S.a.every((v, t) => v === L.seed[t])) { S.found = S.gen; break; }
     }
-    while (!S.found && performance.now() < end && S.asked.length < 4096) for (let i = 0; i < 64; i++) {
-      const b = S.a === E.search[0] ? E.search[1] : E.search[0];
-      blockPass(L, E, S.a, b, S.gen++);
-      S.a = b;
-      if (S.gen % P) continue;
-      const q = gl.createQuery();
-      gl.beginQuery(gl.ANY_SAMPLES_PASSED_CONSERVATIVE, q);
-      gl.colorMask(false, false, false, false);
-      lifePass(E, 'lifeDiffer', { uA: E.seed, uB: b }, {}, [E.next.state], 1024, E.rows);  // (drawn nowhere: its query only)
-      gl.colorMask(true, true, true, true);
-      gl.endQuery(gl.ANY_SAMPLES_PASSED_CONSERVATIVE);
-      S.asked.push([S.gen, q]);
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    if (S.found) { for (const [, q] of S.asked) gl.deleteQuery(q); S.asked = []; L.stable ??= { T: 0, P: S.found, extinct: false }; S.life = null; renderRuleSection(); }
+    if (S.found) { L.stable ??= { T: 0, P: S.found, extinct: false }; S.life = null; renderRuleSection(); }
     statsDirty = true;
     renderHunt();
     if (S.life) setTimeout(slice, 0);
   };
   slice();
+}
+// a block rule's generation g there, from a into b (as GL_SHADERS.blockRule: Ising's 4 sides, stellated cells across first,
+// flips' cells left out by a wall turned over)
+function blockStep(M, a, b, g) {
+  const p = g % M.turns.length, turn = M.turns[p];
+  if (M.ising) { b.set(a); for (const t of turn) { let c = 0; for (const u of M.sides[t]) if (u >= 0 && a[u]) c++; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
+  if (M.move) a = Uint8Array.from(M.move, (m) => a[m]);
+  b.set(a);
+  for (let i = 0; i < turn.length; i += M.k) {
+    let st = 0;
+    for (let j = 0; j < M.k; j++) if (a[turn[i + j]]) st |= 1 << j;
+    for (let j = 0; j < M.k; j++) b[turn[i + j]] = (M.to[st] >> j) & 1;
+  }
+  if (M.flips) for (const t of (M.skipped ??= M.turns.map((u) => { const on = new Set(u); return [...blockCells(M, a.length).keys()].filter((t) => M.cells[t] && !on.has(t)); }))[p]) b[t] = a[t] ? 0 : 1;
 }
 // One generation. A cell: 0 dead, k alive of colour k (1 … K, one colour: 1), k + K × s dying of colour
 // k at stage s (1 … C − 2, see parseRule). Only live cells count as neighbours (on hexagons maybe where
@@ -11665,10 +11662,6 @@ void main() {
   int t = 4 * (int(gl_FragCoord.y) * 1024 + int(gl_FragCoord.x));
   o = vec4(next(t), next(t + 1), next(t + 2), next(t + 3)) / 255.0;
 }`],
-  // two states, a texel (4 cells) drawn where they differ, none where alike (see searchBack: its query, any drawn)
-  lifeDiffer: [GL_QUAD, `#version 300 es
-precision highp float; uniform sampler2D uA, uB; out vec4 o;
-void main() { ivec2 p = ivec2(gl_FragCoord.xy); if (texelFetch(uA, p, 0) == texelFetch(uB, p, 0)) discard; o = vec4(1.0); }`],
   // a cell's triangles, its number with each corner: its colour a texel of uCol (1024 a row), none where it is clear
   planeCells: [`#version 300 es
 in vec2 aPos; in float aId; uniform sampler2D uCol; flat out vec4 vCol;${GL_PLANE_AT}
@@ -12507,7 +12500,7 @@ function lifeEngine(L, runs = 1, h = 1) {
            start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
            side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)), part: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64, runs)),
            sum: Array.from({ length: Math.ceil((9 + 4 * L.colours) / 16) }, () => [0, 1, 2, 3].map(() => store(gl.RGBA32UI, h, runs))), look: store(gl.RGBA8, 4096, 17),
-           in: ints(M ? Int32Array.from(blockCells(M, n)) : none), ...(M && { ...blockGPU(M, n, ints), seed: store(gl.RGBA8, 1024), search: [store(gl.RGBA8, 1024), store(gl.RGBA8, 1024)] }) };
+           in: ints(M ? Int32Array.from(blockCells(M, n)) : none), ...(M && blockGPU(M, n, ints)) };
 }
 function lifeFree(E) {
   const { gl } = GLS;
@@ -12528,7 +12521,7 @@ function blockGPU(M, n, ints) {
 }
 // a pass: its program, its textures by their uniforms' names, its whole numbers (and more: its other uniforms), into its
 // targets (w × h), drawn over them. A framebuffer a set of targets (by its first: each in one set), its uniforms' places
-// a program's, made once (a pass then a few microseconds, not 40: see searchBack)
+// a program's, made once (a pass then a few microseconds, not 40)
 function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x = 0, y = 0) {  // (x, y: its targets' first column, first row)
   const { gl, prog } = GLS, p = prog[program], at = (GLS.uniforms ??= new Map()), u = (name) => { const k = `${program}|${name}`; if (!at.has(k)) at.set(k, gl.getUniformLocation(p, name)); return at.get(k); };
   if (!E.fbs.has(targets[0])) {
@@ -12551,7 +12544,6 @@ function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x 
 function lifeToGPU(L, E) {
   const { gl } = GLS, c = L.cells, put = (t, format, type, data) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format === gl.RGBA ? 1024 : 4096, E.rows, format, type, data); };
   E.pad.fill(0); E.pad.set(c.alive); put(E.now.state, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
-  if (L.margolus) { E.pad.fill(0); E.pad.set(L.seed); put(E.seed, gl.RGBA, gl.UNSIGNED_BYTE, E.pad); }  // (its start: its return looked for, see blockBack)
   // (its start's: a live cell 1 old, ever alive and of its colour; no change, no death yet)
   const live = (v) => v > 0 && v <= L.colours;
   E.u32.fill(0); for (let t = 0; t < E.n; t++) E.u32[t] = live(c.alive[t]) ? 1 : 0; put(E.now.age, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32);
