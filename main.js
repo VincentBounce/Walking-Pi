@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1505';
+const VERSION = '0.1.1506';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8490,6 +8490,17 @@ const pixelIcon = (art, box = 5) => `<svg class="icon rule-icon" viewBox="${(5 -
 // How a block rule works (see ruleTutorial): the grid's sets of blocks in turn, on a piece of it (each block its own tint),
 // then a block's states and the one each turns into, one of each turned the same (the rule turns with its block), those
 // changing then those kept, by their live cells; the state before shown a moment, fading
+// a page's tools over it (how a rule or a walk works, the number): Letters (a switch), play it again, copy it, back; each its click
+function tutTools({ letters = null, replay = null, copy = null, close, back = 'the grid' }) {
+  const d = document.createElement('div'), add = (cls, html, title, click) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.title = title; b.innerHTML = html; b.addEventListener('click', click); d.append(b); };
+  d.className = 'tut-tools';
+  if (letters) add(`tut-letters${letters.on ? ' active' : ''}`, 'Letters', 'The letters of this grid, for a rule of your own', letters.click);
+  if (replay) add('tut-replay', '↻', 'Play it again', replay);
+  if (copy) add('tut-copy', icon('copy'), 'Copy it', copy);
+  add('tut-close', '✕', `Back to ${back}`, close);
+  return d;
+}
+const replayPictures = () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0));  // (a page's pictures from their start)
 function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be): the
   // smallest with blocks in each phase (the triangles' at 6: no whole hexagon)
@@ -8574,14 +8585,13 @@ function blockTutorial(option, to) {
   // a rule that turns an empty block full (Critters, Tron): as it is shown, every other generation negative
   const shownPair = (st) => `<figure><div>${block(st)}<span>→</span>${block(full ^ to[st], st)}</div><figcaption>${alive(st)} alive${alive(full ^ to[st]) !== alive(st) ? ` → ${alive(full ^ to[st])}` : ''}</figcaption></figure>`;
   const asShown = !flips ? '' : `<h4>As shown</h4><p>It turns an empty block full, so every other generation is shown negative (its dead cells drawn alive), as Margolus showed Critters: the picture stays the same way round${blockKind(to).keeps ? ', and each block keeps as many cells alive, each its colour' : ''}. A block, then as the next generation shows it:</p><div class="tut-row">${states.map(shownPair).join('')}</div>`;
-  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
+  $('ruleTuto').innerHTML = `<div class="tut-body">`
     + `<h3>${option.dataset.name} <code>${option.value.replace(/,/g, ',<wbr>')}</code></h3>${BLOCK_WORDS[`${kind}|${option.dataset.name}`] ? `<p>${BLOCK_WORDS[`${kind}|${option.dataset.name}`].slice(2)}.</p>` : ''}${ising ? `<p>The Ising model of a magnet (Vichniac's Q2R, 1984; Tim Tyler's cell-auto.com): the squares a checkerboard, its two colours in turn, a generation each; a square of the colour's turn turned over when just 2 of its 4 side neighbours are alive, else kept. Turned over or not, as many sides between alive and dead (its energy kept), and the colour not turning stays as it is: so it runs back.${edges}</p>`
       + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${['even', 'odd'][j]} generations</figcaption></figure>`).join('')}</div>${cases}${maxPeriod}</div>` : ''}${ising ? '' : `<p>The grid in blocks of ${k} cells round a corner, ${stars ? `the same each generation, each cell first swapped with the one across its side away from the corner, come in from the next block (stellated: Tim Tyler's ${k === 6 ? 'Star of David' : 'isometric von Neumann'} neighbourhood, a lattice gas's)` : `${turns.length} sets of them in turn, a generation each (${R?.four ? "Tim Tyler's Square-4: Margolus's, its corners 4 sets in turn round a square" : "Margolus's neighbourhood"})`}: `
     + `each block turns into the one below, a different one for each of its ${1 << k} states, so the rule runs back too, the arrows the other way round. One of each state turned the same: the rule turns with its block.${edges}</p>`
     + `<div class="tut-row tut-phases">${edged.map((blocks, j) => `<figure><div>${phase(blocks)}</div><figcaption>${turns.length === 1 ? 'every generation' : turns.length === 2 ? ['even', 'odd'][j] : `${['1st', '2nd', '3rd', '4th'][j]} of ${turns.length}`}${turns.length === 1 ? '' : ' generations'}</figcaption></figure>`).join('')}</div>${across}`
     + `<h4>Changing</h4><div class="tut-row">${moved.map(pair).join('') || '<p>none</p>'}</div><h4>Kept</h4><div class="tut-row">${kept.map(pair).join('') || '<p>none</p>'}</div>${asShown}${maxPeriod}</div>`}`;
-  $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
-  $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
+  $('ruleTuto').prepend(tutTools({ replay: replayPictures, close: () => ruleTutorial(null) }));
 }
 // what a rule's page shows: the grid, the rule, its colours and edges; blocks, their max period too (the grid's size, the
 // start's live cells, its return once found)
@@ -8720,16 +8730,14 @@ function ruleTutorial(option) {
     const s = stages.indexOf(centre) + 1, light = document.documentElement.dataset.theme === 'light';
     return s ? `<text x="${o[0]}" y="${o[1]}" font-size="${side / 4}" text-anchor="middle" dominant-baseline="central" fill="${(1 - s / (rule.C - 1) > 0.45) === light ? '#fff' : '#1f2328'}">✝</text>` : '';
   }
-  $('ruleTuto').innerHTML = `<div class="tut-tools">${lettersOf2 ? `<button type="button" class="tut-letters${tutLetters.on ? ' active' : ''}" title="The letters of this grid, for a rule of your own">Letters</button>` : ''}<button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">${tutLetters.on && lettersOf2 ? lettersPage() + '</div>' : ''}`
+  $('ruleTuto').innerHTML = `<div class="tut-body">${tutLetters.on && lettersOf2 ? lettersPage() + '</div>' : ''}`
     + (tutLetters.on && lettersOf2 ? '' : `<h3>${option.dataset.name} <code>${option.value}</code></h3>${option.value !== 'custom' && option.text?.includes(' — ') ? `<p>${option.text.split(' — ').slice(1).join(' — ').replace(/^./, (c) => c.toUpperCase())}.</p>` : ''}${kinds.length > 1 ? shapeBubbles(kinds, c, corners, count, shapeOf, { hat: 'hat', spectre: 'spectre' }[kind]) : ''}<p>A cell with ${around.length} neighbours here (sharing an edge or a corner): ${born.length ? `born with ${list(born)} live ones` : 'never born'}, ${stays.length ? `survives with ${list(stays)}` : 'never survives'}, dies otherwise${iso === 'vertex' ? ' (after v, how many of the live ones touch it by a corner only, not a side)' : iso ? ' (the letters: where the live ones sit)' : ''}${rule.C > 2 ? `, then fades through ${rule.C - 2} dying stage${rule.C > 3 ? 's' : ''} (neither alive nor counted) before it is empty again` : ''}.</p>`
     + `<h4>Birth${part('B')}</h4><div class="tut-row">${born.map((cs) => pair(cs, UNLIT, LIFE_ALIVE, 'born')).join('') || '<p>none</p>'}</div>${colours()}`
     + `<h4>Survival${part('S')}</h4><div class="tut-row">${stays.map((cs) => pair(cs, LIFE_ALIVE, LIFE_ALIVE, 'stays')).join('') || '<p>none</p>'}</div>`
     + `<h4>Death</h4><div class="tut-row">${dies.map((cs) => pair(cs, LIFE_ALIVE, after, 'dies')).join('')}</div>`
     + (stages.length ? `<h4>Dying stages${part('C')}</h4><div class="tut-row"><figure><div>${[LIFE_ALIVE, ...stages, UNLIT].map((f) => cell(f, new Set())).join('<span>→</span>')}</div><figcaption>${rule.C - 1} stages alive including ${stages.length} dying ✝ (whatever its neighbours) and 1 dead (able to be born again)</figcaption></figure></div>` : '') + '</div>');
   for (const f of $('ruleTuto').querySelectorAll('.tut-shapes figure')) f.addEventListener('click', () => { tutShape.at = Number(f.dataset.at); ruleTutorial(option); });
-  $('ruleTuto').querySelector('.tut-letters')?.addEventListener('click', () => { tutLetters.on = !tutLetters.on; ruleTutorial(option); });
-  $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
-  $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => $('ruleTuto').querySelectorAll('svg').forEach((v) => v.setCurrentTime(0)));
+  $('ruleTuto').prepend(tutTools({ letters: lettersOf2 && { on: tutLetters.on, click: () => { tutLetters.on = !tutLetters.on; ruleTutorial(option); } }, replay: replayPictures, close: () => ruleTutorial(null) }));
 }
 // How a walk works: a figure for each digit, its step lit, the way in (a relative walk's) muted, the other digits'
 // ends as dots; on cells, the cells. On the plane by the walk's own stepper; on a surface, a cell of it or a corner
@@ -8828,12 +8836,11 @@ function walkTutorial(w) {
       + `${f.ends.map((p) => dot(p, 'tut-end')).join('')}${dot(from(f), 'tut-here')}${still ? '' : dot(to, 'tut-to')}</svg>`;
   };
   const how = mode.lattice === 'sphere' ? `, turning as on its flat ${mode.grid ? 'grid' : 'tiling'}` : '';
-  $('ruleTuto').innerHTML = `<div class="tut-tools"><button type="button" class="tut-replay" title="Play it again">↻</button><button type="button" class="tut-close" title="Back to the grid">✕</button></div><div class="tut-body">`
+  $('ruleTuto').innerHTML = `<div class="tut-body">`
     + `<h3>${walkName(w)}</h3><p>${creature ? `${mode.rule[0].toUpperCase()}${mode.rule.slice(1)}` : `The number read digit by digit in base ${mode.base}, each digit a step ${mode.rule.replace(/:.*/, '')}${how}`}`
     + `${figs.some((f) => f.here) ? '; the way it came in grey' : ''}${figs.some((f) => f.next?.length > 1) ? ', the step after dashed' : ''}.</p>`
     + `<div class="tut-row tut-walk">${figs.map((f) => `<figure><div>${fig(f)}</div><figcaption>${f.label ?? `<b>${f.d}</b>`} ${f.caption ?? ''}</figcaption></figure>`).join('')}</div></div>`;
-  $('ruleTuto').querySelector('.tut-replay').addEventListener('click', () => walkTutorial(w));  // (its steps appearing again)
-  $('ruleTuto').querySelector('.tut-close').addEventListener('click', () => ruleTutorial(null));
+  $('ruleTuto').prepend(tutTools({ replay: () => walkTutorial(w), close: () => ruleTutorial(null) }));  // (its steps appearing again)
 }
 const walkTutorialToggle = () => ($('ruleTuto').hidden ? walkTutorial($('mode').value) : ruleTutorial(null));
 let customOpen = false;  // the Custom rule card clicked: its states, births and survivals shown, a known rule in use or not
@@ -13852,14 +13859,12 @@ function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').class
 $('copyNumber').addEventListener('click', () => { if (!$('numberPreview').hidden) closeNumber(); else showNumber(); });
 function showNumber() {
   const text = numberText(), name = `${formulaInUse} base ${current.base} `, v = $('numberPreview');
-  v.innerHTML = `<div class="tut-tools"><button type="button" class="tut-copy" title="Copy it">${icon('copy')}</button><button type="button" class="tut-close" title="Back to the walk">✕</button></div>`
-    + `<div class="tut-body"><h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p></div>`;
+  v.innerHTML = `<div class="tut-body"><h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p></div>`;
   v.querySelector('.number-digits').textContent = text.slice(name.length);
-  v.querySelector('.tut-close').addEventListener('click', closeNumber);
-  v.querySelector('.tut-copy').addEventListener('click', (e) => {
+  v.prepend(tutTools({ copy: (e) => {
     const b = e.currentTarget;
     navigator.clipboard.writeText(text).then(() => { b.innerHTML = icon('check'); setTimeout(() => { b.innerHTML = icon('copy'); }, 1500); }, () => {});
-  });
+  }, close: closeNumber, back: 'the walk' }));
   v.querySelector('.tut-body').scrollTop = 0;
   v.hidden = false;
   $('copyNumber').classList.add('active', 'switch');
