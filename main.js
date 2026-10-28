@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1446';
+const VERSION = '0.1.1447';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9836,12 +9836,12 @@ function renderHunt() {
   $('huntStatus').textContent = hunt.status;  // (its zone: in its button's tooltip)
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle); a life (one colour), whatever its goal, by how far it spreads:
-  // its most live cells at once, as a share of the grid, by its cells at the start (green 0.01 and up, orange
-  // from 0.002: a soup half full is red)
+  // how much it grows: its most live cells at once by its cells at the start (green from 4 times, orange from 2:
+  // a soup half full can't double)
   const n = walk.life.seed.length;
   const light = (r) => {
     if (K > 1 && !r.contacts) return ['#8b949e', 'no contact'];
-    const q = K === 1 ? r.peak / n / r.live : r.balance, [hi, lo] = K === 1 ? [0.01, 0.002] : [0.6, 0.3];
+    const q = K === 1 ? r.peak / r.live : r.balance, [hi, lo] = K === 1 ? [4, 2] : [0.6, 0.3];
     return q >= hi ? ['#30a46c', K === 1 ? 'spreads far' : 'even'] : q >= lo ? ['#f0a020', K === 1 ? 'spreads some' : 'uneven'] : ['#e5484d', K === 1 ? 'spreads little' : 'one-sided']; };
   // built again only when the best or the one picked change, not at each count: a click lands on what was pressed
   const listKey = `${hunt.top.map(huntId).join()}|${hunt.picked}|${K}`;
@@ -9856,7 +9856,7 @@ function renderHunt() {
       : [`${fmt(r.contacts)} generations in contact`, r.winner ? `${LIFE_COLOUR_NAMES[r.winner - 1]} wins at gen ${fmt(r.alone)}`
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r), why = K > 1 ? (r.contacts ? `balance ${r.balance.toFixed(2)}: how evenly its colours keep being born (1 all alike, 0 one alone; green from 0.6, orange from 0.3, else red)` : 'its colours never touched: no battle')
-      : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: ${((100 * r.peak) / n / r.live).toFixed(2)} % of the grid a starting cell (green from 1 %, orange from 0.2 %, else red)`;
+      : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: grown ${(r.peak / r.live).toFixed(1)} times (green from 4, orange from 2, else red)`;
     const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now)
     b.dataset.tipHtml = `<b class="tip-name">${name}</b>${detail}<br><span style="color:${colour}">●</span> ${word}, ${why}`;  // (its light in its tooltip, in its colour)
     const pick = () => (huntId(r) === hunt.picked && !hunt.run ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
