@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1498';
+const VERSION = '0.1.1500';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2970,7 +2970,7 @@ function renderModePicker() {
     // round the tube), a switch once picked: a click turns it (its picture turned) or back; then Turned (a torus's, a
     // strip's, a bottle's), the same: on, the tiling turned; off, not; greyed, a tiling that has none
     const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
-    const turns = tabOf(here, true) >= 0 && (!MODES[w].margolus || [...$('lifePreset').options].some((o) => o.dataset.name && o.text.includes(lifeMark(MODES[w])) && blocksFit(parseRule(o.value), MODES[w], shownSurface(MODES[w].sphere, !isTurned))));  // (a block rule: one of its grid's blocks there, the rule fitted to it then; not the rule now: fitted after, see fitRuleToShape)
+    const turns = tabOf(here, true) >= 0 && blocksTurn(w, !isTurned);
     const turn = () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); };
     $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, shape, name]) => {
       if (turned || !same(f)) return [];
@@ -3027,6 +3027,7 @@ function renderModePicker() {
 function compute() {
   const mode = MODES[$('mode').value];
   surfaceDraw = false;
+  if (torusTurned && !blocksTurn($('mode').value, true)) torusTurned = false;  // (a reversible sheet turned only where its blocks are: a link's too)
   renderModePicker();
   if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
   const n = digitsNeeded(), want = mode.life ? n : n + LOOP_AHEAD;  // a walk also reads the digits ahead
@@ -9196,6 +9197,9 @@ function meshBlocks(g, kind, stars, four) {
 // alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
 // a block rule's blocks on a grid (Ising: its squares in turn): the plane's (see planeBlocks, isingOf)
 let blocksMemo = null;  // (the last grid's: its blocks the same whatever its start, 1 s at 2²⁰ cells)
+// a mode's surface, turned or not: one of its grid's block rules with its blocks there (any other mode: yes); not the rule
+// now, fitted after (see fitRuleToShape), then to it
+const blocksTurn = (w, turned) => !MODES[w].margolus || [...$('lifePreset').options].some((o) => o.dataset.name && o.text.includes(lifeMark(MODES[w])) && blocksFit(parseRule(o.value), MODES[w], shownSurface(MODES[w].sphere, turned)));
 // (a surface's, g: by its mesh, kept on it, see meshBlocks, meshIsing; null: they do not come round it)
 const surfaceBlocks = (g, kind, rule) => ((g.blocks ??= {})[`${kind}|${!!rule.ising}|${!!rule.stars}|${!!rule.four}`] ??= rule.ising ? meshIsing(g) : meshBlocks(g, kind, rule.stars, rule.four));
 const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(kind, W, 1), g = null) => {
