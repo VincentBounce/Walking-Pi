@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1482';
+const VERSION = '0.1.1486';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2690,12 +2690,12 @@ for (const [kind, t] of Object.entries(TILINGS)) {
 }
 // Reversible on the tori: Life's, in blocks as the plane's (its blocks' grid, so many cells a block, see meshBlocks), 3 squares
 // round it (see ringColours), its start on the middle one (see startColours)
-const REVERSIBLE_TORI = [['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4]];
-const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
-for (const [w, life, blocks, k] of REVERSIBLE_TORI) {
+const REVERSIBLE_SHEETS = [['blocksMobius', 'lifeMobius', 'square', 4], ['blocksMobiusTri', 'lifeMobiusTri', 'tri', 6], ['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4]];
+const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3, mobius: 2 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
+for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODES[w] = { ...MODES[life], margolus: true, blocks, where: `${MODES[life].where.split(' (')[0]} in blocks of ${k} round a corner, as the plane's, 3 squares round it, its start on the middle one` };
   MODE_ICONS[w] = MODE_ICONS[life];
-  NAV[w] = ['Reversible', 'Surfaces', 'Torus', 'Blocks', ''];
+  NAV[w] = ['Reversible', 'Surfaces', NAV[life][2], 'Blocks', ''];
 }
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
@@ -2790,8 +2790,8 @@ function navGo(level, ...values) {
 // cells, ants, Life);
 // tabs, [tiling, turned by 30° (see TURNED), icon, its shape (as the 2D grids name it, see shapeLabel), title]; tab, the one in use or last chosen
 const FAMILIES = [
-  { name: 'Torus', modes: [['torusGrid', 'torusWalk', 'lifeTorus', 'torusPivotGrid', 'torusPivot', 'blocksTorus'], ['torusHexGrid', 'torusHexWalk', 'lifeTorusHex', 'torusHexPivot', 'blocksTorusHex'],
-                          ['torusTriGrid', 'torusTriWalk', 'torusTriPivotGrid', 'lifeTorusTri', 'blocksTorusTri'], ['torusCairoWalk', 'lifeTorusCairo', 'blocksTorusCairo'], ['lifeTorusKite']], tab: 0,
+  { name: 'Torus', modes: [['torusGrid', 'torusWalk', 'lifeTorus', 'torusPivotGrid', 'torusPivot'], ['torusHexGrid', 'torusHexWalk', 'lifeTorusHex', 'torusHexPivot'],
+                          ['torusTriGrid', 'torusTriWalk', 'torusTriPivotGrid', 'lifeTorusTri'], ['torusCairoWalk', 'lifeTorusCairo'], ['lifeTorusKite']], tab: 0,
     tabs: [[0, false, 'tilesSq', 'Squares', 'Squares'], [3, false, 'pentagons', 'Cairo', 'Cairo pentagons'],
            [2, false, 'tilesTri', 'Triangles', 'Triangles'], [2, true, 'tilesTriTurned', 'Triangles', 'Triangles, turned by 30° (rows round the tube)'], [4, false, 'kites', 'Kites', 'Kites (each triangle cut in 3)'],
            [4, true, 'kites', 'Kites', 'Kites, turned by 30° (rows round the tube)'], [1, false, 'tilesHex', 'Hexagons', 'Hexagons'], [1, true, 'tilesHexTurned', 'Hexagons', 'Hexagons, turned by 30° (flat-topped, columns round the ring)']] },
@@ -2825,8 +2825,9 @@ for (const Fo of Object.values(FOLDS)) for (const kind of kitesNext([...MOBIUS_T
   const F = FAMILIES[Fo.family], turned = FOLDED[`${Fo.of(kind)}Turned`], { name } = TILINGS[kind];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, name, name]);
   if (turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, name, `${name}, turned by ${turned.deg}° (${Fo.way})`]);
-  F.modes.push([foldOf(`life${Fo.life}`, kind), ...REVERSIBLE_TORI.filter(([, life]) => life === foldOf(`life${Fo.life}`, kind)).map(([w]) => w)]);
+  F.modes.push([foldOf(`life${Fo.life}`, kind)]);
 }
+for (const [w, life] of REVERSIBLE_SHEETS) FAMILIES.flatMap((F) => F.modes).find((ms) => ms.includes(life)).push(w);  // (each reversible sheet in its tiling's tab, beside Life's)
 // the family of a walk mode, its tiling there and its tab (null: not in a family)
 function familyOf(w) {
   for (const F of FAMILIES) {
@@ -6472,7 +6473,7 @@ function lifeReseed() {
 // grid (see huntParts)
 // the parts a start is laid in: its colours'; a reversible torus's (3 squares round it, see ringColours): Icon 24's and Punk 24's
 // one a square, the others' its middle one (see huntParts), Wild and Digits all over
-const blockTorus = () => !!walk.life.margolus && !!walk.geo.torus;
+const blockTorus = () => !!walk.life.margolus && !!walk.geo.torus && !walk.geo.mobius;  // (a Möbius strip, its mesh a torus's too: as Life's in one colour, all along it, in view)
 const lifeParts = () => (blockTorus() ? (plane.start === 'random' && /24$/.test(hunt.zone) ? 3 : 1) : walk.life.colours);
 function startColours(seed) {
   startParts(seed);
@@ -9157,6 +9158,20 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
   }, stars, { pts: planeCorners(kind, 0, 0), mid: o });
   return blocks ? { ...blocks, wraps: torus } : { ...planeBlocks(kind, W, false, stars, four), wraps: false };
 }
+// Ising on a mesh (a torus, a Möbius strip): each square's sides the squares across its edges, its two colours by turns
+// across them (null: they do not come round)
+function meshIsing(g) {
+  const k = g.sides, by = new Map(), sides = Array.from({ length: g.n }, () => []), colour = new Int8Array(g.n).fill(-1);
+  for (let t = 0; t < g.n; t++) for (let q = 0; q < k; q++) {
+    const a = g.poly[k * t + q], b = g.poly[k * t + (q + 1) % k], key = a < b ? `${a} ${b}` : `${b} ${a}`;
+    if (by.has(key)) { sides[t].push(by.get(key)); sides[by.get(key)].push(t); } else by.set(key, t);
+  }
+  for (let t0 = 0; t0 < g.n; t0++) if (colour[t0] < 0) for (const queue = [t0], _ = (colour[t0] = 0); queue.length; ) {
+    const t = queue.pop();
+    for (const u of sides[t]) { if (colour[u] < 0) { colour[u] = 1 - colour[t]; queue.push(u); } else if (colour[u] === colour[t]) return null; }
+  }
+  return { ising: true, k: 1, turns: [0, 1].map((c) => Int32Array.from({ length: g.n }, (_, t) => t).filter((t) => colour[t] === c)), sides, to: new Uint8Array(0), wraps: true };
+}
 // a torus's: its cells by its mesh (its corners as merged across its seams, see finishTorus), placed on its sheet (uv);
 // null: its sets do not fit round it
 function meshBlocks(g, kind, stars, four) {
@@ -9171,15 +9186,15 @@ function meshBlocks(g, kind, stars, four) {
 // The Ising model, Vichniac's Q2R (1984; Tyler's cell-auto.com/ising): squares on a checkerboard, its two colours in turn, a
 // square turned over when just 2 of its 4 side neighbours are alive (its energy the same either way: the walls between
 // alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
-// a block rule's blocks on a grid (Ising: its squares in turn, see isingOf; squares only, a row its cols): the plane's, or a torus's sheet (cols its row's)
+// a block rule's blocks on a grid (Ising: its squares in turn): the plane's (see planeBlocks, isingOf)
 let blocksMemo = null;  // (the last grid's: its blocks the same whatever its start, 1 s at 2²⁰ cells)
-// (a torus's, g: by its mesh, see meshBlocks; Ising's squares by its sheet, a plane's of its row)
+// (a torus's or a Möbius strip's, g: by its mesh, see meshBlocks, meshIsing)
 const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(kind, W, 1), g = null) => {
   const key = `${kind}|${W}|${torus}|${cols}|${g?.n}|${!!rule.ising}|${!!rule.stars}|${!!rule.four}`;
-  if (blocksMemo?.key !== key || blocksMemo.g !== g) blocksMemo = { key, g, blocks: rule.ising ? isingOf(kind, W, torus, cols) : g ? meshBlocks(g, kind, rule.stars, rule.four) : planeBlocks(kind, W, torus, rule.stars, rule.four, cols) };
+  if (blocksMemo?.key !== key || blocksMemo.g !== g) blocksMemo = { key, g, blocks: g ? (rule.ising ? meshIsing(g) : meshBlocks(g, kind, rule.stars, rule.four)) : rule.ising ? isingOf(kind, W, torus, cols) : planeBlocks(kind, W, torus, rule.stars, rule.four, cols) };
   return rule.ising ? { ...blocksMemo.blocks } : { ...blocksMemo.blocks, to: rule.margolus, ...blockKind(rule.margolus) };
 };
-function isingOf(kind, W, torus = planeTorus(kind), row = planeRow(kind, W)) {
+function isingOf(kind, W, torus = planeTorus(kind), row = planeRow(kind, W)) {  // (squares only)
   const turns = [[], []], sides = [];
   for (let t = 0; t < row * W; t++) {
     const x = t % row, y = Math.floor(t / row);
