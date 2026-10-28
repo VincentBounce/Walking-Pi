@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1406';
+const VERSION = '0.1.1407';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -4061,9 +4061,8 @@ function triStepper(kind) {
  * and nbrEdge[…] the index of that same edge in the neighbour. */
 // meshCache: each mesh built once a size, kept while in use (walk.geo: the walk's own; all kept, a long visit of many
 // surfaces and sizes filled the page's memory)
-const meshCache = new Proxy({}, { get: (o, k) => o[k]?.deref(), set(o, k, v) { o[k] = new WeakRef(v); return true; } });
-// built once a key, kept while in use (cache: its weak references, see meshCache)
-const weakOnce = (cache, key, build) => cache[key]?.deref() ?? (cache[key] = new WeakRef(build())).deref();
+const weakCache = () => new Proxy({}, { get: (o, k) => o[k]?.deref(), set(o, k, v) { o[k] = new WeakRef(v); return true; } });  // (each kept while in use)
+const meshCache = weakCache();
 
 // Shared vertex store: points are merged when equal to 10⁻⁹ (their coordinates as whole numbers of 10⁻⁹, by a sum of them:
 // those of the same sum looked through, the last one first)
@@ -4670,11 +4669,11 @@ const stripSteps = (kind0, nv, W, own, q = 1) => {
   const { step, ok } = MOBIUS_ALONG[kind0], K = ringColours();
   return own ?? ringLength((2 * Math.PI * W) / MOBIUS_WIDTH / step, (K * W) / 2 / step, (K * q) % 2 ? K * q : (K * q) / 2, (n) => ok(n, nv));
 };
-const stripMemo = {}, countMemo = {};
+const stripMemo = weakCache(), countMemo = {};
 // a strip's length, width and tiles' count, without its tiles (the sizes' ladder asks for many: see mobiusSheetOf's count)
 const mobiusCount = (kind0, size) => (countMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size, true));  // (its length its colours': see stripSteps)
 function mobiusSheet(kind0, size) {
-  return weakOnce(stripMemo, `${kind0}|${size}|${ringColours()}`, () => mobiusSheetOf(kind0, size));  // (its mesh's, kept while it is: see meshCache)
+  return (stripMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size));  // (its mesh's, kept while it is: see meshCache)
 }
 function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counted, not built ({ L, W, n }: see mobiusCount)
   if (kind0.startsWith('mobiusKite')) {  // the triangles', cut in 3
@@ -4802,13 +4801,13 @@ const kleinRows = (kindK) => {
   const [a, b] = MOBIUS_STRIPS[FOLDED[kindK].strip].basis, la = Math.hypot(...a), bx = (a[0] * b[0] + a[1] * b[1]) / la;  // (b along a)
   return [1, 2, 3, 4, 6, 12].find((r) => Math.abs((r * bx) / la - Math.round((r * bx) / la)) < 1e-6);
 };
-const kleinMemo = {};
+const kleinMemo = weakCache();
 function kleinTilingSheet(kindK, size) {
-  return weakOnce(kleinMemo, `${kindK}|${size}|${ringColours()}`, () => {
+  return (kleinMemo[`${kindK}|${size}|${ringColours()}`] ??= (() => {
     const { kind, strip, turn, nv, n, W, step, by, a } = kleinLength(kindK, size);
     const s = tilingStrip(kind, strip, `${nv}x${n}`), keep = s.tiles.map((_, i) => i).filter((i) => s.mids[2 * i + 1] < W - 1e-9);
     return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]), bricks: keep.map((i) => s.bricks[i]), originCell: s.originCell };
-  });
+  })());
 }
 // its frame, without its tiles: its strip, its rows and its length (see kleinTilingSheet); its tiles' count (see stripCount)
 const kleinCount = (kindK, size) => { const { kind, strip, nv, n } = kleinLength(kindK, size); return stripCount(kind, strip, `${nv}x${n}`, true); };
@@ -6806,7 +6805,7 @@ function discPatch(items, W, mid, norm = Math.hypot, each = flatEach) {  // wall
   return { ...F, dead, core: rows.flatMap((h, t) => (h.core ? [F.poly(t)] : [])), norm, width: Math.sqrt(area / (W * W)) };  // (norm: its way to measure, its disc's; width: its cells', see cellWidth)
 }
 // a grid that never repeats, built once a size: kept while in use (its polygons some hundred MB at a million cells: the plane's, see walk.plane.flat)
-const discMemo = (build) => { const cache = {}; return (W) => weakOnce(cache, W, () => build(W)); };
+const discMemo = (build) => { const cache = weakCache(); return (W) => (cache[W] ??= build(W)); };
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
  * (github.com/isohedral/hatviz, BSD 3-clause): four metatiles (H, T, P, F) are laid in a patch, which gives four
