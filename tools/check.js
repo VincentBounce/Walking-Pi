@@ -66,20 +66,23 @@ function checkMeshes(fail) {
     if (!torus) fail(`${kind}: no torus of its tiles to compare with`);
     else if (!within(inside, torus)) fail(`${kind}: inside ${show(inside)}, its torus ${show(torus)}`);
   }
-  // the grids that never repeat: their walls closed round them (a point just past each side of a cell in a cell or a
-  // wall), sizes 16 to 64
+  // the grids that never repeat: their walls closed round them (a point just past each side of a cell, a hundredth of the
+  // side out, in a cell or a wall; each tile in every square of 3 its box covers: the hyperbolic disc's, big and small), sizes 16 to 64
   const sarea = (P) => P.reduce((t, p, i) => t + p[0] * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * p[1], 0);
   for (const kind of Object.keys(APERIODIC)) for (const W of [16, 24, 32, 48, 64]) {
-    const h = APERIODIC[kind](W), all = Array.from({ length: h.m }, (_, k) => h.poly(k)), grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
-    all.forEach((P, j) => { const c = cell(P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
-    const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
+    const h = APERIODIC[kind](W), all = Array.from({ length: h.m }, (_, k) => h.poly(k)), grid = new Map();
+    all.forEach((P, j) => {
+      const xs = P.map((p) => Math.floor(p[0] / 3)), ys = P.map((p) => Math.floor(p[1] / 3));
+      for (let x = Math.min(...xs); x <= Math.max(...xs); x++) for (let y = Math.min(...ys); y <= Math.max(...ys); y++) (grid.get(`${x},${y}`) ?? grid.set(`${x},${y}`, []).get(`${x},${y}`)).push(j);
+    });
+    const covered = (x, y) => (grid.get(`${Math.floor(x / 3)},${Math.floor(y / 3)}`) ?? []).some((j) => insidePolygon(all[j], x, y));
     let gaps = 0;
     const dead = new Set(h.dead);
     for (const P of all.slice(0, W * W).filter((P, t) => !dead.has(t))) {  // (the live cells)
       const o = sarea(P) > 0 ? 1 : -1;
       for (let i = 0; i < P.length; i++) {
         const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        if (len > 1e-6 && !covered((a[0] + b[0]) / 2 + (0.03 * o * (b[1] - a[1])) / len, (a[1] + b[1]) / 2 - (0.03 * o * (b[0] - a[0])) / len)) gaps++;
+        if (len > 1e-6 && !covered((a[0] + b[0]) / 2 + 0.01 * o * (b[1] - a[1]), (a[1] + b[1]) / 2 - 0.01 * o * (b[0] - a[0]))) gaps++;
       }
     }
     checked++;
