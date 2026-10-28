@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1398';
+const VERSION = '0.1.1399';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1315,8 +1315,7 @@ function updateRuleText() {}  // the rule is shown by describe (the Play card)
 // Game of Life needs one base-C digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
-  if (mode.plane) return plane.start === 'digits' ? gridSize(planeKind(mode.plane), plane.side)[2] : 256;  // all the digits for a start by the digits; else a hunt's patch
-  if (mode.life) return SPHERES[surfaceOf(mode)].tiles(sphereSize());
+  if (mode.life) return plane.start !== 'digits' ? 256 : mode.plane ? gridSize(planeKind(mode.plane), plane.side)[2] : SPHERES[surfaceOf(mode)].tiles(sphereSize());  // all the digits for a start by the digits (a cell each); else a hunt's patch
   // a random prime is walked whole: its size (decimal digits) written in the walk's base
   return size ? Math.ceil((size * Math.log(10)) / Math.log(mode.base)) + 1 : requestedDigits();
 }
@@ -4061,17 +4060,22 @@ function triStepper(kind) {
 /* Tiled surfaces. A mesh lists each tile's vertices counterclockwise seen from outside
  * (poly[sides·t + k]); nbr[sides·t + k] is the tile across edge k (vertex k to vertex k + 1)
  * and nbrEdge[…] the index of that same edge in the neighbour. */
-// meshCache: the last 16 built kept (a long visit of many surfaces and sizes filled the page's memory)
-const meshCache = new Proxy({}, { set(o, k, v) { delete o[k]; o[k] = v; const keys = Object.keys(o); if (keys.length > 16) delete o[keys[0]]; return true; } });
+// meshCache: each mesh built once a size, kept while in use (walk.geo: the walk's own; all kept, a long visit of many
+// surfaces and sizes filled the page's memory)
+const meshCache = new Proxy({}, { get: (o, k) => o[k]?.deref(), set(o, k, v) { o[k] = new WeakRef(v); return true; } });
+// built once a key, kept while in use (cache: its weak references, see meshCache)
+const weakOnce = (cache, key, build) => cache[key]?.deref() ?? (cache[key] = new WeakRef(build())).deref();
 
-// Shared vertex store: points are merged when equal
+// Shared vertex store: points are merged when equal to 10⁻⁹ (their coordinates as whole numbers of 10⁻⁹, by a sum of them:
+// those of the same sum looked through, the last one first)
 function vertexStore() {
-  const verts = [], index = new Map();
+  const verts = [], whole = [], first = new Map(), next = [];
   const add = (x, y, z) => {
-    const f = (v) => (Math.abs(v) < 5e-10 ? 0 : v).toFixed(9);  // no "-0.000000000" apart from "0.000000000"
-    const k = `${f(x)},${f(y)},${f(z)}`;
-    if (!index.has(k)) { index.set(k, verts.length / 3); verts.push(x, y, z); }
-    return index.get(k);
+    const X = Math.round(x * 1e9), Y = Math.round(y * 1e9), Z = Math.round(z * 1e9), h = X + 3 * Y + 7 * Z;
+    for (let v = first.get(h) ?? -1; v >= 0; v = next[v]) if (whole[3 * v] === X && whole[3 * v + 1] === Y && whole[3 * v + 2] === Z) return v;
+    const v = verts.length / 3;
+    next.push(first.get(h) ?? -1); first.set(h, v); whole.push(X, Y, Z); verts.push(x, y, z);
+    return v;
   };
   return { verts, add };
 }
@@ -4082,21 +4086,26 @@ function vertexStore() {
 function finishMesh(verts, tiles, sides, size, outwardRef = (m) => m) {
   const n = tiles.length;
   const poly = new Int32Array(sides * n), cen = new Float64Array(3 * n), nrmOut = new Float64Array(3 * n);
-  const V = (v) => [verts[3 * v], verts[3 * v + 1], verts[3 * v + 2]];
-  tiles.forEach((t, i) => {
-    const P = t.map(V), U = [...new Set(t)].map(V);  // (U: its corners once: a triangle or a pentagon listed with a corner twice)
-    const m = [0, 1, 2].map((d) => U.reduce((sum, q) => sum + q[d], 0) / U.length * sides);
+  const at = (t, q, d) => verts[3 * t[q] + d];
+  for (let i = 0; i < n; i++) {
+    const t = tiles[i], m = [0, 0, 0];
+    let u = 0;
+    for (let q = 0; q < sides; q++) {  // (its corners once: a triangle or a pentagon listed with a corner twice)
+      if (t.indexOf(t[q]) < q) continue;
+      for (let d = 0; d < 3; d++) m[d] += at(t, q, d);
+      u++;
+    }
+    for (let d = 0; d < 3; d++) m[d] /= u;
     // normal from the diagonals (works for triangles and for slightly non-planar quads)
-    const d1 = [0, 1, 2].map((d) => P[2][d] - P[0][d]);
-    const d2 = [0, 1, 2].map((d) => P[sides - 1][d] - P[1][d]);
-    const nrm = cross(d1, d2);
-    const ref = outwardRef && outwardRef(m.map((v) => v / sides));
+    const a = [0, 1, 2].map((d) => at(t, 2, d) - at(t, 0, d)), b = [0, 1, 2].map((d) => at(t, sides - 1, d) - at(t, 1, d));
+    const nrm = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const ref = outwardRef && outwardRef(m);
     const inward = !!ref && nrm[0] * ref[0] + nrm[1] * ref[1] + nrm[2] * ref[2] < 0;  // no ref: as listed
-    poly.set(inward ? [t[0], ...t.slice(1).reverse()] : t, sides * i);
-    const l = Math.hypot(...nrm) * (inward ? -1 : 1);
-    cen.set(m.map((v) => v / sides), 3 * i);
-    nrmOut.set(nrm.map((v) => v / l), 3 * i);
-  });
+    poly[sides * i] = t[0];
+    for (let q = 1; q < sides; q++) poly[sides * i + q] = t[inward ? sides - q : q];
+    const l = Math.hypot(nrm[0], nrm[1], nrm[2]) * (inward ? -1 : 1);
+    for (let d = 0; d < 3; d++) { cen[3 * i + d] = m[d]; nrmOut[3 * i + d] = nrm[d] / l; }
+  }
   const edges = new Map(), nbr = new Int32Array(sides * n).fill(-1), nbrEdge = new Int8Array(sides * n);
   const nv = verts.length / 3;
   for (let t = 0; t < n; t++) {
@@ -4212,18 +4221,19 @@ function cubePits(n, up = false) {  // up: a bump on each face instead, as high 
 function mengerMesh(L, m = 1) {
   const key = `menger${L} ${m}`;
   if (meshCache[key]) return meshCache[key];
-  const n = 3 ** L * m, kept = (x, y, z) => {
-    if (Math.min(x, y, z) < 0 || Math.max(x, y, z) >= n) return false;
-    [x, y, z] = [x, y, z].map((v) => Math.floor(v / m));
-    for (let k = 0; k < L; k++, x = Math.floor(x / 3), y = Math.floor(y / 3), z = Math.floor(z / 3)) if ((x % 3 === 1) + (y % 3 === 1) + (z % 3 === 1) >= 2) return false;
-    return true;
-  };
+  // its blocks of m × m × m kept or not (3^L each way), once; a cell's its block's
+  const B = 3 ** L, n = B * m, of = Int32Array.from({ length: n }, (_, x) => Math.floor(x / m)), block = new Uint8Array(B ** 3);
+  for (let i = 0; i < B ** 3; i++) {
+    let x = Math.floor(i / B / B), y = Math.floor(i / B) % B, z = i % B, ok = 1;
+    for (let k = 0; k < L; k++, x = Math.floor(x / 3), y = Math.floor(y / 3), z = Math.floor(z / 3)) if ((x % 3 === 1) + (y % 3 === 1) + (z % 3 === 1) >= 2) ok = 0;
+    block[i] = ok;
+  }
+  const kept = (x, y, z) => x >= 0 && y >= 0 && z >= 0 && x < n && y < n && z < n && block[(of[x] * B + of[y]) * B + of[z]] === 1;
   const { verts, add } = vertexStore(), quads = [], c = (i) => (2 * i) / n - 1, at = (p) => add(...p.map(c));
   for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) for (let z = 0; z < n; z++) {
     if (!kept(x, y, z)) continue;
     for (let d = 0; d < 3; d++) for (const s of [0, 1]) {  // its side across axis d, low or high
-      const q = [x, y, z]; q[d] += s ? 1 : -1;
-      if (kept(...q)) continue;
+      if (kept(x + (d === 0 ? 2 * s - 1 : 0), y + (d === 1 ? 2 * s - 1 : 0), z + (d === 2 ? 2 * s - 1 : 0))) continue;
       const [u, v] = [(d + 1) % 3, (d + 2) % 3], P = (a, b) => { const p = [x, y, z]; p[d] += s; p[u] += a; p[v] += b; return at(p); };
       quads.push([P(0, 0), P(1, 0), P(1, 1), P(0, 1)]);
     }
@@ -4518,7 +4528,7 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
     const cj = r + (c % 2) / 2;
     tiles.push(swap([0, 1, 2, 3, 4, 5].map((k) => [c + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)])));
   }
-  if (kind === 'kleinKite' || kind === 'kleinKiteTurned') tiles.splice(0, tiles.length, ...tiles.flatMap(kitesOf));
+  if (kind === 'kleinKite' || kind === 'kleinKiteTurned') { const kites = tiles.flatMap(kitesOf); tiles.length = 0; for (const t of kites) tiles.push(t); }  // (each triangle its 3 kites)
   if (kind === 'kleinCairo') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
     const c = cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + 0.5]);  // (its first pair at the sheet's corner, as the torus's)
     tiles.push(signedArea(c) < 0 ? c.reverse() : c);
@@ -4665,7 +4675,7 @@ const stripMemo = {}, countMemo = {};
 // a strip's length, width and tiles' count, without its tiles (the sizes' ladder asks for many: see mobiusSheetOf's count)
 const mobiusCount = (kind0, size) => (countMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size, true));  // (its length its colours': see stripSteps)
 function mobiusSheet(kind0, size) {
-  return (stripMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size));  // (once: the sizes' labels and ladder ask again and again)
+  return weakOnce(stripMemo, `${kind0}|${size}|${ringColours()}`, () => mobiusSheetOf(kind0, size));  // (its mesh's, kept while it is: see meshCache)
 }
 function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counted, not built ({ L, W, n }: see mobiusCount)
   if (kind0.startsWith('mobiusKite')) {  // the triangles', cut in 3
@@ -4795,11 +4805,11 @@ const kleinRows = (kindK) => {
 };
 const kleinMemo = {};
 function kleinTilingSheet(kindK, size) {
-  return (kleinMemo[`${kindK}|${size}|${ringColours()}`] ??= (() => {
+  return weakOnce(kleinMemo, `${kindK}|${size}|${ringColours()}`, () => {
     const { kind, strip, turn, nv, n, W, step, by, a } = kleinLength(kindK, size);
     const s = tilingStrip(kind, strip, `${nv}x${n}`), keep = s.tiles.map((_, i) => i).filter((i) => s.mids[2 * i + 1] < W - 1e-9);
     return { kind, turn, L: s.L, W, n, nv, step, by, la: Math.hypot(...a), sides: s.sides, tiles: keep.map((i) => s.tiles[i]), mids: keep.flatMap((i) => [s.mids[2 * i], s.mids[2 * i + 1]]), bricks: keep.map((i) => s.bricks[i]), originCell: s.originCell };
-  })());
+  });
 }
 // its frame, without its tiles: its strip, its rows and its length (see kleinTilingSheet); its tiles' count (see stripCount)
 const kleinCount = (kindK, size) => { const { kind, strip, nv, n } = kleinLength(kindK, size); return stripCount(kind, strip, `${nv}x${n}`, true); };
@@ -4861,17 +4871,7 @@ function mobiusMesh(kind, size) {
     uv.push(...(side ? t : turnOver(t)).flat());
   });
   const mesh = finishMesh(cv, tiles, k, nv, null);  // as listed: a back faces the other way
-  // the step from a corner to a neighbour, on the sheet as seen from its face (a back: mirrored)
-  const N = cv.length / 3, delta = new Map();
-  tiles.forEach((c, t) => {
-    const back = t >= sheet.length ? -1 : 1;
-    for (let q = 0; q < k; q++) {
-      const a = c[q], b = c[(q + 1) % k], i = 2 * (k * t + q), j = 2 * (k * t + (q + 1) % k);
-      const dx = uv[j] - uv[i], dy = (uv[j + 1] - uv[i + 1]) * back;
-      delta.set(a * N + b, [dx, dy]); delta.set(b * N + a, [-dx, -dy]);
-    }
-  });
-  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_STRIPS[kind]?.kind, stripTurn: MOBIUS_STRIPS[kind] && -Math.atan2(MOBIUS_STRIPS[kind].basis[0][1], MOBIUS_STRIPS[kind].basis[0][0]), L, W, nu: L, nv, uv: new Float64Array(uv), delta, front: sheet.length, originCell,
+  return (meshCache[key] = Object.assign(mesh, { torus: true, mobius: true, kite: kind.startsWith('mobiusKite'), tiling: MOBIUS_STRIPS[kind]?.kind, stripTurn: MOBIUS_STRIPS[kind] && -Math.atan2(MOBIUS_STRIPS[kind].basis[0][1], MOBIUS_STRIPS[kind].basis[0][0]), L, W, nu: L, nv, uv: new Float64Array(uv), front: sheet.length, originCell,
     ...(mids && { uvMid: new Float64Array([...mids, ...mids]), bricks: [...bricks, ...bricks] }) }));  // (a tiling's: its tiles' own middles, see sheetMiddle)
 }
 // The sheet point of a surface: a torus, or a Möbius strip
@@ -4978,7 +4978,7 @@ function hexSolidMesh(solid, f) {
     return tris.slice().sort((x, y) => angle(x) - angle(y));
   });
   // each cell as many corners as the most (6; the stella's hollows 8), the last one repeated
-  const sides = Math.max(6, ...cells.map((c) => c.length)), mesh = finishMesh(Array.from(ico.cen), cells.map((c) => [...c, ...Array(sides - c.length).fill(c.at(-1))]), sides, f);  // the triangles' centres are the corners
+  const sides = cells.reduce((m, c) => Math.max(m, c.length), 6), mesh = finishMesh(Array.from(ico.cen), cells.map((c) => [...c, ...Array(sides - c.length).fill(c.at(-1))]), sides, f);  // the triangles' centres are the corners
   // a walk along its grid starts as the icosahedron's tile walk does: on triangle 0, come in
   // through its edge 0, so that the same digits draw the same path in both tabs
   mesh.gridStart = [0, ico.nbr[0]];
@@ -5226,10 +5226,10 @@ function morphStep(dt) {
 /* ---- 7.6 Surface sizes and walks on surfaces ------------------------------------------------- */
 /* Sizes, one way for every grid and surface: one ladder (SIDES), each its own size the ladder's (the plane's side, a
  * solid's edge, a torus's, a Möbius strip's or a Klein bottle's rows; a tiling's, its sheet's), those it allows (a multiple
- * of steps[0], from least to most) with 2⁸ cells at least and 2¹⁸ at most (CELLS). A new surface needs only its
+ * of steps[0], from least to most) with 2⁸ cells at least and 2²⁰ at most (CELLS). A new surface needs only its
  * tiles(size) and its steps. Its first: the one with about as many cells as its family's (START) */
 const SIDES = [2, 3, 4, 5, 6, 8, 12, 16, 24, 32, 48, 64, 72, 96, 120, 128, 144, 168, 192, 256, 384, 512, 768, 1024, 1536, 2048];  // (every multiple of 24 up to 192: an icon's whole size)
-const CELLS = { least: 2 ** 8, mesh: 2 ** 18, plane: 2 ** 20 }, START = { surface: 2688, solid: 6144 };  // (the plane's most: its corners flat, see planeFlat; a mesh's not yet)
+const CELLS = { least: 2 ** 8, most: 2 ** 20 }, START = { surface: 2688, solid: 6144 };
 const mobiusRadius = (kind, s) => mobiusCount(kind, s).L / (2 * Math.PI);  // (its length: no tile built)  // a Möbius strip's circle, L tile edges round
 const SPHERES = {
   cube: { mesh: cubeFlat, radius: (n) => n / 2,                 // half the cube side: square edge = 1 unit
@@ -5394,7 +5394,7 @@ const sphereSize = () => { const v = $('sphereF').value; return v.includes('x') 
 function torusDims(kind, size) {
   if (MOBIUS_KINDS.includes(kind)) {  // a Möbius strip: its rows and its length, as a count of steps along (see MOBIUS_ALONG)
     const [nv, own] = mobiusSize(size);
-    return [nv, own ?? Math.round(mobiusSheet(kind, nv).L / MOBIUS_ALONG[kind].step)];
+    return [nv, own ?? Math.round(mobiusCount(kind, nv).L / MOBIUS_ALONG[kind].step)];
   }
   if (typeof size === 'number') return [size, SPHERES[kind].columns(size)];
   const [rows, perRow] = size.split('x').map(Number);
@@ -5599,7 +5599,7 @@ for (const kind of TORI) if (!MOBIUS_KINDS.includes(kind) && !kind.startsWith('m
 for (const [kind, S] of Object.entries(SPHERES)) {
   const step = S.steps?.[0] ?? 1, ladder = () => {  // (its cells growing with its size: none counted past the most)
     const sizes = [];
-    for (const f of SIDES) if (f % step === 0 && f >= (S.least ?? 2) && f <= (S.most ?? Infinity)) { const n = S.tiles(f); if (n > CELLS.mesh) break; if (n >= CELLS.least) sizes.push(f); }
+    for (const f of SIDES) if (f % step === 0 && f >= (S.least ?? 2) && f <= (S.most ?? Infinity)) { const n = S.tiles(f); if (n > CELLS.most) break; if (n >= CELLS.least) sizes.push(f); }
     return sizes;
   };
   let list;
@@ -5667,14 +5667,21 @@ function edgeStarts(G, v0, way) {
 // squares, 3 on hexagons and triangles): from the corner of the front nearest the middle of the sheet
 // (or the next one, to head the other way), north (or the nearest after it) first, then east.
 function mobiusStarts(g) {
-  const G = gridGraph(g), k = g.sides, N = G.nv;
+  const G = gridGraph(g), k = g.sides;
   let v0 = g.poly[0], best = Infinity;
   const face = mobiusMiddle(g) < g.L ? 0 : g.front;  // the face in view
   for (let q = k * face; q < k * (face + g.front); q++) {  // its corners
     const d = Math.hypot(g.uv[2 * q] - g.L / 2, g.uv[2 * q + 1] - g.W / 2);
     if (d < best) { best = d; v0 = g.poly[q]; }
   }
-  return edgeStarts(G, v0, (f) => g.delta.get(f * N + v0));
+  // the step from each corner round it to it, on the sheet as seen from its face (a back: mirrored)
+  const delta = new Map();
+  for (let t = 0; t < 2 * g.front; t++) for (let q = 0; q < k; q++) {
+    const a = g.poly[k * t + q], b = g.poly[k * t + ((q + 1) % k)], i = 2 * (k * t + q), j = 2 * (k * t + ((q + 1) % k)), back = t >= g.front ? -1 : 1;
+    if (b === v0) delta.set(a, [g.uv[j] - g.uv[i], (g.uv[j + 1] - g.uv[i + 1]) * back]);
+    if (a === v0) delta.set(b, [g.uv[i] - g.uv[j], (g.uv[i + 1] - g.uv[j + 1]) * back]);
+  }
+  return edgeStarts(G, v0, (f) => delta.get(f));
 }
 
 // The rotations (3×3 matrices, by rows) that map a solid onto itself, from its corners' directions:
@@ -5996,7 +6003,7 @@ function torusLoops() {
       if (!['mobius', 'mobiusTri'].includes(kind) || Math.abs(T[0]) < 1e-6) return;  // zigzag edges; or straight across: any length closes it alike
       const { step, ok } = MOBIUS_ALONG[kind], most = Math.floor((LOOP_STEPS - s0 - L) / L);
       for (let nv = Math.min(...S.sizes); nv <= Math.max(...S.sizes); nv++) {
-        const { W, L: Lu } = mobiusSheet(kind, nv), usual = Lu / step;
+        const { W, L: Lu } = mobiusCount(kind, nv), usual = Lu / step;
         for (let n = Math.ceil(usual * TORUS_RATIO[0]); n <= usual * TORUS_RATIO[1]; n++) {
           if (!ok(n, nv)) continue;
           const Ls = n * step, whole = (x) => Math.abs(x - Math.round(x)) < 1e-6;
@@ -6505,11 +6512,11 @@ function buildLife(seq, mode) {
  * hexagons, 12 triangles; fewer on dead edges). A cell is (x, y): its column and its row, triangles
  * two a rhombus (▲ then ▼), index y × row + x. */
 // the plane's sizes: the squares' sides (see SIDES), every grid as many cells (see planeW), its cells 2⁸ to 2²⁰ (see CELLS:
-// the surfaces' 2¹⁸); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
+// the surfaces' too); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
 // as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least; a hexagon's by its side
 // alone, each its own (its hexagon fitted only when shown, see shapeW)
 const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), cells = (f) => W(f) * planeRow(k, W(f)), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) =>
-  [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS.least && cells(f) <= CELLS.plane)].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
+  [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS.least && cells(f) <= CELLS.most)].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
 const plane = { picked: 48, get side() { const sides = planeSides(planeKind(MODES[$('mode').value].plane)); return sides.reduce((a, b) => (Math.abs(b - this.picked) < Math.abs(a - this.picked) ? b : a)); },
@@ -6800,7 +6807,7 @@ function discPatch(items, W, mid, norm = Math.hypot, each = flatEach) {  // wall
   return { ...F, dead, core: rows.flatMap((h, t) => (h.core ? [F.poly(t)] : [])), norm, width: Math.sqrt(area / (W * W)) };  // (norm: its way to measure, its disc's; width: its cells', see cellWidth)
 }
 // a grid that never repeats, built once a size: kept while in use (its polygons some hundred MB at a million cells: the plane's, see walk.plane.flat)
-const discMemo = (build) => { const cache = {}; return (W) => cache[W]?.deref() ?? (cache[W] = new WeakRef(build(W))).deref(); };
+const discMemo = (build) => { const cache = {}; return (W) => weakOnce(cache, W, () => build(W)); };
 /* The hat (Smith, Myers, Kaplan and Goodman-Strauss, 2023): one tile, 8 kites of the kites' grid, that tiles the plane
  * only without ever repeating (about 1 in 7 turned over). Built by substitution, as Craig S. Kaplan's hatviz
  * (github.com/isohedral/hatviz, BSD 3-clause): four metatiles (H, T, P, F) are laid in a patch, which gives four
@@ -10330,14 +10337,17 @@ function laidChoices(centred, any = false) {  // any: the first one of each colo
 
 /* ---- 9.2 Patches ----------------------------------------------------------------------------- */
 // a solid's cell that faces the default camera most (its face in front: one colour's, see patternPlace)
-function frontCell() {
+function frontCell() {  // (once a grid: the starting view's, CAM0, never changes)
   const g = walk.geo, dir = CAM0.v;
-  let best = 0, bestDot = -Infinity;
-  for (let t = 0; t < g.n; t++) {
-    const c = g.cen.subarray(3 * t, 3 * t + 3), dot = (c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2]) / Math.hypot(...c);
-    if (dot > bestDot && !g.walls?.includes(t)) { bestDot = dot; best = t; }
-  }
-  return best;
+  return (g.frontCell ??= (() => {
+    const wall = new Set(g.walls);
+    let best = 0, bestDot = -Infinity;
+    for (let t = 0; t < g.n; t++) {
+      const c = g.cen.subarray(3 * t, 3 * t + 3), dot = (c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2]) / Math.hypot(...c);
+      if (dot > bestDot && !wall.has(t)) { bestDot = dot; best = t; }
+    }
+    return best;
+  })());
 }
 
 // A tile's middle on the sheet of a torus or a Möbius strip (on a torus, within it), and the tiles (up to
@@ -10358,8 +10368,11 @@ function mobiusLoop(g, t) {
 }
 // the middle of the face the starting view shows, on that loop: the front's middle, or the back's
 function mobiusMiddle(g) {
-  let t = 0, best = Infinity;
-  for (let q = 0; q < g.front; q++) { const [a, b] = sheetMiddle(g, q), d = Math.hypot(a - g.L / 2, b - g.W / 2); if (d < best) { best = d; t = q; } }
+  const t = (g.frontMiddle ??= (() => {  // (the front's tile nearest the sheet's middle: once a strip)
+    let t = 0, best = Infinity;
+    for (let q = 0; q < g.front; q++) { const [a, b] = sheetMiddle(g, q), d = Math.hypot(a - g.L / 2, b - g.W / 2); if (d < best) { best = d; t = q; } }
+    return t;
+  })());
   return dot3(Array.from(g.nrm.subarray(3 * t, 3 * t + 3)), CAM0.v) * shapeSign(g) >= 0 ? g.L / 2 : (3 * g.L) / 2;
 }
 // Colour i's cells at its part's very middle (see patternFrame: its centre), all as near (one, or those round a corner: an
@@ -11984,21 +11997,22 @@ function glSurface(paint, path) {  // paint: its tiles' colours into their textu
       for (let t = 0; t < n; t++) for (let q = 0; q < k; q++) {
         const a = g.poly[k * t + q], b = g.poly[k * t + ((q + 1) % k)], e = Math.min(a, b) * nv + Math.max(a, b);
         if (a === b) continue;
-        if (at.has(e)) { const m = at.get(e); if (m[3] < 0) m[3] = t; continue; }
-        const m = [k * t + q, k * t + ((q + 1) % k), t, -1];  // its two corners' slots, its tile, the other tile
-        at.set(e, m);
-        list.push(m);
+        const m = at.get(e);
+        if (m !== undefined) { if (list[4 * m + 3] < 0) list[4 * m + 3] = t; continue; }
+        at.set(e, list.length / 4);
+        list.push(k * t + q, k * t + ((q + 1) % k), t, -1);  // its two corners' slots, its tile, the other tile
       }
-      S.edgeList = list;
+      S.edgeList = Int32Array.from(list);
       S.keys.edgesOf = g;
     }
-    const ends = new Float32Array(6 * S.edgeList.length), n1 = new Float32Array(ends.length), n2 = new Float32Array(ends.length);
-    S.edgeList.forEach(([i, j, t, o], e) => {
+    const E = S.edgeList.length / 4, ends = new Float32Array(6 * E), n1 = new Float32Array(ends.length), n2 = new Float32Array(ends.length);
+    for (let e = 0; e < E; e++) {
+      const [i, j, t, o] = S.edgeList.subarray(4 * e, 4 * e + 4);
       ends.set(pos.subarray(3 * i, 3 * i + 3), 6 * e); ends.set(pos.subarray(3 * j, 3 * j + 3), 6 * e + 3);
       for (const [arr, u] of [[n1, t], [n2, o < 0 ? t : o]]) for (const z of [0, 3]) arr.set(sh.nrm.subarray(3 * u, 3 * u + 3), 6 * e + z);
-    });
+    }
     for (const [name, data] of [['ePos', ends], ['eN1', n1], ['eN2', n2]]) { gl.bindBuffer(gl.ARRAY_BUFFER, S[name]); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW); }
-    S.eCount = 2 * S.edgeList.length;
+    S.eCount = 2 * E;
     if (S.keys.topo !== `${n}|${k}`) {  // the fans only change with the tiling
       const fan = new Uint32Array(3 * (k - 2) * n);
       for (let t = 0, f = 0; t < n; t++) for (let q = 1; q < k - 1; q++) { fan[f++] = k * t; fan[f++] = k * t + q; fan[f++] = k * t + q + 1; }
