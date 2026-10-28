@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1428';
+const VERSION = '0.1.1429';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9990,12 +9990,13 @@ function patternPlace(i, K) {
   const g = walk.geo, sphere = MODES[$('mode').value].sphere;
   if (walk.plane) return { on: 'plane' };
   if (g.torus) return { on: 'sheet' };
-  const hull = hullColours(sphere, K);  // (a hull solid's colour: its first face, see hullColourings)
-  if ((g.sides === 3 && !g.squares) || g.kite || hull?.kind === 'tri') {
-    const d = K === 1 || hull ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces;
-    return triPlace(hull ? hull.groups[i][0] - g.squareFaces.length : d ? faces.reduce((best, fc, k) => (dot3(faceMid(fc), d) > dot3(faceMid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(frontCell() / (g.triFaces ? g.size * g.size : g.perFace)));
+  const hull = hullColours(sphere, K), squares = g.squareFaces?.length ?? 0;  // (a hull solid's colour: its first face, see hullColourings)
+  if (hull) { const f = hull.groups[i][0]; return f < squares ? { on: 'square', f } : triPlace(f - squares); }  // (a square or a triangle, its own face's: a pyramid's both)
+  if ((g.sides === 3 && !g.squares) || g.kite) {
+    const d = K === 1 ? null : unit(triFace(sphere, K, i)), faces = g.triFaces ?? g.faces;
+    return triPlace(d ? faces.reduce((best, fc, k) => (dot3(faceMid(fc), d) > dot3(faceMid(faces[best]), d) + 1e-9 ? k : best), 0) : Math.floor(frontCell() / (g.triFaces ? g.size * g.size : g.perFace)));
   }
-  if (g.squareFaces) return { on: 'square', f: hull ? hull.groups[i][0] : g.squareFaces.reduce((b, fc, k) => (dot3(fc.n, AXES[3]) > dot3(g.squareFaces[b].n, AXES[3]) + 1e-9 ? k : b), 0) };  // (one colour: the square most in front)
+  if (g.squareFaces) return { on: 'square', f: g.squareFaces.reduce((b, fc, k) => (dot3(fc.n, AXES[3]) > dot3(g.squareFaces[b].n, AXES[3]) + 1e-9 ? k : b), 0) };  // (one colour: the square most in front)
   if (g.hexagons) {  // (the face most its way, its middle: a stella's tip, a face of it; one colour, the front's)
     const base = FACE_BASE[sphere] ?? sphere, c = K === 1 ? frontCell() : -1, d = unit(K === 1 ? [0, 1, 2].map((a) => g.cen[3 * c + a]) : triFace(base, K, i) ?? patchSpots(sphere, K)[i]);
     return { on: 'hex', c0: centreCells(POLYHEDRA[base] ? middles(base).reduce((b, m) => (dot3(m, d) > dot3(b, d) ? m : b)) : d)[0] };
