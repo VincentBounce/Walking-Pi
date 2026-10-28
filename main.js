@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1453';
+const VERSION = '0.1.1455';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1772,6 +1772,8 @@ const wholeTotal = () => (current?.whole && current.formula === $('formula').val
 // In generations (a reversible one's length, its slider's; Space-time's height): [ − ] 2,000 generations [ + ]; going back, a
 // reversible one plays again from its start; Space-time made again
 const gensShown = () => !!MODES[$('mode').value].margolus || spaceTimeOn();
+// The last step or generation: walk.n, or sooner a reversible one's last before its loop comes round, once found (its slider, its end, its stepper's max)
+const runEnd = () => { const s = walk.life?.stable; return s && Number.isFinite(walk.n) && !spaceTimeOn() ? Math.min(walk.n, s.T + s.P - 1) : walk.n; };
 function setGens(n) {
   target = Math.min(targetMost(), Math.max(DIGIT_STEPS[0], Math.round(n) || 2000));
   if (spaceTimeOn()) { restart(); showAll(); }
@@ -1782,9 +1784,9 @@ function setGens(n) {
 }
 function syncDigitsStepper() {
   if (gensShown()) {  // (a run that ends before: its generations max, and why, as a walk that loops: Space-time's, or a game's once it repeats)
-    const s = !spaceTimeOn() && walk.life?.stable, far = s ? s.T + s.P : walk.n + 1;
+    const s = !spaceTimeOn() && walk.life?.stable, far = runEnd() + 1;
     const end = spaceTimeOn() && stack?.end !== 'gens' ? STACK_ENDS[stack?.end]
-      : s && far <= targetAsked() ? (s.extinct ? STACK_ENDS.dead : s.P === 1 ? ['■', 'Frozen: more would draw the same'] : ['↻', `Back to gen ${fmt(s.T)} every ${fmt(s.P)}: more would draw the same`]) : null;
+      : s && runEnd() < walk.n ? (s.extinct ? STACK_ENDS.dead : s.P === 1 ? ['■', 'Frozen: more would draw the same'] : ['↻', `Back to gen ${fmt(s.T)} every ${fmt(s.P)}: more would draw the same`]) : null;
     $('digitsLabel').value = end ? `${fmt(far)} generations max ${end[0]}` : `${fmt(targetAsked())} generations`;
     $('digitsLabel').title = `${end ? `${end[1]}\n` : ''}Type a number of generations, from ${fmt(DIGIT_STEPS[0])} to ${fmt(targetMost())}, then Enter\nLast picked: ${fmt(target)}`;
     $('digitsDown').disabled = targetAsked() <= DIGIT_STEPS[0];
@@ -8918,9 +8920,13 @@ function lifeReset() {
   L.deadBy = new Int32Array(L.colours + 1);
   L.everBy = L.seedByColour.slice();
   L.sumBy = Float64Array.from(L.seedByColour);  // each colour's cell-generations: its live cells summed over the generations (see renderRanking)
+  // its run's record, its start's (the same start, the same run: kept while its fingerprint is, played again or not)
+  L.seedKey = lifeFingerprint(L.seed);
+  L.gpuOld = true;  // (written here: the graphics card's copy old)
+  if (L.recordKey === L.seedKey) return;
+  L.recordKey = L.seedKey;
   L.footBy = null;  // (the same up to where it settles or loops: its own, held)
   // lifetime: fingerprint of every generation's state; the first repeat gives the loop
-  L.seedKey = lifeFingerprint(L.seed);
   L.seen = new Map([[L.seedKey, 0]]);
   L.stable = null;  // { T: first generation of the loop, P: its period, extinct }
   // a loop: each colour's live cells over one round (its births and deaths round with it: the trace's, see lifeTo)
@@ -8929,7 +8935,6 @@ function lifeReset() {
   L.loopMax = new Float64Array(L.colours + 1);
   L.loopAvg = null;
   L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }] };  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then
-  L.gpuOld = true;  // (written here: the graphics card's copy old)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -8949,15 +8954,22 @@ function lifeFingerprint(state) {
 }
 const lifeKey = (h1, h2) => h1 * 2097152 + (h2 & 0x1fffff);
 
+// Its end found (played, or Find its return): where it settles or loops, and all that says it (its rule's page, its stepper's max, its slider)
+function lifeFound(L, stable) {
+  L.stable = stable;
+  renderRuleSection();
+  syncDigitsStepper();
+  statsDirty = true;
+}
 // Record generation gen (state already in L.alive) and detect the first repeat
 function lifeTrack(gen) {
   const L = walk.life;
-  if (L.margolus) { if (!L.stable && blockBack(L, gen)) { L.stable = { T: 0, P: gen, extinct: false }; renderRuleSection(); syncDigitsStepper(); } return; }  // (blocks: see blockBack; its page told)
+  if (L.margolus) { if (!L.stable && blockBack(L, gen)) lifeFound(L, { T: 0, P: gen, extinct: false }); return; }  // (blocks: see blockBack)
   if (L.stable || L.seen.size >= LIFE_TRACK) return;
   const key = L.key;  // (the graphics card's)
   const first = L.seen.get(key);
   if (first === undefined) L.seen.set(key, gen);
-  else { L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 }; syncDigitsStepper(); }  // (its generations max said)
+  else lifeFound(L, { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 });
 }
 
 // Blocks run back too: each state the only one before the next, so no lead-in on a finite grid, its first repeat the
@@ -8990,7 +9002,7 @@ function searchBack(on) {
       [S.a, S.b] = [S.b, S.a];
       if (++S.gen % P === 0 && S.a.every((v, t) => v === L.seed[t])) { S.found = S.gen; break; }
     }
-    if (S.found) { L.stable ??= { T: 0, P: S.found, extinct: false }; S.life = null; renderRuleSection(); }
+    if (S.found) { if (!L.stable) lifeFound(L, { T: 0, P: S.found, extinct: false }); S.life = null; }
     statsDirty = true;
     renderHunt();
     if (S.life) setTimeout(slice, 0);
@@ -10890,7 +10902,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       const s = L.stable;
       if (!s) continue;
       if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += L.trace.by[g][k]; }  // (its cell-generations till it settles or loops)
-      if (s.extinct || s.P === 1) { cur = s.T; if (lifeEnded()) { play(false); ended = true; } continue; }  // nothing moves any more: it ends there (its trail fading first)
+      if ((s.extinct || s.P === 1) && cur >= s.T) { cur = s.T; if (lifeEnded()) { play(false); ended = true; } continue; }  // nothing moves any more: it ends there (its trail fading first)
       if (!L.loopAvg) {  // found: each colour's live cells over the loop (its generations' counts, see lifeStep), their mean
         for (let g = s.T; g < s.T + s.P; g++) for (let k = 1; k <= L.colours; k++) {
           const v = L.colours === 1 ? L.trace.alive[g] : L.trace.by[g][k];
@@ -10906,16 +10918,17 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
     }
+    k = Math.min(k, runEnd() - cur);  // (a reversible one's loop found: no further than its last generation before it)
     if (performance.now() >= until) break;  // (a batch at least)
   }
   statsDirty = true;
 }
 function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reversible one, by its rule); until: a Game of Life's batches stop past it (a frame's time, see tick)
-  target = Math.min(walk.n, target);
+  target = Math.min(runEnd(), target);
   if (target !== cur) faced = false;  // the walker moves: the camera follows it again (see faceWalk)
   if (spaceTimeOn()) { cur = Math.max(0, target); statsDirty = true; if (cur >= walk.n) play(false); return; }  // (Space-time: its layers, made, see stackUp)
   if (target < cur && !walk.life) { walkBack(target); return; }
-  if (walk.life) { lifeTo(target, until); return; }
+  if (walk.life) { lifeTo(target, until); if (cur >= runEnd()) play(false); return; }
   const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
     if (walk.stepTiles) {  // along the grid: the tiles on both sides of the edge just walked
@@ -13093,8 +13106,8 @@ function updateStats() {
   $('jump10k').disabled = !!walk.life?.stable;
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur === 0;
-  $('step').disabled = cur >= walk.n || lifeEnded();
-  $('end').disabled = cur >= walk.n || (!Number.isFinite(walk.n) && !!walk.life?.stable);  // a Game of Life's end known: there already (or in its loop)
+  $('step').disabled = cur >= runEnd() || lifeEnded();
+  $('end').disabled = cur >= runEnd() || (!Number.isFinite(walk.n) && !!walk.life?.stable);  // a Game of Life's end known: there already (or in its loop)
   // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so
   const endless = !Number.isFinite(walk.n), jump = endless ? `+${LIFE_JUMP / 1000}k` : icon('end');
   if ($('end').dataset.shown !== jump) {
@@ -13400,7 +13413,7 @@ $('digitsLabel').addEventListener('change', () => {
   compute();
 });
 $('play').addEventListener('click', () => {
-  if (cur >= walk.n || lifeEnded()) restart();  // at the end: from the start again
+  if (cur >= runEnd() || lifeEnded()) restart();  // at the end: from the start again
   play(!playing);
 });
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
@@ -13412,7 +13425,7 @@ $('restart').addEventListener('click', () => {  // jump to start: keep playing o
   play(wasPlaying);
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
-$('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? walk.n : cur + LIFE_JUMP); });  // (a Game of Life stops at its end, or loops)
+$('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP); });  // (a Game of Life stops at its end, or loops)
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
 $('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
 $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
@@ -13421,7 +13434,7 @@ $('speedLabel').addEventListener('blur', updateSpeedLabel);  // "50 steps/s" aga
 $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) setSpeed(Number($('speedLabel').value)); });
 // go to step v: back from the start, forward from where it is
 // the slider's end: a walk's last step, a reversible one's last generation; Life's, none (0)
-const seekFar = () => (lifeTime() && !walk.life.margolus ? 0 : walk.n);
+const seekFar = () => (lifeTime() && !walk.life.margolus ? 0 : runEnd());
 // A walk back to step v: its steps after taken off (the tiles' visits), drawn again up to there, the view kept as it is
 function walkBack(v) {
   for (let i = cur; i > v; i--) {
