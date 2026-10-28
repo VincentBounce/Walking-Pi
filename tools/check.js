@@ -206,7 +206,7 @@ async function crawl(fail) {
 const offered = (w) => {
   const d = w.document, row = (sel, all = false) => [...d.querySelectorAll(sel)].filter((b) => (all ? !b.hidden : !b.closest('[hidden]'))).map((b) => `${b.textContent.trim().slice(0, 16)}${b.disabled ? '⊘' : ''}${b.classList.contains('active') ? '•' : ''}`).join(' ');
   return { size: d.getElementById('sizeLabel').closest('[hidden]') ? '' : d.getElementById('sizeLabel').innerText, plane: d.getElementById('planeLabel').closest('[hidden]') ? '' : d.getElementById('planeLabel').innerText,
-    tiles: row('#torusTiles button'), colours: row('#colourBlocks button'), zones: row('#huntZones button', d.querySelector('#lifeStartTabs .active')?.dataset.start === 'draw'), rules: row('#navRules button') };  // (Draw open on a surface: a view, the hunt's zones out of sight, not gone; its link has it not)
+    tiles: row('#torusTiles button'), colours: row('#colourBlocks button'), zones: row('#huntZones button', w === window && surfaceDraw && huntOn()), rules: row('#navRules button') };  // (Draw open on a surface here: a view, a hunt's zones out of sight, not gone; a link loaded cold has it not)
 };
 async function coldLike(fail, what) {
   const f = document.createElement('iframe');

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1433';
+const VERSION = '0.1.1435';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3017,6 +3017,7 @@ function compute(keepDigits = false) {
     digitsBeforeLoop = null;
   }
   const mode = MODES[$('mode').value];
+  surfaceDraw = false;
   renderModePicker();
   if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
   const n = digitsNeeded(), want = mode.life ? n : n + LOOP_AHEAD;  // a walk also reads the digits ahead
@@ -7667,10 +7668,9 @@ function planeFromSetup(s) {
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
-let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was)
+let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was); a view of this game only, closed by a new one (see compute), as its link has it
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
-  if (kind) surfaceDraw = false;
   for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on a surface: its patterns, to see)
     b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
     b.disabled = false;
