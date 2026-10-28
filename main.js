@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1441';
+const VERSION = '0.1.1442';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7550,18 +7550,15 @@ function buildLifePlane(seq) {
 // Space-time's cubes (see the Stacks tile beside Walls), a view of the game: Life on squares from its start, played on the card for its
 // generations asked (target; till all die, its loop gone round 5 times, or STACK_MOST cubes: STACK_ENDS), each generation's
 // live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
-// again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an
-// engine of its own, the game's left as it was, then set back at its start (each generation read back: on the game's own, its
-// next starts were seen played wrong, ANGLE on Metal, see TODO.md)
+// again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last); the game then
+// set back at its start
 let stack = null;
 const STACK_MOST = 2 ** 21;  // its cubes at most: drawn turning in 19 ms, shadows and all, 40 MB (measured at 128 a side)
 const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['᪣', `Its memory full: ${fmt(STACK_MOST)} cubes at most (drawn turning in 19 ms, 40 MB)`] };  // (᪣: a chip, its memory; not ▣, read as Stop)
 function stackUp() {
-  const L = walk.life, { W, row } = walk.plane, K = L.colours, S = glSetup(), game = S.life;
+  const L = walk.life, { W, row } = walk.plane, K = L.colours;
   if (stack?.L === L && stack.gens === targetAsked() && stack.seed.every((v, t) => v === L.seed[t])) return;
   walk.n = Infinity;
-  S.life = lifeEngine(L, 1, LIFE_H);
-  L.gpuOld = true;
   const at = [], keys = [], layers = [];
   let end = 'gens';
   for (let g = 0; g < targetAsked(); g++) {
@@ -7580,8 +7577,6 @@ function stackUp() {
   stack = { L, gens: targetAsked(), end, seed: L.seed.slice(), at: Float32Array.from(at), keys: Uint8Array.from(keys), layers: Int32Array.from(h ? layers : [-1]),
             box: [-(row - 1) / 2, (row - 1) / 2, -(W - 1) / 2, (W - 1) / 2, -mid, mid], reach: Math.hypot(row, W, h) / 2 };
   walk.n = Math.max(0, h - 1);
-  lifeFree(S.life);
-  S.life = game;
   lifeReset();
   syncDigitsStepper();  // (its generations max, if it ended before)
 }
@@ -11676,6 +11671,10 @@ uvec4 plus(uvec4 v, uvec4 c, int i) { return uFrom + 4 * i == 4 ? uvec4(v.x + c.
 const GL_SHADERS = {
   // a generation of Life (see lifeStep's words): a texel 4 cells' states (RGBA, /255), 1024 a row; the grid's numbers (its
   // neighbours' lists, rings, folds, letters, B and S) one a texel, 4096 a row
+  // a texture copied as it is (Life's states: from the one written by the processor, see lifeToGPU)
+  lifeCopy: [GL_QUAD, `#version 300 es
+precision highp float; uniform sampler2D uA; out vec4 o;
+void main() { o = texelFetch(uA, ivec2(gl_FragCoord.xy), 0); }`],
   lifeRule: [GL_QUAD, `${GL_LIFE}
 uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode; uniform bool uMore; out vec4 o;
 int base;  // (its run's first cell: t below its run's)
@@ -12577,7 +12576,7 @@ function lifeEngine(L, runs = 1, h = 1) {
   const table = (T) => ints(Int32Array.from({ length: Math.max(1024, T.length ?? 0) }, (_, c) => (T[c] ? 1 : 0)));  // (B, S: by the count, its letters' code)
   const cells = () => ({ state: store(gl.RGBA8, 1024), age: store(gl.R32UI), act: store(gl.R32UI), died: store(gl.R32I), ever: store(gl.R32UI) });
   const { start, list } = L.nbr, none = new Int32Array(1), more = L.ringMore, M = L.margolus;
-  return { L, n, runs, stride, rows, h, all, fb: gl.createFramebuffer(), fbs: new Map(), now: cells(), next: cells(), pad: new Uint8Array(4096 * rows), u32: new Uint32Array(4096 * rows), i32: new Int32Array(4096 * rows),
+  return { L, n, runs, stride, rows, h, all, fb: gl.createFramebuffer(), fbs: new Map(), now: cells(), next: cells(), load: store(gl.RGBA8, 1024), pad: new Uint8Array(4096 * rows), u32: new Uint32Array(4096 * rows), i32: new Int32Array(4096 * rows),
            start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
            side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)), part: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64, runs)),
            sum: Array.from({ length: Math.ceil((9 + 4 * L.colours) / 16) }, () => [0, 1, 2, 3].map(() => store(gl.RGBA32UI, h, runs))), look: store(gl.RGBA8, 4096, 17),
@@ -12624,7 +12623,10 @@ function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x 
 // the processor's cells sent there (now): states 4 a texel, counts one a texel (colours had: bit 0 ever alive)
 function lifeToGPU(L, E) {
   const { gl } = GLS, c = L.cells, put = (t, format, type, data) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, format === gl.RGBA ? 1024 : 4096, E.rows, format, type, data); };
-  E.pad.fill(0); E.pad.set(c.alive); put(E.now.state, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
+  // (its states written into E.load, never read back, then drawn into now's: a texture read back, then written by the processor,
+  // was seen sampled as it was before by the next pass, ANGLE on Metal: a game's start again played wrong)
+  E.pad.fill(0); E.pad.set(c.alive); put(E.load, gl.RGBA, gl.UNSIGNED_BYTE, E.pad);
+  lifePass(E, 'lifeCopy', { uA: E.load }, {}, [E.now.state], 1024, E.rows);
   // (its start's: a live cell 1 old, ever alive and of its colour; no change, no death yet)
   const live = (v) => v > 0 && v <= L.colours;
   E.u32.fill(0); for (let t = 0; t < E.n; t++) E.u32[t] = live(c.alive[t]) ? 1 : 0; put(E.now.age, gl.RED_INTEGER, gl.UNSIGNED_INT, E.u32);
