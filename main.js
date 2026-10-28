@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1424';
+const VERSION = '0.1.1425';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1401,19 +1401,20 @@ function describe(base, available) {
 // Walks on surfaces, on cells: the walk as a rainbow line over the tiles, the tiles it passes through
 // filled in the colour of their first visit, those it encloses (Fill areas) in the colour of the
 // step that closed them; or the tiles coloured by their visits (Heatmap, on cells only).
+const VIEW_3D = ['autoRotate', 'upright', 'perspective', 'light'];  // a 3D view's: Default, Free, Upright, Auto-rotate, Perspective, Side light (Space-time's too)
 const DISPLAY_BY_TAB = {
   '2D walks': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],
-  '3D walks': ['colors', 'digit', 'grid', 'sky', 'autoRotate', 'upright', 'perspective', 'light'],
-  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', 'autoRotate', 'upright', 'perspective', 'light'],
+  '3D walks': ['colors', 'digit', 'grid', 'sky', ...VIEW_3D],
+  'Walks on surfaces': ['shape', 'heatmap', 'visits', 'fill', 'translucent', 'grid', 'sky', ...VIEW_3D],
   'Automata on the plane': ['colors', 'digit', 'mono', 'grid', 'sky'],
-  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', 'autoRotate', 'upright', 'perspective', 'light'],
+  'Automata on surfaces': ['shape', 'colors', 'digit', 'mono', 'grid', 'sky', ...VIEW_3D],
   '2D spirals': ['heatmap', 'fill', 'translucent', 'cells', 'visits', 'digit', 'grid'],  // the 2D walks' menu, some of it greyed out
 };
 // Shown but greyed out: a spiral never crosses itself, so it closes no area and visits each cell once;
 // and its marks read as cells, the line along the spiral (Rainbow along the walk) shows nothing more
 const DISPLAY_GREYED = { '2D spirals': ['fill', 'visits', 'line'] };
 const greyed = (item) => !!DISPLAY_GREYED[$('mode').selectedOptions[0].parentElement.label]?.includes(item);
-const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item);
+const shows = (item) => DISPLAY_BY_TAB[$('mode').selectedOptions[0].parentElement.label].includes(item) || (spaceTimeOn() && VIEW_3D.includes(item));
 const useful = (item) => shows(item) && !greyed(item);
 function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow',
@@ -1497,7 +1498,7 @@ function renderViewModes() {
   $('viewModes').hidden = $('centeredRow').hidden;
 }
 $('viewTools').addEventListener('mouseenter', renderViewModes);
-// The view's head, standard tiles on the right (toggle): Life's Sound, Auto-fit (both while the box is open), Grid (always), each
+// The view's head, standard tiles on the right (toggle): Sound (every mode), Autoplay (Life's), Auto-fit (while the box is open), Grid (always), each
 // its checkbox's (the source, kept out of sight); drawn again with the display box, when the box opens and as either changes
 let headTiles = null;
 function renderHeadTiles() {
@@ -1631,18 +1632,11 @@ function renderBlocksButton() {
     text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
-// Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
-// stackUp); on squares (STACK_MOST cubes at most)
-let spaceTime = false, spaceButton = null;
+// Space-time (Life on squares, the 3D tile beside Walls): its generations stacked up, time going up, a cube a live cell (see
+// stackUp; STACK_MOST cubes at most); with walls only (through a torus's edges no tree grows: its 3D, Walls on with it)
+let spaceTime = false;
 const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square'; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
-function renderSpaceButton() {
-  const cube = (x, y, c) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1" fill="${c}"/>`;
-  spaceButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${cube(3, 15, GRADIENT[0]) + cube(7, 11, GRADIENT[Math.floor(BANDS / 3)]) + cube(11, 7, GRADIENT[Math.floor((2 * BANDS) / 3)]) + cube(15, 3, GRADIENT[BANDS - 1])}</svg>`,  // (a glider's cells, a generation higher each)
-    text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, as many generations as asked (under the play buttons), played a generation at a time (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
-    click: () => { spaceTime = !spaceTime; compute(true); } });
-  setTile(spaceButton, { on: spaceTimeOn(), can: spaceTimeApplies(), byDefault: 'off', greyed: 'but on squares (not Reversible)' });
-}
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 const defaultLook = (mode) => (mode.life ? 'mono' : 'gradient');  // (the simplest: Life's States, a walk's Rainbow)
 function renderColorButtons() {
@@ -1657,10 +1651,9 @@ function renderColorButtons() {
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
   if (MODES[$('mode').value].margolus) renderBlocksButton();
-  if (MODES[$('mode').value].plane) renderSpaceButton();
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [MODES[$('mode').value].margolus ? blocksButton : trailButton] : []), ...(MODES[$('mode').value].plane ? [spaceButton] : []));  // then Life's Trail, a switch (Reversible's Blocks), and on the plane Space-time
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [MODES[$('mode').value].margolus ? blocksButton : trailButton] : []));  // then Life's Trail, a switch (Reversible's Blocks)
 }
-// Sound: Korobeiniki (the Russian song of Tetris, public domain) as 8-bit, while Life plays, on a clock of its own (Web
+// Sound: Korobeiniki (the Russian song of Tetris, public domain) as 8-bit, while it plays (forth or back, every mode), on a clock of its own (Web
 // Audio, made here: a browser plays nothing before a click, off at first): its melody a square wave, its bass a triangle
 // (its bar's root and its octave in eighths), drums of noise (a kick on the beats, a hat between); the life's moments over
 // it: an explosion (more born at once than 2.5 times of late, 1 % of the grid at least) a boom of noise falling, louder the
@@ -1696,7 +1689,7 @@ function noise(at, len, freq, vol, fall = null) {  // a burst of noise through a
 }
 function tuneTick() {  // (its next eighths, a little ahead)
   const c = music.ctx, eighth = 30 / TUNE.bpm, { notes, bass } = music, soft = music.soft ? 0.5 : 1;
-  if (!playing || music.stopped) { music.next = c.currentTime + 0.05; return; }
+  if (!(playing || reversing) || (lifeTime() && music.stopped)) { music.next = c.currentTime + 0.05; return; }  // (forth or back, every mode; Life's all dead: still)
   while (music.next < c.currentTime + 0.12) {
     const k = music.step++ % notes.length, at = music.next;
     if (notes[k]) tone(notes[k][0], at, notes[k][1] * eighth * 0.95, 'square', 0.035 * soft);
@@ -1707,7 +1700,7 @@ function tuneTick() {  // (its next eighths, a little ahead)
 }
 function renderSoundButton() {
   soundButton ??= tile({ pic: icon('sound'),
-    text: 'Sound', id: 'lifeSoundButton', toggle: true, title: "Sound: Korobeiniki (Tetris's tune) as 8-bit while Life plays, the life's moments over it: an explosion a boom, a colour dying out a blip, all dying out a fall, stillness softer",
+    text: 'Sound', id: 'lifeSoundButton', toggle: true, title: "Sound: Korobeiniki (Tetris's tune) as 8-bit while it plays, forth or back; in Life, the life's moments over it: an explosion a boom, a colour dying out a blip, all dying out a fall, stillness softer",
     click: () => {
       if (music) { clearInterval(music.timer); music.ctx.close(); music = null; }
       else {
@@ -1720,7 +1713,6 @@ function renderSoundButton() {
       renderSoundButton();
     } });
   setTile(soundButton, { on: !!music, can: true, byDefault: 'off' });
-  soundButton.hidden = !MODES[$('mode').value].life;  // (Life's, in the view's head: see renderHeadTiles)
 }
 function lifeMusic(L) {  // (a generation's moments, see Sound)
   const now = music.ctx.currentTime, born = L.bornNow;
@@ -2086,9 +2078,12 @@ const ICONS = (() => {
   };
 })();
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
-// the plane's outline: Walls (else a torus), on or off
+// the plane's outline: Walls (else a torus), on or off; 3D beside it (Space-time: Walls on with it, left on when it goes off;
+// Walls off, 3D off too)
 $('planeEdges').append(
-  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; compute(true); } }));
+  tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; if (plane.torus) spaceTime = false; compute(true); } }),
+  tile({ pic: icon('cube'), text: '3D', id: 'spaceTimeTile', toggle: true, byDefault: 'off', title: '3D: the generations stacked up, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With Walls: through a torus\'s edges no tree grows',
+    click: () => { spaceTime = !spaceTime; if (spaceTime) plane.torus = false; $('perspective').checked = perspectiveFor(MODES[$('mode').value], 0); compute(true); } }));
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
 
@@ -5229,7 +5224,7 @@ $('shapeM').addEventListener('change', () => {
 
 // The perspective a surface starts with, in its form m: the walk mode's, but none on a solid
 // inflated (a ball is seen whole without it)
-const perspectiveFor = (mode, m) => !!mode.perspective && !(m === 1 && SOLIDS.includes(mode.sphere));
+const perspectiveFor = (mode, m) => (!!mode.perspective || (!!mode.plane && spaceTimeOn())) && !(m === 1 && SOLIDS.includes(mode.sphere));  // (Space-time: on)
 // One animation frame of the change of shape (about 0.7 s from flat to round)
 function morphStep(dt) {
   const sh = walk.shape;
@@ -7543,7 +7538,7 @@ function buildLifePlane(seq) {
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
-// Space-time's cubes (see renderSpaceButton), a view of the game: Life on squares from its start, played on the card for its
+// Space-time's cubes (see the 3D tile beside Walls), a view of the game: Life on squares from its start, played on the card for its
 // generations asked (plane.gens; till all die, its loop gone round 5 times, or STACK_MOST cubes: STACK_ENDS), each generation's
 // live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
 // again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an
@@ -7647,7 +7642,7 @@ function planeLead(number) {
 function planeFromSetup(s) {
   if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side)
   plane.torus = Number(s.e) !== 1;
-  spaceTime = Number(s.sp) === 1;
+  spaceTime = Number(s.sp) === 1 && !plane.torus;  // (3D: with walls only)
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
@@ -7702,6 +7697,7 @@ function renderPlaneRow() {
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { picked = planeCells(sides[k]); compute(true); });
   $('planeOutline').hidden = !!APERIODIC[kind];  // (a grid that never repeats: always walls, nothing to choose)
   setTile($('edgeWalls'), { on: !planeTorus(kind) });
+  setTile($('spaceTimeTile'), { on: spaceTimeOn(), can: spaceTimeApplies(), greyed: 'but on squares (not Reversible)' });
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(...syms.map((y) => {
@@ -9199,7 +9195,7 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
   L.deadMax = Math.max(L.deadMax, L.deadNow);
   if (alive > L.peak) { L.peak = alive; L.peakGen = gen; }  // the most alive at once, and when
   lifeTrack(gen);
-  if (music) lifeMusic(L);
+  if (music && lifeTime()) lifeMusic(L);  // (Space-time's cubes made: silent)
 }
 
 // A reversible one a generation back: its blocks' rule run backwards (the inverse of their permutation on the same blocks,
