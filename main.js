@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1504';
+const VERSION = '0.1.1505';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7894,8 +7894,10 @@ const cellMiddle = (kind, x, y) => {
 // A slanted lattice's smallest motif (a, b its sides): a rectangle of whole steps at right angles (or within 3°), a side along
 // one of its turns' copies of a (straight, as its tiles lie), as few cells as can be, then the nearest a square: { U, V, det,
 // step: [[p, q], [r, t]] } (U = p·a + q·b across, V = r·a + t·b a quarter turn clockwise from it, y down: never mirrored)
+// a lattice step p a + q b along a, or one of its turns' copies (turns: the tiling's, round a point)
+function latticeAlong(a, b, turns) { return ([p, q]) => { const P = 360 / turns, r = ((((Math.atan2(p * a[1] + q * b[1], p * a[0] + q * b[0]) * 180) / Math.PI) % P) + P) % P; return Math.min(r, P - r) < 1e-6; }; }  // (a function: asked for at load, see torusSheets)
 function rectSides(a, b, turns = 6) {
-  const P = 360 / turns, along = ([p, q]) => { const r = ((((Math.atan2(p * a[1] + q * b[1], p * a[0] + q * b[0]) * 180) / Math.PI) % P) + P) % P; return Math.min(r, P - r) < 1e-6; };
+  const along = latticeAlong(a, b, turns);
   let best = null;
   for (let p = -6; p <= 6; p++) for (let q = -6; q <= 6; q++) for (let r = -6; r <= 6; r++) for (let t = -6; t <= 6; t++) {
     const det = p * t - q * r;
@@ -7992,7 +7994,7 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
   const along = right && TILINGS[base]?.turns === 4 && [torusSheets(base).plain, torusSheets(base).turned].find((x) => x && !cell(x));
   // (a slanted grid's: the rectangle whose side U lies as its tiles do on the plane, one of its turns' copies, as its straight
   // torus's sheet, see torusSheets; a six-fold one's at 30°, the other way round it: B, then −A)
-  const P = 360 / (TILINGS[base]?.turns ?? 6), straight = ([[p, q]]) => { const r = ((((Math.atan2(p * a[1] + q * b[1], p * a[0] + q * b[0]) * 180) / Math.PI) % P) + P) % P; return Math.min(r, P - r) < 1e-6; };
+  const straight = ([pq]) => latticeAlong(a, b, TILINGS[base]?.turns ?? 6)(pq);
   let step = !right ? rectSides(a, b, TILINGS[base]?.turns ?? 6).step : along;
   if (step && !right && !straight(step)) step = [step[1], step[0].map((x) => -x)];
   const W = ([p, q]) => [p * a[0] + q * b[0], p * a[1] + q * b[1]];
