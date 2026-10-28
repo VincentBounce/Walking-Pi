@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1462';
+const VERSION = '0.1.1463';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1124,6 +1124,8 @@ const MODES = {
   lifeKleinKite: { base: 2, lattice: 'sphere', sphere: 'kleinKite', life: true, round: true, where: 'a Klein bottle of kites' },
   lifeTorus:  { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true,
                 where: 'a torus of squares (a grid that wraps around both ways)' },
+  blocksTorus: { base: 2, lattice: 'sphere', sphere: 'torus', life: true, perspective: true, round: true, margolus: true, blocks: 'square',
+                 where: 'a torus of squares in blocks of 4 round a corner, as the plane\'s (Margolus\'s), 3 squares round it, its start on the middle one' },
   lifeTorusHex: { base: 2, lattice: 'sphere', sphere: 'torusHex', life: true, perspective: true, round: true,
                   where: 'a torus of hexagons' },
   lifeTorusTri: { base: 2, lattice: 'sphere', sphere: 'torusTri', life: true, perspective: true, round: true,
@@ -1627,7 +1629,8 @@ let showBlocks = false, blocksButton = null;
 function renderBlocksButton() {
   blocksButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="13" y="13" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" style="stroke: var(--sector)" stroke-width="1.8"/></svg>',  // (its outline the blocks' blue)
     text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
-  setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
+  const can = !walk.life?.margolus?.ising && !!walk.plane;
+  setTile(blocksButton, { on: showBlocks && can, can, byDefault: 'off', greyed: walk.plane ? 'in Ising (its squares in turn, no blocks)' : 'on a surface' });
 }
 // Space-time (Life on squares, the Stacks tile beside Walls): its generations stacked up, time going up, a cube a live cell (see
 // stackUp; STACK_MOST cubes at most); with walls only (through a torus's edges no tree grows: Stacks, Walls on with it)
@@ -2588,7 +2591,7 @@ const MODE_ICONS = {
   torusGrid: 'torus', torusTriGrid: 'torus', torusHexGrid: 'torus', cubeGrid: 'cube', tetraGrid: 'tetrahedron', octaGrid: 'octahedron',
   icosaGrid: 'icosahedron', hexSphereWalk: 'hexagon', /* icosaGrid2: 'icosahedron', icosaGrid3: 'icosahedron', */ hexSphereGrid: 'hexagon',
   life2dKite: 'kites', life2dHat: 'hat', life2dPenrose: 'penrose', life2dPinwheel: 'pinwheel', life2dSpectre: 'spectre', life2dAmmann: 'ammann', life2dRhombs12: 'rhombs12', life2dRhombs14: 'rhombs14', life2dFlower: 'flower', life2dFlower5: 'flower5', life2dFlower7: 'flower7', life2dMirror7: 'mirror7', life2dFlower3: 'flower3', life2dFlower4: 'flower4', life2dFlower8: 'flower8', life2dFlower9: 'flower9', life2dFlower10: 'flower10', life2dRing7: 'ring7', life2dRing8: 'ring8', life2dRing9: 'ring9', life2dRing10: 'ring10', life2dRing12: 'ring12', lifeTorusKite: 'torus', lifeMobiusKite: 'mobius', lifeKleinKite: 'klein',
-  life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', blocks2dTetrakis: 'tetrakis', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', lifeTorusHex: 'torus', lifeTorusCairo: 'torus', lifeTorusTri: 'torus', torusCairoWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
+  life2d: 'grid', blocks2d: 'grid', blocks2dTri: 'triangle', blocks2dHex: 'hexagon', blocks2dCairo: 'pentagons', blocks2dTetrakis: 'tetrakis', life2dTri: 'triangle', life2dHex: 'hexagon', life2dCairo: 'pentagons', lifeTorus: 'torus', blocksTorus: 'torus', lifeTorusHex: 'torus', lifeTorusCairo: 'torus', lifeTorusTri: 'torus', torusCairoWalk: 'torus', lifeMobius: 'mobius', lifeMobiusHex: 'mobius', lifeMobiusTri: 'mobius', lifeMobiusCairo: 'mobius', mobiusCairoWalk: 'mobius', kleinWalk: 'klein', kleinHexWalk: 'klein', kleinTriWalk: 'klein', kleinCairoWalk: 'klein',
   lifeKlein: 'klein', lifeKleinHex: 'klein', lifeKleinTri: 'klein', lifeKleinCairo: 'klein', lifeCube: 'cube', lifeTetra: 'tetrahedron', lifeOcta: 'octahedron', lifeIcosa: 'icosahedron', lifeTetraKite: 'tetrahedron', lifeOctaKite: 'octahedron', lifeIcosaKite: 'icosahedron', lifeStellaKite: 'stella', lifeDodecaKite: 'dodecahedron', lifeCubocta: 'cubocta', lifePyramid: 'pyramid', lifeRhombi: 'rhombi', lifeBicupola: 'bicupola', lifeHexSphere: 'hexagon',
   spiral: 'spiral', triSpiral: 'triSpiral', hexSpiral: 'hexSpiral', cairoSpiral: 'pentagons',
 };
@@ -2638,7 +2641,7 @@ const NAV = {
   antCube: ['Ant', 'Surfaces', 'Cube', 'Ant', 'cells'], antHexSphere: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   antIcosa: ['Ant', 'Surfaces', 'Sphere', 'Ant', 'cells'],
   life2dKite: ['Life', '2D', 'Kites', 'Life', ''], life2dHat: ['Life', '2D', 'Hats', 'Life', ''], life2dPenrose: ['Life', '2D', 'Penrose', 'Life', ''], life2dPinwheel: ['Life', '2D', 'Pinwheel', 'Life', ''], life2dSpectre: ['Life', '2D', 'Spectre', 'Life', ''], life2dAmmann: ['Life', '2D', 'Ammann', 'Life', ''], life2dRhombs12: ['Life', '2D', 'Rhombs 12', 'Life', ''], life2dRhombs14: ['Life', '2D', 'Rhombs 14', 'Life', ''], life2dFlower: ['Life', '2D', 'Flower 6', 'Life', ''], life2dFlower5: ['Life', '2D', 'Flower 5', 'Life', ''], life2dFlower7: ['Life', '2D', 'Flower 7', 'Life', ''], life2dMirror7: ['Life', '2D', 'Mirror 7', 'Life', ''], life2dFlower3: ['Life', '2D', 'Flower 3', 'Life', ''], life2dFlower4: ['Life', '2D', 'Flower 4', 'Life', ''], life2dFlower8: ['Life', '2D', 'Flower 8', 'Life', ''], life2dFlower9: ['Life', '2D', 'Flower 9', 'Life', ''], life2dFlower10: ['Life', '2D', 'Flower 10', 'Life', ''], life2dRing7: ['Life', '2D', 'Ring 7', 'Life', ''], life2dRing8: ['Life', '2D', 'Ring 8', 'Life', ''], life2dRing9: ['Life', '2D', 'Ring 9', 'Life', ''], life2dRing10: ['Life', '2D', 'Ring 10', 'Life', ''], life2dRing12: ['Life', '2D', 'Ring 12', 'Life', ''],
-  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
+  life2d: ['Life', '2D', 'Squares', 'Life', ''], blocks2d: ['Reversible', '2D', 'Squares', 'Blocks', ''], blocksTorus: ['Reversible', 'Surfaces', 'Torus', 'Blocks', ''], blocks2dTri: ['Reversible', '2D', 'Triangles', 'Blocks', ''], blocks2dHex: ['Reversible', '2D', 'Hexagons', 'Blocks', ''], blocks2dCairo: ['Reversible', '2D', 'Cairo', 'Blocks', ''], blocks2dTetrakis: ['Reversible', '2D', 'Tetrakis', 'Blocks', ''], life2dTri: ['Life', '2D', 'Triangles', 'Life', ''], life2dHex: ['Life', '2D', 'Hexagons', 'Life', ''], life2dCairo: ['Life', '2D', 'Cairo', 'Life', ''],
   lifeCube: ['Life', 'Surfaces', 'Cube', 'Life', ''], lifePits: ['Life', 'Surfaces', 'Pits', 'Life', ''], lifeBumps: ['Life', 'Surfaces', 'Bumps', 'Life', ''], lifeFrame: ['Life', 'Surfaces', 'Frame', 'Life', ''], lifeMenger: ['Life', 'Surfaces', 'Sponge', 'Life', ''], lifeTorus: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   lifeTorusHex: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTorusCairo: ['Life', 'Surfaces', 'Torus', 'Life', ''], lifeTorusTri: ['Life', 'Surfaces', 'Torus', 'Life', ''],
   torusCairoWalk: ['Walk', 'Surfaces', 'Torus', 'Turtle', 'cells'],
@@ -2719,7 +2722,6 @@ const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'an
 // (a sheet rolled up); the walks through a 3D lattice
 const SPACES = { '2D': ['2D infinite', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'],
                  '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Lattice', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
-const SPACES_GREYED = { Reversible: { '3D surfaces': 'in Reversible: its blocks on the plane only, for now' } };  // (a space it has not: greyed, why in its tooltip)
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
 function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
@@ -2913,8 +2915,7 @@ function renderModePicker() {
     + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Lattice)
   const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
-  const spaces = navValues(1, [kind]), greyed = SPACES_GREYED[kind] ?? {};
-  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => spaces.includes(sp) || greyed[sp]).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp), '', { can: spaces.includes(sp), greyed: greyed[sp] })), true));
+  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp))), true));
   // the shapes, as pictures with their (short) names
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
@@ -4475,7 +4476,7 @@ const tubeFor = (kind, nv, nu) => (TUBE_SHAPE[kind] * nv) / nu;
 // One length for every ring and strip (a torus's, a Klein bottle's round its ring, a Möbius strip's along it), in its steps: near
 // x (its usual), its colours' blocks square (as long round as across: square) when that is 20 % shorter to 60 % longer, a whole
 // count of unit (each colour's block whole) as ok allows (a twist's), else the nearest ok allows. Life's colours only (a walk's: one)
-const ringColours = () => (MODES[$('mode').value]?.life ? lifeColours : 1);
+const ringColours = () => (MODES[$('mode').value]?.margolus ? 3 : MODES[$('mode').value]?.life ? lifeColours : 1);  // (a reversible torus: Trio's, its start on the middle square)
 function ringLength(x, square, unit, ok = () => true) {
   const near = (t, u) => { for (let d = 0; d <= t / u + 1; d++) for (const n of [Math.round(t / u) + d, Math.round(t / u) - d]) if (n >= 1 && ok(n * u)) return n * u; };
   const sq = near(square, unit) ?? near(square, 1);
@@ -4577,6 +4578,9 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, tube, uv: new Float64Array(sheet.flat(2)) }));
 }
 
+// A torus of squares' blocks (as BLOCKS.square's, see planeBlocks): round each corner (i, j) of its sheet, i and j both odd then
+// both even, its 4 squares in turn round it; its square (i, j) the tile i × nv + j (see torusMesh)
+const torusSquareBlocks = (nu, nv) => [1, 0].map((p) => { const at = (i, j) => mod(i, nu) * nv + mod(j, nv), b = []; for (let i = p; i < nu; i += 2) for (let j = p; j < nv; j += 2) b.push(at(i - 1, j - 1), at(i, j - 1), at(i, j), at(i - 1, j)); return Int32Array.from(b); });
 function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares about as long around the ring as around the tube
   return sheetTorus(`torus${nv}x${nu}`, 'torus', nv, nu, 4, () => Array.from({ length: nu * nv }, (_, t) => { const i = Math.floor(t / nv), j = t % nv; return [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]; }));
 }
@@ -6463,6 +6467,20 @@ function lifeReseed() {
 // A start as the Start says, once the grid is built: in Hunt, a soup's colours each in its part of the
 // grid (see huntParts)
 function startColours(seed) {
+  const L = walk.life;
+  if (L.margolus && walk.geo.torus) {  // a reversible torus: its start placed as Trio's (3 squares round it, see ringColours), the middle one's kept in one colour, its digits the first; Wild's all over
+    L.colours = 3;
+    startParts(seed);
+    L.colours = 1;
+    const mid = huntParts(0, 3, false, false)[1], keep = new Uint8Array(seed.length);
+    if (plane.start === 'digits') { seed.fill(0); mid.forEach((t, q) => { seed[t] = walk.digits[q]; }); return; }
+    for (const t of mid) keep[t] = 1;
+    seed.forEach((v, t) => { seed[t] = v && (keep[t] || (plane.start === 'random' && hunt.zone === 'full')) ? 1 : 0; });
+    return;
+  }
+  startParts(seed);
+}
+function startParts(seed) {
   const K = walk.life.colours;
   if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
   if (plane.start !== 'random') return;
@@ -6509,12 +6527,13 @@ function buildLife(seq, mode) {
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
-                alive: new Uint8Array(n) };
+                margolus: mode.margolus && rule.margolus ? { k: 4, turns: torusSquareBlocks(g.nu, g.nv), to: rule.margolus, ...blockKind(rule.margolus) } : null, alive: new Uint8Array(n) };
+  if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
   lifeStart = null;  // the number's digits
   const one = new Float64Array(1);
-  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: mode.margolus ? targetAsked() : Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: true, cells: null,
                         maxDist: null, base: rule.base, counts: null, lattice: 'sphere', skipZeros: false, points: false,
                         keys: seq, sphere: true, geo: g, R: radius(size), tile: new Int32Array(1),
                         coverStep: -1, visits: new Int32Array(n), maxVisits: 0,
@@ -7238,12 +7257,8 @@ const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: 
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
-// the grids in their spaces (see SPACES): Life's and Reversible's on the plane, its round ones (these) or the others; everyone's
-// surfaces, its sheets or its solids
-for (const [w, n] of Object.entries(NAV)) {
-  if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
-  else if (n[1] === '2D' && (n[0] === 'Life' || n[0] === 'Reversible')) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
-}
+// the grids in their spaces (see SPACES): everyone's surfaces, sheets or solids; Life's and Reversible's plane, round (these) or not
+for (const [w, n] of Object.entries(NAV)) if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids'; else if (n[1] === '2D' && (n[0] === 'Life' || n[0] === 'Reversible')) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
@@ -8108,7 +8123,7 @@ const gridOutline = () => {  // (the grid's sides of one cell only, as keys: its
 };
 function drawBlocks(ctx) {
   const M = walk.life?.margolus;
-  if (!showBlocks || !M || M.ising) return;
+  if (!showBlocks || !M || M.ising || !walk.plane) return;
   const { kind, W, row } = walk.plane, { scale: s, ox, oy } = view, key = `${kind}|${W}|${row}`;
   // each phase's blocks, their sides not shared nor on the grid's outline: a path, made once a grid and a rule
   if (!(M.paths ??= new Map()).has(key)) M.paths.set(key, M.turns.map((blocks) => {
@@ -8229,7 +8244,8 @@ for (const [s, { kind }] of Object.entries(FOLDED)) SURFACE_CELLS[s] = TILINGS[k
 // each plane's mark (its rules', see the rule menu), and the plane of a mark
 const PLANE_MARKS = { ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [k, t.mark])), square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' };
 const PLANE_OF_MARK = Object.fromEntries(Object.entries(PLANE_MARKS).map(([k, m]) => [m, k]));
-const lifeMark = (mode) => (mode.margolus ? (BLOCKS[mode.plane] ?? STARS[mode.plane]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
+const blocksGrid = (mode) => mode.blocks ?? mode.plane;  // (a block rule's grid: the plane's, or a surface's, its cells' shape)
+const lifeMark = (mode) => (mode.margolus ? (BLOCKS[blocksGrid(mode)] ?? STARS[blocksGrid(mode)]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4", see lifeRuleNow)
@@ -8466,7 +8482,7 @@ const pixelIcon = (art, box = 5) => `<svg class="icon rule-icon" viewBox="${(5 -
 function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be): the
   // smallest with blocks in each phase (the triangles' at 6: no whole hexagon)
-  const kind = planeKind(MODES[$('mode').value].plane), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
+  const kind = planeKind(blocksGrid(MODES[$('mode').value])), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
   const blocksAt = (W, torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four));  // (Ising: its squares, a colour a phase)
   const W = planeW(kind, planeSides(kind).find((sd) => blocksAt(planeW(kind, sd), false).turns.every((t) => t.length))), row = planeRow(kind, W);  // (the first that fits: a large side's width long to work out)
   const blocksOf = (torus) => blocksAt(W, torus), { k, turns, move } = blocksOf(false);
@@ -8907,7 +8923,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? true : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = mode.margolus ? (parseRule(rule)?.ising || parseRule(rule)?.four ? mode.plane === 'square' : parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[mode.plane]?.k) : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
+  const kindFits = mode.margolus ? (parseRule(rule)?.ising || parseRule(rule)?.four ? blocksGrid(mode) === 'square' : parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[blocksGrid(mode)]?.k) : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
   if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
   ruleFittedTo = w;
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
