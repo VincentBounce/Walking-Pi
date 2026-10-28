@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1471';
+const VERSION = '0.1.1472';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6463,12 +6463,12 @@ function lifeReseed() {
 }
 // A start as the Start says, once the grid is built: in Hunt, a soup's colours each in its part of the
 // grid (see huntParts)
+// the parts a start is laid in: its colours', a reversible torus's 3 squares (Trio's, see ringColours: the middle one's kept, see startColours)
+const lifeParts = () => (walk.life.margolus && walk.geo.torus ? 3 : walk.life.colours);
 function startColours(seed) {
   const L = walk.life;
-  if (L.margolus && walk.geo.torus) {  // a reversible torus: its start placed as Trio's (3 squares round it, see ringColours), the middle one's kept in one colour; Digits and Wild all over
-    L.colours = 3;
+  if (L.margolus && walk.geo.torus) {  // a reversible torus: its start placed as Trio's (3 squares round it, see lifeParts), the middle one's kept in one colour; Digits and Wild all over
     startParts(seed);
-    L.colours = 1;
     const mid = huntParts(0, 3, false, false)[1], keep = new Uint8Array(seed.length);
     for (const t of mid) keep[t] = 1;
     seed.forEach((v, t) => { seed[t] = v && (keep[t] || plane.start === 'digits' || (plane.start === 'random' && hunt.zone === 'full')) ? 1 : 0; });
@@ -6477,7 +6477,7 @@ function startColours(seed) {
   startParts(seed);
 }
 function startParts(seed) {
-  const K = walk.life.colours;
+  const K = lifeParts();
   if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
@@ -7429,7 +7429,7 @@ function iconRoom(K) {
 // cut off at its part's edges (the grid's, a sheet's as drawn flat). Its cells and their pixels, mirrored or not. Null where
 // it doesn't fit: its cross (its middle rows and columns) not all on its part's live cells (each pixel's middle's: see cellOf)
 function iconLay(N, P = 24) {
-  const kind = patternKind(), K = walk.life.colours, g = walk.geo;
+  const kind = patternKind(), K = lifeParts(), g = walk.geo;
   if (!patternsOn()) return null;
   const { dead, part, of } = iconCellsOf(K), walled = roundWalls(K) && planeSlices(K), live = (t, i) => t >= 0 && part[t] === i && !dead.has(t);
   const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
@@ -7459,7 +7459,7 @@ function iconLay(N, P = 24) {
 }
 const iconFits = (N, P = 24) => !!iconLay(N, P);
 function iconChoices(N, set) {
-  const K = walk.life.colours, kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMix}`;
+  const K = lifeParts(), kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMix}`;
   if (iconMemo?.key === key) return iconMemo.choices;
   const lays = iconLay(N, set.P);  // (each colour's cells and their pixels)
   const choices = Array.from({ length: K }, (_, i) => {
@@ -7473,7 +7473,7 @@ function iconChoices(N, set) {
 function iconCells(N, set) {
   const seed = new Uint8Array(walk.life.seed.length), random = () => Math.floor(Math.random() * set.names.length);
   plane.icons = plane.icons.map((i) => (i < set.names.length ? i : random()));  // (one of the other set's, past this one's: another)
-  while (plane.icons.length < walk.life.colours) plane.icons.push(random());  // (more colours than icons said: one at random each)
+  while (plane.icons.length < lifeParts()) plane.icons.push(random());  // (more colours than icons said: one at random each)
   iconChoices(N, set).forEach((c, i) => { const f = c[plane.icons[i]] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; });
   return seed;
 }
@@ -7651,7 +7651,7 @@ for (const [kind, t] of Object.entries(TILINGS)) PLANE_CELLS[kind] = t.cells;
 // the description's lead: how the cells start, on which grid
 // a zone of the hunt, a random start in it, in words
 function zoneWords(zone) {
-  const K = walk.life.colours, r = zoneRadius(zone), d = plane.density;
+  const K = lifeParts(), r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'mirror') return `Each colour a soup of its two opposite parts, ${d} % alive`;
   if (zone === 'realm' && !r) return 'Each colour random cells on its face';
@@ -9142,8 +9142,12 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
 // square turned over when just 2 of its 4 side neighbours are alive (its energy the same either way: the walls between
 // alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
 // a block rule's blocks on a grid (Ising: its squares in turn, see isingOf; squares only, a row its cols): the plane's, or a torus's sheet (cols its row's)
-const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(kind, W, 1)) => (rule.ising ? isingOf(kind, W, torus, cols)
-  : { ...planeBlocks(kind, W, torus, rule.stars, rule.four, cols), to: rule.margolus, ...blockKind(rule.margolus) });
+let blocksMemo = null;  // (the last grid's: its blocks the same whatever its start, 1 s at 2²⁰ cells)
+const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(kind, W, 1)) => {
+  const key = `${kind}|${W}|${torus}|${cols}|${!!rule.ising}|${!!rule.stars}|${!!rule.four}`;
+  if (blocksMemo?.key !== key) blocksMemo = { key, blocks: rule.ising ? isingOf(kind, W, torus, cols) : planeBlocks(kind, W, torus, rule.stars, rule.four, cols) };
+  return rule.ising ? { ...blocksMemo.blocks } : { ...blocksMemo.blocks, to: rule.margolus, ...blockKind(rule.margolus) };
+};
 function isingOf(kind, W, torus = planeTorus(kind), row = planeRow(kind, W)) {
   const turns = [[], []], sides = [];
   for (let t = 0; t < row * W; t++) {
@@ -9505,11 +9509,11 @@ const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an i
 // not always: a triangle's cells let 36 in, not 32); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = (set = ICON_SETS.icon) => {
-  const key = `${gridKey()}|${walk.life.colours}|${colourMix}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
+  const key = `${gridKey()}|${lifeParts()}|${colourMix}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   const lo = u === 24 ? 1 : 16;  // (in u's)
   if (!patternsOn()) return (iconMaxMemo = { key, N: 24 }).N;
-  let k = Math.max(lo, Math.round(iconRoom(walk.life.colours) / u));  // (its room, then the cells' rounding: a step or two up or down)
+  let k = Math.max(lo, Math.round(iconRoom(lifeParts()) / u));  // (its room, then the cells' rounding: a step or two up or down)
   if (iconFits(k * u, set.P)) while ((k + 1) * u <= Math.sqrt(cells) && iconFits((k + 1) * u, set.P)) k++;
   else while (--k >= lo && !iconFits(k * u, set.P));
   return (iconMaxMemo = { key, N: k >= lo ? k * u : 24 }).N;
@@ -9822,7 +9826,7 @@ const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
-  const K = walk.life.colours, key = `${gridKey()}|${K}|${walk.life.ruleText}|${walk.life.colours === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
+  const K = lifeParts(), key = `${gridKey()}|${K}|${walk.life.ruleText}|${lifeParts() === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
   if (hunt.fitKey === key) return hunt.fits;
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
@@ -9855,7 +9859,7 @@ function renderHunt() {
   if ($('huntRow').hidden) return;
   $('huntBtn').hidden = !!walk.life.margolus;  // (the hunt's own step: births and survivals; blocks, their zones' starts only)
 
-  const K = walk.life.colours, { perColour, all } = huntPlan(), busy = !!hunt.run, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
+  const K = lifeParts(), { perColour, all } = huntPlan(), busy = !!hunt.run, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? 'the longest battle' : { longest: 'the longest life', dies: 'the longest death', peak: 'the highest peak', cover: 'the fastest to reach all cells' }[hunt.goal];
   $('huntGoals').hidden = $('huntModeLabel').hidden = K > 1 || !!walk.life.margolus;
   for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
@@ -9952,7 +9956,7 @@ function pickZone(zone) {
   hunt.status = '';
   plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
-  plane.icons = Array.from({ length: walk.life.colours }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
+  plane.icons = Array.from({ length: lifeParts() }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
   if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else setLifeSeed(zoneSeed(), { zone });
   renderHunt();
@@ -10620,7 +10624,7 @@ function decodeCells(code, n) {
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? HUNT_ZONES[lifeStart.zone][1].toLowerCase().replace(/ /g, '') : 'random');  // (Icon 24: icon24)
 // a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart;
 // a Punk zone's, their numbers: pop=punk24.7804)
-const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, walk.life.colours).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
+const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, lifeParts()).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
