@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1418';
+const VERSION = '0.1.1419';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1380,7 +1380,6 @@ function describe(base, available) {
     }
     return;
   }
-  if (!walk.life) return;  // (Space-time: its cubes, a 3D walk of them, see buildSpaceTime)
   const cells = walk.life.seed.length, C = base;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
@@ -1633,7 +1632,7 @@ function renderBlocksButton() {
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
 // Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
-// buildSpaceTime); on squares up to 128 a side only (up to 5 times as many generations, 2^21 cubes at most)
+// stackUp); on squares up to 128 a side only (up to 5 times as many generations, 2^21 cubes at most)
 let spaceTime = false, spaceButton = null;
 const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square' && plane.side <= 128; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
@@ -2832,7 +2831,7 @@ let antRowMode = null, antCustomOpen = false;  // (the mode they were last shown
 function renderAntRow() {
   const w = $('mode').value, m = MODES[w], ant = NAV[w][0] === 'Ant';
   $('digitsSection').hidden = !readsDigits(w);
-  drawing = !!m.plane && plane.start === 'draw';  // Life on the plane draws in its Draw start
+  drawing = !!m.plane && plane.start === 'draw' && !spaceTimeOn();  // Life on the plane draws in its Draw start (not in Space-time)
   if (antRowMode !== w) antCustomOpen = false;
   antRowMode = w;
   stage.classList.toggle('drawing', drawing);
@@ -3388,6 +3387,11 @@ const perspectiveAllowed = () => walk.is3d;
 // at 2.5 × that radius, i.e. a field of view of roughly 45°
 function setPerspective() {
   if (!perspectiveAllowed() || !$('perspective').checked) { walk.persp = null; return; }
+  if (walk.plane) {  // Space-time: its cubes' box
+    const b = stack.box;
+    walk.persp = { c: [(b[0] + b[1]) / 2, (b[2] + b[3]) / 2, (b[4] + b[5]) / 2], D: 2.5 * Math.max(3, Math.hypot(b[1] - b[0], b[3] - b[2], b[5] - b[4]) / 2) };
+    return;
+  }
   if (walk.sphere) {
     // one camera distance for both forms of the shape (the flat torus is wider)
     walk.persp = { c: [0, 0, 0], D: 2.5 * walk.R * walk.shape.maxExtent };
@@ -7522,7 +7526,7 @@ function buildLifePlane(seq) {
   countSeed(walk.life);
   lifeStart = null;
   const one = new Float64Array(1);
-  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: MODES[current.mode].margolus ? plane.gens : Infinity, digits: seq, wx: one, wy: one, wz: null, is3d: false, cells: null,
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n: MODES[current.mode].margolus ? plane.gens : Infinity, digits: seq, wx: one, wy: one, wz: one, is3d: false, cells: null,
                         maxDist: null, base: rule.base, counts: null, lattice: 'square', skipZeros: false, points: false,
                         keys: seq, sphere: false, geo: { n, walls: planeDead(kind, W) }, plane: { kind, W, row, torus: planeTorus(kind), flat: planeFlat(kind, W, row, planeTorus(kind)) }, tile: null,
                         coverStep: -1, visits: null, maxVisits: 0, xs: one, ys: one, shape: null });
@@ -7536,37 +7540,44 @@ function buildLifePlane(seq) {
   renderColours();  // the blocks a figure fits, and its size's words (its colours fitted), now that it is built
   renderPlaneRow();
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
-  if (spaceTimeOn()) buildSpaceTime();
-  else autoplay();
+  autoplay();
 }
-// Space-time: Life on squares from its start, up to 5 times as many generations as the grid is wide (till all die, its loop
-// found and gone round 5 times, or 2^21 cubes), stacked up (time going up), each live cell a cube; then a 3D walk of those cubes, generation by generation (its
-// rainbow: time; Activity: each its colour), its layers' ends kept (played a layer at a time, see stepOn), shown whole,
-// turned as any 3D walk (see glCubes)
-function buildSpaceTime() {
-  const L = walk.life, { W, row } = walk.plane, K = L.colours, xyz = [], keys = [], layers = [];
+// Space-time's cubes (see renderSpaceButton), a view of the game: Life on squares from its start, played on the card up to 5
+// times as many generations as the grid is wide (till all die, its loop gone round 5 times, or 2^21 cubes), each generation's
+// live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
+// again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an
+// engine of its own, the game's left as it was, then set back at its start (each generation read back: on the game's own, its
+// next starts were seen played wrong, ANGLE on Metal, see TODO.md)
+let stack = null;
+function stackUp() {
+  const L = walk.life, { W, row } = walk.plane, K = L.colours, S = glSetup(), game = S.life;
+  if (stack?.L === L && stack.seed.every((v, t) => v === L.seed[t])) return;
+  walk.n = Infinity;
+  S.life = lifeEngine(L, 1, LIFE_H);
+  L.gpuOld = true;
+  const at = [], keys = [], layers = [];
   for (let g = 0; g < 5 * W && keys.length < 2 ** 21; g++) {
-    advanceTo(g);
+    lifeTo(g);
     const a = L.alive, before = keys.length;  // (its states: 1 … K alive, of that colour; past them, dying)
-    for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { xyz.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g - (5 * W - 1) / 2); keys.push(a[t] - 1); }
+    for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { at.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g); keys.push(a[t] - 1); }
     if (keys.length === before) break;  // (all dead)
     layers.push(keys.length - 1);
     if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P) break;  // (its loop 5 times: a still life 5 layers)
   }
-  const n = Math.max(0, keys.length - 1), base = Math.max(2, K), at = (d) => Float64Array.from({ length: n + 1 }, (_, i) => xyz[3 * i + d] ?? 0);
-  const wx = at(0), wy = at(1), wz = at(2), digits = Uint8Array.from({ length: n + 1 }, (_, i) => keys[i] ?? 0), maxDist = new Float64Array(n + 1), counts = new Int32Array(base * (n + 1));
-  for (let i = 0; i <= n; i++) {
-    maxDist[i] = Math.max(i ? maxDist[i - 1] : 0, Math.hypot(wx[i], wy[i], wz[i]));
-    for (let c = 0; c < base; c++) counts[base * i + c] = i ? counts[base * (i - 1) + c] : 0;
-    counts[base * i + digits[i]]++;
-  }
-  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n, digits, wx, wy, wz, is3d: true, cells: Int32Array.from({ length: n + 1 }, (_, i) => i + 1), maxDist, base, counts,
-                        lattice: 'cube', lines: false, skipZeros: false, ant: 0, turns: null, antStates: null, antTurns: null, highway: null, bridges: [], wormEnd: false, wormMade: 0,
-                        keys: digits, sphere: false, life: null, plane: null, geo: null, xs: new Float64Array(n + 1), ys: new Float64Array(n + 1), layers: Int32Array.from(layers.length ? layers : [0]) });
-  setPerspective();
-  project();
-  restart();
-  showAll();
+  const h = layers.length, mid = (h - 1) / 2;
+  for (let i = 2; i < at.length; i += 3) at[i] -= mid;  // (its height round the middle)
+  stack = { L, seed: L.seed.slice(), at: Float32Array.from(at), keys: Uint8Array.from(keys), layers: Int32Array.from(h ? layers : [-1]),
+            box: [-(row - 1) / 2, (row - 1) / 2, -(W - 1) / 2, (W - 1) / 2, -mid, mid], reach: Math.hypot(row, W, h) / 2 };
+  walk.n = Math.max(0, h - 1);
+  lifeFree(S.life);
+  S.life = game;
+  lifeReset();
+}
+// its cubes' colours by the look: States in colours, each its colour; else the rainbow up, by its generation (time)
+function stackCubes(mode) {
+  const { L, keys, layers } = stack, col = new Uint8Array(keys.length * 3), civ = civColours(L.colours, L.C).map(rgbOf), rainbow = GRADIENT.map(rgbOf);
+  for (let g = 0, i = 0; g < layers.length; g++) for (; i <= layers[g]; i++) col.set(mode === 'mono' && L.colours > 1 ? civ[keys[i]] : rainbow[Math.floor((g * BANDS) / layers.length)], 3 * i);
+  return { at: stack.at, col };
 }
 // The angle the view turns its world by (drawn turned, see turnLayer; a frame or the pointer in the turned world): a
 // rectangle's (a slanted grid's straight sheet, see planeKind), its side U across; any other grid's, as it is (its tiles as
@@ -10840,59 +10851,61 @@ function setSpeed(s) {
   statsDirty = true;
 }
 
+// Life's generations, forth or back (a block rule's), up to target; until: its batches stop past it (a frame's time, see tick)
+function lifeTo(target, until = Infinity) {  // (one step, one generation, played on the card as many at once, see lifeStepGPU)
+  const L = walk.life;
+  while (target < cur) {  // (back: its rule's inverse, see lifeBack)
+    const batch = lifeStepGPU(L, cur - 1, true, Math.min(cur - target, LIFE_H));
+    if (!batch) break;
+    for (const G of batch) lifeBack(G);
+    if (performance.now() >= until) break;  // (a batch at least)
+  }
+  statsDirty = true;
+  let k = target - cur, ended = false;
+  while (k > 0 && !ended && !lifeEnded()) {
+    const batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H));
+    if (!batch) break;  // (no WebGL 2)
+    if (L.margolus && !L.stable) {  // (a block rule's return to its start, its cells checked there (see blockBack): the card played past it, back to it)
+      const j = batch.findIndex((G, x) => (cur + 1 + x) % L.margolus.turns.length === 0 && G.key === L.seedKey);
+      for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + x, true);
+      if (j >= 0) batch.length = j + 1;
+    }
+    for (const G of batch) {
+      if (!ended) ended = lifeEnded();
+      lifeStep(G);
+      if (ended) continue;  // (played on the card past its end: counted, not shown)
+      k--;
+      cur++;
+      if (cur > (L.reached ?? 0)) L.reached = cur;  // (the furthest, for a reversible one's slider)
+      const s = L.stable;
+      if (!s) continue;
+      if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += L.trace.by[g][k]; }  // (its cell-generations till it settles or loops)
+      if (s.extinct || s.P === 1) { cur = s.T; if (lifeEnded()) { play(false); ended = true; } continue; }  // nothing moves any more: it ends there (its trail fading first)
+      if (!L.loopAvg) {  // found: each colour's live cells over the loop (its generations' counts, see lifeStep), their mean
+        for (let g = s.T; g < s.T + s.P; g++) for (let k = 1; k <= L.colours; k++) {
+          const v = L.colours === 1 ? L.trace.alive[g] : L.trace.by[g][k];
+          L.loopSum[k] += v;
+          L.loopMin[k] = Math.min(L.loopMin[k], v);
+          L.loopMax[k] = Math.max(L.loopMax[k], v);
+        }
+        L.loopAvg = Array.from(L.loopSum, (v) => v / s.P);
+      }
+      if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
+        cur -= s.P;  // (a trail goes on fading: its time is L.gen's)
+        if (!L.loopBase) L.loopBase = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };  // births and deaths round with it
+        else { L.born = L.loopBase.born; L.dead = L.loopBase.dead; L.bornBy.set(L.loopBase.bornBy); L.deadBy.set(L.loopBase.deadBy); }
+      }
+    }
+    if (performance.now() >= until) break;  // (a batch at least)
+  }
+  statsDirty = true;
+}
 function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reversible one, by its rule); until: a Game of Life's batches stop past it (a frame's time, see tick)
   target = Math.min(walk.n, target);
   if (target !== cur) faced = false;  // the walker moves: the camera follows it again (see faceWalk)
+  if (spaceTimeOn()) { cur = Math.max(0, target); statsDirty = true; if (cur >= walk.n) play(false); return; }  // (Space-time: its layers, made, see stackUp)
   if (target < cur && !walk.life) { walkBack(target); return; }
-  if (walk.life) {  // Game of Life: one step = one generation (played on the card as many at once, see lifeStepGPU)
-    const L = walk.life;
-    while (target < cur) {  // (back: its rule's inverse, see lifeBack)
-      const batch = lifeStepGPU(L, cur - 1, true, Math.min(cur - target, LIFE_H));
-      if (!batch) break;
-      for (const G of batch) lifeBack(G);
-      if (performance.now() >= until) break;  // (a batch at least)
-    }
-    statsDirty = true;
-    let k = target - cur, ended = false;
-    while (k > 0 && !ended && !lifeEnded()) {
-      const batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H));
-      if (!batch) break;  // (no WebGL 2)
-      if (L.margolus && !L.stable) {  // (a block rule's return to its start, its cells checked there (see blockBack): the card played past it, back to it)
-        const j = batch.findIndex((G, x) => (cur + 1 + x) % L.margolus.turns.length === 0 && G.key === L.seedKey);
-        for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + x, true);
-        if (j >= 0) batch.length = j + 1;
-      }
-      for (const G of batch) {
-        if (!ended) ended = lifeEnded();
-        lifeStep(G);
-        if (ended) continue;  // (played on the card past its end: counted, not shown)
-        k--;
-        cur++;
-        if (cur > (L.reached ?? 0)) L.reached = cur;  // (the furthest, for a reversible one's slider)
-        const s = L.stable;
-        if (!s) continue;
-        if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += L.trace.by[g][k]; }  // (its cell-generations till it settles or loops)
-        if (s.extinct || s.P === 1) { cur = s.T; if (lifeEnded()) { play(false); ended = true; } continue; }  // nothing moves any more: it ends there (its trail fading first)
-        if (!L.loopAvg) {  // found: each colour's live cells over the loop (its generations' counts, see lifeStep), their mean
-          for (let g = s.T; g < s.T + s.P; g++) for (let k = 1; k <= L.colours; k++) {
-            const v = L.colours === 1 ? L.trace.alive[g] : L.trace.by[g][k];
-            L.loopSum[k] += v;
-            L.loopMin[k] = Math.min(L.loopMin[k], v);
-            L.loopMax[k] = Math.max(L.loopMax[k], v);
-          }
-          L.loopAvg = Array.from(L.loopSum, (v) => v / s.P);
-        }
-        if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
-          cur -= s.P;  // (a trail goes on fading: its time is L.gen's)
-          if (!L.loopBase) L.loopBase = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };  // births and deaths round with it
-          else { L.born = L.loopBase.born; L.dead = L.loopBase.dead; L.bornBy.set(L.loopBase.bornBy); L.deadBy.set(L.loopBase.deadBy); }
-        }
-      }
-      if (performance.now() >= until) break;  // (a batch at least)
-    }
-    statsDirty = true;
-    return;
-  }
+  if (walk.life) { lifeTo(target, until); return; }
   const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
     if (walk.stepTiles) {  // along the grid: the tiles on both sides of the edge just walked
@@ -10934,7 +10947,9 @@ function play(on) {
 }
 // Play backwards (◀ by Play): back to its start, a step at a time; a reversible one by its rule run backwards, a walk
 // drawn again up to the step before (Life: none, it cannot go back)
-const reversible = () => !walk.life || !!walk.life.margolus;
+// Life's own time: generations played on the card, ever on, no way back (but a block rule's); Space-time's, its layers made (see stackUp)
+const lifeTime = () => !!walk.life && !spaceTimeOn();
+const reversible = () => !lifeTime() || !!walk.life.margolus;
 function reverse(on) {
   reversing = on && reversible() && cur > 0;
   if (reversing) play(false);
@@ -10946,7 +10961,7 @@ function reverse(on) {
 
 // A new walk is shown complete at once; Play replays it from the start
 function showAll() {
-  if (walk.life) return;  // the Game of Life starts at generation 0 instead
+  if (lifeTime()) return;  // the Game of Life starts at generation 0 instead (Space-time: its layers all)
   advanceTo(walk.n);
   faceWalk();
   if ($('autoFit').checked && !choosingStart) fitWhole();  // framed like F or a double-click, without the margin kept for growing
@@ -10970,7 +10985,7 @@ function fitWhole() {
 }
 
 // Life: a run plays as soon as it is set up (Autoplay, off at first), unless cells are being drawn
-const autoplay = () => { if (walk.life && !drawing && $('autoPlay').checked) play(true); };
+const autoplay = () => { if (spaceTimeOn()) showAll(); else if (walk.life && !drawing && $('autoPlay').checked) play(true); };  // (Space-time: its layers shown all)
 function restart() {
   if (reversing) reverse(false);
   faced = false;
@@ -10987,9 +11002,11 @@ function restart() {
     walk.maxVisits = 1;
     if (!walk.stepTiles) walk.visits[walk.tile[0]] = 1;  // a tile walk starts on its first tile
     if (walk.life) lifeReset();
-  } else if (walk.plane) {  // the frame is the grid
-    bounds = planeBounds();
+  } else if (walk.plane) {  // the frame is the grid (Space-time: its cubes', made from its start, see stackUp)
     lifeReset();
+    walk.is3d = spaceTimeOn();
+    if (walk.is3d) { stackUp(); cur = 0; bounds3 = stack.box.slice(); setPerspective(); includeBox(); }
+    else bounds = planeBounds();
   }
   if ($('autoFit').checked) fitToBounds(walk.sphere || walk.plane ? padBounds(bounds) : { minX: -3, maxX: 3, minY: -3, maxY: 3 });
   needsFull = true;
@@ -12210,7 +12227,7 @@ const templateArray = (templates) => {
 // how many of the sorted values are ≤ v
 const countUpTo = (sorted, n, v) => { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] <= v) lo = m + 1; else hi = m; } return lo; };
 function glFlat(to) {
-  if (cubesWalk()) return glCubes(to);
+  if (cubesWalk()) return glCubes(to + 1, walk.wx, walkCubes, walk.maxDist[walk.n]);
   const S = glSetup();
   if (!S) return false;
   const { gl, prog } = S, mode = $('colorMode').value, { scale: s, ox, oy } = view;
@@ -12372,45 +12389,41 @@ const CELL_SHAPES = {
 // order with the depth buffer, so that a cell shows the colour of its last visit (the rainbow by the
 // step, its digit's, or one colour) and hides the ones behind it
 const cellShape = () => CELL_SHAPES[MODES[current.mode].shape ?? 'cube'];
-// k steps on from point i (back: k < 0): a walk's points; Space-time's layers, a generation each (to its last cube; from
-// within one, finishing it is a step)
-function stepOn(i, k) {
-  const E = spaceTimeOn() && walk.layers;
-  if (!E) return Math.max(0, i + k);
-  let lo = 0, hi = E.length - 1;
-  while (lo < hi) { const m = (lo + hi) >> 1; if (E[m] >= i) hi = m; else lo = m + 1; }  // (its layer: the first ending at i or past it)
-  const g = lo + k - (k > 0 && E[lo] > i ? 1 : 0);
-  return g < 0 ? 0 : E[Math.min(E.length - 1, g)];
-}
 const cubesWalk = () => walk.is3d && (!!MODES[current.mode].cells || spaceTimeOn());  // (a 3D walk on cells, Life's Space-time: cubes)
-function glCubes(to) {
+// a 3D walk on cells' cubes, points 0 … n: where, their colours by the look (the rainbow by the step, its digit's)
+function walkCubes(mode) {
+  const n = walk.n, at = new Float32Array(3 * (n + 1)), col = new Uint8Array(3 * (n + 1));
+  const rgb = mode === 'digit' ? Array.from({ length: walk.base }, (_, d) => rgbOf(digitColour(d))) : GRADIENT.map(rgbOf);
+  for (let p = 0; p <= n; p++) {
+    const q = Math.max(1, p);  // the start, as its first step
+    at.set([walk.wx[p], walk.wy[p], walk.wz[p]], 3 * p);
+    col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : rgb[Math.floor((roundStep(q - 1) * BANDS) / rainbowLength())], 3 * p);
+  }
+  return { at, col };
+}
+// count cubes (of: theirs, made by make(the look) once; reach: how far from the middle they go)
+function glCubes(count, of, make, reach) {
   const S = glSetup();
   if (!S) return false;
-  const { gl, prog } = S, mode = $('colorMode').value, n = walk.n, shape = cellShape();
+  const { gl, prog } = S, mode = $('colorMode').value, shape = cellShape();
   if (!S.cube) { S.cube = gl.createBuffer(); S.cubeAt = gl.createBuffer(); S.cubeCol = gl.createBuffer(); }
   if (S.keys.cubeShape !== shape) {
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cube); gl.bufferData(gl.ARRAY_BUFFER, shape.triangles, gl.STATIC_DRAW);
     S.keys.cubeShape = shape;
   }
-  if (S.keys.cubes !== walk.wx || S.keys.cubesMode !== mode) {  // once per walk and colouring
-    const at = new Float32Array(3 * (n + 1)), col = new Uint8Array(3 * (n + 1));
-    const rgb = mode === 'digit' ? Array.from({ length: walk.base }, (_, d) => rgbOf(digitColour(d))) : GRADIENT.map(rgbOf);
-    for (let p = 0; p <= n; p++) {
-      const q = Math.max(1, p);  // the start, as its first step
-      at.set([walk.wx[p], walk.wy[p], walk.wz[p]], 3 * p);
-      col.set(mode === 'digit' ? rgb[walk.digits[q - 1]] : rgb[Math.floor((roundStep(q - 1) * BANDS) / rainbowLength())], 3 * p);
-    }
+  if (S.keys.cubes !== of || S.keys.cubesMode !== mode) {  // once per walk (Space-time's cubes) and colouring
+    const { at, col } = make(mode);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeAt); gl.bufferData(gl.ARRAY_BUFFER, at, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeCol); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
-    S.keys.cubes = walk.wx; S.keys.cubesMode = mode;
+    S.keys.cubes = of; S.keys.cubesMode = mode;
   }
-  // the depths: no point is further than twice the walk's reach from the perspective's centre
-  const depth = 4 * (walk.maxDist[n] + 2);
+  // the depths: no point is further than twice the cubes' reach from the perspective's centre
+  const depth = 4 * (reach + 2);
   glShadows(depth, (aPos, aAt) => {
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cube); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 24, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, S.cubeAt); gl.enableVertexAttribArray(aAt); gl.vertexAttribPointer(aAt, 3, gl.FLOAT, false, 0, 0);
     gl.vertexAttribDivisor(aAt, 1);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, shape.triangles.length / 6, to + 1);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, shape.triangles.length / 6, count);
     gl.vertexAttribDivisor(aAt, 0); gl.disableVertexAttribArray(aAt); gl.disableVertexAttribArray(aPos);
   });
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
@@ -12429,7 +12442,7 @@ function glCubes(to) {
   };
   const locs = [attrib('aCorner', S.cube, 3, gl.FLOAT, false, 24, 0, 0), attrib('aNrm', S.cube, 3, gl.FLOAT, false, 24, 12, 0),
                 attrib('aAt', S.cubeAt, 3, gl.FLOAT, false, 0, 0, 1), attrib('aCol', S.cubeCol, 3, gl.UNSIGNED_BYTE, true, 0, 0, 1)];
-  gl.drawArraysInstanced(gl.TRIANGLES, 0, shape.triangles.length / 6, to + 1);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, shape.triangles.length / 6, count);
   locs.forEach((loc) => { gl.disableVertexAttribArray(loc); gl.vertexAttribDivisor(loc, 0); });
   gl.disable(gl.DEPTH_TEST);
   S.drawn = true;
@@ -13054,7 +13067,7 @@ function renderRanking(L) {
 function updateStats() {
   // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
   $('restart').disabled = cur === 0;
-  $('back').hidden = !!walk.life && !walk.life.margolus;  // (Life: never back; a block rule: reversible, back as forth)
+  $('back').hidden = lifeTime() && !walk.life.margolus;  // (Life: never back; a block rule: reversible, back as forth)
   $('back').disabled = cur === 0;
   $('jump10k').hidden = Number.isFinite(walk.n);  // (Life: 10,000 generations ahead too)
   $('jump10k').disabled = !!walk.life?.stable;
@@ -13070,7 +13083,7 @@ function updateStats() {
   }
   // the step and the last: folded, at the top on the right; open, under the curve (its slider, see drawActivity); none for
   // the Game of Life, which has no end (a reversible one's: its generations)
-  const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !walk.life) || blocks, far = seekFar();
+  const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !lifeTime()) || blocks, far = seekFar();
   $('seekCount').hidden = $('seekCountOpen').hidden = !finite;
   if (finite) $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
   if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
@@ -13241,7 +13254,7 @@ function tick(now = performance.now()) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
     acc -= k;
-    if (k > 0) advanceTo(stepOn(cur, reversing ? -k : k), now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
+    if (k > 0) advanceTo(reversing ? Math.max(0, cur - k) : cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
     if (reversing && !cur) reverse(false);
   }
   includeBox();
@@ -13252,10 +13265,13 @@ function tick(now = performance.now()) {
   }
   easeView(dt);
   if (walk.n && !walk.sphere && !walk.plane) showZoom();  // (a walk: its fit grows with it)
-  if (walk.plane) {  // Life on the plane: the grid as one picture, each generation
+  if (walk.plane) {  // Life on the plane: the grid as one picture, each generation (Space-time: its cubes, up to the layer shown)
     if (needsFull) glClear();
-    if (needsFull) drawPlaneGrid();
-    if (needsFull || statsDirty) { drawLifePlane(); updateStats(); }
+    if (spaceTimeOn()) { if (needsFull || statsDirty) { drawGrid(); glCubes(stack.layers[cur] + 1, stack, stackCubes, stack.reach); updateStats(); } }
+    else {
+      if (needsFull) drawPlaneGrid();
+      if (needsFull || statsDirty) { drawLifePlane(); updateStats(); }
+    }
     needsFull = statsDirty = false;
     requestAnimationFrame(tick);
     return;
@@ -13356,7 +13372,7 @@ $('play').addEventListener('click', () => {
   if (cur >= walk.n || lifeEnded()) restart();  // at the end: from the start again
   play(!playing);
 });
-$('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(stepOn(cur, 1)); });
+$('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 $('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing
@@ -13374,7 +13390,7 @@ $('speedLabel').addEventListener('blur', updateSpeedLabel);  // "50 steps/s" aga
 $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) setSpeed(Number($('speedLabel').value)); });
 // go to step v: back from the start, forward from where it is
 // the slider's end: a walk's last step, a reversible one's last generation; Life's, none (0)
-const seekFar = () => (walk.life && !walk.life.margolus ? 0 : walk.n);
+const seekFar = () => (lifeTime() && !walk.life.margolus ? 0 : walk.n);
 // A walk back to step v: its steps after taken off (the tiles' visits), drawn again up to there, the view kept as it is
 function walkBack(v) {
   for (let i = cur; i > v; i--) {
@@ -13387,7 +13403,7 @@ function walkBack(v) {
 function seekTo(v) {
   play(false);
   reverse(false);
-  if (v < cur && !walk.life) { advanceTo(v); return; }  // (a walk: back without starting again, the view kept)
+  if (v < cur && !lifeTime()) { advanceTo(v); return; }  // (a walk, Space-time: back without starting again, the view kept)
   if (v < cur && !(walk.life.margolus && cur - v <= v)) restart();  // (a reversible one: back by its rule, when nearer than its start)
   advanceTo(v);
   needsFull = true;
@@ -13403,7 +13419,7 @@ const seekCurve = (e) => {
 };
 $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
-$('back').addEventListener('click', () => seekTo(stepOn(cur, -1)));
+$('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
