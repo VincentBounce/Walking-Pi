@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1417';
+const VERSION = '0.1.1418';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7539,8 +7539,8 @@ function buildLifePlane(seq) {
   if (spaceTimeOn()) buildSpaceTime();
   else autoplay();
 }
-// Space-time: Life on squares from its start, up to 5 times as many generations as the grid is wide (till all die, or 2^21
-// cubes), stacked up (time going up), each live cell a cube; then a 3D walk of those cubes, generation by generation (its
+// Space-time: Life on squares from its start, up to 5 times as many generations as the grid is wide (till all die, its loop
+// found and gone round 5 times, or 2^21 cubes), stacked up (time going up), each live cell a cube; then a 3D walk of those cubes, generation by generation (its
 // rainbow: time; Activity: each its colour), its layers' ends kept (played a layer at a time, see stepOn), shown whole,
 // turned as any 3D walk (see glCubes)
 function buildSpaceTime() {
@@ -7551,6 +7551,7 @@ function buildSpaceTime() {
     for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { xyz.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g - (5 * W - 1) / 2); keys.push(a[t] - 1); }
     if (keys.length === before) break;  // (all dead)
     layers.push(keys.length - 1);
+    if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P) break;  // (its loop 5 times: a still life 5 layers)
   }
   const n = Math.max(0, keys.length - 1), base = Math.max(2, K), at = (d) => Float64Array.from({ length: n + 1 }, (_, i) => xyz[3 * i + d] ?? 0);
   const wx = at(0), wy = at(1), wz = at(2), digits = Uint8Array.from({ length: n + 1 }, (_, i) => keys[i] ?? 0), maxDist = new Float64Array(n + 1), counts = new Int32Array(base * (n + 1));
