@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1405';
+const VERSION = '0.1.1406';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -609,8 +609,7 @@ function formulaWorker() {
 // right on a half, as many of the tiles' corners and middles are, would round either side); a point's key, so: to find
 // a place again however it was computed
 const roundOff = (x, k = 1000) => Math.round(x * k + 0.37);
-const pointKey = ([x, y], k = 1000) => `${roundOff(x, k)},${roundOff(y, k)}`;
-const pointId = (x, y) => roundOff(x) * 67108864 + roundOff(y);  // (as a number: within 33,000 units of the origin, as pointKey)
+const pointKey = (x, y, k = 1000) => roundOff(x, k) * 67108864 + roundOff(y, k);  // (a number: within 33,000 steps of 1/k of the origin)
 
 /* ---- 1.6 Helpers shared by the page and the worker ------------------------------------------- */
 // A worker cannot see this file's functions: compute() builds its source from the text of
@@ -6788,7 +6787,7 @@ function discPatch(items, W, mid, norm = Math.hypot, each = flatEach) {  // wall
   // of a live cell among them)
   const edge = far(items[W * W - 1]) + 3, near = [];  // (the items just beyond: the next ones by distance)
   for (let k = W * W; k < items.length && far(items[k]) < edge; k++) near.push(items[k]);
-  const out = [...rows.filter((h) => h.dead), ...near], ids = (h) => { const r = []; each(h, (x, y) => r.push(pointId(x, y))); return r; };
+  const out = [...rows.filter((h) => h.dead), ...near], ids = (h) => { const r = []; each(h, (x, y) => r.push(pointKey(x, y))); return r; };
   const theirs = new Set(out.flatMap(ids)), touched = new Set();
   // placed as the squares' grid of side W (middle at (W − 1) / 2 both ways): another size grows from the same place; its
   // cells then its walls, flat (see flatPolys), its cells' corners written straight (those of a live one among the others' noted)
@@ -6796,7 +6795,7 @@ function discPatch(items, W, mid, norm = Math.hypot, each = flatEach) {  // wall
   let size = 0, at = 0, k = 0;
   for (const h of [...rows, ...out]) each(h, () => size++);
   const xy = new Float64Array(2 * size), put = (h, live) => {
-    each(h, (x, y) => { if (live) { const id = pointId(x, y); if (theirs.has(id)) touched.add(id); } xy[at++] = x - o[0]; xy[at++] = y - o[1]; });
+    each(h, (x, y) => { if (live) { const id = pointKey(x, y); if (theirs.has(id)) touched.add(id); } xy[at++] = x - o[0]; xy[at++] = y - o[1]; });
     start[++k] = at / 2;
   };
   for (const h of rows) put(h, !h.dead);
@@ -6947,7 +6946,7 @@ const PENROSE = (() => {
     }), [0, 0], W / Math.sqrt(Math.PI) + 6, 1);  // (round the disc of W² and its walls' room only)
     const half = [new Map(), new Map()], items = [];  // (a colour's halves by their base's middle: a rhombus's, its own)
     for (const [c, A, B, C] of tris) {
-      const k = pointId((B[0] + C[0]) / 2, (B[1] + C[1]) / 2), other = half[c].get(k);
+      const k = pointKey((B[0] + C[0]) / 2, (B[1] + C[1]) / 2), other = half[c].get(k);
       if (!other) { half[c].set(k, A); continue; }
       const p = [A, B, other, C];
       items.push({ p: p.flat(), m: [(B[0] + C[0]) / 2, (B[1] + C[1]) / 2] });
@@ -7695,8 +7694,8 @@ function renderPlaneRow() {
 // flowers' letters (see parseRule)
 function sideOf(kind, W, nbr) {
   const row = planeRow(kind, W), at = (t) => (APERIODIC[kind] ? APERIODIC[kind](W).poly(t) : planeCorners(kind, t % row, Math.floor(t / row)));  // (its own size: walk.plane not yet it)
-  const start = new Int32Array(row * W + 1), ids = [];  // (each cell's corners' ids, see pointId)
-  for (let t = 0; t < row * W; t++) { for (const [x, y] of at(t)) ids.push(pointId(x, y)); start[t + 1] = ids.length; }
+  const start = new Int32Array(row * W + 1), ids = [];  // (each cell's corners' ids, see pointKey)
+  for (let t = 0; t < row * W; t++) { for (const [x, y] of at(t)) ids.push(pointKey(x, y)); start[t + 1] = ids.length; }
   const side = new Uint8Array(nbr.list.length);
   for (let t = 0; t < row * W; t++) for (let q = nbr.start[t]; q < nbr.start[t + 1]; q++) {
     const u = nbr.list[q];
@@ -7738,16 +7737,16 @@ function planeShape(kind, W) {
     const o = Math.sign(signedArea(P));
     P.forEach((p, i) => {
       const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]);
-      turn.set(pointKey(p), (turn.get(pointKey(p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a));
+      turn.set(pointKey(...p), (turn.get(pointKey(...p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a));
     });
   }
-  const R = cs.flat().reduce((r, p) => (turn.get(pointKey(p)) < 2 * Math.PI - 1e-3 ? Math.min(r, size(p)) : r), Infinity) - width + 1e-3;
+  const R = cs.flat().reduce((r, p) => (turn.get(pointKey(...p)) < 2 * Math.PI - 1e-3 ? Math.min(r, size(p)) : r), Infinity) - width + 1e-3;
   const dead = mids.flatMap((m, t) => (size(m) > R ? [t] : [])), out = new Set(dead);
   // its core: the cells nearest its middle, all those as far (its middle, as its size's tooltip says it, see drawMotif)
   const byFar = [...mids.keys()].sort((p, q) => far(mids[p], o) - far(mids[q], o)), core = [];
   while (core.length < 1) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-3) core.push(byFar[core.length]); }  // (as far: within 10⁻³, the tilings' corners to 6 places)
-  const inside = new Set(cs.flatMap((P, t) => (out.has(t) ? [] : P.map((p) => pointKey(p)))));
-  const walls = dead.filter((t) => cs[t].some((p) => inside.has(pointKey(p)))).map((t) => [t % row, Math.floor(t / row)]);
+  const inside = new Set(cs.flatMap((P, t) => (out.has(t) ? [] : P.map((p) => pointKey(...p)))));
+  const walls = dead.filter((t) => cs[t].some((p) => inside.has(pointKey(...p)))).map((t) => [t % row, Math.floor(t / row)]);
   return shapeMemo.set(key, { dead, walls, core: core.map((t) => cs[t]), o, corner: th + Math.PI / 6 }).get(key);  // (o: its middle; corner: a corner's way)
 }
 // its grid's side: as many cells in it as a disc of diameter side's (π side² / 4 squares' worth, as a grid that never
@@ -7764,7 +7763,7 @@ const planeDead = (kind, W) => APERIODIC[kind]?.(W).dead ?? planeShape(kind, W)?
 let wallsMemo = null;
 function planeWalls(kind, W) {
   if (wallsMemo?.key === `${kind}|${W}|${planeRow(kind, W)}`) return wallsMemo.cells;
-  const row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, k = (p) => pointKey(p), rim = new Set(), cells = [];
+  const row = planeRow(kind, W), per = PER_RHOMBUS[kind] ?? 1, k = (p) => pointKey(...p), rim = new Set(), cells = [];
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) if (y < 2 || y >= W - 2 || x < 2 * per || x >= row - 2 * per) for (const p of planeCorners(kind, x, y)) rim.add(k(p));
   for (let y = -1; y <= W; y++) for (let x = -2 * per; x < row + 2 * per; x++) {
     if (y >= 0 && y < W && x >= 0 && x < row) continue;
@@ -7855,7 +7854,7 @@ function placeCells(P, la, lb, U, V, outlineFirst) {
   const outline = (cells) => {
     const count = new Map(), sides = [];
     for (const [k, n, m] of cells) P[k].forEach((q, i) => {
-      const [u1, v1] = at(q, n, m), [u2, v2] = at(P[k][(i + 1) % P[k].length], n, m), e = [pointKey([u1, v1], 1e4), pointKey([u2, v2], 1e4)].sort().join(' ');
+      const [u1, v1] = at(q, n, m), [u2, v2] = at(P[k][(i + 1) % P[k].length], n, m), e = [pointKey(u1, v1, 1e4), pointKey(u2, v2, 1e4)].sort().join(' ');
       count.set(e, (count.get(e) ?? 0) + 1);
       sides.push([e, far(u2 - u1, v2 - v1)]);
     });
@@ -8027,7 +8026,7 @@ const gridOutline = () => {  // (the grid's sides of one cell only, as keys: its
   const { kind, W, row } = walk.plane, key = `${kind}|${W}|${row}`;
   if (outlineMemo?.key === key) return outlineMemo.sides;
   const count = new Map();
-  for (let t = 0; t < W * row; t++) { const P = planeCorners(kind, t % row, Math.floor(t / row)); P.forEach((p, q) => { const k = [pointKey(p), pointKey(P[(q + 1) % P.length])].sort().join('|'); count.set(k, (count.get(k) ?? 0) + 1); }); }
+  for (let t = 0; t < W * row; t++) { const P = planeCorners(kind, t % row, Math.floor(t / row)); P.forEach((p, q) => { const k = [pointKey(...p), pointKey(...P[(q + 1) % P.length])].sort().join('|'); count.set(k, (count.get(k) ?? 0) + 1); }); }
   return (outlineMemo = { key, sides: new Set([...count].filter(([, c]) => c === 1).map(([k]) => k)) }).sides;
 };
 function drawBlocks(ctx) {
@@ -8042,7 +8041,7 @@ function drawBlocks(ctx) {
     const sides = new Map();
     for (let j = i; j < i + M.k; j++) {
       const t = blocks[j], P = planeCorners(kind, t % row, Math.floor(t / row));
-      P.forEach((p, q) => { const r = P[(q + 1) % P.length], key = [pointKey(p), pointKey(r)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, r]); });
+      P.forEach((p, q) => { const r = P[(q + 1) % P.length], key = [pointKey(...p), pointKey(...r)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, r]); });
     }
     for (const [key, side] of sides) if (side && !outline.has(key)) { ctx.moveTo(ox + side[0][0] * s, oy + side[0][1] * s); ctx.lineTo(ox + side[1][0] * s, oy + side[1][1] * s); }
   }
@@ -8069,7 +8068,7 @@ function drawMotif(ctx) {
     return;
   }
   const { kind, W } = walk.plane, motif = APERIODIC[kind]?.(W).core ?? planeShape(kind, W)?.core ?? Array.from({ length: PER_RHOMBUS[kind] ?? 1 }, (_, k) => planeCorners(kind, k, 0)), sides = new Map();
-  for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], key = [pointKey(p), pointKey(q)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, q]); });
+  for (const P of motif) P.forEach((p, i) => { const q = P[(i + 1) % P.length], key = [pointKey(...p), pointKey(...q)].sort().join('|'); sides.set(key, sides.has(key) ? null : [p, q]); });
   turnLayer(ctx);
   ctx.strokeStyle = motifColour();
   ctx.beginPath();
@@ -8407,7 +8406,7 @@ function blockTutorial(option, to) {
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
   // each set at the grid's upper left corner (its 16 cells nearest it; past its edges, its wall as on the grid and the
   // sky): all its blocks framed
-  const torus = planeTorus(kind), { turns: edged } = blocksOf(torus), at = (p) => pointKey(p);
+  const torus = planeTorus(kind), { turns: edged } = blocksOf(torus), at = (p) => pointKey(...p);
   const corner = [...Array(W * row).keys()].filter((t) => poly(t)).flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
   const far = (p) => Math.max(p[0] - corner[0], p[1] - corner[1]);
   const patch = [...Array(W * row).keys()].filter((t) => poly(t)).sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
@@ -8517,7 +8516,7 @@ function ruleTutorial(option) {
   const n = row * W, wall = new Set(dead), turnAt = new Map(), all = Array.from({ length: n }, (_, t) => corners(t));
   for (const P of all.filter((_, t) => !wall.has(t))) {  // (the live cells only: one by the wall not all round)
     const o = Math.sign(signedArea(P));
-    P.forEach((p, i) => { const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]); turnAt.set(pointKey(p), (turnAt.get(pointKey(p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a)); });
+    P.forEach((p, i) => { const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]); turnAt.set(pointKey(...p), (turnAt.get(pointKey(...p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a)); });
   }
   const shapeKey = (P) => { const Q = P.filter((p, i) => { const a = P.at(i - 1), b = P[(i + 1) % P.length]; return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-4; });
     const angle = (i) => { const p = Q[i], [u, v] = [Q[(i + 1) % Q.length], Q.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]); return Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])).toFixed(2); };
@@ -8525,7 +8524,7 @@ function ruleTutorial(option) {
   const centre = [0, 1].map((d) => all.flat().reduce((a, p) => a + p[d], 0) / all.flat().length), far = (t) => Math.hypot(all[t][0][0] - centre[0], all[t][0][1] - centre[1]);
   const shapes = new Map(), shapeOf = new Map();
   for (let t = 0; t < n; t++) {
-    if (wall.has(t) || all[t].some((p) => turnAt.get(pointKey(p)) < 2 * Math.PI - 1e-3)) continue;
+    if (wall.has(t) || all[t].some((p) => turnAt.get(pointKey(...p)) < 2 * Math.PI - 1e-3)) continue;
     const sk = shapeKey(all[t]), k = `${sk}|${count(t)}`;
     shapeOf.set(t, sk);
     if (!shapes.has(k) || far(t) < far(shapes.get(k))) shapes.set(k, t);
@@ -8551,7 +8550,7 @@ function ruleTutorial(option) {
   // count split into its letters, where they sit (its live ones: an arrangement of that letter round the ring)
   const iso = rule.iso, R = iso === 'hensel' ? 8 : 6, ring = iso === 'hex' || iso === 'hensel' ? [...nb.ring.subarray(R * c, R * c + R)] : null, ofCount = (m) => m.toString(2).replace(/0/g, '').length;
   // (the flowers' letters: its neighbours by a side, by a corner only; v and how many of the live ones by a corner, those it can have)
-  const mine = new Set(corners(c).map((p) => pointKey(p))), bySide = (u) => corners(u).filter((p) => mine.has(pointKey(p))).length >= 2;
+  const mine = new Set(corners(c).map((p) => pointKey(...p))), bySide = (u) => corners(u).filter((p) => mine.has(pointKey(...p))).length >= 2;
   const sides = around.filter(bySide), tips = around.filter((u) => !bySide(u));
   const ways = (k) => [0, 1, 2, 3].filter((j) => j <= tips.length && k - j >= 0 && k - j <= sides.length);
   const lettersOf = (k) => (iso === 'vertex' ? (ways(k).length > 1 ? ways(k).map((j) => `v${j}`) : []) : iso === 'hensel' ? HENSEL_LETTERS[k] : iso && k >= 2 && k <= 4 ? ['o', 'm', 'p'] : []), classOf = (m) => (iso === 'hensel' ? henselClass(m) : hexClass(m).toLowerCase());
@@ -8663,7 +8662,7 @@ function walkFigures(w) {
     const round = () => (surface ? [...Array(notches).keys()].map((k) => [Math.cos(Math.PI / 2 + (2 * Math.PI * k) / notches), -Math.sin(Math.PI / 2 + (2 * Math.PI * k) / notches)])
       : [...Array(MODES[mode.steps].base).keys()].map((g) => STEPPERS[mode.steps]()(g).slice(1, 3))).map((o) => [at[here][0] + o[0], at[here][1] + o[1]]);
     const ends = spiral ? [] : notches ? round() : digits.map((g) => path([...into, g]).at(-1));
-    const drawn = !cells ? [] : surface ? [polygon(at[here], at[here - 1])] : [...new Map([...at, ...ends].map((p) => [pointKey(p), walkCell(mode.lattice, p)])).values()];
+    const drawn = !cells ? [] : surface ? [polygon(at[here], at[here - 1])] : [...new Map([...at, ...ends].map((p) => [pointKey(...p), walkCell(mode.lattice, p)])).values()];
     return { d, caption, at: at.slice(0, here + 2), next: at.slice(here + 1), ends, here, dashed: spiral && !d, cells: drawn };
   };
   if (spiral) return [figure(1, Array(7).fill(1)), figure(0, Array(7).fill(1))];
@@ -8698,7 +8697,7 @@ function walkTutorial(w) {
   $('ruleTuto').hidden = false;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.add('active'); b.classList.add('switch'); }
   $('ruleTuto').dataset.shown = w;
-  const mode = MODES[w], creature = NAV[w][0] === 'Ant', figs = creature ? creatureFigures(w) : walkFigures(w), cellsOn = (f, p) => f.cells.find((c) => pointKey(c.reduce((s, q) => [s[0] + q[0] / c.length, s[1] + q[1] / c.length], [0, 0])) === pointKey(p));
+  const mode = MODES[w], creature = NAV[w][0] === 'Ant', figs = creature ? creatureFigures(w) : walkFigures(w), cellsOn = (f, p) => f.cells.find((c) => pointKey(...c.reduce((s, q) => [s[0] + q[0] / c.length, s[1] + q[1] / c.length], [0, 0])) === pointKey(...p));
   const from = (f) => f.at[f.here], pts = (f) => [...f.at, ...(f.next ?? []), ...f.ends, ...f.cells.flat()];
   const span = (f, a) => [Math.min(...pts(f).map((p) => p[a])), Math.max(...pts(f).map((p) => p[a]))];
   const r = Math.max(...figs.flatMap((f) => [0, 1].map((a) => (span(f, a)[1] - span(f, a)[0]) / 2))) + 0.15, mid = (f, a) => (span(f, a)[0] + span(f, a)[1]) / 2;  // (all alike, each its own middle)
@@ -8706,7 +8705,7 @@ function walkTutorial(w) {
   const dot = (p, cls) => `<circle cx="${p[0]}" cy="${p[1]}" r="0.09" class="${cls}"/>`;
   const poly = (c, cls) => `<polygon points="${c.map((p) => p.join(',')).join(' ')}" class="${cls}"/>`;
   const fig = (f) => {
-    const to = f.at.at(-1), still = pointKey(to) === pointKey(from(f));  // (a pivot's turn: no step)
+    const to = f.at.at(-1), still = pointKey(...to) === pointKey(...from(f));  // (a pivot's turn: no step)
     const here = cellsOn(f, from(f)), points = (c) => c.map((p) => p.join(',')).join(' ');
     // (a creature's cell: its colour, fading into the one it leaves there)
     const painted = (c) => `<polygon points="${points(c)}" fill="${f.paint[1]}"/><polygon points="${points(c)}" fill="${f.paint[0]}"><animate attributeName="opacity" values="1;1;0" keyTimes="0;0.625;1" dur="0.8s" fill="freeze"/></polygon>${poly(c, 'tut-cell')}`;
@@ -8990,7 +8989,7 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
     if (!pts || dead.has(t)) continue;
     const m = cellMiddle(kind, t % row, Math.floor(t / row));
     pts.forEach((q, i) => {
-      const key = pointKey(home(q)), [u, v] = [pts.at(i - 1), pts[(i + 1) % pts.length]].map((p) => [p[0] - q[0], p[1] - q[1]]);
+      const key = pointKey(...home(q)), [u, v] = [pts.at(i - 1), pts[(i + 1) % pts.length]].map((p) => [p[0] - q[0], p[1] - q[1]]);
       if (!corners.has(key)) corners.set(key, { at: q, cells: [], turn: 0 });
       corners.get(key).cells.push([t, Math.atan2(m[1] - q[1], m[0] - q[0])]);  // (its turn round the corner, as the cell sees it)
       corners.get(key).turn += Math.acos((u[0] * v[0] + u[1] * v[1]) / Math.hypot(...u) / Math.hypot(...v));  // (its angle there, a convex cell's)
@@ -9023,7 +9022,7 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
   if (stars) {
     const across = new Map();
     for (const c of full) if (setOf(c) === B.turn[0]) for (const [t] of c.cells) {
-      const side = planeCorners(kind, t % row, Math.floor(t / row)).map((q) => pointKey(home(q))).filter((q) => q !== pointKey(home(c.at))).sort().join(' ');
+      const side = planeCorners(kind, t % row, Math.floor(t / row)).map((q) => pointKey(...home(q))).filter((q) => q !== pointKey(...home(c.at))).sort().join(' ');
       (across.get(side) ?? across.set(side, []).get(side)).push(t);
     }
     move = Int32Array.from({ length: W * row }, (_, t) => t);
@@ -12447,7 +12446,7 @@ function glPlane(paint) {
     const { start, xy } = walk.plane.flat, seen = new Set(), ends = new Float32Array(4 * start[n]);
     let e = 0;
     for (let t = 0; t < n; t++) if (!wall.has(t)) for (let i = start[t]; i < start[t + 1]; i++) {
-      const j = i + 1 < start[t + 1] ? i + 1 : start[t], k = pointId((xy[2 * i] + xy[2 * j]) / 2, (xy[2 * i + 1] + xy[2 * j + 1]) / 2);
+      const j = i + 1 < start[t + 1] ? i + 1 : start[t], k = pointKey((xy[2 * i] + xy[2 * j]) / 2, (xy[2 * i + 1] + xy[2 * j + 1]) / 2);
       if (!seen.has(k)) { seen.add(k); ends.set([xy[2 * i], xy[2 * i + 1], xy[2 * j], xy[2 * j + 1]], 4 * e++); }
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, S.planeEdges); gl.bufferData(gl.ARRAY_BUFFER, ends.subarray(0, 4 * e), gl.STATIC_DRAW);
