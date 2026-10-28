@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1410';
+const VERSION = '0.1.1411';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -5352,7 +5352,7 @@ function syncSizeStepper() {
   const label = (f) => { $('sizeLabel').innerHTML = `${sizeShape(kind, f)}${turn}<small>${sizeCells(kind, f)}</small>`; };
   if (SPHERES[kind]?.tiles && sel.selectedOptions[0]) label(f);
   else $('sizeLabel').textContent = sel.selectedOptions[0]?.text ?? '';
-  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? `${sizeHow(kind, f)}\n${sizeSides(kind, f)}`.trim() : '', sought[ladderOf(kind)] ? `\n${lastPicked(sought[ladderOf(kind)])}` : ''].filter(Boolean).join('\n'));
+  sizeTips('size', SPHERES[kind] && sel.selectedOptions[0] ? sizeCells(kind, f, true) : '', [SPHERES[kind] && sel.selectedOptions[0] ? `${sizeHow(kind, f)}\n${sizeSides(kind, f)}`.trim() : '', `\n${lastPicked()}`].filter(Boolean).join('\n'));
   $('sizeDown').disabled = sel.selectedIndex <= 0;
   $('sizeUp').disabled = sel.selectedIndex >= sel.options.length - 1;
   sizeGauge($('sizeGauge'), sel.options.length, sel.selectedIndex, (k) => label(sphereSizeOf(sel.options[k])), (k) => stepSize(k - sel.selectedIndex));  // (a size of its own, a link's: a notch of its own too, as long as it is picked)
@@ -5424,7 +5424,11 @@ const sizeShape = (kind, f) => { const d = gridSize(kind, f); return APERIODIC[k
 // marked {y:…} {r:…} {o:…} in the colours they are drawn in: the motif's violet, a face's red, the walls' ochre
 const cssColour = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(), motifColour = () => cssColour('--motif'), faceRed = () => cssColour('--face');  // (the page's, as its theme has them: see style.css)
 // a size's tooltip's end: what was last picked, kept from grid to grid (each takes the nearest it offers)
-const lastPicked = (cells) => `{b:Last picked}\nSize: {b:${fmt(cells)} cells} (picked with − + or the slider)${MODES[$('mode').value]?.life ? `\nPopulation: {b:${COLOUR_STEP_NAMES[coloursPicked]}${colourMix && coloursPicked > 1 ? ' mixed' : ''}} (picked in the section)` : ''}`;
+// (the size: its cells, by hand or by a link, kept on every grid, plane, surface or solid, each the size it offers with about as
+// many, from that same number each time: never drifting a step at a time; none yet: each grid its first size)
+let picked = null;
+const nearCells = (sizes, cells, n) => sizes.reduce((a, b) => (Math.abs(Math.log(cells(b) / n)) < Math.abs(Math.log(cells(a) / n)) ? b : a));  // the size with about n cells
+const lastPicked = () => `{b:Last picked}${picked ? `\nSize: {b:${fmt(picked)} cells} (picked with − + or the slider)` : ''}${MODES[$('mode').value]?.life ? `\nPopulation: {b:${COLOUR_STEP_NAMES[coloursPicked]}${colourMix && coloursPicked > 1 ? ' mixed' : ''}} (picked in the section)` : ''}`;
 const sizeTips = (row, total, text) => {
   const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskbg]):([^}]*)\}/g, (_, c, w) => (c === 'g' ? `<span class="tip-default">${w}</span>` : `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`));  // ({g:…}: grey, as a default)
   total = marks(total);
@@ -5539,18 +5543,15 @@ const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
-// (each family's size sought: as many cells as the size last picked by hand or by a link, kept on every other tiling or surface
-// of it, the size with about as many, from that same number each time: never drifting a step at a time)
-const sought = {}, ladderOf = (kind) => (TORI.includes(kind) ? 'surface' : 'solid');
-const seek = (kind) => { sought[ladderOf(kind)] = SPHERES[kind].tiles(parseInt($('sphereF').value)); };  // (the size picked: its cells sought from now on)
+const seek = (kind) => { picked = SPHERES[kind].tiles(parseInt($('sphereF').value)); $('sphereF').dataset.picked = picked; };  // (the size picked: its cells, see picked; the menu shows it)
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
   const sel = $('sphereF'), key = `${kind} ${initial} ${lifeColours}`, [was] = (sel.dataset.kind ?? '').split(' ');  // (a torus's sizes: its columns as its colours, see ringColumns)
-  if (sel.dataset.kind === key) return;
-  const kept = sought[ladderOf(kind)], rows = was === kind ? sel.value : null;  // (the same surface, its colours changed: its rows kept, its columns its colours')
+  if (sel.dataset.kind === key && sel.dataset.picked === String(picked)) return;  // (a size picked on another grid: its nearest here)
+  const rows = was === kind && sel.dataset.picked === String(picked) ? sel.value : null;  // (the same surface, its colours changed: its rows kept, its columns its colours')
   sel.replaceChildren(...SPHERES[kind].sizes.map((f) => new Option(sizeLabel(kind, f), f)));
-  sel.value = rows && SPHERES[kind].sizes.map(String).includes(rows) ? rows : kept ? SPHERES[kind].near(kept) : SPHERES[kind].nearest(initial);
-  if (!kept) seek(kind);
+  sel.value = rows && SPHERES[kind].sizes.map(String).includes(rows) ? rows : picked ? SPHERES[kind].near(picked) : SPHERES[kind].nearest(initial);
   sel.dataset.kind = key;
+  sel.dataset.picked = picked;
 }
 
 // Walk from tile to tile (see surfaceSteps)
@@ -5607,7 +5608,7 @@ for (const [kind, S] of Object.entries(SPHERES)) {
   };
   Object.defineProperty(S, 'sizes', { get: () => (list ??= edged(ladder())) });
   Object.defineProperty(S, 'initial', { get: () => S.near(START[TORI.includes(kind) ? 'surface' : 'solid']) });
-  S.near = (n) => S.sizes.reduce((a, b) => (Math.abs(Math.log(S.tiles(b) / n)) < Math.abs(Math.log(S.tiles(a) / n)) ? b : a));  // the usual size with about n cells
+  S.near = (n) => nearCells(S.sizes, S.tiles, n);  // the usual size with about n cells
   S.nearest = (f) => S.near(S.tiles(f));  // a mode's own size: the usual one with about as many cells
 }
 // The tori turned by 30° (⟲ 30°, under its tilings: the hexagons, the triangles and the tilings of six turns): the surface a mode walks on
@@ -6512,11 +6513,12 @@ function buildLife(seq, mode) {
 // the surfaces' too); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
 // as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least; a hexagon's by its side
 // alone, each its own (its hexagon fitted only when shown, see shapeW)
+const planeCells = (side, k = planeKind(MODES[$('mode').value].plane)) => gridSize(k, side)[2];  // a side's grid's cells (see picked)
 const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), cells = (f) => W(f) * planeRow(k, W(f)), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) =>
   [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS.least && cells(f) <= CELLS.most)].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
-const plane = { picked: 48, get side() { const sides = planeSides(planeKind(MODES[$('mode').value].plane)); return sides.reduce((a, b) => (Math.abs(b - this.picked) < Math.abs(a - this.picked) ? b : a)); },
+const plane = { get side() { const k = planeKind(MODES[$('mode').value].plane); return nearCells(planeSides(k), (f) => planeCells(f, k), picked ?? planeCells(48, k)); },
                 torus: true, gens: 2000, text: APP_TITLE, icons: [0],
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
@@ -7582,7 +7584,7 @@ function planeLead(number) {
   return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
-  plane.picked = Number(s.s) || 48;  // (the grid at the nearest it offers, see plane.side)
+  if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side)
   plane.torus = Number(s.e) !== 1;
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
@@ -7632,10 +7634,10 @@ function renderPlaneRow() {
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
-  sizeTips('plane', sizeCells(planeKind(kind), plane.side), `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n${sizeSides(planeKind(kind), plane.side)}\n\n` : ''}${lastPicked(Math.round((APERIODIC[kind] || shaped(kind) ? Math.PI / 4 : 1) * plane.picked ** 2))}`);  // (⌀: a disc's, see shapeW)
+  sizeTips('plane', sizeCells(planeKind(kind), plane.side), `${gridSize(planeKind(kind), plane.side) ? `${sizeHow(planeKind(kind), plane.side)}\n${sizeSides(planeKind(kind), plane.side)}\n\n` : ''}${lastPicked()}`);
   $('planeDown').disabled = plane.side <= sides[0];
   $('planeUp').disabled = plane.side >= sides.at(-1);
-  sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { plane.picked = sides[k]; compute(true); });
+  sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { picked = planeCells(sides[k]); compute(true); });
   $('planeOutline').hidden = !!APERIODIC[kind];  // (a grid that never repeats: always walls, nothing to choose)
   setTile($('edgeWalls'), { on: !planeTorus(kind) });
   const syms = PLANE_SYMMETRIES[kind];
@@ -13429,7 +13431,7 @@ let drawing = false, drawFrom = null;
 for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
   $(id).addEventListener('click', () => {
     const sides = planeSides(planeKind(MODES[$('mode').value].plane));
-    plane.picked = sides[Math.min(sides.length - 1, Math.max(0, sides.indexOf(plane.side) + k))];
+    picked = planeCells(sides[Math.min(sides.length - 1, Math.max(0, sides.indexOf(plane.side) + k))]);
     compute(true);
   });
 }
