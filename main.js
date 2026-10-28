@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1445';
+const VERSION = '0.1.1446';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -4313,14 +4313,23 @@ function hullColourings(sphere) {
   const all = hullFaces(HULL_SOLIDS[sphere]()), faces = [...all.filter((fc) => fc.corners.length === 4), ...all.filter((fc) => fc.corners.length === 3)];
   const mids = faces.map(({ corners }) => [0, 1, 2].map((d) => corners.reduce((sum, c) => sum + c[d], 0) / corners.length)), out = {};
   const far = (p, q) => Math.hypot(...[0, 1, 2].map((d) => mids[p][d] - mids[q][d]));
-  // (each colour's first face, where its pattern goes: its part's middle one, the nearest its faces' mean (a bicupola's half: its
-  // cap); as near: the farthest from those before, as the cube's colours face each other (a pyramid's two triangles))
-  const spread = (groups) => groups.reduce((done, gr) => {
-    const m = [0, 1, 2].map((d) => gr.reduce((t, q) => t + mids[q][d], 0) / gr.length), mid = (q) => Math.hypot(...[0, 1, 2].map((d) => mids[q][d] - m[d]));
-    const apart = (q) => (done.length ? Math.min(...done.map((g) => far(q, g[0]))) : 0);
-    return [...done, [...gr].sort((p, q) => (Math.abs(mid(p) - mid(q)) > 1e-9 ? mid(p) - mid(q) : apart(q) - apart(p) || p - q))];
-  }, []);
-  const add = (kind, groups, pairs = false) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups: spread(groups), mids, pairs }; };
+  // (each colour's first face, where its pattern goes: the middle one of its part as Wild has it, its faces and the others nearest
+  // them (see huntParts: a rhombicuboctahedron's 4 triangles, its cap square in their middle), the nearest their mean; as near:
+  // the farthest from those before, as the cube's colours face each other (a pyramid's two triangles))
+  const spread = (groups) => {
+    const owner = new Map(groups.flatMap((gr, k) => gr.map((q) => [q, k]))), part = groups.map((gr) => [...gr]);
+    faces.forEach((_, q) => {
+      if (owner.has(q)) return;
+      const d = [...owner.keys()].map((p) => far(q, p)), least = Math.min(...d), ks = new Set([...owner.values()].filter((_, i) => d[i] < least + 1e-9));
+      if (ks.size === 1) part[[...ks][0]].push(q);
+    });
+    return groups.reduce((done, gr, k) => {
+      const P = part[k], m = [0, 1, 2].map((d) => P.reduce((t, q) => t + mids[q][d], 0) / P.length), mid = (q) => Math.hypot(...[0, 1, 2].map((d) => mids[q][d] - m[d]));
+      const apart = (q) => (done.length ? Math.min(...done.map((g) => far(q, g[0]))) : 0), first = [...P].sort((p, q) => (Math.abs(mid(p) - mid(q)) > 1e-9 ? mid(p) - mid(q) : apart(q) - apart(p) || p - q))[0];
+      return [...done, [first, ...gr.filter((q) => q !== first)]];
+    }, []);
+  };
+  const add = (kind, groups, pairs = false) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups: pairs ? groups : spread(groups), mids, pairs, squares: kinds[0][1].length }; };
   const offer = (kind, qs) => {
     add(kind, qs.map((q) => [q]));
     const across = (q) => qs.find((p) => mids[p].every((v, d) => Math.abs(v + mids[q][d]) < 1e-9));  // (its opposite face)
@@ -9948,7 +9957,7 @@ const patternsOn = () => {
 };
 // the grid the patterns are of: the plane's, else the cells' (the cube's squares, the sheets', the solids' triangles)
 const cellKind = (g) => g.tiling ?? (g.squares ? 'tetrakis' : g.kite ? 'kite' : (g.hexagons ? 'hex' : { 3: 'tri', 5: 'cairo', 6: 'hex' }[g.sides]) ?? 'square');  // (a mesh's cells, as the plane's grids)
-const patternKind = () => walk.plane?.kind ?? (hullColours(MODES[$('mode').value].sphere, walk.life?.colours)?.kind === 'tri' && !walk.geo.tiling ? 'tri' : cellKind(walk.geo));
+const patternKind = () => { const h = hullColours(MODES[$('mode').value].sphere, walk.life?.colours); return walk.plane?.kind ?? (h && h.groups[0][0] >= h.squares && !walk.geo.tiling ? 'tri' : cellKind(walk.geo)); };  // (a hull solid's: its first colour's face's, a square or a triangle)
 // a face's level way (its normal n: across it, square to the world's up; a face looking straight up or down, east) and the
 // way down it, as a marble rolls (a face looking straight up or down: south)
 const levelOf = (n) => { const l = cross([0, 0, 1], n); return Math.hypot(...l) < 1e-9 ? [1, 0, 0] : unit(l); };
