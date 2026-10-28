@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1469';
+const VERSION = '0.1.1470';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6465,14 +6465,13 @@ function lifeReseed() {
 // grid (see huntParts)
 function startColours(seed) {
   const L = walk.life;
-  if (L.margolus && walk.geo.torus) {  // a reversible torus: its start placed as Trio's (3 squares round it, see ringColours), the middle one's kept in one colour, its digits the first; Wild's all over
+  if (L.margolus && walk.geo.torus) {  // a reversible torus: its start placed as Trio's (3 squares round it, see ringColours), the middle one's kept in one colour; Digits and Wild all over
     L.colours = 3;
     startParts(seed);
     L.colours = 1;
     const mid = huntParts(0, 3, false, false)[1], keep = new Uint8Array(seed.length);
-    if (plane.start === 'digits') { seed.fill(0); mid.forEach((t, q) => { seed[t] = walk.digits[q]; }); return; }
     for (const t of mid) keep[t] = 1;
-    seed.forEach((v, t) => { seed[t] = v && (keep[t] || (plane.start === 'random' && hunt.zone === 'full')) ? 1 : 0; });
+    seed.forEach((v, t) => { seed[t] = v && (keep[t] || plane.start === 'digits' || (plane.start === 'random' && hunt.zone === 'full')) ? 1 : 0; });
     return;
   }
   startParts(seed);
