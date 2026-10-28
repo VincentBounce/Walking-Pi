@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1401';
+const VERSION = '0.1.1402';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -10817,8 +10817,13 @@ function advanceTo(target, until = Infinity) {  // until: a Game of Life's batch
     const L = walk.life;
     let k = target - cur, ended = false;
     while (k > 0 && !ended && !lifeEnded()) {
-      const batch = lifeStepGPU(L, cur + 1, false, L.margolus ? 1 : Math.min(k, LIFE_H));
+      const batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H));
       if (!batch) break;  // (no WebGL 2)
+      if (L.margolus && !L.stable) {  // (a block rule's return to its start, its cells checked there (see blockBack): the card played past it, back to it)
+        const j = batch.findIndex((G, x) => (cur + 1 + x) % L.margolus.turns.length === 0 && G.key === L.seedKey);
+        for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + x, true);
+        if (j >= 0) batch.length = j + 1;
+      }
       for (const G of batch) {
         if (!ended) ended = lifeEnded();
         lifeStep(G);
@@ -12594,8 +12599,8 @@ function lifeCells(L) {
   L.gpuOld = true;
   L.onGPU = false;
 }
-// k generations there (gen: the first one shown): its rule (a block rule's, back: its inverse's, see lifeBack; one at a time,
-// their phase the generation shown's), its cells' counts, their sums (9 + 4 a colour) a column each, read back once (each
+// k generations there (gen: the first one shown): its rule (a block rule's, back: its inverse's, see lifeBack; their phase
+// the generation shown's), its cells' counts, their sums (9 + 4 a colour) a column each, read back once (each
 // read waits for the card: 50 times a generation's own time on a small grid); its deaths dated by L.gen, the generations
 // played (as the look's, see lifeLookGPU: the shown one goes round a loop); null without WebGL 2. The cells stay there (L.onGPU)
 const LIFE_H = 16;
@@ -12605,9 +12610,10 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
   const K = L.colours, M = L.margolus, neg = !!M?.flips;
   if (L.gpuOld) lifeToGPU(L, E);
   for (let x = 0; x < k; x++) {
-    if (M) blockPass(L, E, E.now.state, E.next.state, back ? gen : gen - 1, back);
+    const g = back ? gen : gen + x;
+    if (M) blockPass(L, E, E.now.state, E.next.state, back ? g : g - 1, back);
     else lifeRulePass(E);
-    lifeTally(E, L.gen + 1 + x, back, neg && gen % 2 === 0, neg && gen % 2 === 1, x);  // (shown negative: a generation odd)
+    lifeTally(E, L.gen + 1 + x, back, neg && g % 2 === 0, neg && g % 2 === 1, x);  // (shown negative: a generation odd)
   }
   L.onGPU = true;
   const v = lifeRead(E), by = (q, x) => Int32Array.from({ length: K + 1 }, (_, c) => (c ? v(9 + 4 * (c - 1) + q, 0, x) : 0));
