@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1425';
+const VERSION = '0.1.1426';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1632,8 +1632,8 @@ function renderBlocksButton() {
     text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
-// Space-time (Life on squares, the 3D tile beside Walls): its generations stacked up, time going up, a cube a live cell (see
-// stackUp; STACK_MOST cubes at most); with walls only (through a torus's edges no tree grows: its 3D, Walls on with it)
+// Space-time (Life on squares, the Stacks tile beside Walls): its generations stacked up, time going up, a cube a live cell (see
+// stackUp; STACK_MOST cubes at most); with walls only (through a torus's edges no tree grows: Stacks, Walls on with it)
 let spaceTime = false;
 const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square'; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
@@ -1973,6 +1973,12 @@ const ICONS = (() => {
     hat: pathEl('M7.2 13.4L2.5 16.1L4.1 18.9L10.4 18.9L12 16.1L16.8 18.9L21.5 16.1L19.9 13.4L16.8 13.4L16.8 7.9L12 5.1L10.4 7.9L7.2 7.9Z'),  // the hat monotile
     kites: pathEl(pathOf(hex)) + hex.map((p, i) => pathEl(seg([12, 12], [(p[0] + hex[(i + 1) % 6][0]) / 2, (p[1] + hex[(i + 1) % 6][1]) / 2]))).join(''),  // a hexagon cut in 6 kites
     cube: cube(false),
+    stacks: (() => {  // Stacks: the cube, a brick wall on its left face (Walls with it), layers on its right (its generations, up)
+      const at = (o, a, b) => (u, v) => o.map((x, d) => x + u * (a[d] - x) + v * (b[d] - x)), L = at(hex[4], [12, 12], hex[5]), R = at([12, 12], hex[2], hex[0]);  // (its faces as cube draws them: u across, v up)
+      const line = (f, u0, v0, u1, v1) => pathEl(seg(f(u0, v0), f(u1, v1)));
+      return cube(false) + [1 / 3, 2 / 3].map((v) => line(L, 0, v, 1, v)).join('') + [[0.5, 0, 1 / 3], [0.25, 1 / 3, 2 / 3], [0.75, 1 / 3, 2 / 3], [0.5, 2 / 3, 1]].map(([u, a, b]) => line(L, u, a, u, b)).join('')
+        + [0.25, 0.5, 0.75].map((v) => line(R, 0, v, 1, v)).join('');
+    })(),
     cubeFilled: cube(true),
     torus,
     loop: pathEl('M19.5 12A7.5 7.5 0 1 1 16.6 6.1') + pathEl('M17.4 2.6L16.9 6.4L13.1 5.9'),  // a circle closing on itself, its arrow at the end
@@ -2078,11 +2084,11 @@ const ICONS = (() => {
   };
 })();
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
-// the plane's outline: Walls (else a torus), on or off; 3D beside it (Space-time: Walls on with it, left on when it goes off;
-// Walls off, 3D off too)
+// the plane's outline: Walls (else a torus), on or off; Stacks beside it (Space-time, in 3D: Walls on with it, left on when it
+// goes off; Walls off, Stacks off too)
 $('planeEdges').append(
   tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; if (plane.torus) spaceTime = false; compute(true); } }),
-  tile({ pic: icon('cube'), text: '3D', id: 'spaceTimeTile', toggle: true, byDefault: 'off', title: '3D: the generations stacked up, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With Walls: through a torus\'s edges no tree grows',
+  tile({ pic: icon('stacks'), text: 'Stacks', id: 'spaceTimeTile', toggle: true, byDefault: 'off', title: 'Stacks: the generations stacked up, in 3D, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With Walls: through a torus\'s edges no tree grows',
     click: () => { spaceTime = !spaceTime; if (spaceTime) plane.torus = false; $('perspective').checked = perspectiveFor(MODES[$('mode').value], 0); compute(true); } }));
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
@@ -7538,7 +7544,7 @@ function buildLifePlane(seq) {
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
-// Space-time's cubes (see the 3D tile beside Walls), a view of the game: Life on squares from its start, played on the card for its
+// Space-time's cubes (see the Stacks tile beside Walls), a view of the game: Life on squares from its start, played on the card for its
 // generations asked (plane.gens; till all die, its loop gone round 5 times, or STACK_MOST cubes: STACK_ENDS), each generation's
 // live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
 // again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an

@@ -393,8 +393,11 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 @media (hover: none) { .display-menu:focus-within { width: 230px; } }
 /* System stays at the top right; hovering opens the settings: the sky, Light and Dark on its left, tiles a quarter of the box, the rest below */
 .display-menu .stage-head { display: flex; justify-content: flex-end; }
-.head-tiles { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 0; }
-.head-tiles button { width: calc((230px - 18px - 12px) / 4); }  /* (a quarter of the open box, as the tiles below: see .nav-shapes) */
+.head-tiles { display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 0; }  /* closed: System alone, on the right */
+.head-tiles button { width: calc((230px - 18px - 12px) / 4); }  /* (closed: as wide as a tile open, see .nav-shapes) */
+.stage-box:hover .head-tiles { display: grid; flex: 1; }  /* open: the tiles' own grid (.nav-shapes), the box across, a tab group as wide as its tiles and their gaps */
+.stage-box:hover .head-tiles button { width: auto; }
+@media (hover: none) { .stage-box:focus-within .head-tiles { display: grid; flex: 1; } .stage-box:focus-within .head-tiles button { width: auto; } }
 #themeButtons { margin-bottom: 0; }  /* (the sections below: their own line and margins, see .form-section) */
 /* shown only while the box is open, like its other settings */
 .stage-box .open-only { display: none; }
