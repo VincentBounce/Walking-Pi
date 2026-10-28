@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1431';
+const VERSION = '0.1.1432';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7649,8 +7649,8 @@ function planeLead(number) {
   return `${how} on a ${side} × ${side} grid of ${PLANE_CELLS[kind]}${{ tri: ' (two a rhombus)', cairo: ' (two a square)', kite: ' (six a rhombus)', hat: ' (an aperiodic tiling: one tile that never repeats)', penrose: ' (an aperiodic tiling)', pinwheel: ' (an aperiodic tiling: one right triangle, turned every way)', ammann: ' (an aperiodic tiling, eightfold)', rhombs12: ' (an aperiodic tiling, twelvefold)', rhombs14: ' (an aperiodic tiling, fourteenfold)', flower: " (Hirschhorn's flower: one pentagon, six-fold, never repeating)", flower5: ' (a rosette: one pentagon, five-fold, never repeating)', flower7: ' (a rosette: one pentagon, seven-fold, never repeating)', mirror7: ' (a mirrored rosette: one pentagon, a house, seven-fold, never repeating)', flower3: ' (a rosette: one pentagon, three-fold, never repeating)', flower4: ' (a rosette: one pentagon, four-fold, never repeating)', flower8: ' (a rosette: one pentagon, eight-fold, never repeating)', flower9: ' (a rosette: one pentagon, nine-fold, never repeating)', flower10: ' (a rosette: one pentagon, ten-fold, never repeating)', ring7: ' (a ring: one pentagon round a heptagonal hole, seven-fold, never repeating)', ring8: ' (a ring: one pentagon round an octagonal hole, eight-fold, never repeating)', ring9: ' (a ring: one pentagon round a nonagonal hole, nine-fold, never repeating)', ring10: ' (a ring: one pentagon round a decagonal hole, ten-fold, never repeating)', ring12: ' (a ring: one pentagon round a dodecagonal hole, twelve-fold, never repeating)', spectre: ' (an aperiodic tiling: one tile that never repeats, never turned over)' }[kind] ?? ''} ${planeTorus(kind) ? 'wrapping around (a torus)' : planeShape(kind, walk.plane.W) ? 'walled in a hexagon' : 'with dead edges'}`;
 }
 function planeFromSetup(s) {
-  if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side)
   plane.torus = Number(s.e) !== 1;
+  if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side; as its edges are: walls, a hexagon's cells)
   spaceTime = Number(s.sp) === 1 && !plane.torus;  // (3D: with walls only)
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
