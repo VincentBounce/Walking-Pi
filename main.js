@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1419';
+const VERSION = '0.1.1420';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1632,14 +1632,14 @@ function renderBlocksButton() {
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
 // Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
-// stackUp); on squares up to 128 a side only (up to 5 times as many generations, 2^21 cubes at most)
+// stackUp); on squares up to 128 a side only (2^21 cubes at most)
 let spaceTime = false, spaceButton = null;
 const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square' && plane.side <= 128; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
 function renderSpaceButton() {
   const cube = (x, y, c) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1" fill="${c}"/>`;
   spaceButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${cube(3, 15, GRADIENT[0]) + cube(7, 11, GRADIENT[Math.floor(BANDS / 3)]) + cube(11, 7, GRADIENT[Math.floor((2 * BANDS) / 3)]) + cube(15, 3, GRADIENT[BANDS - 1])}</svg>`,  // (a glider's cells, a generation higher each)
-    text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, up to 5 times as many generations as the grid is wide, played a generation at a time (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
+    text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, as many generations as asked (under the play buttons), played a generation at a time (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
     click: () => { spaceTime = !spaceTime; compute(true); } });
   setTile(spaceButton, { on: spaceTimeOn(), can: spaceTimeApplies(), byDefault: 'off', greyed: 'but on squares up to 128 a side (not Reversible)' });
 }
@@ -1778,24 +1778,25 @@ const randomPrimeSize = () => {  // the size of the random prime in the Formula 
 // The whole number in use, if any: its count of digits (in the field, not formulaInUse: while a new
 // number is read, that one is still the old)
 const wholeTotal = () => (current?.whole && current.formula === $('formula').value ? current.total : null);
-// A reversible one's length (its slider's, as a walk's digits): [ − ] 2,000 generations [ + ], through GEN_STEPS; going
-// back, it plays again from its start
-const GEN_STEPS = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
-const gensShown = () => !!MODES[$('mode').value].margolus;
+// A reversible one's length (its slider's, as a walk's digits), Space-time's height: [ − ] 2,000 generations [ + ], through
+// GEN_STEPS (the digits' own, to 100,000); going back, a reversible one plays again from its start; Space-time made again
+const GEN_STEPS = DIGIT_STEPS.filter((v) => v <= 100000);
+const gensShown = () => !!MODES[$('mode').value].margolus || spaceTimeOn();
 function setGens(n) {
   plane.gens = Math.min(GEN_STEPS.at(-1), Math.max(GEN_STEPS[0], Math.round(n) || 2000));
-  walk.n = plane.gens;
-  if (cur > walk.n) seekTo(walk.n);
+  if (spaceTimeOn()) { restart(); showAll(); }
+  else { walk.n = plane.gens; if (cur > walk.n) seekTo(walk.n); }
   statsDirty = true;
   syncDigitsStepper();
   syncLink();
 }
 function syncDigitsStepper() {
-  if (gensShown()) {
-    $('digitsLabel').value = `${fmt(plane.gens)} generations`;
-    $('digitsLabel').title = `Type a number of generations, from ${fmt(GEN_STEPS[0])} to ${fmt(GEN_STEPS.at(-1))}, then Enter`;
+  if (gensShown()) {  // (Space-time ended before: its generations max, and why, as a walk that loops)
+    const end = spaceTimeOn() && stack?.end !== 'gens' ? STACK_ENDS[stack?.end] : null;
+    $('digitsLabel').value = end ? `${fmt(walk.n + 1)} generations max ${end[0]}` : `${fmt(plane.gens)} generations`;
+    $('digitsLabel').title = `${end ? `${end[1]}\n` : ''}Type a number of generations, from ${fmt(GEN_STEPS[0])} to ${fmt(GEN_STEPS.at(-1))}, then Enter`;
     $('digitsDown').disabled = plane.gens <= GEN_STEPS[0];
-    $('digitsUp').disabled = plane.gens >= GEN_STEPS.at(-1);
+    $('digitsUp').disabled = plane.gens >= GEN_STEPS.at(-1) || !!end;
     return;
   }
   const size = randomPrimeSize(), n = size ?? requestedDigits(), steps = size ? PRIME_STEPS : DIGIT_STEPS;
@@ -3034,7 +3035,7 @@ function compute(keepDigits = false) {
   if (!mode.life) { stopHunt(); $('huntRow').hidden = true; }
   renderPlaneRow();
   // a new number, surface, size or rule ends any hunt: its champion would not fit any more
-  $('digitsRow').hidden = !!mode.life && !mode.margolus;  // Life takes one digit per cell of the surface; a reversible one, its generations
+  $('digitsRow').hidden = !!mode.life && !mode.margolus && !spaceTimeOn();  // Life takes one digit per cell of the surface; a reversible one, Space-time, its generations
   $('sphereRow').hidden = $('sizeRow').hidden = mode.lattice !== 'sphere';  // the size under the tiles; a walk's starts and loops further down
   syncSizeStepper();
   updateRuleText();
@@ -7542,36 +7543,40 @@ function buildLifePlane(seq) {
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
   autoplay();
 }
-// Space-time's cubes (see renderSpaceButton), a view of the game: Life on squares from its start, played on the card up to 5
-// times as many generations as the grid is wide (till all die, its loop gone round 5 times, or 2^21 cubes), each generation's
+// Space-time's cubes (see renderSpaceButton), a view of the game: Life on squares from its start, played on the card for its
+// generations asked (plane.gens; till all die, its loop gone round 5 times, or 2^21 cubes: STACK_ENDS), each generation's
 // live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
 // again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an
 // engine of its own, the game's left as it was, then set back at its start (each generation read back: on the game's own, its
 // next starts were seen played wrong, ANGLE on Metal, see TODO.md)
 let stack = null;
+const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['▣', 'Its 2,097,152 cubes drawn: as many as it holds'] };
 function stackUp() {
   const L = walk.life, { W, row } = walk.plane, K = L.colours, S = glSetup(), game = S.life;
-  if (stack?.L === L && stack.seed.every((v, t) => v === L.seed[t])) return;
+  if (stack?.L === L && stack.gens === plane.gens && stack.seed.every((v, t) => v === L.seed[t])) return;
   walk.n = Infinity;
   S.life = lifeEngine(L, 1, LIFE_H);
   L.gpuOld = true;
   const at = [], keys = [], layers = [];
-  for (let g = 0; g < 5 * W && keys.length < 2 ** 21; g++) {
+  let end = 'gens';
+  for (let g = 0; g < plane.gens; g++) {
+    if (keys.length >= 2 ** 21) { end = 'full'; break; }
     lifeTo(g);
     const a = L.alive, before = keys.length;  // (its states: 1 … K alive, of that colour; past them, dying)
     for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { at.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g); keys.push(a[t] - 1); }
-    if (keys.length === before) break;  // (all dead)
+    if (keys.length === before) { end = 'dead'; break; }
     layers.push(keys.length - 1);
-    if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P) break;  // (its loop 5 times: a still life 5 layers)
+    if (L.stable && g + 1 >= L.stable.T + 5 * L.stable.P && g + 1 < plane.gens) { end = 'loop'; break; }  // (its loop 5 times: a still life 5 layers)
   }
   const h = layers.length, mid = (h - 1) / 2;
   for (let i = 2; i < at.length; i += 3) at[i] -= mid;  // (its height round the middle)
-  stack = { L, seed: L.seed.slice(), at: Float32Array.from(at), keys: Uint8Array.from(keys), layers: Int32Array.from(h ? layers : [-1]),
+  stack = { L, gens: plane.gens, end, seed: L.seed.slice(), at: Float32Array.from(at), keys: Uint8Array.from(keys), layers: Int32Array.from(h ? layers : [-1]),
             box: [-(row - 1) / 2, (row - 1) / 2, -(W - 1) / 2, (W - 1) / 2, -mid, mid], reach: Math.hypot(row, W, h) / 2 };
   walk.n = Math.max(0, h - 1);
   lifeFree(S.life);
   S.life = game;
   lifeReset();
+  syncDigitsStepper();  // (its generations max, if it ended before)
 }
 // its cubes' colours by the look: States in colours, each its colour; else the rainbow up, by its generation (time)
 function stackCubes(mode) {
@@ -10571,7 +10576,7 @@ function getSetup() {
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
-    if (mode.margolus) s.g = plane.gens;  // (a reversible one's generations)
+    if (mode.margolus || spaceTimeOn()) s.g = plane.gens;  // (a reversible one's generations, Space-time's)
     s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
@@ -12938,6 +12943,7 @@ const STAT_LABELS = {
   walk: ['Steps', 'Position', 'Distance', 'Max distance', 'Cells visited'],
   grid: ['Steps', 'Position', 'Distance', 'Max distance', 'Corners visited'],
   life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
+  time: ['Generation', 'Cubes'],  // (Space-time's: the generation shown, the cubes up to it)
 };
 
 // The activity, under the stats: a walk's distance from its start, step by step; a Game of Life's live
@@ -12948,7 +12954,7 @@ let curveOf = null;  // a walk's columns, once per walk and width
 function drawActivity() {
   const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
   if (!W) return;  // folded (drawn again when the card opens)
-  cv.classList.toggle('seek', !walk.life || !!walk.life.margolus);
+  cv.classList.toggle('seek', !lifeTime() || !!walk.life.margolus);
   if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
   const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -12962,7 +12968,12 @@ function drawActivity() {
     return c;
   };
   let series, n;
-  if (walk.life) {
+  const rainbow = () => { const g = ctx.createLinearGradient(0, 0, W, 0); for (let f = 0; f <= 1; f += 0.125) g.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]); return g; };
+  if (spaceTimeOn() && stack) {  // Space-time: each generation's cubes, in its rainbow (as its cubes, up)
+    const E = stack.layers;
+    n = E.length;
+    series = [[columns(n, (i) => E[i] - (i ? E[i - 1] : -1)), rainbow()]];
+  } else if (walk.life) {
     const T = walk.life.trace;
     n = walk.life.margolus ? Math.max(T.alive.length, seekFar() + 1) : Math.min(T.alive.length, cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, up to the one shown: those worked out ahead, to find a loop, not drawn)
     series = [[columns(n, (i) => T.alive[i] ?? 0), accent]];
@@ -12973,10 +12984,7 @@ function drawActivity() {
     if (curveOf?.wx !== wx || curveOf.W !== W || curveOf.n !== n) {
       curveOf = { wx, W, n, c: columns(n, (i) => Math.hypot(wx[i] - wx[0], wy[i] - wy[0], wz ? wz[i] - wz[0] : 0)) };
     }
-    // a walk's: in its rainbow, from its first step to its last (as its path)
-    const rainbow = ctx.createLinearGradient(0, 0, W, 0);
-    for (let f = 0; f <= 1; f += 0.125) rainbow.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]);
-    series = [[curveOf.c, rainbow]];
+    series = [[curveOf.c, rainbow()]];  // (a walk's: in its rainbow, from its first step to its last, as its path)
   }
   const c = Math.min(cur, n - 1), at = Math.min(W - 1, n < W ? Math.ceil(((c + 1) * W) / n) - 1 : Math.floor((c * W) / n));  // (fewer steps than columns: the step shown, all its columns)
   const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;
@@ -13087,12 +13095,22 @@ function updateStats() {
   $('seekCount').hidden = $('seekCountOpen').hidden = !finite;
   if (finite) $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
   if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
-  document.querySelector('.stage-bar .stats').classList.toggle('life', !!walk.life);
-  document.querySelector('.stage-bar .stats').hidden = !!walk.life;  // Life: bubbles instead (lifeChips)
-  $('lifeChips').hidden = !walk.life;
-  STAT_LABELS[walk.life ? 'life' : walk.vert ? 'grid' : 'walk'].forEach((text, i) => { $(`lStat${i}`).textContent = text; });
-  $('lStat0').hidden = $('sStep').hidden = !walk.life;  // a walk's step is the count by the slider
-  $('lifetimeLabel').hidden = $('sLifetime').hidden = !walk.life;
+  const time = spaceTimeOn() && !!stack, labels = STAT_LABELS[time ? 'time' : walk.life ? 'life' : walk.vert ? 'grid' : 'walk'];
+  document.querySelector('.stage-bar .stats').classList.toggle('life', lifeTime());
+  document.querySelector('.stage-bar .stats').hidden = lifeTime();  // Life: bubbles instead (lifeChips)
+  $('lifeChips').hidden = !lifeTime();
+  if (time) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
+  labels.forEach((text, i) => { $(`lStat${i}`).textContent = text; });
+  for (let i = 0; i < 5; i++) $(`lStat${i}`).hidden = $(['sStep', 'sPos', 'sDist', 'sMax', 'sCells'][i]).hidden = i >= labels.length || (i === 0 && !walk.life);  // a walk's step is the count by the slider
+  $('lifetimeLabel').hidden = $('sLifetime').hidden = !lifeTime();
+  if (time) {  // Space-time: its generation, its cubes up to it
+    $('barNum').textContent = `Gen ${fmt(cur)}`;
+    $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('sPos').textContent = fmt(stack.layers[cur] + 1);
+    $('digitStrip').textContent = '';
+    drawActivity();
+    return;
+  }
   if (walk.life) {
     const L = walk.life;
     // the title, in fixed widths so that it stays still: the generation, then how the run ended (✝ died
