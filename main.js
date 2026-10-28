@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1470';
+const VERSION = '0.1.1471';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8081,12 +8081,12 @@ function cellsIcon(kind, rle) {
   return `<svg class="icon rule-icon" viewBox="${x0 - (size - w) / 2 - 0.2} ${y0 - (size - h) / 2 - 0.2} ${size + 0.4} ${size + 0.4}" aria-hidden="true">${polys
     .map(([pts, v]) => `<polygon points="${pts.map((p) => p.map((c) => c.toFixed(2)).join(',')).join(' ')}"${v > 1 ? ' class="dim"' : ''}/>`).join('')}</svg>`;
 }
-function drawLifePlane() {
-  const L = walk.life, ctx = layers.path;
-  for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
+// Life's look on any grid (Life, Reversible; the plane, a surface), its colours by the graphics card in tables (see
+// lifeLookGPU): States (each colour, its dying stages, its trail after death), Age or Activity; lift: a surface's rainbow, lighter
+function lifeLook(L, lift = (c) => c) {
   const pack = (c) => { const [r, g, b] = rgbOf(motifShown ? faded(c, FADING) : c); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; };
   const colour = $('colorMode').value, trail = LIFE_TRAIL.map(pack), inked = LIFE_FADE.map(pack), alive = pack(LIFE_ALIVE), civ = [0, ...civColours(L.colours, L.C).map(pack)];
-  const grad = Array.from({ length: 32 }, (_, i) => pack(GRADIENT[Math.round((i / 31) * (BANDS - 1))]));
+  const grad = Array.from({ length: 32 }, (_, i) => pack(lift(GRADIENT[Math.round((i / 31) * (BANDS - 1))])));
   // the colours on a log scale, in tables (millions of cells): of an age (up to 64), of an activity
   const level = (v, max) => Math.min(31, Math.round((Math.log(v) / Math.log(Math.max(2, max))) * 31));
   const byAge = Uint32Array.from({ length: 65 }, (_, a) => grad[31 - level(a + 1, 65)]);  // the rainbow backwards: warm newborns, cold old cells
@@ -8102,7 +8102,13 @@ function drawLifePlane() {
   table.set(byAge, 512);
   table.set(inked.slice(0, fade), 1024);
   if (byActivity) table.set(byActivity, 4096);
-  glPlane((tex, size) => lifeLookGPU(L, tex, Math.ceil(size / 1024), { table, by: colour === 'digit' ? 2 : colour === 'mono' ? 0 : 1, trail: fade, wall: [0, 0, 0, 0], dead: [0, 0, 0, 0] }));
+  return { table, by: colour === 'digit' ? 2 : colour === 'mono' ? 0 : 1, trail: fade };
+}
+function drawLifePlane() {
+  const L = walk.life, ctx = layers.path;
+  for (const c of [layers.path, layers.line, layers.fill, layers.overlay]) c.clearRect(0, 0, cw, ch);  // no walker
+  const look = { ...lifeLook(L), wall: [0, 0, 0, 0], dead: [0, 0, 0, 0] };  // (the plane's walls and dead cells: its own, under)
+  glPlane((tex, size) => lifeLookGPU(L, tex, Math.ceil(size / 1024), look));
   drawBlocks(ctx);
   drawMotif(ctx);
   drawGhost();
@@ -11461,27 +11467,6 @@ function drawSphere() {
     levelOf = (t) => (cells && cells[t] >= 0 && cells[t] <= cur ? 1 + band(cells[t])
       : areas && areas[t] >= 0 && areas[t] <= cur ? 1 + LEVELS + band(areas[t]) : 0);
   }
-  // Life: its colours by the graphics card (see lifeLookGPU), each a palette's place by its state (live, dying), its age, its
-  // generations since it died (its trail, so many: trail), or all by its changes
-  let lifeAt = null;
-  if (L) {
-    const colour = $('colorMode').value, K = L.colours, trail = trailOn() && L.C === 2 ? LIFE_TRAIL.length + 1 : 0;  // (the trail: so many generations after a death)
-    // dying state k (2 … C−1) → a trail colour, from light (just dying) to dark (almost dead)
-    const dyingShade = (k) => Math.min(LIFE_TRAIL.length, Math.round(((k - 1) / (L.C - 1)) * LIFE_TRAIL.length));
-    if (K > 1 && colour === 'mono') {  // each civilisation in its colour, then the trail of the dead (Trail)
-      const civ = civColours(K, L.C);
-      palette = [null, ...civ, ...LIFE_FADE];
-      lifeAt = { live: (st) => st, dying: (st) => st, trail: trailOn() ? LIFE_TRAIL.length + 1 : 0, after: (d) => civ.length + d };
-    } else if (colour === 'mono') {  // the trail in Ink, the dying stages grey
-      palette = [null, LIFE_ALIVE, ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];
-      lifeAt = { live: () => 1, dying: (st) => 1 + dyingShade(st), trail, after: (d) => 1 + d };
-    } else if (colour === 'digit') {  // activity: how many times the cell changed state
-      lifeAt = { changes: (v) => (v ? logLevel(v, L.maxActivity) : 0) };
-    } else {  // age of live cells, the rainbow backwards (orange = newborn … cyan = old); dying stages, or a trail fading after death
-      palette = [null, ...[...grad].reverse(), ...(L.C === 2 ? LIFE_FADE : LIFE_TRAIL)];
-      lifeAt = { age: (a) => Math.min(LEVELS, logLevel(a, 64)), dying: (st) => LEVELS + dyingShade(1 + Math.floor((st - 1) / K)), trail, after: (d) => LEVELS + d };
-    }
-  }
   // an ant's cells, as in 2D (see CELL_MODES): by their colour in Ink or Amber (the times it was on each, the
   // one under it as it will be), Path's faded under its line, Directions by the turn it took there last;
   // Rainbow and Heatmap as a walk's
@@ -11505,14 +11490,9 @@ function drawSphere() {
     drawStarts(ctx);
     return;
   }
-  if (lifeAt) {  // (its tables: a palette's colours by each place; the walls, the pentagons of the hexagon sphere, in stone grey)
-    const colourOf = (i) => packed(palette[i] ?? UNLIT), table = new Uint32Array(4096 * 17), { live, dying, age, changes, trail = 0, after } = lifeAt;
-    for (let st = 1; st < 256; st++) { if (live) table[st] = colourOf(live(st)); if (dying) table[256 + st] = colourOf(dying(st)); }
-    if (age) for (let a = 0; a <= 64; a++) table[512 + a] = colourOf(age(a));
-    for (let d = 0; d < trail; d++) table[1024 + d] = colourOf(after(d));
-    if (changes) for (let v = 0; v <= Math.min(L.maxActivity, 65535); v++) table[4096 + v] = colourOf(changes(v));
-    const rgba = (c) => [...rgbCached(c).map((x) => x / 255), 1];
-    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), { table, by: changes ? 2 : age ? 1 : 0, trail, wall: rgba(LIFE_WALL), dead: rgba(UNLIT) }), path);
+  if (L) {  // Life's look, the plane's (see lifeLook): the walls, the pentagons of the hexagon sphere, in stone grey
+    const rgba = (c) => [...rgbCached(c).map((x) => x / 255), 1], look = { ...lifeLook(L, lift), wall: rgba(LIFE_WALL), dead: rgba(UNLIT) };
+    glSurface((tex, n) => lifeLookGPU(L, tex, Math.ceil(n / 1024), look), path);
   } else glSurface(paintLevels(palette, levelOf), path);  // (see 11.4b)
   drawMotif(ctx);  // the motif's outlines over it
 }
