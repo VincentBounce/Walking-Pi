@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1448';
+const VERSION = '0.1.1449';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2920,11 +2920,11 @@ function renderModePicker() {
   const groups = grouped ? [1, 3, 0, 2].map((i) => [SHAPE_GROUPS[i][0], (sh) => groupOf(sh) === SHAPE_GROUPS[i][0]])  // (squares, parallelograms, the circles, rhombi)
     : solid ? [['Solid', (sh) => !sheet(sh) && !CARVED.includes(sh) && !MIXED.includes(sh)], ['Carved cubes', (sh) => CARVED.includes(sh)], ['Squares & triangles', (sh) => MIXED.includes(sh)], ['Surface', sheet]]
     : [[null, () => true]];
-  const some = groups.filter(([, has]) => shapes.some(has)).length;  // (one group: its tab's name its title)
+  const some = groups.filter(([, has]) => shapes.some(has)).length;  // (one group: its title none, its tab's name says it)
   $('navShapes').replaceChildren(...groups.flatMap(([g, has]) => {
     const these = shapes.filter(has);
     if (!these.length) return [];
-    const title = [Object.assign(document.createElement('div'), { className: 'block-label', textContent: some > 1 ? g : SPACES[space][0] })];
+    const title = g && some > 1 ? [Object.assign(document.createElement('div'), { className: 'block-label', textContent: g })] : [];
     return [...title, ...these.map((sh) => {
     const again = sh === shape && !!MODES[w].plane && !APERIODIC[MODES[w].plane], b = button(`${icon(SHAPE_ICONS[sh])}<span>${shapeLabel(sh)}</span>`, sh === shape, () => {
       if (!again) { navGo(2, sh); return; }
@@ -2940,8 +2940,7 @@ function renderModePicker() {
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
   $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles; an ant's: its shape, then its creatures)
-  $('shapesLabel').hidden = grouped || solid;  // (always there, but in groups: their own titles)
-  $('shapesLabel').textContent = flat ? 'Shape' : 'Lattice';  // (Space: the cubes', the diamond's)
+  $('shapesLabel').textContent = SPACES[space][0];  // (its tab's name, as Size its section's title; its groups' titles under it)
   if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
     const { F, tab } = inFamily;
