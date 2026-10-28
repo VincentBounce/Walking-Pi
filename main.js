@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1472';
+const VERSION = '0.1.1473';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9802,7 +9802,8 @@ function huntPlan() {
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
   if (famousZone(hunt.zone) || isIcon(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
     const choices = isIcon(hunt.zone) ? iconChoices(iconSize(hunt.zone), iconSet(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
-    return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0 };
+    const space = choices.every((c) => c.length === choices[0].length) ? [choices[0].length, K] : [count, 1];  // (its starts: a choice a colour)
+    return { cells: [], copies: [], choices, perColour: choices[0].length, density: 0, all: count <= 20000 ? count : 0, space };
   }
   zoneParts(hunt.zone, K).forEach((part, i) => { for (const t of part) { zone.add(t); if (!mine.has(t)) mine.set(t, i + 1); } });
   const cells = [], copies = [];
@@ -9817,8 +9818,8 @@ function huntPlan() {
       if (first === t) cells.push([t, colourOf(t)]); else copies.push([t, first, colourOf(t)]);
     }
   } else for (const t of zone) cells.push([t, mine.get(t)]);
-  const count = K === 1 && r ? C ** cells.length : Infinity;
-  return { cells, copies, perColour: Math.round(zone.size / K), all: count <= 20000 ? count : 0 };
+  const count = K === 1 && r ? C ** cells.length : Infinity, space = [K === 1 ? C : 2, cells.length];  // (its starts: a state a cell, a colour's dead or alive)
+  return { cells, copies, perColour: Math.round(zone.size / K), all: count <= 20000 ? count : 0, space };
 }
 // the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
 // another kind), else the start chosen
@@ -9978,7 +9979,8 @@ function huntClick() {
       stopHunt();
       return;
     }
-    hunt.status = `${all ? `${fmt(n)} / ${fmt(all)}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
+    const [b, e] = plan.space ?? [], of = all ? fmt(all) : b && e > 1 ? `${fmt(b)}^${fmt(e)}` : b ? fmt(b) : '';  // (the starts it has: all, or so many a cell's or colour's choices)
+    hunt.status = `${of ? `${fmt(n)} / ${of}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
     renderHunt();
   });
   hunt.status = hunt.run ? 'Starting…' : 'Too big to hunt';
