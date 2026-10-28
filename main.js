@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1458';
+const VERSION = '0.1.1459';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8462,7 +8462,7 @@ function blockTutorial(option, to) {
   // smallest with blocks in each phase (the triangles' at 6: no whole hexagon)
   const kind = planeKind(MODES[$('mode').value].plane), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
   const blocksAt = (W, torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four));  // (Ising: its squares, a colour a phase)
-  const W = planeSides(kind).map((sd) => planeW(kind, sd)).find((w) => blocksAt(w, false).turns.every((t) => t.length)), row = planeRow(kind, W);
+  const W = planeW(kind, planeSides(kind).find((sd) => blocksAt(planeW(kind, sd), false).turns.every((t) => t.length))), row = planeRow(kind, W);  // (the first that fits: a large side's width long to work out)
   const blocksOf = (torus) => blocksAt(W, torus), { k, turns, move } = blocksOf(false);
   if (!ising && to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
@@ -8486,12 +8486,12 @@ function blockTutorial(option, to) {
   const first = (st) => Math.min(...Array.from({ length: k }, (_, r) => ringTurn(st, r, k)));  // (one of each turned the same)
   const states = [...Array(1 << k).keys()].filter((st) => first(st) === st).sort((a, b) => alive(a) - alive(b) || a - b);
   const moved = states.filter((st) => to[st] !== st), kept = states.filter((st) => to[st] === st);
-  // each set at the grid's upper left corner (its 16 cells nearest it; past its edges, its wall as on the grid and the
-  // sky): all its blocks framed
+  // each set at the upper left corner of its blocks' cells (a grid in a hexagon: its corner a wall; its 16 cells nearest it;
+  // past its edges, its wall as on the grid and the sky): all its blocks framed
   const torus = planeTorus(kind), { turns: edged } = blocksOf(torus), at = (p) => pointKey(...p);
-  const corner = [...Array(W * row).keys()].filter((t) => poly(t)).flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
+  const blocked = [...new Set(turns.flatMap((b) => [...b]))], corner = blocked.flatMap(poly).reduce((m, p) => (p[0] + p[1] < m[0] + m[1] ? p : m));
   const far = (p) => Math.max(p[0] - corner[0], p[1] - corner[1]);
-  const patch = [...Array(W * row).keys()].filter((t) => poly(t)).sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
+  const patch = blocked.sort((u, v) => far(mid(u)) - far(mid(v))).slice(0, 16);
   const reach = Math.max(...patch.flatMap(poly).map(far)), m = reach * 0.3, span = reach + m;
   const inView = (ps) => ps.some((p) => p[0] < corner[0] + reach && p[1] < corner[1] + reach && p[0] > corner[0] - m && p[1] > corner[1] - m);
   const shown = [...Array(W * row).keys()].filter((t) => poly(t) && inView(poly(t)));
