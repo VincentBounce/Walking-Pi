@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1489';
+const VERSION = '0.1.1492';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6473,10 +6473,10 @@ function lifeReseed() {
 }
 // A start as the Start says, once the grid is built: in Hunt, a soup's colours each in its part of the
 // grid (see huntParts)
-// the parts a start is laid in: its colours'; a reversible torus's (3 squares round it, see ringColours): Icon 24's and Punk 24's
-// one a square, the others' its middle one (see huntParts), Wild and Digits all over
-const blockTorus = () => !!walk.life.margolus && !!walk.geo.torus && !walk.geo.mobius;  // (a Möbius strip, its mesh a torus's too: as Life's in one colour, all along it, in view)
-const lifeParts = () => (blockTorus() ? (plane.start === 'random' && /24$/.test(hunt.zone) ? 3 : 1) : walk.life.colours);
+// the parts a start is laid in: its colours'; a reversible sheet's (a torus's, a Klein bottle's 3 squares round it, see ringColours;
+// a Möbius strip's 3 stretches along it): Icon 24's and Punk 24's one each, the others' one colour's, the one in view (see
+// huntParts), Wild and Digits all over
+const lifeParts = () => (walk.life.margolus && walk.geo.torus ? (plane.start === 'random' && /24$/.test(hunt.zone) ? 3 : 1) : walk.life.colours);  // (any sheet's mesh a torus's)
 function startColours(seed) {
   startParts(seed);
   if (walk.life.margolus) seed.forEach((v, t) => { seed[t] = v ? 1 : 0; });  // (a reversible one: one colour, its pictures a square each too)
@@ -9589,7 +9589,7 @@ const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) 
 // Elsewhere (the plane, a torus, a strip), each colour's whole part (see huntParts) but its cells next to another's: the colours
 // two cells apart, whatever their parts' shapes and sizes. Null: greyed
 function realmParts(K) {
-  if ((K === 1 && !blockTorus()) || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild; a reversible torus's, its middle square)
+  if ((K === 1 && !(walk.life.margolus && walk.geo.torus)) || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild; a reversible sheet's, its one colour's part, see huntParts)
   if (!realmOnFaces()) {
     const L = walk.life, parts = huntParts(0, K), of = new Int32Array(L.seed.length).fill(-1);
     parts.forEach((p, k) => { for (const t of p) of[t] = k; });
@@ -9783,7 +9783,7 @@ function brickPlaces(g) {
   return (g.brickPlaces = out);
 }
 function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  // (mirror: Wild mirror, see colouring; mixed: Mixed's, else each colour's own place)
-  if (K === 1 && walk.life && blockTorus()) return [huntParts(r, 3, false, false)[1]];  // (a reversible torus: one colour's, its middle square, see lifeParts)
+  if (K === 1 && walk.life?.margolus && walk.geo?.torus) return [huntParts(r, 3, false, false)[walk.geo.mobius ? 0 : 1]];  // (a reversible sheet: one colour's, the one of 3 in view: a torus's middle square, a Möbius strip's first, from its face in view's start, see lifeParts)
   if (mixed && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
     const parts = Array.from({ length: K }, () => []);
     for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(plane.seed + 7, t) * K)].push(t);
