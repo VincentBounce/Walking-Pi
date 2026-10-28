@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1420';
+const VERSION = '0.1.1421';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1632,7 +1632,7 @@ function renderBlocksButton() {
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
 // Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
-// stackUp); on squares up to 128 a side only (2^21 cubes at most)
+// stackUp); on squares up to 128 a side only (STACK_MOST cubes at most)
 let spaceTime = false, spaceButton = null;
 const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square' && plane.side <= 128; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
@@ -7544,13 +7544,14 @@ function buildLifePlane(seq) {
   autoplay();
 }
 // Space-time's cubes (see renderSpaceButton), a view of the game: Life on squares from its start, played on the card for its
-// generations asked (plane.gens; till all die, its loop gone round 5 times, or 2^21 cubes: STACK_ENDS), each generation's
+// generations asked (plane.gens; till all die, its loop gone round 5 times, or STACK_MOST cubes: STACK_ENDS), each generation's
 // live cells read back, a cube each, stacked up (time going up: its layers, a generation each, its last cube's number); made
 // again for another start, grid or rule only (its seed, its game); its time a layer a step (walk.n: its last). Played on an
 // engine of its own, the game's left as it was, then set back at its start (each generation read back: on the game's own, its
 // next starts were seen played wrong, ANGLE on Metal, see TODO.md)
 let stack = null;
-const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['▣', 'Its 2,097,152 cubes drawn: as many as it holds'] };
+const STACK_MOST = 2 ** 21;  // its cubes at most: drawn turning in 19 ms, shadows and all, 40 MB (measured at 128 a side)
+const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['▣', `Its ${fmt(STACK_MOST)} cubes drawn: as many as it holds`] };
 function stackUp() {
   const L = walk.life, { W, row } = walk.plane, K = L.colours, S = glSetup(), game = S.life;
   if (stack?.L === L && stack.gens === plane.gens && stack.seed.every((v, t) => v === L.seed[t])) return;
@@ -7560,7 +7561,7 @@ function stackUp() {
   const at = [], keys = [], layers = [];
   let end = 'gens';
   for (let g = 0; g < plane.gens; g++) {
-    if (keys.length >= 2 ** 21) { end = 'full'; break; }
+    if (keys.length >= STACK_MOST) { end = 'full'; break; }
     lifeTo(g);
     const a = L.alive, before = keys.length;  // (its states: 1 … K alive, of that colour; past them, dying)
     for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { at.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g); keys.push(a[t] - 1); }
