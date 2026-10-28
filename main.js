@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1427';
+const VERSION = '0.1.1428';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1420,7 +1420,7 @@ function updateDisplayMenu() {
   const rows = { colors: 'colorsRow', grid: 'gridRow',
                  autoRotate: 'autoRotateRow', upright: 'uprightRow', perspective: 'perspectiveRow', light: 'lightRow' };
   for (const [item, id] of Object.entries(rows)) $(id).hidden = !shows(item);
-  skyButton.hidden = !shows('sky');  // the sky's switch, among the themes
+  skyButton.style.visibility = shows('sky') ? '' : 'hidden';  // the sky's switch, among the themes (no sky: its place kept, the row as everywhere)
   // Heatmap of visits and Digits instead of a list of colours, on cells only (Digits in 2D only;
   // a spiral marks its cells, each once: both greyed out)
   const mode = MODES[$('mode').value];
