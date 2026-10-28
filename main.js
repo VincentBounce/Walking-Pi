@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1404';
+const VERSION = '0.1.1405';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7328,26 +7328,21 @@ const cellWidth = (kind) => {
 // a list of n items, each made when first read (its length, its items by index: the 10,000 punks' cells not all at once, only
 // those drawn; a hunt's, all: see huntClick)
 const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
-// each cell's colour's place (see huntParts; Mixed's too, each colour's own): a picture cut off at its own, as at the grid's
-// edges. Kept per grid
-let iconPartMemo = null, iconCellsMemo = null;
-const iconPartOf = (K) => {
-  const key = `${gridKey()}|${K}`;
-  if (iconPartMemo?.key !== key) { const part = new Int32Array(walk.life.seed.length).fill(-1); huntParts(0, K, false, false).forEach((p, k) => { for (const t of p) part[t] = k; }); iconPartMemo = { key, part }; }
-  return iconPartMemo.part;
-};
-// each colour's cells a picture may take (its part's live ones on its face, see iconLay) and their places on its frame (see
-// patternFrame), once a grid and its colours: its pictures' sizes only scale them; the wall's cells (a set)
+// once a grid and its colours: each cell's colour's place (part; see huntParts; Mixed's too, each colour's own), a picture
+// cut off at its own, as at the grid's edges; each colour's cells a picture may take (its part's live ones on its face, see
+// iconLay) and their places on its frame (see patternFrame): its pictures' sizes only scale them; the wall's cells (a set)
+let iconCellsMemo = null;
 const iconCellsOf = (K) => {
   const key = `${gridKey()}|${K}`;
   if (iconCellsMemo?.key === key) return iconCellsMemo;
-  const kind = patternKind(), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : walk.geo.walls) ?? []), part = iconPartOf(K);
+  const kind = patternKind(), dead = new Set((walk.plane ? planeDead(kind, walk.plane.W) : walk.geo.walls) ?? []), part = new Int32Array(walk.life.seed.length).fill(-1);
+  huntParts(0, K, false, false).forEach((p, k) => { for (const t of p) part[t] = k; });
   const of = Array.from({ length: K }, (_, i) => {
     const F = patternFrame(i, K), cells = [], uv = [];
     for (let t = 0; t < part.length; t++) if (part[t] === i && !dead.has(t) && (F.on?.(t) ?? true)) { cells.push(t); uv.push(...F.from(F.place(t))); }
     return { cells: Int32Array.from(cells), uv: Float64Array.from(uv) };
   });
-  return (iconCellsMemo = { key, dead, of });
+  return (iconCellsMemo = { key, dead, part, of });
 };
 // the plane's colours cut round its middle in walls a hexagon's or a circle's (a grid that never repeats): their pictures
 // out, against their walls (see iconLay)
@@ -7368,7 +7363,7 @@ function iconWay(i, K) {
 // face of squares) its narrower; a wedge's (a face of triangles: 60°; a slice of round walls: 360° / K) its cross's widest
 // against its side (its arm across it h = H tan(a/2) / (1 + tan(a/2)), H its height; no more than H / 2). Their least
 function iconRoom(K) {
-  const kind = patternKind(), g = walk.geo, part = iconPartOf(K);
+  const kind = patternKind(), g = walk.geo, { part } = iconCellsOf(K);
   const cw = cellWidth(kind);
   const at = walk.plane ? (t) => cellMiddle(kind, t % walk.plane.row, Math.floor(t / walk.plane.row)) : g.torus ? (t) => sheetPoint(g, ...sheetPlace(g, t), 0) : (t) => Array.from(g.cen.subarray(3 * t, 3 * t + 3));  // (where it is: on the plane, on the sheet unrolled, in space)
   return Math.min(...Array.from({ length: K }, (_, i) => {
@@ -7389,7 +7384,7 @@ function iconRoom(K) {
 function iconLay(N, P = 24) {
   const kind = patternKind(), K = walk.life.colours, g = walk.geo;
   if (!patternsOn()) return null;
-  const { dead, of } = iconCellsOf(K), walled = roundWalls(K) && planeSlices(K), part = iconPartOf(K), live = (t, i) => t >= 0 && part[t] === i && !dead.has(t);
+  const { dead, part, of } = iconCellsOf(K), walled = roundWalls(K) && planeSlices(K), live = (t, i) => t >= 0 && part[t] === i && !dead.has(t);
   const o = cellMiddle(kind, 0, 0), a = latticeStep(kind), b = cellMiddle(kind, 0, 1).map((c, d) => c - o[d]), rowStep = Math.abs(a[0] * b[1] - a[1] * b[0]) / Math.hypot(...a);  // (a row's height: a triangle face's, see patternAt)
   const k = (N / P) * cellWidth(kind), half = (N * cellWidth(kind)) / 2;  // (a pixel's width, the picture's half)
   const lays = Array.from({ length: K }, (_, i) => {
@@ -9194,12 +9189,11 @@ function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back
  *   spreading alone); score = the generations with two colours side by side, before the run repeats
  *   (or the cap), × the balance.
  * On the graphics card, in batches (see lifeEngine): the starts side by side, a generation of them all at once, their sums
- * (alive, the key, born of each colour, cells beside another colour's) kept HUNT_H generations, read back then; a run
+ * (alive, the key, born of each colour, cells beside another colour's) kept LIFE_H generations, read back then; a run
  * ended (repeating, all reached, or the cap), its place a new start's. */
-const HUNT_H = 16;
 function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // goal: one colour's (see HUNT_GOALS)
   const n = L.seed.length, K = L.colours, C = L.C, { start, list } = L.nbr, dense = DENSITY, live = (v) => v > 0 && v <= K;
-  const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), HUNT_H);
+  const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), LIFE_H);
   if (!E) return null;
   const { gl } = GLS, cover = goal === 'cover', open = Array.from({ length: n }, (_, t) => t).filter((t) => start[t] !== start[t + 1]).length;
   // a start's cells into run r's place (its counts as a start's: lifeReset's), now
@@ -9338,12 +9332,12 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
     if (hunt.stopped) return;
     for (let r = 0; r < E.runs; r++) if (!runs[r]) { const seed = nextSeed(); if (seed) { runs[r] = begin(seed); upload(seed, r); } }  // (its place free: the next start)
     if (runs.every((s) => !s)) { report(top, tried, true); return; }  // (all tried)
-    for (let x = 0; x < HUNT_H; x++) { lifeRulePass(E); lifeTally(E, 0, false, false, false, x); }
+    for (let x = 0; x < LIFE_H; x++) { lifeRulePass(E); lifeTally(E, 0, false, false, false, x); }
     const v = lifeRead(E);
     let changed = false;
     runs.forEach((s, r) => {
       if (!s) return;
-      for (let x = 0; x < HUNT_H; x++) if (step(s, (j) => v(j, r, x))) { tried++; changed = keep(result(s), s.seed) || changed; runs[r] = null; break; }
+      for (let x = 0; x < LIFE_H; x++) if (step(s, (j) => v(j, r, x))) { tried++; changed = keep(result(s), s.seed) || changed; runs[r] = null; break; }
     });
     report(changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null, tried, false);
     setTimeout(slice, 0);
@@ -12611,7 +12605,7 @@ function lifeCells(L) {
 // inverse's, see lifeBack; their phase the generation shown's), its cells' counts, their sums (9 + 4 a colour) a column each, read back once (each
 // read waits for the card: 50 times a generation's own time on a small grid); its deaths dated by L.gen, the generations
 // played (as the look's, see lifeLookGPU: the shown one goes round a loop); null without WebGL 2. The cells stay there (L.onGPU)
-const LIFE_H = 16;
+const LIFE_H = 16;  // (generations a read back: the game's, a hunt's; more, a batch longer than a frame on a large grid)
 function lifeStepGPU(L, gen, back = false, k = 1) {
   const E = lifeGPU(L);
   if (!E || !L.cells) return null;
