@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1486';
+const VERSION = '0.1.1489';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2690,7 +2690,8 @@ for (const [kind, t] of Object.entries(TILINGS)) {
 }
 // Reversible on the tori: Life's, in blocks as the plane's (its blocks' grid, so many cells a block, see meshBlocks), 3 squares
 // round it (see ringColours), its start on the middle one (see startColours)
-const REVERSIBLE_SHEETS = [['blocksMobius', 'lifeMobius', 'square', 4], ['blocksMobiusTri', 'lifeMobiusTri', 'tri', 6], ['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4]];
+const REVERSIBLE_SHEETS = [['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4],
+  ['blocksMobius', 'lifeMobius', 'square', 4], ['blocksMobiusTri', 'lifeMobiusTri', 'tri', 6], ['blocksKlein', 'lifeKlein', 'square', 4], ['blocksKleinTri', 'lifeKleinTri', 'tri', 6]];  // (as Life's: the tori, the Möbius strips, the Klein bottles)
 const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3, mobius: 2 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
 for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODES[w] = { ...MODES[life], margolus: true, blocks, where: `${MODES[life].where.split(' (')[0]} in blocks of ${k} round a corner, as the plane's, 3 squares round it, its start on the middle one` };
@@ -2967,7 +2968,8 @@ function renderModePicker() {
     // its tilings as the 2D grids are, a picture and a name each, 4 a row; one that turns by 30° (another grid: its rows
     // round the tube), a switch once picked: a click turns it (its picture turned) or back; then Turned (a torus's, a
     // strip's, a bottle's), the same: on, the tiling turned; off, not; greyed, a tiling that has none
-    const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab], turns = tabOf(here, true) >= 0;
+    const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
+    const turns = tabOf(here, true) >= 0 && (!MODES[w].margolus || blocksFit(parseRule($('lifeRule').value), MODES[w], shownSurface(MODES[w].sphere, !isTurned)));  // (a block rule: its blocks there too)
     const turn = () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); };
     $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, shape, name]) => {
       if (turned || !same(f)) return [];
@@ -2979,7 +2981,7 @@ function renderModePicker() {
         $('mode').dispatchEvent(new Event('change'));
       }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: tilesTurn(shownSurface(MODES[same(f)].sphere, f === here && isTurned)) });  // its picture as its tiles lie (a torus's, a strip's alike: clockwise, as the pictures laid on it)
       return [b];
-    }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', greyed: 'on a tiling with no other way round', on: isTurned, can: turns,
+    }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', greyed: 'on a tiling with no other way round (a block rule: none its blocks come round)', on: isTurned, can: turns,
       title: turns ? F.tabs[tabOf(here, true)][4] : 'The tiling turned, its rows another way round', click: turn })] : []));
   }
   // the rules, where there are several, each with its picture; in a family, those its tiling has not greyed
@@ -8840,7 +8842,7 @@ function renderRuleSection() {
   const mode = MODES[$('mode').value];
   if (!mode.life) { if (!$('ruleTuto').hidden && walkTutorialFits($('mode').value)) walkTutorial($('mode').value); else ruleTutorial(null); return; }  // (a walk's: it follows the walk)
   const mark = lifeMark(mode), now = ruleBody($('lifeRule').value);
-  const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark)), mine = known.find((o) => o.value === now);
+  const known = [...$('lifePreset').options].filter((o) => o.dataset.name && o.text.includes(mark) && (!mode.margolus || blocksFit(parseRule(o.value), mode))), mine = known.find((o) => o.value === now);
   const yours = { value: now, dataset: { name: 'Custom rule' } }, mineNot = !mine || customOpen;  // (your own, for how a rule works)
   const shown = mineNot ? yours : mine;
   if (!$('ruleTuto').hidden && $('ruleTuto').dataset.shown !== tutorialKey(shown)) ruleTutorial(shown);  // how a rule works follows the grid and the rule
@@ -8929,7 +8931,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? true : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = mode.margolus ? (parseRule(rule)?.ising || parseRule(rule)?.four ? blocksGrid(mode) === 'square' : parseRule(rule)?.k === (parseRule(rule)?.stars ? STARS : BLOCKS)[blocksGrid(mode)]?.k) : !parseRule(rule)?.margolus;  // (blocks: a block rule of their size only; else none)
+  const kindFits = mode.margolus ? blocksFit(parseRule(rule), mode) : !parseRule(rule)?.margolus;  // (blocks: a block rule fitting them only; else none)
   if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
   ruleFittedTo = w;
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
@@ -9085,28 +9087,32 @@ const minus = (p, q) => [p[0] - q[0], p[1] - q[1]];
 // lattice gas (FHP's on triangles, HPP's on the tetrakis squares)
 const STARS = { tri: { k: 6, set: BLOCKS.tri.set, lattice: BLOCKS.tri.lattice, turn: ['0'] }, tetrakis: { k: 4, set: null, turn: ['0'], mark: '⧆' } };  // (a rule of them: M…*, see parseBlocks)
 const blockSet = (kind, stars, four) => (four ? { ...BLOCKS.square, turn: ['0,0', '1,0', '1,1', '0,1'] } : (stars ? STARS : BLOCKS)[baseOf(kind)]);
-// A grid's blocks, from its cells (cell(t): its corners in turn, all of them the same way round, as points and as names, a
-// corner its name whatever cell it is seen from, and its middle; none, a wall's), its set's lattice from its first's (see
-// BLOCKS): each corner whole round it (its cells' sides walked round it come back), its cells in that turn, from the one
-// seen west of it; those of a set in turn; stellated, each cell's partner across its side away from its corner. null: a
-// cell in two blocks of a set (a torus its sets do not fit round)
+// A grid's blocks, from its cells (cell(t): its corners in turn, as points and as names, a corner its name whatever cell it
+// is seen from, and its middle; none, a wall's), its set's lattice from its first's (see BLOCKS): each corner whole round it
+// (its cells' sides crossed round it come back), its cells in that turn, from the one seen west of it, the way its corners
+// go (on any surface: a Klein bottle's turned over across its seam); those of a set in turn; stellated, each cell's partner
+// across its side away from its corner. null: a cell in two blocks of a set (a torus its sets do not fit round)
 function cellBlocks(B, n, cell, stars, first = cell(0)) {  // (first: the cell its lattice is from)
-  const corners = new Map(), of = [], side = new Map();  // (side: a cell by a side as it walks it, from a corner to the next)
+  const corners = new Map(), of = [], sides = new Map(), side = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`);  // (sides: a side's cells, by its corners)
   for (let t = 0; t < n; t++) {
     const c = (of[t] = cell(t));
     if (!c) continue;
     c.pts.forEach((q, i) => {
-      const key = c.ids[i];
-      side.set(`${key} ${c.ids[(i + 1) % c.ids.length]}`, t);
+      const key = c.ids[i], s = side(key, c.ids[(i + 1) % c.ids.length]);
+      (sides.get(s) ?? sides.set(s, []).get(s)).push(t);
       if (!corners.has(key)) corners.set(key, { key, at: q, cells: [] });
       corners.get(key).cells.push([t, Math.atan2(c.mid[1] - q[1], c.mid[0] - q[0])]);  // (where it lies round the corner, as the cell sees it)
     });
   }
-  const next = (t, v) => { const ids = of[t].ids; return side.get(`${ids[(ids.indexOf(v) + 1) % ids.length]} ${v}`); };  // (the cell across its side from v, the next round v)
-  const round = (c) => {  // (its cells as walked round it, from the one most west of it; none: cut by a wall)
-    const from = c.cells.reduce((a, b) => (b[1] < a[1] ? b : a))[0], ring = [from];
-    for (let t = next(from, c.key); t !== from; t = next(t, c.key)) { if (t === undefined || ring.length === B.k) return null; ring.push(t); }
-    return ring.length === B.k ? ring : null;
+  const round = (c) => {  // (its cells crossed round it, from the one most west of it, by its side after the corner; none: cut by a wall)
+    const v = c.key, from = c.cells.reduce((a, b) => (b[1] < a[1] ? b : a))[0], ids = of[from].ids, ring = [from];
+    for (let t = from, w = ids[(ids.indexOf(v) + 1) % ids.length]; ; ) {
+      const u = sides.get(side(v, w)).find((x) => x !== t), its = u === undefined ? null : of[u].ids, i = its?.indexOf(v);
+      if (u === from) return ring.length === B.k ? ring : null;
+      if (u === undefined || ring.push(u) > B.k) return null;
+      w = its[(i + 1) % its.length] === w ? its.at(i - 1) : its[(i + 1) % its.length];  // (its other side at the corner)
+      t = u;
+    }
   };
   const full = [...corners.values()].filter((c) => c.cells.length === B.k && (c.ring = round(c)));
   let setOf;
@@ -9188,12 +9194,19 @@ function meshBlocks(g, kind, stars, four) {
 // alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
 // a block rule's blocks on a grid (Ising: its squares in turn): the plane's (see planeBlocks, isingOf)
 let blocksMemo = null;  // (the last grid's: its blocks the same whatever its start, 1 s at 2²⁰ cells)
-// (a torus's or a Möbius strip's, g: by its mesh, see meshBlocks, meshIsing)
+// (a surface's, g: by its mesh, kept on it, see meshBlocks, meshIsing; null: they do not come round it)
+const surfaceBlocks = (g, kind, rule) => ((g.blocks ??= {})[`${kind}|${!!rule.ising}|${!!rule.stars}|${!!rule.four}`] ??= rule.ising ? meshIsing(g) : meshBlocks(g, kind, rule.stars, rule.four));
 const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(kind, W, 1), g = null) => {
-  const key = `${kind}|${W}|${torus}|${cols}|${g?.n}|${!!rule.ising}|${!!rule.stars}|${!!rule.four}`;
-  if (blocksMemo?.key !== key || blocksMemo.g !== g) blocksMemo = { key, g, blocks: g ? (rule.ising ? meshIsing(g) : meshBlocks(g, kind, rule.stars, rule.four)) : rule.ising ? isingOf(kind, W, torus, cols) : planeBlocks(kind, W, torus, rule.stars, rule.four, cols) };
-  return rule.ising ? { ...blocksMemo.blocks } : { ...blocksMemo.blocks, to: rule.margolus, ...blockKind(rule.margolus) };
+  const key = `${kind}|${W}|${torus}|${cols}|${!!rule.ising}|${!!rule.stars}|${!!rule.four}`;
+  if (!g && blocksMemo?.key !== key) blocksMemo = { key, blocks: rule.ising ? isingOf(kind, W, torus, cols) : planeBlocks(kind, W, torus, rule.stars, rule.four, cols) };
+  const blocks = g ? surfaceBlocks(g, kind, rule) : blocksMemo.blocks;
+  return rule.ising ? { ...blocks } : { ...blocks, to: rule.margolus, ...blockKind(rule.margolus) };
 };
+// a block rule on a grid: of its blocks' size (Ising, 4 phases: squares), on a surface (sp: its own, or turned) its blocks
+// there, its smallest size's as all its sizes' (the same at each, its sizes coming round, see BLOCK_STEPS: a Klein
+// bottle's checkerboard never, nor a Möbius strip's or a Klein bottle's triangles turned)
+const blocksFit = (R, mode, sp = mode.sphere && surfaceOf(mode)) => !!R?.margolus && (R.ising || R.four ? blocksGrid(mode) === 'square' : R.k === (R.stars ? STARS : BLOCKS)[blocksGrid(mode)]?.k)
+  && (!sp || !!surfaceBlocks(SPHERES[sp].mesh(SPHERES[sp].sizes.find((f) => f % (BLOCK_STEPS[sp] ?? 1) === 0)), blocksGrid(mode), R));
 function isingOf(kind, W, torus = planeTorus(kind), row = planeRow(kind, W)) {  // (squares only)
   const turns = [[], []], sides = [];
   for (let t = 0; t < row * W; t++) {
