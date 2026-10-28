@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1478';
+const VERSION = '0.1.1482';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3554,10 +3554,10 @@ const KING_STEPS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], 
  * all the edges equal. A pentagon: (i, j, o), across the side from corner (i, j) to (i + 1, j) (o = 0)
  * or to (i, j + 1) (o = 1); its type 2·o + the parity of i + j. */
 const CAIRO = Math.SQRT2, CAIRO_B = (Math.sqrt(7) - 1) / 6;
-function cairoCorners(i, j, o) {  // in grid units, in turn around the pentagon (either way)
+function cairoCorners(i, j, o) {  // in grid units, in turn around the pentagon as every grid's cells (their signed area positive), its side 0 by (i, j)
   const b = CAIRO_B, odd = (i + j) & 1;
-  if (o === 0) return odd ? [[i, j], [i + 0.5, j + 0.5 - b], [i + 1, j], [i + 0.5 + b, j - 0.5], [i + 0.5 - b, j - 0.5]]
-                          : [[i, j], [i + 0.5 - b, j + 0.5], [i + 0.5 + b, j + 0.5], [i + 1, j], [i + 0.5, j - 0.5 + b]];
+  if (o === 0) return odd ? [[i + 0.5, j + 0.5 - b], [i, j], [i + 0.5 - b, j - 0.5], [i + 0.5 + b, j - 0.5], [i + 1, j]]
+                          : [[i + 0.5 - b, j + 0.5], [i, j], [i + 0.5, j - 0.5 + b], [i + 1, j], [i + 0.5 + b, j + 0.5]];
   return odd ? [[i, j], [i + 0.5, j + 0.5 - b], [i + 0.5, j + 0.5 + b], [i, j + 1], [i - 0.5 + b, j + 0.5]]
              : [[i, j], [i + 0.5 - b, j + 0.5], [i, j + 1], [i - 0.5, j + 0.5 + b], [i - 0.5, j + 0.5 - b]];
 }
@@ -4567,8 +4567,7 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   }
   if (kind === 'kleinKite' || kind === 'kleinKiteTurned') { const kites = tiles.flatMap(kitesOf); tiles.length = 0; for (const t of kites) tiles.push(t); }  // (each triangle its 3 kites)
   if (kind === 'kleinCairo') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
-    const c = cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + 0.5]);  // (its first pair at the sheet's corner, as the torus's)
-    tiles.push(signedArea(c) < 0 ? c.reverse() : c);
+    tiles.push(cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + 0.5]));  // (its first pair at the sheet's corner, as the torus's)
   }
   const ids = new Map(), verts = [], r6 = (v) => Math.round(v * 1e6) / 1e6, tube = tubeFor(kind, nv, nu);
   const id = (x0, y0) => {  // the point's place on the sheet, brought within it
@@ -4758,7 +4757,7 @@ function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counte
     for (let i = -1; i <= L; i++) for (let j = -1; j <= W; j++) for (const o of [0, 1]) {
       const [cx, cy] = cairoMiddle(i, j, o);
       if (cx < 0 || cx >= L || cy <= 0 || cy >= W) continue;
-      put(() => { const c = cairoCorners(i, j, o); return signedArea(c) < 0 ? c.reverse() : c; });
+      put(() => cairoCorners(i, j, o));
     }
     return done(L, W);
   }
@@ -4936,8 +4935,7 @@ function torusHexMesh(nv, nu = torusHexColumns(nv)) {
 const torusCairoColumns = (nv) => ringColumns(nv / TORUS_TUBE, nv, 2);
 function torusCairoMesh(nv, nu = torusCairoColumns(nv)) {
   return sheetTorus(`torusCairo${nv}x${nu}`, 'torusCairo', nv, nu, 5, () => Array.from({ length: 2 * nu * nv }, (_, t) => {
-    const c = cairoCorners(Math.floor(t / (2 * nv)), Math.floor(t / 2) % nv, t % 2).map(([x, y]) => [x + 0.5, y + 0.5]);  // (a square's two pentagons reach half a square back: on the sheet, its first pair at its corner)
-    return signedArea(c) < 0 ? c.reverse() : c;
+    return cairoCorners(Math.floor(t / (2 * nv)), Math.floor(t / 2) % nv, t % 2).map(([x, y]) => [x + 0.5, y + 0.5]);  // (a square's two pentagons reach half a square back: on the sheet, its first pair at its corner)
   }), { cairo: true });
 }
 
@@ -9086,23 +9084,30 @@ const minus = (p, q) => [p[0] - q[0], p[1] - q[1]];
 // lattice gas (FHP's on triangles, HPP's on the tetrakis squares)
 const STARS = { tri: { k: 6, set: BLOCKS.tri.set, lattice: BLOCKS.tri.lattice, turn: ['0'] }, tetrakis: { k: 4, set: null, turn: ['0'], mark: '⧆' } };  // (a rule of them: M…*, see parseBlocks)
 const blockSet = (kind, stars, four) => (four ? { ...BLOCKS.square, turn: ['0,0', '1,0', '1,1', '0,1'] } : (stars ? STARS : BLOCKS)[baseOf(kind)]);
-// A grid's blocks, from its cells (cell(t): its corners, as points and as names, a corner its name whatever cell it is
-// seen from, and its middle; none, a wall's), its set's lattice from its first's (see BLOCKS): each corner whole round
-// it, its cells in turn round it; those of a set in turn; stellated, each cell's partner across its side away from its
-// corner. null: a cell in two blocks of a set (a torus its sets do not fit round)
+// A grid's blocks, from its cells (cell(t): its corners in turn, all of them the same way round, as points and as names, a
+// corner its name whatever cell it is seen from, and its middle; none, a wall's), its set's lattice from its first's (see
+// BLOCKS): each corner whole round it (its cells' sides walked round it come back), its cells in that turn, from the one
+// seen west of it; those of a set in turn; stellated, each cell's partner across its side away from its corner. null: a
+// cell in two blocks of a set (a torus its sets do not fit round)
 function cellBlocks(B, n, cell, stars, first = cell(0)) {  // (first: the cell its lattice is from)
-  const corners = new Map();
+  const corners = new Map(), of = [], side = new Map();  // (side: a cell by a side as it walks it, from a corner to the next)
   for (let t = 0; t < n; t++) {
-    const c = cell(t);
+    const c = (of[t] = cell(t));
     if (!c) continue;
     c.pts.forEach((q, i) => {
-      const key = c.ids[i], [u, v] = [c.pts.at(i - 1), c.pts[(i + 1) % c.pts.length]].map((p) => minus(p, q));
-      if (!corners.has(key)) corners.set(key, { key, at: q, cells: [], turn: 0 });
-      corners.get(key).cells.push([t, Math.atan2(c.mid[1] - q[1], c.mid[0] - q[0])]);  // (its turn round the corner, as the cell sees it)
-      corners.get(key).turn += Math.acos((u[0] * v[0] + u[1] * v[1]) / Math.hypot(...u) / Math.hypot(...v));  // (its angle there, a convex cell's)
+      const key = c.ids[i];
+      side.set(`${key} ${c.ids[(i + 1) % c.ids.length]}`, t);
+      if (!corners.has(key)) corners.set(key, { key, at: q, cells: [] });
+      corners.get(key).cells.push([t, Math.atan2(c.mid[1] - q[1], c.mid[0] - q[0])]);  // (where it lies round the corner, as the cell sees it)
     });
   }
-  const full = [...corners.values()].filter((c) => c.cells.length === B.k && Math.abs(c.turn - 2 * Math.PI) < 1e-6);  // (whole round it: not cut by walls)
+  const next = (t, v) => { const ids = of[t].ids; return side.get(`${ids[(ids.indexOf(v) + 1) % ids.length]} ${v}`); };  // (the cell across its side from v, the next round v)
+  const round = (c) => {  // (its cells as walked round it, from the one most west of it; none: cut by a wall)
+    const from = c.cells.reduce((a, b) => (b[1] < a[1] ? b : a))[0], ring = [from];
+    for (let t = next(from, c.key); t !== from; t = next(t, c.key)) { if (t === undefined || ring.length === B.k) return null; ring.push(t); }
+    return ring.length === B.k ? ring : null;
+  };
+  const full = [...corners.values()].filter((c) => c.cells.length === B.k && (c.ring = round(c)));
   let setOf;
   if (B.set) {
     const [lo, e1, e2] = B.lattice(first.pts, first.mid), d = e1[0] * e2[1] - e1[1] * e2[0];
@@ -9120,14 +9125,14 @@ function cellBlocks(B, n, cell, stars, first = cell(0)) {  // (first: the cell i
     }
     setOf = (c) => of.get(c);
   }
-  const turns = B.turn.map((set) => Int32Array.from(full.filter((c) => setOf(c) === set).flatMap((c) => c.cells.sort((x, y) => x[1] - y[1]).map(([t]) => t))));
+  const turns = B.turn.map((set) => Int32Array.from(full.filter((c) => setOf(c) === set).flatMap((c) => c.ring)));
   if (!turns.every((blocks) => new Set(blocks).size === blocks.length)) return null;  // (each cell in one block of a set at most)
   let move = null;
   if (stars) {
     const across = new Map();
-    for (const c of full) if (setOf(c) === B.turn[0]) for (const [t] of c.cells) {
-      const side = cell(t).ids.filter((q) => q !== c.key).sort().join(' ');
-      (across.get(side) ?? across.set(side, []).get(side)).push(t);
+    for (const c of full) if (setOf(c) === B.turn[0]) for (const t of c.ring) {
+      const away = of[t].ids.filter((q) => q !== c.key).sort().join(' ');
+      (across.get(away) ?? across.set(away, []).get(away)).push(t);
     }
     move = Int32Array.from({ length: n }, (_, t) => t);
     for (const [u, v] of across.values()) if (v !== undefined) { move[u] = v; move[v] = u; }
@@ -9147,7 +9152,7 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
   };
   const dead = new Set(torus ? [] : planeDead(kind, W) ?? []);  // (a hexagon's wall: its cells in no block, never alive)
   const blocks = cellBlocks(blockSet(kind, stars, four), W * row, (t) => {
-    const pts = planeCorners(kind, t % row, Math.floor(t / row));
+    const pts = planeCorners(kind, t % row, Math.floor(t / row))?.slice().reverse();  // (the other way round, as a torus's tiles on its sheet: turned over, facing out)
     return pts && !dead.has(t) ? { pts, ids: pts.map((q) => pointKey(...home(q))), mid: cellMiddle(kind, t % row, Math.floor(t / row)) } : null;
   }, stars, { pts: planeCorners(kind, 0, 0), mid: o });
   return blocks ? { ...blocks, wraps: torus } : { ...planeBlocks(kind, W, false, stars, four), wraps: false };
