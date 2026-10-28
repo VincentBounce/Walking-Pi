@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1413';
+const VERSION = '0.1.1414';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6529,8 +6529,8 @@ function buildLife(seq, mode) {
 // the surfaces' too); blocks, small ones too (6 and 8: a start's return to see, its period short). Two sides the same grid,
 // as built (its rectangle's: its rows and its row): once; a grid of 2 lattice cells across at least; a hexagon's by its side
 // alone, each its own (its hexagon fitted only when shown, see shapeW)
-const planeCells = (side, k = planeKind(MODES[$('mode').value].plane)) => gridSize(k, side)[2];  // a side's grid's cells (see picked)
-const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), cells = (f) => W(f) * planeRow(k, W(f)), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) =>
+const planeCells = (side, kind = MODES[$('mode').value].plane, k = planeKind(kind)) => { const W = (shaped(kind) ? sideW : planeW)(k, side); return W * planeRow(k, W); };  // a side's grid's cells, counted, not built (see picked)
+const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW : planeW)(k, f), cells = (f) => planeCells(f, kind, k), grid = (f) => `${W(f)}|${planeRow(k, W(f))}`) =>
   [...(MODES[$('mode').value]?.margolus ? [6, 8] : []), ...SIDES.filter((f) => cells(f) >= CELLS.least && cells(f) <= (APERIODIC[k]?.most ?? CELLS.most))].filter((f, i, a) => W(f) >= 2 && (!i || grid(f) !== grid(a[i - 1])));
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
@@ -7229,22 +7229,26 @@ const HYPERBOLIC = (() => {
   const from0 = (a, w) => div([w[0] + a[0], w[1] + a[1]], [1 + mul(conj(a), w)[0], mul(conj(a), w)[1]]);
   const mirror = (a, b, z) => { const t = to0(a, b), u = mul(t, t), n = u[0] ** 2 + u[1] ** 2, e = [u[0] / Math.sqrt(n), u[1] / Math.sqrt(n)]; return from0(a, mul(e, conj(to0(a, z)))); };  // z across the geodesic a b
   const most = 2 ** 12, r0 = Math.tanh(Math.acosh(1 / Math.tan(Math.PI / P) / Math.tan(Math.PI / 3)) / 2);  // (the middle heptagon's corners: cosh ρ = cot(π/7) cot(π/3))
-  const tiles = [Array.from({ length: P }, (_, k) => [r0 * Math.cos(Math.PI / 2 + (2 * Math.PI * k) / P), r0 * Math.sin(Math.PI / 2 + (2 * Math.PI * k) / P)])];
-  let loop = tiles[0].map((z, k) => ({ z, one: true, tile: 0, at: k }));  // counterclockwise: a corner, of one heptagon inside or two; its edge to the next, its tile's from its corner at
-  while (tiles.length < 3 * most) {  // (the cells, their walls and room round them)
-    const ones = loop.flatMap((v, i) => (v.one ? [i] : [])), n = loop.length, next = [];
-    const out = ones.map((i) => { const { tile, at } = loop[i], T = tiles[tile]; return mirror(T[at], T[(at + 1) % P], T[(at + P - 1) % P]); });  // (an outgoing edge's far end)
-    ones.forEach((i, f) => {
-      const m = (ones[(f + 1) % ones.length] - i + n) % n || n, { tile, at } = loop[i], T = tiles[tile], fresh = [];
-      for (let s = P - 2; s >= m + 2; s--) fresh.push(mirror(T[at], T[(at + 1) % P], T[(at + s) % P]));
-      const t = tiles.push([loop[i].z, out[f], ...fresh, out[(f + 1) % ones.length], ...Array.from({ length: m }, (_, s) => loop[(i + m - s) % n].z)]) - 1;
-      next.push({ z: out[f], one: false, tile: t, at: 1 }, ...fresh.map((z, s) => ({ z, one: true, tile: t, at: 2 + s })));
-    });
-    loop = next;
-  }
+  let tiles = null;
+  const ringed = () => {  // (once, at its first use)
+    tiles = [Array.from({ length: P }, (_, k) => [r0 * Math.cos(Math.PI / 2 + (2 * Math.PI * k) / P), r0 * Math.sin(Math.PI / 2 + (2 * Math.PI * k) / P)])];
+    let loop = tiles[0].map((z, k) => ({ z, one: true, tile: 0, at: k }));  // counterclockwise: a corner, of one heptagon inside or two; its edge to the next, its tile's from its corner at
+    while (tiles.length < 3 * most) {  // (the cells, their walls and room round them)
+      const ones = loop.flatMap((v, i) => (v.one ? [i] : [])), n = loop.length, next = [];
+      const out = ones.map((i) => { const { tile, at } = loop[i], T = tiles[tile]; return mirror(T[at], T[(at + 1) % P], T[(at + P - 1) % P]); });  // (an outgoing edge's far end)
+      ones.forEach((i, f) => {
+        const m = (ones[(f + 1) % ones.length] - i + n) % n || n, { tile, at } = loop[i], T = tiles[tile], fresh = [];
+        for (let s = P - 2; s >= m + 2; s--) fresh.push(mirror(T[at], T[(at + 1) % P], T[(at + s) % P]));
+        const t = tiles.push([loop[i].z, out[f], ...fresh, out[(f + 1) % ones.length], ...Array.from({ length: m }, (_, s) => loop[(i + m - s) % n].z)]) - 1;
+        next.push({ z: out[f], one: false, tile: t, at: 1 }, ...fresh.map((z, s) => ({ z, one: true, tile: t, at: 2 + s })));
+      });
+      loop = next;
+    }
+    return tiles;
+  };
   const build = discMemo((W) => {
     const R = W / Math.sqrt(Math.PI);
-    return discPatch(tiles.map((T) => ({ p: T.flatMap(([x, y]) => [R * x, R * y]), m: [0, 1].map((d) => (R * T.reduce((a, z) => a + z[d], 0)) / P) })), W, [0, 0]);
+    return discPatch((tiles ?? ringed()).map((T) => ({ p: T.flatMap(([x, y]) => [R * x, R * y]), m: [0, 1].map((d) => (R * T.reduce((a, z) => a + z[d], 0)) / P) })), W, [0, 0]);
   });
   return Object.assign(build, { most });
 })();
