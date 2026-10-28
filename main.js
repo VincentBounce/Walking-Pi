@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1443';
+const VERSION = '0.1.1444';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -4312,7 +4312,10 @@ function hullColourings(sphere) {
   if (hullColourMemo[sphere]) return hullColourMemo[sphere];
   const all = hullFaces(HULL_SOLIDS[sphere]()), faces = [...all.filter((fc) => fc.corners.length === 4), ...all.filter((fc) => fc.corners.length === 3)];
   const mids = faces.map(({ corners }) => [0, 1, 2].map((d) => corners.reduce((sum, c) => sum + c[d], 0) / corners.length)), out = {};
-  const add = (kind, groups, pairs = false) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups, mids, pairs }; };
+  const far = (p, q) => Math.hypot(...[0, 1, 2].map((d) => mids[p][d] - mids[q][d]));
+  // (each colour's first face, where its pattern goes: the farthest from those before, as the cube's colours face each other)
+  const spread = (groups) => groups.reduce((done, gr) => [...done, [...gr].sort((p, q) => Math.min(...done.map((g) => far(q, g[0]))) - Math.min(...done.map((g) => far(p, g[0]))) || p - q)], []);
+  const add = (kind, groups, pairs = false) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups: spread(groups), mids, pairs }; };
   const offer = (kind, qs) => {
     add(kind, qs.map((q) => [q]));
     const across = (q) => qs.find((p) => mids[p].every((v, d) => Math.abs(v + mids[q][d]) < 1e-9));  // (its opposite face)
