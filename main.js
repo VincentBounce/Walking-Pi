@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1450';
+const VERSION = '0.1.1451';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2710,11 +2710,11 @@ MODE_ICONS.lifeFrame = 'frame';
   for (const [w, n] of sorted) NAV[w] = n;
 }
 const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
-// in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Space"
+// in this order, by these names: the surfaces are "3D", the walks through a 3D lattice "Lattice"
 // the spaces, in turn, each its name and picture (Life's 4: its plane's grids that repeat, walls in a hexagon too, and its
 // round ones, never repeating; its solids, its surfaces: a sheet rolled up; see APERIODIC)
 const SPACES = { '2D': ['2D', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'], Surfaces: ['3D', 'cube'],
-                 '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Space', 'cubeFilled', 'Lattice'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
+                 '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Lattice', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
 function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
@@ -2906,7 +2906,7 @@ function renderModePicker() {
   }));
   $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
     + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
-  // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Space)
+  // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Lattice)
   const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
   $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp)))));
   // the shapes, as pictures with their (short) names
@@ -2940,7 +2940,7 @@ function renderModePicker() {
   if (inFamily) inFamily.F.tab = inFamily.tab;
   $('torusTiles').hidden = !inFamily;
   $('tilesLabel').hidden = !inFamily;  // (two blocks: the surface, then its tiles; an ant's: its shape, then its creatures)
-  $('shapesLabel').textContent = SPACES[space][2] ?? SPACES[space][0];  // (its tab's name, or its own: Space's lattices; as Size its section's title; its groups' titles under it)
+  $('shapesLabel').textContent = SPACES[space][0];  // (its tab's name, as Size its section's title; its groups' titles under it)
   if (inFamily) $('tilesLabel').textContent = `${inFamily.F.name} tiles`;
   if (inFamily) {
     const { F, tab } = inFamily;
@@ -10740,7 +10740,7 @@ function writeSetups(list) {
   try { localStorage.setItem(SETUPS_KEY, JSON.stringify(list)); return true; } catch { return false; }
 }
 // What tells a saved setup apart: its walk, then its surface's size, start, turn and rule
-// a setup's row: 2D, 3D or Space, the walk, size, start, turn and rule (Life's rule is its title)
+// a setup's row: 2D, 3D or Lattice, the walk, size, start, turn and rule (Life's rule is its title)
 const setupDetail = (s) => [SPACES[NAV[s.w]?.[1]]?.[0], walkName(s.w), s.s && `size ${String(s.s).replace('x', ' × ')}`, s.st > 1 && `start ${s.st}`,
   Number(s.o) === 1 && 'turned 30°', Number(s.q) === 1 && 'square sheet', s.r && !MODES[s.w]?.life && `rule ${s.r}`].filter(Boolean).join(' · ');
 // its title: a walk's number; a Game of Life's rule (its name) and colours, its number being only its start

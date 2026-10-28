@@ -128,7 +128,7 @@ Most surfaces also have the **Pivot** rule (base 2, `0` step forward, `1` turn r
 - A surface can be shown **flat or round**: the torus and the Möbius strip unroll into their sheet and the polyhedra flatten, and the walk goes on during the morph.
 - The **Möbius strip** is walked as a strip of paper: each square has two faces, each with its own cells, and a walker keeps to its face; at the strip's edge it goes round onto the face just behind. Both faces make one surface with no edge (2 starts on squares, 3 on hexagons and triangles); at a hexagon strip's zigzag edge a corner is not flat, and turns there are measured as a share of the way round it.
 
-### Walks in space (the Space tab: a 3D lattice)
+### Walks in space (the Lattice tab: a 3D lattice)
 
 | Mode | Base | Rule |
 |---|:-:|---|
@@ -195,7 +195,7 @@ A fraction's digits repeat, so its walk makes the same moves again and again: it
 
 ## Features
 
-- **Tabs** (top): the **Gallery**, then **Life**, **Ant** and **Walk**; under them 2D, 3D (the surfaces) and Space (a 3D lattice). Hover the Gallery to open it in the left pane, click it to keep it open.
+- **Tabs** (top): the **Gallery**, then **Life**, **Ant** and **Walk**; under them 2D, 3D (the surfaces) and Lattice (a 3D lattice). Hover the Gallery to open it in the left pane, click it to keep it open.
   - **Treasures**: your setups, kept in this browser only, grouped as the tabs (Life, Ant, Walk). ☆ saves the setup in view (yellow while it is one of them), × deletes one, and the two arrows import or export them as a JSON file. On a first visit they hold a curated choice (rosettes, loops on surfaces, classics), yours to delete.
   - Hovering a setup shows it in the view, leaving the list brings back the one in use, a click keeps it and opens its parameters.
 - **Play card** (bottom left): the number, its loop (`↻`) and base, a step slider, ⏮ and ▶︎ play / pause.
