@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1426';
+const VERSION = '0.1.1427';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1973,11 +1973,12 @@ const ICONS = (() => {
     hat: pathEl('M7.2 13.4L2.5 16.1L4.1 18.9L10.4 18.9L12 16.1L16.8 18.9L21.5 16.1L19.9 13.4L16.8 13.4L16.8 7.9L12 5.1L10.4 7.9L7.2 7.9Z'),  // the hat monotile
     kites: pathEl(pathOf(hex)) + hex.map((p, i) => pathEl(seg([12, 12], [(p[0] + hex[(i + 1) % 6][0]) / 2, (p[1] + hex[(i + 1) % 6][1]) / 2]))).join(''),  // a hexagon cut in 6 kites
     cube: cube(false),
-    stacks: (() => {  // Stacks: the cube, a brick wall on its left face (Walls with it), layers on its right (its generations, up)
-      const at = (o, a, b) => (u, v) => o.map((x, d) => x + u * (a[d] - x) + v * (b[d] - x)), L = at(hex[4], [12, 12], hex[5]), R = at([12, 12], hex[2], hex[0]);  // (its faces as cube draws them: u across, v up)
-      const line = (f, u0, v0, u1, v1) => pathEl(seg(f(u0, v0), f(u1, v1)));
-      return cube(false) + [1 / 3, 2 / 3].map((v) => line(L, 0, v, 1, v)).join('') + [[0.5, 0, 1 / 3], [0.25, 1 / 3, 2 / 3], [0.75, 1 / 3, 2 / 3], [0.5, 2 / 3, 1]].map(([u, a, b]) => line(L, u, a, u, b)).join('')
-        + [0.25, 0.5, 0.75].map((v) => line(R, 0, v, 1, v)).join('');
+    stacks: (() => {  // Stacks: the cube seen from above (cube's, upside down), a brick wall on its left face (Walls with it), layers on its
+      // right (its generations), on its top 5 live cells here and there (its last one)
+      const at = (o, a, b) => (u, v) => o.map((x, d) => x + u * (a[d] - x) + v * (b[d] - x)), L = at(hex[4], [12, 12], hex[5]), R = at([12, 12], hex[2], hex[0]), T = at(hex[3], hex[2], hex[4]);  // (its faces as cube draws them)
+      const line = (f, u0, v0, u1, v1) => pathEl(seg(f(u0, v0), f(u1, v1))), cell = (u, v, s = 1 / 6) => pathEl(pathOf([T(u, v), T(u + s, v), T(u + s, v + s), T(u, v + s)]), 'f');
+      return `<g transform="matrix(1 0 0 -1 0 24)">${cube(false) + [1 / 3, 2 / 3].map((v) => line(L, 0, v, 1, v)).join('') + [[0.5, 0, 1 / 3], [0.25, 1 / 3, 2 / 3], [0.75, 1 / 3, 2 / 3], [0.5, 2 / 3, 1]].map(([u, a, b]) => line(L, u, a, u, b)).join('')
+        + [0.25, 0.5, 0.75].map((v) => line(R, 0, v, 1, v)).join('') + [[0.12, 0.22], [0.52, 0.1], [0.38, 0.48], [0.7, 0.5], [0.18, 0.72]].map(([u, v]) => cell(u, v)).join('')}</g>`;
     })(),
     cubeFilled: cube(true),
     torus,
