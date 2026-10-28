@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1508';
+const VERSION = '0.1.1509';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2700,7 +2700,8 @@ for (const [kind, t] of Object.entries(TILINGS)) {
 const REVERSIBLE_SHEETS = [['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4],
   ['blocksMobius', 'lifeMobius', 'square', 4], ['blocksMobiusTri', 'lifeMobiusTri', 'tri', 6], ['blocksMobiusTetrakis', 'lifeMobiusTetrakis', 'tetrakis', 4],
   ['blocksKlein', 'lifeKlein', 'square', 4], ['blocksKleinTri', 'lifeKleinTri', 'tri', 6], ['blocksKleinTetrakis', 'lifeKleinTetrakis', 'tetrakis', 4]];  // (as Life's: the tori, the Möbius strips, the Klein bottles)
-const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3, mobius: 2 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
+const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3, mobius: 2 };
+const BLOCK_ALONG = { mobius: 2 };  // (a Möbius strip of squares: its length in squares even, its blocks' two sets coming round along it, see stripSteps)  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
 for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODES[w] = { ...MODES[life], margolus: true, blocks, where: `${MODES[life].where.split(' (')[0]} in blocks of ${k} round a corner, as the plane's, 3 squares round it, its start on the middle one` };
   MODE_ICONS[w] = MODE_ICONS[life];
@@ -4717,14 +4718,15 @@ function mobiusPoint(x, y, L, W, m) {
 // its width MOBIUS_WIDTH times its radius), its K colours' stretches of its loop (its two faces, 2L) square (W long), whole counts of
 // q steps (a tiling's copy along), as its twist allows
 const stripSteps = (kind0, nv, W, own, q = 1) => {
-  const { step, ok } = MOBIUS_ALONG[kind0], K = ringColours();
-  return own ?? ringLength((2 * Math.PI * W) / MOBIUS_WIDTH / step, (K * W) / 2 / step, (K * q) % 2 ? K * q : (K * q) / 2, (n) => ok(n, nv));
+  const { step, ok } = MOBIUS_ALONG[kind0], K = ringColours(), along = MODES[$('mode').value]?.margolus ? BLOCK_ALONG[kind0] ?? 1 : 1;  // (a reversible one's: its blocks' sets come round along it)
+  return own ?? ringLength((2 * Math.PI * W) / MOBIUS_WIDTH / step, (K * W) / 2 / step, (K * q) % 2 ? K * q : (K * q) / 2, (n) => ok(n, nv) && n % along === 0);
 };
+const stripKey = () => `${ringColours()}${MODES[$('mode').value]?.margolus ? ' blocks' : ''}`;  // (a strip's length its colours', a reversible one's its blocks', see stripSteps)
 const stripMemo = weakCache(), countMemo = {};
 // a strip's length, width and tiles' count, without its tiles (the sizes' ladder asks for many: see mobiusSheetOf's count)
-const mobiusCount = (kind0, size) => (countMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size, true));  // (its length its colours': see stripSteps)
+const mobiusCount = (kind0, size) => (countMemo[`${kind0}|${size}|${stripKey()}`] ??= mobiusSheetOf(kind0, size, true));  // (its length its colours': see stripSteps)
 function mobiusSheet(kind0, size) {
-  return (stripMemo[`${kind0}|${size}|${ringColours()}`] ??= mobiusSheetOf(kind0, size));  // (its mesh's, kept while it is: see meshCache)
+  return (stripMemo[`${kind0}|${size}|${stripKey()}`] ??= mobiusSheetOf(kind0, size));  // (its mesh's, kept while it is: see meshCache)
 }
 function mobiusSheetOf(kind0, size, count = false) {  // count: its tiles counted, not built ({ L, W, n }: see mobiusCount)
   if (kind0.startsWith('mobiusKite')) {  // the triangles', cut in 3
@@ -4893,7 +4895,7 @@ const turnOver = (c) => { let d = c.length; while (d > 1 && c[d - 1] === c[d - 2
 // corners turned over. A corner of the sheet is a corner of each face (but one where the faces
 // meet, on the strip's edge); past the glued ends, the front goes on as the back
 function mobiusMesh(kind, size) {
-  const key = `${kind}${size}|${ringColours()}`, nv = mobiusSize(size)[0];  // (its length its colours': see stripSteps)
+  const key = `${kind}${size}|${stripKey()}`, nv = mobiusSize(size)[0];  // (its length its colours': see stripSteps)
   if (meshCache[key]) return meshCache[key];
   const { L, W, tiles: sheet, mids, bricks, originCell } = mobiusSheet(kind, size), k = sheet[0].length;
   const { verts, add } = vertexStore();
