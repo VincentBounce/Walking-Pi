@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1444';
+const VERSION = '0.1.1445';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -4313,8 +4313,13 @@ function hullColourings(sphere) {
   const all = hullFaces(HULL_SOLIDS[sphere]()), faces = [...all.filter((fc) => fc.corners.length === 4), ...all.filter((fc) => fc.corners.length === 3)];
   const mids = faces.map(({ corners }) => [0, 1, 2].map((d) => corners.reduce((sum, c) => sum + c[d], 0) / corners.length)), out = {};
   const far = (p, q) => Math.hypot(...[0, 1, 2].map((d) => mids[p][d] - mids[q][d]));
-  // (each colour's first face, where its pattern goes: the farthest from those before, as the cube's colours face each other)
-  const spread = (groups) => groups.reduce((done, gr) => [...done, [...gr].sort((p, q) => Math.min(...done.map((g) => far(q, g[0]))) - Math.min(...done.map((g) => far(p, g[0]))) || p - q)], []);
+  // (each colour's first face, where its pattern goes: its part's middle one, the nearest its faces' mean (a bicupola's half: its
+  // cap); as near: the farthest from those before, as the cube's colours face each other (a pyramid's two triangles))
+  const spread = (groups) => groups.reduce((done, gr) => {
+    const m = [0, 1, 2].map((d) => gr.reduce((t, q) => t + mids[q][d], 0) / gr.length), mid = (q) => Math.hypot(...[0, 1, 2].map((d) => mids[q][d] - m[d]));
+    const apart = (q) => (done.length ? Math.min(...done.map((g) => far(q, g[0]))) : 0);
+    return [...done, [...gr].sort((p, q) => (Math.abs(mid(p) - mid(q)) > 1e-9 ? mid(p) - mid(q) : apart(q) - apart(p) || p - q))];
+  }, []);
   const add = (kind, groups, pairs = false) => { if (groups.length > 1 && !out[groups.length]) out[groups.length] = { kind, groups: spread(groups), mids, pairs }; };
   const offer = (kind, qs) => {
     add(kind, qs.map((q) => [q]));
