@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1463';
+const VERSION = '0.1.1464';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7700,7 +7700,8 @@ function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on a surface: its patterns, to see)
     b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
-    b.disabled = false;
+    b.disabled = b.dataset.start === 'draw' && !kind && !!MODES[$('mode').value].margolus;  // (Draw on a surface: its rule's patterns, none for blocks)
+    if (b.dataset.start === 'draw') b.title = b.disabled ? 'Draw: greyed on a reversible surface (no patterns of a block rule to show, nor drawing)' : '';
     if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
     if (b.dataset.start === 'text') { b.disabled = !!walk.life && current?.mode === $('mode').value && !iconFits(iconMax(textSet()), 64); b.title = b.disabled ? 'Text: greyed where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' : ''; }  // (its grid's, once built)
   }
