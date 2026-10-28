@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1430';
+const VERSION = '0.1.1431';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6477,13 +6477,16 @@ function meshSide(g, nbr) {
 }
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
-  const { initial } = mode, kind = surfaceOf(mode);
+  const { initial } = mode, kind = surfaceOf(mode), { mesh, radius } = SPHERES[kind];
+  // its colours first, then its size's mesh made for them (a torus's columns their blocks', see ringColumns): from those
+  // picked, those it has fair spots for, its sizes again for them; a link's the same
+  lifeColours = coloursPicked;
   fillSphereSizes(kind, initial);
-  const { mesh, radius } = SPHERES[kind];
+  fitColours(mesh(sphereSize()));
+  fillSphereSizes(kind, initial);
   const size = sphereSize();
   const g = mesh(size);
   const nbr = cornerNeighbours(g);
-  fitColours(g);  // as many colours as the surface has fair spots for
   let rule = lifeRuleNow() || parseRule('B3/S23');
   const ring = rule.iso === 'hensel' && lifeMark(mode) === '■' ? cornerNeighbours(g, 8).ring : rule.iso === 'hex' ? nbr.ring : null;
   if (rule.iso && rule.iso !== 'vertex' && !ring) {  // Callahan's letters need hexagons, Hensel's squares (the flowers', any surface)
