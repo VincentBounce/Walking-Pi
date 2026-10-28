@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1493';
+const VERSION = '0.1.1495';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2691,7 +2691,8 @@ for (const [kind, t] of Object.entries(TILINGS)) {
 // Reversible on the tori: Life's, in blocks as the plane's (its blocks' grid, so many cells a block, see meshBlocks), 3 squares
 // round it (see ringColours), its start on the middle one (see startColours)
 const REVERSIBLE_SHEETS = [['blocksTorus', 'lifeTorus', 'square', 4], ['blocksTorusHex', 'lifeTorusHex', 'hex', 3], ['blocksTorusTri', 'lifeTorusTri', 'tri', 6], ['blocksTorusCairo', 'lifeTorusCairo', 'cairo', 4], ['blocksTorusTetrakis', 'lifeTorusTetrakis', 'tetrakis', 4],
-  ['blocksMobius', 'lifeMobius', 'square', 4], ['blocksMobiusTri', 'lifeMobiusTri', 'tri', 6], ['blocksKlein', 'lifeKlein', 'square', 4], ['blocksKleinTri', 'lifeKleinTri', 'tri', 6]];  // (as Life's: the tori, the Möbius strips, the Klein bottles)
+  ['blocksMobius', 'lifeMobius', 'square', 4], ['blocksMobiusTri', 'lifeMobiusTri', 'tri', 6], ['blocksMobiusTetrakis', 'lifeMobiusTetrakis', 'tetrakis', 4],
+  ['blocksKlein', 'lifeKlein', 'square', 4], ['blocksKleinTri', 'lifeKleinTri', 'tri', 6], ['blocksKleinTetrakis', 'lifeKleinTetrakis', 'tetrakis', 4]];  // (as Life's: the tori, the Möbius strips, the Klein bottles)
 const BLOCK_STEPS = { torusHex: 3, torusTriTurned: 3, mobius: 2 };  // (their sizes a multiple: their 3 sets of blocks come round the tube only so, see meshBlocks)
 for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODES[w] = { ...MODES[life], margolus: true, blocks, where: `${MODES[life].where.split(' (')[0]} in blocks of ${k} round a corner, as the plane's, 3 squares round it, its start on the middle one` };
@@ -4569,15 +4570,16 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
     tiles.push(swap([0, 1, 2, 3, 4, 5].map((k) => [c + Math.cos((k * Math.PI) / 3) / 1.5, cj + Math.sin((k * Math.PI) / 3) / Math.sqrt(3)])));
   }
   if (kind === 'kleinKite' || kind === 'kleinKiteTurned') { const kites = tiles.flatMap(kitesOf); tiles.length = 0; for (const t of kites) tiles.push(t); }  // (each triangle its 3 kites)
+  const up = kind === 'kleinCairo' ? 0.5 : 0;  // (Cairo's pentagons half a square up its sheet, as the torus's: their mirror line too, see id)
   if (kind === 'kleinCairo') for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) for (const o of [0, 1]) {
-    tiles.push(cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + 0.5]));  // (its first pair at the sheet's corner, as the torus's)
+    tiles.push(cairoCorners(i, j, o).map(([x, y]) => [x + 0.5, y + up]));  // (its first pair at the sheet's corner, as the torus's)
   }
   const ids = new Map(), verts = [], r6 = (v) => Math.round(v * 1e6) / 1e6, tube = tubeFor(kind, nv, nu);
   const id = (x0, y0) => {  // the point's place on the sheet, brought within it
     let x = r6(x0), y = r6(y0);
     const k = Math.floor(x / nu);
     x = r6(x - k * nu);
-    if (k % 2) y = r6(nv - y);
+    if (k % 2) y = r6(nv + 2 * up - y);  // (across the seam, turned over its tiles' mirror line)
     y = r6(((y % nv) + nv) % nv);
     const key = `${x},${y}`;
     if (!ids.has(key)) { ids.set(key, verts.length / 3); verts.push(...kleinPoint(x0, y0, nu, nv, 1, tube)); }
