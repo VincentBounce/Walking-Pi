@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1459';
+const VERSION = '0.1.1460';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7236,8 +7236,8 @@ const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: 
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
-// Life's grids in their spaces (see SPACES): the plane's round ones (these) or the others; the surfaces' sheets or solids
-for (const [w, n] of Object.entries(NAV)) if (n[0] === 'Life') n[1] = n[1] === '2D' ? (APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares') : SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
+// Life's and Reversible's grids in their spaces (see SPACES): the plane's round ones (these) or the others; the surfaces' sheets or solids
+for (const [w, n] of Object.entries(NAV)) if (n[0] === 'Life' || n[0] === 'Reversible') n[1] = n[1] === '2D' ? (APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares') : SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids';
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
