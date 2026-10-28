@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1507';
+const VERSION = '0.1.1508';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7323,10 +7323,9 @@ function planeCellAt(kind, W, wx, wy, how = 'in') {
     }
     return null;
   }
-  if (kind === 'kite') {  // its triangle's, then the kite round the corner nearest
-    const t = planeCellAt('tri', W, wx, wy, 'free');  // (its triangle on the plane)
-    for (let k = 0; k < 3; k++) if (insidePolygon(planeCorners('kite', 3 * t[0] + k, t[1]), wx, wy)) return on(3 * t[0] + k, t[1]);
-    return on(3 * t[0], t[1]);
+  if (kind === 'kite') {  // its triangle's, then its kite: the one round its corner nearest (kite k round corner k, see kitesOf)
+    const t = planeCellAt('tri', W, wx, wy, 'free'), d = planeCorners('tri', t[0], t[1]).map(([x, y]) => Math.hypot(x - wx, y - wy));  // (its triangle on the plane)
+    return on(3 * t[0] + d.indexOf(Math.min(...d)), t[1]);
   }
   if (kind === 'square') { x = Math.round(wx); y = Math.round(wy); }
   else {
