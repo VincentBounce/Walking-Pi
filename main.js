@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1457';
+const VERSION = '0.1.1458';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8458,9 +8458,12 @@ const pixelIcon = (art, box = 5) => `<svg class="icon rule-icon" viewBox="${(5 -
 // then a block's states and the one each turns into, one of each turned the same (the rule turns with its block), those
 // changing then those kept, by their live cells; the state before shown a moment, fading
 function blockTutorial(option, to) {
-  // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be)
-  const kind = planeKind(MODES[$('mode').value].plane), W = planeW(kind, planeSides(kind)[0]), row = planeRow(kind, W), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
-  const blocksOf = (torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four)), { k, turns, move } = blocksOf(false);  // (Ising: its squares, a colour a phase)
+  // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be): the
+  // smallest with blocks in each phase (the triangles' at 6: no whole hexagon)
+  const kind = planeKind(MODES[$('mode').value].plane), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
+  const blocksAt = (W, torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four));  // (Ising: its squares, a colour a phase)
+  const W = planeSides(kind).map((sd) => planeW(kind, sd)).find((w) => blocksAt(w, false).turns.every((t) => t.length)), row = planeRow(kind, W);
+  const blocksOf = (torus) => blocksAt(W, torus), { k, turns, move } = blocksOf(false);
   if (!ising && to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
   const mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), poly = (t) => planeCorners(kind, t % row, Math.floor(t / row));
   // a block of the first set, the nearest the grid's middle, as the picture of a block
