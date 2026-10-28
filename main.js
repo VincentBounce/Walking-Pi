@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1412';
+const VERSION = '0.1.1413';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1381,6 +1381,7 @@ function describe(base, available) {
     }
     return;
   }
+  if (!walk.life) return;  // (Space-time: its cubes, a 3D walk of them, see buildSpaceTime)
   const cells = walk.life.seed.length, C = base;
   const seeded = available < cells ? `the first ${fmt(available)} of the ${fmt(cells)} cells (the others start dead)` : `the ${fmt(cells)} cells`;
   const start = lifeStart, number = `<span class="walking">${sym}</span> in base ${C} seeds`;
@@ -1632,6 +1633,18 @@ function renderBlocksButton() {
     text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
+// Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
+// buildSpaceTime); on squares up to 128 a side only (a cube of generations: up to 2 million cubes)
+let spaceTime = false, spaceButton = null;
+const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square' && plane.side <= 128; };
+const spaceTimeOn = () => spaceTime && spaceTimeApplies();
+function renderSpaceButton() {
+  const cube = (x, y, c) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1" fill="${c}"/>`;
+  spaceButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${cube(3, 15, GRADIENT[0]) + cube(7, 11, GRADIENT[Math.floor(BANDS / 3)]) + cube(11, 7, GRADIENT[Math.floor((2 * BANDS) / 3)]) + cube(15, 3, GRADIENT[BANDS - 1])}</svg>`,  // (a glider's cells, a generation higher each)
+    text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, as many generations as the grid is wide (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
+    click: () => { spaceTime = !spaceTime; compute(true); } });
+  setTile(spaceButton, { on: spaceTimeOn(), can: spaceTimeApplies(), byDefault: 'off', greyed: 'but on squares up to 128 a side (not Reversible)' });
+}
 // Life's looks as square buttons with pictures (States or Colours, Age, Activity); a walk's, a list
 const defaultLook = (mode) => (mode.life ? 'mono' : 'gradient');  // (the simplest: Life's States, a walk's Rainbow)
 function renderColorButtons() {
@@ -1646,7 +1659,8 @@ function renderColorButtons() {
     greyed: { gradient: L ? '' : 'on a spiral (its line no use)', visits: 'on a spiral (each cell visited once)' }[o.value] ?? '',
     click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } }));
   if (MODES[$('mode').value].margolus) renderBlocksButton();
-  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [MODES[$('mode').value].margolus ? blocksButton : trailButton] : []));  // then Life's Trail, a switch (Reversible's Blocks)
+  if (MODES[$('mode').value].plane) renderSpaceButton();
+  box.replaceChildren(...(buttons.length > 1 ? [tileGroup(buttons)] : buttons), ...(L ? [MODES[$('mode').value].margolus ? blocksButton : trailButton] : []), ...(MODES[$('mode').value].plane ? [spaceButton] : []));  // then Life's Trail, a switch (Reversible's Blocks), and on the plane Space-time
 }
 // Sound: Korobeiniki (the Russian song of Tetris, public domain) as 8-bit, while Life plays, on a clock of its own (Web
 // Audio, made here: a browser plays nothing before a click, off at first): its melody a square wave, its bass a triangle
@@ -7559,7 +7573,33 @@ function buildLifePlane(seq) {
   renderColours();  // the blocks a figure fits, and its size's words (its colours fitted), now that it is built
   renderPlaneRow();
   if (!$('ruleTuto').hidden) renderRuleSection();  // (its page, now that it is built: blocks, their max period here)
-  autoplay();
+  if (spaceTimeOn()) buildSpaceTime();
+  else autoplay();
+}
+// Space-time: Life on squares from its start, as many generations as the grid is wide, stacked up (time going up), each live
+// cell a cube; then a 3D walk of those cubes, generation by generation (its rainbow: time; Activity: each its colour), shown
+// whole, turned as any 3D walk (see glCubes)
+function buildSpaceTime() {
+  const L = walk.life, { W, row } = walk.plane, K = L.colours, xyz = [], keys = [];
+  for (let g = 0; g < W; g++) {
+    advanceTo(g);
+    const a = L.alive;  // (its states: 1 … K alive, of that colour; past them, dying)
+    for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { xyz.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g - (W - 1) / 2); keys.push(a[t] - 1); }
+  }
+  const n = Math.max(0, keys.length - 1), base = Math.max(2, K), at = (d) => Float64Array.from({ length: n + 1 }, (_, i) => xyz[3 * i + d] ?? 0);
+  const wx = at(0), wy = at(1), wz = at(2), digits = Uint8Array.from({ length: n + 1 }, (_, i) => keys[i] ?? 0), maxDist = new Float64Array(n + 1), counts = new Int32Array(base * (n + 1));
+  for (let i = 0; i <= n; i++) {
+    maxDist[i] = Math.max(i ? maxDist[i - 1] : 0, Math.hypot(wx[i], wy[i], wz[i]));
+    for (let c = 0; c < base; c++) counts[base * i + c] = i ? counts[base * (i - 1) + c] : 0;
+    counts[base * i + digits[i]]++;
+  }
+  Object.assign(walk, { vert: null, stepTiles: null, loop: null, n, digits, wx, wy, wz, is3d: true, cells: Int32Array.from({ length: n + 1 }, (_, i) => i + 1), maxDist, base, counts,
+                        lattice: 'cube', lines: false, skipZeros: false, ant: 0, turns: null, antStates: null, antTurns: null, highway: null, bridges: [], wormEnd: false, wormMade: 0,
+                        keys: digits, sphere: false, life: null, plane: null, geo: null, xs: new Float64Array(n + 1), ys: new Float64Array(n + 1) });
+  setPerspective();
+  project();
+  restart();
+  showAll();
 }
 // The angle the view turns its world by (drawn turned, see turnLayer; a frame or the pointer in the turned world): a
 // rectangle's (a slanted grid's straight sheet, see planeKind), its side U across; any other grid's, as it is (its tiles as
@@ -7621,6 +7661,7 @@ function planeLead(number) {
 function planeFromSetup(s) {
   if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side)
   plane.torus = Number(s.e) !== 1;
+  spaceTime = Number(s.sp) === 1;
   plane.gens = Number(s.g) || 2000;  // (a reversible one's length)
   const [kind, a, b] = String(s.pop ?? 'random').split('.');
   plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
@@ -10558,6 +10599,7 @@ function getSetup() {
     s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;
     if (symmetryOf(mode.plane) !== 'none') s.y = symmetryOf(mode.plane);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
+    if (spaceTimeOn()) s.sp = 1;  // (Space-time)
   }
   if (mode.life && !mode.plane) s.pop = plane.start === 'digits' ? 'digits' : zonePop();  // a surface's start
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
@@ -10951,7 +10993,7 @@ function showAll() {
 function includeBox() {
   if (!walk.is3d || walk.sphere) return;
   const [x0, x1, y0, y1, z0, z1] = bounds3, [cx, cy] = projectPoint((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-  const c = MODES[current.mode].cells ? 2 * cellShape().half : 0;  // the cells of a walk on cells, past their centres
+  const c = cubesWalk() ? 2 * cellShape().half : 0;  // the cells of a walk on cells, past their centres
   const r = Math.hypot(x1 - x0 + c, y1 - y0 + c, z1 - z0 + c) / 2, P = walk.persp, R = P && P.D > r ? (r * P.D) / Math.sqrt(P.D * P.D - r * r) : r;
   bounds = { minX: cx - R, maxX: cx + R, minY: cy - R, maxY: cy + R };
 }
@@ -12203,7 +12245,7 @@ const templateArray = (templates) => {
 // how many of the sorted values are ≤ v
 const countUpTo = (sorted, n, v) => { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (sorted[m] <= v) lo = m + 1; else hi = m; } return lo; };
 function glFlat(to) {
-  if (walk.is3d && MODES[current.mode].cells) return glCubes(to);
+  if (cubesWalk()) return glCubes(to);
   const S = glSetup();
   if (!S) return false;
   const { gl, prog } = S, mode = $('colorMode').value, { scale: s, ox, oy } = view;
@@ -12365,6 +12407,7 @@ const CELL_SHAPES = {
 // order with the depth buffer, so that a cell shows the colour of its last visit (the rainbow by the
 // step, its digit's, or one colour) and hides the ones behind it
 const cellShape = () => CELL_SHAPES[MODES[current.mode].shape ?? 'cube'];
+const cubesWalk = () => walk.is3d && (!!MODES[current.mode].cells || spaceTimeOn());  // (a 3D walk on cells, Life's Space-time: cubes)
 function glCubes(to) {
   const S = glSetup();
   if (!S) return false;
