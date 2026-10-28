@@ -903,34 +903,38 @@ For each rule offered (Life's own patterns on squares come from LifeWiki), 3,000
 
 ### Hexagons
 
+Their links on the app's rectangle of hexagons (side 64: 34 rows of 118, since v0.1.1400; the 64 × 64 rhombus they were found on is gone): the same oscillators and ships, the methuselahs' lifetimes its own.
+
 | Rule | Pattern | What it does | Try it |
 |---|---|---|---|
-| B34/S123/C3 | Oscillator | period 8 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B34/S123/C3&s=64&pop=draw&p=32,32:2.A$.A$2A$A$A!) |
-| B2/S34 | Oscillator | period 48 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S34&s=64&pop=draw&p=32,32:3.A$$2.A$.2A$$2A!) |
-| B2/S34 | Methuselah | loops from generation 254 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S34&s=64&pop=draw&p=32,32:4.A$4.A$3.A$4A$3A!) |
-| B24/S35 | Oscillator | period 6 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B24/S35&s=64&pop=draw&p=32,32:3.A$2.A$.A$A!) |
-| B24/S134/C4 | Glider | flies, period 2 · 16 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B24/S134/C4&s=64&pop=draw&p=32,32:3.AC$.AB.B$ACACAC$AB.B$.AC!) |
-| B24/S134/C4 | Methuselah | settles at generation 3,448 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B24/S134/C4&s=64&pop=draw&p=32,32:4.A$.A2.A$A.2A$A2.A$.A!) |
-| B2o/S2m34 | Glider | flies, period 4 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=32,32:.A$A$A2.A$A$A!) |
-| B2o/S2m34 | Spaceship | flies, period 48 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=32,32:3.A$2.A$$2.3A$4A$.2A$A!) |
-| B2o/S2m34 | Oscillator | period 30 · 14 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=32,32:4.A$3.2A$7A$.A2.A$.A2.A!) |
-| B2o/S2m34 | Methuselah | loops from generation 352 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=32,32:2.2A$.2A.A$2A2.A$A2.A$.2A!) |
-| B2/S24/C3 | Glider | flies, period 6 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=32,32:3.BA$4.B$4.A$2.AB$.A$2A$A!) |
-| B2/S24/C3 | Spaceship | flies, period 6 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=32,32:.ABA$B2.B$2.A$2.2A$2.2A!) |
-| B2/S24/C3 | Oscillator | period 9 · 15 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=32,32:.ABA$.B.BA$A2.A$B2A$A.B$BA!) |
-| B2/S24/C3 | Methuselah | settles at generation 3,795 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=32,32:4.A$4.A$2A2.A$4A!) |
-| B234/S1234 | Methuselah | loops from generation 2,193 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B234/S1234&s=64&pop=draw&p=32,32:2.2A$.2A$A.3A$.2A$A.A!) |
-| B234/S234 | Methuselah | loops from generation 2,885 · 8 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B234/S234&s=64&pop=draw&p=32,32:2.A.A$.A2.A$4.A$2A$2.A!) |
+| B34/S123/C3 | Oscillator | period 8 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B34/S123/C3&s=64&pop=draw&p=56,16:3.A$2A.A$A2.A!) |
+| B2/S34 | Oscillator | period 48 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S34&s=64&pop=draw&p=58,16:A$2A.A$.A.A!) |
+| B2/S34 | Methuselah | loops from generation 254 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S34&s=64&pop=draw&p=54,16:4.A2.A$.A.3A.A$A.A.A!) |
+| B24/S35 | Oscillator | period 6 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B24/S35&s=64&pop=draw&p=56,16:5.A$2.2A$A!) |
+| B24/S134/C4 | Glider | flies, period 2 · 16 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B24/S134/C4&s=64&pop=draw&p=54,16:5.A.C$2ABC.ABC.A.C$A.B2.ABC!) |
+| B24/S134/C4 | Methuselah | settles at generation 1,358 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B24/S134/C4&s=64&pop=draw&p=54,16:7.A$2A3.3A$A4.2A!) |
+| B2o/S2m34 | Glider | flies, period 4 · 6 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=54,16:3.A$A2.A5.A$2.A2.A!) |
+| B2o/S2m34 | Spaceship | flies, period 48 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=54,16:2.2A$5.A.A.A$A.A.4A$2.A!) |
+| B2o/S2m34 | Oscillator | period 30 · 14 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=53,16:6.A$A.5A.A.A.A$.A2.A2.A2.A!) |
+| B2o/S2m34 | Methuselah | loops from generation 500 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=54,16:3.A.A$4A2.A2.A$A4.3A!) |
+| B2/S24/C3 | Glider | flies, period 6 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=56,16:B.A2.B$3.2AB$2A.A$A!) |
+| B2/S24/C3 | Spaceship | flies, period 6 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=52,16:3.A.B.A$B5.BA$6.A.2A.A!) |
+| B2/S24/C3 | Oscillator | period 9 · 15 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=54,16:.A.B.A$BA2.B.2A$B.3A2.B$2.B.A!) |
+| B2/S24/C3 | Methuselah | loops from generation 1,089 · 9 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2/S24/C3&s=64&pop=draw&p=54,16:7.A$.A.A2.A2.A$A.A.A.A!) |
+| B234/S1234 | Methuselah | loops from generation 852 · 12 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B234/S1234&s=64&pop=draw&p=54,16:3.A.A$3A2.A.A.A$2.3A2.A!) |
+| B234/S234 | Methuselah | loops from generation 823 · 8 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B234/S234&s=64&pop=draw&p=54,16:3.A3.A$A5.A2.A$A.A4.A!) |
 
 ### Triangles
 
+Their links on the app's rectangle of triangles (side 64: 24 rows of 168, since v0.1.1400), as the hexagons'.
+
 | Rule | Pattern | What it does | Try it |
 |---|---|---|---|
-| B3/S23 | Oscillator | period 8 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=64,32:4A!) |
-| B3/S23 | Methuselah | loops from generation 1,166 · 19 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=64,32:4.A2.2A$.A3.2A.A$3A.A.3A$2.2A.A$.A.A!) |
-| B34/S2/C4 | Methuselah | settles at generation 4,089 · 20 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B34/S2/C4&s=64&pop=draw&p=64,32:3.A2.2A$.3A3.3A$2.A.3A$3A3.A$2.3A!) |
-| B45/S345/C4 | Oscillator | period 4 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B45/S345/C4&s=64&pop=draw&p=64,32:5.3A$2.C3.A$.A3.C$3A!) |
-| B45/S345/C4 | Methuselah | settles at generation 1,847 · 17 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B45/S345/C4&s=64&pop=draw&p=64,32:4.A.2A.A$2.2A2.2A.A$2.3A2.A$A3.A.A$.A!) |
+| B3/S23 | Oscillator | period 8 · 4 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=80,12:A3.2A3.A!) |
+| B3/S23 | Methuselah | loops from generation 1,142 · 19 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=76,11:3.2A6.4A3.A$A3.2A2.A.3A2.3A$9.A3.A!) |
+| B34/S2/C4 | Methuselah | settles at generation 1,346 · 20 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B34/S2/C4&s=64&pop=draw&p=79,11:A.4A4.A.A2.2A$.A.3A.A.2A4.A$5.A3.2A!) |
+| B45/S345/C4 | Oscillator | period 4 · 10 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B45/S345/C4&s=64&pop=draw&p=85,11:.C.2A3.2A$3A2.A2.C!) |
+| B45/S345/C4 | Methuselah | loops from generation 1,331 · 17 cells | [draw](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B45/S345/C4&s=64&pop=draw&p=80,11:A.3A4.3A.A.A$A.A.2A4.A2.2A$5.A!) |
 
 ### Cairo pentagons
 
@@ -999,7 +1003,7 @@ B2om5/S2om4o is the closest to Life in its figures: a soup that thins out the sa
 
 They send out gliders as often as Life, or more, and their small starts grow as often; but their soups thin out faster (2 % alive at generation 300 where Life keeps 6 %), down to a few gliders flying on for ever.
 
-**A puffer in Comets.** Seen in a battle on the hexagon sphere, then found among 300 random starts: 16 cells, `A.A$A.2A$2.A.A$5A$3.2A$3.2A!`, that fly at half speed (50 cells every 100 generations) leaving a trail of debris behind, as Life's puffer trains do: 146, 320, 438, 576 cells at generations 100 to 400 on a 400 torus, before its front comes round ([play](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2345/S134/C5&s=128&pop=draw&p=64,64:A.A$A.2A$2.A.A$5A$3.2A$3.2A!)).
+**A puffer in Comets.** Seen in a battle on the hexagon sphere, then found among 300 random starts: 16 cells, `A.A$A.2A$2.A.A$5A$3.2A$3.2A!`, that fly at half speed (50 cells every 100 generations) leaving a trail of debris behind, as Life's puffer trains do: 146, 320, 438, 576 cells at generations 100 to 400 on a 400 torus, before its front comes round ([play](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2345/S134/C5&s=128&pop=draw&p=112,33:A2.2A2.A.A$5.3A.3A.A$10.A.2A.A!)).
 
 <br>
 
@@ -1126,11 +1130,11 @@ A search in the app's own page (tools/famoussearch.js: its rules, Callahan's let
 
 | Grid | Rule | Pattern | RLE | Does | Link |
 |---|---|---|---|---|---|
-| Triangles | Life B3/S23 | Oscillator | `.3A$.2A$3A!` | period 8 · 8 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=32,32:.3A$.2A$3A!) |
-| Triangles | Life B3/S23 | Methuselah | `3A$.A!` | loops from generation 430 · 4 cells (the same on tori of 96 and 128) | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=32,32:3A$.A!) |
-| Triangles | Sparse B45/S345/C4 | Oscillator | `3.3A$2.A2B.A$.A.2BA$2.3A!` | period 4 · 14 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B45/S345/C4&s=64&pop=draw&p=32,32:3.3A$2.A2B.A$.A.2BA$2.3A!) |
-| Hexagons | Life's twin B2om5/S2om4o | Oscillator | `2.A$2.A$2A$.A$A!` | period 4 · 6 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2om5/S2om4o&s=64&pop=draw&p=32,32:2.A$2.A$2A$.A$A!) |
-| Hexagons | Long loops B34/S123/C3 | Oscillator | `.A.A$A2.A$3A$2A!` | period 7 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B34/S123/C3&s=64&pop=draw&p=32,32:.A.A$A2.A$3A$2A!) |
+| Triangles | Life B3/S23 | Oscillator | `.3A$.2A$3A!` | period 8 · 8 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=83,11:A2.2A$.4A2.A!) |
+| Triangles | Life B3/S23 | Methuselah | `3A$.A!` | loops from generation 430 · 4 cells (the same on tori of 96 and 128) | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B3/S23&s=64&pop=draw&p=80,12:A3.2A.A!) |
+| Triangles | Sparse B45/S345/C4 | Oscillator | `3.3A$2.A2B.A$.A.2BA$2.3A!` | period 4 · 14 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dTri&r=B45/S345/C4&s=64&pop=draw&p=84,11:3AB.AB3.A$.A2.2B2A.2A!) |
+| Hexagons | Life's twin B2om5/S2om4o | Oscillator | `2.A$2.A$2A$.A$A!` | period 4 · 6 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B2om5/S2om4o&s=64&pop=draw&p=57,16:2.A$3A$.2A!) |
+| Hexagons | Long loops B34/S123/C3 | Oscillator | `.A.A$A2.A$3A$2A!` | period 7 · 9 cells | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dHex&r=B34/S123/C3&s=64&pop=draw&p=54,16:3.A3.A$A2.A.3A$2.A.A!) |
 | Cairo | Cairo Life B34/S23 | Oscillator | `3.A.A$A2.2A$3.3A!` | period 4 · 8 cells, the most frequent | [play](https://vincentbounce.github.io/Walking-Pi/#w=life2dCairo&r=B34/S23&s=64&pop=draw&p=32,32:3.A.A$A2.2A$3.3A!) |
 
 A lesson for methuselahs: a torus too small lets their debris and ships come round and start the chaos again. A 4-cell start of Life on triangles loops from 3,656 on a torus of 48 but from 430 on tori of 96 and 128; Kite gliders' and Kite drifters' methuselahs (744 and 1,681 on a torus of 48) send out ships, and run to 1,512 and 2,929 on a torus of 96: see below, all the methuselahs measured again.

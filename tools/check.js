@@ -144,6 +144,7 @@ function checker(fail) {
   const c = { checked: 0, stop: () => window.removeEventListener('error', onError) };
   c.look = async (what, ms = 450) => {
     await wait(ms);
+    for (let t = 0; busy && t < 600; t++) await wait(100);  // (its digits still computed: the link follows the walk once built, see buildWalk)
     c.checked++;
     const w = $('mode').value, hashW = (location.hash.match(/w=([^&]*)/) ?? [])[1], said = [...($('sizeLabel').innerText.split('\n').at(-1).matchAll(/([\d,]+)\s+[a-z]+/gi))].reduce((sum, m) => sum + Number(m[1].replace(/,/g, '')), 0);  // (its cells, its terms summed: 1,910 hexagons + 12 pentagons)
     const n = MODES[w].sphere && !MODES[w].plane ? walk.geo?.n : null;
@@ -357,6 +358,10 @@ const KNOWN = [
   ['#w=life2d&r=B2/S/C3&s=64&pop=draw&p=32,32:3.2A$A$.4A$4.A$3A.A!', 2595, null],
   ['#w=life2d&r=B36/S23&s=64&pop=draw&p=32,32:A.2A$3.2A$2A$3.2A$3A!', 2652, 2],
   ['#w=life2d&r=B3/S12345&s=64&pop=draw&p=32,32:A3.A$2.A$2A$5A!', 430, 1],
+  ['#w=life2dHex&r=B2/S34&s=64&pop=draw&p=58,16:A$2A.A$.A.A!', 0, 48],
+  ['#w=life2dHex&r=B2/S34&s=64&pop=draw&p=54,16:4.A2.A$.A.3A.A$A.A.A!', 254, 20],
+  ['#w=life2dHex&r=B2o/S2m34&s=64&pop=draw&p=53,16:6.A$A.5A.A.A.A$.A2.A2.A2.A!', 0, 30],
+  ['#w=life2dTri&r=B3/S23&s=64&pop=draw&p=80,12:A3.2A.A!', 430, 8],
   ['#w=blocks2d&r=M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0&s=6&g=2000&pop=random.30.6', 0, 70],
   ['#w=blocks2d&r=Q2R&s=6&g=2000&pop=random.30.6', 0, 116],
   ['#w=blocks2dTetrakis&r=M0,4,8,12,1,10,9,13,2,6,5,14,3,7,11,15*&s=8&g=2000&pop=random.30.8', 0, 84],
