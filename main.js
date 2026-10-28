@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1408';
+const VERSION = '0.1.1409';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9178,11 +9178,11 @@ function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back
  *   spreading alone); score = the generations with two colours side by side, before the run repeats
  *   (or the cap), × the balance.
  * On the graphics card, in batches (see lifeEngine): the starts side by side, a generation of them all at once, their sums
- * (alive, the key, born of each colour, cells beside another colour's) kept LIFE_H generations, read back then; a run
+ * (alive, the key, born of each colour, cells beside another colour's) kept LIFE_H generations (more as fewer runs go on), read back then; a run
  * ended (repeating, all reached, or the cap), its place a new start's. */
 function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // goal: one colour's (see HUNT_GOALS)
   const n = L.seed.length, K = L.colours, C = L.C, { start, list } = L.nbr, dense = DENSITY, live = (v) => v > 0 && v <= K;
-  const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), LIFE_H);
+  const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), 8 * LIFE_H);
   if (!E) return null;
   const { gl } = GLS, cover = goal === 'cover', open = Array.from({ length: n }, (_, t) => t).filter((t) => start[t] !== start[t + 1]).length;
   // a start's cells into run r's place (its counts as a start's: lifeReset's), now
@@ -9321,12 +9321,14 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
     if (hunt.stopped) return;
     for (let r = 0; r < E.runs; r++) if (!runs[r]) { const seed = nextSeed(); if (seed) { runs[r] = begin(seed); upload(seed, r); } }  // (its place free: the next start)
     if (runs.every((s) => !s)) { report(top, tried, true); return; }  // (all tried)
-    for (let x = 0; x < LIFE_H; x++) { lifeRulePass(E); lifeTally(E, 0, false, false, false, x); }
+    // (the runs going on only, from the first to the last; as many generations a slice as they're fewer, as much work)
+    const on = runs.flatMap((s, r) => (s ? [r] : [])), span = [on[0], on.at(-1) + 1], k = Math.min(E.h, LIFE_H * Math.floor(E.runs / on.length));
+    for (let x = 0; x < k; x++) { lifeRulePass(E, span); lifeTally(E, 0, false, false, false, x, span); }
     const v = lifeRead(E);
     let changed = false;
     runs.forEach((s, r) => {
       if (!s) return;
-      for (let x = 0; x < LIFE_H; x++) if (step(s, (j) => v(j, r, x))) { tried++; changed = keep(result(s), s.seed) || changed; runs[r] = null; break; }
+      for (let x = 0; x < k; x++) if (step(s, (j) => v(j, r, x))) { tried++; changed = keep(result(s), s.seed) || changed; runs[r] = null; break; }
     });
     report(changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null, tried, false);
     setTimeout(slice, 0);
@@ -12527,7 +12529,7 @@ function blockGPU(M, n, ints) {
 // a pass: its program, its textures by their uniforms' names, its whole numbers (and more: its other uniforms), into its
 // targets (w × h), drawn over them. A framebuffer a set of targets (by its first: each in one set), its uniforms' places
 // a program's, made once (a pass then a few microseconds, not 40: see searchBack)
-function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x = 0) {  // (x: its targets' first column)
+function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x = 0, y = 0) {  // (x, y: its targets' first column, first row)
   const { gl, prog } = GLS, p = prog[program], at = (GLS.uniforms ??= new Map()), u = (name) => { const k = `${program}|${name}`; if (!at.has(k)) at.set(k, gl.getUniformLocation(p, name)); return at.get(k); };
   if (!E.fbs.has(targets[0])) {
     E.fbs.set(targets[0], gl.createFramebuffer());
@@ -12536,7 +12538,7 @@ function lifePass(E, program, textures, ints, targets, w, h, more = () => {}, x 
     gl.drawBuffers(targets.map((_, i) => gl.COLOR_ATTACHMENT0 + i));
   }
   gl.bindFramebuffer(gl.FRAMEBUFFER, E.fbs.get(targets[0]));
-  gl.viewport(x, 0, w, h);
+  gl.viewport(x, y, w, h);
   gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST);
   gl.useProgram(p);
   Object.entries(textures).forEach(([name, t], i) => { gl.activeTexture(gl.TEXTURE3 + i); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(u(name), 3 + i); });
@@ -12602,20 +12604,22 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
     key: lifeKey(v(6, 0, x), v(7, 0, x)), byColour: by(0, x), bornBy: by(1, x), deadBy: by(2, x), everBy: by(3, x) }));
 }
 // Life's rule, from E.now's states into E.next's
-function lifeRulePass(E) {
-  const L = E.L;
+function lifeRulePass(E, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played, see lifeRows)
+  const L = E.L, [y0, y1] = lifeRows(E, r0, r1);
   lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S },
-    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [E.next.state], 1024, E.rows);
+    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
 }
+// runs r0 … r1's rows of cells (4,096 a row): a hunt's passes over its runs going on only
+const lifeRows = (E, r0, r1) => [Math.floor((r0 * E.stride) / 4096), Math.ceil((r1 * E.stride) / 4096)];
 // then its cells' counts (back: see lifeBack) and its runs' sums, into column x of E.sum (negA, negB: shown negative), now
 // and next swapped
-function lifeTally(E, gen, back = false, negA = false, negB = false, x = 0) {
-  const { now, next } = E, base = { uN: E.n, uK: E.L.colours, uStride: E.stride };
-  lifePass(E, 'lifeBook', { uA: now.state, uB: next.state, uAge: now.age, uAct: now.act, uDied: now.died, uEver: now.ever }, { ...base, uGen: gen, uBack: back ? 1 : 0 }, [next.age, next.act, next.died, next.ever], 4096, E.rows);
+function lifeTally(E, gen, back = false, negA = false, negB = false, x = 0, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played)
+  const { now, next } = E, base = { uN: E.n, uK: E.L.colours, uStride: E.stride }, [y0, y1] = lifeRows(E, r0, r1);
+  lifePass(E, 'lifeBook', { uA: now.state, uB: next.state, uAge: now.age, uAct: now.act, uDied: now.died, uEver: now.ever }, { ...base, uGen: gen, uBack: back ? 1 : 0 }, [next.age, next.act, next.died, next.ever], 4096, y1 - y0, undefined, 0, y0);
   E.sum.forEach((targets, p) => {
-    lifePass(E, 'lifeCount', { uA: now.state, uB: next.state, uIn: E.in, uStart: E.start, uList: E.list, uEver: now.ever, uEverNow: next.ever, uActNow: next.act }, { ...base, uFrom: 16 * p, uNegA: negA ? 1 : 0, uNegB: negB ? 1 : 0 }, E.count, 64, E.rows);
-    lifePass(E, 'lifePart', { uC0: E.count[0], uC1: E.count[1], uC2: E.count[2], uC3: E.count[3] }, { uFrom: 16 * p, uBlocks: E.stride / 64 }, E.part, 64, E.runs);
-    lifePass(E, 'lifeSum', { uC0: E.part[0], uC1: E.part[1], uC2: E.part[2], uC3: E.part[3] }, { uFrom: 16 * p }, targets, 1, E.runs, undefined, x);
+    lifePass(E, 'lifeCount', { uA: now.state, uB: next.state, uIn: E.in, uStart: E.start, uList: E.list, uEver: now.ever, uEverNow: next.ever, uActNow: next.act }, { ...base, uFrom: 16 * p, uNegA: negA ? 1 : 0, uNegB: negB ? 1 : 0 }, E.count, 64, y1 - y0, undefined, 0, y0);
+    lifePass(E, 'lifePart', { uC0: E.count[0], uC1: E.count[1], uC2: E.count[2], uC3: E.count[3] }, { uFrom: 16 * p, uBlocks: E.stride / 64 }, E.part, 64, r1 - r0, undefined, 0, r0);
+    lifePass(E, 'lifeSum', { uC0: E.part[0], uC1: E.part[1], uC2: E.part[2], uC3: E.part[3] }, { uFrom: 16 * p }, targets, 1, r1 - r0, undefined, x, r0);
   });
   GLS.gl.bindFramebuffer(GLS.gl.FRAMEBUFFER, null);
   [E.now, E.next] = [next, now];
