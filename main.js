@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1422';
+const VERSION = '0.1.1423';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7551,7 +7551,7 @@ function buildLifePlane(seq) {
 // next starts were seen played wrong, ANGLE on Metal, see TODO.md)
 let stack = null;
 const STACK_MOST = 2 ** 21;  // its cubes at most: drawn turning in 19 ms, shadows and all, 40 MB (measured at 128 a side)
-const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['▣', `Its ${fmt(STACK_MOST)} cubes drawn: as many as it holds`] };
+const STACK_ENDS = { dead: ['✝', 'All died out'], loop: ['↻', 'Its loop gone round 5 times: more would draw the same'], full: ['· memory', `Its memory full: ${fmt(STACK_MOST)} cubes at most (drawn turning in 19 ms, 40 MB)`] };  // (memory: a word, not ▣, read as Stop)
 function stackUp() {
   const L = walk.life, { W, row } = walk.plane, K = L.colours, S = glSetup(), game = S.life;
   if (stack?.L === L && stack.gens === plane.gens && stack.seed.every((v, t) => v === L.seed[t])) return;
