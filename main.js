@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1416';
+const VERSION = '0.1.1417';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1633,14 +1633,14 @@ function renderBlocksButton() {
   setTile(blocksButton, { on: showBlocks && !walk.life?.margolus?.ising, can: !walk.life?.margolus?.ising, byDefault: 'off', greyed: 'in Ising (its squares in turn, no blocks)' });
 }
 // Space-time (Life on squares, a switch beside Trail): its generations stacked up, time going up, a cube a live cell (see
-// buildSpaceTime); on squares up to 128 a side only (a cube of generations: up to 2 million cubes)
+// buildSpaceTime); on squares up to 128 a side only (up to 5 times as many generations, 2^21 cubes at most)
 let spaceTime = false, spaceButton = null;
 const spaceTimeApplies = () => { const m = MODES[$('mode').value]; return !!m.plane && !m.margolus && planeKind(m.plane) === 'square' && plane.side <= 128; };
 const spaceTimeOn = () => spaceTime && spaceTimeApplies();
 function renderSpaceButton() {
   const cube = (x, y, c) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1" fill="${c}"/>`;
   spaceButton ??= tile({ pic: `<svg viewBox="0 0 24 24" aria-hidden="true">${cube(3, 15, GRADIENT[0]) + cube(7, 11, GRADIENT[Math.floor(BANDS / 3)]) + cube(11, 7, GRADIENT[Math.floor((2 * BANDS) / 3)]) + cube(15, 3, GRADIENT[BANDS - 1])}</svg>`,  // (a glider's cells, a generation higher each)
-    text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, as many generations as the grid is wide (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
+    text: 'Space-time', toggle: true, title: 'Space-time: the generations stacked up, time going up, a cube a live cell, up to 5 times as many generations as the grid is wide, played a generation at a time (a glider: a slanting line; an oscillator: a column); turned as a 3D walk',
     click: () => { spaceTime = !spaceTime; compute(true); } });
   setTile(spaceButton, { on: spaceTimeOn(), can: spaceTimeApplies(), byDefault: 'off', greyed: 'but on squares up to 128 a side (not Reversible)' });
 }
@@ -7539,15 +7539,18 @@ function buildLifePlane(seq) {
   if (spaceTimeOn()) buildSpaceTime();
   else autoplay();
 }
-// Space-time: Life on squares from its start, as many generations as the grid is wide, stacked up (time going up), each live
-// cell a cube; then a 3D walk of those cubes, generation by generation (its rainbow: time; Activity: each its colour), shown
-// whole, turned as any 3D walk (see glCubes)
+// Space-time: Life on squares from its start, up to 5 times as many generations as the grid is wide (till all die, or 2^21
+// cubes), stacked up (time going up), each live cell a cube; then a 3D walk of those cubes, generation by generation (its
+// rainbow: time; Activity: each its colour), its layers' ends kept (played a layer at a time, see stepOn), shown whole,
+// turned as any 3D walk (see glCubes)
 function buildSpaceTime() {
-  const L = walk.life, { W, row } = walk.plane, K = L.colours, xyz = [], keys = [];
-  for (let g = 0; g < W; g++) {
+  const L = walk.life, { W, row } = walk.plane, K = L.colours, xyz = [], keys = [], layers = [];
+  for (let g = 0; g < 5 * W && keys.length < 2 ** 21; g++) {
     advanceTo(g);
-    const a = L.alive;  // (its states: 1 … K alive, of that colour; past them, dying)
-    for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { xyz.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g - (W - 1) / 2); keys.push(a[t] - 1); }
+    const a = L.alive, before = keys.length;  // (its states: 1 … K alive, of that colour; past them, dying)
+    for (let t = 0; t < W * row; t++) if (a[t] >= 1 && a[t] <= K) { xyz.push(t % row - (row - 1) / 2, (W - 1) / 2 - Math.floor(t / row), g - (5 * W - 1) / 2); keys.push(a[t] - 1); }
+    if (keys.length === before) break;  // (all dead)
+    layers.push(keys.length - 1);
   }
   const n = Math.max(0, keys.length - 1), base = Math.max(2, K), at = (d) => Float64Array.from({ length: n + 1 }, (_, i) => xyz[3 * i + d] ?? 0);
   const wx = at(0), wy = at(1), wz = at(2), digits = Uint8Array.from({ length: n + 1 }, (_, i) => keys[i] ?? 0), maxDist = new Float64Array(n + 1), counts = new Int32Array(base * (n + 1));
@@ -7558,7 +7561,7 @@ function buildSpaceTime() {
   }
   Object.assign(walk, { vert: null, stepTiles: null, loop: null, n, digits, wx, wy, wz, is3d: true, cells: Int32Array.from({ length: n + 1 }, (_, i) => i + 1), maxDist, base, counts,
                         lattice: 'cube', lines: false, skipZeros: false, ant: 0, turns: null, antStates: null, antTurns: null, highway: null, bridges: [], wormEnd: false, wormMade: 0,
-                        keys: digits, sphere: false, life: null, plane: null, geo: null, xs: new Float64Array(n + 1), ys: new Float64Array(n + 1) });
+                        keys: digits, sphere: false, life: null, plane: null, geo: null, xs: new Float64Array(n + 1), ys: new Float64Array(n + 1), layers: Int32Array.from(layers.length ? layers : [0]) });
   setPerspective();
   project();
   restart();
@@ -12368,6 +12371,16 @@ const CELL_SHAPES = {
 // order with the depth buffer, so that a cell shows the colour of its last visit (the rainbow by the
 // step, its digit's, or one colour) and hides the ones behind it
 const cellShape = () => CELL_SHAPES[MODES[current.mode].shape ?? 'cube'];
+// k steps on from point i (back: k < 0): a walk's points; Space-time's layers, a generation each (to its last cube; from
+// within one, finishing it is a step)
+function stepOn(i, k) {
+  const E = spaceTimeOn() && walk.layers;
+  if (!E) return Math.max(0, i + k);
+  let lo = 0, hi = E.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (E[m] >= i) hi = m; else lo = m + 1; }  // (its layer: the first ending at i or past it)
+  const g = lo + k - (k > 0 && E[lo] > i ? 1 : 0);
+  return g < 0 ? 0 : E[Math.min(E.length - 1, g)];
+}
 const cubesWalk = () => walk.is3d && (!!MODES[current.mode].cells || spaceTimeOn());  // (a 3D walk on cells, Life's Space-time: cubes)
 function glCubes(to) {
   const S = glSetup();
@@ -13227,7 +13240,7 @@ function tick(now = performance.now()) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
     acc -= k;
-    if (k > 0) advanceTo(reversing ? Math.max(0, cur - k) : cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
+    if (k > 0) advanceTo(stepOn(cur, reversing ? -k : k), now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
     if (reversing && !cur) reverse(false);
   }
   includeBox();
@@ -13342,7 +13355,7 @@ $('play').addEventListener('click', () => {
   if (cur >= walk.n || lifeEnded()) restart();  // at the end: from the start again
   play(!playing);
 });
-$('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
+$('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(stepOn(cur, 1)); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 $('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing
@@ -13389,7 +13402,7 @@ const seekCurve = (e) => {
 };
 $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
-$('back').addEventListener('click', () => seekTo(cur - 1));
+$('back').addEventListener('click', () => seekTo(stepOn(cur, -1)));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
