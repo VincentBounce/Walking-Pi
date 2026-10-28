@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1466';
+const VERSION = '0.1.1467';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1629,8 +1629,8 @@ let showBlocks = false, blocksButton = null;
 function renderBlocksButton() {
   blocksButton ??= tile({ pic: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="13" y="13" width="8" height="8" rx="1" fill="currentColor" opacity="0.35"/><rect x="3" y="3" width="18" height="18" rx="1.5" fill="none" style="stroke: var(--sector)" stroke-width="1.8"/></svg>',  // (its outline the blocks' blue)
     text: 'Blocks', toggle: true, title: 'Blocks: the blocks the next generation is worked out by, outlined (a set at a time, in turn)', click: () => { showBlocks = !showBlocks; needsFull = true; renderBlocksButton(); } });
-  const can = !walk.life?.margolus?.ising && !!walk.plane;
-  setTile(blocksButton, { on: showBlocks && can, can, byDefault: 'off', greyed: walk.plane ? 'in Ising (its squares in turn, no blocks)' : 'on a surface' });
+  const flat = !!MODES[$('mode').value].plane, can = flat && !lifeRuleNow()?.ising;  // (the mode and rule picked: the grid not built yet)
+  setTile(blocksButton, { on: showBlocks && can, can, byDefault: 'off', greyed: flat ? 'in Ising (its squares in turn, no blocks)' : 'on a surface' });
 }
 // Space-time (Life on squares, the Stacks tile beside Walls): its generations stacked up, time going up, a cube a live cell (see
 // stackUp; STACK_MOST cubes at most); with walls only (through a torus's edges no tree grows: Stacks, Walls on with it)
@@ -9133,8 +9133,6 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
 }
 // A generation of a block rule: the blocks of its set in turn (see planeBlocks), each block's state to its rule's; a cell
 // in no whole block (by walls) as it is
-// paint: each cell's colour (or none), carried along: a block's live cells' colours, in turn round it, to its live cells
-// after, again from the first when there are more (none before: each keeps its own)
 // The Ising model, Vichniac's Q2R (1984; Tyler's cell-auto.com/ising): squares on a checkerboard, its two colours in turn, a
 // square turned over when just 2 of its 4 side neighbours are alive (its energy the same either way: the walls between
 // alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
