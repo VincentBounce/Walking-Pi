@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1465';
+const VERSION = '0.1.1466';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -4578,9 +4578,6 @@ function kleinMesh(kind, nv, nu = kleinColumns[kind](nv)) {
   return (meshCache[key] = Object.assign(mesh, { torus: true, klein: true, cairo: kind === 'kleinCairo', kite: kind.startsWith('kleinKite'), nu, nv, tube, uv: new Float64Array(sheet.flat(2)) }));
 }
 
-// A torus of squares' blocks (as BLOCKS.square's, see planeBlocks): round each corner (i, j) of its sheet, i and j both odd then
-// both even, its 4 squares in turn round it; its square (i, j) the tile i × nv + j (see torusMesh)
-const torusSquareBlocks = (nu, nv) => [1, 0].map((p) => { const at = (i, j) => mod(i, nu) * nv + mod(j, nv), b = []; for (let i = p; i < nu; i += 2) for (let j = p; j < nv; j += 2) b.push(at(i - 1, j - 1), at(i, j - 1), at(i, j), at(i - 1, j)); return Int32Array.from(b); });
 function torusMesh(nv, nu = ringColumns(nv / TORUS_TUBE, nv)) {  // squares about as long around the ring as around the tube
   return sheetTorus(`torus${nv}x${nu}`, 'torus', nv, nu, 4, () => Array.from({ length: nu * nv }, (_, t) => { const i = Math.floor(t / nv), j = t % nv; return [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]; }));
 }
@@ -6527,7 +6524,7 @@ function buildLife(seq, mode) {
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
-                margolus: mode.margolus && rule.margolus ? { k: 4, turns: torusSquareBlocks(g.nu, g.nv), to: rule.margolus, ...blockKind(rule.margolus) } : null, alive: new Uint8Array(n) };
+                margolus: mode.margolus && rule.margolus ? ruleBlocks(rule, 'square', g.nu, true, g.nv) : null, alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
@@ -7554,7 +7551,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? (rule.ising ? isingOf(kind, W) : { ...planeBlocks(kind, W, planeTorus(kind), rule.stars, rule.four), to: rule.margolus, ...blockKind(rule.margolus) }) : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
@@ -8484,7 +8481,7 @@ function blockTutorial(option, to) {
   // on a small grid of its own, the grid picked's (not the one built: picked again, its rule and blocks may not be): the
   // smallest with blocks in each phase (the triangles' at 6: no whole hexagon)
   const kind = planeKind(blocksGrid(MODES[$('mode').value])), R = parseRule(option.value), stars = !!R?.stars, ising = !!R?.ising;
-  const blocksAt = (W, torus) => (ising ? isingOf(kind, W) : planeBlocks(kind, W, torus, stars, !!R?.four));  // (Ising: its squares, a colour a phase)
+  const blocksAt = (W, torus) => ruleBlocks(R, kind, W, torus);  // (Ising: its squares, a colour a phase)
   const W = planeW(kind, planeSides(kind).find((sd) => blocksAt(planeW(kind, sd), false).turns.every((t) => t.length))), row = planeRow(kind, W);  // (the first that fits: a large side's width long to work out)
   const blocksOf = (torus) => blocksAt(W, torus), { k, turns, move } = blocksOf(false);
   if (!ising && to.length !== 1 << k) { ruleTutorial(null); return; }  // (a rule of another grid's blocks, on its way out)
@@ -9141,8 +9138,11 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
 // The Ising model, Vichniac's Q2R (1984; Tyler's cell-auto.com/ising): squares on a checkerboard, its two colours in turn, a
 // square turned over when just 2 of its 4 side neighbours are alive (its energy the same either way: the walls between
 // alive and dead as long), so it runs back; its turns: each colour's squares, its sides: each square's 4
-function isingOf(kind, W) {
-  const row = planeRow(kind, W), torus = planeTorus(kind), turns = [[], []], sides = [];
+// a block rule's blocks on a grid (Ising: its squares in turn, see isingOf; squares only, a row its cols): the plane's, or a torus's sheet (cols its row's)
+const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(kind, W, 1)) => (rule.ising ? isingOf(kind, W, torus, cols)
+  : { ...planeBlocks(kind, W, torus, rule.stars, rule.four, cols), to: rule.margolus, ...blockKind(rule.margolus) });
+function isingOf(kind, W, torus = planeTorus(kind), row = planeRow(kind, W)) {
+  const turns = [[], []], sides = [];
   for (let t = 0; t < row * W; t++) {
     const x = t % row, y = Math.floor(t / row);
     turns[(x + y) % 2].push(t);
