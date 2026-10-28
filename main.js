@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1403';
+const VERSION = '0.1.1404';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9159,7 +9159,7 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
 // then the cells moved back across, stellated; Q2R, the same half step again: its other half unchanged), its counts set
 // back (the trace's)
 const blockInverse = (M) => (M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length)));
-function lifeBack(G = lifeStepGPU(walk.life, cur - 1, true)?.[0]) {  // (G: its sums there, its births and deaths forth, back)
+function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back: see advanceTo)
   const L = walk.life, K = L.colours;
   if (G) { L.born -= G.dead; L.dead -= G.born; L.bornNow = G.dead; L.deadNow = G.born; }
   for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
@@ -10810,11 +10810,19 @@ function setSpeed(s) {
   statsDirty = true;
 }
 
-function advanceTo(target, until = Infinity) {  // until: a Game of Life's batches stop past it (a frame's time, see tick)
+function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reversible one, by its rule); until: a Game of Life's batches stop past it (a frame's time, see tick)
   target = Math.min(walk.n, target);
   if (target !== cur) faced = false;  // the walker moves: the camera follows it again (see faceWalk)
+  if (target < cur && !walk.life) { walkBack(target); return; }
   if (walk.life) {  // Game of Life: one step = one generation (played on the card as many at once, see lifeStepGPU)
     const L = walk.life;
+    while (target < cur) {  // (back: its rule's inverse, see lifeBack)
+      const batch = lifeStepGPU(L, cur - 1, true, Math.min(cur - target, LIFE_H));
+      if (!batch) break;
+      for (const G of batch) lifeBack(G);
+      if (performance.now() >= until) break;  // (a batch at least)
+    }
+    statsDirty = true;
     let k = target - cur, ended = false;
     while (k > 0 && !ended && !lifeEnded()) {
       const batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H));
@@ -13205,19 +13213,8 @@ function tick(now = performance.now()) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
     acc -= k;
-    if (k > 0 && playing) advanceTo(cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
-    if (k > 0 && reversing && walk.life) {  // (as forth: in batches, see lifeStepGPU; its steps three quarters of the screen's frame at most)
-      for (let left = Math.min(k, cur); left > 0;) {
-        const batch = lifeStepGPU(walk.life, cur - 1, true, Math.min(left, LIFE_H));
-        if (!batch) break;
-        for (const G of batch) lifeBack(G);
-        left -= batch.length;
-        if (performance.now() >= now + 750 * frameMin) break;  // (a batch at least)
-      }
-      statsDirty = true;
-      if (!cur) reverse(false);
-    }
-    else if (k > 0 && reversing) { walkBack(Math.max(0, cur - k)); if (!cur) reverse(false); }
+    if (k > 0) advanceTo(reversing ? Math.max(0, cur - k) : cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
+    if (reversing && !cur) reverse(false);
   }
   includeBox();
   if (walk.n && !walk.sphere && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow (a surface's frame is fixed)
@@ -13362,10 +13359,10 @@ function walkBack(v) {
 function seekTo(v) {
   play(false);
   reverse(false);
-  if (v < cur && !walk.life) { walkBack(v); return; }  // (a walk: back without starting again, the view kept)
-  if (v < cur && walk.life?.margolus && cur - v <= v) { while (cur > v) lifeBack(); needsFull = true; }  // (a reversible one: back by its rule, when nearer than its start)
-  if (v < cur) restart();
+  if (v < cur && !walk.life) { advanceTo(v); return; }  // (a walk: back without starting again, the view kept)
+  if (v < cur && !(walk.life.margolus && cur - v <= v)) restart();  // (a reversible one: back by its rule, when nearer than its start)
   advanceTo(v);
+  needsFull = true;
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
   statsDirty = true;
 }
