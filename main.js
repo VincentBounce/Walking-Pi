@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1440';
+const VERSION = '0.1.1441';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7780,9 +7780,9 @@ function sideOf(kind, W, nbr) {
 const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind);  // (a six-fold grid with walls: always a hexagon)
 function planeShape(kind, W) {
   if (!shaped(kind)) return null;
-  const key = `${kind}|${W}`;
+  const row = planeRow(kind, W), key = `${kind}|${W}|${row}`;  // (its row as its colours make it: a hexagon's cells by their numbers)
   if (shapeMemo.has(key)) return shapeMemo.get(key);
-  const row = planeRow(kind, W), n = row * W, mids = [], cs = [];
+  const n = row * W, mids = [], cs = [];
   for (let t = 0; t < n; t++) { cs.push(planeCorners(kind, t % row, Math.floor(t / row))); mids.push(cellMiddle(kind, t % row, Math.floor(t / row))); }
   const box = (d) => mids.reduce(([a, b], m) => [Math.min(a, m[d]), Math.max(b, m[d])], [Infinity, -Infinity]).reduce((a, b) => (a + b) / 2), c0 = [box(0), box(1)], far = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
   // the centre: of the middles, corners and sides' middles of the cells within a lattice cell of the grid's middle, the nearest it that the
