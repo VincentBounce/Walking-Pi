@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1429';
+const VERSION = '0.1.1430';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7511,7 +7511,6 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
 }
 function buildLifePlane(seq) {
   const kind = planeKind(MODES[current.mode].plane);  // (a rectangle's, if so)
-  if (MODES[current.mode].margolus) lifeColours = 1;  // (blocks: one colour)
   fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W;
   let rule = lifeRuleNow() || parseRule('B3/S23');
@@ -8281,8 +8280,8 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
 }
 // a new figure: as many colours as last picked, else the nearest count of colours it places (colours still, never Classic;
 // fewer on a tie); Classic picked, Classic (the pick kept for the next)
-function fitColours(g) {
-  lifeColours = coloursPicked === 1 ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
+function fitColours(g) {  // (blocks: one colour, Reversible's)
+  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
   if (lifeColours === Infinity) lifeColours = 1;  // (none but Classic: Klein Dual 16 at 4 and 24)
 }
 const colourBlock = (k) => {  // (its colours squares all, as many a row as their blocks, else as near a square: 5, 3 and 2, a hole)
@@ -10026,8 +10025,8 @@ function cellPlace(t) {
     const k = g.planeOf[t], at = (c) => Array.from(g.cen.subarray(3 * c, 3 * c + 3)), far = (c) => Math.hypot(...at(c).map((v, d) => v - g.planeMid[k][d]));
     if (k < 0) return null;
     g.planeCells ??= [];
-    g.planeCells[k] ??= [...Array(g.n).keys()].filter((c) => g.planeOf[c] === k).reduce((b, c) => (far(c) < far(b) ? c : b));  // (its plane's middle cell)
-    return { on: 'hex', c0: g.planeCells[k] };
+    if (g.planeCells[k] === undefined) { const wall = new Set(g.walls ?? []), own = [...Array(g.n).keys()].filter((c) => g.planeOf[c] === k && !wall.has(c)); g.planeCells[k] = own.length ? own.reduce((b, c) => (far(c) < far(b) ? c : b)) : -1; }  // (its plane's middle cell, of its cells: a wall's no cell, its frame none)
+    return g.planeCells[k] < 0 ? null : { on: 'hex', c0: g.planeCells[k] };
   }
   return { on: 'cube', f: AXES.reduce((b, d, k) => (dot3(Array.from(g.nrm.subarray(3 * t, 3 * t + 3)), d) > dot3(Array.from(g.nrm.subarray(3 * t, 3 * t + 3)), AXES[b]) ? k : b), 0) };
 }
