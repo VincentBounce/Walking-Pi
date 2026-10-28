@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1452';
+const VERSION = '0.1.1453';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1781,9 +1781,11 @@ function setGens(n) {
   syncLink();
 }
 function syncDigitsStepper() {
-  if (gensShown()) {  // (Space-time ended before: its generations max, and why, as a walk that loops)
-    const end = spaceTimeOn() && stack?.end !== 'gens' ? STACK_ENDS[stack?.end] : null;
-    $('digitsLabel').value = end ? `${fmt(walk.n + 1)} generations max ${end[0]}` : `${fmt(targetAsked())} generations`;
+  if (gensShown()) {  // (a run that ends before: its generations max, and why, as a walk that loops: Space-time's, or a game's once it repeats)
+    const s = !spaceTimeOn() && walk.life?.stable, far = s ? s.T + s.P : walk.n + 1;
+    const end = spaceTimeOn() && stack?.end !== 'gens' ? STACK_ENDS[stack?.end]
+      : s && far <= targetAsked() ? (s.extinct ? STACK_ENDS.dead : s.P === 1 ? ['■', 'Frozen: more would draw the same'] : ['↻', `Back to gen ${fmt(s.T)} every ${fmt(s.P)}: more would draw the same`]) : null;
+    $('digitsLabel').value = end ? `${fmt(far)} generations max ${end[0]}` : `${fmt(targetAsked())} generations`;
     $('digitsLabel').title = `${end ? `${end[1]}\n` : ''}Type a number of generations, from ${fmt(DIGIT_STEPS[0])} to ${fmt(targetMost())}, then Enter\nLast picked: ${fmt(target)}`;
     $('digitsDown').disabled = targetAsked() <= DIGIT_STEPS[0];
     $('digitsUp').disabled = targetAsked() >= targetMost() || !!end;
@@ -8921,13 +8923,12 @@ function lifeReset() {
   L.seedKey = lifeFingerprint(L.seed);
   L.seen = new Map([[L.seedKey, 0]]);
   L.stable = null;  // { T: first generation of the loop, P: its period, extinct }
-  // a loop: the counters as it closed (each round starts from them again), and each colour's live cells over one round
-  L.loopBase = null;
+  // a loop: each colour's live cells over one round (its births and deaths round with it: the trace's, see lifeTo)
   L.loopSum = new Float64Array(L.colours + 1);
   L.loopMin = new Float64Array(L.colours + 1).fill(Infinity);  // (a colour the same all round: its count exact, no ≈)
   L.loopMax = new Float64Array(L.colours + 1);
   L.loopAvg = null;
-  L.trace = { alive: [L.seedAlive], by: [L.seedByColour] };  // each generation's live cells (each colour's too; see drawActivity)
+  L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }] };  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then
   L.gpuOld = true;  // (written here: the graphics card's copy old)
 }
 
@@ -8951,12 +8952,12 @@ const lifeKey = (h1, h2) => h1 * 2097152 + (h2 & 0x1fffff);
 // Record generation gen (state already in L.alive) and detect the first repeat
 function lifeTrack(gen) {
   const L = walk.life;
-  if (L.margolus) { if (!L.stable && blockBack(L, gen)) { L.stable = { T: 0, P: gen, extinct: false }; renderRuleSection(); } return; }  // (blocks: see blockBack; its page told)
+  if (L.margolus) { if (!L.stable && blockBack(L, gen)) { L.stable = { T: 0, P: gen, extinct: false }; renderRuleSection(); syncDigitsStepper(); } return; }  // (blocks: see blockBack; its page told)
   if (L.stable || L.seen.size >= LIFE_TRACK) return;
   const key = L.key;  // (the graphics card's)
   const first = L.seen.get(key);
   if (first === undefined) L.seen.set(key, gen);
-  else L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 };
+  else { L.stable = { T: first, P: gen - first, extinct: L.aliveCount === 0 && L.dyingCount === 0 }; syncDigitsStepper(); }  // (its generations max said)
 }
 
 // Blocks run back too: each state the only one before the next, so no lead-in on a finite grid, its first repeat the
@@ -9199,6 +9200,7 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
   L.blueCount = byColour[2] ?? 0;
   L.trace.alive[gen] = alive;
   L.trace.by[gen] = byColour;
+  L.trace.born[gen] = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };
   for (let k = 1; k <= K; k++) L.sumBy[k] += byColour[k];
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
@@ -10898,10 +10900,10 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
         }
         L.loopAvg = Array.from(L.loopSum, (v) => v / s.P);
       }
-      if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too
-        cur -= s.P;  // (a trail goes on fading: its time is L.gen's)
-        if (!L.loopBase) L.loopBase = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };  // births and deaths round with it
-        else { L.born = L.loopBase.born; L.dead = L.loopBase.dead; L.bornBy.set(L.loopBase.bornBy); L.deadBy.set(L.loopBase.deadBy); }
+      if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too, its births and deaths those of that generation
+        cur = s.T + ((cur - s.T) % s.P);  // (found late, a blocks' return: rounds already played; a trail goes on fading: its time is L.gen's)
+        const b = L.trace.born[cur];
+        L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
     }
     if (performance.now() >= until) break;  // (a batch at least)
