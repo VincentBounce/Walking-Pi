@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1500';
+const VERSION = '0.1.1504';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -609,6 +609,16 @@ function formulaWorker() {
 // right on a half, as many of the tiles' corners and middles are, would round either side); a point's key, so: to find
 // a place again however it was computed
 const roundOff = (x, k = 1000) => Math.round(x * k + 0.37);
+// cells' corners (polys: each its corners in turn, either way) whole round: their cells' angles there a whole turn (not by
+// the grid's edge, nor a wall)
+const wholeTurns = (polys) => {
+  const turn = new Map();
+  for (const P of polys) {
+    const o = Math.sign(signedArea(P));
+    P.forEach((p, i) => { const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]); turn.set(pointKey(...p), (turn.get(pointKey(...p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a)); });
+  }
+  return (p) => turn.get(pointKey(...p)) >= 2 * Math.PI - 1e-3;
+};
 const pointKey = (x, y, k = 1000) => roundOff(x, k) * 67108864 + roundOff(y, k);  // (a number: within 33,000 steps of 1/k of the origin)
 
 /* ---- 1.6 Helpers shared by the page and the worker ------------------------------------------- */
@@ -1556,15 +1566,10 @@ function tileGroup(buttons, wide = false) {  // (wide: across its row, whatever 
   g.append(...buttons);
   return g;
 }
-function renderChoiceButtons(sel, box, pictures = null, first = null) {  // pictures: an icon per value, above its name; first: the default's value
+function renderChoiceButtons(sel, box, pictures, first = null) {  // pictures: an icon per value, above its name; first: the default's value; each tile its value (data-value)
   box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
-    const click = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); };
-    if (pictures) return tile({ pic: icon(pictures[o.value]), text: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === first ? 'yes' : '', click });
-    const b = document.createElement('button');
-    b.textContent = o.text;
-    b.classList.toggle('active', o.value === sel.value);
-    b.disabled = o.disabled;
-    b.addEventListener('click', click);
+    const b = tile({ pic: icon(pictures[o.value]), text: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === first ? 'yes' : '', click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } });
+    b.dataset.value = o.value;
     return b;
   }));
 }
@@ -6801,7 +6806,7 @@ const blockWraps = new Map();
 // the same remainders mod 6 does, its rows and motifs a row; past 24, one of 18 to 23 (not 128's blocks: see tools/check.js)
 const blocksWrap = (kind, W) => { const less = (x) => (x > 24 ? 18 + (x % 6) : x); return planeBlocks(kind, less(W), true, undefined, false, less(planeCols(kind, W, 1))).wraps; };
 function blockWrapW(kind, W) {
-  const key = `${kind} ${W}`, d = kind === 'cairo' || kind === 'cairoRect' ? 2 : 1;  // (Cairo's: even)
+  const key = `${kind} ${W}`, d = baseOf(kind) === 'cairo' ? 2 : 1;  // (Cairo's: even, as colourW's)
   if (!blockWraps.has(key)) blockWraps.set(key, [0, d, -d, 2 * d, -2 * d, 3 * d, -3 * d].map((e) => W + e).find((w) => w > 2 && blocksWrap(kind, w)) ?? W);
   return blockWraps.get(key);
 }
@@ -7829,15 +7834,8 @@ function planeShape(kind, W) {
   const size = (p) => Math.max(...[0, 1, 2].map((j) => Math.abs((p[0] - o[0]) * Math.cos(th + (j * Math.PI) / 3) + (p[1] - o[1]) * Math.sin(th + (j * Math.PI) / 3))));
   const width = cs.reduce((w, P, t) => Math.max(w, ...P.map((p) => 2 * far(p, mids[t]))), 0);
   // (the grid's edge: its corners with less than a whole turn of cells round them)
-  const turn = new Map();
-  for (const P of cs) {
-    const o = Math.sign(signedArea(P));
-    P.forEach((p, i) => {
-      const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]);
-      turn.set(pointKey(...p), (turn.get(pointKey(...p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a));
-    });
-  }
-  const R = cs.flat().reduce((r, p) => (turn.get(pointKey(...p)) < 2 * Math.PI - 1e-3 ? Math.min(r, size(p)) : r), Infinity) - width + 1e-3;
+  const whole = wholeTurns(cs);
+  const R = cs.flat().reduce((r, p) => (whole(p) ? r : Math.min(r, size(p))), Infinity) - width + 1e-3;
   const dead = mids.flatMap((m, t) => (size(m) > R ? [t] : [])), out = new Set(dead);
   // its core: the cells nearest its middle, all those as far (its middle, as its size's tooltip says it, see drawMotif)
   const byFar = [...mids.keys()].sort((p, q) => far(mids[p], o) - far(mids[q], o)), core = [];
@@ -8628,18 +8626,14 @@ function ruleTutorial(option) {
   // first the one with the most neighbours, the one nearest the middle of each (a cell by the wall left out: its picture would
   // miss the wall's cell)
   const count = (t) => nb.start[t + 1] - nb.start[t];
-  const n = row * W, wall = new Set(dead), turnAt = new Map(), all = Array.from({ length: n }, (_, t) => corners(t));
-  for (const P of all.filter((_, t) => !wall.has(t))) {  // (the live cells only: one by the wall not all round)
-    const o = Math.sign(signedArea(P));
-    P.forEach((p, i) => { const [u, v] = [P[(i + 1) % P.length], P.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]), a = o * Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1]); turnAt.set(pointKey(...p), (turnAt.get(pointKey(...p)) ?? 0) + (a < 0 ? a + 2 * Math.PI : a)); });
-  }
+  const n = row * W, wall = new Set(dead), all = Array.from({ length: n }, (_, t) => corners(t)), whole = wholeTurns(all.filter((_, t) => !wall.has(t)));  // (the live cells only: one by the wall not all round)
   const shapeKey = (P) => { const Q = P.filter((p, i) => { const a = P.at(i - 1), b = P[(i + 1) % P.length]; return Math.abs((p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0])) > 1e-4; });
     const angle = (i) => { const p = Q[i], [u, v] = [Q[(i + 1) % Q.length], Q.at(i - 1)].map((q) => [q[0] - p[0], q[1] - p[1]]); return Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])).toFixed(2); };
     return `${Q.map((p, i) => Math.hypot(Q[(i + 1) % Q.length][0] - p[0], Q[(i + 1) % Q.length][1] - p[1]).toFixed(2)).sort()}|${Q.map((_, i) => angle(i)).sort()}`; };  // (its sides and its angles: a rhombus not a square)
   const centre = [0, 1].map((d) => all.flat().reduce((a, p) => a + p[d], 0) / all.flat().length), far = (t) => Math.hypot(all[t][0][0] - centre[0], all[t][0][1] - centre[1]);
   const shapes = new Map(), shapeOf = new Map();
   for (let t = 0; t < n; t++) {
-    if (wall.has(t) || all[t].some((p) => turnAt.get(pointKey(...p)) < 2 * Math.PI - 1e-3)) continue;
+    if (wall.has(t) || !all[t].every(whole)) continue;
     const sk = shapeKey(all[t]), k = `${sk}|${count(t)}`;
     shapeOf.set(t, sk);
     if (!shapes.has(k) || far(t) < far(shapes.get(k))) shapes.set(k, t);
@@ -11026,7 +11020,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
     }
-    k = Math.min(k, runEnd() - cur);  // (a reversible one's loop found: no further than its last generation before it)
+    if (Number.isFinite(walk.n)) k = Math.min(target, runEnd()) - cur;  // (a reversible one's loop found: to its last generation before it, from its start again)
     if (performance.now() >= until) break;  // (a batch at least)
   }
   statsDirty = true;
@@ -13759,9 +13753,9 @@ function applyTheme() {
   if (t !== 'system') themeLast = t;
   try { localStorage.setItem('walkingTheme', t); if (t !== 'system') localStorage.setItem('walkingThemeLast', t); } catch { /* not kept */ }
   renderChoiceButtons($('theme'), $('themeButtons'), { light: 'sun', dark: 'moon', system: 'halfDisc' }, 'system');
-  $('themeButtons').prepend(tileGroup([...$('themeButtons').children].slice(0, 2)), skyButton);  // Light | Dark, then System: open, the sky first
-  for (const b of $('themeButtons').children) if (b.textContent !== 'System') b.classList.add('open-only');
-  const system = [...$('themeButtons').children].find((b) => b.textContent === 'System');
+  const [light, dark, system] = ['light', 'dark', 'system'].map((v) => $('themeButtons').querySelector(`[data-value="${v}"]`));
+  $('themeButtons').prepend(tileGroup([light, dark]), skyButton);  // Light | Dark, then System: open, the sky first
+  for (const b of $('themeButtons').children) if (b !== system) b.classList.add('open-only');
   system.dataset.toggle = '';  // (a switch: clicked again, back to Light or Dark)
   setTile(system, { on: t === 'system' });
   renderSkyButtons();  // the sky's switch back before them (the buttons were all made again)

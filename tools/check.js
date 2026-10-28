@@ -382,15 +382,15 @@ async function checkKnown(fail) {
     checked++;
     if ((T !== null && L.stable?.T !== T) || (P !== null && L.stable?.P !== P)) fail(`${link}: repeats from ${L.stable?.T} with period ${L.stable?.P}, known ${T} and ${P}`);
   }
-  // Find its return, past the generations played (Swirl on hexagons: 1,428)
-  location.hash = '#w=blocks2dHex&r=M0,2,4,5,1,6,3,7&s=6&g=2000&pop=random.30.6';
-  await wait(800);
+  // Find its return, past the generations played (Swirl on hexagons, 6 cells of 90: 48,924, found by the graphics card too)
+  location.hash = '#w=blocks2dHex&r=M0,2,4,5,1,6,3,7&s=6&pop=random.10.6';
+  for (let i = 0; i < 100 && !($('mode').value === 'blocks2dHex' && walk.life?.margolus && walk.life.seedAlive === 6 && !busy); i++) await wait(100);  // (built, not a wait's guess)
   lifeReset();
   cur = 0;
   searchBack(true);
   for (let i = 0; i < 300 && backSearch.life; i++) await wait(50);
   checked++;
-  if (backSearch.found !== 1428) fail(`Swirl on hexagons: its return found at ${backSearch.found}, known 1,428`);
+  if (backSearch.found !== 48924) fail(`Swirl on hexagons: its return found at ${backSearch.found}, known 48,924`);
   searchBack(false);
   // a hunt: of the 2^14 starts of 14 cells (radius 2's first), the 8 longest
   location.hash = '#w=life2d&r=B3/S23&s=48&pop=random.49.5';
