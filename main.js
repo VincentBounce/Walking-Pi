@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1496';
+const VERSION = '0.1.1498';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2970,7 +2970,7 @@ function renderModePicker() {
     // round the tube), a switch once picked: a click turns it (its picture turned) or back; then Turned (a torus's, a
     // strip's, a bottle's), the same: on, the tiling turned; off, not; greyed, a tiling that has none
     const tabOf = (f, turned) => F.tabs.findIndex(([t, tu]) => t === f && tu === turned), [here, isTurned] = F.tabs[tab];
-    const turns = tabOf(here, true) >= 0 && (!MODES[w].margolus || blocksFit(parseRule($('lifeRule').value), MODES[w], shownSurface(MODES[w].sphere, !isTurned)));  // (a block rule: its blocks there too)
+    const turns = tabOf(here, true) >= 0 && (!MODES[w].margolus || [...$('lifePreset').options].some((o) => o.dataset.name && o.text.includes(lifeMark(MODES[w])) && blocksFit(parseRule(o.value), MODES[w], shownSurface(MODES[w].sphere, !isTurned))));  // (a block rule: one of its grid's blocks there, the rule fitted to it then; not the rule now: fitted after, see fitRuleToShape)
     const turn = () => { F.tab = tabOf(here, !isTurned); turnTorus(!isTurned); renderModePicker(); };
     $('torusTiles').replaceChildren(...F.tabs.flatMap(([f, turned, pic, shape, name]) => {
       if (turned || !same(f)) return [];
@@ -9205,10 +9205,11 @@ const ruleBlocks = (rule, kind, W, torus = planeTorus(kind), cols = planeCols(ki
   return rule.ising ? { ...blocks } : { ...blocks, to: rule.margolus, ...blockKind(rule.margolus) };
 };
 // a block rule on a grid: of its blocks' size (Ising, 4 phases: squares), on a surface (sp: its own, or turned) its blocks
-// there, its smallest size's as all its sizes' (the same at each, its sizes coming round, see BLOCK_STEPS: a Klein
-// bottle's checkerboard never, nor a Möbius strip's or a Klein bottle's triangles turned)
+// there at each of its small sizes (to 32 a side), as at all of them (its sizes coming round, see BLOCK_STEPS; a surface whose
+// blocks come round at some sizes only, a Klein bottle's triangles turned at 8, 32, 128: none; a Klein bottle's
+// checkerboard never, nor a Möbius strip's triangles turned)
 const blocksFit = (R, mode, sp = mode.sphere && surfaceOf(mode)) => !!R?.margolus && (R.ising || R.four ? blocksGrid(mode) === 'square' : R.k === (R.stars ? STARS : BLOCKS)[blocksGrid(mode)]?.k)
-  && (!sp || !!surfaceBlocks(SPHERES[sp].mesh(SPHERES[sp].sizes.find((f) => f % (BLOCK_STEPS[sp] ?? 1) === 0)), blocksGrid(mode), R));
+  && (!sp || SPHERES[sp].sizes.filter((f) => f <= 32 && f % (BLOCK_STEPS[sp] ?? 1) === 0).every((f) => !!surfaceBlocks(SPHERES[sp].mesh(f), blocksGrid(mode), R)));
 function isingOf(kind, W, torus = planeTorus(kind), row = planeRow(kind, W)) {  // (squares only)
   const turns = [[], []], sides = [];
   for (let t = 0; t < row * W; t++) {
