@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1514';
+const VERSION = '0.1.1515';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6134,6 +6134,8 @@ function loopWatch(seq, ahead) {
 // comes back W across, on the other face, so the torus repeats by (L, W) and (0, 2W). The step from
 // point p to point q, the shortest of its copies.
 const mobiusAt = (g, t, [x, y]) => (t < g.front ? [x, y] : [x, 2 * g.W - y]);
+// a tile's place: a Möbius strip's two faces, one place (tile t and t + front, see mobiusMesh)
+const tilePlace = (g, t) => (g.mobius ? t % g.front : t);
 function mobiusDelta(g, p, q) {
   let best = null;
   for (let a = -1; a <= 1; a++) for (let b = -2; b <= 2; b++) {
@@ -8240,7 +8242,7 @@ function motifTiles() {
   if (near < 0) return [];
   if (g.triFaces) return Object.assign([near], { square: near === nears[1] ? -1 : nears[1] });
   if (g.torus) {  // a sheet: its bricks as laid (g.bricks, else brickOf(g) tiles at a time as listed, a strip's back as its front); its first whole and seen, else the one in front
-    const m = brickOf(g), id = (t) => g.bricks?.[t] ?? Math.floor((g.mobius ? t % g.front : t) / m), bricks = Map.groupBy([...Array(g.n).keys()], id);
+    const m = brickOf(g), id = (t) => g.bricks?.[t] ?? Math.floor(tilePlace(g, t) / m), bricks = Map.groupBy([...Array(g.n).keys()], id);
     const seen = (ts) => ts.filter((t) => planeVisible([0, 1, 2].map((d) => sh.nrm[3 * t + d]), at(t)));
     return [...bricks.values()].map(seen).find((ts) => ts.length === m) ?? bricks.get(id(near));
   }
@@ -9787,7 +9789,7 @@ function planeFrame() {
 function brickPlaces(g) {
   if (g.brickPlaces) return g.brickPlaces;
   const m = brickOf(g), [P, Q] = g.mobius ? [2 * g.L, Infinity] : g.klein ? [Infinity, Infinity] : [g.nu, g.nv], near = (d, p) => (p < Infinity ? d - p * Math.round(d / p) : d);
-  const key = (t) => 2 * (g.bricks?.[t] ?? Math.floor((g.mobius ? t % g.front : t) / m)) + (g.mobius && t >= g.front ? 1 : 0), sums = new Map(), out = new Float64Array(2 * g.n);
+  const key = (t) => 2 * (g.bricks?.[t] ?? Math.floor(tilePlace(g, t) / m)) + (g.mobius && t >= g.front ? 1 : 0), sums = new Map(), out = new Float64Array(2 * g.n);
   for (let t = 0; t < g.n; t++) { const [u, v] = sheetPlace(g, t), s = sums.get(key(t)); if (!s) sums.set(key(t), [u, v, u, v, 1]); else { s[0] += s[2] + near(u - s[2], P); s[1] += s[3] + near(v - s[3], Q); s[4]++; } }
   const wrap = (x, p) => (p < Infinity ? ((x % p) + p) % p : x);
   for (let t = 0; t < g.n; t++) { const s = sums.get(key(t)); out[2 * t] = wrap(s[0] / s[4], P); out[2 * t + 1] = wrap(s[1] / s[4], Q); }
@@ -11723,7 +11725,8 @@ vec4 clipOf(vec3 s, float bias) {
 // The light (after GL_PROJECT), as tileLight: the normal turned to the viewer, darkened away from the light, a glint;
 // vDark what stays in the shadow, vLit what the light adds, vSh where the point falls in the shadows' texture (see glShadows)
 const GL_LIGHT = `
-uniform vec3 uL, uH, uLx, uLy; uniform float uShade, uGlint, uLr; out vec3 vDark, vLit, vSh;
+uniform vec3 uL, uH, uLx, uLy; uniform float uShade, uGlint, uLr; uniform uint uFront; out vec3 vDark, vLit, vSh; flat out uint vId;
+uint place(uint id) { return uFront > 0u ? id % uFront : id; }  // (as tilePlace: a Möbius strip's two faces one piece for the light)
 vec3 lightSpace(vec3 p) { return vec3(dot(p, uLx), dot(p, uLy), -dot(p, uL)) / uLr; }  // seen from the light, within ±1
 void light(vec3 col, vec3 n, vec3 p) {
   if (dot(n, uV) < 0.0) n = -n;
@@ -11731,12 +11734,23 @@ void light(vec3 col, vec3 n, vec3 p) {
   vLit = col * uShade * max(0.0, dot(n, uL)) + uGlint * pow(max(0.0, dot(n, uH)), ${LIGHT_SHINE}.0);
   vSh = lightSpace(p) * 0.5 + 0.5;
 }`;
-// the share of the light a pixel gets: 9 looks round it in the shadows' texture, each softened by the hardware's compare
+// the share of the light a pixel gets: 9 looks round it in the shadows' texture, each softened by the hardware's compare; a
+// look that finds its own tile or cube there lit: a piece never shadows itself (a tile not flat, its corners on a curved
+// sheet, is drawn folded, lit as flat; a Möbius strip's two faces, folded along other diagonals, cross in the middle: before
+// v0.1.1515, spots in the tiles' middles on every Möbius strip but those of triangles (Triangles, Tetrakis, Kisrhombille:
+// flat): squares at 6 a side, Cairo at 4, Rhombille, Octagons, Dodecagons…, gone by 12, its folds then under the offset's
+// 2 texels; never on a torus or a Klein bottle, a tile a place. Drawing each tile as triangles round its middle instead:
+// some 10 lines more, a corner more a tile to work out each time the shape moves, k triangles a tile, not k − 2, and its
+// folds only halved, not gone)
 const GL_SHADOWED = `#version 300 es
-precision highp float; precision highp sampler2DShadow; in vec3 vDark, vLit, vSh; uniform sampler2DShadow uShadow; out vec4 o;
+precision highp float; precision highp int; precision highp sampler2DShadow; precision highp usampler2D; in vec3 vDark, vLit, vSh; flat in uint vId;
+uniform sampler2DShadow uShadow; uniform usampler2D uShadowId; out vec4 o;
 void main() {
   float t = 1.0 / ${SHADOW_SIZE}.0, s = 0.0;
-  for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) s += texture(uShadow, vec3(vSh.xy + vec2(i, j) * t, vSh.z - 2.0 * t));
+  for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+    vec2 at = vSh.xy + vec2(i, j) * t;
+    s += texture(uShadowId, at).r == vId + 1u ? 1.0 : texture(uShadow, vec3(at, vSh.z - 2.0 * t));
+  }
   o = vec4(vDark + vLit * s / 9.0, 1.0);
 }`;
 // Life on the plane (see glPlane): world (u, v) turned by uTurn (its cos and sin), then to pixels by uView (scale, ox, oy)
@@ -11940,14 +11954,16 @@ precision mediump float; uniform vec4 uRgba; out vec4 o; void main() { o = uRgba
 in vec3 aPos; in vec3 aNrm; in float aId; uniform vec4 uPlain; uniform sampler2D uTileCol;${GL_PROJECT}${GL_LIGHT}
 void main() {  // its colour its tile's texel (1024 a row, see glSurface); uPlain: the back of an open sheet
   int id = int(aId);
+  vId = place(uint(id));
   light(uPlain.a > 0.0 ? uPlain.rgb : texelFetch(uTileCol, ivec2(id % 1024, id / 1024), 0).rgb, aNrm, aPos);
   gl_Position = clipOf(toScreen(aPos), 0.0);
 }`, GL_SHADOWED],
-  // the depths seen from the light (see glShadows): a tile's corner, or a cube's at its point
+  // the depths seen from the light (see glShadows): a tile's corner, or a cube's at its point; and what is nearest it there,
+  // its number + 1 (a tile's place, a cube's: its instance)
   depth: [`#version 300 es
-in vec3 aPos; in vec3 aAt;${GL_PROJECT}${GL_LIGHT}
-void main() { gl_Position = vec4(lightSpace(aPos + aAt), 1.0); }`, `#version 300 es
-precision mediump float; void main() {}`],
+in vec3 aPos; in vec3 aAt; in float aId;${GL_PROJECT}${GL_LIGHT}
+void main() { vId = place(uint(aId) + uint(gl_InstanceID)); gl_Position = vec4(lightSpace(aPos + aAt), 1.0); }`, `#version 300 es
+precision mediump float; precision highp int; flat in uint vId; out uint o; void main() { o = vId + 1u; }`],
   edge: [`#version 300 es
 in vec3 aPos; in vec3 aNrm; in vec3 aNrm2; uniform float uBias; uniform bool uBoth; out float vFacing;${GL_PROJECT}
 void main() {  // an edge whose two tiles are both turned away is not drawn (the back of an open sheet, or of a strip's
@@ -11976,6 +11992,7 @@ precision mediump float; in vec3 vCol; out vec4 o; void main() { o = vec4(vCol, 
   cube: [`#version 300 es
 in vec3 aCorner; in vec3 aNrm; in vec3 aAt; in vec3 aCol;${GL_PROJECT}${GL_LIGHT}
 void main() {
+  vId = uint(gl_InstanceID);
   light(aCol, aNrm, aAt + aCorner);
   gl_Position = clipOf(toScreen(aAt + aCorner), 0.0);
 }`, GL_SHADOWED],
@@ -12112,7 +12129,7 @@ function glView(gl, p, depth) {
   const lx = x.map((v) => v / m), ly = [L[1] * lx[2] - L[2] * lx[1], L[2] * lx[0] - L[0] * lx[2], L[0] * lx[1] - L[1] * lx[0]];
   gl.uniform3fv(u('uL'), L); gl.uniform3fv(u('uH'), halfway(L)); gl.uniform1f(u('uShade'), SHADE); gl.uniform1f(u('uGlint'), glint());
   gl.uniform3fv(u('uLx'), lx); gl.uniform3fv(u('uLy'), ly); gl.uniform1f(u('uLr'), depth / 4);
-  gl.uniform1i(u('uShadow'), 1);
+  gl.uniform1i(u('uShadow'), 1); gl.uniform1i(u('uShadowId'), 3); gl.uniform1ui(u('uFront'), walk.geo?.mobius ? walk.geo.front : 0);
   return u;
 }
 // A texture of a texel an item (a cell, a tile: see glPlane, glSurface), 1024 a row; its texels from a packed array (RGBA a
@@ -12125,10 +12142,12 @@ function glPut(gl, tex, data) {
   if (rest) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, full, rest, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes, 4096 * full);
 }
 // The shadows: the depths of what the light sees (draw draws it with the program depth; nothing, Light unchecked), in a
-// texture on unit 1 (SHADOW_SIZE square), which the tiles and cubes then compare their own depths from the light with
+// texture on unit 1 (SHADOW_SIZE square), which the tiles and cubes then compare their own depths from the light with; what
+// it is, its number, in another on unit 3 (see GL_SHADOWED)
 function glShadows(depth, draw, key = null) {  // key: what they depend on (the shape, the light, the view): the same, kept
   const S = GLS, { gl } = S;
-  if (key !== null && S.keys.shadow === key) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex); gl.activeTexture(gl.TEXTURE0); return; }
+  const bind = (on) => { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, on ? S.shadow.tex : null); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, on ? S.shadow.ids : null); gl.activeTexture(gl.TEXTURE0); };
+  if (key !== null && S.keys.shadow === key) { bind(true); return; }
   S.keys.shadow = key;
   if (!S.shadow) {
     const tex = gl.createTexture(), fb = gl.createFramebuffer();
@@ -12138,20 +12157,25 @@ function glShadows(depth, draw, key = null) {  // key: what they depend on (the 
       [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE], [gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, tex, 0);
-    S.shadow = { tex, fb };
+    const ids = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, ids);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R32UI, SHADOW_SIZE, SHADOW_SIZE);
+    for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, ids, 0);
+    S.shadow = { tex, ids, fb };
   }
-  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);  // not read while it is written
+  bind(false);  // not read while written
   gl.bindFramebuffer(gl.FRAMEBUFFER, S.shadow.fb);
   gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
   gl.clear(gl.DEPTH_BUFFER_BIT);
+  gl.clearBufferuiv(gl.COLOR, 0, [0, 0, 0, 0]);  // (nothing: 0)
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS);
   gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(2, 4);  // a lit face does not shadow itself
   glView(gl, S.prog.depth, depth);
-  if (lamp()) draw(gl.getAttribLocation(S.prog.depth, 'aPos'), gl.getAttribLocation(S.prog.depth, 'aAt'));
+  if (lamp()) draw(...['aPos', 'aAt', 'aId'].map((a) => gl.getAttribLocation(S.prog.depth, a)));
   gl.disable(gl.POLYGON_OFFSET_FILL);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, S.shadow.tex);
-  gl.activeTexture(gl.TEXTURE0);
+  bind(true);
 }
 // a surface's tiles' colours from a palette (null: unlit) and each tile's place in it (out of it: unlit), into their texture
 const paintLevels = (palette, levelOf) => (tex, n) => {
@@ -12214,11 +12238,12 @@ function glSurface(paint, path) {  // paint: its tiles' colours into their textu
   }
   paint(S.tileCol, n);  // (each tile's colour: its texel)
   const depth = 4 * R * Math.max(sh.extent, sh.maxExtent ?? sh.extent), tileSize = R * sh.extent * Math.sqrt((4 * Math.PI) / n);
-  glShadows(depth, (aPos) => {  // every tile, both its sides
+  glShadows(depth, (aPos, aAt, aId) => {  // every tile, both its sides, its number
     gl.bindBuffer(gl.ARRAY_BUFFER, S.pos); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, S.tileIds); gl.enableVertexAttribArray(aId); gl.vertexAttribPointer(aId, 1, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, S.fan);
     gl.drawElements(gl.TRIANGLES, S.fanCount, gl.UNSIGNED_INT, 0);
-    gl.disableVertexAttribArray(aPos);
+    gl.disableVertexAttribArray(aPos); gl.disableVertexAttribArray(aId);
   }, `${S.geoGen}|${lightDir()}|${cam.r}|${depth}|${lamp()}`);  // (again when the shape, the light or the view moves, not the colours)
   // the frame, the projection and the view
   gl.viewport(0, 0, glCanvas.width, glCanvas.height);
