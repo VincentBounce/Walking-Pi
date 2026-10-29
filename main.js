@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.55';
+const VERSION = '0.2.56';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13043,6 +13043,10 @@ function lifeCells(L) {
 // inverse's, see lifeBack; their phase the generation shown's), its cells' counts, their sums (10 + 4 a colour) a column each, read back once (each
 // read waits for the card: 50 times a generation's own time on a small grid); its deaths dated by L.gen, the generations
 // played (as the look's, see lifeLookGPU: the shown one goes round a loop); null without WebGL 2. The cells stay there (L.onGPU)
+// a Game of Life played again from its start to step back (no rule backwards, see advanceTo): about 2.6 ns a cell and 0.53 ms
+// a generation whatever its size (its passes: 2^18 cells' worth), measured at 48 and 512 a side; Step back greyed past
+// 2^28 (about a second: 1,000 generations at 48 a side, 200 at 2^20 cells)
+const LIFE_PASSES = 2 ** 18, LIFE_REPLAY_MOST = 2 ** 28;
 const LIFE_H = 16;  // (generations a read back: the game's, a hunt's; more, a batch longer than a frame on a large grid)
 function lifeStepGPU(L, gen, back = false, k = 1) {
   const E = lifeGPU(L);
@@ -13521,7 +13525,11 @@ function renderRanking(L) {
 function updateStats() {
   // Jump to start and Step back greyed at the start (a reversible one's, as far back as it goes), Step at the end (a loop's:
   // round it on)
-  $('restart').disabled = $('back').disabled = cur <= runStart();
+  $('restart').disabled = cur <= runStart();
+  // (a Game of Life's step back: round its loop forth, at once; else played again from its start, greyed when too long)
+  const tooFar = lifeTime() && !walk.life.margolus && !(looping() && cur - 1 >= runLoop().T) && cur * (walk.life.seed.length + LIFE_PASSES) > LIFE_REPLAY_MOST;
+  $('back').disabled = cur <= runStart() || tooFar;
+  $('back').dataset.greyed = tooFar ? 'so far from its start: played again from it, more than a second' : '';
   for (const b of [$('jump2k'), $('jump10k')]) {  // (Life: 2,000 and 10,000 generations ahead, while its end is not known)
     b.hidden = Number.isFinite(walk.n);
     b.disabled = !!runLoop();
