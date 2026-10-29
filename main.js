@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.22';
+const VERSION = '0.2.23';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9514,17 +9514,20 @@ function orderOf(L, alive, borders) {
   const p = alive / L.open, expect = alive * (start[n] / L.open) * (1 - p);
   return expect > 0 ? Math.max(0, 1 - borders / expect) : 0;
 }
-// its ordered moments, of the generations played (past and future): each run of them at least half as ordered as its start
-// (see orderOf), its most ordered one (marked on the curve, Begin and End stopping there); none if that half is not clear of
-// the noise, 3 times the run's median order at least (a soup's start: nothing to come back to)
+// its ordered moments, of the generations played (past and future): its most ordered one, always (as Peak alive's mark),
+// and each run of them at least half as ordered as its start, its most ordered one, if that half is clear of the noise (3
+// times the run's median order at least: a soup's start, nothing to come back to); marked on the curve, Begin and End
+// stopping there
 function orderMarks(L) {
-  const all = [...L.past.order.slice(1).reverse(), ...L.trace.order], at = (i) => i - Math.max(0, L.past.order.length - 1), out = [];
+  const all = [...L.past.order.slice(1).reverse(), ...L.trace.order], at = (i) => i - Math.max(0, L.past.order.length - 1), out = new Set();
   const half = L.trace.order[0] / 2, noise = [...all].sort((x, y) => x - y)[Math.floor(all.length / 2)] ?? 0;
-  if (half <= 3 * noise) return out;
-  let best = null;
-  all.forEach((o, i) => { if (o >= half) { if (!best || o > best[1]) best = [at(i), o]; } else if (best) { out.push(best[0]); best = null; } });
-  if (best) out.push(best[0]);
-  return out;
+  out.add(at(all.reduce((m, o, i) => (o > all[m] ? i : m), 0)));
+  if (half > 3 * noise) {
+    let best = null;
+    all.forEach((o, i) => { if (o >= half) { if (!best || o > best[1]) best = [at(i), o]; } else if (best) { out.add(best[0]); best = null; } });
+    if (best) out.add(best[0]);
+  }
+  return [...out].sort((x, y) => x - y);
 }
 function bordersOf(L, a) {
   const { start, list } = L.nbr, live = (v) => v > 0 && v <= L.colours;
@@ -13362,7 +13365,12 @@ function drawActivity() {
     }
   }
   ctx.globalAlpha = 1;
-  const mark = (g, colour) => { const x = xOf(g - first, n) + 0.5; ctx.strokeStyle = colour; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); };
+  const mark = (g, colour) => {  // (as thick as the curve)
+    const x = xOf(g - first, n) + 0.5;
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
   if (reversibleRun()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
   if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, accent);  // (its most alive, in gold as its gauge and the curve)
