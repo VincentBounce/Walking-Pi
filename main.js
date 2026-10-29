@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.81';
+const VERSION = '0.2.82';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6594,10 +6594,17 @@ function startColours(seed) {
   if (walk.life.margolus) seed.forEach((v, t) => { seed[t] = v ? 1 : 0; });  // (a reversible one: one colour, its pictures a square each too)
 }
 // the start's symmetry (see cellCopies), whatever laid it (a soup, the digits, a zone, cells drawn, a text, a picture): each cell
-// as its first copy (the least of them), a quarter turned round (Rotate), mirrored (Mirror), an eighth (Kaleido), a half (Half turn)
+// as its first copy (the least of them), a quarter turned round (Rotate), mirrored (Mirror), an eighth (Kaleido), a half (Half turn);
+// in colours, a start laid by parts (a soup, a zone, a text: each colour's in its own) its shape so, each copy in its own part's
+// colour (its dying state kept; none's: dead), as a hunt's (see huntPlan); the digits' and cells drawn their own colours
 function symmetricStart(seed) {
   if (!walk.plane || symmetryOf(walk.plane.kind) === 'none') return;
-  for (let t = 0; t < seed.length; t++) seed[t] = seed[firstCopy(t)];  // (its first, before it: as it is)
+  const K = lifeParts(), own = K > 1 && (plane.start === 'random' || plane.start === 'text') ? new Uint8Array(seed.length) : null;
+  if (own) huntParts(0, K).forEach((part, i) => { for (const t of part) own[t] = i + 1; });
+  for (let t = 0; t < seed.length; t++) {  // (its first, before it: as it is)
+    const v = seed[firstCopy(t)];
+    seed[t] = !v || !own ? v : own[t] ? own[t] + K * Math.floor((v - 1) / K) : 0;
+  }
 }
 const firstCopy = (t) => { const { kind, W } = walk.plane; return Math.min(...cellCopies(kind, W, t)); };
 const firstCell = ([x, y]) => { const r = walk.plane.row, f = firstCopy(y * r + x); return [f % r, Math.floor(f / r)]; };  // (a cell drawn: its first copy's, see symmetricStart)
