@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.37';
+const VERSION = '0.2.38';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1348,13 +1348,13 @@ const rainbowLength = () => (closedLoop() ? walk.loop.from + walk.loop.period : 
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
-  $('barNum').innerHTML = withIcons(shownSym);
+  setLinks($('barNum'), withIcons(shownSym));
   $('barNum').title = formulaInUse;
   // a creature (an ant, a turmite, the worm): its name and what it turns by, its rule in a chip (as a block rule's)
   const w = $('mode').value, creature = MODES[w].worm || MODES[w].turmite || ANTS[w];
   $('barRule').hidden = !creature;
   $('barBase').hidden = false;
-  if (creature) { const R = creatureRules(w); $('barNum').textContent = `${walkName(w)} · ${R.byDigits ? `by the digits of ${shownSym}` : 'by its rule'}`; $('barRule').textContent = R.now; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
+  if (creature) { const R = creatureRules(w); setLinks($('barNum'), `${walkName(w)} · ${R.byDigits ? `by the digits of ${shownSym}` : 'by its rule'}`); $('barRule').textContent = R.now; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
   $('barBase').parentElement.classList.toggle('life', !!creature);  // (a creature laid out as Life's: its title, its chips under it)
@@ -2110,6 +2110,10 @@ $('planeEdges').append(
   tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; if (plane.torus) spaceTime = false; compute(); } }),
   tile({ pic: icon('stacks'), text: 'Stacks', id: 'spaceTimeTile', toggle: true, byDefault: 'off', title: 'Stacks: the generations stacked up, in 3D, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With Walls: through a torus\'s edges no tree grows',
     click: () => { spaceTime = !spaceTime; if (spaceTime) plane.torus = false; $('perspective').checked = perspectiveFor(MODES[$('mode').value], 0); compute(); } }));
+// an element's HTML with links in it, written again only when it changes: against what was written, not its HTML now (a link
+// hovered has its title turned into data-tip, see the tooltips: rewritten each frame, the link under the mouse replaced, its click
+// lost), and not while one of its links is pressed (Play: its text changes each frame, the click between two)
+const setLinks = (el, html) => { if (el.dataset.html !== html && !el.querySelector(':active')) { el.innerHTML = html; el.dataset.html = html; } };
 // A text that may hold 🎲, 🐉 or ▮ (a random number, the dragon, the prime barcode), as HTML with their icons
 const withIcons = (text) => text.replace(/🎲/g, icon('dice')).replace(/🐉/g, icon('dragon')).replace(/▮/g, icon('barcode'));
 
@@ -13420,7 +13424,7 @@ function renderGauges(L) {
   rows.forEach(([, colour, share, text], i) => {
     const [, bar, num] = box.children[i].children;
     if (share !== null) Object.assign(bar.firstChild.style, { width: `${Math.min(100, 100 * (share || 0))}%`, background: colour ?? LIFE_ALIVE });  // (the theme's live cells, as it is now)
-    if (num.innerHTML !== text) num.innerHTML = text;  // (as it was: a link in it clicked between two frames)
+    setLinks(num, text);
     num.style.color = colour ?? '';
   });
 }
@@ -13465,7 +13469,7 @@ function renderRanking(L) {
     r.children[0].textContent = place + 1;  // (then its colour, its bar, its table)
     const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    [off ? `✝ ${genLink(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((foot ?? L.sumBy)[k] / (foot ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { if (r.children[3 + c].innerHTML !== v) r.children[3 + c].innerHTML = v; });  // (as it was: its link clicked between two frames)
+    [off ? `✝ ${genLink(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((foot ?? L.sumBy)[k] / (foot ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => setLinks(r.children[3 + c], v));
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
@@ -13497,7 +13501,7 @@ function updateStats() {
   for (let i = 0; i < 5; i++) $(`lStat${i}`).hidden = $(['sStep', 'sPos', 'sDist', 'sMax', 'sCells'][i]).hidden = i >= labels.length || (i === 0 && !walk.life);  // a walk's step is the count by the slider
   $('lifetimeLabel').hidden = $('sLifetime').hidden = !lifeTime();
   if (time) {  // Space-time: its generation, its cubes up to it
-    $('barNum').textContent = `Gen ${fmt(cur)}`;
+    setLinks($('barNum'), `Gen ${fmt(cur)}`);
     $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
     $('sPos').textContent = fmt(stack.layers[cur] + 1);
     $('digitStrip').textContent = '';
@@ -13515,7 +13519,7 @@ function updateStats() {
     const known = L.stable, ahead = known && !s, end = !known ? '' : known.extinct ? `✝${ahead ? ` ${fmt(known.T)}` : ''}` : known.P === 1 ? `■${ahead ? ` ${fmt(known.T)}` : ''}`
       : `↻ ${ahead ? fmt(known.P) : `${pad(mod(cur - known.T, known.P) + 1, known.P)}/${fmt(known.P)}`}${known.T ? ` from ${fmt(known.T)}` : ''}`;
     const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(cur !== known.T ? known.T : known.P > 1 ? known.T + known.P - 1 : 0, end, 'loop')}`}`;
-    if ($('barNum').innerHTML !== title) $('barNum').innerHTML = title;
+    setLinks($('barNum'), title);
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
     renderBack();
     if (L.margolus) {
