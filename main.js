@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.10';
+const VERSION = '0.2.11';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1782,6 +1782,8 @@ const wholeTotal = () => (current?.whole && current.formula === $('formula').val
 const gensShown = () => !!MODES[$('mode').value].margolus || spaceTimeOn();
 // The last step or generation: walk.n, or sooner a reversible one's last before its loop comes round, once found (its slider, its end, its stepper's max)
 const runEnd = () => { const s = walk.life?.stable; return s && Number.isFinite(walk.n) && !spaceTimeOn() ? Math.min(walk.n, s.T + s.P - 1) : walk.n; };
+// The first: 0, or a reversible one's as far back as its last is on (its rule run backwards from its start: its past)
+const runStart = () => (walk.life?.margolus && lifeTime() ? -runEnd() : 0);
 function setGens(n) {
   target = Math.min(targetMost(), Math.max(DIGIT_STEPS[0], Math.round(n) || 2000));
   if (spaceTimeOn()) { restart(); showAll(); }
@@ -8260,7 +8262,7 @@ function drawBlocks(ctx) {
   ctx.transform(s, 0, 0, s, ox, oy);  // (in the grid's units)
   ctx.strokeStyle = cssColour('--sector');
   ctx.lineWidth = Math.max(1, Math.min(s / 8, 3)) / s;
-  ctx.stroke(M.paths.get(key)[cur % M.turns.length]);
+  ctx.stroke(M.paths.get(key)[mod(cur, M.turns.length)]);
   turnLayer(ctx, 0);
 }
 // The grid's motif, outlined in violet while its size is hovered: what repeats, the sides of its cells not shared by two of
@@ -8371,7 +8373,7 @@ const lifeMark = (mode) => (mode.loops ? LOOPS_MARK : mode.margolus ? (BLOCKS[bl
 let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the figure's nearest to the last picked (see fitColours); colourMix: Mixed, the colours mixed in one place (see huntParts)
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
-const negative = (L) => !!L.margolus?.flips && cur % 2 === 1;
+const negative = (L) => !!L.margolus?.flips && mod(cur, 2) === 1;  // (its past's too: a phase by its generation, below 0 as above)
 // the cells in a block (of any phase): the only ones shown negative (a wall's, out of every block, as they are), and turned
 // over by a phase leaving them out (by a wall), as their block would (see GL_SHADERS.blockRule)
 function blockCells(M, n) {
@@ -9101,7 +9103,8 @@ function lifeReset() {
   L.loopMin = new Float64Array(L.colours + 1).fill(Infinity);  // (a colour the same all round: its count exact, no ≈)
   L.loopMax = new Float64Array(L.colours + 1);
   L.loopAvg = null;
-  L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }] };  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then
+  L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }] };
+  L.past = { alive: [], by: [], born: [] };  // (a reversible one's generations before its start, −1 at 1…, see traced)  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -9179,7 +9182,7 @@ function searchBack(on) {
 // a block rule's generation g there, from a into b (as GL_SHADERS.blockRule: Ising's 4 sides, stellated cells across first,
 // flips' cells left out by a wall turned over)
 function blockStep(M, a, b, g) {
-  const p = g % M.turns.length, turn = M.turns[p];
+  const p = mod(g, M.turns.length), turn = M.turns[p];
   if (M.ising) { b.set(a); for (const t of turn) { let c = 0; for (const u of M.sides[t]) if (u >= 0 && a[u]) c++; if (c === 2) b[t] = a[t] ? 0 : 1; } return; }
   if (M.move) a = Uint8Array.from(M.move, (m) => a[m]);
   b.set(a);
@@ -9448,9 +9451,7 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
     else if (L.extinctAt[k] === null) L.extinctAt[k] = gen;
   }
   L.blueCount = byColour[2] ?? 0;
-  L.trace.alive[gen] = alive;
-  L.trace.by[gen] = byColour;
-  L.trace.born[gen] = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };
+  record(L, gen, alive, byColour);
   for (let k = 1; k <= K; k++) L.sumBy[k] += byColour[k];
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
@@ -9467,12 +9468,28 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
 const blockInverse = (M) => (M.inverse ??= M.to.reduce((r, n, st) => { r[n] = st; return r; }, new Array(M.to.length)));
 function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back: see advanceTo)
   const L = walk.life, K = L.colours;
-  if (G) { L.born -= G.dead; L.dead -= G.born; L.bornNow = G.dead; L.deadNow = G.born; }
-  for (let k = 1; k <= K; k++) L.sumBy[k] -= L.trace.by[cur]?.[k] ?? 0;
+  if (G) { L.born -= G.dead; L.dead -= G.born; L.bornNow = G.dead; L.deadNow = G.born; L.key = G.key; }
+  for (let k = 1; k <= K; k++) L.sumBy[k] -= traced(L, cur)?.by[k] ?? 0;
   L.gen--;
   cur--;
-  L.aliveCount = L.trace.alive[cur];
-  L.byColour = L.trace.by[cur] ?? L.byColour;
+  if (!traced(L, cur) && G) record(L, cur, G.alive, K > 1 ? G.byColour : new Int32Array(K + 1));  // (its past, first played)
+  L.aliveCount = traced(L, cur).alive;
+  L.byColour = traced(L, cur).by ?? L.byColour;
+  if (L.aliveCount > L.peak) { L.peak = L.aliveCount; L.peakGen = cur; }  // (the most alive at once over all it played, past too)
+  if (L.margolus && !L.stable && blockBack(L, -cur)) lifeFound(L, { T: 0, P: -cur, extinct: false });  // (its return found going back: its start again at −P)
+  if (L.stable && cur <= -L.stable.P) cur += L.stable.P;  // (round its loop, as forth: the same state)
+}
+// a generation's record (see lifeStep, lifeBack): its live cells, each colour's, its births and deaths so far; one before the
+// start (a reversible one's past) its own; one not played, by its loop once found (g and g ± P the same state: forth or back)
+function traced(L, g) {
+  const own = (h) => { const T = h < 0 ? L.past : L.trace, i = Math.abs(h); return T.alive[i] === undefined ? null : { alive: T.alive[i], by: T.by[i], born: T.born[i] }; };
+  return own(g) ?? (L.stable ? own(g < 0 ? g + L.stable.P : g - L.stable.P) : null);
+}
+function record(L, g, alive, by) {
+  const T = g < 0 ? L.past : L.trace, i = Math.abs(g);
+  T.alive[i] = alive;
+  T.by[i] = by;
+  T.born[i] = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };
 }
 
 /* ==============================================================================================
@@ -11119,11 +11136,20 @@ function setSpeed(s) {
 }
 
 // Life's generations, forth or back (a block rule's), up to target; until: its batches stop past it (a frame's time, see tick)
+// a block rule's batch (dir: 1 forth, −1 back) cut at its return to its start, its cells checked there (see blockBack): the
+// card played past it, played back to it
+function cutAtReturn(L, batch, dir) {
+  if (!L.margolus || L.stable) return;
+  const j = batch.findIndex((G, x) => mod(cur + dir * (1 + x), L.margolus.turns.length) === 0 && G.key === L.seedKey);
+  for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + dir * x, dir > 0);
+  if (j >= 0) batch.length = j + 1;
+}
 function lifeTo(target, until = Infinity) {  // (one step, one generation, played on the card as many at once, see lifeStepGPU)
   const L = walk.life;
-  while (target < cur) {  // (back: its rule's inverse, see lifeBack)
+  while ((target = Math.max(target, runStart())) < cur) {  // (back: its rule's inverse, see lifeBack; its return found going back, as far as its loop)
     const batch = lifeStepGPU(L, cur - 1, true, Math.min(cur - target, LIFE_H));
     if (!batch) break;
+    cutAtReturn(L, batch, -1);
     for (const G of batch) lifeBack(G);
     if (performance.now() >= until) break;  // (a batch at least)
   }
@@ -11132,11 +11158,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
   while (k > 0 && !ended && !lifeEnded()) {
     const batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H));
     if (!batch) break;  // (no WebGL 2)
-    if (L.margolus && !L.stable) {  // (a block rule's return to its start, its cells checked there (see blockBack): the card played past it, back to it)
-      const j = batch.findIndex((G, x) => (cur + 1 + x) % L.margolus.turns.length === 0 && G.key === L.seedKey);
-      for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + x, true);
-      if (j >= 0) batch.length = j + 1;
-    }
+    cutAtReturn(L, batch, 1);
     for (const G of batch) {
       if (!ended) ended = lifeEnded();
       lifeStep(G);
@@ -11146,11 +11168,11 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       if (cur > (L.reached ?? 0)) L.reached = cur;  // (the furthest, for a reversible one's slider)
       const s = L.stable;
       if (!s) continue;
-      if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += L.trace.by[g][k]; }  // (its cell-generations till it settles or loops)
+      if (!L.footBy) { L.footBy = new Float64Array(L.colours + 1); for (let g = 0; g < s.T; g++) for (let k = 1; k <= L.colours; k++) L.footBy[k] += traced(L, g).by[k]; }  // (its cell-generations till it settles or loops)
       if ((s.extinct || s.P === 1) && cur >= s.T) { cur = s.T; if (lifeEnded()) { play(false); ended = true; } continue; }  // nothing moves any more: it ends there (its trail fading first)
       if (!L.loopAvg) {  // found: each colour's live cells over the loop (its generations' counts, see lifeStep), their mean
         for (let g = s.T; g < s.T + s.P; g++) for (let k = 1; k <= L.colours; k++) {
-          const v = L.colours === 1 ? L.trace.alive[g] : L.trace.by[g][k];
+          const v = L.colours === 1 ? traced(L, g).alive : traced(L, g).by[k];
           L.loopSum[k] += v;
           L.loopMin[k] = Math.min(L.loopMin[k], v);
           L.loopMax[k] = Math.max(L.loopMax[k], v);
@@ -11159,7 +11181,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       }
       if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too, its births and deaths those of that generation
         cur = s.T + ((cur - s.T) % s.P);  // (found late, a blocks' return: rounds already played; a trail goes on fading: its time is L.gen's)
-        const b = L.trace.born[cur];
+        const b = traced(L, cur).born;
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
     }
@@ -11169,7 +11191,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
   statsDirty = true;
 }
 function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reversible one, by its rule); until: a Game of Life's batches stop past it (a frame's time, see tick)
-  target = Math.min(runEnd(), target);
+  target = Math.max(runStart(), Math.min(runEnd(), target));
   if (target !== cur) faced = false;  // the walker moves: the camera follows it again (see faceWalk)
   if (spaceTimeOn()) { cur = Math.max(0, target); statsDirty = true; if (cur >= walk.n) play(false); return; }  // (Space-time: its layers, made, see stackUp)
   if (target < cur && !walk.life) { walkBack(target); return; }
@@ -11219,7 +11241,7 @@ function play(on) {
 const lifeTime = () => !!walk.life && !spaceTimeOn();
 const reversible = () => !lifeTime() || !!walk.life.margolus;
 function reverse(on) {
-  reversing = on && reversible() && cur > 0;
+  reversing = on && reversible() && cur > runStart();
   if (reversing) play(false);
   const shown = reversing ? 'pause' : 'reverse';
   if ($('reverse').dataset.shown !== shown) $('reverse').innerHTML = icon($('reverse').dataset.shown = shown);  // (only when it changes: a click on it kept)
@@ -12946,7 +12968,7 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
     const g = back ? gen - x : gen + x;
     if (M) blockPass(L, E, E.now.state, E.next.state, back ? g : g - 1, back);
     else lifeRulePass(E);
-    lifeTally(E, L.gen + 1 + x, back, neg && g % 2 === 0, neg && g % 2 === 1, x);  // (shown negative: a generation odd)
+    lifeTally(E, L.gen + 1 + x, back, neg && mod(g, 2) === 0, neg && mod(g, 2) === 1, x);  // (shown negative: a generation odd)
   }
   L.onGPU = true;
   const v = lifeRead(E), by = (q, x) => Int32Array.from({ length: K + 1 }, (_, c) => (c ? v(9 + 4 * (c - 1) + q, 0, x) : 0));
@@ -12987,7 +13009,7 @@ function lifeRead(E) {
 function blockPass(L, E, a, b, g, back = false) {
   const M = L.margolus;
   lifePass(E, 'blockRule', { uA: a, uIn: E.in, uWhere: E.where, uTurns: E.turns, uMove: E.move, uTo: back ? E.inverse : E.to },
-    { uN: E.n, uK: 1, uPhase: g % M.turns.length, uKb: M.k, uIsing: M.ising ? 1 : 0, uFlips: M.flips ? 1 : 0, uStars: M.move ? 1 : 0, uBack: back ? 1 : 0 }, [b], 1024, E.rows);
+    { uN: E.n, uK: 1, uPhase: mod(g, M.turns.length), uKb: M.k, uIsing: M.ising ? 1 : 0, uFlips: M.flips ? 1 : 0, uStars: M.move ? 1 : 0, uBack: back ? 1 : 0 }, [b], 1024, E.rows);
 }
 // its colours into a texture (target: a texel a cell, 1024 a row; see lifeLook), by a look: its tables (look.table: packed
 // RGBA, see GL_SHADERS.lifeLook), how it colours its live cells (look.by: 0 by state, 1 by age, 2 all by their changes), its
@@ -13358,14 +13380,15 @@ function renderRanking(L) {
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
 function updateStats() {
-  // Jump to start and Step back greyed at the start (a Game of Life cannot go back), Step and Jump to end at the end (a Game of Life has none)
-  $('restart').disabled = cur === 0;
+  // Jump to start and Step back greyed at the start (a Game of Life cannot go back; a reversible one, as far back as it goes),
+  // Step and Jump to end at the end (a Game of Life has none)
+  $('restart').disabled = cur <= runStart();
   $('back').hidden = lifeTime() && !walk.life.margolus;  // (Life: never back; a block rule: reversible, back as forth)
-  $('back').disabled = cur === 0;
+  $('back').disabled = cur <= runStart();
   $('jump10k').hidden = Number.isFinite(walk.n);  // (Life: 10,000 generations ahead too)
   $('jump10k').disabled = !!walk.life?.stable;
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
-  $('reverse').disabled = cur === 0;
+  $('reverse').disabled = cur <= runStart();
   $('step').disabled = cur >= runEnd() || lifeEnded();
   $('end').disabled = cur >= runEnd() || (!Number.isFinite(walk.n) && !!walk.life?.stable);  // a Game of Life's end known: there already (or in its loop)
   // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so
@@ -13557,8 +13580,8 @@ function tick(now = performance.now()) {
     acc += stepsPerSecond() * dt;  // time-based, so the speed holds whatever the frame rate
     const k = Math.floor(acc);
     acc -= k;
-    if (k > 0) advanceTo(reversing ? Math.max(0, cur - k) : cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
-    if (reversing && !cur) reverse(false);
+    if (k > 0) advanceTo(reversing ? Math.max(runStart(), cur - k) : cur + k, now + 750 * frameMin);  // (its steps three quarters of the screen's frame at most: faster than it can, as fast as it can, its frames kept)
+    if (reversing && cur <= runStart()) reverse(false);
   }
   includeBox();
   if (walk.n && !walk.sphere && $('autoFit').checked && boundsOffscreen(viewGoal || view)) {  // 15% room to grow (a surface's frame is fixed)
@@ -13679,13 +13702,13 @@ $('play').addEventListener('click', () => {
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
-$('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing
+$('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing; a reversible one at its start or before, as far back as it goes
   const wasPlaying = playing;
-  restart();
+  if (cur <= 0 && runStart() < 0) advanceTo(runStart()); else restart();
   play(wasPlaying);
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
-$('end').addEventListener('click', () => { advanceTo(Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP); });  // (a Game of Life stops at its end, or loops)
+$('end').addEventListener('click', () => { if (cur < 0) restart(); else advanceTo(Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP); });  // (a Game of Life stops at its end, or loops; a reversible one in its past: its start first)
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
 $('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
 $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
@@ -13708,7 +13731,7 @@ function seekTo(v) {
   play(false);
   reverse(false);
   if (v < cur && !lifeTime()) { advanceTo(v); return; }  // (a walk, Space-time: back without starting again, the view kept)
-  if (v < cur && !(walk.life.margolus && cur - v <= v)) restart();  // (a reversible one: back by its rule, when nearer than its start)
+  if (v < cur && !(walk.life.margolus && cur - v <= Math.abs(v))) restart();  // (a reversible one: back by its rule, when nearer than its start)
   advanceTo(v);
   needsFull = true;
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
