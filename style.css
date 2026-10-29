@@ -583,6 +583,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .tut-row figure > div { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
 .tut-row figure > div > span { color: var(--muted); }
 .tut-row figure svg { flex: none; width: 88px; height: 88px; }
+.tut-row figure svg.tut-start { width: 176px; height: 176px; }  /* a loop's start: twice as large (see loopTutorial) */
 .tut-row figcaption { width: 0; min-width: 100%; margin-top: 4px; font-size: 11px; color: var(--muted); text-align: center; }
 .tut-shapes { margin-bottom: 10px; }  /* a tiling's shapes: a bubble each, a click shows it; two of them as wide as a rule's bubble
    (two pictures of 88 px, the arrow between: 214 px) with the row's gap between them, as high */

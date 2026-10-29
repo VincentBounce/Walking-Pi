@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.6';
+const VERSION = '0.2.7';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3051,7 +3051,7 @@ function compute() {
   $('planeRow').hidden = !mode.plane;  // Life on the plane: its grid
   $('lifeStartRow').hidden = !mode.life;
   $('copyRle').hidden = !mode.plane;  // (the plane's cells only)  // its start: Hunt, Draw (the plane only), Digits
-  $('startSection').hidden = !mode.life;
+  $('startSection').hidden = !mode.life || !!mode.loops;  // (loops: their start their loops, one a lineage, see layLoops)
   fitRuleToShape();
   $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
   $('autoPlayRow').hidden = !mode.life;
@@ -8713,12 +8713,29 @@ function shapeBubbles(kinds, c, corners, count, shapeOf, own) {  // own: the til
   const note = same.map((ts) => `<p class="tut-note">One ${nameOf(ts[0])}, turned and placed ${ts.length} ways: ${ts.map(count).join(', ').replace(/, (\d+)$/, ' or $1')} neighbours.</p>`).join('');
   return `<div class="tut-row tut-shapes">${kinds.map((t, i) => `<figure data-at="${i}" class="${t === c ? 'active' : ''}" title="${nameOf(t)}: ${count(t)} neighbours"><div>${pic(t)}</div><figcaption>${nameOf(t)}</figcaption></figure>`).join('')}</div>${note}`;
 }
+// a loop's page (see parseLoops): its words, its states, a cell and its 4 sides, lines of its table as such crosses before → the
+// cell after (those that change it, of plain states only), its start
+function loopTutorial(option) {
+  const name = loopName(option.value), { year, words, table, pattern } = LOOP_RULES[name], n = parseLoops(name).loopStates;
+  const fill = (v) => (v ? LIFE_COLOURS[v - 1] : UNLIT), cell = (x, y, v) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill(v)}" stroke="var(--border)" stroke-width="0.04"/>`;
+  const cross = ([c, N, E, S, W]) => `<svg viewBox="-0.1 -0.1 3.2 3.2">${cell(1, 0, N)}${cell(2, 1, E)}${cell(1, 2, S)}${cell(0, 1, W)}${cell(1, 1, c)}</svg>`;
+  const lines = table.split('\n').filter((l) => /^[0-9,]+$/.test(l)).map((l) => (l.includes(',') ? l.split(',') : [...l]).map(Number)), shown = lines.filter((t) => t[0] !== t[5]).slice(0, 12);
+  const start = [];
+  let x = 0, y = 0;
+  for (const [, k, c] of pattern.rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(k) || 1); i++) { if (c === '$') { x = 0; y++; continue; } if (c !== '.') start.push(cell(x, y, c.charCodeAt(0) - 64)); x++; }
+  $('ruleTuto').innerHTML = `<div class="tut-body"><h3>${option.dataset.name}${option.dataset.name === name ? '' : ` <code>${name}</code>`}</h3><p>${words[0].toUpperCase()}${words.slice(1)} (${year}). Each cell looks at itself and its 4 neighbours by a side, in turn round it (von Neumann): ${fmt(table.split('\n').filter((l) => !l.includes(':') && !l.startsWith('var')).length)} lines of Golly's table, each also turned a quarter, a half and three quarters round; a cell none fits stays as it is. In colours (Populations), a loop's daughters take its colour: lineages fighting for room.</p>`
+    + `<h4>States</h4><div class="tut-row">${Array.from({ length: n }, (_, v) => `<figure><div><svg viewBox="-0.1 -0.1 1.2 1.2">${cell(0, 0, v)}</svg></div><figcaption>${v}</figcaption></figure>`).join('')}</div>`
+    + `<h4>Changing</h4><div class="tut-row">${shown.map((t) => `<figure><div>${cross(t)}<span>→</span><svg viewBox="-1.1 -1.1 3.2 3.2">${cell(0, 0, t[5])}</svg></div><figcaption>${t[0]} → ${t[5]}</figcaption></figure>`).join('')}</div>`
+    + `<h4>Start</h4><div class="tut-row"><figure><div><svg class="tut-start" viewBox="-0.2 -0.2 ${pattern.w + 0.4} ${pattern.h + 0.4}">${start.join('')}</svg></div><figcaption>${pattern.w} × ${pattern.h}</figcaption></figure></div></div>`;
+  $('ruleTuto').prepend(tutTools({ close: () => ruleTutorial(null) }));
+}
 function ruleTutorial(option) {
   $('ruleTuto').hidden = !option;
   for (const b of document.querySelectorAll('.how-it-works')) { b.classList.toggle('active', !!option); b.classList.toggle('switch', !!option); }  // (lit while it shows, as Full number)
   if (!option) return;
   $('ruleTuto').dataset.shown = tutorialKey(option);  // (another grid or rule: shown again, see renderRuleSection)
   if (parseRule(option.value)?.margolus) { blockTutorial(option, parseRule(option.value).margolus); return; }
+  if (loopName(option.value)) { loopTutorial(option); return; }
   const mark = lifeMark(MODES[$('mode').value]), kind = PLANE_OF_MARK[mark] ?? 'tri';
   const W = APERIODIC[kind] ? 16 : 8, rule = parseRule(option.value), row = planeRow(kind, W), dead = APERIODIC[kind]?.(W).dead;  // (one that never repeats: room for all its ways)
   const nb = withoutCells(planeNeighbours(kind, W, false, rule.iso === 'hensel'), dead);  // (walls: a cell with them all is inside; the wall's cells none)
@@ -10815,7 +10832,7 @@ function getSetup() {
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
     if (spaceTimeOn()) s.sp = 1;  // (Space-time)
   }
-  if (mode.life) s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;  // its start (a surface's no Draw)
+  if (mode.life && !mode.loops) s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;  // its start (a surface's no Draw)
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
   if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
   if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
