@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.29';
+const VERSION = '0.2.30';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3512,7 +3512,6 @@ function rotateView(w) {
 // On a solid, a walk's pattern to keep in front (see faceWalk); elsewhere the camera's default view
 const centersPattern = () => { const mode = MODES[$('mode').value]; return SOLIDS.includes(surfaceOf(mode)) && !mode.life; };
 function updateHint() {
-  $('end').title = Number.isFinite(walk.n) ? 'Jump to end (E)' : `Jump ${fmt(LIFE_JUMP)} generations ahead (E)`;
   showZoom();
   updateDisplayMenu();
 }
@@ -13476,18 +13475,14 @@ function updateStats() {
   $('restart').disabled = cur <= runStart();
   $('back').hidden = lifeTime() && !walk.life.margolus;  // (Life: never back; a block rule: reversible, back as forth)
   $('back').disabled = cur <= runStart();
-  $('jump10k').hidden = Number.isFinite(walk.n);  // (Life: 10,000 generations ahead too)
-  $('jump10k').disabled = !!walk.life?.stable;
+  for (const b of [$('jump2k'), $('jump10k')]) {  // (Life: 2,000 and 10,000 generations ahead, while its end is not known)
+    b.hidden = Number.isFinite(walk.n);
+    b.disabled = !!lifeEnd();
+  }
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = cur >= runEnd() || lifeEnded();
-  // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so
-  const endless = !Number.isFinite(walk.n) && !lifeEnd(), jump = endless ? `+${LIFE_JUMP / 1000}k` : icon('end');  // (a Game of Life's end known: its loop's first and last, its stops)
-  $('end').disabled = !endless && !runStops().some((g) => g > cur);  // (at its last stop: a run's end, a Game of Life's loop's last)
-  if ($('end').dataset.shown !== jump) {
-    $('end').innerHTML = $('end').dataset.shown = jump;
-    $('end').title = endless ? `${fmt(LIFE_JUMP)} generations ahead (E)` : 'Jump to end (E)';
-  }
+  $('end').disabled = !runStops().some((g) => g > cur);  // (at its last stop: a run's end, a Game of Life's loop's last; Life's end not known yet)
   // the step and the last: folded, at the top on the right; open, under the curve (its slider, see drawActivity); none for
   // the Game of Life, which has no end (a reversible one's: its generations)
   const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !lifeTime()) || blocks, far = seekFar();
@@ -13793,15 +13788,17 @@ $('play').addEventListener('click', () => {
 });
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
+$('jump2k').addEventListener('click', () => advanceTo(cur + LIFE_JUMP));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 // Begin (⏮) and End (⏭): one way through a run's stops, in turn: its first, its start (0), its ordered moments (a reversible
-// one's, see orderMarks), a Game of Life's loop's first and last once known (see lifeEnd), its last; Begin the one before the generation shown, End the one after; Life, with no end: End
-// LIFE_JUMP generations ahead. Its start, written at once (restart), not played to
+// one's, see orderMarks), a Game of Life's loop's first and last once known (see lifeEnd), its last; Begin the one before
+// the generation shown, End the one after (Life's end not known yet: none, +2k and +10k by it). Its start, written at once
+// (restart), not played to
 const lifeEnd = () => (lifeTime() && !walk.life.margolus && walk.life.stable) || null;  // (a Game of Life's end, known: its loop, frozen or dead)
 const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(lifeEnd() ? [lifeEnd().T, lifeEnd().T + lifeEnd().P - 1] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
 function goStop(dir) {
   const stops = runStops(), g = dir < 0 ? stops.findLast((x) => x < cur) : stops.find((x) => x > cur);
-  if (g === undefined) { if (dir > 0 && !Number.isFinite(walk.n) && !lifeEnd()) advanceTo(cur + LIFE_JUMP); return; }
+  if (g === undefined) return;
   if (g === 0) restart(); else advanceTo(g);
 }
 $('restart').addEventListener('click', () => { const wasPlaying = playing; goStop(-1); play(wasPlaying); });  // (playing on if it was)
@@ -14061,7 +14058,7 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowRight': $('step').click(); break;
     case 'ArrowLeft': $('back').click(); break;
     case 'r': case 'R': $('restart').click(); break;
-    case 'e': case 'E': $('end').click(); break;
+    case 'e': case 'E': ($('end').disabled && !$('jump2k').hidden ? $('jump2k') : $('end')).click(); break;  // (Life, its end not known yet: 2,000 ahead)
     case 'f': case 'F': recentre(); break;
   }
 });
