@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2707,6 +2707,13 @@ for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODE_ICONS[w] = MODE_ICONS[life];
   NAV[w] = ['Reversible', 'Surfaces', NAV[life][2], 'Blocks', ''];
 }
+// Spirals: Life's 2D grids, by a cyclic rule (see parseRule): each cell a colour, eaten by the next one round
+const SPIRAL_GRIDS = [['spirals2d', 'life2d'], ['spirals2dTri', 'life2dTri'], ['spirals2dHex', 'life2dHex'], ['spirals2dCairo', 'life2dCairo']];
+for (const [w, life] of SPIRAL_GRIDS) {
+  MODES[w] = { ...MODES[life], cyclic: true };
+  MODE_ICONS[w] = MODE_ICONS[life];
+  NAV[w] = ['Spirals', '2D', NAV[life][2], 'Cyclic', ''];
+}
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
   NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
@@ -2733,7 +2740,7 @@ MODE_ICONS.lifeFrame = 'frame';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
+const NAV_KINDS = [['Life', 'glider'], ['Spirals', 'spiral'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
 // the spaces, in turn, each its name and picture: a walk's or an ant's plane without an edge; Life's grids on the plane, those
 // that repeat (walls in a hexagon too) and its round ones, never repeating (see APERIODIC); everyone's solids, and surfaces
 // (a sheet rolled up); the walks through a 3D lattice
@@ -2763,7 +2770,7 @@ for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-$
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Reversible: 'Grid' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Spirals: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level (values: from that level on, one or more: a space and its shape): the levels above as
@@ -2929,8 +2936,8 @@ function renderModePicker() {
     b.setAttribute('role', 'tab');
     return b;
   }));
-  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
-    + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
+  $('walkHeading').innerHTML = icon(kind === 'Walk' ? 'compass' : 'grid') + WALK_HEADINGS[kind]
+    + (MODES[w].life || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Lattice)
   const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
   $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp))), true));
@@ -3047,7 +3054,7 @@ function compute() {
   $('copyRle').hidden = !mode.plane;  // (the plane's cells only)  // its start: Hunt, Draw (the plane only), Digits
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
-  $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
+  $('colourSection').hidden = !mode.life || !!mode.margolus || !!mode.cyclic;  // (blocks: one colour; Spirals, its rule's)
   $('autoPlayRow').hidden = !mode.life;
   renderViewTiles();
   renderColours();
@@ -6412,8 +6419,16 @@ function parseBlocks(text) {
   if (!to || !Number.isInteger(k) || k < 2 || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(to.length).keys()]}`) return null;
   return { margolus: Uint8Array.from(to), k, stars: m[2] === '*', four: m[2] === '/4', B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}${m[2] ?? ''}` };
 }
+// A cyclic rule (Griffeath's cyclic cellular automaton, as MCell writes it): T its threshold, C its colours (3 to 12), a
+// cell of colour k turned k + 1 (the last, the first) when at least T of its neighbours are k + 1 already: no cell dead
+function parseCyclic(text) {
+  const m = text.replace(/\s/g, '').toUpperCase().match(/^T(\d+)\/C(\d+)$/), T = m && Number(m[1]), K = m && Number(m[2]);
+  if (!m || T < 1 || K < 3 || K > LIFE_COLOURS.length) return null;
+  return { cyclic: T, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: K, iso: false, base: K + 1, text: `T${T}/C${K}` };
+}
 function parseRule(text) {
   if (/^\s*(M|Q2R)/i.test(text)) return parseBlocks(text);
+  if (/^\s*T/i.test(text)) return parseCyclic(text);
   const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV.-]*)\/S([\dOMPCEKAINYQJRTWZV.-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
@@ -6492,6 +6507,7 @@ function lifeReseed() {
 // (see huntParts), Wild and Digits all over
 const lifeParts = () => (walk.life.margolus && walk.geo.torus ? (plane.start === 'random' && /24$/.test(hunt.zone) ? 3 : 1) : walk.life.colours);  // (any sheet's mesh a torus's)
 function startColours(seed) {
+  if (walk.life.cyclic) return;  // (its soup its colours already, all over: no parts, no zone)
   startParts(seed);
   if (walk.life.margolus) seed.forEach((v, t) => { seed[t] = v ? 1 : 0; });  // (a reversible one: one colour, its pictures a square each too)
 }
@@ -7272,8 +7288,8 @@ const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: 
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
-// the grids in their spaces (see SPACES): everyone's surfaces, sheets or solids; Life's and Reversible's plane, round (these) or not
-for (const [w, n] of Object.entries(NAV)) if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids'; else if (n[1] === '2D' && (n[0] === 'Life' || n[0] === 'Reversible')) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
+// the grids in their spaces (see SPACES): everyone's surfaces, sheets or solids; the automata's plane, round (these) or not
+for (const [w, n] of Object.entries(NAV)) if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids'; else if (n[1] === '2D' && MODES[w].life) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
@@ -7515,7 +7531,7 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
   if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
   else if (plane.start === 'random') {
-    const p = plane.density / 100;
+    const p = MODES[current.mode].cyclic ? 1 : plane.density / 100;  // (a cyclic rule's: every cell a colour, none dead)
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
   } else {
     // cells drawn: a colour of another count of colours as one of these (one colour: alive), a dying state kept
@@ -7571,7 +7587,7 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null,
+                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, cyclic: rule.cyclic ?? 0,
                 seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
@@ -8259,7 +8275,8 @@ for (const [s, { kind }] of Object.entries(FOLDED)) SURFACE_CELLS[s] = TILINGS[k
 const PLANE_MARKS = { ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [k, t.mark])), square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' };
 const PLANE_OF_MARK = Object.fromEntries(Object.entries(PLANE_MARKS).map(([k, m]) => [m, k]));
 const blocksGrid = (mode) => mode.blocks ?? mode.plane;  // (a block rule's grid: the plane's, or a surface's, its cells' shape)
-const lifeMark = (mode) => (mode.margolus ? (BLOCKS[blocksGrid(mode)] ?? STARS[blocksGrid(mode)]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
+const CYCLIC_MARK = '◎';  // (the cyclic rules' mark: any grid)
+const lifeMark = (mode) => (mode.cyclic ? CYCLIC_MARK : mode.margolus ? (BLOCKS[blocksGrid(mode)] ?? STARS[blocksGrid(mode)]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4", see lifeRuleNow)
@@ -8330,7 +8347,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
 // a new figure: as many colours as last picked, else the nearest count of colours it places (colours still, never Classic;
 // fewer on a tie); Classic picked, Classic (the pick kept for the next)
 function fitColours(g) {  // (blocks: one colour, Reversible's)
-  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
+  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus || MODES[$('mode').value].cyclic ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
   if (lifeColours === Infinity) lifeColours = 1;  // (none but Classic: Klein Dual 16 at 4 and 24)
 }
 const colourBlock = (k) => {  // (its colours squares all, as many a row as their blocks, else as near a square: 5, 3 and 2, a hole)
@@ -8875,7 +8892,7 @@ function renderRuleSection() {
       renderRuleSection();
     } }));
   document.querySelector('.rule-build').hidden = $('lifeCustomRow').hidden = !mineNot;  // (its states and chips, its text: your own's only)
-  if (mode.margolus) { document.querySelector('.rule-build').hidden = true; return; }  // (a block rule: typed only, no births nor survivals)
+  if (mode.margolus || mode.cyclic) { document.querySelector('.rule-build').hidden = true; return; }  // (a block rule, a cyclic one: typed only, no births nor survivals)
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
@@ -8940,7 +8957,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? true : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = mode.margolus ? blocksFit(parseRule(rule), mode) : !parseRule(rule)?.margolus;  // (blocks: a block rule fitting them only; else none)
+  const kindFits = mode.margolus ? blocksFit(parseRule(rule), mode) : mode.cyclic ? !!parseRule(rule)?.cyclic : !parseRule(rule)?.margolus && !parseRule(rule)?.cyclic;  // (blocks: a block rule fitting them only; Spirals, a cyclic one; else neither)
   if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
   ruleFittedTo = w;
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
@@ -9289,6 +9306,18 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
   const mark = (BLOCKS[kind] ?? STARS[kind]).mark, value = `M${Array.from({ length: 1 << k }, (_, st) => rule(st, k)).join(',')}*`;
   RULE_ICONS[value] = art;
   const option = new Option(`${mark} ${value} — ${words}`, value);
+  option.dataset.name = name;
+  $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
+}
+// Spirals' rules (see parseCyclic), on any grid: their name, words, picture; the first, the one they start with
+const CYCLIC_RULES = [
+  ['Spirals', 'T3/C3', "Griffeath's 313: 3 colours, each eaten by the next when 3 neighbours have it: from a soup, spirals that grow, meet and turn on", '..o..,.o.o.,o.o.o,.o..o,..oo.'],
+  ['Rings', 'T1/C12', '12 colours, each eaten by the next as soon as one neighbour has it: rings and spirals, soon all turning in step (a loop of 12)', 'ooooo,o...o,o.o.o,o...o,ooooo'],
+  ['Crystals', 'T2/C6', '6 colours, eaten by 2 neighbours of the next: domains growing as squares and diamonds, the colours chasing round their corners', 'ooo..,o.o..,ooooo,..o.o,..ooo'],
+];
+for (const [name, value, words, art] of CYCLIC_RULES) {
+  RULE_ICONS[value] = art;
+  const option = new Option(`${CYCLIC_MARK} ${value} — ${words}`, value);
   option.dataset.name = name;
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
@@ -9897,7 +9926,7 @@ function huntPlan() {
 // the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
 // another kind), else the start chosen
 const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
-const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
+const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.cyclic && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
   const K = lifeParts(), key = `${gridKey()}|${K}|${walk.life.ruleText}|${lifeParts() === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
@@ -11798,13 +11827,18 @@ const GL_SHADERS = {
 precision highp float; uniform sampler2D uA; out vec4 o;
 void main() { o = texelFetch(uA, ivec2(gl_FragCoord.xy), 0); }`],
   lifeRule: [GL_QUAD, `${GL_LIFE}
-uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode; uniform bool uMore; out vec4 o;
+uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode, uCyc; uniform bool uMore; out vec4 o;
 int base;  // (its run's first cell: t below its run's)
 int A(int t) { return state(uA, base + t); }
 int next(int t) {
   if (t >= uN) return 0;
   int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
   if (s0 == s1) return 0;  // (a wall)
+  if (uCyc > 0) {  // (a cyclic rule: the next colour round, if at least uCyc of its neighbours are it)
+    int to = was % uK + 1, c = 0;
+    for (int q = s0; q < s1; q++) if (A(I(uList, q)) == to) c++;
+    return c >= uCyc ? to : was;
+  }
   if (was > uK) return was + uK <= last ? was + uK : 0;  // (one more dying stage, or dead)
   int around[13];
   for (int k = 0; k < 13; k++) around[k] = 0;
@@ -12815,7 +12849,7 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
 function lifeRulePass(E, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played, see lifeRows)
   const L = E.L, [y0, y1] = lifeRows(E, r0, r1);
   lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S },
-    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
+    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0, uCyc: L.cyclic ?? 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
 }
 // runs r0 … r1's rows of cells (4,096 a row): a hunt's passes over its runs going on only
 const lifeRows = (E, r0, r1) => [Math.floor((r0 * E.stride) / 4096), Math.ceil((r1 * E.stride) / 4096)];
