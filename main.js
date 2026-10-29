@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.27';
+const VERSION = '0.2.28';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11197,6 +11197,9 @@ function cutAtReturn(L, batch, dir) {
   for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + dir * x, dir > 0);
   if (j >= 0) batch.length = j + 1;
 }
+// a Game of Life's loop's last generation (T + P − 1, see lifeTrack) while it plays: Play stops there, a round of it played
+// (Play again: another round); none still, frozen, dead, or a reversible one (its loop its whole run, see runEnd)
+const loopRound = (L) => { const s = L.stable; return playing && s && !s.extinct && s.P > 1 && !L.margolus ? s.T + s.P - 1 : 0; };
 function lifeTo(target, until = Infinity) {  // (one step, one generation, played on the card as many at once, see lifeStepGPU)
   const L = walk.life;
   while ((target = Math.max(target, runStart())) < cur) {  // (back: its rule's inverse, see lifeBack; its return found going back, as far as its loop)
@@ -11209,7 +11212,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
   statsDirty = true;
   let k = target - cur, ended = false;
   while (k > 0 && !ended && !lifeEnded()) {
-    const batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H));
+    const round = loopRound(L), batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H, round ? Math.max(1, round - cur) : Infinity));  // (playing round a loop: to its last generation at most)
     if (!batch) break;  // (no WebGL 2)
     cutAtReturn(L, batch, 1);
     for (const G of batch) {
@@ -11238,6 +11241,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
         L.order = traced(L, cur).order;
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
+      if (cur === loopRound(L)) { play(false); ended = true; }  // (a round of its loop played: Play again, another)
     }
     if (Number.isFinite(walk.n)) k = Math.min(target, runEnd()) - cur;  // (a reversible one's loop found: to its last generation before it, from its start again)
     if (performance.now() >= until) break;  // (a batch at least)
@@ -13381,6 +13385,8 @@ function drawActivity() {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
   };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
+  const s = walk.life?.stable;
+  if (s && !s.extinct && s.P > 1 && s.T > 0 && lifeTime()) mark(s.T, css.getPropertyValue('--cell'));  // (its loop's first generation, in green as its link in the title)
   if (walk.life?.colours === 1 && lifeTime()) {  // (as their gauges: its ordered moments, a reversible one's (see orderMarks), else the most ordered; the most alive, in gold as the curve)
     for (const g of reversibleRun() ? orderMarks(walk.life) : [peaks(walk.life).orderGen]) mark(g, css.getPropertyValue('--sector'));
     mark(peaks(walk.life).aliveGen, accent);
@@ -13393,7 +13399,7 @@ function drawActivity() {
 // deaths, in figures (a bar for it swung too much)
 // a generation of the run in view, as a link (but the one shown): clicked, it goes there (see seekTo: a reversible one's by its rule, Life's
 // played again from its start)
-const genLink = (g) => (g === cur ? `gen ${fmt(g)}` : `<a class="gen-link" href="#" data-gen="${g}" title="Go to gen ${fmt(g)}">gen ${fmt(g)}</a>`);  // (the one shown: no link)
+const genLink = (g, text = `gen ${fmt(g)}`, kind = '') => (g === cur ? text : `<a class="gen-link${kind && ` ${kind}`}" href="#" data-gen="${g}" title="Go to gen ${fmt(g)}">${text}</a>`);  // (the one shown: no link; kind: its colour, see style.css)
 document.addEventListener('click', (e) => { const a = e.target.closest?.('.gen-link'); if (!a) return; e.preventDefault(); seekTo(Number(a.dataset.gen)); });
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
@@ -13508,8 +13514,9 @@ function updateStats() {
     // the title, in fixed widths so that it stays still: the generation, then how the run ended (✝ died
     // out, ■ frozen), or its loop: its phase, its period, from which generation
     const s = endShown(L), pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
-    $('barNum').textContent = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
-      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(mod(cur - s.T, s.P) + 1, s.P)}/${fmt(s.P)}${s.T ? ` from ${fmt(s.T)}` : ''}`;  // (from the start: no lead-in)
+    const title = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
+      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(mod(cur - s.T, s.P) + 1, s.P)}/${fmt(s.P)}${s.T ? ` from ${genLink(s.T, fmt(s.T), 'loop')}` : ''}`;  // (from the start: no lead-in; its loop's first, a link in green as its mark)
+    if ($('barNum').innerHTML !== title) $('barNum').innerHTML = title;
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
     renderBack();
     if (L.margolus) {
