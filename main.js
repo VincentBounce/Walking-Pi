@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.72';
+const VERSION = '0.2.73';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2920,10 +2920,9 @@ function renderAntRow() {
   if (!ant) return;
   if (m.turmite) antByDigits = false;  // (by its rule only: its Digits greyed)
   const R = creatureRules(w);
-  $('antByDigits').disabled = !!m.turmite;
   $('antRuleTitle').textContent = R.byDigits ? 'Turns' : 'Rule';  // (Digits: a turn per digit, not a rule of colours)
-  $('antByRule').classList.toggle('active', !R.byDigits);
-  $('antByDigits').classList.toggle('active', !!R.byDigits);
+  setTile($('antByRule'), { on: !R.byDigits });
+  setTile($('antByDigits'), { on: !!R.byDigits, can: !m.turmite, greyed: 'for a turmite (by its rule only)' });
   const rulesCard = (pic, name, detail, on, click) => card({ pic, name, detail, on, again: on && HOW_AGAIN, click });  // (picked: a click shows how it works, as Life's rules)
   const known = R.cards.some(([r]) => r === R.now), mine = !known || antCustomOpen, pic = icon(m.worm ? 'worm' : m.turmite ? 'turmite' : 'ant');
   $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => rulesCard(pic, r, words, r === R.now && !antCustomOpen, () => { if (r === R.now && !antCustomOpen) { walkTutorialToggle(); return; } antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
@@ -14351,6 +14350,8 @@ $('sizeDown').addEventListener('click', () => stepSize(-1));
 // Grid or Cells: the walk in use goes to its twin; while browsing another tab, only its list changes
 $('walkOnGrid').addEventListener('click', () => navGo(4, 'grid'));
 $('walkOnCells').addEventListener('click', () => navGo(4, 'cells'));
+// a creature's start, one choice: a tab group of tiles, by its rule or by the digits (as Life's starts)
+$('antStartTabs').append(tileGroup([tile({ id: 'antByRule', pic: icon('ant'), text: 'Rule' }), tile({ id: 'antByDigits', pic: icon('barcode'), text: 'Digits' })], true));
 for (const [id, digits] of [['antByRule', false], ['antByDigits', true]]) {  // (a worm's own, by its rule or the digits)
   $(id).addEventListener('click', () => {
     const w = MODES[$('mode').value];
