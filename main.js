@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.4';
+const VERSION = '0.2.5';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3051,7 +3051,7 @@ function compute() {
   $('copyRle').hidden = !mode.plane;  // (the plane's cells only)  // its start: Hunt, Draw (the plane only), Digits
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
-  $('colourSection').hidden = !mode.life || !!mode.margolus || !!mode.loops;  // (blocks: one colour; loops, their states)
+  $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
   $('autoPlayRow').hidden = !mode.life;
   renderViewTiles();
   renderColours();
@@ -6418,8 +6418,11 @@ function parseBlocks(text) {
 }
 // The self-reproducing loops (see loops.js: Golly's tables, colours and starts), each by its name: a cell's next state by
 // itself and its 4 sides clockwise from the top (C N E S W → C'), the same turned by quarter turns; a table's variables
-// ({…}) the same value wherever one is again in its line; its first line that fits, the one; a cell none fits, kept
-const loopName = (text) => Object.keys(LOOP_RULES).find((k) => k.toLowerCase() === text.trim().toLowerCase());
+// ({…}) the same value wherever one is again in its line; its first line that fits, the one; a cell none fits, kept.
+// Alone, a cell its state (its colour: each state its own); in K lineages (Populations: /Colours K), a cell of state s > 0
+// of lineage k is k + K × (s − 1), shown in its lineage's colour, fainter by its state (see civColours), a cell coming
+// to life taking the lineage most of its neighbours have: each loop's daughters its colour
+const loopName = (text) => Object.keys(LOOP_RULES).find((k) => k.toLowerCase() === ruleBody(text).trim().toLowerCase());
 const loopTables = {};
 function parseLoops(text) {
   const name = loopName(text);
@@ -6447,11 +6450,12 @@ function parseLoops(text) {
     }
     return { n, to };
   })());
-  return { loops: T.to, loopStates: T.n, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: T.n - 1, iso: false, base: T.n, text: name };
+  const K = /\/Immigration$/i.test(text) ? 2 : Number(text.match(/\/Colours(\d+)$/i)?.[1] ?? 1);
+  return { loops: T.to, loopStates: T.n, lineages: K > 1, B: new Uint8Array(16), S: new Uint8Array(16), C: K > 1 ? T.n : 2, two: false, colours: K > 1 ? K : T.n - 1, iso: false, base: T.n, text: name };
 }
 function parseRule(text) {
   if (/^\s*(M|Q2R)/i.test(text)) return parseBlocks(text);
-  if (loopName(text)) return parseLoops(text);
+  if (loopName(text)) return parseLoops(text);  // (with its lineages, see lifeRuleNow)
   const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV.-]*)\/S([\dOMPCEKAINYQJRTWZV.-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
@@ -7604,14 +7608,21 @@ function sidesOf(row, W, torus) {
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy], q) => { out[4 * (y * row + x) + q] = at(x + dx, y + dy); });
   return out;
 }
-// a loop's start (see loops.js) in the middle, on empty cells: its RLE's states (. 0, A 1, B 2…), its rows ($)
-function loopSeed(name, row, W) {
-  const { w, h, rle } = LOOP_RULES[name].pattern, seed = new Uint8Array(row * W), x0 = Math.floor((row - w) / 2), y0 = Math.floor((W - h) / 2);
-  let x = 0, y = 0;
-  for (const [, k, c] of rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(k) || 1); i++) {
-    if (c === '$') { x = 0; y++; continue; }
-    if (c !== '.') seed[(y0 + y) * row + x0 + x] = c.charCodeAt(0) - 64;
-    x++;
+// a loop's start (see loops.js) on empty cells: its RLE's states (. 0, A 1, B 2…), its rows ($); in the middle, or in K
+// lineages one in the middle of each colour's block (as Life's, see COLOUR_GRID), of its colour (see parseLoops), the k-th
+// turned by k quarter turns (the rule the same turned: its daughters each their own ways, not copies of the others' moves)
+function loopSeed(name, row, W, K = 1) {
+  const { w, h, rle } = LOOP_RULES[name].pattern, seed = new Uint8Array(row * W), [cols, rows] = COLOUR_GRID[K], m = Math.max(w, h);
+  const turn = (x, y, r) => (r === 0 ? [x, y] : turn(m - 1 - y, x, r - 1));  // (a quarter turn in its m × m box)
+  for (let k = 0; k < K; k++) {
+    const x0 = Math.floor((row * (2 * (k % cols) + 1)) / (2 * cols) - m / 2), y0 = Math.floor((W * (2 * Math.floor(k / cols) + 1)) / (2 * rows) - m / 2);
+    let x = 0, y = 0;
+    for (const [, n, c] of rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(n) || 1); i++) {
+      if (c === '$') { x = 0; y++; continue; }
+      const [u, v] = turn(x, y, k % 4);
+      if (c !== '.') seed[mod(y0 + v, W) * row + mod(x0 + u, row)] = K > 1 ? k + 1 + K * (c.charCodeAt(0) - 65) : c.charCodeAt(0) - 64;
+      x++;
+    }
   }
   return seed;
 }
@@ -7627,8 +7638,8 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.loops ? sidesOf(row, W, planeTorus(kind)) : rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, loops: rule.loops ?? null, loopStates: rule.loopStates,
-                seed: rule.loops ? loopSeed(rule.text, row, W) : planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
+                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, loops: rule.loops ?? null, loopStates: rule.loopStates, lineages: !!rule.lineages,
+                seed: rule.loops ? loopSeed(rule.text, row, W, rule.lineages ? rule.colours : 1) : planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
@@ -8387,7 +8398,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
 // a new figure: as many colours as last picked, else the nearest count of colours it places (colours still, never Classic;
 // fewer on a tie); Classic picked, Classic (the pick kept for the next)
 function fitColours(g) {  // (blocks: one colour, Reversible's)
-  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus || MODES[$('mode').value].loops ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
+  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
   if (lifeColours === Infinity) lifeColours = 1;  // (none but Classic: Klein Dual 16 at 4 and 24)
 }
 const colourBlock = (k) => {  // (its colours squares all, as many a row as their blocks, else as near a square: 5, 3 and 2, a hole)
@@ -11862,7 +11873,7 @@ const GL_SHADERS = {
 precision highp float; uniform sampler2D uA; out vec4 o;
 void main() { o = texelFetch(uA, ivec2(gl_FragCoord.xy), 0); }`],
   lifeRule: [GL_QUAD, `${GL_LIFE}
-uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS, uLoops; uniform int uC, uR, uMode, uLoop; uniform bool uMore; out vec4 o;
+uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS, uLoops; uniform int uC, uR, uMode, uLoop; uniform bool uMore, uLin; out vec4 o;
 int base;  // (its run's first cell: t below its run's)
 int A(int t) { return state(uA, base + t); }
 int next(int t) {
@@ -11870,10 +11881,18 @@ int next(int t) {
   int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
   if (s0 == s1) return 0;  // (a wall)
   if (uLoop > 0) {  // (a loop's table, its uLoop states: its next state by its 4 sides in turn, see parseLoops; none fits, kept)
-    int i = was;
-    for (int q = 0; q < 4; q++) { int v = I(uRing, 4 * t + q); i = uLoop * i + (v >= 0 ? A(v) : 0); }
+    int i = uLin && was > 0 ? (was - 1) / uK + 1 : was, around[13], k = 0, most = 0;
+    for (int j = 0; j < 13; j++) around[j] = 0;
+    for (int q = 0; q < 4; q++) {
+      int v = I(uRing, 4 * t + q), u = v >= 0 ? A(v) : 0;
+      i = uLoop * i + (uLin && u > 0 ? (u - 1) / uK + 1 : u);
+      if (uLin && u > 0) around[(u - 1) % uK + 1]++;
+    }
     int to = I(uLoops, i);
-    return to < 0 ? was : to;
+    if (to < 0) return was;
+    if (!uLin || to == 0) return to;
+    if (was > 0) k = (was - 1) % uK + 1; else for (int j = 1; j <= uK; j++) if (around[j] > most) { most = around[j]; k = j; }  // (its lineage, or its neighbours' most)
+    return max(k, 1) + uK * (to - 1);
   }
   if (was > uK) return was + uK <= last ? was + uK : 0;  // (one more dying stage, or dead)
   int around[13];
@@ -12885,7 +12904,7 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
 function lifeRulePass(E, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played, see lifeRows)
   const L = E.L, [y0, y1] = lifeRows(E, r0, r1);
   lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S, uLoops: E.loops },
-    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0, uLoop: L.loops ? L.loopStates : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
+    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0, uLoop: L.loops ? L.loopStates : 0, uLin: L.lineages ? 1 : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
 }
 // runs r0 … r1's rows of cells (4,096 a row): a hunt's passes over its runs going on only
 const lifeRows = (E, r0, r1) => [Math.floor((r0 * E.stride) / 4096), Math.ceil((r1 * E.stride) / 4096)];
@@ -13254,7 +13273,7 @@ const loopMeans = (L) => endShown(L) && L.loopAvg;
 const colourGone = (L, k) => (loopMeans(L) ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
-  box.hidden = $('rankTitles').hidden = K < 2 || !!L.loops;  // (a loop's states: no colours fighting)
+  box.hidden = $('rankTitles').hidden = K < 2 || (!!L.loops && !L.lineages);  // (a loop alone: its states, no colours fighting)
   if (box.hidden) return;
   if (box.dataset.k !== String(K)) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
