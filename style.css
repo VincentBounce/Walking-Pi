@@ -213,6 +213,7 @@ button.primary {
   color: var(--text);
   font: 400 13px ui-monospace, "SF Mono", Menlo, monospace;
 }
+.field textarea, .field textarea:focus { text-align: center; }  /* (Text's lines centred, as drawn: after the fields' left) */
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
 button.wide.how-it-works { margin-bottom: 4px; }  /* on its rules' first card, the list's gap */
@@ -342,6 +343,7 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 .draw-row .check { flex: 1; margin: 0; }
 .draw-row button { width: auto; padding: 4px 12px; }
 .start-panel { margin: 0 0 10px; }
+.start-panel > .field { margin-bottom: 10px; }  /* (Text's lines, then its fonts: the gap of every block) */
 .light { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }  /* a hunt result's light: green, orange, red */
 .colour-blocks button svg { border-radius: 3px; }  /* 1 to 12 colours: a block each, as the shapes' tiles */
 .colour-blocks button:disabled { opacity: 0.3; }

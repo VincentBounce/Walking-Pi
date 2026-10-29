@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.76';
+const VERSION = '0.2.77';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6601,7 +6601,7 @@ function startColours(seed) {
 }
 function startParts(seed) {
   const K = lifeParts();
-  if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
+  if (plane.start === 'text') { const N = iconMax(textSet()), set = textSet(N); seed.fill(0); iconChoices(N, set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
   const fits = huntFits(), r = hunt.zone === 'realm' || hunt.zone === 'full' ? Infinity : zoneRadius(hunt.zone);  // (Wild greyed, its parts unlike: the widest radius)
@@ -9815,7 +9815,8 @@ const ICON_SETS = { icon: { P: 24, pixel: (i) => iconPixel(ICON_BITS[i]), names:
                     // (Emoji: those this browser draws, each as a picture of 48 pixels, see picturePixel)
                     emoji: { P: 48, pixel: (i) => picturePixel(ICON_SETS.emoji.names[i], 48), get names() { return (this.drawn ??= EMOJIS.filter(emojiDrawn)); }, word: 'emoji', label: (i) => ICON_SETS.emoji.names[i], source: 'Unicode' } };
 // Text: its word as a picture of 64 pixels, a set of one (see picturePixel)
-const textSet = () => ({ P: 64, pixel: () => picturePixel(plane.text, 64, plane.font), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text} in ${plane.font}` });  // (its source: the picture, its font too, see iconChoices' memo)
+// (its picture P pixels wide: as many as the cells it is laid on, N, a pixel a cell, see planeSeed; 64 to find N)
+const textSet = (P = 64) => ({ P, pixel: () => picturePixel(plane.text, P, plane.font), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text} in ${plane.font}` });  // (its source: the picture, its font too, see iconChoices' memo)
 // the grid in use, for the caches built on it (not its mode's name: Turned, another grid of the same mode): the plane's,
 // by its kind, side and torus; a surface's, its mesh, a number of its own
 let gridCount = 0;
