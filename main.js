@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1511';
+const VERSION = '0.1.1512';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13129,14 +13129,14 @@ function renderGauges(L) {
   if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Ever alive', 'Peak', 'Growth', 'Born · died'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
     + `${i >= 4 ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');  // (the bars, then the figures alone)
   for (const i of box.querySelectorAll('.rank-bar i')) i.style.background = LIFE_ALIVE;  // (the theme's live cells, as it is now)
-  const varies = L.loopAvg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
+  const avg = loopMeans(L), varies = avg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
   const turnover = both ? (b + d) / both : 0, bar = (i) => box.children[i].children[1].firstChild;
   const width = (i, v, most) => { bar(i).style.width = `${most ? Math.min(100, (100 * v) / most) : 0}%`; };
-  width(0, varies ? L.loopAvg[1] : L.aliveCount, L.peak);
+  width(0, varies ? avg[1] : L.aliveCount, L.peak);
   width(1, turnover, 1);
   width(2, L.everAlive, n);
   width(3, L.peak, n);
-  [`<b>${varies ? `≈ ${fmt(Math.round(L.loopAvg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`, `${Math.round(100 * turnover)} %`, fmt(L.everAlive), `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`,
+  [`<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`, `${Math.round(100 * turnover)} %`, fmt(L.everAlive), `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`,
     `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`, `${fmt(L.born)} · ${fmt(L.dead)}`].forEach((text, i) => { box.children[i].children[2].innerHTML = text; });
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
@@ -13146,7 +13146,11 @@ function renderGauges(L) {
 // alive column only; the player open, all of it
 // a colour all died out: none left now; in a loop, none all round it (one born now and then on a tie, gone again: alive,
 // its mean, not ✝ one generation, ≈ the next)
-const colourGone = (L, k) => (L.loopAvg ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
+// the run's end as of the generation shown: its record kept from a run before (see lifeReset), not reached yet back at its
+// start; its loop's means with it
+const endShown = (L) => (L.stable && cur >= L.stable.T ? L.stable : null);
+const loopMeans = (L) => endShown(L) && L.loopAvg;
+const colourGone = (L, k) => (loopMeans(L) ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
   box.hidden = $('rankTitles').hidden = K < 2;
@@ -13162,9 +13166,9 @@ function renderRanking(L) {
     }), Object.assign(document.createElement('span'), { className: 'all-dead' }));
     box.dataset.k = K;
   }
-  const dead = (k) => colourGone(L, k), alive = [], gone = [];
+  const dead = (k) => colourGone(L, k), foot = endShown(L) && L.footBy, alive = [], gone = [];
   for (let k = 1; k <= K; k++) (dead(k) ? gone : alive).push(k);
-  const live = (k) => L.loopAvg?.[k] ?? L.byColour[k], mean = !!L.loopAvg;  // (a loop: each colour's mean over it, ≈)
+  const avg = loopMeans(L), live = (k) => avg?.[k] ?? L.byColour[k], mean = !!avg;  // (a loop: each colour's mean over it, ≈)
   alive.sort((a, b) => live(b) - live(a) || a - b);
   gone.sort((a, b) => L.extinctAt[b] - L.extinctAt[a] || a - b);
   const total = alive.reduce((sum, k) => sum + live(k), 0) || 1, top = alive.length ? 0 : H;  // (all dead: a line for it on top)
@@ -13176,7 +13180,7 @@ function renderRanking(L) {
     r.children[0].textContent = place + 1;  // (then its colour, its bar, its table)
     const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((L.footBy ?? L.sumBy)[k] / (L.footBy ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
+    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((foot ?? L.sumBy)[k] / (foot ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
@@ -13223,7 +13227,7 @@ function updateStats() {
     const L = walk.life;
     // the title, in fixed widths so that it stays still: the generation, then how the run ended (✝ died
     // out, ■ frozen), or its loop: its phase, its period, from which generation
-    const s = L.stable, pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
+    const s = endShown(L), pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
     $('barNum').textContent = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
       : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)}${s.T ? ` from ${fmt(s.T)}` : ''}`;  // (from the start: no lead-in)
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
