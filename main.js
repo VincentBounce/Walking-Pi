@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.39';
+const VERSION = '0.2.40';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13324,7 +13324,7 @@ let curveOf = null;  // a walk's columns, once per walk and width
 function drawActivity() {
   const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
   if (!W) return;  // folded (drawn again when the card opens)
-  cv.classList.toggle('seek', !lifeTime() || !!walk.life.margolus);
+  cv.classList.toggle('seek', Number.isFinite(seekFar()));
   if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
   const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -13348,7 +13348,7 @@ function drawActivity() {
   } else if (walk.life) {
     const L = walk.life;
     first = runStart();
-    n = L.margolus ? seekFar() - first + 1 : Math.min(L.trace.alive.length, lifeEnd() ? lifeEnd().T + lifeEnd().P : cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, its end known: up to its loop's last, faint after the one shown, else up to the one shown: those worked out ahead, to find a loop, not drawn)
+    n = (Number.isFinite(seekFar()) ? seekFar() : cur) - first + 1;  // (as its slider, faint after the one shown, a reversible one's not played yet flat; a Game of Life's end not known: up to the one shown, those worked out ahead, to find a loop, not drawn)
     series = [[columns(n, (i) => traced(L, first + i)?.alive ?? 0), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
@@ -13390,7 +13390,7 @@ function drawActivity() {
   };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
   const s = walk.life?.stable;
-  if (s && !s.extinct && s.P > 1 && s.T > 0 && lifeTime()) mark(s.T, css.getPropertyValue('--cell'));  // (its loop's first generation, in green as its link in the title)
+  if (s && !s.extinct && s.P > 1 && lifeTime()) mark(s.T, css.getPropertyValue('--cell'));  // (its loop's first generation, in green as its link in the title)
   if (walk.life?.colours === 1 && lifeTime()) {  // (as their gauges: its ordered moments, a reversible one's (see orderMarks), else the most ordered; the most alive, in gold as the curve)
     for (const g of reversibleRun() ? orderMarks(walk.life) : [peaks(walk.life).orderGen]) mark(g, css.getPropertyValue('--sector'));
     mark(peaks(walk.life).aliveGen, accent);
@@ -13487,8 +13487,8 @@ function updateStats() {
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = cur >= runEnd() || lifeEnded();
   // the step and the last: folded, at the top on the right; open, under the curve (its slider, see drawActivity); none for
-  // the Game of Life, which has no end (a reversible one's: its generations)
-  const blocks = !!walk.life?.margolus, finite = (Number.isFinite(walk.n) && !lifeTime()) || blocks, far = seekFar();
+  // a Game of Life while its end is not known
+  const far = seekFar(), finite = Number.isFinite(far);
   $('seekCount').hidden = $('seekCountOpen').hidden = !finite;
   if (finite) $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
   if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
@@ -13814,8 +13814,9 @@ $('speedLabel').addEventListener('input', () => { $('speedLabel').value = $('spe
 $('speedLabel').addEventListener('blur', updateSpeedLabel);  // "50 steps/s" again
 $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) setSpeed(Number($('speedLabel').value)); });
 // go to step v: back from the start, forward from where it is
-// the slider's end: a walk's last step, a reversible one's last generation; Life's, none (0)
-const seekFar = () => (lifeTime() && !walk.life.margolus ? 0 : runEnd());
+// the slider's end: a walk's last step, a run's last generation: a reversible one's, a Game of Life's once its end is known
+// (its loop's last; not known yet: none, Infinity)
+const seekFar = () => (!lifeTime() || walk.life.margolus ? runEnd() : lifeEnd() ? lifeEnd().T + lifeEnd().P - 1 : Infinity);
 // A walk back to step v: its steps after taken off (the tiles' visits), drawn again up to there, the view kept as it is
 function walkBack(v) {
   for (let i = cur; i > v; i--) {
@@ -13835,7 +13836,7 @@ function seekTo(v) {
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
   statsDirty = true;
 }
-// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a reversible one's; Life's runs on)
+// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a run's: see seekFar)
 const seekCurve = (e) => {
   const far = seekFar(), first = runStart();  // (a reversible one's: from its past's furthest, see drawActivity)
   if (!Number.isFinite(far) || far === first) return;
