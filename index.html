@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261204m">
+  <link rel="stylesheet" href="style.css?v=20261204n">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -210,6 +210,8 @@
             <optgroup label="Automata on the plane">
               <option value="life2d">Life — square grid</option>
               <option value="loops2d">Loops — square grid</option>
+              <option value="loopsTorus">Loops — torus of squares</option>
+              <option value="loopsCube">Loops — cube of squares</option>
               <option value="blocks2d">Reversible — square grid in blocks</option>
               <option value="blocks2dTri">Reversible — triangle grid in blocks</option>
               <option value="blocks2dHex">Reversible — hexagon grid in blocks</option>
@@ -757,10 +759,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261204m"></script>
-  <script src="punks.js?v=20261204m"></script>
-  <script src="loops.js?v=20261204m"></script>
-  <script src="emoji.js?v=20261204m"></script>
-  <script src="main.js?v=20261204m"></script>
+  <script src="pixelarticons.js?v=20261204n"></script>
+  <script src="punks.js?v=20261204n"></script>
+  <script src="loops.js?v=20261204n"></script>
+  <script src="emoji.js?v=20261204n"></script>
+  <script src="main.js?v=20261204n"></script>
 </body>
 </html>

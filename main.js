@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.5';
+const VERSION = '0.2.6';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2708,9 +2708,11 @@ for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   NAV[w] = ['Reversible', 'Surfaces', NAV[life][2], 'Blocks', ''];
 }
 // Loops: Langton's self-reproducing loops on Life's grid of squares, by a table of transitions (see parseLoops)
-MODES.loops2d = { ...MODES.life2d, loops: true, where: 'a grid of squares, each cell by its 4 sides in turn (von Neumann)' };
-MODE_ICONS.loops2d = MODE_ICONS.life2d;
-NAV.loops2d = ['Loops', '2D', 'Squares', 'Langton', ''];
+for (const [w, life] of [['loops2d', 'life2d'], ['loopsTorus', 'lifeTorus'], ['loopsCube', 'lifeCube']]) {  // (squares: 4 sides each)
+  MODES[w] = { ...MODES[life], loops: true, where: `${MODES[life].where.split(' (')[0]}, each cell by its 4 sides in turn (von Neumann)` };
+  MODE_ICONS[w] = MODE_ICONS[life];
+  NAV[w] = ['Loops', NAV[life][1], NAV[life][2], 'Langton', ''];
+}
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
   NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
@@ -6534,7 +6536,7 @@ function lifeReseed() {
 // (see huntParts), Wild and Digits all over
 const lifeParts = () => (walk.life.margolus && walk.geo.torus ? (plane.start === 'random' && /24$/.test(hunt.zone) ? 3 : 1) : walk.life.colours);  // (any sheet's mesh a torus's)
 function startColours(seed) {
-  if (walk.life.loops) return;  // (its loop laid already, see loopSeed)
+  if (walk.life.loops) { layLoops(seed); return; }  // (its loops, see layLoops)
   startParts(seed);
   if (walk.life.margolus) seed.forEach((v, t) => { seed[t] = v ? 1 : 0; });  // (a reversible one: one colour, its pictures a square each too)
 }
@@ -6584,8 +6586,8 @@ function buildLife(seq, mode) {
   const seed = surfaceSeed(seq, g.n, rule.colours);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
-  walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
-                margolus: mode.margolus && rule.margolus ? ruleBlocks(rule, blocksGrid(mode), g.nu, true, g.nv, g) : null, alive: new Uint8Array(n) };
+  walk.life = { nbr, ring: rule.loops ? meshSides(g) : rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
+                margolus: mode.margolus && rule.margolus ? ruleBlocks(rule, blocksGrid(mode), g.nu, true, g.nv, g) : null, loops: rule.loops ?? null, loopStates: rule.loopStates, lineages: !!rule.lineages, alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
@@ -7608,23 +7610,41 @@ function sidesOf(row, W, torus) {
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy], q) => { out[4 * (y * row + x) + q] = at(x + dx, y + dy); });
   return out;
 }
-// a loop's start (see loops.js) on empty cells: its RLE's states (. 0, A 1, B 2…), its rows ($); in the middle, or in K
-// lineages one in the middle of each colour's block (as Life's, see COLOUR_GRID), of its colour (see parseLoops), the k-th
-// turned by k quarter turns (the rule the same turned: its daughters each their own ways, not copies of the others' moves)
-function loopSeed(name, row, W, K = 1) {
-  const { w, h, rle } = LOOP_RULES[name].pattern, seed = new Uint8Array(row * W), [cols, rows] = COLOUR_GRID[K], m = Math.max(w, h);
+// a surface of squares' tiles by their 4 sides in turn, as listed (the same way round on every tile: an orientable surface),
+// each side the tile across it (see parseLoops)
+function meshSides(g) {
+  if (g.loopSides) return g.loopSides;
+  const across = new Map(), out = new Int32Array(4 * g.n).fill(-1), edge = (a, b) => `${Math.min(a, b)},${Math.max(a, b)}`;
+  for (let t = 0; t < g.n; t++) for (let q = 0; q < 4; q++) { const e = edge(g.poly[4 * t + q], g.poly[4 * t + ((q + 1) % 4)]); across.set(e, [...(across.get(e) ?? []), t]); }
+  for (let t = 0; t < g.n; t++) for (let q = 0; q < 4; q++) out[4 * t + q] = across.get(edge(g.poly[4 * t + q], g.poly[4 * t + ((q + 1) % 4)])).find((u) => u !== t) ?? -1;
+  return (g.loopSides = out);
+}
+// The loops' start (see loops.js) on empty cells: its RLE's states (. 0, A 1, B 2…), its rows ($), laid tile by tile from the
+// middle of each colour's part (see middleCells): up and left half its box, then its rows down and its cells right, each
+// step across a side to the tile beyond, its sides turned as they come (so it crosses a cube's edges as its faces); in K
+// lineages, each its colour (see parseLoops), the k-th turned by k quarter turns (the rule the same turned: its daughters
+// each their own ways, not copies of the others' moves)
+function layLoops(seed) {
+  const L = walk.life, K = L.lineages ? L.colours : 1, sides = L.ring, { w, h, rle } = LOOP_RULES[L.ruleText].pattern, m = Math.max(w, h);
+  const go = ([t, o], j, k = 1) => {  // (k steps the way j, o the turn from its ways to its sides)
+    for (let i = 0; i < k && t >= 0; i++) {
+      const d = (j + o) % 4, u = sides[4 * t + d], b = u < 0 ? -1 : sides[4 * u + ((d + 2) % 4)] === t ? (d + 2) % 4 : [0, 1, 2, 3].find((q) => sides[4 * u + q] === t);
+      [t, o] = [u, mod(b + 2 - j, 4)];
+    }
+    return [t, o];
+  };
   const turn = (x, y, r) => (r === 0 ? [x, y] : turn(m - 1 - y, x, r - 1));  // (a quarter turn in its m × m box)
+  seed.fill(0);
   for (let k = 0; k < K; k++) {
-    const x0 = Math.floor((row * (2 * (k % cols) + 1)) / (2 * cols) - m / 2), y0 = Math.floor((W * (2 * Math.floor(k / cols) + 1)) / (2 * rows) - m / 2);
+    const corner = go(go([middleCells(k, K)[0], 0], 0, Math.floor(m / 2)), 3, Math.floor(m / 2));
     let x = 0, y = 0;
     for (const [, n, c] of rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(n) || 1); i++) {
       if (c === '$') { x = 0; y++; continue; }
-      const [u, v] = turn(x, y, k % 4);
-      if (c !== '.') seed[mod(y0 + v, W) * row + mod(x0 + u, row)] = K > 1 ? k + 1 + K * (c.charCodeAt(0) - 65) : c.charCodeAt(0) - 64;
+      const [u, v] = turn(x, y, k % 4), [t] = go(go(corner, 2, v), 1, u);
+      if (c !== '.' && t >= 0) seed[t] = K > 1 ? k + 1 + K * (c.charCodeAt(0) - 65) : c.charCodeAt(0) - 64;
       x++;
     }
   }
-  return seed;
 }
 function buildLifePlane(seq) {
   const kind = planeKind(MODES[current.mode].plane);  // (a rectangle's, if so)
@@ -7639,7 +7659,7 @@ function buildLifePlane(seq) {
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.loops ? sidesOf(row, W, planeTorus(kind)) : rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
                 margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, loops: rule.loops ?? null, loopStates: rule.loopStates, lineages: !!rule.lineages,
-                seed: rule.loops ? loopSeed(rule.text, row, W, rule.lineages ? rule.colours : 1) : planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
+                seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
