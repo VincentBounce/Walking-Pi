@@ -37,7 +37,7 @@ Never delete the bundles in `Walking Pi resources` (old versions included): the 
 
 ## Line balance
 `python3 tools/lines.py [from] [to]` (from: HEAD; to: the files now, or a commit) gives each changed code file's lines
-of code only (no comment, no blank line, see `tools/uncomment.py`), before → after, nothing else: the « solde » of each
+of code only (no comment, no blank line, see `tools/uncomment.py`): before, and +y or −y, nothing else: the « solde » of each
 delivery, e.g. `python3 tools/lines.py HEAD~1 HEAD` after a commit.
 
 ## Versions

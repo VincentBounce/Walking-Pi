@@ -1,5 +1,5 @@
 # The line balance of the code files (main.js, style.css, index.html, the tools): their lines of code only (no comment,
-# no blank line, see uncomment.py), before → after, to see whether the code grows.
+# no blank line, see uncomment.py), before and what it gained or lost, to see whether the code grows.
 # python3 tools/lines.py [from] [to]   (from: HEAD by default; to: the files as they are now, or a commit)
 import os, subprocess, sys
 from uncomment import code_of
@@ -17,11 +17,12 @@ def files(rev):
 a, b = sys.argv[1] if len(sys.argv) > 1 else 'HEAD', sys.argv[2] if len(sys.argv) > 2 else None
 A, B = files(a), files(b)
 count = lambda name, src: code_of(name, src).count('\n') + 1 if code_of(name, src) else 0
+change = lambda a, b: f'{a:>7,} {b - a:+,}'.replace('-', '−')  # (before, then +y or −y)
 rows, total = [], [0, 0]
 for name in sorted(set(A) | set(B)):
     c0, c1 = count(name, A.get(name, '')), count(name, B.get(name, ''))
     if c0 == c1: continue
-    rows.append(f'{name:22} {c0:>7,} → {c1:,}')
+    rows.append(f'{name:22} {change(c0, c1)}')
     total = [total[0] + c0, total[1] + c1]
 print('\n'.join(rows) or 'no code line changed')
-if len(rows) > 1: print(f'{"all":22} {total[0]:>7,} → {total[1]:,}')
+if len(rows) > 1: print(f'{"all":22} {change(*total)}')
