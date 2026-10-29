@@ -551,7 +551,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   .hint { display: none; }
   /* folded, the player alone: ⏮, a step back and Play (a tap opens it all), the grid in sight */
   .stage-bar:not(:focus-within) > :not(.player-controls), .stage-bar:not(:focus-within) #digitsRow,
-  .stage-bar:not(:focus-within) #step, .stage-bar:not(:focus-within) #end, .stage-bar:not(:focus-within) #jump2k, .stage-bar:not(:focus-within) #jump10k { display: none; }
+  .stage-bar:not(:focus-within) #step, .stage-bar:not(:focus-within) #jump2k, .stage-bar:not(:focus-within) #jump10k { display: none; }
   .stage-bar:not(:focus-within) { width: auto; }
 }
 
