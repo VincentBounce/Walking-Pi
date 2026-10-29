@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.50';
+const VERSION = '0.2.51';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13513,8 +13513,7 @@ function renderRanking(L) {
 function updateStats() {
   // Jump to start and Step back greyed at the start (a reversible one's, as far back as it goes), Step at the end (a loop's:
   // round it on)
-  $('restart').disabled = cur <= runStart();
-  $('back').disabled = cur <= runStart();
+  $('restart').disabled = $('back').disabled = cur <= runStart();
   for (const b of [$('jump2k'), $('jump10k')]) {  // (Life: 2,000 and 10,000 generations ahead, while its end is not known)
     b.hidden = Number.isFinite(walk.n);
     b.disabled = !!runLoop();
@@ -13533,9 +13532,8 @@ function updateStats() {
   if (!walk.life) $('ranking').hidden = $('rankTitles').hidden = true;
   const time = spaceTimeOn() && !!stack;
   document.querySelector('.stage-bar .stats').hidden = !time;
-  $('lifeChips').hidden = !lifeTime();
-  if (time) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
   if (time) {  // Space-time: its generation, its cubes up to it
+    $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
     setLinks($('barNum'), `Gen ${fmt(cur)}`);
     $('sGen').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
     $('sCubes').textContent = fmt(stack.layers[cur] + 1);
@@ -13562,9 +13560,7 @@ function updateStats() {
       $('barLoop').textContent = `not back by gen ${fmt(far)} · ≤ ${bigWords(B.log)}`;
       $('barLoop').title = `A reversible rule: it comes back to its start, at the latest after ${bigWords(B.log)} generations (${B.keeps ? 'the ways its live cells can lie' : 'all its states'}, × its phases)`;
     }
-    $('lifeChips').innerHTML = '';  // (one colour: its gauges; a battle: the ranking's table)
-    $('lifeChips').hidden = true;
-    renderRanking(L);
+    renderRanking(L);  // (one colour: its gauges; a battle: the ranking's table)
     renderGauges(L);
     $('digitStrip').classList.remove('line');
     $('digitStrip').textContent = '';
