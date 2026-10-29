@@ -623,4 +623,4 @@ button.mark.active::after { background: linear-gradient(135deg, transparent 50%,
 
 .gen-link { color: inherit; text-decoration: none; cursor: pointer; }  /* a generation of the run in view: clicked, it goes there (see genLink) */
 .gen-link:hover { text-decoration: underline; }
-.gen-loop { color: var(--cell); }  /* a loop's first generation, as its mark on the curve (linked or not) */
+.gen-loop { color: var(--cell); }  /* a loop's first generation, as its mark on the curve */
