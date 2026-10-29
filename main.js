@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.57';
+const VERSION = '0.2.58';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3198,6 +3198,7 @@ function compute() {
 let busy = false, busyTimer = 0, computeJob = 0;
 function setBusy(on) {
   busy = on;
+  statsDirty = true;  // (the player: greyed meanwhile, see updateStats)
   $('progressBar').style.width = '0';
   $('progressText').textContent = on ? 'Computing…' : '';
   $('progress').classList.toggle('indeterminate', on);  // a bar sliding along until the worker says how far it is
@@ -11320,6 +11321,8 @@ function play(on) {
 // rule's, by its rule); Space-time's, its layers made (see stackUp)
 const lifeTime = () => !!walk.life && !spaceTimeOn();
 const playsBack = () => !lifeTime() || !!walk.life.margolus;  // (◀: a walk, Space-time, a reversible one)
+// a Game of Life's player (+2k, +10k; no ◀ nor End), by the mode chosen: its run built or not yet (a big grid's, a moment)
+const lifePlayer = () => { const m = MODES[$('mode').value]; return !!m.life && !m.margolus && !spaceTimeOn(); };
 function reverse(on) {
   reversing = on && playsBack() && cur > runStart();
   if (reversing) play(false);
@@ -13531,19 +13534,20 @@ function updateStats() {
   $('back').disabled = cur <= runStart() || tooFar;
   $('back').dataset.greyed = tooFar ? 'so far from its start: played again from it, more than a second' : '';
   for (const b of [$('jump2k'), $('jump10k')]) {  // (Life: 2,000 and 10,000 generations ahead, while its end is not known)
-    b.hidden = Number.isFinite(walk.n);
-    b.disabled = !!runLoop();
+    b.hidden = !lifePlayer();
+    b.disabled = busy || !!runLoop();
   }
-  $('reverse').hidden = !playsBack();  // (played backwards: a walk, a reversible one)
+  $('play').disabled = busy;  // (its run not built yet)
+  $('reverse').hidden = lifePlayer();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = atEnd();
-  $('end').hidden = lifeTime() && !walk.life.margolus;  // (Life: its green link, +2k and +10k)
+  $('end').hidden = lifePlayer();  // (Life: its green link, +2k and +10k)
   $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
   // drawActivity); none for a Game of Life while its end is not known
   const far = seekFar(), finite = Number.isFinite(far);
-  $('seekCountOpen').hidden = !finite;
-  $('seekCount').hidden = !finite || lifeTime();  // (folded: the step alone, beside the title; Life's, in its title)
+  $('seekCountOpen').hidden = !finite || busy;
+  $('seekCount').hidden = !finite || busy || lifePlayer();  // (folded: the step alone, beside the title; Life's, in its title)
   if (finite) { $('seekCount').textContent = fmt(cur); $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`; }
   if (!walk.life) $('ranking').hidden = $('rankTitles').hidden = true;
   const time = spaceTimeOn() && !!stack;
