@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.41';
+const VERSION = '0.2.42';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1359,11 +1359,10 @@ function describe(base, available) {
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
   $('barBase').parentElement.classList.toggle('life', !!creature);  // (a creature laid out as Life's: its title, its chips under it)
   if (colours) base = colours;  // its chips, one per colour
-  $('barLoop').hidden = mode.life || !(walk.loop || walk.wormEnd);
+  $('barLoop').hidden = mode.life || !(walk.loop || walk.wormEnd);  // (its words, see updateStats: its link, as Life's title's)
   $('ruleChips').replaceChildren();
   if (!mode.life) {
     const from = walk.loop?.from;
-    $('barLoop').textContent = walk.wormEnd ? `✝ dies at step ${fmt(walk.n)}` : `${fmt(walk.loop?.period ?? walk.n)} digits ${walk.loop?.drift ? '→' : '↻'}${from ? ` from step ${fmt(from)}` : ''}`;  // a round; a worm's end
     $('barLoop').title = walk.wormEnd ? loopText() : from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
@@ -13390,8 +13389,8 @@ function drawActivity() {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
   };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
-  const s = walk.life?.stable;
-  if (s && !s.extinct && s.P > 1 && lifeTime()) mark(s.T, css.getPropertyValue('--cell'));  // (its loop's first generation, in green as its link in the title)
+  const o = runLoop();
+  if (o && o.last > o.T) mark(o.T, css.getPropertyValue('--cell'));  // (its loop's first step, in green as its link: the title's, a walk's chip)
   if (walk.life?.colours === 1 && lifeTime()) {  // (as their gauges: its ordered moments, a reversible one's (see orderMarks), else the most ordered; the most alive, in gold as the curve)
     for (const g of reversibleRun() ? orderMarks(walk.life) : [peaks(walk.life).orderGen]) mark(g, css.getPropertyValue('--sector'));
     mark(peaks(walk.life).aliveGen, accent);
@@ -13404,7 +13403,7 @@ function drawActivity() {
 // deaths, in figures (a bar for it swung too much)
 // a generation of the run in view, as a link (but the one shown): clicked, it goes there (see seekTo: a reversible one's by its rule, Life's
 // played again from its start)
-const genLink = (g, text = `gen ${fmt(g)}`, kind = '') => (g === cur && !kind ? text : `<a class="gen-link${kind && ` gen-${kind}`}" href="#" data-gen="${g}" title="Go to gen ${fmt(g)}">${text}</a>`);  // (the one shown: no link; kind: its colour, see style.css, always a link)
+const genLink = (g, text = `gen ${fmt(g)}`, kind = '') => (g === cur && !kind ? text : `<a class="gen-link${kind && ` gen-${kind}`}" href="#" data-gen="${g}" title="Go to ${walk.life ? 'gen' : 'step'} ${fmt(g)}">${text}</a>`);  // (the one shown: no link; kind: its colour, see style.css, always a link)
 document.addEventListener('click', (e) => { const a = e.target.closest?.('.gen-link'); if (!a) return; e.preventDefault(); seekTo(Number(a.dataset.gen)); });
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
@@ -13518,7 +13517,7 @@ function updateStats() {
     // (its end known, not reached yet: where it is, its period and its first; Begin back to a start keeps its record)
     const known = L.stable, ahead = known && !s, end = !known ? '' : known.extinct ? `✝${ahead ? ` ${fmt(known.T)}` : ''}` : known.P === 1 ? `■${ahead ? ` ${fmt(known.T)}` : ''}`
       : `↻ ${ahead ? fmt(known.P) : `${pad(mod(cur - known.T, known.P) + 1, known.P)}/${fmt(known.P)}`}${known.T ? ` from ${fmt(known.T)}` : ''}`;
-    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(cur !== known.T ? known.T : known.P > 1 ? known.T + known.P - 1 : 0, end, 'loop')}`}`;
+    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(loopTarget(runLoop()), end, 'loop')}`}`;
     setLinks($('barNum'), title);
     $('barLoop').hidden = !L.margolus || !!L.stable;  // (blocks: not back to its start yet, and at most when; back: its title's)
     renderBack();
@@ -13536,6 +13535,11 @@ function updateStats() {
     drawActivity();
     return;
   }
+  // a walk's loop (its digits' round, an ant's highway) or a worm's end, in its chip: from its glyph on, a link in green, as
+  // Life's title's (see loopTarget)
+  const o = runLoop();
+  if (o) setLinks($('barLoop'), walk.wormEnd ? genLink(loopTarget(o), `✝ dies at step ${fmt(walk.n)}`, 'loop')
+    : `${fmt(walk.loop.period ?? walk.n)} digits ${genLink(loopTarget(o), `${walk.loop.drift ? '→' : '↻'}${o.T ? ` from step ${fmt(o.T)}` : ''}`, 'loop')}`);
   drawActivity();
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.wx[cur] : 0;
@@ -13796,11 +13800,18 @@ $('step').addEventListener('click', () => { play(false); reverse(false); advance
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump2k').addEventListener('click', () => advanceTo(cur + LIFE_JUMP));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
-// Begin (⏮): back through a run's stops, in turn: its last, a Game of Life's loop's last and first once known (see lifeEnd),
-// its ordered moments (a reversible one's, see orderMarks), its start (0), its first; its loop's first, by its title's glyph (see
-// updateStats). Its start, written at once (restart), not played to
+// Begin (⏮): back through a run's stops, in turn: its last, its loop's last and first once known (see runLoop), its ordered
+// moments (a reversible one's, see orderMarks), its start (0), its first; its loop's first, by its green link (see loopTarget). Its start, written at once (restart), not played to
 const lifeEnd = () => (lifeTime() && !walk.life.margolus && walk.life.stable) || null;  // (a Game of Life's end, known: its loop, frozen or dead)
-const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(lifeEnd() ? [lifeEnd().T, lifeEnd().T + lifeEnd().P - 1] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
+// A run's loop, known: its first step and its last; a Game of Life's or a reversible one's, where it settles (frozen or dead: its
+// end, its last the same); a walk's, its digits' round or an ant's highway, from its first step to its end; a worm's end
+const runLoop = () => {
+  if (walk.life) { const s = lifeTime() && walk.life.stable; return s ? { T: s.T, last: s.extinct || s.P === 1 ? s.T : s.T + s.P - 1 } : null; }
+  return walk.loop ? { T: walk.loop.from, last: walk.n } : walk.wormEnd ? { T: walk.n, last: walk.n } : null;
+};
+// where its link goes (see genLink, in green): to its first step; from there, to its last; an end alone, back to 0
+const loopTarget = (o) => (cur !== o.T ? o.T : o.last !== o.T ? o.last : 0);
+const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(runLoop() ? [runLoop().T, runLoop().last] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
 $('restart').addEventListener('click', () => {  // (playing on if it was)
   const wasPlaying = playing, g = runStops().findLast((x) => x < cur);
   if (g === 0) restart(); else if (g !== undefined) advanceTo(g);
