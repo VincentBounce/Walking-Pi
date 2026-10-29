@@ -211,6 +211,7 @@ button.primary {
 }
 .stepper button { width: 36px; padding: 5px 0; }
 button.wide { width: 100%; margin-bottom: 10px; }
+button.wide.how-it-works { margin-bottom: 4px; }  /* on its rules' first card, the list's gap */
 #huntRow .nav-shapes, #setupTools { margin-bottom: 4px; }  /* a wide button right under its tiles (Hunt, Confirm erase), as close as a row of them */
 
 /* Walk mode: one tab per category, then every choice of that category */

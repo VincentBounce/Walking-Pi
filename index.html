@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261207j">
+  <link rel="stylesheet" href="style.css?v=20261207k">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -76,7 +76,8 @@
       </section>
 
       <section id="walkRuleSection">  <!-- a walk's rule: Turtle, Pivot…, along the grid or on cells -->
-        <h2 data-icon="turtle">Rule<button id="walkRuleHow" class="head-btn how-it-works" data-icon="glider" type="button">How it works</button></h2>
+        <h2 data-icon="turtle">Rule</h2>
+        <button id="walkRuleHow" class="wide how-it-works" data-icon="glider" type="button">How it works</button>  <!-- how the rule works (see walkTutorialToggle), on its first card -->
         <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
         <div id="walkOn" class="choice-row" title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
           <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
@@ -381,9 +382,10 @@
       </section>
 
       <section id="antRuleSection" hidden>  <!-- an ant's creature (Ant, Turmite, Worm), and its rule: cards as Life's, your own typed -->
-        <h2 data-icon="ant"><span id="antRuleTitle">Rule</span><button class="head-btn how-it-works" data-icon="glider" type="button">How it works</button></h2>
+        <h2 data-icon="ant"><span id="antRuleTitle">Rule</span></h2>
         <div class="block-label">Creature</div>
         <div id="antCreatures" class="nav-shapes"></div>
+        <button class="wide how-it-works" data-icon="glider" type="button">How it works</button>  <!-- on its first card -->
         <div id="antRuleCards" class="mode-list rule-cards" role="listbox"></div>
         <div id="antCustomRow" hidden><div id="antRuleName" class="field-label"></div>  <!-- not a label: a click on ↵ would focus the field again -->
           <span class="field"><input id="antRule" class="custom" type="text" autocomplete="off" spellcheck="false" title="Type a rule, then Enter"><button class="enter" type="button" tabindex="-1" title="Apply (Enter)">↵</button></span>
@@ -391,7 +393,7 @@
       </section>
 
       <section id="colourSection" hidden>  <!-- Life: alive or dead, or 2 to 12 civilisations -->
-        <h2 data-icon="duel">Populations<button class="head-btn how-it-works" data-icon="glider" type="button">How it works</button></h2>
+        <h2 data-icon="duel">Populations</h2>
         <div id="colourBlocks" class="nav-shapes colour-blocks" title="Civilisations: a newborn takes the colour most of its live neighbours have; greyed: no fair spots for that many on this figure"></div>
       </section>
 
@@ -448,7 +450,8 @@
       </section>
 
       <section id="automataSection" hidden>  <!-- Life: its rule -->
-        <h2 data-icon="glider">Rule<button id="watchRule" class="head-btn how-it-works" data-icon="glider" type="button">How it works</button></h2>  <!-- how the rule in use works (see ruleTutorial) -->
+        <h2 data-icon="glider">Rule</h2>
+        <button id="watchRule" class="wide how-it-works" data-icon="glider" type="button">How it works</button>  <!-- how the rule in use works (see ruleTutorial), on its first card -->
         <div id="ruleCards" class="mode-list rule-cards" role="listbox"></div>  <!-- the rules for the grid's shape, as cards -->
         <div class="rule-build">  <!-- your own: the states (a cell's: alive, its dying stages, dead), how many live neighbours give birth, let survive -->
           <div class="build-cols">  <!-- two frames side by side: Birth, Survive -->
@@ -770,10 +773,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261207j"></script>
-  <script src="punks.js?v=20261207j"></script>
-  <script src="loops.js?v=20261207j"></script>
-  <script src="emoji.js?v=20261207j"></script>
-  <script src="main.js?v=20261207j"></script>
+  <script src="pixelarticons.js?v=20261207k"></script>
+  <script src="punks.js?v=20261207k"></script>
+  <script src="loops.js?v=20261207k"></script>
+  <script src="emoji.js?v=20261207k"></script>
+  <script src="main.js?v=20261207k"></script>
 </body>
 </html>
