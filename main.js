@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.14';
+const VERSION = '0.2.15';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13361,29 +13361,33 @@ function drawActivity() {
   if (walk.life?.margolus && lifeTime()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
   if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, css.getPropertyValue('--face'));  // (its most alive, as its gauge)
 }
-// One colour: fixed gauges of how it goes, not of a record: alive (against the peak); its turnover, this generation's
-// births and deaths against the cells alive before and after (100 %: every cell changes; 0: nothing moves); its growth,
-// births less deaths, in figures (a bar for it swung too much); the cells ever alive and the most alive at once (and when)
-// against the grid; its order (see orderOf) and the most ordered so far (and when)
+// One colour: fixed gauges of how it goes, not of a record, a row each: in red as their marks on the curve (see drawActivity),
+// alive (against the most) and the most alive at once (and when, against the grid); in blue, its order (see orderOf) and the
+// most ordered so far (and when); then its turnover, this generation's births and deaths against the cells alive before and
+// after (100 %: every cell changes; 0: nothing moves), the cells ever alive (against the grid), its growth, births less
+// deaths, in figures (a bar for it swung too much)
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
-  if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Ever alive', 'Peak alive', 'Order', 'Peak order', 'Growth'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
-    + `${i >= 6 ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');  // (the bars, then the figures alone)
-  // (the theme's live cells, as it is now; the most alive in red, the order in blue, as their marks on the curve: see drawActivity)
-  [LIFE_ALIVE, LIFE_ALIVE, LIFE_ALIVE, 'var(--face)', 'var(--sector)', 'var(--sector)'].forEach((c, i) => { box.children[i].children[1].firstChild.style.background = c; box.children[i].children[2].style.color = i > 2 ? c : ''; });
   const avg = loopMeans(L), varies = avg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
-  const turnover = both ? (b + d) / both : 0, bar = (i) => box.children[i].children[1].firstChild;
-  const width = (i, v, most) => { bar(i).style.width = `${most ? Math.min(100, (100 * v) / most) : 0}%`; };
-  width(0, varies ? avg[1] : L.aliveCount, L.peak);
-  width(1, turnover, 1);
-  width(2, L.everAlive, n);
-  width(3, L.peak, n);
-  width(4, L.order, 1);
-  width(5, L.peakOrder, 1);
-  [`<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`, `${Math.round(100 * turnover)} %`, fmt(L.everAlive), `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`,
-    `${Math.round(100 * L.order)} %`, `${Math.round(100 * L.peakOrder)} % · gen ${fmt(L.peakOrderGen)}`, `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`].forEach((text, i) => { box.children[i].children[2].innerHTML = text; });
+  const turnover = both ? (b + d) / both : 0, red = 'var(--face)', blue = 'var(--sector)';
+  const rows = [  // name, colour (none: the theme's live cells'), its bar's share (none: figures only), its figures
+    ['Alive', red, (varies ? avg[1] : L.aliveCount) / L.peak, `<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`],
+    ['Peak alive', red, L.peak / n, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`],
+    ['Order', blue, L.order, `${Math.round(100 * L.order)} %`],
+    ['Peak order', blue, L.peakOrder, `${Math.round(100 * L.peakOrder)} % · gen ${fmt(L.peakOrderGen)}`],
+    ['Turnover', null, turnover, `${Math.round(100 * turnover)} %`],
+    ['Ever alive', null, L.everAlive / n, fmt(L.everAlive)],
+    ['Growth', null, null, `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`],
+  ];
+  if (!box.childElementCount) box.innerHTML = rows.map(([name, , share]) => `<div class="gauge-row"><span>${name}</span>${share === null ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');
+  rows.forEach(([, colour, share, text], i) => {
+    const [, bar, num] = box.children[i].children;
+    if (share !== null) Object.assign(bar.firstChild.style, { width: `${Math.min(100, 100 * (share || 0))}%`, background: colour ?? LIFE_ALIVE });  // (the theme's live cells, as it is now)
+    num.innerHTML = text;
+    num.style.color = colour ?? '';
+  });
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
