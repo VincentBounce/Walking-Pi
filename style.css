@@ -432,7 +432,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
 .ranking { position: relative; margin: 0 0 8px; font-size: 12px; font-variant-numeric: tabular-nums; }  /* a battle: a row a colour, re-sorted as it goes */
 .ranking .rank-row { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) 76px; align-items: center; gap: 6px; transition: transform 0.4s; }
-.gauges:not([hidden]) { display: grid; grid-template-columns: 64px minmax(0, 112px) minmax(110px, max-content); grid-auto-rows: 18px; align-items: center; column-gap: 6px; }  /* one colour: fixed rows, one set of columns (a figure as wide as it needs, on one line) */
+.gauges:not([hidden]) { display: grid; grid-template-columns: minmax(64px, max-content) minmax(0, 112px) minmax(110px, max-content); grid-auto-rows: 18px; align-items: center; column-gap: 6px; }  /* one colour: fixed rows, one set of columns (a figure as wide as it needs, on one line) */
 .gauges .gauge-row { display: contents; }
 .gauges .rank-num { white-space: nowrap; }
 .gauges .gauge-row > span:first-child { color: var(--muted); }
@@ -480,9 +480,8 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .stage-bar .stage-more { margin-bottom: 9px; }
 /* the stats in one line of columns: the label over its value */
 .stage-bar .stats { font-size: 12px; gap: 1px 14px; grid-template-rows: auto auto; grid-auto-flow: column; }
-/* columns of fixed widths, whatever their values: nothing moves sideways while the walk plays */
-.stage-bar .stats { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.7fr) minmax(0, 0.85fr) minmax(0, 1.9fr); }  /* Position, Distance, Max distance, Cells */
-.stage-bar .stats.life { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1.35fr) minmax(0, 0.6fr) minmax(0, 0.6fr) minmax(0, 1.35fr); }
+/* columns of fixed widths, whatever their values: nothing moves sideways while it plays */
+.stage-bar .stats { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }  /* Generation, Cubes */
 .stage-bar .stats dt, .stage-bar .stats dd { white-space: nowrap; }
 .stage-bar .stats dd { text-align: left; }
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 14px; }

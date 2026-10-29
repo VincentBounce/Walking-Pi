@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261206n">
+  <link rel="stylesheet" href="style.css?v=20261206o">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -653,14 +653,11 @@
           <p class="bar-sub"><span id="description"></span><span id="status"></span></p>  <!-- the walk, then how its digits came (computing, an error…) -->
           <div id="ruleChips" class="rule-chips"></div>
           <div id="lifeChips" class="rule-chips life-chips" hidden></div>  <!-- Life: the run as bubbles, then a row per colour -->
-          <dl class="stats">
-            <dt id="lifetimeLabel" hidden>Lifetime</dt><dd id="sLifetime" hidden>—</dd>
-            <dt id="lStat0">Steps</dt><dd id="sStep">0</dd>
-            <dt id="lStat1">Position</dt><dd id="sPos">(0, 0)</dd>
-            <dt id="lStat2">Distance</dt><dd id="sDist">0</dd>
-            <dt id="lStat3">Max distance</dt><dd id="sMax">0</dd>
-            <dt id="lStat4">Cells visited</dt><dd id="sCells">1</dd>
+          <dl class="stats" hidden>  <!-- Space-time: its generation, its cubes up to it -->
+            <dt>Generation</dt><dd id="sGen">0</dd>
+            <dt>Cubes</dt><dd id="sCubes">0</dd>
           </dl>
+          <div id="gauges" class="ranking gauges" hidden></div>  <!-- one colour: alive, its peak, order…; a walk: its position, its distance, its peak, its cells (open only) -->
           <div id="digitStrip" class="strip" aria-label="Recent digits"></div>
           <canvas id="activity" class="activity" aria-label="Activity: a walk's distance from its start, Life's live cells"></canvas>
           <div class="length-row">  <!-- the length (how many digits are walked), and the step under the curve, its slider -->
@@ -677,7 +674,6 @@
         </div>
         <div class="bar-title"><span id="barNum" class="bar-num"></span><span id="barRule" class="bar-chip" hidden></span><span id="barLoop" class="bar-chip loop" hidden></span><span id="barBase" class="bar-chip"></span><span id="rankTitles" class="rank-titles" hidden><span>Alive</span><span title="Its live cells summed over the generations, by how many, till it settles or loops (its size while it lives)">Mean</span><span>Born</span><span>Died</span><span>Ever alive</span></span><span id="seekCount" class="seek-count"></span></div>  <!-- a battle: the ranking's column titles, on the rule's line (folded: Alive) -->
         <div id="ranking" class="ranking" hidden></div>  <!-- a battle: the colours ranked by live cells, those died out last -->
-        <div id="gauges" class="ranking gauges" hidden></div>  <!-- one colour: alive, born, died, ever alive, peak -->
         <div class="player-controls">  <!-- the buttons, as wide folded or not; on hover, the speed on their right -->
           <div class="player-main">
             <div class="row play-row">
@@ -766,10 +762,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261206n"></script>
-  <script src="punks.js?v=20261206n"></script>
-  <script src="loops.js?v=20261206n"></script>
-  <script src="emoji.js?v=20261206n"></script>
-  <script src="main.js?v=20261206n"></script>
+  <script src="pixelarticons.js?v=20261206o"></script>
+  <script src="punks.js?v=20261206o"></script>
+  <script src="loops.js?v=20261206o"></script>
+  <script src="emoji.js?v=20261206o"></script>
+  <script src="main.js?v=20261206o"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.47';
+const VERSION = '0.2.48';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13309,12 +13309,6 @@ function drawOverlay() {
   ctx.fill();
 }
 
-const STAT_LABELS = {
-  walk: ['Steps', 'Position', 'Distance', 'Max distance', 'Cells visited'],
-  grid: ['Steps', 'Position', 'Distance', 'Max distance', 'Corners visited'],
-  life: ['Generation', 'Alive', 'Born', 'Died', 'Ever alive'],
-  time: ['Generation', 'Cubes'],  // (Space-time's: the generation shown, the cubes up to it)
-};
 
 // The activity, under the stats: a walk's distance from its start, step by step; a Game of Life's live
 // cells, generation by generation. A column of
@@ -13394,7 +13388,7 @@ function drawActivity() {
   if (walk.life?.colours === 1 && lifeTime()) {  // (as their gauges: its ordered moments, a reversible one's (see orderMarks), else the most ordered; the most alive, in gold as the curve)
     for (const g of reversibleRun() ? orderMarks(walk.life) : [peaks(walk.life).orderGen]) mark(g, css.getPropertyValue('--sector'));
     mark(peaks(walk.life).aliveGen, accent);
-  }
+  } else if (!walk.life && walk.n && walk.maxDist) mark(walkPeak().step, accent);  // (a walk's farthest, in gold as its gauge)
 }
 // One colour: fixed gauges of how it goes, not of a record, a row each: in gold as the curve and its mark (see drawActivity),
 // alive (against the most) and the most alive at once (and when, against the grid); in blue, its order (see orderOf) and the
@@ -13403,7 +13397,7 @@ function drawActivity() {
 // deaths, in figures (a bar for it swung too much)
 // a generation of the run in view, as a link (but the one shown): clicked, it goes there (see seekTo: a reversible one's by its rule, Life's
 // played again from its start)
-const genLink = (g, text = `gen ${fmt(g)}`, kind = '') => (g === cur && !kind ? text : `<a class="gen-link${kind && ` gen-${kind}`}" href="#" data-gen="${g}" title="Go to ${walk.life ? 'gen' : 'step'} ${fmt(g)}">${text}</a>`);  // (the one shown: no link; kind: its colour, see style.css, always a link)
+const genLink = (g, text = `${walk.life ? 'gen' : 'step'} ${fmt(g)}`, kind = '') => (g === cur && !kind ? text : `<a class="gen-link${kind && ` gen-${kind}`}" href="#" data-gen="${g}" title="Go to ${walk.life ? 'gen' : 'step'} ${fmt(g)}">${text}</a>`);  // (the one shown: no link; kind: its colour, see style.css, always a link)
 document.addEventListener('click', (e) => { const a = e.target.closest?.('.gen-link'); if (!a) return; e.preventDefault(); seekTo(Number(a.dataset.gen)); });
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
@@ -13420,13 +13414,46 @@ function renderGauges(L) {
     ['Ever alive', null, L.everAlive / n, fmt(L.everAlive)],
     ['Growth', null, null, `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`],
   ];
-  if (!box.childElementCount) box.innerHTML = rows.map(([name, , share]) => `<div class="gauge-row"><span>${name}</span>${share === null ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');
+  paintGauges(rows);
+}
+// The gauges' rows (name, colour: none, the theme's live cells'; its bar's share: none, figures only; its figures), built
+// again when their names change (Life's, a walk's)
+function paintGauges(rows) {
+  const box = $('gauges'), key = rows.map(([name, , share]) => `${name}${share === null ? '' : '|'}`).join();
+  if (box.dataset.key !== key) {
+    box.dataset.key = key;
+    box.innerHTML = rows.map(([name, , share]) => `<div class="gauge-row"><span>${name}</span>${share === null ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');
+  }
   rows.forEach(([, colour, share, text], i) => {
     const [, bar, num] = box.children[i].children;
     if (share !== null) Object.assign(bar.firstChild.style, { width: `${Math.min(100, 100 * (share || 0))}%`, background: colour ?? LIFE_ALIVE });  // (the theme's live cells, as it is now)
     setLinks(num, text);
     num.style.color = colour ?? '';
   });
+}
+// A walk's farthest from its start over all its steps (the whole walk, worked out), and the first step there (its curve's
+// peak; its distances so far only grow: halved to it)
+function walkPeak() {
+  const M = walk.maxDist, far = M[walk.n];
+  let lo = 0, hi = walk.n;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (M[m] < far) lo = m + 1; else hi = m; }
+  return { far, step: lo };
+}
+// A walk's gauges, as Life's: where it is, how far from its start against its farthest (in gold, as its mark on the curve),
+// its farthest (its bar: as far as it went so far) and when; the cells it visited (on a surface, out of all of them; once
+// all are, the step that reached the last one)
+function renderWalkGauges() {
+  $('gauges').hidden = !walk.n || !walk.maxDist;
+  if ($('gauges').hidden) return;
+  const x = walk.wx[cur], y = walk.is3d ? walk.wy[cur] : -walk.wy[cur], z = walk.is3d ? walk.wz[cur] : 0, d = Math.hypot(x, y, z);
+  const p = (v) => fmt(Math.round(v * 100) / 100 || 0), P = walkPeak(), gold = 'var(--accent)', c = walk.cells[cur];
+  paintGauges([
+    ['Position', null, null, walk.is3d ? `(${p(x)}, ${p(y)}, ${p(z)})` : `(${p(x)}, ${p(y)})`],
+    ['Distance', gold, d / P.far, `<b>${d.toFixed(1)}</b>`],
+    ['Peak distance', gold, walk.maxDist[cur] / P.far, `${P.far.toFixed(1)} · ${genLink(P.step)}`],
+    [walk.vert ? 'Corners visited' : 'Cells visited', null, c / (walk.sphere ? walk.nodes : walk.cells[walk.n]), !walk.sphere ? fmt(c)
+      : walk.coverStep >= 0 && cur >= walk.coverStep ? `all ${fmt(walk.nodes)} · by step ${fmt(walk.coverStep)}` : `${fmt(c)} / ${fmt(walk.nodes)} (${(100 * c / walk.nodes).toFixed(1)} %)`],
+  ]);
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
@@ -13493,19 +13520,15 @@ function updateStats() {
   $('seekCountOpen').hidden = !finite;
   $('seekCount').hidden = !finite || lifeTime();  // (folded: the step alone, beside the title; Life's, in its title)
   if (finite) { $('seekCount').textContent = fmt(cur); $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`; }
-  if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
-  const time = spaceTimeOn() && !!stack, labels = STAT_LABELS[time ? 'time' : walk.life ? 'life' : walk.vert ? 'grid' : 'walk'];
-  document.querySelector('.stage-bar .stats').classList.toggle('life', lifeTime());
-  document.querySelector('.stage-bar .stats').hidden = lifeTime();  // Life: bubbles instead (lifeChips)
+  if (!walk.life) $('ranking').hidden = $('rankTitles').hidden = true;
+  const time = spaceTimeOn() && !!stack;
+  document.querySelector('.stage-bar .stats').hidden = !time;
   $('lifeChips').hidden = !lifeTime();
   if (time) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
-  labels.forEach((text, i) => { $(`lStat${i}`).textContent = text; });
-  for (let i = 0; i < 5; i++) $(`lStat${i}`).hidden = $(['sStep', 'sPos', 'sDist', 'sMax', 'sCells'][i]).hidden = i >= labels.length || (i === 0 && !walk.life);  // a walk's step is the count by the slider
-  $('lifetimeLabel').hidden = $('sLifetime').hidden = !lifeTime();
   if (time) {  // Space-time: its generation, its cubes up to it
     setLinks($('barNum'), `Gen ${fmt(cur)}`);
-    $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
-    $('sPos').textContent = fmt(stack.layers[cur] + 1);
+    $('sGen').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
+    $('sCubes').textContent = fmt(stack.layers[cur] + 1);
     $('digitStrip').textContent = '';
     drawActivity();
     return;
@@ -13543,18 +13566,7 @@ function updateStats() {
   setLinks($('barNum'), !o ? barTitle : `${barTitle} ${genLink(loopTarget(o), walk.wormEnd ? `✝ ${fmt(walk.n)}`
     : `${walk.loop.drift ? '→' : '↻'} ${fmt(walk.loop.period ?? walk.n)}${o.T ? ` from ${fmt(o.T)}` : ''}`, 'loop')}`);  // (as short: its digits' period, its first step)
   drawActivity();
-  $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
-  const x = walk.n ? walk.wx[cur] : 0;
-  const y = walk.n ? (walk.is3d ? walk.wy[cur] : -walk.wy[cur]) : 0;
-  const z = walk.is3d ? walk.wz[cur] : 0;
-  const p = (v) => fmt(Math.round(v * 100) / 100 || 0);
-  $('sPos').textContent = walk.is3d ? `(${p(x)}, ${p(y)}, ${p(z)})` : `(${p(x)}, ${p(y)})`;
-  $('sDist').textContent = Math.hypot(x, y, z).toFixed(1);
-  $('sMax').textContent = walk.n ? walk.maxDist[cur].toFixed(1) : '0';
-  // on a surface, out of all its cells; once all are visited, the step that reached the last one
-  $('sCells').textContent = !walk.n ? '1' : !walk.sphere ? fmt(walk.cells[cur])
-    : walk.coverStep >= 0 && cur >= walk.coverStep ? `all ${fmt(walk.nodes)} · by step ${fmt(walk.coverStep)}`
-    : `${fmt(walk.cells[cur])} / ${fmt(walk.nodes)} (${(100 * walk.cells[cur] / walk.nodes).toFixed(1)} %)`;
+  renderWalkGauges();
   if (walk.n && walk.counts) {  // each digit's count, on its chip
     const c = walk.counts.subarray(walk.base * cur, walk.base * (cur + 1));
     c.forEach((v, d) => { const e = document.getElementById(`count${d}`); if (e) e.textContent = fmt(v); });
