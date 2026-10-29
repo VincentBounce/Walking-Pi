@@ -4,7 +4,8 @@
 The user always makes the app's single-file versions with the script `_Make Walking Pi.html.command` in the folder
 `Walking Pi resources` beside the repo (double-click). It runs `tools/bundle.py` twice and makes two HTML files there:
 - `Walking Pi v<version> compressed.html`: no comment anywhere: not in the scripts (main.js, emoji.js, punks.js,
-  pixelarticons.js: `//`, `/* */`), the page's inline script (the theme's), the loader, style.css (`/* */`) or
+  pixelarticons.js: `//`, `/* */`), the page's inline script (the theme's), the loader, style.css (`/* */`, minified by
+  esbuild too) or
   index.html (`<!-- -->`); blank lines and line-end spaces gone; the scripts and the inline script minified by esbuild
   (`brew install esbuild`; top-level names kept: a script, not a module; without it, only their comments gone), then
   gzipped (base64);

@@ -14,8 +14,13 @@ out = args[0] if args else os.path.join(os.path.dirname(root), 'Walking Pi resou
 
 # its blank lines and lines' ends' spaces gone (a script's, its line breaks kept: where a statement may end without ;)
 tidy = lambda text: '\n'.join(l.rstrip() for l in text.split('\n') if l.strip())
-# the page's and the style's comments gone too, not the plain one's (none in a string there: checked by hand)
-css = read('style.css') if plain else tidy(re.sub(r'/\*.*?\*/', '', read('style.css'), flags=re.S))
+# a script or a style minified by esbuild (brew install esbuild): a script's local names shortened, its top-level names
+# kept (a script, not a module: the quick check calls them), comments gone; without it, comments gone only (see uncommented)
+def minified(src, loader='js'):
+    if not shutil.which('esbuild'): return uncommented(src) if loader == 'js' else tidy(re.sub(r'/\*.*?\*/', '', src, flags=re.S))
+    return subprocess.run(['esbuild', '--minify', '--charset=utf8', f'--loader={loader}', '--log-level=warning'], input=src, capture_output=True, text=True, check=True).stdout
+# the style minified, the page's comments gone too, not the plain one's (none in a string there: checked by hand)
+css = read('style.css') if plain else minified(read('style.css'), 'css')
 if not plain: html = tidy(re.sub(r'<!--.*?-->', '', html, flags=re.S)) + '\n'
 html = re.sub(r'<link rel="stylesheet" href="style\.css[^"]*">', lambda _: '<style>\n' + css + '\n</style>', html)
 names = re.findall(r'<script src="([^"?]+)', html)
@@ -77,11 +82,6 @@ def uncommented(src):
         out.append(c); i += 1
     return tidy(''.join(out))
 
-# a script minified by esbuild (brew install esbuild): its local names shortened, its comments gone, its top-level names
-# kept (a script, not a module: the quick check calls them); without it, its comments gone only (uncommented)
-def minified(src):
-    if not shutil.which('esbuild'): return uncommented(src)
-    return subprocess.run(['esbuild', '--minify', '--charset=utf8', '--loader=js', '--log-level=warning'], input=src, capture_output=True, text=True, check=True).stdout
 if not plain and not shutil.which('esbuild'): print('esbuild not found (brew install esbuild): the scripts without their comments only', file=sys.stderr)
 
 code = ';\n'.join(read(n) for n in names)  # (one script: their top-level names were one scope already)
