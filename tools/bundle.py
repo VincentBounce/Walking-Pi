@@ -12,12 +12,16 @@ html, main = read('index.html'), read('main.js')
 version = re.search(r"VERSION = '([^']+)'", main).group(1)
 out = args[0] if args else os.path.join(os.path.dirname(root), 'Walking Pi resources', f'Walking Pi v{version}{" plain" if plain else " compressed"}.html')
 
-html = re.sub(r'<link rel="stylesheet" href="style\.css[^"]*">', lambda _: '<style>\n' + read('style.css') + '</style>', html)
+# its blank lines and lines' ends' spaces gone (a script's, its line breaks kept: where a statement may end without ;)
+tidy = lambda text: '\n'.join(l.rstrip() for l in text.split('\n') if l.strip())
+# the page's and the style's comments gone too, not the plain one's (none in a string there: checked by hand)
+css = read('style.css') if plain else tidy(re.sub(r'/\*.*?\*/', '', read('style.css'), flags=re.S))
+if not plain: html = tidy(re.sub(r'<!--.*?-->', '', html, flags=re.S)) + '\n'
+html = re.sub(r'<link rel="stylesheet" href="style\.css[^"]*">', lambda _: '<style>\n' + css + '\n</style>', html)
 names = re.findall(r'<script src="([^"?]+)', html)
 
 # a script without its comments (// and /* */), read as the browser reads it: not in a string, a template's text (a
-# shader's own // kept) or a regular expression (a / where a value may start, not a division); its blank lines and
-# lines' ends' spaces gone too, its line breaks kept (where a statement may end without ;)
+# shader's own // kept) or a regular expression (a / where a value may start, not a division); tidied
 REGEX_BEFORE = set('(,=:[!&|?{};+-*%<>~^') | {'return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await'}
 def uncommented(src):
     out, i, n, last, braces = [], 0, len(src), '', []  # last: the last token's end (a word or a sign); braces: in ${ }, its depth
@@ -71,14 +75,15 @@ def uncommented(src):
             out.append(src[i:j + 1]); i = j + 1
             continue
         out.append(c); i += 1
-    return '\n'.join(l.rstrip() for l in ''.join(out).split('\n') if l.strip())
+    return tidy(''.join(out))
 
 code = ';\n'.join(read(n) if plain else uncommented(read(n)) for n in names)  # (one script: their top-level names were one scope already)
+if not plain: html = re.sub(r'<script>(.*?)</script>', lambda m: '<script>\n' + uncommented(m[1]) + '\n</script>', html, flags=re.S)  # (the page's own: the theme's)
 if plain:
     loader = '<script>\n' + code.replace('</script', '<\\/script') + '\n</script>\n'
 else:
     zipped = base64.b64encode(gzip.compress(code.encode('utf-8'), 9)).decode()
-    loader = ('<script>  // the app\'s scripts, gzipped: unzipped and run as the page opens\n'
+    loader = ('<script>\n'  # (the app's scripts, gzipped: unzipped and run as the page opens)
               '(async () => {\n'
               f'  const zipped = Uint8Array.from(atob("{zipped}"), (c) => c.charCodeAt(0));\n'
               "  const code = await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream('gzip'))).text();\n"
