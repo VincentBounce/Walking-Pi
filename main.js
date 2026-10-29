@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.25';
+const VERSION = '0.2.26';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9513,15 +9513,16 @@ function orderOf(L, alive, borders) {
 // times the run's median order at least: a soup's start, nothing to come back to); marked on the curve, Begin and End
 // stopping there
 // the most alive at once and the most ordered of the generations played, past and future (its record's: kept when it plays
-// again from its start), and when (the first)
+// again from its start), and when: as many again, the one nearest its start kept (reached first, playing from it)
 function peaks(L) {
   const key = `${L.trace.alive.length}|${L.past.alive.length}`;
   if (L.peaks?.key === key) return L.peaks;
   const p = { key, alive: -1, aliveGen: 0, order: -1, orderGen: 0 };
   for (let g = -Math.max(0, L.past.alive.length - 1); g < L.trace.alive.length; g++) {
     const T = g < 0 ? L.past : L.trace, i = Math.abs(g);
-    if (T.alive[i] > p.alive) [p.alive, p.aliveGen] = [T.alive[i], g];
-    if (T.order[i] > p.order) [p.order, p.orderGen] = [T.order[i], g];
+    const better = (v, best, at) => v > best || (v === best && Math.abs(g) < Math.abs(at));
+    if (better(T.alive[i], p.alive, p.aliveGen)) [p.alive, p.aliveGen] = [T.alive[i], g];
+    if (better(T.order[i], p.order, p.orderGen)) [p.order, p.orderGen] = [T.order[i], g];
   }
   return (L.peaks = p);
 }
