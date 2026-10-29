@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.68';
+const VERSION = '0.2.69';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2902,7 +2902,11 @@ const readsDigits = (w = $('mode').value) => !(ANTS[w] && !antByDigits) && !(MOD
 let antRowMode = null, antCustomOpen = false;  // (the mode they were last shown for; the Custom rule card clicked)
 function renderAntRow() {
   const w = $('mode').value, m = MODES[w], ant = NAV[w][0] === 'Ant';
-  $('digitsSection').hidden = !readsDigits(w);
+  // the number read (its digits, see numberPicker): a walk's in its own section; a start's by the digits (Life's, a
+  // creature's) under its Digits tab; read by none, back in its section, hidden
+  const home = !readsDigits(w) || (!m.life && !ant) ? $('digitsSection') : m.life ? $('startDigits') : $('antStartDigits');
+  $('digitsSection').hidden = !readsDigits(w) || home !== $('digitsSection');
+  if ($('numberPicker').parentElement !== home) home.append($('numberPicker'));
   drawing = !!m.plane && plane.start === 'draw' && !spaceTimeOn();  // Life on the plane draws in its Draw start (not in Space-time)
   if (antRowMode !== w) antCustomOpen = false;
   antRowMode = w;
@@ -7873,6 +7877,7 @@ function renderPlaneRow() {
     $('symmetryRow').hidden = true;
     $('startDraw').hidden = !surfaceDraw;
     $('startText').hidden = plane.start !== 'text' || surfaceDraw;
+    $('startDigits').hidden = plane.start !== 'digits' || surfaceDraw;
     if (!surfaceDraw) return;
     // a surface: the rule's patterns on its grid, greyed (they cannot be drawn here: Famous lays them)
     const cells = PLANE_OF_MARK[lifeMark(MODES[$('mode').value])], rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? '');
@@ -7905,6 +7910,7 @@ function renderPlaneRow() {
   }));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
+  $('startDigits').hidden = plane.start !== 'digits';
   // Draw: the brushes (the patterns on squares only), the colours and the eraser, the turns (greyed for a cell)
   const rule = ruleBody(parseRule(ruleBody($('lifeRule').value))?.text ?? ''), mine = ![...$('lifePreset').options].some((o) => o.dataset.name && o.value === rule);
   const fits = (p) => p[0] === 'cell' || (p[1] === baseOf(kind) && (mine || p[2].includes(rule)));  // the rule's patterns; your own rule: all the grid's
@@ -14286,7 +14292,7 @@ function showNumber() {
   v.hidden = false;
   $('copyNumber').classList.add('active', 'switch');
 }
-document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => ['copyNumber', 'numberPreview', 'digitsSection'].includes(n.id))) closeNumber(); });
+document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => ['copyNumber', 'numberPreview', 'numberPicker'].includes(n.id))) closeNumber(); });
 // The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
 // (not − / +) shows every start on an empty globe, turned towards the chosen one.
 function setStart(n) {

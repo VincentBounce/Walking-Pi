@@ -170,6 +170,7 @@ button.primary {
 }
 .row { display: flex; gap: 6px; margin-bottom: 10px; }
 .field-label { margin-bottom: 4px; font-size: 12px; font-weight: 600; }  /* a sub-section's title; under it, grey labels (Birth, Survive…) */
+.field-label.with-btn { display: flex; align-items: center; }  /* its button on its right (Full number: a head-btn) */
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 /* a size among the usual ones, across: the browser's slider in the page's gold (as the old seek bar, Flat ↔ Rolled), its
    knob the size in use, a notch each under it (see sizeGauge), inset by the knob's half, where its middle goes */
