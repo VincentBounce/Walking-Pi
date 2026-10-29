@@ -414,6 +414,20 @@ async function checkKnown(fail) {
   advanceTo(30);
   checked++;
   if (cur !== 11) fail(`1/28's blocks, a jump to 30 across its return (12): at ${cur}, not its end (11)`);
+  // a start's symmetry (see symmetricStart): its shape the same on every copy; in colours, a start by parts each colour as many
+  // (v0.2.79, v0.2.82); a text in colours laid at all (v0.2.78)
+  for (const link of ['#w=life2d&r=B3/S23&k=4&s=48&e=1&y=rotate&pop=random.30.5', '#w=life2d&r=B3/S23&k=4&s=144&e=1&y=rotate&pop=text.Walking%0Api&tf=hand',
+    '#w=life2d&r=B3/S23&k=4&s=144&e=1&pop=text.Walking%0Api&tf=mono', '#x=pi&w=life2d&r=B3/S23&s=48&e=1&y=kaleido&pop=digits']) {
+    location.hash = link;
+    await wait(2000);
+    const { kind, W } = walk.plane, seed = walk.life.seed, by = [...walk.life.seedByColour].slice(1);
+    let bad = 0;
+    for (let t = 0; t < seed.length; t++) for (const c of cellCopies(kind, W, t)) if ((seed[c] > 0) !== (seed[t] > 0)) bad++;
+    checked++;
+    if (!walk.life.seedAlive) fail(`${link}: nothing laid`);
+    else if (bad) fail(`${link}: its start not symmetric (${bad} cells unlike their copies)`);
+    else if (by.length > 1 && new Set(by).size > 1) fail(`${link}: its colours unequal (${by.join(', ')})`);
+  }
   // a hunt: of the 2^14 starts of 14 cells (radius 2's first), the 8 longest
   location.hash = '#w=life2d&r=B3/S23&s=48&pop=random.49.5';
   await wait(800);
