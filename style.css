@@ -499,7 +499,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .player-side .seek-count { margin-top: -4px; }  /* the step, just under the slider */
 @media (hover: hover) { .stage-bar:not(:hover) #digitsRow { display: none; } }  /* folded: the length out of sight (open: by the speed) */
 @media (hover: none) { .stage-bar:not(:focus-within) #digitsRow { display: none; } }
-.stage-bar:not(:hover) .bar-title.life .bar-num { padding-right: 104px; overflow: hidden; text-overflow: ellipsis; }  /* folded: room for the step on its right */
+.stage-bar:not(:hover) .bar-title.life:has(.seek-count:not([hidden])) .bar-num { padding-right: 104px; overflow: hidden; text-overflow: ellipsis; }  /* folded: room for the step on its right, when shown (not Life's) */
 .bar-title .seek-count { position: absolute; top: 12px; right: 12px; }  /* folded: the step at the card's top right; open, under the curve (its slider) */
 .stage-bar:hover .bar-title .seek-count { display: none; }
 @media (hover: none) { .stage-bar:focus-within .bar-title .seek-count { display: none; } }
