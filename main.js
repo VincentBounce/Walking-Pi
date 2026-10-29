@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.70';
+const VERSION = '0.2.71';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1607,8 +1607,11 @@ const setTile = (b, { on = false, can = true, mark = false, again = false, turn 
 // A card, every one alike (the rules, an ant's, the walks', the brushes, the gallery's setups, the hunt's finds): a row, its
 // picture on the left, its name over its words (base: a walk's base on its right); a tile all the same (see tile, setTile:
 // on, can, again); its words as text (a setup's name typed), and its tooltip (in full: the row may cut them short)
+// (again: what a click on it, picked, does still, in its tooltip: a rule's card, how it works, see HOW_AGAIN)
+const HOW_AGAIN = 'how it works';
 const card = ({ pic = '', name = '', detail = '', base = '', title = '', on = false, can = true, again = false, byDefault, click = null }) => {
-  const b = tile({ html: '', title: title || detail, on, can, again, byDefault, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
+  const tip = [title || detail, typeof again === 'string' ? `Clicked again: ${again}` : ''].filter(Boolean).join(' · ');
+  const b = tile({ html: '', title: tip, on, can, again: !!again, byDefault, click }), part = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
   const picture = part('mode-icon', ''), words = document.createElement('span');
   picture.innerHTML = pic;
   words.append(part('mode-name', name), ...(detail ? [part('mode-detail', detail)] : []));
@@ -2919,7 +2922,7 @@ function renderAntRow() {
   $('antRuleTitle').textContent = R.byDigits ? 'Turns' : 'Rule';  // (Digits: a turn per digit, not a rule of colours)
   $('antByRule').classList.toggle('active', !R.byDigits);
   $('antByDigits').classList.toggle('active', !!R.byDigits);
-  const rulesCard = (pic, name, detail, on, click) => card({ pic, name, detail, on, again: on, click });  // (picked: a click shows how it works, as Life's rules)
+  const rulesCard = (pic, name, detail, on, click) => card({ pic, name, detail, on, again: on && HOW_AGAIN, click });  // (picked: a click shows how it works, as Life's rules)
   const known = R.cards.some(([r]) => r === R.now), mine = !known || antCustomOpen, pic = icon(m.worm ? 'worm' : m.turmite ? 'turmite' : 'ant');
   $('antRuleCards').replaceChildren(...R.cards.map(([r, words]) => rulesCard(pic, r, words, r === R.now && !antCustomOpen, () => { if (r === R.now && !antCustomOpen) { walkTutorialToggle(); return; } antCustomOpen = false; if (r === R.now) renderAntRow(); else R.set(r); })),
     ...(R.typed ? [rulesCard(pixelIcon('..o..,..o..,ooooo,..o..,..o..'), 'Custom rule', mine ? `${R.now} · your own` : 'your own, typed', mine, () => { if (mine) { walkTutorialToggle(); return; } antCustomOpen = true; renderAntRow(); })] : []));
@@ -3056,7 +3059,7 @@ function renderModePicker() {
     const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
     const how = !creatures && r === rule && walkTutorialFits(w);  // (picked: a click shows how it works, as Life's rules)
     const go = () => { if (how) { walkTutorialToggle(); return; } if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); };
-    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go, '', { byDefault: i ? '' : 'yes' }) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', on: r === rule, again: how, byDefault: i ? '' : 'yes', click: go });  // (the first: where a shape starts)
+    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go, '', { byDefault: i ? '' : 'yes' }) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', on: r === rule, again: how && HOW_AGAIN, byDefault: i ? '' : 'yes', click: go });  // (the first: where a shape starts)
     b.disabled = !has(kind, r);
     return b;
   }));
@@ -9025,7 +9028,7 @@ function renderRuleSection() {
   $('ruleCards').replaceChildren(...known.map((o, i) => {
     const picked = o.value === now && !customOpen;  // (picked: a click shows how it works, see ruleTutorial)
     const bw = MODES[$('mode').value].margolus && !carriesColours(parseRule(o.value));  // (a block rule its cells carry no colour on: black and white)
-    return card({ pic: pixelIcon(RULE_ICONS[o.value]), name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked, byDefault: i ? '' : 'yes',  // (the first: the shape's, see fitRuleToShape)
+    return card({ pic: pixelIcon(RULE_ICONS[o.value]), name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked && HOW_AGAIN, byDefault: i ? '' : 'yes',  // (the first: the shape's, see fitRuleToShape)
       detail: `${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}`, click: () => {  // its words, without its name
         if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
         customOpen = false;
@@ -9035,7 +9038,7 @@ function renderRuleSection() {
   }));
   // after them, your own: picked when the rule in use is none of them, or clicked (its states, births and survivals below)
   $('watchRule').onclick = () => ruleTutorial(!$('ruleTuto').hidden ? null : shown);  // (the rule in use: a card's, or your own)
-  $('ruleCards').append(card({ pic: pixelIcon('..o..,..o..,ooooo,..o..,..o..'), name: 'Custom rule', on: mineNot, again: mineNot,
+  $('ruleCards').append(card({ pic: pixelIcon('..o..,..o..,ooooo,..o..,..o..'), name: 'Custom rule', on: mineNot, again: mineNot && HOW_AGAIN,
     detail: mineNot ? `${now} · your own` : 'your own: its states, births and survivals', click: () => {
       if (mineNot) { ruleTutorial(!$('ruleTuto').hidden ? null : yours); return; }
       customOpen = true;
