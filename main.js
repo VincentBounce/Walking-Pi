@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.77';
+const VERSION = '0.2.78';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6601,7 +6601,7 @@ function startColours(seed) {
 }
 function startParts(seed) {
   const K = lifeParts();
-  if (plane.start === 'text') { const N = iconMax(textSet()), set = textSet(N); seed.fill(0); iconChoices(N, set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
+  if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
   const fits = huntFits(), r = hunt.zone === 'realm' || hunt.zone === 'full' ? Infinity : zoneRadius(hunt.zone);  // (Wild greyed, its parts unlike: the widest radius)
@@ -7587,14 +7587,16 @@ function iconLay(N, P = 24) {
   return lays.every((l) => l.whole) ? lays : null;
 }
 const iconFits = (N, P = 24) => !!iconLay(N, P);
+// a set's pictures N cells wide fit, at its own pixels (P null: as many as its cells, a pixel a cell: Text's)
+const setFits = (N, set) => iconFits(N, set.P ?? N);
 function iconChoices(N, set) {
   const K = lifeParts(), kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMix}`;
   if (iconMemo?.key === key) return iconMemo.choices;
-  const lays = iconLay(N, set.P);  // (each colour's cells and their pixels)
+  const P = set.P ?? N, lays = iconLay(N, P);  // (each colour's cells and their pixels; a set's P null: a pixel a cell)
   const choices = Array.from({ length: K }, (_, i) => {
     if (!lays) return [];
     const { cells, pix, mirror } = lays[i];
-    return lazyList(set.names.length, (n) => { const pixel = set.pixel(n), out = []; pix.forEach(([px, py], j) => { if (pixel(mirror ? set.P - 1 - px : px, py)) out.push(cells[j], i + 1); }); return Int32Array.from(out); });
+    return lazyList(set.names.length, (n) => { const pixel = set.pixel(n, P), out = []; pix.forEach(([px, py], j) => { if (pixel(mirror ? P - 1 - px : px, py)) out.push(cells[j], i + 1); }); return Int32Array.from(out); });
   });
   iconMemo = { key, choices };
   return choices;
@@ -7877,7 +7879,7 @@ function renderPlaneRow() {
     const s = b.dataset.start, on = surfaceDraw ? s === 'draw' : s === plane.start;
     if (s === 'random') b.innerHTML = `${icon(blocks ? 'dice' : 'search')}<span>${blocks ? 'Random' : 'Hunt'}</span>`;  // (blocks: no hunt, its zones' starts)
     if (s === 'draw') setTile(b, { on, can: !(!kind && blocks), greyed: 'on a reversible surface (no patterns of a block rule to show, nor drawing)' });  // (Draw on a surface: its rule's patterns, none for blocks)
-    else if (s === 'text') setTile(b, { on, can: !(!!walk.life && current?.mode === $('mode').value && !iconFits(iconMax(textSet()), 64)), greyed: 'where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' });  // (its grid's, once built)
+    else if (s === 'text') setTile(b, { on, can: !(!!walk.life && current?.mode === $('mode').value && !setFits(iconMax(textSet()), textSet())), greyed: 'where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' });  // (its grid's, once built)
     else setTile(b, { on });
   }
   $('startTextInput').value = plane.text;  // (its words, on any grid)
@@ -9815,8 +9817,8 @@ const ICON_SETS = { icon: { P: 24, pixel: (i) => iconPixel(ICON_BITS[i]), names:
                     // (Emoji: those this browser draws, each as a picture of 48 pixels, see picturePixel)
                     emoji: { P: 48, pixel: (i) => picturePixel(ICON_SETS.emoji.names[i], 48), get names() { return (this.drawn ??= EMOJIS.filter(emojiDrawn)); }, word: 'emoji', label: (i) => ICON_SETS.emoji.names[i], source: 'Unicode' } };
 // Text: its word as a picture of 64 pixels, a set of one (see picturePixel)
-// (its picture P pixels wide: as many as the cells it is laid on, N, a pixel a cell, see planeSeed; 64 to find N)
-const textSet = (P = 64) => ({ P, pixel: () => picturePixel(plane.text, P, plane.font), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text} in ${plane.font}` });  // (its source: the picture, its font too, see iconChoices' memo)
+// (its picture as many pixels wide as the cells it is laid on, a pixel a cell: P null, see setFits, iconChoices)
+const textSet = () => ({ P: null, pixel: (n, P) => picturePixel(plane.text, P, plane.font), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text} in ${plane.font}` });  // (its source: the picture, its font too, see iconChoices' memo)
 // the grid in use, for the caches built on it (not its mode's name: Turned, another grid of the same mode): the plane's,
 // by its kind, side and torus; a surface's, its mesh, a number of its own
 let gridCount = 0;
@@ -9834,8 +9836,8 @@ const iconMax = (set = ICON_SETS.icon) => {
   const lo = u === 24 ? 1 : 16;  // (in u's)
   if (!patternsOn()) return (iconMaxMemo = { key, N: 24 }).N;
   let k = Math.max(lo, Math.round(iconRoom(lifeParts()) / u));  // (its room, then the cells' rounding: a step or two up or down)
-  if (iconFits(k * u, set.P)) while ((k + 1) * u <= Math.sqrt(cells) && iconFits((k + 1) * u, set.P)) k++;
-  else while (--k >= lo && !iconFits(k * u, set.P));
+  if (setFits(k * u, set)) while ((k + 1) * u <= Math.sqrt(cells) && setFits((k + 1) * u, set)) k++;
+  else while (--k >= lo && !setFits(k * u, set));
   return (iconMaxMemo = { key, N: k >= lo ? k * u : 24 }).N;
 };
 const iconSize = (zone) => (!isIcon(zone) ? 0 : zone === 'emoji' || zone.endsWith('Max') ? iconMax(iconSet(zone)) : 24);  // (a picture's width in cells; max: greyed where none fits, 16 off squares)
