@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.45';
+const VERSION = '0.2.46';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13485,6 +13485,8 @@ function updateStats() {
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = (cur >= runEnd() && !looping()) || lifeEnded();
+  $('end').hidden = lifeTime() && !walk.life.margolus;  // (Life: its green link, +2k and +10k)
+  $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
   // drawActivity); none for a Game of Life while its end is not known
   const far = seekFar(), finite = Number.isFinite(far);
@@ -13812,11 +13814,14 @@ const runLoop = () => {
 // where its link goes (see genLink, in green): to its first step; from there, to its last; an end alone, back to 0
 const loopTarget = (o) => (cur !== o.T ? o.T : o.last !== o.T ? o.last : 0);
 const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(runLoop() ? [runLoop().T, runLoop().last] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
-$('restart').addEventListener('click', () => {  // (playing on if it was)
-  const wasPlaying = playing, g = runStops().findLast((x) => x < cur);
+// End (⏭), the same forth (a run with its end known at once: a walk, a reversible one; Life's, its green link and +2k)
+function goStop(dir) {  // (playing on if it was)
+  const wasPlaying = playing, g = dir < 0 ? runStops().findLast((x) => x < cur) : runStops().find((x) => x > cur);
   if (g === 0) restart(); else if (g !== undefined) advanceTo(g);
   play(wasPlaying);
-});
+}
+$('restart').addEventListener('click', () => goStop(-1));
+$('end').addEventListener('click', () => goStop(1));
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
 $('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
 $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
@@ -14073,7 +14078,7 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowRight': $('step').click(); break;
     case 'ArrowLeft': $('back').click(); break;
     case 'r': case 'R': $('restart').click(); break;
-    case 'e': case 'E': ($('barNum').querySelector('.gen-link') ?? ($('jump2k').hidden || $('jump2k').disabled ? null : $('jump2k')))?.click(); break;  // (its loop's first, by its title's glyph, from there its last (frozen, dead: 0); Life's end not known yet: 2,000 ahead)
+    case 'e': case 'E': [$('end'), $('barNum').querySelector('.gen-link'), $('jump2k')].find((b) => b && !b.hidden && !b.disabled)?.click(); break;  // (End; Life: its green link (its loop's first, from there its last; frozen, dead: 0), its end not known yet: 2,000 ahead)
     case 'f': case 'F': recentre(); break;
   }
 });
