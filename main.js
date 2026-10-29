@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.12';
+const VERSION = '0.2.13';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1780,8 +1780,12 @@ const wholeTotal = () => (current?.whole && current.formula === $('formula').val
 // In generations (a reversible one's length, its slider's; Space-time's height): [ − ] 2,000 generations [ + ]; going back, a
 // reversible one plays again from its start; Space-time made again
 const gensShown = () => !!MODES[$('mode').value].margolus || spaceTimeOn();
-// The last step or generation: walk.n, or sooner a reversible one's last before its loop comes round, once found (its slider, its end, its stepper's max)
-const runEnd = () => { const s = walk.life?.stable; return s && Number.isFinite(walk.n) && !spaceTimeOn() ? Math.min(walk.n, s.T + s.P - 1) : walk.n; };
+// The last step or generation: walk.n; a reversible one's half of it (its generations from −n/2 to n/2, its past too, see
+// runStart), or sooner its last before its loop comes round, once found (its slider, its end, its stepper's max)
+const runEnd = () => {
+  const s = walk.life?.stable, n = walk.life?.margolus && lifeTime() ? Math.floor(walk.n / 2) : walk.n;
+  return s && Number.isFinite(n) && !spaceTimeOn() ? Math.min(n, s.T + s.P - 1) : n;
+};
 // The first: 0, or a reversible one's as far back as its last is on (its rule run backwards from its start: its past)
 const runStart = () => (walk.life?.margolus && lifeTime() ? -runEnd() : 0);
 function setGens(n) {
@@ -11229,7 +11233,7 @@ function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reve
 // on, the generation shown its end's)
 const lifeEnded = () => { const s = walk.life?.stable; return !!s && (s.extinct || s.P === 1) && cur === s.T && !(trailOn() && walk.life.gen <= s.T + LIFE_TRAIL.length); };
 function play(on) {
-  playing = on && walk.n > 0 && cur < walk.n && !lifeEnded();
+  playing = on && walk.n > 0 && cur < runEnd() && !lifeEnded();
   if (playing) reverse(false);
   $('play').innerHTML = playing ? `${icon('pause')} Pause` : `${icon('play')} Play`;
   $('play').classList.toggle('on', playing);
