@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.2';
+const VERSION = '0.2.3';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2707,6 +2707,10 @@ for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODE_ICONS[w] = MODE_ICONS[life];
   NAV[w] = ['Reversible', 'Surfaces', NAV[life][2], 'Blocks', ''];
 }
+// Loops: Langton's self-reproducing loops on Life's grid of squares, by a table of transitions (see parseLoops)
+MODES.loops2d = { ...MODES.life2d, loops: true, where: 'a grid of squares, each cell by its 4 sides in turn (von Neumann)' };
+MODE_ICONS.loops2d = MODE_ICONS.life2d;
+NAV.loops2d = ['Loops', '2D', 'Squares', 'Langton', ''];
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
   NAV[w] = [...NAV[of].slice(0, 3), MODES[w].pivot ? 'Pivot' : 'Parity', NAV[of][4]];
@@ -2733,7 +2737,7 @@ MODE_ICONS.lifeFrame = 'frame';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Life', 'glider'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
+const NAV_KINDS = [['Life', 'glider'], ['Loops', 'loop'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
 // the spaces, in turn, each its name and picture: a walk's or an ant's plane without an edge; Life's grids on the plane, those
 // that repeat (walls in a hexagon too) and its round ones, never repeating (see APERIODIC); everyone's solids, and surfaces
 // (a sheet rolled up); the walks through a 3D lattice
@@ -2763,7 +2767,7 @@ for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-$
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Reversible: 'Grid' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Loops: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level (values: from that level on, one or more: a space and its shape): the levels above as
@@ -2929,8 +2933,8 @@ function renderModePicker() {
     b.setAttribute('role', 'tab');
     return b;
   }));
-  $('walkHeading').innerHTML = icon({ Walk: 'compass', Ant: 'grid', Life: 'grid', Reversible: 'grid' }[kind]) + WALK_HEADINGS[kind]
-    + (kind === 'Life' || kind === 'Reversible' || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
+  $('walkHeading').innerHTML = icon(kind === 'Walk' ? 'compass' : 'grid') + WALK_HEADINGS[kind]
+    + (MODES[w].life || walkTutorialFits(w) ? `<button class="head-btn how-it-works${$('ruleTuto').hidden ? '' : ' active switch'}" type="button">${icon('glider')}How it works</button>` : '');  // (as the Rule's)
   // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Lattice)
   const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
   $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp))), true));
@@ -3047,7 +3051,7 @@ function compute() {
   $('copyRle').hidden = !mode.plane;  // (the plane's cells only)  // its start: Hunt, Draw (the plane only), Digits
   $('startSection').hidden = !mode.life;
   fitRuleToShape();
-  $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
+  $('colourSection').hidden = !mode.life || !!mode.margolus || !!mode.loops;  // (blocks: one colour; loops, their states)
   $('autoPlayRow').hidden = !mode.life;
   renderViewTiles();
   renderColours();
@@ -6412,8 +6416,35 @@ function parseBlocks(text) {
   if (!to || !Number.isInteger(k) || k < 2 || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(to.length).keys()]}`) return null;
   return { margolus: Uint8Array.from(to), k, stars: m[2] === '*', four: m[2] === '/4', B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}${m[2] ?? ''}` };
 }
+// Langton's loops (Physica D 10, 1984), as Golly's Langtons-Loops.rule: 8 states (0 empty, 1 the core, 2 the sheath, 3 to 7
+// the signals), each transition C N E S W → C' (a cell, its 4 neighbours by a side clockwise from the top, its next state),
+// the same turned by quarter turns; a cell none of them fits, kept
+const LANGTON = (
+  '000000 000012 000020 000030 000050 000063 000071 000112 000122 000132 000212 000220 000230 000262 000272 000320 000525 000622 000722 001022'
+  + ' 001120 002020 002030 002050 002125 002220 002322 005222 012321 012421 012525 012621 012721 012751 014221 014321 014421 014721 016251 017221'
+  + ' 017255 017521 017621 017721 025271 100011 100061 100077 100111 100121 100211 100244 100277 100511 101011 101111 101244 101277 102026 102121'
+  + ' 102211 102244 102263 102277 102327 102424 102626 102644 102677 102710 102727 105427 111121 111221 111244 111251 111261 111277 111522 112121'
+  + ' 112221 112244 112251 112277 112321 112424 112621 112727 113221 122244 122277 122434 122547 123244 123277 124255 124267 125275 200012 200022'
+  + ' 200042 200071 200122 200152 200212 200222 200232 200242 200250 200262 200272 200326 200423 200517 200522 200575 200722 201022 201122 201222'
+  + ' 201422 201722 202022 202032 202052 202073 202122 202152 202212 202222 202272 202321 202422 202452 202520 202552 202622 202722 203122 203216'
+  + ' 203226 203422 204222 205122 205212 205222 205521 205725 206222 206722 207122 207222 207422 207722 211222 211261 212222 212242 212262 212272'
+  + ' 214222 215222 216222 217222 222272 222442 222462 222762 222772 300013 300022 300041 300076 300123 300421 300622 301021 301220 302511 401120'
+  + ' 401220 401250 402120 402221 402326 402520 403221 500022 500215 500225 500232 500272 500520 502022 502122 502152 502220 502244 502722 512122'
+  + ' 512220 512422 512722 600011 600021 602120 612125 612131 612225 700077 701120 701220 701250 702120 702221 702251 702321 702525 702720').split(' ');
+const LANGTON_LOOP = ['.8B', 'BAG.AD.ADB', 'B.6B.B', 'BGB4.BAB', 'BAB4.BAB', 'B.B4.BAB', 'BGB4.BAB', 'BA6BA5B', 'B.GA.GA.G5AB', '.13B'];  // (its loop, Golly's RLE: . 0, A 1, B 2…)
+// its table: a cell's next state by C × 8⁴ + N × 8³ + E × 8² + S × 8 + W, −1 where none fits
+function parseLoops(text) {
+  if (!/^\s*Langton\s*$/i.test(text)) return null;
+  const to = new Int32Array(8 ** 5).fill(-1);
+  for (const t of LANGTON) for (let r = 0; r < 4; r++) {
+    const [c, ...nesw] = [...t.slice(0, 5)].map(Number), turned = [0, 1, 2, 3].map((q) => nesw[(q + r) % 4]);
+    to[[c, ...turned].reduce((i, v) => 8 * i + v, 0)] = Number(t[5]);
+  }
+  return { loops: to, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 7, iso: false, base: 8, text: 'Langton' };
+}
 function parseRule(text) {
   if (/^\s*(M|Q2R)/i.test(text)) return parseBlocks(text);
+  if (/^\s*Langton/i.test(text)) return parseLoops(text);
   const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV.-]*)\/S([\dOMPCEKAINYQJRTWZV.-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
@@ -6492,6 +6523,7 @@ function lifeReseed() {
 // (see huntParts), Wild and Digits all over
 const lifeParts = () => (walk.life.margolus && walk.geo.torus ? (plane.start === 'random' && /24$/.test(hunt.zone) ? 3 : 1) : walk.life.colours);  // (any sheet's mesh a torus's)
 function startColours(seed) {
+  if (walk.life.loops) return;  // (its loop laid already, see loopSeed)
   startParts(seed);
   if (walk.life.margolus) seed.forEach((v, t) => { seed[t] = v ? 1 : 0; });  // (a reversible one: one colour, its pictures a square each too)
 }
@@ -7272,8 +7304,8 @@ const ROSETTES = { flower3: [3, ROSETTE(3)], flower4: [4, ROSETTE(4)], flower5: 
                    ring7: [7, ROSETTE(7, null, true), 1], ring8: [8, ROSETTE(8, null, true), 1],
                    ring9: [9, ROSETTE(9, null, true), 1], ring10: [10, ROSETTE(10, null, true), 1], ring12: [12, ROSETTE(12, null, true), 1] };  // (n, it, its cells of the wall: a ring's hole)
 const APERIODIC = { hat: HAT, penrose: PENROSE, spectre: SPECTRE, ammann: AMMANN, rhombs12: RHOMBS12, rhombs14: RHOMBS14, pinwheel: PINWHEEL, ...Object.fromEntries(Object.entries(ROSETTES).map(([k, [, r]]) => [k, r])) };  // the grids that never repeat: a disc of them, walls round it, never a torus
-// the grids in their spaces (see SPACES): everyone's surfaces, sheets or solids; Life's and Reversible's plane, round (these) or not
-for (const [w, n] of Object.entries(NAV)) if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids'; else if (n[1] === '2D' && (n[0] === 'Life' || n[0] === 'Reversible')) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
+// the grids in their spaces (see SPACES): everyone's surfaces, sheets or solids; the automata's plane, round (these) or not
+for (const [w, n] of Object.entries(NAV)) if (n[1] === 'Surfaces') n[1] = SHEETS.includes(n[2]) ? '3D surfaces' : '3D solids'; else if (n[1] === '2D' && MODES[w].life) n[1] = APERIODIC[MODES[w].plane] ? '2D circles' : '2D squares';
 function planeCorners(kind, x, y) {  // a cell's corners, in world units
   if (kind === 'square') return [[x - 0.5, y - 0.5], [x + 0.5, y - 0.5], [x + 0.5, y + 0.5], [x - 0.5, y + 0.5]];
   if (kind === 'hex') {  // pointy-topped, the centres 1 apart
@@ -7559,6 +7591,21 @@ function planeNeighbours(kind, W, torus, hensel = false) {  // hensel: squares' 
   }
   return cellNeighbours(cStart, Int32Array.from(cList), nv, baseOf(kind) === 'hex' ? 6 : hensel && kind === 'square' ? 8 : 0);  // (a rectangle of hexagons: theirs too)
 }
+// a grid of squares' cells by their 4 sides, clockwise from the top (N, E, S, W), −1 past a dead edge (see parseLoops)
+function sidesOf(row, W, torus) {
+  const out = new Int32Array(4 * row * W), at = (x, y) => (torus ? mod(y, W) * row + mod(x, row) : x < 0 || y < 0 || x >= row || y >= W ? -1 : y * row + x);
+  for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy], q) => { out[4 * (y * row + x) + q] = at(x + dx, y + dy); });
+  return out;
+}
+// Langton's loop in the middle, on empty cells (see LANGTON_LOOP)
+function loopSeed(row, W) {
+  const seed = new Uint8Array(row * W), x0 = Math.floor((row - 15) / 2), y0 = Math.floor((W - 10) / 2);
+  LANGTON_LOOP.forEach((line, y) => {
+    let x = 0;
+    for (const [, k, c] of line.matchAll(/(\d*)([.A-G])/g)) for (let i = 0; i < (Number(k) || 1); i++, x++) if (c !== '.') seed[(y0 + y) * row + x0 + x] = c.charCodeAt(0) - 64;
+  });
+  return seed;
+}
 function buildLifePlane(seq) {
   const kind = planeKind(MODES[current.mode].plane);  // (a rectangle's, if so)
   fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
@@ -7570,9 +7617,9 @@ function buildLifePlane(seq) {
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
-  walk.life = { nbr, ring: rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null,
-                seed: planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
+  walk.life = { nbr, ring: rule.loops ? sidesOf(row, W, planeTorus(kind)) : rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
+                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, loops: rule.loops ?? null,
+                seed: rule.loops ? loopSeed(row, W) : planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
@@ -8259,7 +8306,8 @@ for (const [s, { kind }] of Object.entries(FOLDED)) SURFACE_CELLS[s] = TILINGS[k
 const PLANE_MARKS = { ...Object.fromEntries(Object.entries(TILINGS).map(([k, t]) => [k, t.mark])), square: '■', tri: '▲', hex: '⬡', cairo: '⬠', kite: '◆', hat: '🎩', penrose: '✧', pinwheel: '◺', spectre: '✺', ammann: '✵', rhombs12: '❄', rhombs14: '❅', flower: '❀', flower5: '✾', flower7: '✽', mirror7: '❊', flower3: '✸', flower4: '✷', flower8: '✹', flower9: '✼', flower10: '✥', ring7: '❇', ring8: '✲', ring9: '✻', ring10: '✴', ring12: '❈' };
 const PLANE_OF_MARK = Object.fromEntries(Object.entries(PLANE_MARKS).map(([k, m]) => [m, k]));
 const blocksGrid = (mode) => mode.blocks ?? mode.plane;  // (a block rule's grid: the plane's, or a surface's, its cells' shape)
-const lifeMark = (mode) => (mode.margolus ? (BLOCKS[blocksGrid(mode)] ?? STARS[blocksGrid(mode)]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
+const LOOPS_MARK = '⟲';  // (the loops' rules' mark)
+const lifeMark = (mode) => (mode.loops ? LOOPS_MARK : mode.margolus ? (BLOCKS[blocksGrid(mode)] ?? STARS[blocksGrid(mode)]).mark : mode.plane ? PLANE_MARKS[mode.plane] : SURFACE_CELLS[mode.sphere] ?? '▲');
 // Life's colours, apart from its rule (which they do not change): 1, alive or dead (and a Generations
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4", see lifeRuleNow)
@@ -8330,7 +8378,7 @@ function coloursFit(k, g = walk.geo) {  // g: the surface (a torus's sizes)
 // a new figure: as many colours as last picked, else the nearest count of colours it places (colours still, never Classic;
 // fewer on a tie); Classic picked, Classic (the pick kept for the next)
 function fitColours(g) {  // (blocks: one colour, Reversible's)
-  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
+  lifeColours = coloursPicked === 1 || MODES[$('mode').value].margolus || MODES[$('mode').value].loops ? 1 : COLOUR_STEPS.filter((k) => k > 1 && coloursFit(k, g)).reduce((a, k) => (Math.abs(k - coloursPicked) < Math.abs(a - coloursPicked) ? k : a), Infinity);
   if (lifeColours === Infinity) lifeColours = 1;  // (none but Classic: Klein Dual 16 at 4 and 24)
 }
 const colourBlock = (k) => {  // (its colours squares all, as many a row as their blocks, else as near a square: 5, 3 and 2, a hole)
@@ -8875,7 +8923,7 @@ function renderRuleSection() {
       renderRuleSection();
     } }));
   document.querySelector('.rule-build').hidden = $('lifeCustomRow').hidden = !mineNot;  // (its states and chips, its text: your own's only)
-  if (mode.margolus) { document.querySelector('.rule-build').hidden = true; return; }  // (a block rule: typed only, no births nor survivals)
+  if (mode.margolus || mode.loops) { document.querySelector('.rule-build').hidden = true; return; }  // (a block rule, a table: typed only, no births nor survivals)
   // your own: the chips of the rule in use, a count a row; beside 2, 3 and 4 on hexagons, Callahan's letters (where
   // they sit: o side by side, m one cell apart, p opposite); on squares, with a rule written with them, Hensel's
   // (1 to 7, see henselClass); a count partly on when only some of its letters are
@@ -8940,7 +8988,7 @@ function fitRuleToShape() {
   // a rule known, even without its dying states (none with colours: B34/S123 is B34/S123/C3)
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? true : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
-  const kindFits = mode.margolus ? blocksFit(parseRule(rule), mode) : !parseRule(rule)?.margolus;  // (blocks: a block rule fitting them only; else none)
+  const kindFits = mode.margolus ? blocksFit(parseRule(rule), mode) : mode.loops ? !!parseRule(rule)?.loops : !parseRule(rule)?.margolus && !parseRule(rule)?.loops;  // (blocks: a block rule fitting them only; loops, a table; else neither)
   if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
   ruleFittedTo = w;
   if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
@@ -9290,6 +9338,13 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
   RULE_ICONS[value] = art;
   const option = new Option(`${mark} ${value} — ${words}`, value);
   option.dataset.name = name;
+  $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
+}
+// the loops' rules (see parseLoops), before Custom
+{
+  RULE_ICONS.Langton = '.ooo.,o...o,o.o.o,o...o,.ooo.';
+  const option = new Option(`${LOOPS_MARK} Langton — Langton's loops (1984): a loop whose signals turning round in it build a copy of it, every 151 generations, into a colony growing as a coral, its dead loops in the middle`, 'Langton');
+  option.dataset.name = "Langton's loops";
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 // each grid's block rules in this order (its first: the one it starts with), before Custom
@@ -9897,7 +9952,7 @@ function huntPlan() {
 // the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
 // another kind), else the start chosen
 const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
-const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
+const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.loops && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
   const K = lifeParts(), key = `${gridKey()}|${K}|${walk.life.ruleText}|${lifeParts() === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
@@ -11798,13 +11853,19 @@ const GL_SHADERS = {
 precision highp float; uniform sampler2D uA; out vec4 o;
 void main() { o = texelFetch(uA, ivec2(gl_FragCoord.xy), 0); }`],
   lifeRule: [GL_QUAD, `${GL_LIFE}
-uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS; uniform int uC, uR, uMode; uniform bool uMore; out vec4 o;
+uniform isampler2D uList, uRing, uMoreStart, uMoreList, uSide, uB, uS, uLoops; uniform int uC, uR, uMode, uLoop; uniform bool uMore; out vec4 o;
 int base;  // (its run's first cell: t below its run's)
 int A(int t) { return state(uA, base + t); }
 int next(int t) {
   if (t >= uN) return 0;
   int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
   if (s0 == s1) return 0;  // (a wall)
+  if (uLoop > 0) {  // (a table's, Langton's loops: its next state by its 4 sides in turn, see parseLoops; none fits, kept)
+    int i = was;
+    for (int q = 0; q < 4; q++) { int v = I(uRing, 4 * t + q); i = 8 * i + (v >= 0 ? A(v) : 0); }
+    int to = I(uLoops, i);
+    return to < 0 ? was : to;
+  }
   if (was > uK) return was + uK <= last ? was + uK : 0;  // (one more dying stage, or dead)
   int around[13];
   for (int k = 0; k < 13; k++) around[k] = 0;
@@ -12713,7 +12774,7 @@ function lifeEngine(L, runs = 1, h = 1) {
            start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
            side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)), part: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64, runs)),
            sum: Array.from({ length: Math.ceil((9 + 4 * L.colours) / 16) }, () => [0, 1, 2, 3].map(() => store(gl.RGBA32UI, h, runs))), look: store(gl.RGBA8, 4096, 17),
-           in: ints(M ? Int32Array.from(blockCells(M, n)) : none), ...(M && blockGPU(M, n, ints)) };
+           in: ints(M ? Int32Array.from(blockCells(M, n)) : none), loops: ints(L.loops ?? none), ...(M && blockGPU(M, n, ints)) };
 }
 function lifeFree(E) {
   const { gl } = GLS;
@@ -12814,8 +12875,8 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
 // Life's rule, from E.now's states into E.next's
 function lifeRulePass(E, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played, see lifeRows)
   const L = E.L, [y0, y1] = lifeRows(E, r0, r1);
-  lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S },
-    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
+  lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S, uLoops: E.loops },
+    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0, uLoop: L.loops ? 1 : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
 }
 // runs r0 … r1's rows of cells (4,096 a row): a hunt's passes over its runs going on only
 const lifeRows = (E, r0, r1) => [Math.floor((r0 * E.stride) / 4096), Math.ceil((r1 * E.stride) / 4096)];
@@ -13184,8 +13245,8 @@ const loopMeans = (L) => endShown(L) && L.loopAvg;
 const colourGone = (L, k) => (loopMeans(L) ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
 function renderRanking(L) {
   const box = $('ranking'), K = L.colours, H = 18;
-  box.hidden = $('rankTitles').hidden = K < 2;
-  if (K < 2) return;
+  box.hidden = $('rankTitles').hidden = K < 2 || !!L.loops;  // (a loop's states: no colours fighting)
+  if (box.hidden) return;
   if (box.dataset.k !== String(K)) {
     box.replaceChildren(...Array.from({ length: K }, (_, k) => {
       const r = document.createElement('div');
