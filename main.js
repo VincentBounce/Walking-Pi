@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.7';
+const VERSION = '0.2.8';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6424,6 +6424,17 @@ function parseBlocks(text) {
 // Alone, a cell its state (its colour: each state its own); in K lineages (Populations: /Colours K), a cell of state s > 0
 // of lineage k is k + K × (s − 1), shown in its lineage's colour, fainter by its state (see civColours), a cell coming
 // to life taking the lineage most of its neighbours have: each loop's daughters its colour
+// a loop's start, from its RLE (. 0, A 1, B 2…, $ a row; see loops.js): its cells [x, y, state], none of the empty ones
+function loopCells(rle) {
+  const out = [];
+  let x = 0, y = 0;
+  for (const [, k, c] of rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(k) || 1); i++) {
+    if (c === '$') { x = 0; y++; continue; }
+    if (c !== '.') out.push([x, y, c.charCodeAt(0) - 64]);
+    x++;
+  }
+  return out;
+}
 const loopName = (text) => Object.keys(LOOP_RULES).find((k) => k.toLowerCase() === ruleBody(text).trim().toLowerCase());
 const loopTables = {};
 function parseLoops(text) {
@@ -7637,12 +7648,9 @@ function layLoops(seed) {
   seed.fill(0);
   for (let k = 0; k < K; k++) {
     const corner = go(go([middleCells(k, K)[0], 0], 0, Math.floor(m / 2)), 3, Math.floor(m / 2));
-    let x = 0, y = 0;
-    for (const [, n, c] of rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(n) || 1); i++) {
-      if (c === '$') { x = 0; y++; continue; }
+    for (const [x, y, st] of loopCells(rle)) {
       const [u, v] = turn(x, y, k % 4), [t] = go(go(corner, 2, v), 1, u);
-      if (c !== '.' && t >= 0) seed[t] = K > 1 ? k + 1 + K * (c.charCodeAt(0) - 65) : c.charCodeAt(0) - 64;
-      x++;
+      if (t >= 0) seed[t] = K > 1 ? k + 1 + K * (st - 1) : st;
     }
   }
 }
@@ -8720,9 +8728,7 @@ function loopTutorial(option) {
   const fill = (v) => (v ? LIFE_COLOURS[v - 1] : UNLIT), cell = (x, y, v) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill(v)}" stroke="var(--border)" stroke-width="0.04"/>`;
   const cross = ([c, N, E, S, W]) => `<svg viewBox="-0.1 -0.1 3.2 3.2">${cell(1, 0, N)}${cell(2, 1, E)}${cell(1, 2, S)}${cell(0, 1, W)}${cell(1, 1, c)}</svg>`;
   const lines = table.split('\n').filter((l) => /^[0-9,]+$/.test(l)).map((l) => (l.includes(',') ? l.split(',') : [...l]).map(Number)), shown = lines.filter((t) => t[0] !== t[5]).slice(0, 12);
-  const start = [];
-  let x = 0, y = 0;
-  for (const [, k, c] of pattern.rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(k) || 1); i++) { if (c === '$') { x = 0; y++; continue; } if (c !== '.') start.push(cell(x, y, c.charCodeAt(0) - 64)); x++; }
+  const start = loopCells(pattern.rle).map(([x, y, v]) => cell(x, y, v));
   $('ruleTuto').innerHTML = `<div class="tut-body"><h3>${option.dataset.name}${option.dataset.name === name ? '' : ` <code>${name}</code>`}</h3><p>${words[0].toUpperCase()}${words.slice(1)} (${year}). Each cell looks at itself and its 4 neighbours by a side, in turn round it (von Neumann): ${fmt(table.split('\n').filter((l) => !l.includes(':') && !l.startsWith('var')).length)} lines of Golly's table, each also turned a quarter, a half and three quarters round; a cell none fits stays as it is. In colours (Populations), a loop's daughters take its colour: lineages fighting for room.</p>`
     + `<h4>States</h4><div class="tut-row">${Array.from({ length: n }, (_, v) => `<figure><div><svg viewBox="-0.1 -0.1 1.2 1.2">${cell(0, 0, v)}</svg></div><figcaption>${v}</figcaption></figure>`).join('')}</div>`
     + `<h4>Changing</h4><div class="tut-row">${shown.map((t) => `<figure><div>${cross(t)}<span>→</span><svg viewBox="-1.1 -1.1 3.2 3.2">${cell(0, 0, t[5])}</svg></div><figcaption>${t[0]} → ${t[5]}</figcaption></figure>`).join('')}</div>`
@@ -9398,8 +9404,9 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 // the loops' rules (see parseLoops), before Custom
-for (const [name, { year, words }] of Object.entries(LOOP_RULES)) {
-  RULE_ICONS[name] = '.ooo.,o...o,o.o.o,o...o,.ooo.';
+for (const [name, { year, words, pattern: { w, h, rle } }] of Object.entries(LOOP_RULES)) {
+  const on = new Set(loopCells(rle).map(([x, y]) => `${Math.floor((5 * x) / Math.max(w, h, 5))},${Math.floor((5 * y) / Math.max(w, h, 5))}`));  // (its picture: its start in 5 × 5, a pixel where any of its cells is)
+  RULE_ICONS[name] = Array.from({ length: 5 }, (_, Y) => Array.from({ length: 5 }, (_, X) => (on.has(`${X},${Y}`) ? 'o' : '.')).join('')).join(',');
   const option = new Option(`${LOOPS_MARK} ${name} — ${words} (${year})`, name);
   option.dataset.name = name === 'Langton' ? "Langton's loops" : name;
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
