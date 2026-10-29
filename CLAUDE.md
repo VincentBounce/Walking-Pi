@@ -47,3 +47,7 @@ delivery, e.g. `python3 tools/lines.py HEAD~1 HEAD` after a commit.
 - Every link ends with `v=` and the version it was made with, kept in Treasures and their JSON files (see `setupFrom`).
   A link that fails: `git log --grep "(v0.2.N)" -F`, its bundle in `Walking Pi resources`, or `tools/at.sh 0.2.N`, which
   serves that version on port 8322 beside this one.
+
+## Removed features
+A feature taken out gets a row in `REMOVED.md` (in English) at once: its last version, date, commit, a raw.githack link
+that opens it as it was, and why it left.
