@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.11';
+const VERSION = '0.2.12';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13270,16 +13270,17 @@ function drawActivity() {
     for (let i = 0; i < n; i++) { const x = Math.floor((i * W) / n); c[x] = Math.max(c[x], value(i)); }
     return c;
   };
-  let series, n;
+  let series, n, first = 0;  // (first: the generation at its left, a reversible one's past's furthest, see runStart)
   const rainbow = () => { const g = ctx.createLinearGradient(0, 0, W, 0); for (let f = 0; f <= 1; f += 0.125) g.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]); return g; };
   if (spaceTimeOn() && stack) {  // Space-time: each generation's cubes, in its rainbow (as its cubes, up)
     const E = stack.layers;
     n = E.length;
     series = [[columns(n, (i) => E[i] - (i ? E[i - 1] : -1)), rainbow()]];
   } else if (walk.life) {
-    const T = walk.life.trace;
-    n = walk.life.margolus ? Math.max(T.alive.length, seekFar() + 1) : Math.min(T.alive.length, cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, up to the one shown: those worked out ahead, to find a loop, not drawn)
-    series = [[columns(n, (i) => T.alive[i] ?? 0), accent]];
+    const L = walk.life;
+    first = runStart();
+    n = L.margolus ? seekFar() - first + 1 : Math.min(L.trace.alive.length, cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, up to the one shown: those worked out ahead, to find a loop, not drawn)
+    series = [[columns(n, (i) => traced(L, first + i)?.alive ?? 0), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
     n = walk.n + 1;
@@ -13289,7 +13290,7 @@ function drawActivity() {
     }
     series = [[curveOf.c, rainbow()]];  // (a walk's: in its rainbow, from its first step to its last, as its path)
   }
-  const c = Math.min(cur, n - 1), at = Math.min(W - 1, n < W ? Math.ceil(((c + 1) * W) / n) - 1 : Math.floor((c * W) / n));  // (fewer steps than columns: the step shown, all its columns)
+  const c = Math.min(cur - first, n - 1), at = Math.min(W - 1, n < W ? Math.ceil(((c + 1) * W) / n) - 1 : Math.floor((c * W) / n));  // (fewer steps than columns: the step shown, all its columns)
   const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;
   for (const [c, colour] of series) {
     const y = (x) => H - 1 - (c[x] / top) * (H - 3);
@@ -13312,6 +13313,12 @@ function drawActivity() {
     }
   }
   ctx.globalAlpha = 1;
+  if (first < 0) {  // (a reversible one's start, its past on its left: a mark at 0)
+    const x = Math.floor((-first * W) / n) + 0.5;
+    ctx.strokeStyle = css.getPropertyValue('--muted');
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
 }
 // One colour: fixed gauges of how it goes, not of a record: alive (against the peak); its turnover, this generation's
 // births and deaths against the cells alive before and after (100 %: every cell changes; 0: nothing moves); its growth,
@@ -13343,7 +13350,7 @@ function renderGauges(L) {
 // its mean, not ✝ one generation, ≈ the next)
 // the run's end as of the generation shown: its record kept from a run before (see lifeReset), not reached yet back at its
 // start; its loop's means with it
-const endShown = (L) => (L.stable && cur >= L.stable.T ? L.stable : null);
+const endShown = (L) => (L.stable && (cur >= L.stable.T || cur < 0) ? L.stable : null);  // (a reversible one's past: in its loop too)
 const loopMeans = (L) => endShown(L) && L.loopAvg;
 const colourGone = (L, k) => (loopMeans(L) ? L.loopMax[k] === 0 : L.extinctAt?.[k] !== null && L.extinctAt?.[k] !== undefined);
 function renderRanking(L) {
@@ -13425,7 +13432,7 @@ function updateStats() {
     // out, ■ frozen), or its loop: its phase, its period, from which generation
     const s = endShown(L), pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
     $('barNum').textContent = !s ? `Gen ${fmt(cur)}` : s.extinct ? `Gen ${fmt(cur)} ✝` : s.P === 1 ? `Gen ${fmt(cur)} ■`
-      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(cur - s.T + 1, s.P)}/${fmt(s.P)}${s.T ? ` from ${fmt(s.T)}` : ''}`;  // (from the start: no lead-in)
+      : `Gen ${pad(cur, s.T + s.P - 1)} ↻ ${pad(mod(cur - s.T, s.P) + 1, s.P)}/${fmt(s.P)}${s.T ? ` from ${fmt(s.T)}` : ''}`;  // (from the start: no lead-in)
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
     renderBack();
     if (L.margolus) {
@@ -13739,10 +13746,10 @@ function seekTo(v) {
 }
 // the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a reversible one's; Life's runs on)
 const seekCurve = (e) => {
-  const far = seekFar();
-  if (!Number.isFinite(far) || !far) return;
+  const far = seekFar(), first = runStart();  // (a reversible one's: from its past's furthest, see drawActivity)
+  if (!Number.isFinite(far) || far === first) return;
   const r = $('activity').getBoundingClientRect();
-  seekTo(Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * far));
+  seekTo(first + Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (far - first)));
 };
 $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
