@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.63';
+const VERSION = '0.2.64';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13844,10 +13844,9 @@ $('step').addEventListener('click', () => { play(false); reverse(false); advance
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump2k').addEventListener('click', () => advanceTo(cur + LIFE_JUMP));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
-// Begin (⏮): back through a run's stops, in turn: its last, its loop's last and first once known (see runLoop), its ordered
-// moments (a reversible one's, see orderMarks), its start (0), its first; its loop's first, by its green link too (see
-// loopLink). Its start, written at once (restart), not played to
-const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(runLoop() ? [runLoop().T, runLoop().last] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
+// Begin (⏮): back to its start (0), then to its first (a reversible one's past's furthest); its loop and its ordered moments
+// by their links instead (see loopLink, genLink). Its start, written at once (restart), not played to
+const runStops = () => [...new Set([runStart(), 0, runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
 // End (⏭), the same forth (a run with its end known at once: a walk, a reversible one; Life's, its green link and +2k)
 function goStop(dir) {  // (playing on if it was)
   const wasPlaying = playing, g = dir < 0 ? runStops().findLast((x) => x < cur) : runStops().find((x) => x > cur);
