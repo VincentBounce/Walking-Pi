@@ -98,7 +98,7 @@ label.check { display: flex; align-items: center; gap: 8px; }
 label.check { }
 label.check:has(input:disabled) { opacity: 0.4; cursor: default; }  /* shown, but of no use here */
 
-input[type=number], input[type=text], select {
+input[type=number], input[type=text], select, textarea {
   display: block;
   width: 100%;
   margin-top: 4px;
@@ -112,7 +112,8 @@ input[type=number], input[type=text], select {
 /* the Custom formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
 /* a value of one's own, in yellow bold: a formula no card matches, a rule no preset matches */
-.field input.custom { color: var(--accent); font-weight: 600; }
+.field input.custom, .field textarea.custom { color: var(--accent); font-weight: 600; }
+textarea { resize: none; line-height: 1.35; }  /* (Text's lines, a new line by Enter) */
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .shape-slider { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }  /* Flat ── Inflated: a surface's form */
 .shape-slider input { flex: 1; min-width: 0; }
@@ -194,7 +195,7 @@ button.primary {
 .field .enter { display: none; position: absolute; right: 4px; top: 4px; width: auto; height: 26px; padding: 0 8px; border: 0; background: none; color: var(--muted); font-weight: 400; }  /* not the 36 px of the − / + buttons, nor the bold of the digits row */
 .field .enter:hover { color: var(--accent); }
 .field:focus-within .enter { display: block; }
-.field input:focus { padding-right: 32px; }
+.field input:focus, .field textarea:focus { padding-right: 32px; }
 /* Every edited field (the Custom formula, the number of digits, the start, the rules): outlined like
    the choice buttons, from the left, and edited alike, in plain monospace on a yellow-framed field, ↵
    at its end; the steppers' (digits, start) centred at rest, written out ("20,000 digits") */

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.73';
+const VERSION = '0.2.74';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7460,12 +7460,13 @@ const pictureMemo = new Map();
 function picturePixel(text, P) {
   const key = `${text}|${P}`;
   if (pictureMemo.has(key)) return pictureMemo.get(key);
-  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 50px system-ui, sans-serif', D = 200;
+  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 50px system-ui, sans-serif';
+  const lines = text.split('\n'), LINE = 62, D = 200 + LINE * (lines.length - 1);  // (a line each, centred, one under the other)
   dc.font = font;
-  const w = Math.ceil(dc.measureText(text).width) + 150;
+  const widths = lines.map((l) => dc.measureText(l).width), most = Math.max(...widths), w = Math.ceil(most) + 150;
   draft.width = w; draft.height = D;
   dc.font = font;  // (a canvas sized again: its font too)
-  dc.fillText(text, 75, 125);  // (50 px, room all round)
+  lines.forEach((l, i) => dc.fillText(l, 75 + (most - widths[i]) / 2, 125 + LINE * i));  // (50 px, room all round)
   const ink = dc.getImageData(0, 0, w, D).data;
   let l = w, r = -1, t = D, b = -1;
   for (let y = 0; y < D; y++) for (let x = 0; x < w; x++) if (ink[4 * (y * w + x) + 3] > 32) { l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }
@@ -14044,7 +14045,9 @@ for (const b of $('lifeStartTabs').querySelectorAll('button')) {
     plane.start = b.dataset.start; cleared = null; compute();
   });
 }
+// Text's lines: Enter a new line; drawn on a change (↵, a click outside, or ⌘ Enter)
 $('startTextInput').addEventListener('change', () => { plane.text = $('startTextInput').value.trim() || APP_TITLE; compute(); });
+$('startTextInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('startTextInput').blur(); } });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
 // Open PNG: a picture, its dark pixels alive (its transparent ones dead), a pixel a square, on the smallest grid it fits in
 // (the plane's sizes: from 16 × 16, every rule's), in the middle; Export PNG: the generation shown, its live cells black
@@ -14148,7 +14151,7 @@ stage.addEventListener('pointerup', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.matches('input[type=number], input[type=text], select')) return;
+  if (e.target.matches('input[type=number], input[type=text], select, textarea')) return;
   switch (e.key) {
     case ' ': e.preventDefault(); $('play').click(); break;
     case 'ArrowRight': $('step').click(); break;
