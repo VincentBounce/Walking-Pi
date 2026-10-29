@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.20';
+const VERSION = '0.2.22';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1780,14 +1780,17 @@ const wholeTotal = () => (current?.whole && current.formula === $('formula').val
 // In generations (a reversible one's length, its slider's; Space-time's height): [ − ] 2,000 generations [ + ]; going back, a
 // reversible one plays again from its start; Space-time made again
 const gensShown = () => !!MODES[$('mode').value].margolus || spaceTimeOn();
-// The last step or generation: walk.n; a reversible one's half of it (its generations from −n/2 to n/2, its past too, see
-// runStart), or sooner its last before its loop comes round, once found (its slider, its end, its stepper's max)
+// The last step or generation: walk.n; a reversible one's half of it, rounded up (its n generations from 1 − n/2 to n/2, its
+// start among them: 10, from −4 to 5; see runStart), or sooner its last before its loop comes round, once found (its slider,
+// its end, its stepper's max)
+const reversibleRun = () => !!walk.life?.margolus && lifeTime();
 const runEnd = () => {
-  const s = walk.life?.stable, n = walk.life?.margolus && lifeTime() ? Math.floor(walk.n / 2) : walk.n;
+  const s = walk.life?.stable, n = reversibleRun() ? Math.ceil(walk.n / 2) : walk.n;
   return s && Number.isFinite(n) && !spaceTimeOn() ? Math.min(n, s.T + s.P - 1) : n;
 };
-// The first: 0, or a reversible one's as far back as its last is on (its rule run backwards from its start: its past)
-const runStart = () => (walk.life?.margolus && lifeTime() ? -runEnd() : 0);
+// The first: 0, or a reversible one's as far back as the rest of its n go (its rule run backwards from its start: its past),
+// or its loop's
+const runStart = () => (reversibleRun() ? -Math.min(walk.n - 1 - Math.ceil(walk.n / 2), walk.life.stable ? walk.life.stable.P - 1 : Infinity) : 0);
 function setGens(n) {
   target = Math.min(targetMost(), Math.max(DIGIT_STEPS[0], Math.round(n) || 2000));
   if (spaceTimeOn()) { restart(); showAll(); }
@@ -13307,11 +13310,13 @@ function drawActivity() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
   const accent = css.getPropertyValue('--accent');
-  // a column's highest value; fewer steps than columns: each column the step under it (no gaps, a comb)
+  // step i of n at column xOf(i), from the left edge to the right one, as a click takes it (see seekCurve); a column's highest
+  // value; fewer steps than columns: each column the step nearest it (no gaps, a comb)
+  const xOf = (i, n) => Math.round((i * (W - 1)) / Math.max(1, n - 1));
   const columns = (n, value) => {
     const c = new Float64Array(W);
-    if (n < W) { for (let x = 0; x < W; x++) c[x] = value(Math.min(n - 1, Math.floor((x * n) / W))); return c; }
-    for (let i = 0; i < n; i++) { const x = Math.floor((i * W) / n); c[x] = Math.max(c[x], value(i)); }
+    if (n < W) { for (let x = 0; x < W; x++) c[x] = value(Math.round((x * (n - 1)) / (W - 1))); return c; }
+    for (let i = 0; i < n; i++) { const x = xOf(i, n); c[x] = Math.max(c[x], value(i)); }
     return c;
   };
   let series, n, first = 0;  // (first: the generation at its left, a reversible one's past's furthest, see runStart)
@@ -13334,7 +13339,7 @@ function drawActivity() {
     }
     series = [[curveOf.c, rainbow()]];  // (a walk's: in its rainbow, from its first step to its last, as its path)
   }
-  const c = Math.min(cur - first, n - 1), at = Math.min(W - 1, n < W ? Math.ceil(((c + 1) * W) / n) - 1 : Math.floor((c * W) / n));  // (fewer steps than columns: the step shown, all its columns)
+  const at = xOf(Math.min(cur - first, n - 1), n);  // (the step shown, filled up to it)
   const top = series.reduce((m, [c]) => c.reduce((k, v) => Math.max(k, v), m), 0) || 1;
   for (const [c, colour] of series) {
     const y = (x) => H - 1 - (c[x] / top) * (H - 3);
@@ -13357,9 +13362,9 @@ function drawActivity() {
     }
   }
   ctx.globalAlpha = 1;
-  const mark = (g, colour) => { const x = Math.floor(((g - first) * W) / n) + 0.5; ctx.strokeStyle = colour; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); };
+  const mark = (g, colour) => { const x = xOf(g - first, n) + 0.5; ctx.strokeStyle = colour; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
-  if (walk.life?.margolus && lifeTime()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
+  if (reversibleRun()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
   if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, accent);  // (its most alive, in gold as its gauge and the curve)
 }
 // One colour: fixed gauges of how it goes, not of a record, a row each: in gold as the curve and its mark (see drawActivity),
@@ -13759,13 +13764,13 @@ $('step').addEventListener('click', () => { play(false); reverse(false); advance
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 $('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing; a reversible one to its ordered moment before (see orderMarks), else at its start or before, as far back as it goes
-  const wasPlaying = playing, at = walk.life?.margolus && lifeTime() ? orderMarks(walk.life).findLast((g) => g < cur) : undefined;
+  const wasPlaying = playing, at = reversibleRun() ? orderMarks(walk.life).findLast((g) => g < cur) : undefined;
   if (at !== undefined && at !== 0) advanceTo(at); else if (at === undefined && cur <= 0 && runStart() < 0) advanceTo(runStart()); else restart();
   play(wasPlaying);
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
 $('end').addEventListener('click', () => {  // (a Game of Life stops at its end, or loops; a reversible one at its ordered moment after (see orderMarks), its start first from its past)
-  const at = walk.life?.margolus && lifeTime() ? orderMarks(walk.life).find((g) => g > cur) : undefined;
+  const at = reversibleRun() ? orderMarks(walk.life).find((g) => g > cur) : undefined;
   if (at === 0 || (at === undefined && cur < 0)) restart(); else advanceTo(at ?? (Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP));
 });
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
