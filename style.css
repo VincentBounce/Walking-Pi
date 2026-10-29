@@ -620,3 +620,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 button.mark::after { content: ''; position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border-bottom-right-radius: 5px; background: linear-gradient(135deg, transparent 50%, var(--border) 50%); }  /* a count of colours whose battles can bring a colour back (the rule's ties): a triangle in its corner, its tip the button's round, in its border's colour */
 button.mark:hover:not(:disabled)::after { background: linear-gradient(135deg, transparent 50%, var(--muted) 50%); }
 button.mark.active::after { background: linear-gradient(135deg, transparent 50%, var(--accent) 50%); }
+
+.gen-link { color: inherit; text-decoration: none; cursor: pointer; }  /* a generation of the run in view: clicked, it goes there (see genLink) */
+.gen-link:hover { text-decoration: underline; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.23';
+const VERSION = '0.2.24';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9090,10 +9090,7 @@ function lifeReset() {
   L.blueCount = L.seedBlue;
   L.byColour = L.seedByColour.slice();
   L.born = L.dead = L.bornNow = L.deadNow = L.bornMax = L.deadMax = 0;
-  L.peak = L.seedAlive;
-  L.peakGen = 0;
-  L.order = L.peakOrder = orderOf(L, L.seedAlive, bordersOf(L, L.seed));  // (its start's, see orderOf)
-  L.peakOrderGen = 0;
+  L.order = orderOf(L, L.seedAlive, bordersOf(L, L.seed));  // (its start's, see orderOf)
   // civilisations: each colour's births, deaths, and cells ever of it (a bit per colour a cell had)
   L.bornBy = new Int32Array(L.colours + 1);
   L.deadBy = new Int32Array(L.colours + 1);
@@ -9115,6 +9112,7 @@ function lifeReset() {
   L.loopAvg = null;
   L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }], order: [L.order] };  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then, its order
   L.past = { alive: [], by: [], born: [], order: [] };  // (a reversible one's generations before its start, −1 at 1…, see traced)
+  L.peaks = null;  // (see peaks)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -9462,13 +9460,11 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
   }
   L.blueCount = byColour[2] ?? 0;
   record(L, gen, alive, byColour, (L.order = orderOf(L, alive, G.edges)));
-  if (L.order > L.peakOrder) { L.peakOrder = L.order; L.peakOrderGen = gen; }  // the most ordered, and when
   for (let k = 1; k <= K; k++) L.sumBy[k] += byColour[k];
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
   L.bornMax = Math.max(L.bornMax, L.bornNow);  // the fastest so far (the gauges' scale)
   L.deadMax = Math.max(L.deadMax, L.deadNow);
-  if (alive > L.peak) { L.peak = alive; L.peakGen = gen; }  // the most alive at once, and when
   lifeTrack(gen);
   if (music && lifeTime()) lifeMusic(L);  // (Space-time's cubes made: silent)
 }
@@ -9486,9 +9482,7 @@ function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back
   if (!traced(L, cur) && G) record(L, cur, G.alive, K > 1 ? G.byColour : new Int32Array(K + 1), orderOf(L, G.alive, G.edges));  // (its past, first played)
   L.aliveCount = traced(L, cur).alive;
   L.order = traced(L, cur).order;
-  if (L.order > L.peakOrder) { L.peakOrder = L.order; L.peakOrderGen = cur; }  // (the most ordered over all it played, past too)
   L.byColour = traced(L, cur).by ?? L.byColour;
-  if (L.aliveCount > L.peak) { L.peak = L.aliveCount; L.peakGen = cur; }  // (the most alive at once over all it played, past too)
   if (L.margolus && !L.stable && blockBack(L, -cur)) lifeFound(L, { T: 0, P: -cur, extinct: false });  // (its return found going back: its start again at −P)
   if (L.stable && cur <= -L.stable.P) cur += L.stable.P;  // (round its loop, as forth: the same state)
 }
@@ -9518,10 +9512,23 @@ function orderOf(L, alive, borders) {
 // and each run of them at least half as ordered as its start, its most ordered one, if that half is clear of the noise (3
 // times the run's median order at least: a soup's start, nothing to come back to); marked on the curve, Begin and End
 // stopping there
+// the most alive at once and the most ordered of the generations played, past and future (its record's: kept when it plays
+// again from its start), and when (the first)
+function peaks(L) {
+  const key = `${L.trace.alive.length}|${L.past.alive.length}`;
+  if (L.peaks?.key === key) return L.peaks;
+  const p = { key, alive: -1, aliveGen: 0, order: -1, orderGen: 0 };
+  for (let g = -Math.max(0, L.past.alive.length - 1); g < L.trace.alive.length; g++) {
+    const T = g < 0 ? L.past : L.trace, i = Math.abs(g);
+    if (T.alive[i] > p.alive) [p.alive, p.aliveGen] = [T.alive[i], g];
+    if (T.order[i] > p.order) [p.order, p.orderGen] = [T.order[i], g];
+  }
+  return (L.peaks = p);
+}
 function orderMarks(L) {
   const all = [...L.past.order.slice(1).reverse(), ...L.trace.order], at = (i) => i - Math.max(0, L.past.order.length - 1), out = new Set();
   const half = L.trace.order[0] / 2, noise = [...all].sort((x, y) => x - y)[Math.floor(all.length / 2)] ?? 0;
-  out.add(at(all.reduce((m, o, i) => (o > all[m] ? i : m), 0)));
+  out.add(peaks(L).orderGen);
   if (half > 3 * noise) {
     let best = null;
     all.forEach((o, i) => { if (o >= half) { if (!best || o > best[1]) best = [at(i), o]; } else if (best) { out.add(best[0]); best = null; } });
@@ -13372,25 +13379,31 @@ function drawActivity() {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
   };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
-  if (reversibleRun()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
-  if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, accent);  // (its most alive, in gold as its gauge and the curve)
+  if (walk.life?.colours === 1 && lifeTime()) {  // (as their gauges: its ordered moments, a reversible one's (see orderMarks), else the most ordered; the most alive, in gold as the curve)
+    for (const g of reversibleRun() ? orderMarks(walk.life) : [peaks(walk.life).orderGen]) mark(g, css.getPropertyValue('--sector'));
+    mark(peaks(walk.life).aliveGen, accent);
+  }
 }
 // One colour: fixed gauges of how it goes, not of a record, a row each: in gold as the curve and its mark (see drawActivity),
 // alive (against the most) and the most alive at once (and when, against the grid); in blue, its order (see orderOf) and the
 // most ordered so far (and when); then its turnover, this generation's births and deaths against the cells alive before and
 // after (100 %: every cell changes; 0: nothing moves), the cells ever alive (against the grid), its growth, births less
 // deaths, in figures (a bar for it swung too much)
+// a generation of the run in view, as a link: clicked, it goes there (see seekTo: a reversible one's by its rule, Life's
+// played again from its start)
+const genLink = (g) => `<a class="gen-link" href="#" data-gen="${g}" title="Go to gen ${fmt(g)}">gen ${fmt(g)}</a>`;
+document.addEventListener('click', (e) => { const a = e.target.closest?.('.gen-link'); if (!a) return; e.preventDefault(); seekTo(Number(a.dataset.gen)); });
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
   const avg = loopMeans(L), varies = avg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
-  const turnover = both ? (b + d) / both : 0, gold = 'var(--accent)', blue = 'var(--sector)';
+  const turnover = both ? (b + d) / both : 0, gold = 'var(--accent)', blue = 'var(--sector)', P = peaks(L);
   const rows = [  // name, colour (none: the theme's live cells'), its bar's share (none: figures only), its figures
-    ['Alive', gold, (varies ? avg[1] : L.aliveCount) / L.peak, `<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`],
-    ['Peak alive', gold, L.peak / n, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`],
+    ['Alive', gold, (varies ? avg[1] : L.aliveCount) / P.alive, `<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`],
+    ['Peak alive', gold, P.alive / n, `${fmt(P.alive)} · ${genLink(P.aliveGen)}`],
     ['Order', blue, L.order, `${Math.round(100 * L.order)} %`],
-    ['Peak order', blue, L.peakOrder, `${Math.round(100 * L.peakOrder)} % · gen ${fmt(L.peakOrderGen)}`],
+    ['Peak order', blue, P.order, `${Math.round(100 * P.order)} % · ${genLink(P.orderGen)}`],
     ['Turnover', null, turnover, `${Math.round(100 * turnover)} %`],
     ['Ever alive', null, L.everAlive / n, fmt(L.everAlive)],
     ['Growth', null, null, `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`],
@@ -13399,7 +13412,7 @@ function renderGauges(L) {
   rows.forEach(([, colour, share, text], i) => {
     const [, bar, num] = box.children[i].children;
     if (share !== null) Object.assign(bar.firstChild.style, { width: `${Math.min(100, 100 * (share || 0))}%`, background: colour ?? LIFE_ALIVE });  // (the theme's live cells, as it is now)
-    num.innerHTML = text;
+    if (num.innerHTML !== text) num.innerHTML = text;  // (as it was: a link in it clicked between two frames)
     num.style.color = colour ?? '';
   });
 }
@@ -13444,7 +13457,7 @@ function renderRanking(L) {
     r.children[0].textContent = place + 1;  // (then its colour, its bar, its table)
     const num = (v) => (mean && L.loopMax[k] > L.loopMin[k] ? `≈ ${fmt(Math.round(v * 10) / 10)}` : fmt(v));
     r.children[2].firstChild.style.width = off ? '0' : `${(100 * live(k)) / total}%`;
-    [off ? `✝ gen ${fmt(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((foot ?? L.sumBy)[k] / (foot ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { r.children[3 + c].innerHTML = v; });
+    [off ? `✝ ${genLink(L.extinctAt[k])}` : `<b>${num(live(k))}</b>`, fmt(Math.round((foot ?? L.sumBy)[k] / (foot ? Math.max(1, L.stable.T) : L.gen + 1))), fmt(L.bornBy[k]), fmt(L.deadBy[k]), fmt(L.everBy[k])].forEach((v, c) => { if (r.children[3 + c].innerHTML !== v) r.children[3 + c].innerHTML = v; });  // (as it was: its link clicked between two frames)
   });
   box.querySelector('.all-dead').textContent = alive.length ? '' : 'All dead';
 }
