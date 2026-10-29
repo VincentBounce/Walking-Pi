@@ -3,6 +3,7 @@
 # comments and all (--plain).
 # python3 tools/bundle.py [--plain] [out.html]   (out: « Walking Pi resources/Walking Pi v<version> compressed|plain.html », beside the repo)
 import base64, gzip, os, re, shutil, subprocess, sys
+from uncomment import tidy, uncommented, uncommented_css  # (code without its comments)
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 args = [a for a in sys.argv[1:] if a != '--plain']
@@ -12,75 +13,16 @@ html, main = read('index.html'), read('main.js')
 version = re.search(r"VERSION = '([^']+)'", main).group(1)
 out = args[0] if args else os.path.join(os.path.dirname(root), 'Walking Pi resources', f'Walking Pi v{version}{" plain" if plain else " compressed"}.html')
 
-# its blank lines and lines' ends' spaces gone (a script's, its line breaks kept: where a statement may end without ;)
-tidy = lambda text: '\n'.join(l.rstrip() for l in text.split('\n') if l.strip())
 # a script or a style minified by esbuild (brew install esbuild): a script's local names shortened, its top-level names
 # kept (a script, not a module: the quick check calls them), comments gone; without it, comments gone only (see uncommented)
 def minified(src, loader='js'):
-    if not shutil.which('esbuild'): return uncommented(src) if loader == 'js' else tidy(re.sub(r'/\*.*?\*/', '', src, flags=re.S))
+    if not shutil.which('esbuild'): return uncommented(src) if loader == 'js' else uncommented_css(src)
     return subprocess.run(['esbuild', '--minify', '--charset=utf8', f'--loader={loader}', '--log-level=warning'], input=src, capture_output=True, text=True, check=True).stdout
-# the style minified, the page's comments gone too, not the plain one's (none in a string there: checked by hand)
+# the style minified, the page's comments gone too, not the plain one's
 css = read('style.css') if plain else minified(read('style.css'), 'css')
-if not plain: html = tidy(re.sub(r'<!--.*?-->', '', html, flags=re.S)) + '\n'
+if not plain: html = tidy(re.sub(r'<!--.*?-->', '', html, flags=re.S)) + '\n'  # (its inline script: minified below)
 html = re.sub(r'<link rel="stylesheet" href="style\.css[^"]*">', lambda _: '<style>\n' + css + '\n</style>', html)
 names = re.findall(r'<script src="([^"?]+)', html)
-
-# a script without its comments (// and /* */), read as the browser reads it: not in a string, a template's text (a
-# shader's own // kept) or a regular expression (a / where a value may start, not a division); tidied
-REGEX_BEFORE = set('(,=:[!&|?{};+-*%<>~^') | {'return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await'}
-def uncommented(src):
-    out, i, n, last, braces = [], 0, len(src), '', []  # last: the last token's end (a word or a sign); braces: in ${ }, its depth
-    def word_before():  # the word or the sign before
-        tail = ''.join(out[-40:]).rstrip()
-        m = re.search(r'[\w$]+$', tail)
-        return m.group(0) if m else tail[-1:]
-    def template(i):  # its text to its end or to ${ (then code again, braces[-1] counting its own { })
-        while i < n:
-            c = src[i]
-            if c == '\\': out.append(src[i:i + 2]); i += 2; continue
-            out.append(c); i += 1
-            if c == '`': return i, False
-            if c == '$' and i < n and src[i] == '{': out.append('{'); return i + 1, True
-        return i, False
-    while i < n:
-        c = src[i]
-        if c == '/' and src[i + 1:i + 2] == '/':
-            while i < n and src[i] != '\n': i += 1
-            continue
-        if c == '/' and src[i + 1:i + 2] == '*':
-            j = src.index('*/', i + 2) + 2
-            out.append('\n' if '\n' in src[i:j] else ' ')
-            i = j
-            continue
-        if c in '\'"':
-            j = i + 1
-            while src[j] != c: j += 2 if src[j] == '\\' else 1
-            out.append(src[i:j + 1]); i = j + 1
-            continue
-        if c == '`':
-            out.append(c)
-            i, inner = template(i + 1)
-            if inner: braces.append(0)
-            continue
-        if braces and c == '{': braces[-1] += 1
-        if braces and c == '}':
-            if braces[-1] == 0:  # the ${ }'s end: its template's text again
-                braces.pop(); out.append(c)
-                i, inner = template(i + 1)
-                if inner: braces.append(0)
-                continue
-            braces[-1] -= 1
-        if c == '/' and word_before() in REGEX_BEFORE | {''}:  # a regular expression: to its closing / (not one in [ ])
-            j, cls = i + 1, False
-            while cls or src[j] != '/':
-                if src[j] == '\\': j += 1
-                elif src[j] == '[': cls = True
-                elif src[j] == ']': cls = False
-                j += 1
-            out.append(src[i:j + 1]); i = j + 1
-            continue
-        out.append(c); i += 1
-    return tidy(''.join(out))
 
 if not plain and not shutil.which('esbuild'): print('esbuild not found (brew install esbuild): the scripts without their comments only', file=sys.stderr)
 
