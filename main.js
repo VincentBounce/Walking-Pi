@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1513';
+const VERSION = '0.1.1514';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7390,6 +7390,9 @@ const cellWidth = (kind) => {
   const per = PER_RHOMBUS[kind] ?? 1; return Math.sqrt([0, 1].flatMap((y) => Array.from({ length: per }, (_, x) => polyArea(planeCorners(kind, x, y)))).reduce((sum, v) => sum + v, 0) / (2 * per)); };
 // a list of n items, each made when first read (its length, its items by index: the 10,000 punks' cells not all at once, only
 // those drawn; a hunt's, all: see huntClick)
+// a choice drawn from a list of them (random: in [0, 1)): its index; a lazy list's null (a move that does not fit, see
+// laidChoices), another drawn (a lazy list has some that fit); -1 when none
+const drawChoice = (c, random) => { for (let k; c.length; ) if (c[(k = Math.floor(random() * c.length))]) return k; return -1; };
 const lazyList = (n, f) => new Proxy([], { get: (a, k) => (k === 'length' ? n : typeof k === 'string' && /^\d+$/.test(k) ? (a[k] ??= f(Number(k))) : Reflect.get(a, k)) });
 // once a grid and its colours: each cell's colour's place (part; see huntParts; Mixed's too, each colour's own), a picture
 // cut off at its own, as at the grid's edges; each colour's cells a picture may take (its part's live ones on its face, see
@@ -9468,7 +9471,7 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
     s.pick = pick;
     return s;
   };
-  const randomPick = () => fromPick(choices.map((c) => Math.floor(Math.random() * c.length)));
+  const randomPick = () => fromPick(choices.map((c) => drawChoice(c, Math.random)));
   const nthPick = (k) => fromPick(choices.map((c) => { const d = k % c.length; k = Math.floor(k / c.length); return d; }));
   const top = [];  // the 8 best: { ...result, seed }
   const keep = (r, seed) => {
@@ -9493,7 +9496,7 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
     const base = top[Math.floor(Math.random() * top.length)];
     if (choices) {
       const pick = base.pick.slice(), c = Math.floor(Math.random() * K);
-      pick[c] = Math.floor(Math.random() * choices[c].length);
+      pick[c] = drawChoice(choices[c], Math.random);
       return fromPick(pick);
     }
     const seed = base.seed.slice(), swap = Math.random() < 0.5, any = () => cells[Math.floor(Math.random() * cells.length)];
@@ -10008,7 +10011,7 @@ function zoneSeed() {
   if (!zoneRadius(hunt.zone) && !famousZone(hunt.zone) && hunt.zone !== 'realm') return null;  // (Found: the link's, once)
   const next = seededRandom(plane.seed), random = () => next() / 4294967296;  // (as dense as plane.density, drawn from plane.seed: a link's pop=bloom.30.7 the same start again)
   const { cells, copies, choices } = huntPlan(), seed = new Uint8Array(walk.life.seed.length), d = plane.density / 100;
-  if (choices) for (const c of choices) { const f = c[Math.floor(random() * c.length)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
+  if (choices) for (const c of choices) { const f = c[drawChoice(c, random)] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }
   else {
     for (const [t, k] of cells) if (random() < d) seed[t] = k;
     for (const k of new Set(cells.map((c) => c[1]))) {  // each colour at least one cell alive (as the hunt's starts)
@@ -10481,32 +10484,27 @@ function laidChoices(centred, any = false) {  // any: the first one of each colo
   }
   // anywhere: every shape moved by whole steps (see translations) onto every cell of a colour's part (as Wild's), on that
   // cell's face (see cellPlace, patternFrame), kept where its first cell lands on that very cell (a move the grid allows
-  // there) and its cells all on cells of that part; more than FAMOUS_ALL moves to try (a big grid), 4,000 of them drawn
-  // instead (from a seed of its own: a link's start the same again), at most FAMOUS_ALL tried
+  // there) and its cells all on cells of that part; few enough moves (FAMOUS_ALL at most, as a hunt tries them all), those
+  // kept; more (a big grid), every move, laid when drawn (a lazy list, null where it does not fit: see drawChoice)
   if (!centred) return huntParts(0, K).map((part, i) => {
-    const here = new Set(part), out = [], laid = shapes.map((cells) => [cells, cells.map(([x, y]) => cellMiddle(kind, x, y))]), frames = new Map();
+    const here = new Set(part), laid = shapes.map((cells) => [cells, cells.map(([x, y]) => cellMiddle(kind, x, y))]), frames = new Map();
     const frameOf = (t) => { const pl = cellPlace(t), key = pl && `${pl.on}|${pl.face ?? pl.f ?? pl.c0 ?? ''}`; if (pl && !frames.has(key)) frames.set(key, patternFrame(i, K, pl)); return pl && frames.get(key); };
     const lay = ([cells, ms], t) => {
       const F = frameOf(t);
-      if (!F) return;
+      if (!F) return null;
       const p = F.from(F.place(t)), d = latticeNear(kind, [p[0] - ms[0][0], p[1] - ms[0][1]]), at = (k) => F.cellAt(F.at([ms[k][0] + d[0], ms[k][1] + d[1]]));
-      if (at(0) !== t) return;
+      if (at(0) !== t) return null;
       const cs = [];
       for (let k = 0; k < cells.length; k++) {
         const c = at(k);
-        if (c < 0 || !here.has(c)) return;
+        if (c < 0 || !here.has(c)) return null;
         cs.push(c, K > 1 ? i + 1 + K * (cells[k][2] - 1) : cells[k][2]);
       }
-      out.push(Int32Array.from(cs));
+      return Int32Array.from(cs);
     };
-    if (laid.length * part.length <= FAMOUS_ALL) { for (const l of laid) for (const t of part) { lay(l, t); if (any && out.length) return out; } return out; }
-    const next = seededRandom(7 + i), drawn = new Set();
-    for (let tries = 0; tries < FAMOUS_ALL && out.length < 4000; tries++) {
-      const s = next() % laid.length, t = part[next() % part.length];
-      if (!drawn.has(s * part.length + t)) { drawn.add(s * part.length + t); lay(laid[s], t); }
-      if (any && out.length) break;
-    }
-    return out;
+    const moves = laid.length * part.length, move = (k) => lay(laid[Math.floor(k / part.length)], part[k % part.length]), out = [];
+    for (let k = 0; k < moves && !((any || moves > FAMOUS_ALL) && out.length); k++) { const f = move(k); if (f) out.push(f); }
+    return moves > FAMOUS_ALL && !any && out.length ? lazyList(moves, move) : out;  // (a big grid's: one fits, so a draw ends)
   });
   // centred: a shape kept where it lays whole for every colour, at its spot (a sheet's: see sheetPatternAt)
   const laid = shapes.map((cells) => Array.from({ length: K }, (_, i) => patternAt(i, K, cells))).filter((per) => per.every((cs) => cs.length));
