@@ -461,7 +461,10 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .life-chips { grid-template-columns: repeat(4, minmax(0, 1fr)); }  /* a row a colour: alive, born, died, ever alive */
 .bar-title.life .bar-num { max-width: none; font-size: 18px; font-variant-numeric: tabular-nums; white-space: pre; }  /* Life: the generation's digits all as wide (see updateStats) */
 .bar-title.life { flex-wrap: wrap; row-gap: 4px; }
-.bar-title.life .bar-num { flex-basis: 100%; }  /* Life: its rule under the generation, on the left */
+.bar-title.life .bar-num { flex: 1 1 0; min-width: 0; }  /* Life: its rule under the generation, on the left */
+.bar-title.life::before { content: ''; flex-basis: 100%; order: 1; }  /* (the line's end: the title and, folded, its step on its right; its chips under) */
+.bar-title.life > :not(.bar-num, .seek-count) { order: 2; }
+.bar-title.life .seek-count { position: static; flex: none; }  /* (in the line: the title cut short where it meets it, not before) */
 .bar-title .rank-titles { margin-left: auto; align-self: flex-end; display: grid; grid-template-columns: 76px; gap: 6px; font-size: 11px; color: var(--muted); text-align: right; }  /* over the ranking's columns, as wide */
 .bar-title .rank-titles span:not(:first-child) { display: none; }  /* folded: Alive */
 .stage-bar:hover .bar-title .rank-titles { grid-template-columns: 70px 56px 56px 56px 70px; }
@@ -500,7 +503,6 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .length-row { display: flex; align-items: flex-start; gap: 8px; }  /* open, above the title: the length, and the step on its right, just under the curve (its slider) */
 .length-row #digitsRow { flex: none; width: 304px; max-width: 100%; }  /* (as wide as the folded bar's buttons) */
 .length-row .seek-count { margin: -4px 0 0 auto; }
-.stage-bar:not(:hover) .bar-title.life:has(.seek-count:not([hidden])) .bar-num { padding-right: 104px; overflow: hidden; text-overflow: ellipsis; }  /* folded: room for the step on its right, when shown (not Life's) */
 .bar-title .seek-count { position: absolute; top: 12px; right: 12px; }  /* folded: the step at the card's top right; open, under the curve (its slider) */
 .stage-bar:hover .bar-title .seek-count { display: none; }
 @media (hover: none) { .stage-bar:focus-within .bar-title .seek-count { display: none; } }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.43';
+const VERSION = '0.2.44';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1351,11 +1351,12 @@ function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
   setLinks($('barNum'), (barTitle = withIcons(shownSym)));
   $('barNum').title = formulaInUse;
-  // a creature (an ant, a turmite, the worm): its name and what it turns by, its rule in a chip (as a block rule's)
+  // a creature (an ant, a turmite, the worm): its name; what it turns by, its rule in a chip (as a block rule's), by the digits
+  // of a number: that number first
   const w = $('mode').value, creature = MODES[w].worm || MODES[w].turmite || ANTS[w];
   $('barRule').hidden = !creature;
   $('barBase').hidden = false;
-  if (creature) { const R = creatureRules(w); setLinks($('barNum'), (barTitle = `${walkName(w)} · ${R.byDigits ? `by the digits of ${shownSym}` : 'by its rule'}`)); $('barRule').textContent = R.now; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
+  if (creature) { const R = creatureRules(w); setLinks($('barNum'), (barTitle = walkName(w))); setLinks($('barRule'), R.byDigits ? `${withIcons(shownSym)} · ${R.now}` : R.now); $('barRule').title = R.byDigits ? `It turns by the digits of ${shownSym}` : 'It turns by its rule'; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
   $('barBase').parentElement.classList.toggle('life', !!creature);  // (a creature laid out as Life's: its title, its chips under it)
@@ -13536,8 +13537,8 @@ function updateStats() {
   }
   // a walk's loop (its digits' round, an ant's highway) or a worm's end, after its title: a link in green, as Life's (see loopTarget)
   const o = runLoop();
-  setLinks($('barNum'), !o ? barTitle : `${barTitle} ${genLink(loopTarget(o), walk.wormEnd ? `✝ at step ${fmt(walk.n)}`
-    : `${walk.loop.drift ? '→' : '↻'} ${fmt(walk.loop.period ?? walk.n)} digits${o.T ? ` from step ${fmt(o.T)}` : ''}`, 'loop')}`);
+  setLinks($('barNum'), !o ? barTitle : `${barTitle} ${genLink(loopTarget(o), walk.wormEnd ? `✝ ${fmt(walk.n)}`
+    : `${walk.loop.drift ? '→' : '↻'} ${fmt(walk.loop.period ?? walk.n)}${o.T ? ` from ${fmt(o.T)}` : ''}`, 'loop')}`);  // (as short: its digits' period, its first step)
   drawActivity();
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.wx[cur] : 0;
