@@ -426,7 +426,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 #walkOn button.active .mode-base { border-color: var(--accent); color: var(--accent); }
 /* the ant's rules to start from, written as they are typed */
 .choice-list button.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
-.stage-bar { left: 12px; bottom: 12px; width: 440px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; outline: none; }  /* grows upwards: the Play row stays at the bottom (no focus ring: a tap opens it, see index.html) */
+.stage-bar { left: 12px; bottom: 12px; width: 386px; max-width: calc(100% - 24px); padding: 10px 12px; border-radius: 12px; outline: none; }  /* grows upwards: the Play row stays at the bottom (no focus ring: a tap opens it, see index.html) */
 .stage-bar:hover { width: 680px; }
 @media (hover: none) { .stage-bar:focus-within { width: 680px; } }
 /* what is walked: the number, its loop and base; on hover the walk, its rule and the stats */
@@ -488,20 +488,20 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .stage-bar .strip { margin: 8px 0 0; min-height: 0; font-size: 14px; }
 .stage-bar .strip:empty { display: none; }
 .stage-bar .row { margin: 0; align-items: center; }
-.stage-bar .row button {  /* ⏮ ◀▮ ▮▶ ⏭: of one width and height, their icon centred; Play as wide as three, in every mode */
+.stage-bar .row button {  /* ⏮ ◀▮ ▮▶ ⏭: of one width and height, their icon centred; Play the rest (six buttons in every mode: as wide in all) */
   flex: none; width: 48px; height: 32px; padding: 0; font-weight: 600;
   display: inline-flex; align-items: center; justify-content: center;
 }
 /* Play keeps one width, so Play and Pause are alike: outlined in yellow, filled while playing */
-.stage-bar #play { width: 144px; color: var(--accent); border-color: var(--accent); }
+.stage-bar #play { flex: 1; color: var(--accent); border-color: var(--accent); }
 .stage-bar #reverse { color: var(--accent); border-color: var(--accent); }  /* as Play */
 /* six buttons in every mode, the folded bar's width; open, on their right the speed, typed as the length (above the
    title, as wide as the buttons), the turtle and the rabbit */
 .player-controls { display: flex; gap: 8px; align-items: flex-end; }  /* the buttons where they were, open or not */
-.player-main { flex: none; max-width: 100%; }  /* its six buttons, the folded bar's inner width */
-.player-side { flex: 1; min-width: 0; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
+.player-main { flex: none; width: 360px; max-width: 100%; }  /* its six buttons, the folded bar's inner width */
+.player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
 .length-row { display: flex; align-items: flex-start; gap: 8px; }  /* open, above the title: the length, and the step on its right, just under the curve (its slider) */
-.length-row #digitsRow { flex: none; width: 414px; max-width: 100%; }  /* (as wide as the folded bar's buttons) */
+.length-row #digitsRow { flex: none; width: 360px; max-width: 100%; }  /* (as wide as the folded bar's buttons) */
 .length-row .seek-count { margin: -4px 0 0 auto; }
 .bar-title .seek-count { position: absolute; top: 12px; right: 12px; }  /* folded: the step at the card's top right; open, under the curve (its slider) */
 .stage-bar:hover .bar-title .seek-count { display: none; }
