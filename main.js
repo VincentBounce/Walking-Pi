@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.64';
+const VERSION = '0.2.65';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13546,6 +13546,7 @@ function updateStats() {
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = atEnd();
   $('end').hidden = lifePlayer();  // (Life: its green link, +2k and +10k)
+  $('drawFromStart').hidden = !drawing || cur === 0;  // (Draw: its start's cells, gen 0's)
   $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
   // drawActivity)
@@ -13900,6 +13901,7 @@ $('activity').addEventListener('pointermove', (e) => {
   $('activity').classList.toggle('out', g !== null && !lifeWithin(g));
 });
 $('back').addEventListener('click', () => seekTo(cur - 1));
+$('drawFromStart').addEventListener('click', () => seekTo(0));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });
 $('fillAreas').addEventListener('change', () => { needsFull = true; updateDisplayMenu(); syncLink(); });
