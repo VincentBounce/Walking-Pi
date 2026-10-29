@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.71';
+const VERSION = '0.2.72';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2092,6 +2092,8 @@ const ICONS = (() => {
     menger,
     // Draw's eraser: a block tilted on its line
     eraser: pathEl('M9 19L4.5 14.5A1.5 1.5 0 0 1 4.5 12.4L13.4 3.5A1.5 1.5 0 0 1 15.5 3.5L20.5 8.5A1.5 1.5 0 0 1 20.5 10.6L12 19Z') + pathEl('M8.5 9.5L14.5 15.5') + pathEl('M9 19H20'),
+    pencil: pathEl('M4 20L5.2 15.2L15.8 4.6A1.4 1.4 0 0 1 17.8 4.6L19.4 6.2A1.4 1.4 0 0 1 19.4 8.2L8.8 18.8Z') + pathEl('M14.4 6L18 9.6'),  // Draw
+    letter: pathEl('M5 5H19M12 5V19M9 19H15'),  // Text: a T
     // numbers
     dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' + dots([[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]], 1.4),
     dragon: `<path class="thin" d="${pathOf(dragonOf(63), false)}"/>`,
@@ -7866,12 +7868,13 @@ function startFromSetup(s) {
 let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was); a view of this game only, closed by a new one (see compute), as its link has it
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
-  for (const b of $('lifeStartTabs').children) {  // the starts, on any grid (Draw on a surface: its patterns, to see)
-    b.classList.toggle('active', surfaceDraw ? b.dataset.start === 'draw' : b.dataset.start === plane.start);
-    b.disabled = b.dataset.start === 'draw' && !kind && !!MODES[$('mode').value].margolus;  // (Draw on a surface: its rule's patterns, none for blocks)
-    if (b.dataset.start === 'draw') b.title = b.disabled ? 'Draw: greyed on a reversible surface (no patterns of a block rule to show, nor drawing)' : '';
-    if (b.dataset.start === 'random') b.textContent = MODES[$('mode').value].margolus ? 'Random' : 'Hunt';  // (blocks: no hunt, its zones' starts)
-    if (b.dataset.start === 'text') { b.disabled = !!walk.life && current?.mode === $('mode').value && !iconFits(iconMax(textSet()), 64); b.title = b.disabled ? 'Text: greyed where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' : ''; }  // (its grid's, once built)
+  const blocks = !!MODES[$('mode').value].margolus;
+  for (const b of $('lifeStartTabs').querySelectorAll('button')) {  // the starts, on any grid (Draw on a surface: its patterns, to see)
+    const s = b.dataset.start, on = surfaceDraw ? s === 'draw' : s === plane.start;
+    if (s === 'random') b.innerHTML = `${icon(blocks ? 'dice' : 'search')}<span>${blocks ? 'Random' : 'Hunt'}</span>`;  // (blocks: no hunt, its zones' starts)
+    if (s === 'draw') setTile(b, { on, can: !(!kind && blocks), greyed: 'on a reversible surface (no patterns of a block rule to show, nor drawing)' });  // (Draw on a surface: its rule's patterns, none for blocks)
+    else if (s === 'text') setTile(b, { on, can: !(!!walk.life && current?.mode === $('mode').value && !iconFits(iconMax(textSet()), 64)), greyed: 'where no picture can be laid, as Emoji (a grid too small for it, a solid\'s faces none)' });  // (its grid's, once built)
+    else setTile(b, { on });
   }
   $('startTextInput').value = plane.text;  // (its words, on any grid)
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
@@ -14021,7 +14024,10 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
   });
 }
 
-for (const b of $('lifeStartTabs').children) {
+// Life's starts, one choice: a tab group of tiles, its pictures over its names (Hunt's and Random's, see renderPlaneRow)
+const START_TABS = [['random', 'search', 'Hunt'], ['text', 'letter', 'Text'], ['digits', 'barcode', 'Digits'], ['draw', 'pencil', 'Draw']];
+$('lifeStartTabs').append(tileGroup(START_TABS.map(([start, pic, text]) => { const b = tile({ pic: icon(pic), text }); b.dataset.start = start; return b; }), true));
+for (const b of $('lifeStartTabs').querySelectorAll('button')) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
       surfaceDraw = b.dataset.start === 'draw';
