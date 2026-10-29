@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.35';
+const VERSION = '0.2.36';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13344,7 +13344,7 @@ function drawActivity() {
   } else if (walk.life) {
     const L = walk.life;
     first = runStart();
-    n = L.margolus ? seekFar() - first + 1 : Math.min(L.trace.alive.length, cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, up to the one shown: those worked out ahead, to find a loop, not drawn)
+    n = L.margolus ? seekFar() - first + 1 : Math.min(L.trace.alive.length, lifeEnd() ? lifeEnd().T + lifeEnd().P : cur + 1);  // (a reversible one's: as its slider, the generations not yet played flat; Life's, its end known: up to its loop's last, faint after the one shown, else up to the one shown: those worked out ahead, to find a loop, not drawn)
     series = [[columns(n, (i) => traced(L, first + i)?.alive ?? 0), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
