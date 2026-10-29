@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.51';
+const VERSION = '0.2.52';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11213,7 +11213,7 @@ function cutAtReturn(L, batch, dir) {
 // another round, see looping); none still, frozen or dead
 const loopRound = () => (playing && looping() ? runLoop().last : 0);
 function lifeTo(target, until = Infinity) {  // (one step, one generation, played on the card as many at once, see lifeStepGPU)
-  const L = walk.life;
+  const L = walk.life, known = !!runLoop();  // (its end known before: round its loop as asked)
   while ((target = Math.max(target, runStart())) < cur) {  // (back: its rule's inverse, see lifeBack; its return found going back, as far as its loop)
     const batch = lifeStepGPU(L, cur - 1, true, Math.min(cur - target, LIFE_H));
     if (!batch) break;
@@ -11255,7 +11255,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       }
       if (loopRound() && cur === loopRound()) { play(false); ended = true; }  // (a round of its loop played: Play again, another; none: 0, not gen 0)
     }
-    if (Number.isFinite(seekFar())) k = Math.min(k, seekFar() - cur);  // (its end found on the way: to it, not round it on; past it, a step at a time, round its loop)
+    if (!known && Number.isFinite(seekFar())) k = Math.min(k, seekFar() - cur);  // (its end found on the way: to it, not round it on)
     if (performance.now() >= until) break;  // (a batch at least)
   }
   statsDirty = true;
@@ -11265,6 +11265,10 @@ function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reve
   if (target !== cur) faced = false;  // the walker moves: the camera follows it again (see faceWalk)
   if (spaceTimeOn()) { cur = Math.max(0, target); statsDirty = true; if (cur >= walk.n) play(false); return; }  // (Space-time: its layers, made, see stackUp)
   if (target < cur && !walk.life) { walkBack(target); return; }
+  if (target < cur && lifeTime() && !walk.life.margolus) {  // a Game of Life back: no rule backwards; round its loop forth (the same
+    const o = looping() && runLoop(), P = o && o.last - o.T + 1;  // state, nothing played again), else from its start again
+    if (o && target >= o.T) target += P * Math.ceil((cur - target) / P); else restart();
+  }
   if (walk.life) { lifeTo(target, until); if (cur >= runEnd()) play(false); return; }
   const { xs, ys, wx, wy, wz, is3d } = walk;
   for (let i = cur + 1; i <= target; i++) {
@@ -13855,7 +13859,7 @@ function seekTo(v) {
   play(false);
   reverse(false);
   if (v < cur && !lifeTime()) { advanceTo(v); return; }  // (a walk, Space-time: back without starting again, the view kept)
-  if (v < cur && !(walk.life.margolus && cur - v <= Math.abs(v))) restart();  // (a reversible one: back by its rule, when nearer than its start)
+  if (v < cur && walk.life.margolus && cur - v > Math.abs(v)) restart();  // (a reversible one: back by its rule, when nearer than its start; Life's, see advanceTo)
   advanceTo(v);
   needsFull = true;
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
