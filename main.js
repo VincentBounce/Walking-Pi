@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.59';
+const VERSION = '0.2.60';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11256,7 +11256,8 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       }
       if (loopRound() && cur === loopRound()) { play(false); ended = true; }  // (a round of its loop played: Play again, another; none: 0, not gen 0)
     }
-    if (!known && Number.isFinite(seekFar())) k = Math.min(k, seekFar() - cur);  // (its end found on the way: to it, not round it on)
+    const end = L.margolus ? runEnd() : runLoop()?.last;
+    if (!known && end !== undefined) k = Math.min(k, end - cur);  // (its end found on the way: to it, not round it on)
     if (performance.now() >= until) break;  // (a batch at least)
   }
   statsDirty = true;
@@ -13047,6 +13048,12 @@ function lifeCells(L) {
 // a generation whatever its size (its passes: 2^18 cells' worth), measured at 48 and 512 a side; Step back greyed past
 // 2^28 (about a second: 1,000 generations at 48 a side, 200 at 2^20 cells)
 const LIFE_PASSES = 2 ** 18, LIFE_REPLAY_MOST = 2 ** 28;
+// a Game of Life's way to generation g within it: forth from where it is, back round its loop, else again from its start
+const lifeWithin = (g) => {
+  if (!lifeTime() || walk.life.margolus) return true;
+  const gens = g >= cur ? g - cur : looping() && g >= runLoop().T ? 0 : g;
+  return gens * (walk.life.seed.length + LIFE_PASSES) <= LIFE_REPLAY_MOST;
+};
 const LIFE_H = 16;  // (generations a read back: the game's, a hunt's; more, a batch longer than a frame on a large grid)
 function lifeStepGPU(L, gen, back = false, k = 1) {
   const E = lifeGPU(L);
@@ -13340,7 +13347,7 @@ let curveOf = null;  // a walk's columns, once per walk and width
 function drawActivity() {
   const cv = $('activity'), W = cv.clientWidth, H = cv.clientHeight, dpr = devicePixelRatio || 1;
   if (!W) return;  // folded (drawn again when the card opens)
-  cv.classList.toggle('seek', Number.isFinite(seekFar()));
+  cv.classList.toggle('seek', seekFar() > runStart());
   if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
   const ctx = cv.getContext('2d'), css = getComputedStyle(document.documentElement);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -13356,9 +13363,8 @@ function drawActivity() {
     return c;
   };
   // its steps, as its slider (see seekFar): from the first (a reversible one's past's furthest, see runStart), faint after the
-  // one shown, a reversible one's not played yet flat; a Game of Life's end not known, up to the one shown (those worked out
-  // ahead, to find a loop, not drawn)
-  const first = runStart(), n = (Number.isFinite(seekFar()) ? seekFar() : cur) - first + 1;
+  // one shown, a reversible one's not played yet flat; a Game of Life's end not known, up to the furthest played
+  const first = runStart(), n = seekFar() - first + 1;
   let series;
   const rainbow = () => { const g = ctx.createLinearGradient(0, 0, W, 0); for (let f = 0; f <= 1; f += 0.125) g.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]); return g; };
   if (spaceTimeOn() && stack) {  // Space-time: each generation's cubes, in its rainbow (as its cubes, up)
@@ -13527,7 +13533,7 @@ function updateStats() {
   // round it on)
   $('restart').disabled = cur <= runStart();
   // (a Game of Life's step back: round its loop forth, at once; else played again from its start, greyed when too long)
-  const tooFar = lifeTime() && !walk.life.margolus && !(looping() && cur - 1 >= runLoop().T) && cur * (walk.life.seed.length + LIFE_PASSES) > LIFE_REPLAY_MOST;
+  const tooFar = !lifeWithin(cur - 1);
   $('back').disabled = cur <= runStart() || tooFar;
   $('back').dataset.greyed = tooFar ? 'so far from its start: played again from it, more than a second' : '';
   for (const b of [$('jump2k'), $('jump10k')]) {  // (Life: 2,000 and 10,000 generations ahead, while its end is not known)
@@ -13541,7 +13547,7 @@ function updateStats() {
   $('end').hidden = lifePlayer();  // (Life: its green link, +2k and +10k)
   $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
-  // drawActivity); none for a Game of Life while its end is not known
+  // drawActivity)
   const far = seekFar(), finite = Number.isFinite(far);
   $('seekCountOpen').hidden = !finite || busy;
   $('seekCount').hidden = !finite || busy || lifePlayer();  // (folded: the step alone, beside the title; Life's, in its title)
@@ -13855,10 +13861,9 @@ $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > spee
 $('speedLabel').addEventListener('input', () => { $('speedLabel').value = $('speedLabel').value.replace(/\D/g, ''); });
 $('speedLabel').addEventListener('blur', updateSpeedLabel);  // "50 steps/s" again
 $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) setSpeed(Number($('speedLabel').value)); });
-// go to step v: back from the start, forward from where it is
-// the slider's end: a walk's last step, a run's last generation: a reversible one's, a Game of Life's once its end is known
-// (its loop's last; not known yet: none, Infinity)
-const seekFar = () => (!lifeTime() || walk.life.margolus ? runEnd() : runLoop()?.last ?? Infinity);
+// the slider's end: a walk's last step, a run's last generation: a reversible one's, a Game of Life's its loop's last once
+// known, else the furthest played (its record's: Begin keeps it, see lifeReset)
+const seekFar = () => (!lifeTime() || walk.life.margolus ? runEnd() : runLoop()?.last ?? walk.life.trace.alive.length - 1);
 // A walk back to step v: its steps after taken off (the tiles' visits), drawn again up to there, the view kept as it is
 function walkBack(v) {
   for (let i = cur; i > v; i--) {
@@ -13868,6 +13873,7 @@ function walkBack(v) {
   cur = v;
   needsFull = statsDirty = true;
 }
+// go to step v: back from the start, forward from where it is
 function seekTo(v) {
   play(false);
   reverse(false);
@@ -13882,8 +13888,8 @@ function seekTo(v) {
 const seekCurve = (e) => {
   const far = seekFar(), first = runStart();  // (a reversible one's: from its past's furthest, see drawActivity)
   if (!Number.isFinite(far) || far === first) return;
-  const r = $('activity').getBoundingClientRect();
-  seekTo(first + Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (far - first)));
+  const r = $('activity').getBoundingClientRect(), g = first + Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (far - first));
+  if (lifeWithin(g)) seekTo(g);  // (a Game of Life's: within a second's play, see LIFE_REPLAY_MOST)
 };
 $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
 $('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
