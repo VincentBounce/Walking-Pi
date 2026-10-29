@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.3';
+const VERSION = '0.2.4';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6416,35 +6416,42 @@ function parseBlocks(text) {
   if (!to || !Number.isInteger(k) || k < 2 || `${[...to].sort((a, b) => a - b)}` !== `${[...Array(to.length).keys()]}`) return null;
   return { margolus: Uint8Array.from(to), k, stars: m[2] === '*', four: m[2] === '/4', B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 1, iso: false, base: 2, text: `M${to.join(',')}${m[2] ?? ''}` };
 }
-// Langton's loops (Physica D 10, 1984), as Golly's Langtons-Loops.rule: 8 states (0 empty, 1 the core, 2 the sheath, 3 to 7
-// the signals), each transition C N E S W → C' (a cell, its 4 neighbours by a side clockwise from the top, its next state),
-// the same turned by quarter turns; a cell none of them fits, kept
-const LANGTON = (
-  '000000 000012 000020 000030 000050 000063 000071 000112 000122 000132 000212 000220 000230 000262 000272 000320 000525 000622 000722 001022'
-  + ' 001120 002020 002030 002050 002125 002220 002322 005222 012321 012421 012525 012621 012721 012751 014221 014321 014421 014721 016251 017221'
-  + ' 017255 017521 017621 017721 025271 100011 100061 100077 100111 100121 100211 100244 100277 100511 101011 101111 101244 101277 102026 102121'
-  + ' 102211 102244 102263 102277 102327 102424 102626 102644 102677 102710 102727 105427 111121 111221 111244 111251 111261 111277 111522 112121'
-  + ' 112221 112244 112251 112277 112321 112424 112621 112727 113221 122244 122277 122434 122547 123244 123277 124255 124267 125275 200012 200022'
-  + ' 200042 200071 200122 200152 200212 200222 200232 200242 200250 200262 200272 200326 200423 200517 200522 200575 200722 201022 201122 201222'
-  + ' 201422 201722 202022 202032 202052 202073 202122 202152 202212 202222 202272 202321 202422 202452 202520 202552 202622 202722 203122 203216'
-  + ' 203226 203422 204222 205122 205212 205222 205521 205725 206222 206722 207122 207222 207422 207722 211222 211261 212222 212242 212262 212272'
-  + ' 214222 215222 216222 217222 222272 222442 222462 222762 222772 300013 300022 300041 300076 300123 300421 300622 301021 301220 302511 401120'
-  + ' 401220 401250 402120 402221 402326 402520 403221 500022 500215 500225 500232 500272 500520 502022 502122 502152 502220 502244 502722 512122'
-  + ' 512220 512422 512722 600011 600021 602120 612125 612131 612225 700077 701120 701220 701250 702120 702221 702251 702321 702525 702720').split(' ');
-const LANGTON_LOOP = ['.8B', 'BAG.AD.ADB', 'B.6B.B', 'BGB4.BAB', 'BAB4.BAB', 'B.B4.BAB', 'BGB4.BAB', 'BA6BA5B', 'B.GA.GA.G5AB', '.13B'];  // (its loop, Golly's RLE: . 0, A 1, B 2…)
-// its table: a cell's next state by C × 8⁴ + N × 8³ + E × 8² + S × 8 + W, −1 where none fits
+// The self-reproducing loops (see loops.js: Golly's tables, colours and starts), each by its name: a cell's next state by
+// itself and its 4 sides clockwise from the top (C N E S W → C'), the same turned by quarter turns; a table's variables
+// ({…}) the same value wherever one is again in its line; its first line that fits, the one; a cell none fits, kept
+const loopName = (text) => Object.keys(LOOP_RULES).find((k) => k.toLowerCase() === text.trim().toLowerCase());
+const loopTables = {};
 function parseLoops(text) {
-  if (!/^\s*Langton\s*$/i.test(text)) return null;
-  const to = new Int32Array(8 ** 5).fill(-1);
-  for (const t of LANGTON) for (let r = 0; r < 4; r++) {
-    const [c, ...nesw] = [...t.slice(0, 5)].map(Number), turned = [0, 1, 2, 3].map((q) => nesw[(q + r) % 4]);
-    to[[c, ...turned].reduce((i, v) => 8 * i + v, 0)] = Number(t[5]);
-  }
-  return { loops: to, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: 7, iso: false, base: 8, text: 'Langton' };
+  const name = loopName(text);
+  if (!name) return null;
+  const T = (loopTables[name] ??= (() => {
+    const vars = {}, lines = [];
+    let n = 0;
+    for (const line of LOOP_RULES[name].table.split('\n')) {
+      if (line.startsWith('n_states:')) n = Number(line.slice(9));
+      else if (line.startsWith('var ')) { const [, v, set] = line.match(/^var (\w+)=\{(.*)\}$/); vars[v] = set.split(',').map(Number); }
+      else if (!line.includes(':')) lines.push(line.includes(',') ? line.split(',') : [...line]);
+    }
+    const to = new Int32Array(n ** 5).fill(-1);
+    for (const terms of lines) {
+      const names = [...new Set(terms.filter((x) => vars[x]))], bound = {};
+      const each = (k) => {
+        if (k < names.length) { for (const v of vars[names[k]]) { bound[names[k]] = v; each(k + 1); } return; }
+        const [c, ...rest] = terms.map((x) => (x in bound ? bound[x] : Number(x))), next = rest.pop();
+        for (let r = 0; r < 4; r++) {
+          const i = [c, ...[0, 1, 2, 3].map((q) => rest[(q + r) % 4])].reduce((m, v) => n * m + v, 0);
+          if (to[i] < 0) to[i] = next;
+        }
+      };
+      each(0);
+    }
+    return { n, to };
+  })());
+  return { loops: T.to, loopStates: T.n, B: new Uint8Array(16), S: new Uint8Array(16), C: 2, two: false, colours: T.n - 1, iso: false, base: T.n, text: name };
 }
 function parseRule(text) {
   if (/^\s*(M|Q2R)/i.test(text)) return parseBlocks(text);
-  if (/^\s*Langton/i.test(text)) return parseLoops(text);
+  if (loopName(text)) return parseLoops(text);
   const m = text.replace(/\s/g, '').toUpperCase().match(/^B([\dOMPCEKAINYQJRTWZV.-]*)\/S([\dOMPCEKAINYQJRTWZV.-]*)(?:\/C(\d+))?(?:\/(IMMIGRATION)|\/COLOURS(\d+))?H?$/);
   if (!m || /^[A-Z-]/.test(m[1]) || /^[A-Z-]/.test(m[2])) return null;
   // letters: Callahan's on hexagons (o, m, p), else Hensel's on squares (see henselClass), "-": all but these; or v and the
@@ -7597,13 +7604,15 @@ function sidesOf(row, W, torus) {
   for (let y = 0; y < W; y++) for (let x = 0; x < row; x++) [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy], q) => { out[4 * (y * row + x) + q] = at(x + dx, y + dy); });
   return out;
 }
-// Langton's loop in the middle, on empty cells (see LANGTON_LOOP)
-function loopSeed(row, W) {
-  const seed = new Uint8Array(row * W), x0 = Math.floor((row - 15) / 2), y0 = Math.floor((W - 10) / 2);
-  LANGTON_LOOP.forEach((line, y) => {
-    let x = 0;
-    for (const [, k, c] of line.matchAll(/(\d*)([.A-G])/g)) for (let i = 0; i < (Number(k) || 1); i++, x++) if (c !== '.') seed[(y0 + y) * row + x0 + x] = c.charCodeAt(0) - 64;
-  });
+// a loop's start (see loops.js) in the middle, on empty cells: its RLE's states (. 0, A 1, B 2…), its rows ($)
+function loopSeed(name, row, W) {
+  const { w, h, rle } = LOOP_RULES[name].pattern, seed = new Uint8Array(row * W), x0 = Math.floor((row - w) / 2), y0 = Math.floor((W - h) / 2);
+  let x = 0, y = 0;
+  for (const [, k, c] of rle.matchAll(/(\d*)([.A-X$])/g)) for (let i = 0; i < (Number(k) || 1); i++) {
+    if (c === '$') { x = 0; y++; continue; }
+    if (c !== '.') seed[(y0 + y) * row + x0 + x] = c.charCodeAt(0) - 64;
+    x++;
+  }
   return seed;
 }
 function buildLifePlane(seq) {
@@ -7618,8 +7627,8 @@ function buildLifePlane(seq) {
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   const nbr = withoutCells(planeNeighbours(kind, W, planeTorus(kind), rule.iso === 'hensel'), planeDead(kind, W));
   walk.life = { nbr, ring: rule.loops ? sidesOf(row, W, planeTorus(kind)) : rule.iso && rule.iso !== 'vertex' ? nbr.ring : null, side: rule.iso === 'vertex' ? sideOf(kind, W, nbr) : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text),
-                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, loops: rule.loops ?? null,
-                seed: rule.loops ? loopSeed(row, W) : planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
+                margolus: MODES[current.mode].margolus && rule.margolus ? ruleBlocks(rule, kind, W) : null, loops: rule.loops ?? null, loopStates: rule.loopStates,
+                seed: rule.loops ? loopSeed(rule.text, row, W) : planeSeed(kind, seq, rule.C, rule.colours), alive: new Uint8Array(n) };
   if (walk.life.margolus?.flips) blockCells(walk.life.margolus, n);  // (Critters, Tron: their cells in blocks, see GL_SHADERS.blockRule)
   lifeCells(walk.life);  // (its cells' arrays: the graphics card's copies too)
   countSeed(walk.life);
@@ -9341,10 +9350,10 @@ for (const [kind, { k }] of Object.entries(STARS)) for (const [name, size, words
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 // the loops' rules (see parseLoops), before Custom
-{
-  RULE_ICONS.Langton = '.ooo.,o...o,o.o.o,o...o,.ooo.';
-  const option = new Option(`${LOOPS_MARK} Langton — Langton's loops (1984): a loop whose signals turning round in it build a copy of it, every 151 generations, into a colony growing as a coral, its dead loops in the middle`, 'Langton');
-  option.dataset.name = "Langton's loops";
+for (const [name, { year, words }] of Object.entries(LOOP_RULES)) {
+  RULE_ICONS[name] = '.ooo.,o...o,o.o.o,o...o,.ooo.';
+  const option = new Option(`${LOOPS_MARK} ${name} — ${words} (${year})`, name);
+  option.dataset.name = name === 'Langton' ? "Langton's loops" : name;
   $('lifePreset').insertBefore(option, $('lifePreset').querySelector('option[value="custom"]'));
 }
 // each grid's block rules in this order (its first: the one it starts with), before Custom
@@ -11860,9 +11869,9 @@ int next(int t) {
   if (t >= uN) return 0;
   int was = A(t), s0 = I(uStart, t), s1 = I(uStart, t + 1), last = uK * (uC - 1);
   if (s0 == s1) return 0;  // (a wall)
-  if (uLoop > 0) {  // (a table's, Langton's loops: its next state by its 4 sides in turn, see parseLoops; none fits, kept)
+  if (uLoop > 0) {  // (a loop's table, its uLoop states: its next state by its 4 sides in turn, see parseLoops; none fits, kept)
     int i = was;
-    for (int q = 0; q < 4; q++) { int v = I(uRing, 4 * t + q); i = 8 * i + (v >= 0 ? A(v) : 0); }
+    for (int q = 0; q < 4; q++) { int v = I(uRing, 4 * t + q); i = uLoop * i + (v >= 0 ? A(v) : 0); }
     int to = I(uLoops, i);
     return to < 0 ? was : to;
   }
@@ -12876,7 +12885,7 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
 function lifeRulePass(E, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played, see lifeRows)
   const L = E.L, [y0, y1] = lifeRows(E, r0, r1);
   lifePass(E, 'lifeRule', { uA: E.now.state, uStart: E.start, uList: E.list, uRing: E.ring, uMoreStart: E.moreStart, uMoreList: E.moreList, uSide: E.side, uB: E.B, uS: E.S, uLoops: E.loops },
-    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0, uLoop: L.loops ? 1 : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
+    { uN: E.n, uK: L.colours, uStride: E.stride, uC: L.C, uR: L.ring ? L.ring.length / E.n : 0, uMode: L.ring ? 1 : L.side ? 2 : 0, uMore: L.ringMore ? 1 : 0, uLoop: L.loops ? L.loopStates : 0 }, [E.next.state], 1024, y1 - y0, undefined, 0, y0);
 }
 // runs r0 … r1's rows of cells (4,096 a row): a hunt's passes over its runs going on only
 const lifeRows = (E, r0, r1) => [Math.floor((r0 * E.stride) / 4096), Math.ceil((r1 * E.stride) / 4096)];
