@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.53';
+const VERSION = '0.2.54';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13348,20 +13348,20 @@ function drawActivity() {
     for (let i = 0; i < n; i++) { const x = xOf(i, n); c[x] = Math.max(c[x], value(i)); }
     return c;
   };
-  let series, n, first = 0;  // (first: the generation at its left, a reversible one's past's furthest, see runStart)
+  // its steps, as its slider (see seekFar): from the first (a reversible one's past's furthest, see runStart), faint after the
+  // one shown, a reversible one's not played yet flat; a Game of Life's end not known, up to the one shown (those worked out
+  // ahead, to find a loop, not drawn)
+  const first = runStart(), n = (Number.isFinite(seekFar()) ? seekFar() : cur) - first + 1;
+  let series;
   const rainbow = () => { const g = ctx.createLinearGradient(0, 0, W, 0); for (let f = 0; f <= 1; f += 0.125) g.addColorStop(f, GRADIENT[Math.round(f * (BANDS - 1))]); return g; };
   if (spaceTimeOn() && stack) {  // Space-time: each generation's cubes, in its rainbow (as its cubes, up)
     const E = stack.layers;
-    n = E.length;
     series = [[columns(n, (i) => E[i] - (i ? E[i - 1] : -1)), rainbow()]];
   } else if (walk.life) {
     const L = walk.life;
-    first = runStart();
-    n = (Number.isFinite(seekFar()) ? seekFar() : cur) - first + 1;  // (as its slider, faint after the one shown, a reversible one's not played yet flat; a Game of Life's end not known: up to the one shown, those worked out ahead, to find a loop, not drawn)
     series = [[columns(n, (i) => traced(L, first + i)?.alive ?? 0), accent]];
   } else {
     if (!walk.n || !walk.wx) return;
-    n = walk.n + 1;
     const { wx, wy, wz } = walk;
     if (curveOf?.wx !== wx || curveOf.W !== W || curveOf.n !== n) {
       curveOf = { wx, W, n, c: columns(n, (i) => Math.hypot(wx[i] - wx[0], wy[i] - wy[0], wz ? wz[i] - wz[0] : 0)) };

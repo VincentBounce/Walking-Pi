@@ -392,6 +392,28 @@ async function checkKnown(fail) {
   checked++;
   if (backSearch.found !== 48924) fail(`Swirl on hexagons: its return found at ${backSearch.found}, known 48,924`);
   searchBack(false);
+  // a run played back and round its loop: a Game of Life's back (no rule backwards: round its loop forth, else again from its
+  // start, see advanceTo) the very state played to (a pentadecathlon, a domino dying: from 1, period 15; v0.2.52); a jump across
+  // a reversible one's return to its end, not its start (v0.2.50)
+  location.hash = '#w=life2d&r=B3/S23&s=32&e=1&p=10,10:2A7$2.A4.A$2A.4A.2A$2.A4.A!&pop=draw';
+  await wait(800);
+  restart();
+  const at = [], cells = () => Uint8Array.from(walk.life.alive, (v) => +(v > 0));
+  for (let g = 0; g <= 16; g++) { if (g) advanceTo(g); at.push(cells()); }
+  checked++;
+  if (walk.life.stable?.T !== 1 || walk.life.stable?.P !== 15) fail(`a pentadecathlon and a domino: repeats from ${walk.life.stable?.T} with period ${walk.life.stable?.P}, known 1 and 15`);
+  for (const [from, to] of [[15, 1], [12, 3], [15, 0]]) {
+    advanceTo(from);
+    advanceTo(to);
+    checked++;
+    if (cur !== to || !cells().every((v, t) => v === at[to][t])) fail(`a Game of Life back from ${from} to ${to}: at ${cur}, ${cur === to ? 'not the state played to' : ''}`);
+  }
+  location.hash = '#x=1/28&w=blocks2d&d=200&r=M15,1,2,3,4,5,6,7,8,9,10,11,12,13,14,0&s=16&e=1&pop=digits';
+  await wait(1500);
+  restart();
+  advanceTo(30);
+  checked++;
+  if (cur !== 11) fail(`1/28's blocks, a jump to 30 across its return (12): at ${cur}, not its end (11)`);
   // a hunt: of the 2^14 starts of 14 cells (radius 2's first), the 8 longest
   location.hash = '#w=life2d&r=B3/S23&s=48&pop=random.49.5';
   await wait(800);
