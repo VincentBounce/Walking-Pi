@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1512';
+const VERSION = '0.1.1513';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9954,7 +9954,7 @@ function renderHunt() {
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
   $('huntBtn').title = `${hunt.zone === 'custom' ? 'A start found by a hunt, from a link: pick a zone to hunt in' : 'On and on until stopped: random starts and tweaks of the best, the 8 best kept; a click on one plays it'}\n${zone}`;
-  $('huntStatus').textContent = hunt.status;  // (its zone: in its button's tooltip)
+  $('huntStatus').innerHTML = withIcons(hunt.status);  // (its zone: in its button's tooltip)
   // each result's light: a battle by its balance (green 0.6 and up: even; orange from 0.3; red: one-sided;
   // grey: the colours never touched, no battle); a life (one colour), whatever its goal, by how far it spreads:
   // how much it grows: its most live cells at once by its cells at the start (green from 4 times, orange from 2:
@@ -9974,7 +9974,7 @@ function renderHunt() {
         : hunt.goal === 'cover' ? (r.allAt ? [`All by gen ${fmt(r.allAt)}`, `its ${fmt(n)} cells reached · from ${fmt(r.live)}`]
           : [`${Math.floor((100 * r.reached) / n)} % of the cells reached`, `${r.P ? `till it ${r.P === 1 ? 'settles' : 'loops'} at gen ${fmt(r.T)}` : `in ${fmt(r.T)} generations`} · from ${fmt(r.live)} cells`])
         : [`${fmt(r.T)} generations${r.P ? '' : ' or more'}`, `${r.extinct ? 'dies out' : r.P === 1 ? 'settles' : r.P ? `period-${fmt(r.P)} loop` : 'still changing'} · ${fmt(r.live)} cells`]
-      : [`${fmt(r.contacts)} generations in contact`, r.winner ? `${LIFE_COLOUR_NAMES[r.winner - 1]} wins at gen ${fmt(r.alone)}`
+      : [`${fmt(r.contacts)} generation${r.contacts === 1 ? '' : 's'} in contact`, r.winner ? `${LIFE_COLOUR_NAMES[r.winner - 1]} wins at gen ${fmt(r.alone)}`
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r), why = K > 1 ? (r.contacts ? `balance ${r.balance.toFixed(2)}: how evenly its colours keep being born (1 all alike, 0 one alone; green from 0.6, orange from 0.3, else red)` : 'its colours never touched: no battle')
       : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: grown ${(r.peak / r.live).toFixed(1)} times (green from 4, orange from 2, else red)`;
@@ -10048,7 +10048,7 @@ function huntClick() {
       return;
     }
     const [b, e] = plan.space ?? [], of = all ? fmt(all) : b && e > 1 ? `${fmt(b)}^${fmt(e)}` : b ? fmt(b) : '';  // (the starts it has: all, or so many a cell's or colour's choices)
-    hunt.status = `${of ? `${fmt(n)} / ${of}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;
+    hunt.status = `${all ? '' : '🎲 '}${of ? `${fmt(n)} / ${of}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;  // (🎲: drawn at random, not each in turn)
     renderHunt();
   });
   hunt.status = hunt.run ? 'Starting…' : 'Too big to hunt';
