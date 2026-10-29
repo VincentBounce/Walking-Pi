@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.16';
+const VERSION = '0.2.17';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7852,6 +7852,7 @@ function renderPlaneRow() {
   }
   $('drawNote').hidden = true;
   for (const b of $('brushCards').children) b.disabled = false;
+  for (const b of [$('openPng'), $('exportPng')]) setTile(b, { can: kind === 'square', greyed: 'on a grid of squares only (a pixel a square)' });
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
@@ -13901,11 +13902,46 @@ for (const b of $('lifeStartTabs').children) {
       if (surfaceDraw || plane.start === b.dataset.start) { renderPlaneRow(); renderHunt(); return; }
     }
     if (plane.start === b.dataset.start) return;
+    if (b.dataset.start === 'draw' && walk.life) population = new Map([...walk.life.seed].flatMap((c, t) => (c ? [[key(t % walk.plane.row, Math.floor(t / walk.plane.row)), c]] : [])));  // (the start in view, to draw on: Clear for an empty one)
     plane.start = b.dataset.start; cleared = null; compute();
   });
 }
 $('startTextInput').addEventListener('change', () => { plane.text = $('startTextInput').value.trim() || APP_TITLE; compute(); });
 $('clearDrawn').addEventListener('click', () => { [population, cleared] = cleared ? [cleared, null] : [new Map(), population]; planeReseed(); });
+// Open PNG: a picture, its dark pixels alive (its transparent ones dead), a pixel a square, on the smallest grid it fits in
+// (the plane's sizes: from 16 × 16, every rule's), in the middle; Export PNG: the generation shown, its live cells black
+$('openPng').addEventListener('click', () => $('pngFile').click());
+$('pngFile').addEventListener('change', async () => {
+  const file = $('pngFile').files[0];
+  $('pngFile').value = '';
+  if (!file) return;
+  const img = await createImageBitmap(file), c = new OffscreenCanvas(img.width, img.height), g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, img.width, img.height).data, kind = MODES[$('mode').value].plane, sides = planeSides(kind);
+  const side = sides.find((f) => planeW(kind, f) >= Math.max(img.width, img.height));
+  if (side === undefined) { alert(`This picture is ${img.width} × ${img.height}: at most ${planeW(kind, sides.at(-1))} × ${planeW(kind, sides.at(-1))} here.`); return; }
+  const W = planeW(kind, side), x0 = Math.floor((W - img.width) / 2), y0 = Math.floor((W - img.height) / 2);
+  population = new Map();
+  for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
+    const i = 4 * (y * img.width + x);
+    if (d[i + 3] >= 128 && 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] < 128) population.set(key(x0 + x, y0 + y), 1);
+  }
+  picked = planeCells(side);
+  plane.start = 'draw';
+  cleared = null;
+  compute();
+});
+$('exportPng').addEventListener('click', () => {
+  const L = walk.life, { W, row } = walk.plane, c = document.createElement('canvas'), neg = negative(L), cells = L.margolus?.cells;
+  [c.width, c.height] = [row, W];
+  const g = c.getContext('2d'), im = g.createImageData(row, W);
+  for (let t = 0; t < row * W; t++) {
+    const v = (L.alive[t] > 0 && L.alive[t] <= L.colours) !== (neg && !!cells?.[t]) ? 0 : 255;  // (as shown: a block rule's negative)
+    im.data.set([v, v, v, 255], 4 * t);
+  }
+  g.putImageData(im, 0, 0);
+  c.toBlob((blob) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${APP_TITLE} gen ${cur}.png`; a.click(); URL.revokeObjectURL(a.href); });
+});
 stage.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawGhost(); } });
 $('brushCards').replaceChildren(...[BRUSH_CELL, ...DRAW_PATTERNS].map(([id, kind, , name, rle, what, art]) => {
   const b = card({ pic: art ? pixelIcon(art) : cellsIcon(kind, rle), name, detail: what, byDefault: id === 'cell' ? 'yes' : '', click: () => { brush.id = id; renderPlaneRow(); } });  // (see brush)
