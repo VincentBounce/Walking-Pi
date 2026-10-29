@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.78';
+const VERSION = '0.2.79';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6597,8 +6597,17 @@ const lifeParts = () => (walk.life.margolus && walk.geo.torus ? (plane.start ===
 function startColours(seed) {
   if (walk.life.loops) { layLoops(seed); return; }  // (its loops, see layLoops)
   startParts(seed);
+  symmetricStart(seed);
   if (walk.life.margolus) seed.forEach((v, t) => { seed[t] = v ? 1 : 0; });  // (a reversible one: one colour, its pictures a square each too)
 }
+// the start's symmetry (see cellCopies), whatever laid it (a soup, the digits, a zone, cells drawn, a text, a picture): each cell
+// as its first copy (the least of them), a quarter turned round (Rotate), mirrored (Mirror), an eighth (Kaleido), a half (Half turn)
+function symmetricStart(seed) {
+  if (!walk.plane || symmetryOf(walk.plane.kind) === 'none') return;
+  for (let t = 0; t < seed.length; t++) seed[t] = seed[firstCopy(t)];  // (its first, before it: as it is)
+}
+const firstCopy = (t) => { const { kind, W } = walk.plane; return Math.min(...cellCopies(kind, W, t)); };
+const firstCell = ([x, y]) => { const r = walk.plane.row, f = firstCopy(y * r + x); return [f % r, Math.floor(f / r)]; };  // (a cell drawn: its first copy's, see symmetricStart)
 function startParts(seed) {
   const K = lifeParts();
   if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
@@ -7620,20 +7629,14 @@ function withoutCells(nb, dead) {
 function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell of a soup one of them
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W, seed = new Uint8Array(n);
   const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < row && y < W) seed[y * row + x] = c; };
-  // the symmetry: a soup or the digits read at the first of a cell's copies (as dense as without); cells
-  // drawn copied to all of them
-  const first = symmetryOf(kind) === 'none' ? (t) => t : (t) => Math.min(...cellCopies(kind, W, t));
-  if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[first(t)] ?? 0;
+  // (the symmetry: after, whatever the start, see symmetricStart)
+  if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[t] ?? 0;
   else if (plane.start === 'random') {
     const p = plane.density / 100;
-    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, first(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, first(t)) * K) : 1;
+    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, t) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, t) * K) : 1;
   } else {
     // cells drawn: a colour of another count of colours as one of these (one colour: alive), a dying state kept
     for (const [k, c] of population) put(...cellXY(k), c <= K * (C - 1) ? c : K > 1 ? ((c - 1) % K) + 1 : 1);  // a state of these colours and states, else alive
-    if (symmetryOf(kind) !== 'none') {
-      const own = seed.slice();
-      for (let t = 0; t < n; t++) if (own[t]) for (const c of cellCopies(kind, W, t)) seed[c] = own[t];
-    }
   }
   for (const t of planeDead(kind, W) ?? []) seed[t] = 0;  // (none on the wall's cells)
   return seed;
@@ -14156,9 +14159,9 @@ stage.addEventListener('pointerup', (e) => {
     if (!cell) return;
     cleared = null;  // drawn again: no Undo
     const K = walk.life.colours;  // a pattern's state: alive in the brush's colour, or dying of it (see parseRule)
-    if (brush.id !== 'cell' || !brush.colour) for (const [x, y, v] of brushAt(cell)) { if (brush.colour) population.set(key(x, y), K > 1 ? brush.colour + K * (v - 1) : v); else population.delete(key(x, y)); }
+    if (brush.id !== 'cell' || !brush.colour) for (const [x0, y0, v] of brushAt(cell)) { const [x, y] = firstCell([x0, y0]); if (brush.colour) population.set(key(x, y), K > 1 ? brush.colour + K * (v - 1) : v); else population.delete(key(x, y)); }  // (drawn at its first copy: anywhere, all of them)
     else {  // a cell: in the brush's colour, or off if it has it; one colour: alive, then each dying state, back to dead
-      const k = key(...cell), v = population.get(k) ?? 0;
+      const k = key(...firstCell(cell)), v = population.get(k) ?? 0;
       const c = walk.life.colours > 1 ? (v === brush.colour ? 0 : brush.colour) : (v + 1) % walk.life.C;
       if (c) population.set(k, c); else population.delete(k);
     }
