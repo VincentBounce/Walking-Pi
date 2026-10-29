@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.28';
+const VERSION = '0.2.29';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11244,6 +11244,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       if (cur === loopRound(L)) { play(false); ended = true; }  // (a round of its loop played: Play again, another)
     }
     if (Number.isFinite(walk.n)) k = Math.min(target, runEnd()) - cur;  // (a reversible one's loop found: to its last generation before it, from its start again)
+    else if (lifeEnd() && !playing) k = Math.min(target, lifeEnd().T + lifeEnd().P - 1) - cur;  // (a Game of Life's loop found: to its last, not round it on)
     if (performance.now() >= until) break;  // (a batch at least)
   }
   statsDirty = true;
@@ -13480,9 +13481,9 @@ function updateStats() {
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = cur >= runEnd() || lifeEnded();
-  $('end').disabled = cur >= runEnd() || (!Number.isFinite(walk.n) && !!walk.life?.stable);  // a Game of Life's end known: there already (or in its loop)
   // a Game of Life has no end: the button jumps 2,000 generations ahead, and says so
-  const endless = !Number.isFinite(walk.n), jump = endless ? `+${LIFE_JUMP / 1000}k` : icon('end');
+  const endless = !Number.isFinite(walk.n) && !lifeEnd(), jump = endless ? `+${LIFE_JUMP / 1000}k` : icon('end');  // (a Game of Life's end known: its loop's first and last, its stops)
+  $('end').disabled = !endless && !runStops().some((g) => g > cur);  // (at its last stop: a run's end, a Game of Life's loop's last)
   if ($('end').dataset.shown !== jump) {
     $('end').innerHTML = $('end').dataset.shown = jump;
     $('end').title = endless ? `${fmt(LIFE_JUMP)} generations ahead (E)` : 'Jump to end (E)';
@@ -13794,12 +13795,13 @@ $('step').addEventListener('click', () => { play(false); reverse(false); advance
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 // Begin (⏮) and End (⏭): one way through a run's stops, in turn: its first, its start (0), its ordered moments (a reversible
-// one's, see orderMarks), its last; Begin the one before the generation shown, End the one after; Life, with no end: End
+// one's, see orderMarks), a Game of Life's loop's first and last once known (see lifeEnd), its last; Begin the one before the generation shown, End the one after; Life, with no end: End
 // LIFE_JUMP generations ahead. Its start, written at once (restart), not played to
-const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
+const lifeEnd = () => (lifeTime() && !walk.life.margolus && walk.life.stable) || null;  // (a Game of Life's end, known: its loop, frozen or dead)
+const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(lifeEnd() ? [lifeEnd().T, lifeEnd().T + lifeEnd().P - 1] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
 function goStop(dir) {
   const stops = runStops(), g = dir < 0 ? stops.findLast((x) => x < cur) : stops.find((x) => x > cur);
-  if (g === undefined) { if (dir > 0 && !Number.isFinite(walk.n)) advanceTo(cur + LIFE_JUMP); return; }
+  if (g === undefined) { if (dir > 0 && !Number.isFinite(walk.n) && !lifeEnd()) advanceTo(cur + LIFE_JUMP); return; }
   if (g === 0) restart(); else advanceTo(g);
 }
 $('restart').addEventListener('click', () => { const wasPlaying = playing; goStop(-1); play(wasPlaying); });  // (playing on if it was)
