@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.15';
+const VERSION = '0.2.16';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13359,9 +13359,9 @@ function drawActivity() {
   const mark = (g, colour) => { const x = Math.floor(((g - first) * W) / n) + 0.5; ctx.strokeStyle = colour; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
   if (walk.life?.margolus && lifeTime()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
-  if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, css.getPropertyValue('--face'));  // (its most alive, as its gauge)
+  if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, accent);  // (its most alive, in gold as its gauge and the curve)
 }
-// One colour: fixed gauges of how it goes, not of a record, a row each: in red as their marks on the curve (see drawActivity),
+// One colour: fixed gauges of how it goes, not of a record, a row each: in gold as the curve and its mark (see drawActivity),
 // alive (against the most) and the most alive at once (and when, against the grid); in blue, its order (see orderOf) and the
 // most ordered so far (and when); then its turnover, this generation's births and deaths against the cells alive before and
 // after (100 %: every cell changes; 0: nothing moves), the cells ever alive (against the grid), its growth, births less
@@ -13371,10 +13371,10 @@ function renderGauges(L) {
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
   const avg = loopMeans(L), varies = avg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
-  const turnover = both ? (b + d) / both : 0, red = 'var(--face)', blue = 'var(--sector)';
+  const turnover = both ? (b + d) / both : 0, gold = 'var(--accent)', blue = 'var(--sector)';
   const rows = [  // name, colour (none: the theme's live cells'), its bar's share (none: figures only), its figures
-    ['Alive', red, (varies ? avg[1] : L.aliveCount) / L.peak, `<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`],
-    ['Peak alive', red, L.peak / n, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`],
+    ['Alive', gold, (varies ? avg[1] : L.aliveCount) / L.peak, `<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`],
+    ['Peak alive', gold, L.peak / n, `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`],
     ['Order', blue, L.order, `${Math.round(100 * L.order)} %`],
     ['Peak order', blue, L.peakOrder, `${Math.round(100 * L.peakOrder)} % · gen ${fmt(L.peakOrderGen)}`],
     ['Turnover', null, turnover, `${Math.round(100 * turnover)} %`],
