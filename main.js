@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.62';
+const VERSION = '0.2.63';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2011,6 +2011,7 @@ const ICONS = (() => {
     cubeFilled: cube(true),
     torus,
     loop: pathEl('M19.5 12A7.5 7.5 0 1 1 16.6 6.1') + pathEl('M17.4 2.6L16.9 6.4L13.1 5.9'),  // a circle closing on itself, its arrow at the end
+    replicator: pathEl('M5 4H14A1 1 0 0 1 15 5V14A1 1 0 0 1 14 15H5A1 1 0 0 1 4 14V5A1 1 0 0 1 5 4Z') + pathEl('M7.5 7H11.5A.5.5 0 0 1 12 7.5V11.5A.5.5 0 0 1 11.5 12H7.5A.5.5 0 0 1 7 11.5V7.5A.5.5 0 0 1 7.5 7Z') + pathEl('M15 12.5H20V20'),  // Langton's loop: its sheathed ring, its arm out
     // the tilings of a surface (see FAMILIES): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
     tilesSqStretched: pathEl('M2 8H22V16H2Z') + pathEl('M6 8V16M10 8V16M14 8V16M18 8V16M2 12H22'),  // a long sheet of squares: 5 by 2
@@ -2729,11 +2730,11 @@ for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   MODE_ICONS[w] = MODE_ICONS[life];
   NAV[w] = ['Reversible', 'Surfaces', NAV[life][2], 'Blocks', ''];
 }
-// Loops: Langton's self-reproducing loops on Life's grid of squares, by a table of transitions (see parseLoops)
+// Replicators: Langton's self-reproducing loops on Life's grid of squares, by a table of transitions (see parseLoops)
 for (const [w, life] of [['loops2d', 'life2d'], ['loopsTorus', 'lifeTorus'], ['loopsCube', 'lifeCube'], ['loopsPits', 'lifePits'], ['loopsBumps', 'lifeBumps'], ['loopsFrame', 'lifeFrame']]) {  // (squares: 4 sides each, the same way round on each: no Möbius strip nor Klein bottle; nor Menger's sponge, its flat pieces narrower than a loop)
   MODES[w] = { ...MODES[life], loops: true, where: `${MODES[life].where.split(' (')[0]}, each cell by its 4 sides in turn (von Neumann)` };
   MODE_ICONS[w] = MODE_ICONS[life];
-  NAV[w] = ['Loops', NAV[life][1], NAV[life][2], 'Langton', ''];
+  NAV[w] = ['Replicators', NAV[life][1], NAV[life][2], 'Langton', ''];
 }
 for (const w of Object.keys(MODES)) if ((MODES[w].pivot || MODES[w].parity) && MODES[w].sphere) {
   const of = Object.keys(NAV).find((v) => NAV[v][3] === 'Turtle' && MODES[v].sphere === MODES[w].sphere && !!MODES[v].grid === !!MODES[w].grid);
@@ -2761,7 +2762,7 @@ MODE_ICONS.lifeFrame = 'frame';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Life', 'glider'], ['Loops', 'loop'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
+const NAV_KINDS = [['Life', 'glider'], ['Replicators', 'replicator'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
 // the spaces, in turn, each its name and picture: a walk's or an ant's plane without an edge; Life's grids on the plane, those
 // that repeat (walls in a hexagon too) and its round ones, never repeating (see APERIODIC); everyone's solids, and surfaces
 // (a sheet rolled up); the walks through a 3D lattice
@@ -2791,7 +2792,7 @@ for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-$
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
-const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Loops: 'Grid', Reversible: 'Grid' };
+const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Replicators: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
 // The mode for a choice at a level (values: from that level on, one or more: a space and its shape): the levels above as
