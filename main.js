@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.54';
+const VERSION = '0.2.55';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1591,6 +1591,9 @@ const tile = ({ pic = '', text = '', html = null, title = '', id = null, on = fa
   if (click) b.addEventListener('click', click);
   return setTile(b, { on, can, mark, again, turn, byDefault, greyed });
 };
+// A double click on a switch is one click: its second ignored (Play, ◀, a toggle tile, a green link: on then off again, there
+// and back; a keyboard's click or a script's has no count, see e.detail)
+document.addEventListener('click', (e) => { if (e.detail > 1 && e.target.closest?.('#play, #reverse, [data-toggle], .gen-link')) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 // (byDefault: as the tooltip tells it, see tip: 'yes', the choice picked at first; 'on' or 'off', a switch's at first)
 // (greyed: when it is, as the tooltip tells it: 'in Classic', 'outside Life'…)
 const setTile = (b, { on = false, can = true, mark = false, again = false, turn = 0, byDefault, greyed }) => {
