@@ -366,7 +366,8 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 .draw-row button.active { border-color: var(--accent); color: var(--accent); }
 #brushColours i.eraser { display: flex; align-items: center; justify-content: center; background: var(--panel); border: 1px solid var(--border); color: var(--muted); }  /* a colour too: the dead one */
 #brushColours i.eraser .icon { width: 18px; height: 18px; }
-#clearDrawn { width: 64px; height: 34px; }  /* Clear, or Undo: the same room */.turn-row button { flex: 1; }  /* the turns, always there (greyed for a cell) */
+#clearDrawn { width: 64px; height: 34px; }  /* Clear, or Undo: the same room */
+.turn-row button { flex: 1; }  /* the turns, always there (greyed for a cell); Open and Export PNG */
 .colour-swatches span { font-size: 12px; color: var(--muted); font-weight: 400; }
 #lifeStartTabs button { padding-left: 2px; padding-right: 2px; font-size: 11.5px; }  /* the starts on one row */
 .stage.dragging { cursor: grabbing; }

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.17';
+const VERSION = '0.2.18';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13902,7 +13902,10 @@ for (const b of $('lifeStartTabs').children) {
       if (surfaceDraw || plane.start === b.dataset.start) { renderPlaneRow(); renderHunt(); return; }
     }
     if (plane.start === b.dataset.start) return;
-    if (b.dataset.start === 'draw' && walk.life) population = new Map([...walk.life.seed].flatMap((c, t) => (c ? [[key(t % walk.plane.row, Math.floor(t / walk.plane.row)), c]] : [])));  // (the start in view, to draw on: Clear for an empty one)
+    if (b.dataset.start === 'draw' && walk.life) {  // (the generation in view, as shown, to draw on: Clear for an empty one)
+      const L = walk.life, neg = negative(L), shown = (c, t) => (L.margolus ? ((c > 0) !== (neg && !!L.margolus.cells?.[t]) ? 1 : 0) : c);
+      population = new Map([...L.alive].flatMap((c, t) => (shown(c, t) ? [[key(t % walk.plane.row, Math.floor(t / walk.plane.row)), shown(c, t)]] : [])));
+    }
     plane.start = b.dataset.start; cleared = null; compute();
   });
 }
