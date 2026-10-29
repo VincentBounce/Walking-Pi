@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.34';
+const VERSION = '0.2.35';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13510,11 +13510,11 @@ function updateStats() {
     // out, ■ frozen), or its loop: its phase, its period, from which generation
     const s = endShown(L), pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
     // (its end, from its glyph on: one link in green, as its loop's mark, to its loop's first generation (frozen, dead: where it
-    // stopped; Play from there, a round, see loopRound; a reversible one's: its start, 0); there too, to see where one is)
+    // stopped; Play from there, a round, see loopRound; a reversible one's: its start, 0); from its first, to its last)
     // (its end known, not reached yet: where it is, its period and its first; Begin back to a start keeps its record)
     const known = L.stable, ahead = known && !s, end = !known ? '' : known.extinct ? `✝${ahead ? ` ${fmt(known.T)}` : ''}` : known.P === 1 ? `■${ahead ? ` ${fmt(known.T)}` : ''}`
       : `↻ ${ahead ? fmt(known.P) : `${pad(mod(cur - known.T, known.P) + 1, known.P)}/${fmt(known.P)}`}${known.T ? ` from ${fmt(known.T)}` : ''}`;
-    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(known.T, end, 'loop')}`}`;
+    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(cur === known.T && known.P > 1 ? known.T + known.P - 1 : known.T, end, 'loop')}`}`;
     if ($('barNum').innerHTML !== title) $('barNum').innerHTML = title;
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
     renderBack();
@@ -14058,7 +14058,7 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowRight': $('step').click(); break;
     case 'ArrowLeft': $('back').click(); break;
     case 'r': case 'R': $('restart').click(); break;
-    case 'e': case 'E': ($('barNum').querySelector('.gen-link') ?? ($('jump2k').hidden || $('jump2k').disabled ? null : $('jump2k')))?.click(); break;  // (its loop's first, by its title's glyph; Life's end not known yet: 2,000 ahead)
+    case 'e': case 'E': ($('barNum').querySelector('.gen-link') ?? ($('jump2k').hidden || $('jump2k').disabled ? null : $('jump2k')))?.click(); break;  // (its loop's first, by its title's glyph, from there its last; Life's end not known yet: 2,000 ahead)
     case 'f': case 'F': recentre(); break;
   }
 });
