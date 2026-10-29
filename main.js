@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.79';
+const VERSION = '0.2.80';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7921,9 +7921,9 @@ function renderPlaneRow() {
   setTile($('spaceTimeTile'), { on: spaceTimeOn(), can: spaceTimeApplies(), greyed: 'but on squares (not Reversible)' });
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
-  $('symmetryTiles').replaceChildren(...syms.map((y) => {
-    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), byDefault: y === 'none' ? 'yes' : '', click: () => { plane.sym = y; reseedStart(); } });
-  }));
+  $('symmetryTiles').replaceChildren(tileGroup(syms.map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing)
+    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), byDefault: y === 'none' ? 'yes' : '', click: () => { if (y !== symmetryOf(kind)) { plane.sym = y; reseedStart(); } } });
+  }), true));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
   $('startDigits').hidden = plane.start !== 'digits';
