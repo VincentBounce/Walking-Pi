@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.52';
+const VERSION = '0.2.53';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11312,12 +11312,13 @@ function play(on) {
   statsDirty = true;  // (paused: the chips lit again, see updateStats)
 }
 // Play backwards (◀ by Play): back to its start, a step at a time; a reversible one by its rule run backwards, a walk
-// drawn again up to the step before (Life: none, it cannot go back)
-// Life's own time: generations played on the card, ever on, no way back (but a block rule's); Space-time's, its layers made (see stackUp)
+// drawn again up to the step before (Life: none, no rule backwards; a step back only, see advanceTo)
+// Life's own time: generations played on the card, ever on (back: round its loop, or played again, see advanceTo; a block
+// rule's, by its rule); Space-time's, its layers made (see stackUp)
 const lifeTime = () => !!walk.life && !spaceTimeOn();
-const reversible = () => !lifeTime() || !!walk.life.margolus;
+const playsBack = () => !lifeTime() || !!walk.life.margolus;  // (◀: a walk, Space-time, a reversible one)
 function reverse(on) {
-  reversing = on && reversible() && cur > runStart();
+  reversing = on && playsBack() && cur > runStart();
   if (reversing) play(false);
   const shown = reversing ? 'pause' : 'reverse';
   if ($('reverse').dataset.shown !== shown) $('reverse').innerHTML = icon($('reverse').dataset.shown = shown);  // (only when it changes: a click on it kept)
@@ -13522,7 +13523,7 @@ function updateStats() {
     b.hidden = Number.isFinite(walk.n);
     b.disabled = !!runLoop();
   }
-  $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
+  $('reverse').hidden = !playsBack();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = atEnd();
   $('end').hidden = lifeTime() && !walk.life.margolus;  // (Life: its green link, +2k and +10k)
