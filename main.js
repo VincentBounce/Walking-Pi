@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.60';
+const VERSION = '0.2.61';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13884,15 +13884,21 @@ function seekTo(v) {
   if ($('autoFit').checked) fitWhole();  // framed at once, not eased out from the start's frame
   statsDirty = true;
 }
-// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a run's: see seekFar)
-const seekCurve = (e) => {
+// the activity curve as the slider, open: a click or a drag on it goes to that step (a walk's, a run's: see seekFar), a Game
+// of Life's within a second's play (see lifeWithin): the rest, hovered, not to be clicked (its cursor)
+const curveStep = (e) => {  // (the step under the mouse; none: no slider)
   const far = seekFar(), first = runStart();  // (a reversible one's: from its past's furthest, see drawActivity)
-  if (!Number.isFinite(far) || far === first) return;
-  const r = $('activity').getBoundingClientRect(), g = first + Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (far - first));
-  if (lifeWithin(g)) seekTo(g);  // (a Game of Life's: within a second's play, see LIFE_REPLAY_MOST)
+  if (!Number.isFinite(far) || far === first) return null;
+  const r = $('activity').getBoundingClientRect();
+  return first + Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (far - first));
 };
+const seekCurve = (e) => { const g = curveStep(e); if (g !== null && lifeWithin(g)) seekTo(g); };
 $('activity').addEventListener('pointerdown', (e) => { $('activity').setPointerCapture(e.pointerId); seekCurve(e); });
-$('activity').addEventListener('pointermove', (e) => { if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e); });
+$('activity').addEventListener('pointermove', (e) => {
+  if ($('activity').hasPointerCapture(e.pointerId)) seekCurve(e);
+  const g = curveStep(e);
+  $('activity').classList.toggle('out', g !== null && !lifeWithin(g));
+});
 $('back').addEventListener('click', () => seekTo(cur - 1));
 $('colorMode').addEventListener('change', () => { needsFull = true; renderColorButtons(); updateDisplayMenu(); });
 $('lifeTrail').addEventListener('change', () => { needsFull = true; renderTrailButton(); });

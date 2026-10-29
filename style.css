@@ -311,7 +311,8 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 .stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 
 .activity { display: block; width: 100%; height: 36px; margin: 8px 0 4px; touch-action: none; }
-.activity.seek { cursor: pointer; }  /* a walk's: a click or a drag goes to that step */  /* the activity curve (see drawActivity) */
+.activity.seek { cursor: pointer; }  /* the activity curve (see drawActivity): a click or a drag goes to that step */
+.activity.seek.out { cursor: not-allowed; }  /* (a Game of Life's, more than a second's play away: see lifeWithin) */
 .strip {
   margin-top: 12px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
