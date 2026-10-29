@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.32';
+const VERSION = '0.2.33';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13399,7 +13399,7 @@ function drawActivity() {
 // deaths, in figures (a bar for it swung too much)
 // a generation of the run in view, as a link (but the one shown): clicked, it goes there (see seekTo: a reversible one's by its rule, Life's
 // played again from its start)
-const genLink = (g, text = `gen ${fmt(g)}`, kind = '') => (g === cur ? text : `<a class="gen-link${kind && ` ${kind}`}" href="#" data-gen="${g}" title="Go to gen ${fmt(g)}">${text}</a>`);  // (the one shown: no link; kind: its colour, see style.css)
+const genLink = (g, text = `gen ${fmt(g)}`, kind = '') => (g === cur ? (kind ? `<span class="gen-${kind}">${text}</span>` : text) : `<a class="gen-link${kind && ` gen-${kind}`}" href="#" data-gen="${g}" title="Go to gen ${fmt(g)}">${text}</a>`);  // (the one shown: no link, its colour kept; kind: its colour, see style.css)
 document.addEventListener('click', (e) => { const a = e.target.closest?.('.gen-link'); if (!a) return; e.preventDefault(); seekTo(Number(a.dataset.gen)); });
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
@@ -13510,11 +13510,11 @@ function updateStats() {
     // out, ■ frozen), or its loop: its phase, its period, from which generation
     const s = endShown(L), pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
     // (its end, from its glyph on: one link in green, as its loop's mark, to its loop's first generation (frozen, dead: where it
-    // stopped; Play from there, a round, see loopRound); a reversible one's, its loop from its start, to its last (see runEnd))
+    // stopped; Play from there, a round, see loopRound; a reversible one's: its start, 0); green there too, to see where one is)
     // (its end known, not reached yet: where it is, its period and its first; Begin back to a start keeps its record)
     const known = L.stable, ahead = known && !s, end = !known ? '' : known.extinct ? `✝${ahead ? ` ${fmt(known.T)}` : ''}` : known.P === 1 ? `■${ahead ? ` ${fmt(known.T)}` : ''}`
       : `↻ ${ahead ? fmt(known.P) : `${pad(mod(cur - known.T, known.P) + 1, known.P)}/${fmt(known.P)}`}${known.T ? ` from ${fmt(known.T)}` : ''}`;
-    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(L.margolus ? runEnd() : known.T, end, 'loop')}`}`;
+    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(known.T, end, 'loop')}`}`;
     if ($('barNum').innerHTML !== title) $('barNum').innerHTML = title;
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
     renderBack();
