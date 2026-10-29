@@ -497,9 +497,9 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .player-controls { display: flex; gap: 8px; align-items: flex-end; }  /* the buttons where they were, open or not */
 .player-main { flex: none; width: 304px; max-width: 100%; }  /* the folded bar's inner width */
 .player-side { flex: none; width: 250px; margin-left: auto; display: flex; flex-direction: column; justify-content: space-between; align-self: stretch; }
-.player-side .seek-count { margin-top: -4px; }  /* the step, just under the slider */
-@media (hover: hover) { .stage-bar:not(:hover) #digitsRow { display: none; } }  /* folded: the length out of sight (open: by the speed) */
-@media (hover: none) { .stage-bar:not(:focus-within) #digitsRow { display: none; } }
+.length-row { display: flex; align-items: flex-start; gap: 8px; }  /* open, above the title: the length, and the step on its right, just under the curve (its slider) */
+.length-row #digitsRow { flex: none; width: 304px; max-width: 100%; }  /* (as wide as the folded bar's buttons) */
+.length-row .seek-count { margin: -4px 0 0 auto; }
 .stage-bar:not(:hover) .bar-title.life:has(.seek-count:not([hidden])) .bar-num { padding-right: 104px; overflow: hidden; text-overflow: ellipsis; }  /* folded: room for the step on its right, when shown (not Life's) */
 .bar-title .seek-count { position: absolute; top: 12px; right: 12px; }  /* folded: the step at the card's top right; open, under the curve (its slider) */
 .stage-bar:hover .bar-title .seek-count { display: none; }
@@ -550,7 +550,7 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
   .stage { min-height: 55vh; }
   .hint { display: none; }
   /* folded, the player alone: ⏮, a step back and Play (a tap opens it all), the grid in sight */
-  .stage-bar:not(:focus-within) > :not(.player-controls), .stage-bar:not(:focus-within) #digitsRow,
+  .stage-bar:not(:focus-within) > :not(.player-controls),
   .stage-bar:not(:focus-within) #step, .stage-bar:not(:focus-within) #jump2k, .stage-bar:not(:focus-within) #jump10k { display: none; }
   .stage-bar:not(:focus-within) { width: auto; }
 }

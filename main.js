@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.42';
+const VERSION = '0.2.43';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1346,24 +1346,23 @@ const closedLoop = () => walk.loop?.period && !walk.loop.drift;  // a drift's ro
 const roundStep = (i) => { const L = walk.loop; return closedLoop() && i >= L.from + L.period ? L.from + ((i - L.from) % L.period) : i; };
 const rainbowLength = () => (closedLoop() ? walk.loop.from + walk.loop.period : walk.n);
 let lifeStart = null;  // where a Life start comes from when it is not the number's digits (see setLifeSeed)
+let barTitle = '';  // a walk's title: its number, a creature's name and what it turns by (its loop's link after it, see updateStats)
 function describe(base, available) {
   const mode = MODES[$('mode').value], sym = `<span class="pi">${withIcons(shownSym)}</span>`;
-  setLinks($('barNum'), withIcons(shownSym));
+  setLinks($('barNum'), (barTitle = withIcons(shownSym)));
   $('barNum').title = formulaInUse;
   // a creature (an ant, a turmite, the worm): its name and what it turns by, its rule in a chip (as a block rule's)
   const w = $('mode').value, creature = MODES[w].worm || MODES[w].turmite || ANTS[w];
   $('barRule').hidden = !creature;
   $('barBase').hidden = false;
-  if (creature) { const R = creatureRules(w); setLinks($('barNum'), `${walkName(w)} · ${R.byDigits ? `by the digits of ${shownSym}` : 'by its rule'}`); $('barRule').textContent = R.now; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
+  if (creature) { const R = creatureRules(w); setLinks($('barNum'), (barTitle = `${walkName(w)} · ${R.byDigits ? `by the digits of ${shownSym}` : 'by its rule'}`)); $('barRule').textContent = R.now; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
   $('barBase').parentElement.classList.toggle('life', !!creature);  // (a creature laid out as Life's: its title, its chips under it)
   if (colours) base = colours;  // its chips, one per colour
-  $('barLoop').hidden = mode.life || !(walk.loop || walk.wormEnd);  // (its words, see updateStats: its link, as Life's title's)
+  $('barLoop').hidden = true;  // (a reversible one's: not back yet; a walk's loop, its title's link, see updateStats)
   $('ruleChips').replaceChildren();
   if (!mode.life) {
-    const from = walk.loop?.from;
-    $('barLoop').title = walk.wormEnd ? loopText() : from ? `Then it would go round again from step ${fmt(from)}` : 'Then it would start over';
     // the rule: what comes before its colon, then its digits as chips, when it names each one
     const at = mode.rule.indexOf(': '), lead = at < 0 ? mode.rule : mode.rule.slice(0, at);
     const items = [...mode.rule.slice(at + 2).matchAll(/<b>(\d+)<\/b>\s*([^,<]*)/g)];
@@ -13535,11 +13534,10 @@ function updateStats() {
     drawActivity();
     return;
   }
-  // a walk's loop (its digits' round, an ant's highway) or a worm's end, in its chip: from its glyph on, a link in green, as
-  // Life's title's (see loopTarget)
+  // a walk's loop (its digits' round, an ant's highway) or a worm's end, after its title: a link in green, as Life's (see loopTarget)
   const o = runLoop();
-  if (o) setLinks($('barLoop'), walk.wormEnd ? genLink(loopTarget(o), `✝ dies at step ${fmt(walk.n)}`, 'loop')
-    : `${fmt(walk.loop.period ?? walk.n)} digits ${genLink(loopTarget(o), `${walk.loop.drift ? '→' : '↻'}${o.T ? ` from step ${fmt(o.T)}` : ''}`, 'loop')}`);
+  setLinks($('barNum'), !o ? barTitle : `${barTitle} ${genLink(loopTarget(o), walk.wormEnd ? `✝ at step ${fmt(walk.n)}`
+    : `${walk.loop.drift ? '→' : '↻'} ${fmt(walk.loop.period ?? walk.n)} digits${o.T ? ` from step ${fmt(o.T)}` : ''}`, 'loop')}`);
   drawActivity();
   $('sStep').textContent = `${fmt(cur)} / ${fmt(walk.n)}`;
   const x = walk.n ? walk.wx[cur] : 0;
