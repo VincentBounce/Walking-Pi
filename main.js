@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.24';
+const VERSION = '0.2.25';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13784,16 +13784,17 @@ $('play').addEventListener('click', () => {
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
-$('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing; a reversible one to its ordered moment before (see orderMarks), else at its start or before, as far back as it goes
-  const wasPlaying = playing, at = reversibleRun() ? orderMarks(walk.life).findLast((g) => g < cur) : undefined;
-  if (at !== undefined && at !== 0) advanceTo(at); else if (at === undefined && cur <= 0 && runStart() < 0) advanceTo(runStart()); else restart();
-  play(wasPlaying);
-});
-// ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
-$('end').addEventListener('click', () => {  // (a Game of Life stops at its end, or loops; a reversible one at its ordered moment after (see orderMarks), its start first from its past)
-  const at = reversibleRun() ? orderMarks(walk.life).find((g) => g > cur) : undefined;
-  if (at === 0 || (at === undefined && cur < 0)) restart(); else advanceTo(at ?? (Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP));
-});
+// Begin (⏮) and End (⏭): one way through a run's stops, in turn: its first, its start (0), its ordered moments (a reversible
+// one's, see orderMarks), its last; Begin the one before the generation shown, End the one after; Life, with no end: End
+// LIFE_JUMP generations ahead. Its start, written at once (restart), not played to
+const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
+function goStop(dir) {
+  const stops = runStops(), g = dir < 0 ? stops.findLast((x) => x < cur) : stops.find((x) => x > cur);
+  if (g === undefined) { if (dir > 0 && !Number.isFinite(walk.n)) advanceTo(cur + LIFE_JUMP); return; }
+  if (g === 0) restart(); else advanceTo(g);
+}
+$('restart').addEventListener('click', () => { const wasPlaying = playing; goStop(-1); play(wasPlaying); });  // (playing on if it was)
+$('end').addEventListener('click', () => goStop(1));
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
 $('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
 $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
