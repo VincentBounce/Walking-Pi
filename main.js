@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.80';
+const VERSION = '0.2.81';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2017,7 +2017,6 @@ const ICONS = (() => {
     replicator: pathEl('M5 4H14A1 1 0 0 1 15 5V14A1 1 0 0 1 14 15H5A1 1 0 0 1 4 14V5A1 1 0 0 1 5 4Z') + pathEl('M7.5 7H11.5A.5.5 0 0 1 12 7.5V11.5A.5.5 0 0 1 11.5 12H7.5A.5.5 0 0 1 7 11.5V7.5A.5.5 0 0 1 7.5 7Z') + pathEl('M15 12.5H20V20'),  // Langton's loop: its sheathed ring, its arm out
     // the tilings of a surface (see FAMILIES): a 2 × 2 grid, a triangle cut in 4, 3 hexagons, and turned by 30°
     tilesSq: pathEl(pathOf(sq)) + pathEl('M12 4V20M4 12H20'),
-    tilesSqStretched: pathEl('M2 8H22V16H2Z') + pathEl('M6 8V16M10 8V16M14 8V16M18 8V16M2 12H22'),  // a long sheet of squares: 5 by 2
     tilesTri: tiledTriangle(-90), tilesTriTurned: tiledTriangle(0),
     tilesHex: hexCluster(30), tilesHexTurned: hexCluster(0),  // (pointy as the plane's; turned, flat)
     klein: pathEl('M14 4.5C17 4.5 19 7 19 10.5S16.5 19.5 12 19.5S5 17 5 13.5S8 9 11 10.5S13 15 11 15.5') + pathEl('M14 4.5C12.5 4.5 11.5 6 12 8.5S13.5 13 11 15.5'),  // a bottle going into itself
@@ -2041,7 +2040,6 @@ const ICONS = (() => {
       + pathEl('M7.8 8.2Q3.6 5.6 1.4 8.4Q4.4 10.8 7.6 10.6Z', 'f') + pathEl('M16.2 8.2Q20.4 5.6 22.6 8.4Q19.6 10.8 16.4 10.6Z', 'f')
       + pathEl('M8.6 17.4Q5 18 4.4 21.6Q7.6 21.4 9.6 19Z', 'f') + pathEl('M15.4 17.4Q19 18 19.6 21.6Q16.4 21.4 14.4 19Z', 'f')
       + '<ellipse cx="12" cy="13.2" rx="5.2" ry="6.4" stroke-width="1.9"/>' + pathEl('M12 10.2L14 11.4V14.2L12 15.4L10 14.2V11.4Z', 'thin'),
-    billiard: '<circle cx="8.5" cy="15.5" r="4.5"/><circle cx="15.5" cy="8.5" r="4.5"/>',  // two balls meeting
     reversible: pathEl('M5 12A7 7 0 0 1 18.06 8.5M18.94 5.22L18.06 8.5L14.78 7.62') + pathEl('M19 12A7 7 0 0 1 5.94 15.5M5.06 18.78L5.94 15.5L9.22 16.38'),  // two arrows round, clockwise (🔄 the other way)
     turmite: pathEl('M12 12H15V9H9V15H18V6H6V18H21'),  // a square spiral
     worm: pathEl('M3 19L7.5 11.2L12 19L16.5 11.2L14.3 7.3L18.8 7.3L21 3.5') + pathEl(pathOf([[20, 2], [22, 2], [22, 4], [20, 4]]), 'f'),  // its path along the triangles' lines, its head
@@ -2054,10 +2052,6 @@ const ICONS = (() => {
     // hunt zones: the whole surface, then a patch of radius 1, 2 or 3
     zoneAll: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20'),
     // the symmetries of a Life start on the plane
-    // the Game of Life's bubbles: alive, born, died, ever alive
-    aliveDot: '<circle class="f" cx="12" cy="12" r="5"/>',
-    born: pathEl('M12 6V18M6 12H18'),
-    died: pathEl('M7.5 7.5L16.5 16.5M16.5 7.5L7.5 16.5'),
     // the themes: Light, Dark, System (half and half)
     sun: '<circle class="f" cx="12" cy="12" r="4.2"/>' + pathEl('M12 2.5V5M12 19V21.5M2.5 12H5M19 12H21.5M5.3 5.3L7.1 7.1M16.9 16.9L18.7 18.7M5.3 18.7L7.1 16.9M16.9 7.1L18.7 5.3'),
     moon: '<path class="f" d="M19.5 14.6A8 8 0 1 1 9.4 4.5A6.3 6.3 0 0 0 19.5 14.6Z"/>',
@@ -2074,7 +2068,6 @@ const ICONS = (() => {
     fit: pathEl('M4 9V4H9M15 4H20V9M20 15V20H15M9 20H4V15') + '<rect x="8.5" y="8.5" width="7" height="7" rx="1"/>',  // (the view framed round the walk)
     sound: pathEl('M3.5 9.5H7.5L12.5 5V19L7.5 14.5H3.5Z') + pathEl('M15.5 9.2A4 4 0 0 1 15.5 14.8M18.2 6.5A8 8 0 0 1 18.2 17.5'),  // (a speaker, its waves)
     autoRotate: pathEl('M19.46 11.04C20.32 8.68 20.18 6.46 18.86 5.14C16.59 2.87 11.68 4.1 7.89 7.89C4.1 11.68 2.87 16.59 5.14 18.86C7.37 21.09 12.13 19.96 15.88 16.35') + pathEl('M12 16H16V20'),  // (a turn round a slanted orbit)
-    ever: pathEl('M3 12C6.5 6.5 17.5 6.5 21 12C17.5 17.5 6.5 17.5 3 12Z') + '<circle class="f" cx="12" cy="12" r="2.5"/>',
     symNone: flags([[0, false]]),
     symMirror: flags([[0, false], [0, true], [Math.PI, false], [Math.PI, true]]),
     symRotate: flags([0, 1, 2, 3].map((k) => [(k * Math.PI) / 2, false])),
@@ -13454,7 +13447,7 @@ function drawActivity() {
   };
   if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
   const o = runLoop();
-  if (o && o.last > o.T) mark(o.T, css.getPropertyValue('--cell'));  // (its loop's first step, in green as its link: the title's, a walk's chip)
+  if (o && o.last > o.T) mark(o.T, css.getPropertyValue('--cell'));  // (its loop's first step, in green as its link in the title, Life's and a walk's)
   if (walk.life?.colours === 1 && lifeTime()) {  // (as their gauges: its ordered moments, a reversible one's (see orderMarks), else the most ordered; the most alive, in gold as the curve)
     for (const g of reversibleRun() ? orderMarks(walk.life) : [peaks(walk.life).orderGen]) mark(g, css.getPropertyValue('--sector'));
     mark(peaks(walk.life).aliveGen, accent);
@@ -13841,7 +13834,7 @@ $('digitsDown').addEventListener('click', () => stepDigits(-1));
 $('digitsUp').addEventListener('click', () => stepDigits(1));
 // A typed count: while editing, the plain number (20000), digits only; compute keeps it within
 // 10 … 50 million
-// The edited fields (Custom formula, number of digits, start, the ant's and Life's rules): entering
+// The edited fields (the formula, number of digits, start, the ant's and Life's rules): entering
 // one shows the value in use, the cursor at its end (the plain number for the digits; formulaInUse is
 // the last valid formula; a rule as it was). Enter or ↵ leaves the field, and leaving it applies it;
 // but a wrong formula keeps you in the field, with its error. Esc undoes the edit: back to the value
@@ -14228,7 +14221,7 @@ function applyTheme() {
   renderColorButtons();
   renderSkyButtons();
   renderColours();  // Life's colour blocks, in the theme's colours
-  needsFull = statsDirty = true;  // Life's bubbles in the theme's colours too
+  needsFull = statsDirty = true;  // (Life's gauges and curve in the theme's colours too)
 }
 try { $('theme').value = localStorage.getItem('walkingTheme') || 'system'; } catch { $('theme').value = 'system'; }
 if (!$('theme').value) $('theme').value = 'system';

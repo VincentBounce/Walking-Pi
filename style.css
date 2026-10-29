@@ -109,7 +109,7 @@ input[type=number], input[type=text], select, textarea {
   border-radius: 6px;
   font: inherit;
 }
-/* the Custom formula, like the number of digits under it: a field that looks like a label until it
+/* the formula, like the number of digits under it: a field that looks like a label until it
    is hovered or used; in yellow bold when it is the number chosen (no card matches it) */
 /* a value of one's own, in yellow bold: a formula no card matches, a rule no preset matches */
 .field :is(input, textarea).custom { color: var(--accent); font-weight: 600; }
