@@ -114,6 +114,9 @@ input[type=number], input[type=text], select, textarea {
 /* a value of one's own, in yellow bold: a formula no card matches, a rule no preset matches */
 .field :is(input, textarea).custom { color: var(--accent); font-weight: 600; }
 textarea { resize: none; line-height: 1.35; }  /* (Text's lines, a new line by Enter) */
+.field textarea { height: 200px; }  /* (fixed, as a line's 34 px: edited or not, whatever its font; more lines scroll) */
+.field textarea:not(:focus) { font-family: var(--face, inherit); }  /* at rest, in the font it is drawn in (see TEXT_FONTS) */
+.font-pic { font-size: 18px; font-weight: 700; line-height: 22px; }  /* a font's tile: Aa in it */
 input[type=range] { width: 100%; accent-color: var(--accent); }
 .shape-slider { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }  /* Flat ── Inflated: a surface's form */
 .shape-slider input { flex: 1; min-width: 0; }

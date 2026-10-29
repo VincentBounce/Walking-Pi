@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.75';
+const VERSION = '0.2.76';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6692,7 +6692,7 @@ const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW 
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
 const plane = { get side() { const k = planeKind(MODES[$('mode').value].plane); return nearCells(planeSides(k), (f) => planeCells(f, k), picked ?? planeCells(48, k)); },
-                torus: true, text: APP_TITLE, icons: [0],
+                torus: true, text: APP_TITLE, font: 'sans', icons: [0],
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -7457,10 +7457,13 @@ function cellRandom(seed, i) {
 // A word or an emoji as a picture, P × P pixels (as an icon's, laid as one: see iconLay): its ink as big as fits in
 // its middle, a pixel on where the drawing is dark (its marks) or on its edge (its outline, as a punk's line drawing)
 const pictureMemo = new Map();
-function picturePixel(text, P) {
-  const key = `${text}|${P}`;
+// Text's fonts, everywhere without loading any (bold: thick strokes that the cells keep); Hand the one that differs most from a
+// computer to another
+const TEXT_FONTS = { sans: ['Sans', 'system-ui, sans-serif'], serif: ['Serif', 'Georgia, "Times New Roman", serif'], mono: ['Mono', 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'], hand: ['Hand', '"Chalkboard SE", "Comic Sans MS", cursive'] };
+function picturePixel(text, P, face = 'sans') {
+  const key = `${text}|${P}|${face}`;
   if (pictureMemo.has(key)) return pictureMemo.get(key);
-  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = 'bold 50px system-ui, sans-serif';
+  const draft = document.createElement('canvas'), dc = draft.getContext('2d', { willReadFrequently: true }), font = `bold 50px ${TEXT_FONTS[face][1]}`;
   const lines = text.split('\n'), LINE = 62, D = 200 + LINE * (lines.length - 1);  // (a line each, centred, one under the other)
   dc.font = font;
   const widths = lines.map((l) => dc.measureText(l).width), most = Math.max(...widths), w = Math.ceil(most) + 150;
@@ -7861,6 +7864,7 @@ function startFromSetup(s) {
     if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || APP_TITLE;
+  plane.font = TEXT_FONTS[s.tf] ? s.tf : 'sans';  // (Text's font, tf=)
   population = plane.start === 'draw' ? populationOf(s.p) : population;
 }
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
@@ -7877,6 +7881,8 @@ function renderPlaneRow() {
     else setTile(b, { on });
   }
   $('startTextInput').value = plane.text;  // (its words, on any grid)
+  $('startTextInput').style.setProperty('--face', TEXT_FONTS[plane.font][1]);  // (at rest, in its font, see style.css)
+  for (const b of $('textFonts').querySelectorAll('button')) setTile(b, { on: b.dataset.font === plane.font });
   for (const r of $('startDraw').querySelectorAll('.draw-row')) r.hidden = !kind;  // the turns, the colours: to draw, on the plane
   if (!kind) {
     $('symmetryRow').hidden = true;
@@ -9809,7 +9815,7 @@ const ICON_SETS = { icon: { P: 24, pixel: (i) => iconPixel(ICON_BITS[i]), names:
                     // (Emoji: those this browser draws, each as a picture of 48 pixels, see picturePixel)
                     emoji: { P: 48, pixel: (i) => picturePixel(ICON_SETS.emoji.names[i], 48), get names() { return (this.drawn ??= EMOJIS.filter(emojiDrawn)); }, word: 'emoji', label: (i) => ICON_SETS.emoji.names[i], source: 'Unicode' } };
 // Text: its word as a picture of 64 pixels, a set of one (see picturePixel)
-const textSet = () => ({ P: 64, pixel: () => picturePixel(plane.text, 64), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text}` });
+const textSet = () => ({ P: 64, pixel: () => picturePixel(plane.text, 64, plane.font), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text} in ${plane.font}` });  // (its source: the picture, its font too, see iconChoices' memo)
 // the grid in use, for the caches built on it (not its mode's name: Turned, another grid of the same mode): the plane's,
 // by its kind, side and torus; a surface's, its mesh, a number of its own
 let gridCount = 0;
@@ -10961,6 +10967,7 @@ function getSetup() {
     if (spaceTimeOn()) s.sp = 1;  // (Space-time)
   }
   if (mode.life && !mode.loops) s.pop = plane.start === 'random' ? zonePop() : plane.start === 'text' ? `text.${plane.text}` : plane.start;  // its start (a surface's no Draw)
+  if (mode.life && !mode.loops && plane.start === 'text' && plane.font !== 'sans') s.tf = plane.font;  // (its font)
   if (mode.antOf) s.r = antByDigits ? `digits ${antDigitRules[w]}`.trim() : antRules[w];
   if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
   if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
@@ -14045,6 +14052,12 @@ for (const b of $('lifeStartTabs').querySelectorAll('button')) {
     plane.start = b.dataset.start; cleared = null; compute();
   });
 }
+// Text's fonts, one choice: a tab group of tiles, Aa in each (see TEXT_FONTS)
+$('textFonts').append(tileGroup(Object.entries(TEXT_FONTS).map(([f, [name, face]]) => {
+  const b = tile({ html: `<span class="font-pic" style="font-family: ${face.replace(/"/g, "'")}">Aa</span><span>${name}</span>`, click: () => { if (plane.font !== f) { plane.font = f; compute(); } } });
+  b.dataset.font = f;
+  return b;
+}), true));
 // Text's lines: Enter a new line; drawn on a change (↵, a click outside, or ⌘ Enter)
 $('startTextInput').addEventListener('change', () => { plane.text = $('startTextInput').value.trim() || APP_TITLE; compute(); });
 $('startTextInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('startTextInput').blur(); } });
@@ -14537,7 +14550,7 @@ const walkName = (w) => splitModeLabel($('mode').querySelector(`option[value="${
 // the setup in use: same number, walk, size and start (the digits may have been cut by a loop)
 // the same setup: the same number, mode, size, start and form; for Life, also its colours, start, symmetry,
 // edges and cells drawn or found (what is seen; not the tools that found it: the hunt's buttons, Draw's brush)
-const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'pop', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
+const isInUse = (setup) => { const now = getSetup(); return ['x', 'w', 's', 'st', 'o', 'q', 'k', 'pop', 'tf', 'y', 'e', 'p', 'ch'].every((k) => String(setup[k] ?? '') === String(now[k] ?? '')); };
 let galleryBefore = null, galleryHover = 0;  // the setup in use while others are shown on hover
 // and its view (Auto-fit, Auto-rotate, camera, framing): a setup shown on hover is framed (Auto-fit on)
 // and, in 3D, turning (Auto-rotate on); a click keeps that, turning on; leaving the list brings back
