@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.13';
+const VERSION = '0.2.14';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9088,6 +9088,8 @@ function lifeReset() {
   L.born = L.dead = L.bornNow = L.deadNow = L.bornMax = L.deadMax = 0;
   L.peak = L.seedAlive;
   L.peakGen = 0;
+  L.order = L.peakOrder = orderOf(L, L.seedAlive, bordersOf(L, L.seed));  // (its start's, see orderOf)
+  L.peakOrderGen = 0;
   // civilisations: each colour's births, deaths, and cells ever of it (a bit per colour a cell had)
   L.bornBy = new Int32Array(L.colours + 1);
   L.deadBy = new Int32Array(L.colours + 1);
@@ -9107,8 +9109,8 @@ function lifeReset() {
   L.loopMin = new Float64Array(L.colours + 1).fill(Infinity);  // (a colour the same all round: its count exact, no ≈)
   L.loopMax = new Float64Array(L.colours + 1);
   L.loopAvg = null;
-  L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }] };
-  L.past = { alive: [], by: [], born: [] };  // (a reversible one's generations before its start, −1 at 1…, see traced)  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then
+  L.trace = { alive: [L.seedAlive], by: [L.seedByColour], born: [{ born: 0, dead: 0, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() }], order: [L.order] };  // each generation's live cells (each colour's too; see drawActivity), its births and deaths till then, its order
+  L.past = { alive: [], by: [], born: [], order: [] };  // (a reversible one's generations before its start, −1 at 1…, see traced)
 }
 
 /* The whole state as a 53-bit number (two FNV-1a style 32-bit hashes). When a fingerprint comes
@@ -9455,7 +9457,8 @@ function lifeStep(G = lifeStepGPU(walk.life, cur + 1)?.[0]) {  // (G: its sums, 
     else if (L.extinctAt[k] === null) L.extinctAt[k] = gen;
   }
   L.blueCount = byColour[2] ?? 0;
-  record(L, gen, alive, byColour);
+  record(L, gen, alive, byColour, (L.order = orderOf(L, alive, G.edges)));
+  if (L.order > L.peakOrder) { L.peakOrder = L.order; L.peakOrderGen = gen; }  // the most ordered, and when
   for (let k = 1; k <= K; k++) L.sumBy[k] += byColour[k];
   L.bornNow = L.born - born0;  // this generation's births and deaths (how fast it lays and dies)
   L.deadNow = L.dead - dead0;
@@ -9476,8 +9479,10 @@ function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back
   for (let k = 1; k <= K; k++) L.sumBy[k] -= traced(L, cur)?.by[k] ?? 0;
   L.gen--;
   cur--;
-  if (!traced(L, cur) && G) record(L, cur, G.alive, K > 1 ? G.byColour : new Int32Array(K + 1));  // (its past, first played)
+  if (!traced(L, cur) && G) record(L, cur, G.alive, K > 1 ? G.byColour : new Int32Array(K + 1), orderOf(L, G.alive, G.edges));  // (its past, first played)
   L.aliveCount = traced(L, cur).alive;
+  L.order = traced(L, cur).order;
+  if (L.order > L.peakOrder) { L.peakOrder = L.order; L.peakOrderGen = cur; }  // (the most ordered over all it played, past too)
   L.byColour = traced(L, cur).by ?? L.byColour;
   if (L.aliveCount > L.peak) { L.peak = L.aliveCount; L.peakGen = cur; }  // (the most alive at once over all it played, past too)
   if (L.margolus && !L.stable && blockBack(L, -cur)) lifeFound(L, { T: 0, P: -cur, extinct: false });  // (its return found going back: its start again at −P)
@@ -9486,14 +9491,42 @@ function lifeBack(G) {  // (G: its sums there, its births and deaths forth, back
 // a generation's record (see lifeStep, lifeBack): its live cells, each colour's, its births and deaths so far; one before the
 // start (a reversible one's past) its own; one not played, by its loop once found (g and g ± P the same state: forth or back)
 function traced(L, g) {
-  const own = (h) => { const T = h < 0 ? L.past : L.trace, i = Math.abs(h); return T.alive[i] === undefined ? null : { alive: T.alive[i], by: T.by[i], born: T.born[i] }; };
+  const own = (h) => { const T = h < 0 ? L.past : L.trace, i = Math.abs(h); return T.alive[i] === undefined ? null : { alive: T.alive[i], by: T.by[i], born: T.born[i], order: T.order[i] }; };
   return own(g) ?? (L.stable ? own(g < 0 ? g + L.stable.P : g - L.stable.P) : null);
 }
-function record(L, g, alive, by) {
+function record(L, g, alive, by, order) {
   const T = g < 0 ? L.past : L.trace, i = Math.abs(g);
   T.alive[i] = alive;
   T.by[i] = by;
   T.born[i] = { born: L.born, dead: L.dead, bornBy: L.bornBy.slice(), deadBy: L.deadBy.slice() };
+  T.order[i] = order;
+}
+// How ordered a state is: 1 − its live cells' dead neighbours (their borders) by as many as they would have at random (each
+// neighbour dead as often as a cell is, 1 − p): about 0 a soup, near 1 a picture in one piece (a start's, a return's); none
+// alive or all, 0. Its borders: the graphics card's (see GL_SHADERS.lifeCount), a start's here (bordersOf)
+function orderOf(L, alive, borders) {
+  const { start } = L.nbr, n = start.length - 1;
+  L.open ??= start.reduce((m, v, t) => m + (t < n && start[t + 1] > v ? 1 : 0), 0);  // (its cells not the wall's, and their neighbours)
+  const p = alive / L.open, expect = alive * (start[n] / L.open) * (1 - p);
+  return expect > 0 ? Math.max(0, 1 - borders / expect) : 0;
+}
+// its ordered moments, of the generations played (past and future): each run of them at least half as ordered as its start
+// (see orderOf), its most ordered one (marked on the curve, Begin and End stopping there); none if that half is not clear of
+// the noise, 3 times the run's median order at least (a soup's start: nothing to come back to)
+function orderMarks(L) {
+  const all = [...L.past.order.slice(1).reverse(), ...L.trace.order], at = (i) => i - Math.max(0, L.past.order.length - 1), out = [];
+  const half = L.trace.order[0] / 2, noise = [...all].sort((x, y) => x - y)[Math.floor(all.length / 2)] ?? 0;
+  if (half <= 3 * noise) return out;
+  let best = null;
+  all.forEach((o, i) => { if (o >= half) { if (!best || o > best[1]) best = [at(i), o]; } else if (best) { out.push(best[0]); best = null; } });
+  if (best) out.push(best[0]);
+  return out;
+}
+function bordersOf(L, a) {
+  const { start, list } = L.nbr, live = (v) => v > 0 && v <= L.colours;
+  let b = 0;
+  for (let t = 0; t < a.length; t++) if (live(a[t])) for (let q = start[t]; q < start[t + 1]; q++) if (!live(a[list[q]])) b++;
+  return b;
 }
 
 /* ==============================================================================================
@@ -11186,6 +11219,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
       if (cur >= s.T + s.P) {  // a loop: round it again from T (its state there the same), the counter too, its births and deaths those of that generation
         cur = s.T + ((cur - s.T) % s.P);  // (found late, a blocks' return: rounds already played; a trail goes on fading: its time is L.gen's)
         const b = traced(L, cur).born;
+        L.order = traced(L, cur).order;
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
     }
@@ -12056,7 +12090,7 @@ void main() {
 }`],
   // 64 cells' sums (see lifeTally): 16 a pass (uFrom), its 4 targets' 4 each: alive, dying, born, dead, newly ever alive,
   // the most changes (a max), the key's two sums, the live cells beside another colour's, then each colour's alive, born,
-  // dead, newly had; alive, born and dead as shown (uNegA, uNegB: a block rule's generation before, after, shown negative)
+  // dead, newly had, then the live cells' dead neighbours (their borders, see orderOf); alive, born and dead as shown (uNegA, uNegB: a block rule's generation before, after, shown negative)
   lifeCount: [GL_QUAD, `${GL_LIFE}
 uniform sampler2D uB; uniform isampler2D uList; uniform usampler2D uEver, uEverNow, uActNow; uniform int uFrom; uniform bool uNegA, uNegB;
 layout(location = 0) out uvec4 o0; layout(location = 1) out uvec4 o1; layout(location = 2) out uvec4 o2; layout(location = 3) out uvec4 o3;
@@ -12082,6 +12116,11 @@ void main() {
     if (was >= 1 && was <= uK && wasOn && !on) ADD(11 + 4 * (was - 1), 1u);
     uint d = ~e0 & e1 & ~1u;  // (the colours it had just now)
     if (d != 0u) for (int k = 1; k <= uK; k++) if ((d >> uint(k) & 1u) != 0u) ADD(12 + 4 * (k - 1), 1u);
+    if (on && uFrom <= 9 + 4 * uK && uFrom + 16 > 9 + 4 * uK) {  // (in the pass that has it only)
+      uint b = 0u;
+      for (int q = I(uStart, c); q < I(uStart, c + 1); q++) { int u = base + I(uList, q); if (!shown(state(uB, u), u, uNegB)) b++; }
+      ADD(9 + 4 * uK, b);
+    }
   }
   o0 = uvec4(v[0], v[1], v[2], v[3]); o1 = uvec4(v[4], v[5], v[6], v[7]); o2 = uvec4(v[8], v[9], v[10], v[11]); o3 = uvec4(v[12], v[13], v[14], v[15]);
 }`],
@@ -12880,7 +12919,7 @@ function lifeEngine(L, runs = 1, h = 1) {
   return { L, n, runs, stride, rows, h, all, fb: gl.createFramebuffer(), fbs: new Map(), now: cells(), next: cells(), load: store(gl.RGBA8, 1024), pad: new Uint8Array(4096 * rows), u32: new Uint32Array(4096 * rows), i32: new Int32Array(4096 * rows),
            start: ints(start), list: ints(list), ring: ints(L.ring ?? none), moreStart: ints(more?.start ?? none), moreList: ints(more?.list ?? none),
            side: ints(L.side ? Int32Array.from(L.side, Number) : none), B: table(L.B), S: table(L.S), count: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64)), part: [0, 1, 2, 3].map(() => store(gl.RGBA32UI, 64, runs)),
-           sum: Array.from({ length: Math.ceil((9 + 4 * L.colours) / 16) }, () => [0, 1, 2, 3].map(() => store(gl.RGBA32UI, h, runs))), look: store(gl.RGBA8, 4096, 17),
+           sum: Array.from({ length: Math.ceil((10 + 4 * L.colours) / 16) }, () => [0, 1, 2, 3].map(() => store(gl.RGBA32UI, h, runs))), look: store(gl.RGBA8, 4096, 17),
            in: ints(M ? Int32Array.from(blockCells(M, n)) : none), loops: ints(L.loops ?? none), ...(M && blockGPU(M, n, ints)) };
 }
 function lifeFree(E) {
@@ -12959,7 +12998,7 @@ function lifeCells(L) {
   L.onGPU = false;
 }
 // k generations there (gen: the first one shown; back, the first one undone's before it): its rule (a block rule's, back: its
-// inverse's, see lifeBack; their phase the generation shown's), its cells' counts, their sums (9 + 4 a colour) a column each, read back once (each
+// inverse's, see lifeBack; their phase the generation shown's), its cells' counts, their sums (10 + 4 a colour) a column each, read back once (each
 // read waits for the card: 50 times a generation's own time on a small grid); its deaths dated by L.gen, the generations
 // played (as the look's, see lifeLookGPU: the shown one goes round a loop); null without WebGL 2. The cells stay there (L.onGPU)
 const LIFE_H = 16;  // (generations a read back: the game's, a hunt's; more, a batch longer than a frame on a large grid)
@@ -12977,7 +13016,7 @@ function lifeStepGPU(L, gen, back = false, k = 1) {
   L.onGPU = true;
   const v = lifeRead(E), by = (q, x) => Int32Array.from({ length: K + 1 }, (_, c) => (c ? v(9 + 4 * (c - 1) + q, 0, x) : 0));
   return Array.from({ length: k }, (_, x) => ({ alive: v(0, 0, x), dying: v(1, 0, x), born: v(2, 0, x), dead: v(3, 0, x), everNew: v(4, 0, x), maxAct: v(5, 0, x),
-    key: lifeKey(v(6, 0, x), v(7, 0, x)), byColour: by(0, x), bornBy: by(1, x), deadBy: by(2, x), everBy: by(3, x) }));
+    key: lifeKey(v(6, 0, x), v(7, 0, x)), byColour: by(0, x), bornBy: by(1, x), deadBy: by(2, x), everBy: by(3, x), edges: v(9 + 4 * K, 0, x) }));
 }
 // Life's rule, from E.now's states into E.next's
 function lifeRulePass(E, [r0, r1] = [0, E.runs]) {  // (r0 … r1: its runs played, see lifeRows)
@@ -13317,24 +13356,23 @@ function drawActivity() {
     }
   }
   ctx.globalAlpha = 1;
-  if (first < 0) {  // (a reversible one's start, its past on its left: a mark at 0)
-    const x = Math.floor((-first * W) / n) + 0.5;
-    ctx.strokeStyle = css.getPropertyValue('--muted');
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
+  const mark = (g, colour) => { const x = Math.floor(((g - first) * W) / n) + 0.5; ctx.strokeStyle = colour; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); };
+  if (first < 0) mark(0, css.getPropertyValue('--muted'));  // (a reversible one's start, its past on its left)
+  if (walk.life?.margolus && lifeTime()) for (const g of orderMarks(walk.life)) mark(g, css.getPropertyValue('--sector'));  // (its ordered moments, see orderMarks)
+  if (walk.life?.colours === 1 && lifeTime()) mark(walk.life.peakGen, css.getPropertyValue('--face'));  // (its most alive, as its gauge)
 }
 // One colour: fixed gauges of how it goes, not of a record: alive (against the peak); its turnover, this generation's
 // births and deaths against the cells alive before and after (100 %: every cell changes; 0: nothing moves); its growth,
-// births less deaths, in figures (a bar for it swung too much); the cells ever
-// alive and the peak (and when) against the grid
+// births less deaths, in figures (a bar for it swung too much); the cells ever alive and the most alive at once (and when)
+// against the grid; its order (see orderOf) and the most ordered so far (and when)
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
-  if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Ever alive', 'Peak', 'Growth'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
-    + `${i >= 4 ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');  // (the bars, then the figures alone)
-  for (const i of box.querySelectorAll('.rank-bar i')) i.style.background = LIFE_ALIVE;  // (the theme's live cells, as it is now)
+  if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Ever alive', 'Peak alive', 'Order', 'Peak order', 'Growth'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
+    + `${i >= 6 ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');  // (the bars, then the figures alone)
+  // (the theme's live cells, as it is now; the most alive in red, the order in blue, as their marks on the curve: see drawActivity)
+  [LIFE_ALIVE, LIFE_ALIVE, LIFE_ALIVE, 'var(--face)', 'var(--sector)', 'var(--sector)'].forEach((c, i) => { box.children[i].children[1].firstChild.style.background = c; box.children[i].children[2].style.color = i > 2 ? c : ''; });
   const avg = loopMeans(L), varies = avg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
   const turnover = both ? (b + d) / both : 0, bar = (i) => box.children[i].children[1].firstChild;
   const width = (i, v, most) => { bar(i).style.width = `${most ? Math.min(100, (100 * v) / most) : 0}%`; };
@@ -13342,8 +13380,10 @@ function renderGauges(L) {
   width(1, turnover, 1);
   width(2, L.everAlive, n);
   width(3, L.peak, n);
+  width(4, L.order, 1);
+  width(5, L.peakOrder, 1);
   [`<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`, `${Math.round(100 * turnover)} %`, fmt(L.everAlive), `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`,
-    `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`].forEach((text, i) => { box.children[i].children[2].innerHTML = text; });
+    `${Math.round(100 * L.order)} %`, `${Math.round(100 * L.peakOrder)} % · gen ${fmt(L.peakOrderGen)}`, `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`].forEach((text, i) => { box.children[i].children[2].innerHTML = text; });
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
@@ -13713,13 +13753,16 @@ $('play').addEventListener('click', () => {
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
 $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
-$('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing; a reversible one at its start or before, as far back as it goes
-  const wasPlaying = playing;
-  if (cur <= 0 && runStart() < 0) advanceTo(runStart()); else restart();
+$('restart').addEventListener('click', () => {  // jump to start: keep playing only if it was playing; a reversible one to its ordered moment before (see orderMarks), else at its start or before, as far back as it goes
+  const wasPlaying = playing, at = walk.life?.margolus && lifeTime() ? orderMarks(walk.life).findLast((g) => g < cur) : undefined;
+  if (at !== undefined && at !== 0) advanceTo(at); else if (at === undefined && cur <= 0 && runStart() < 0) advanceTo(runStart()); else restart();
   play(wasPlaying);
 });
 // ⏭: jump to the end of a walk; with no end (Game of Life), jump LIFE_JUMP generations ahead
-$('end').addEventListener('click', () => { if (cur < 0) restart(); else advanceTo(Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP); });  // (a Game of Life stops at its end, or loops; a reversible one in its past: its start first)
+$('end').addEventListener('click', () => {  // (a Game of Life stops at its end, or loops; a reversible one at its ordered moment after (see orderMarks), its start first from its past)
+  const at = walk.life?.margolus && lifeTime() ? orderMarks(walk.life).find((g) => g > cur) : undefined;
+  if (at === 0 || (at === undefined && cur < 0)) restart(); else advanceTo(at ?? (Number.isFinite(walk.n) ? runEnd() : cur + LIFE_JUMP));
+});
 // the turtle and the rabbit: the next speed of SPEEDS down or up; a typed one, digits only
 $('slower').addEventListener('click', () => setSpeed(SPEEDS.findLast((v) => v < speed) ?? 1));
 $('faster').addEventListener('click', () => setSpeed(SPEEDS.find((v) => v > speed) ?? SPEEDS.at(-1)));
