@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.48';
+const VERSION = '0.2.49';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1789,6 +1789,14 @@ const runEnd = () => {
 };
 // a run whose loop is known (Life's, a reversible one's): Play and Step go on round it, past its end (see loopRound)
 const looping = () => { const s = walk.life?.stable; return lifeTime() && !!s && !s.extinct && s.P > 1; };
+// A run's loop, known: its first step and its last; a Game of Life's or a reversible one's, where it settles (frozen or dead: its
+// end, its last the same); a walk's, its digits' round or an ant's highway, from its first step to its end; a worm's end
+const runLoop = () => {
+  if (walk.life) { const s = lifeTime() && walk.life.stable; return s ? { T: s.T, last: s.extinct || s.P === 1 ? s.T : s.T + s.P - 1 } : null; }
+  return walk.loop ? { T: walk.loop.from, last: walk.n } : walk.wormEnd ? { T: walk.n, last: walk.n } : null;
+};
+// its link, in green (see genLink): to its first step; from there, to its last; an end alone, back to 0
+const loopLink = (text) => { const o = runLoop(); return genLink(cur !== o.T ? o.T : o.last !== o.T ? o.last : 0, text, 'loop'); };
 // The first: 0, or a reversible one's as far back as the rest of its n go (its rule run backwards from its start: its past),
 // or its loop's
 const runStart = () => (reversibleRun() ? -Math.min(walk.n - 1 - Math.ceil(walk.n / 2), walk.life.stable ? walk.life.stable.P - 1 : Infinity) : 0);
@@ -11201,9 +11209,9 @@ function cutAtReturn(L, batch, dir) {
   for (let x = batch.length - 1; j >= 0 && x > j; x--) lifeStepGPU(L, cur + dir * x, dir > 0);
   if (j >= 0) batch.length = j + 1;
 }
-// a Game of Life's loop's last generation (T + P − 1, see lifeTrack) while it plays: Play stops there, a round of it played
-// (Play again: another round); none still, frozen, dead, or a reversible one (its loop its whole run, see runEnd)
-const loopRound = (L) => { const s = L.stable; return playing && s && !s.extinct && s.P > 1 ? s.T + s.P - 1 : 0; };
+// a run's loop's last generation (T + P − 1, see runLoop) while it plays: Play stops there, a round of it played (Play again:
+// another round, see looping); none still, frozen or dead
+const loopRound = () => (playing && looping() ? runLoop().last : 0);
 function lifeTo(target, until = Infinity) {  // (one step, one generation, played on the card as many at once, see lifeStepGPU)
   const L = walk.life;
   while ((target = Math.max(target, runStart())) < cur) {  // (back: its rule's inverse, see lifeBack; its return found going back, as far as its loop)
@@ -11216,7 +11224,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
   statsDirty = true;
   let k = target - cur, ended = false;
   while (k > 0 && !ended && !lifeEnded()) {
-    const round = loopRound(L), batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H, round ? Math.max(1, round - cur) : Infinity));  // (playing round a loop: to its last generation at most)
+    const round = loopRound(), batch = lifeStepGPU(L, cur + 1, false, Math.min(k, LIFE_H, round ? Math.max(1, round - cur) : Infinity));  // (playing round a loop: to its last generation at most)
     if (!batch) break;  // (no WebGL 2)
     cutAtReturn(L, batch, 1);
     for (const G of batch) {
@@ -11245,9 +11253,9 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
         L.order = traced(L, cur).order;
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
-      if (cur === loopRound(L)) { play(false); ended = true; }  // (a round of its loop played: Play again, another)
+      if (cur === loopRound()) { play(false); ended = true; }  // (a round of its loop played: Play again, another)
     }
-    if (Number.isFinite(seekFar())) k = Math.min(k, seekFar() - cur);  // (its end found on the way: to it, not round it on; past it, a step at a time, round its loop)  // (a Game of Life's loop found: to its last, not round it on)
+    if (Number.isFinite(seekFar())) k = Math.min(k, seekFar() - cur);  // (its end found on the way: to it, not round it on; past it, a step at a time, round its loop)
     if (performance.now() >= until) break;  // (a batch at least)
   }
   statsDirty = true;
@@ -11290,8 +11298,10 @@ function advanceTo(target, until = Infinity) {  // forth or back (a walk; a reve
 // a run ended: nothing moves any more (all dead or still), its trail faded (Trail: the generations of its fading played
 // on, the generation shown its end's)
 const lifeEnded = () => { const s = walk.life?.stable; return !!s && (s.extinct || s.P === 1) && cur === s.T && !(trailOn() && walk.life.gen <= s.T + LIFE_TRAIL.length); };
+// at its end: its last step (a loop known: none, round it on, see looping), or a run that froze or died there
+const atEnd = () => (cur >= runEnd() && !looping()) || lifeEnded();
 function play(on) {
-  playing = on && walk.n > 0 && (cur < runEnd() || looping()) && !lifeEnded();
+  playing = on && walk.n > 0 && !atEnd();
   if (playing) reverse(false);
   $('play').innerHTML = playing ? `${icon('pause')} Pause` : `${icon('play')} Play`;
   $('play').classList.toggle('on', playing);
@@ -13507,11 +13517,11 @@ function updateStats() {
   $('back').disabled = cur <= runStart();
   for (const b of [$('jump2k'), $('jump10k')]) {  // (Life: 2,000 and 10,000 generations ahead, while its end is not known)
     b.hidden = Number.isFinite(walk.n);
-    b.disabled = !!lifeEnd();
+    b.disabled = !!runLoop();
   }
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
-  $('step').disabled = (cur >= runEnd() && !looping()) || lifeEnded();
+  $('step').disabled = atEnd();
   $('end').hidden = lifeTime() && !walk.life.margolus;  // (Life: its green link, +2k and +10k)
   $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
@@ -13543,7 +13553,7 @@ function updateStats() {
     // (its end known, not reached yet: where it is, its period and its first; Begin back to a start keeps its record)
     const known = L.stable, ahead = known && !s, end = !known ? '' : known.extinct ? `✝${ahead ? ` ${fmt(known.T)}` : ''}` : known.P === 1 ? `■${ahead ? ` ${fmt(known.T)}` : ''}`
       : `↻ ${ahead ? fmt(known.P) : `${pad(mod(cur - known.T, known.P) + 1, known.P)}/${fmt(known.P)}`}${known.T ? ` from ${fmt(known.T)}` : ''}`;
-    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(loopTarget(runLoop()), end, 'loop')}`}`;
+    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${loopLink(end)}`}`;
     setLinks($('barNum'), title);
     $('barLoop').hidden = !L.margolus || !!L.stable;  // (blocks: not back to its start yet, and at most when; back: its title's)
     renderBack();
@@ -13561,10 +13571,10 @@ function updateStats() {
     drawActivity();
     return;
   }
-  // a walk's loop (its digits' round, an ant's highway) or a worm's end, after its title: a link in green, as Life's (see loopTarget)
+  // a walk's loop (its digits' round, an ant's highway) or a worm's end, after its title: a link in green, as Life's (see loopLink)
   const o = runLoop();
-  setLinks($('barNum'), !o ? barTitle : `${barTitle} ${genLink(loopTarget(o), walk.wormEnd ? `✝ ${fmt(walk.n)}`
-    : `${walk.loop.drift ? '→' : '↻'} ${fmt(walk.loop.period ?? walk.n)}${o.T ? ` from ${fmt(o.T)}` : ''}`, 'loop')}`);  // (as short: its digits' period, its first step)
+  setLinks($('barNum'), !o ? barTitle : `${barTitle} ${loopLink(walk.wormEnd ? `✝ ${fmt(walk.n)}`
+    : `${walk.loop.drift ? '→' : '↻'} ${fmt(walk.loop.period ?? walk.n)}${o.T ? ` from ${fmt(o.T)}` : ''}`)}`);  // (as short: its digits' period, its first step)
   drawActivity();
   renderWalkGauges();
   if (walk.n && walk.counts) {  // each digit's count, on its chip
@@ -13807,7 +13817,7 @@ $('digitsLabel').addEventListener('change', () => {
   compute();
 });
 $('play').addEventListener('click', () => {
-  if (cur >= runEnd() || lifeEnded()) restart();  // at the end: from the start again
+  if (atEnd()) restart();  // at the end: from the start again
   play(!playing);
 });
 $('step').addEventListener('click', () => { play(false); reverse(false); advanceTo(cur + 1); });
@@ -13815,16 +13825,8 @@ $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump2k').addEventListener('click', () => advanceTo(cur + LIFE_JUMP));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 // Begin (⏮): back through a run's stops, in turn: its last, its loop's last and first once known (see runLoop), its ordered
-// moments (a reversible one's, see orderMarks), its start (0), its first; its loop's first, by its green link (see loopTarget). Its start, written at once (restart), not played to
-const lifeEnd = () => (lifeTime() && !walk.life.margolus && walk.life.stable) || null;  // (a Game of Life's end, known: its loop, frozen or dead)
-// A run's loop, known: its first step and its last; a Game of Life's or a reversible one's, where it settles (frozen or dead: its
-// end, its last the same); a walk's, its digits' round or an ant's highway, from its first step to its end; a worm's end
-const runLoop = () => {
-  if (walk.life) { const s = lifeTime() && walk.life.stable; return s ? { T: s.T, last: s.extinct || s.P === 1 ? s.T : s.T + s.P - 1 } : null; }
-  return walk.loop ? { T: walk.loop.from, last: walk.n } : walk.wormEnd ? { T: walk.n, last: walk.n } : null;
-};
-// where its link goes (see genLink, in green): to its first step; from there, to its last; an end alone, back to 0
-const loopTarget = (o) => (cur !== o.T ? o.T : o.last !== o.T ? o.last : 0);
+// moments (a reversible one's, see orderMarks), its start (0), its first; its loop's first, by its green link too (see
+// loopLink). Its start, written at once (restart), not played to
 const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(runLoop() ? [runLoop().T, runLoop().last] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
 // End (⏭), the same forth (a run with its end known at once: a walk, a reversible one; Life's, its green link and +2k)
 function goStop(dir) {  // (playing on if it was)
@@ -13843,7 +13845,7 @@ $('speedLabel').addEventListener('change', () => { if ($('speedLabel').value) se
 // go to step v: back from the start, forward from where it is
 // the slider's end: a walk's last step, a run's last generation: a reversible one's, a Game of Life's once its end is known
 // (its loop's last; not known yet: none, Infinity)
-const seekFar = () => (!lifeTime() || walk.life.margolus ? runEnd() : lifeEnd() ? lifeEnd().T + lifeEnd().P - 1 : Infinity);
+const seekFar = () => (!lifeTime() || walk.life.margolus ? runEnd() : runLoop()?.last ?? Infinity);
 // A walk back to step v: its steps after taken off (the tiles' visits), drawn again up to there, the view kept as it is
 function walkBack(v) {
   for (let i = cur; i > v; i--) {
