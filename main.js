@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.1.1520';
+const VERSION = '0.2.0';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -10697,6 +10697,12 @@ const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeSta
 // a Punk zone's, their numbers: pop=punk24.7804)
 const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, lifeParts()).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : `${zoneWord()}.${plane.density}.${plane.seed}`);
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && HUNT_ZONES[z][1].toLowerCase().replace(/ /g, '') === w);
+// The version a setup was made with (v=0.2.0, last in its link, kept in Treasures and their files): a link's or a saved
+// one's, kept in the link while the setup in view is that one still, so that a link that fails says where it was made
+// (git log --grep "(v0.2.0)", its bundle, tools/at.sh 0.2.0); changed, the version now. Not read otherwise (no old links
+// handled), nor part of what tells setups apart (see isInUse)
+let setupFrom = null;  // { setup, v }
+const sameSetup = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].every((k) => k === 'v' || String(a[k] ?? '') === String(b[k] ?? ''));
 function getSetup() {
   const w = $('mode').value, mode = MODES[w], s = readsDigits(w) ? { x: formulaInUse, w } : { w };
   if (!mode.life || gensShown()) s.d = targetAsked();  // (the length asked: digits, or generations)
@@ -10719,10 +10725,12 @@ function getSetup() {
   if (mode.worm) s.r = worm.byDigits ? 'digits' : worm.rule;
   if (mode.turmite) s.r = turmite.rule;  // "digits LNR"; "digits" alone: left, right
   if (championCode) s.ch = championCode;
+  s.v = setupFrom && sameSetup(setupFrom.setup, s) ? setupFrom.v : VERSION;  // (last: the version it was made with, see setupFrom)
   return s;
 }
 
 function applySetup(s) {
+  setupFrom = s.v ? { setup: s, v: s.v } : null;
   const set = (id, v) => { if (v !== undefined && v !== null) $(id).value = v; };
   if (!MODES[s.w]) return false;
   if (typeof s.x === 'string') {  // (none: the number kept, not read)

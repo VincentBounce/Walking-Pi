@@ -39,3 +39,11 @@ Never delete the bundles in `Walking Pi resources` (old versions included): the 
 `python3 tools/lines.py [from] [to]` (from: HEAD; to: the files now, or a commit) gives each changed code file's lines
 of code only (no comment, no blank line, see `tools/uncomment.py`), before → after, nothing else: the « solde » of each
 delivery, e.g. `python3 tools/lines.py HEAD~1 HEAD` after a commit.
+
+## Versions
+- `const VERSION = '0.2.N'` (main.js, line 40) is the only source; every commit's message ends with it, `(v0.2.N)`.
+- The last number goes up by 1 with every commit. The middle one only when the user decides, for a step they name
+  (0.2: links that carry their version); the last one then starts again at 0. 1.0 would mean links that keep working.
+- Every link ends with `v=` and the version it was made with, kept in Treasures and their JSON files (see `setupFrom`).
+  A link that fails: `git log --grep "(v0.2.N)" -F`, its bundle in `Walking Pi resources`, or `tools/at.sh 0.2.N`, which
+  serves that version on port 8322 beside this one.
