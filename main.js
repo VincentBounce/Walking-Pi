@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.65';
+const VERSION = '0.2.66';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3075,6 +3075,7 @@ function compute() {
   $('lifeStartRow').hidden = !mode.life;
   $('copyRle').hidden = !mode.plane;  // (the plane's cells only)  // its start: Hunt, Draw (the plane only), Digits
   $('startSection').hidden = !mode.life || !!mode.loops;  // (loops: their start their loops, one a lineage, see layLoops)
+  $('returnSection').hidden = !mode.margolus;  // (a reversible one's return to its start, wherever it is)
   fitRuleToShape();
   $('colourSection').hidden = !mode.life || !!mode.margolus;  // (blocks: one colour)
   $('autoPlayRow').hidden = !mode.life;
@@ -10134,8 +10135,7 @@ const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'r
 // blocks: the search for its return, whatever the start (see searchBack)
 function renderBack() {
   const L = walk.life;
-  $('backBtn').hidden = !L?.margolus;
-  if ($('backBtn').hidden) return;
+  if (!L?.margolus) return;  // (its section shown by its mode, see compute)
   $('backBtn').innerHTML = L.stable ? `${icon('search')} Back to start at gen ${fmt(L.stable.P)}` : backSearch.life === L ? `${icon('stop')} Stop · gen ${fmt(backSearch.gen)} searched` : `${icon('search')} Find its return to the start`;
   $('backBtn').disabled = !!L.stable;
 }
@@ -13546,7 +13546,12 @@ function updateStats() {
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = atEnd();
   $('end').hidden = lifePlayer();  // (Life: its green link, +2k and +10k)
-  $('drawFromStart').hidden = !drawing || cur === 0;  // (Draw: its start's cells, gen 0's)
+  // Draw: its start's cells, gen 0's, drawn there only (the brush, Clear); away from it, a way back to it
+  const away = drawing && cur !== 0;
+  $('drawFromStart').disabled = !away;
+  $('drawFromStart').dataset.greyed = away ? '' : 'at gen 0 already';
+  $('clearDrawn').disabled = away;
+  $('clearDrawn').dataset.greyed = away ? "away from gen 0: its start's cells are drawn there" : '';
   $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
   // drawActivity)
@@ -13939,7 +13944,7 @@ stage.addEventListener('pointerdown', (e) => {
   stage.classList.add('dragging');
 });
 stage.addEventListener('pointermove', (e) => {
-  if (drawing && walk.plane && !e.target.closest('.stage-box')) {  // Draw: the brush follows the pointer
+  if (drawing && cur === 0 && walk.plane && !e.target.closest('.stage-box')) {  // Draw: the brush follows the pointer (at gen 0 only)
     const r = stage.getBoundingClientRect();
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, ...turnPoint([(e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale], -planeTurn()));
     if (String(cell) !== String(ghost)) { ghost = cell; drawGhost(); }
@@ -14092,7 +14097,7 @@ function emojiDrawn(e) {
   for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) > 40) return true;
   return false;
 }
-stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });
+stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && cur === 0 && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });  // (its start's cells: at gen 0 only)
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !walk.plane || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
   const r = stage.getBoundingClientRect();
