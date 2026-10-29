@@ -1,5 +1,6 @@
-# Walking Pi as one HTML file, to send: index.html with style.css and its scripts in it, the scripts gzipped (base64) and
-# unzipped by the page as it opens (DecompressionStream, every browser since 2023), or as they are (--plain).
+# Walking Pi as one HTML file, to send: index.html with style.css and its scripts in it, the scripts without their comments,
+# gzipped (base64) and unzipped by the page as it opens (DecompressionStream, every browser since 2023), or as they are,
+# comments and all (--plain).
 # python3 tools/bundle.py [--plain] [out.html]   (out: « Walking Pi resources/Walking Pi v<version> compressed|plain.html », beside the repo)
 import base64, gzip, os, re, sys
 
@@ -72,7 +73,7 @@ def uncommented(src):
         out.append(c); i += 1
     return '\n'.join(l.rstrip() for l in ''.join(out).split('\n') if l.strip())
 
-code = ';\n'.join(uncommented(read(n)) for n in names)  # (one script: their top-level names were one scope already)
+code = ';\n'.join(read(n) if plain else uncommented(read(n)) for n in names)  # (one script: their top-level names were one scope already)
 if plain:
     loader = '<script>\n' + code.replace('</script', '<\\/script') + '\n</script>\n'
 else:
