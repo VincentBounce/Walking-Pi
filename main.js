@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.44';
+const VERSION = '0.2.45';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13485,11 +13485,12 @@ function updateStats() {
   $('reverse').hidden = !reversible();  // (played backwards: a walk, a reversible one)
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = (cur >= runEnd() && !looping()) || lifeEnded();
-  // the step and the last: folded, at the top on the right; open, under the curve (its slider, see drawActivity); none for
-  // a Game of Life while its end is not known
+  // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
+  // drawActivity); none for a Game of Life while its end is not known
   const far = seekFar(), finite = Number.isFinite(far);
-  $('seekCount').hidden = $('seekCountOpen').hidden = !finite;
-  if (finite) $('seekCount').textContent = $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`;
+  $('seekCountOpen').hidden = !finite;
+  $('seekCount').hidden = !finite || lifeTime();  // (folded: the step alone, beside the title; Life's, in its title)
+  if (finite) { $('seekCount').textContent = fmt(cur); $('seekCountOpen').textContent = `${fmt(cur)} / ${fmt(far)}`; }
   if (!walk.life) $('ranking').hidden = $('gauges').hidden = $('rankTitles').hidden = true;
   const time = spaceTimeOn() && !!stack, labels = STAT_LABELS[time ? 'time' : walk.life ? 'life' : walk.vert ? 'grid' : 'walk'];
   document.querySelector('.stage-bar .stats').classList.toggle('life', lifeTime());
