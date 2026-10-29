@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.49';
+const VERSION = '0.2.50';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -11253,7 +11253,7 @@ function lifeTo(target, until = Infinity) {  // (one step, one generation, playe
         L.order = traced(L, cur).order;
         L.born = b.born; L.dead = b.dead; L.bornBy.set(b.bornBy); L.deadBy.set(b.deadBy);
       }
-      if (cur === loopRound()) { play(false); ended = true; }  // (a round of its loop played: Play again, another)
+      if (loopRound() && cur === loopRound()) { play(false); ended = true; }  // (a round of its loop played: Play again, another; none: 0, not gen 0)
     }
     if (Number.isFinite(seekFar())) k = Math.min(k, seekFar() - cur);  // (its end found on the way: to it, not round it on; past it, a step at a time, round its loop)
     if (performance.now() >= until) break;  // (a batch at least)
