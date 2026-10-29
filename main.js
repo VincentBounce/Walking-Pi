@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.19';
+const VERSION = '0.2.20';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13903,9 +13903,10 @@ for (const b of $('lifeStartTabs').children) {
     }
     if (plane.start === b.dataset.start) return;
     if (b.dataset.start === 'draw' && walk.life) {  // (the generation in view, to draw on: Clear for an empty one)
-      // (a block rule's: the one at its first phase at or before it, where its cells are as shown and go on as a start's: one
-      // of another phase, or shown negative, would play on as another run, its past not this one's)
-      const L = walk.life, off = L.margolus ? mod(cur, L.margolus.turns.length) : 0;
+      // (a block rule's: the one at its first phase nearest it towards its start, where its cells are as shown and go on as a
+      // start's: one of another phase, or shown negative, would play on as another run, its past not this one's; in its past,
+      // forth, its far end no further)
+      const L = walk.life, off = L.margolus ? (cur < 0 ? -mod(-cur, L.margolus.turns.length) : mod(cur, L.margolus.turns.length)) : 0;
       if (off) seekTo(cur - off);
       population = new Map([...L.alive].flatMap((c, t) => (c ? [[key(t % walk.plane.row, Math.floor(t / walk.plane.row)), L.margolus ? 1 : c]] : [])));
     }
