@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.8';
+const VERSION = '0.2.9';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2708,7 +2708,7 @@ for (const [w, life, blocks, k] of REVERSIBLE_SHEETS) {
   NAV[w] = ['Reversible', 'Surfaces', NAV[life][2], 'Blocks', ''];
 }
 // Loops: Langton's self-reproducing loops on Life's grid of squares, by a table of transitions (see parseLoops)
-for (const [w, life] of [['loops2d', 'life2d'], ['loopsTorus', 'lifeTorus'], ['loopsCube', 'lifeCube']]) {  // (squares: 4 sides each)
+for (const [w, life] of [['loops2d', 'life2d'], ['loopsTorus', 'lifeTorus'], ['loopsCube', 'lifeCube'], ['loopsPits', 'lifePits'], ['loopsBumps', 'lifeBumps'], ['loopsFrame', 'lifeFrame']]) {  // (squares: 4 sides each, the same way round on each: no Möbius strip nor Klein bottle; nor Menger's sponge, its flat pieces narrower than a loop)
   MODES[w] = { ...MODES[life], loops: true, where: `${MODES[life].where.split(' (')[0]}, each cell by its 4 sides in turn (von Neumann)` };
   MODE_ICONS[w] = MODE_ICONS[life];
   NAV[w] = ['Loops', NAV[life][1], NAV[life][2], 'Langton', ''];
@@ -7631,10 +7631,19 @@ function meshSides(g) {
   return (g.loopSides = out);
 }
 // The loops' start (see loops.js) on empty cells: its RLE's states (. 0, A 1, B 2…), its rows ($), laid tile by tile from the
-// middle of each colour's part (see middleCells): up and left half its box, then its rows down and its cells right, each
+// middle of each colour's part (see partMiddle): up and left half its box, then its rows down and its cells right, each
 // step across a side to the tile beyond, its sides turned as they come (so it crosses a cube's edges as its faces); in K
 // lineages, each its colour (see parseLoops), the k-th turned by k quarter turns (the rule the same turned: its daughters
 // each their own ways, not copies of the others' moves)
+// a colour's part's middle cell (see middleCells); a solid with no frame for it (a frame, a sponge): the cell facing the view
+// for one, else the part's cell nearest its middle
+function partMiddle(k, K) {
+  const t = middleCells(k, K)[0];
+  if (t !== undefined) return t;
+  if (K === 1) return frontCell();
+  const part = huntParts(0, K)[k], c = walk.geo.cen, mid = [0, 1, 2].map((d) => part.reduce((a, u) => a + c[3 * u + d], 0) / part.length);
+  return part.reduce((best, u) => (Math.hypot(...[0, 1, 2].map((d) => c[3 * u + d] - mid[d])) < Math.hypot(...[0, 1, 2].map((d) => c[3 * best + d] - mid[d])) ? u : best), part[0]);
+}
 function layLoops(seed) {
   const L = walk.life, K = L.lineages ? L.colours : 1, sides = L.ring, { w, h, rle } = LOOP_RULES[L.ruleText].pattern, m = Math.max(w, h);
   const go = ([t, o], j, k = 1) => {  // (k steps the way j, o the turn from its ways to its sides)
@@ -7647,7 +7656,7 @@ function layLoops(seed) {
   const turn = (x, y, r) => (r === 0 ? [x, y] : turn(m - 1 - y, x, r - 1));  // (a quarter turn in its m × m box)
   seed.fill(0);
   for (let k = 0; k < K; k++) {
-    const corner = go(go([middleCells(k, K)[0], 0], 0, Math.floor(m / 2)), 3, Math.floor(m / 2));
+    const corner = go(go([partMiddle(k, K), 0], 0, Math.floor(m / 2)), 3, Math.floor(m / 2));
     for (const [x, y, st] of loopCells(rle)) {
       const [u, v] = turn(x, y, k % 4), [t] = go(go(corner, 2, v), 1, u);
       if (t >= 0) seed[t] = K > 1 ? k + 1 + K * (st - 1) : st;
