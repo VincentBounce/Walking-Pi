@@ -16,3 +16,21 @@ compressed file for `//`, `/*` and `<!--` (outside URLs and the base64), open it
 repo, deleted after), no console error, and `walkingCheck()` passes in it.
 
 Never delete the bundles in `Walking Pi resources` (old versions included): the user keeps them to compare versions.
+
+## Comment hierarchy (main.js)
+- The file opens with a banner (`WALKING π — main.js`) and a "How it fits together" overview of its parts.
+- A part: a banner of `=`, 96 columns wide, its title in capitals, then a few lines on what it does:
+  ```
+  /* ==============================================================================================
+   * PART 6 — WALKS ON LATTICES AND SPIRALS
+   * ==============================================================================================
+   *
+   * A stepper turns one digit into the next cell. …
+   */
+  ```
+- A section: one line, numbered by its part, padded with `-` to the same width:
+  `/* ---- 6.1 Square grid ------------------------------------------------------------------------- */`
+- A section added later between two others takes a letter (`7.4b Möbius strip`, `9.1b Patterns`), not a renumbering.
+- Then plain comments: `//` above a function or a block (what it does, why), `// (…)` at a line's end for a detail.
+- A new function goes in the part and section of its concept; a new concept with no section gets one (ask if a
+  new part seems needed). PART 8 (Game of Life, ~3,000 lines) has no sections yet: to cut, when decided.
