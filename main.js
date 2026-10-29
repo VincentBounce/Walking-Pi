@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.67';
+const VERSION = '0.2.68';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2450,14 +2450,31 @@ function syncNumberMenu() {
   $('primorialRow').hidden = p.id !== 'primorial';
 }
 
-// Every number at once, in small groups (Constants, 𝑓, Primes, Sequences): tiles showing the
-// symbol, several per row, the name and the formula on hover. The helper menus of the primes
-// (which Mersenne, which primorial, what size) sit right under the Primes group.
+// The numbers by tabs (one group of tabs: Constants and sequences, Fractions, Functions, Primes), a tab's groups shown, each
+// a grid of tiles showing the symbol, several per row, the name and the formula on hover. The tab shown: the number's own,
+// till another is picked (a picked number: its own again). The helper menus of the primes (which Mersenne, which primorial,
+// what size) sit right under the Primes group (every group made, those of other tabs hidden: the menus kept in the page)
+const NUMBER_TABS = [['Constants', ['Constants', 'Sequences']], ['Fractions', ['Fractions']], ['Functions', ['𝑓']], ['Primes', ['Primes']]];
+let numberTab = null, numberShown = null;  // (the tab picked; the number shown when it was)
 function renderNumberPicker(active) {
-  $('numberList').replaceChildren(...NUMBER_GROUPS.map((group) => {
+  if (active !== numberShown) [numberShown, numberTab] = [active, null];
+  const tab = numberTab ?? NUMBER_TABS.find(([, groups]) => groups.includes(PRESETS[active]?.group))?.[0] ?? NUMBER_TABS[0][0];
+  const shown = NUMBER_TABS.find(([name]) => name === tab)[1], tabs = document.createElement('div');
+  tabs.className = 'choice-row';
+  tabs.append(...NUMBER_TABS.map(([name]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = name;
+    b.classList.toggle('active', name === tab);
+    b.addEventListener('click', () => { numberTab = name; renderNumberPicker(active); });
+    return b;
+  }));
+  $('numberList').replaceChildren(tabs, ...NUMBER_GROUPS.map((group) => {
     const box = document.createElement('div'), label = document.createElement('div'), grid = document.createElement('div');
+    box.hidden = !shown.includes(group);
     label.className = 'field-label';  // styled like Formula and Number of digits
     label.textContent = group;
+    label.hidden = shown.length < 2;  // (a tab of one group: its name the tab's)
     grid.className = 'number-grid';
     grid.setAttribute('role', 'listbox');
     grid.append(...Object.entries(PRESETS).filter(([, p]) => p.group === group).map(([id, p]) => {
