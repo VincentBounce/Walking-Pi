@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.9';
+const VERSION = '0.2.10';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13293,13 +13293,13 @@ function drawActivity() {
 }
 // One colour: fixed gauges of how it goes, not of a record: alive (against the peak); its turnover, this generation's
 // births and deaths against the cells alive before and after (100 %: every cell changes; 0: nothing moves); its growth,
-// births less deaths, and its births and deaths so far, in figures (a bar for growth swung too much); the cells ever
+// births less deaths, in figures (a bar for it swung too much); the cells ever
 // alive and the peak (and when) against the grid
 function renderGauges(L) {
   const box = $('gauges'), n = L.seed.length;
   box.hidden = L.colours !== 1;
   if (box.hidden) return;
-  if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Ever alive', 'Peak', 'Growth', 'Born · died'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
+  if (!box.childElementCount) box.innerHTML = ['Alive', 'Turnover', 'Ever alive', 'Peak', 'Growth'].map((name, i) => `<div class="gauge-row"><span>${name}</span>`
     + `${i >= 4 ? '<span></span>' : '<span class="rank-bar"><i></i></span>'}<span class="rank-num"></span></div>`).join('');  // (the bars, then the figures alone)
   for (const i of box.querySelectorAll('.rank-bar i')) i.style.background = LIFE_ALIVE;  // (the theme's live cells, as it is now)
   const avg = loopMeans(L), varies = avg && L.loopMax[1] > L.loopMin[1], b = L.bornNow, d = L.deadNow, before = L.aliveCount - b + d, both = L.aliveCount + before;
@@ -13310,7 +13310,7 @@ function renderGauges(L) {
   width(2, L.everAlive, n);
   width(3, L.peak, n);
   [`<b>${varies ? `≈ ${fmt(Math.round(avg[1] * 10) / 10)}` : fmt(L.aliveCount)}</b>`, `${Math.round(100 * turnover)} %`, fmt(L.everAlive), `${fmt(L.peak)} · gen ${fmt(L.peakGen)}`,
-    `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`, `${fmt(L.born)} · ${fmt(L.dead)}`].forEach((text, i) => { box.children[i].children[2].innerHTML = text; });
+    `${b - d > 0 ? '+' : b < d ? '−' : ''}${fmt(Math.abs(b - d))} a gen`].forEach((text, i) => { box.children[i].children[2].innerHTML = text; });
 }
 // A battle's ranking, always in sight under the generation: the colours by their live cells (a bar, their share of all
 // the live ones), then those died out, the last first (✝ and when); a row a colour, its place, sliding to it; all dead,
