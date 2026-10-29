@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.31';
+const VERSION = '0.2.32';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -13509,12 +13509,12 @@ function updateStats() {
     // the title, in fixed widths so that it stays still: the generation, then how the run ended (✝ died
     // out, ■ frozen), or its loop: its phase, its period, from which generation
     const s = endShown(L), pad = (v, like) => fmt(v).padStart(fmt(like).length, '\u2007');  // a figure space: as wide as a digit
-    // (its end, from its glyph on: a link in green, as its loop's mark, to its last generation (see runEnd, lifeEnd); from the
-    // start: no lead-in)
+    // (its end, from its glyph on: one link in green, as its loop's mark, to its loop's first generation (frozen, dead: where it
+    // stopped; Play from there, a round, see loopRound); a reversible one's, its loop from its start, to its last (see runEnd))
     // (its end known, not reached yet: where it is, its period and its first; Begin back to a start keeps its record)
     const known = L.stable, ahead = known && !s, end = !known ? '' : known.extinct ? `✝${ahead ? ` ${fmt(known.T)}` : ''}` : known.P === 1 ? `■${ahead ? ` ${fmt(known.T)}` : ''}`
       : `↻ ${ahead ? fmt(known.P) : `${pad(mod(cur - known.T, known.P) + 1, known.P)}/${fmt(known.P)}`}${known.T ? ` from ${fmt(known.T)}` : ''}`;
-    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(L.margolus ? runEnd() : known.T + known.P - 1, end, 'loop')}`}`;
+    const title = `Gen ${s && !s.extinct && s.P > 1 ? pad(cur, s.T + s.P - 1) : fmt(cur)}${end && ` ${genLink(L.margolus ? runEnd() : known.T, end, 'loop')}`}`;
     if ($('barNum').innerHTML !== title) $('barNum').innerHTML = title;
     $('barLoop').hidden = !L.margolus;  // (blocks: back to its start, or not yet, and at most when)
     renderBack();
@@ -13794,7 +13794,7 @@ $('reverse').addEventListener('click', () => reverse(!reversing));
 $('jump2k').addEventListener('click', () => advanceTo(cur + LIFE_JUMP));
 $('jump10k').addEventListener('click', () => advanceTo(cur + 10000));
 // Begin (⏮): back through a run's stops, in turn: its last, a Game of Life's loop's last and first once known (see lifeEnd),
-// its ordered moments (a reversible one's, see orderMarks), its start (0), its first; its end, by its title's glyph (see
+// its ordered moments (a reversible one's, see orderMarks), its start (0), its first; its loop's first, by its title's glyph (see
 // updateStats). Its start, written at once (restart), not played to
 const lifeEnd = () => (lifeTime() && !walk.life.margolus && walk.life.stable) || null;  // (a Game of Life's end, known: its loop, frozen or dead)
 const runStops = () => [...new Set([runStart(), 0, ...(reversibleRun() ? orderMarks(walk.life) : []), ...(lifeEnd() ? [lifeEnd().T, lifeEnd().T + lifeEnd().P - 1] : []), runEnd()])].filter(Number.isFinite).sort((x, y) => x - y);
@@ -14058,7 +14058,7 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowRight': $('step').click(); break;
     case 'ArrowLeft': $('back').click(); break;
     case 'r': case 'R': $('restart').click(); break;
-    case 'e': case 'E': ($('barNum').querySelector('.gen-link') ?? ($('jump2k').hidden || $('jump2k').disabled ? null : $('jump2k')))?.click(); break;  // (its end, by its title's glyph; Life's not known yet: 2,000 ahead)
+    case 'e': case 'E': ($('barNum').querySelector('.gen-link') ?? ($('jump2k').hidden || $('jump2k').disabled ? null : $('jump2k')))?.click(); break;  // (its loop's first, by its title's glyph; Life's end not known yet: 2,000 ahead)
     case 'f': case 'F': recentre(); break;
   }
 });
