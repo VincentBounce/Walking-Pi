@@ -14,3 +14,5 @@ The user always makes the app's single-file versions with the script `_Make Walk
 Keep `tools/bundle.py` working for that script: its arguments, its output names and folder. After changing it: grep the
 compressed file for `//`, `/*` and `<!--` (outside URLs and the base64), open it from the local server (a copy in the
 repo, deleted after), no console error, and `walkingCheck()` passes in it.
+
+Never delete the bundles in `Walking Pi resources` (old versions included): the user keeps them to compare versions.
