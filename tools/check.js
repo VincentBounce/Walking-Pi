@@ -77,8 +77,7 @@ function checkMeshes(fail) {
     });
     const covered = (x, y) => (grid.get(`${Math.floor(x / 3)},${Math.floor(y / 3)}`) ?? []).some((j) => insidePolygon(all[j], x, y));
     let gaps = 0;
-    const dead = new Set(h.dead);
-    for (const P of all.slice(0, W * W).filter((P, t) => !dead.has(t))) {  // (the live cells)
+    for (const P of all.slice(0, h.n)) {  // (its cells, then its walls)
       const o = sarea(P) > 0 ? 1 : -1;
       for (let i = 0; i < P.length; i++) {
         const a = P[i], b = P[(i + 1) % P.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -341,8 +340,8 @@ async function coloursOffered(fail) {
 function checkDiscs(fail) {
   let checked = 0;
   for (const kind of Object.keys(APERIODIC)) for (const side of planeSides(kind).filter((f) => f <= 128)) {
-    const W = planeW(kind, side), o = (W - 1) / 2, far = new Array(72).fill(0), { poly, norm } = APERIODIC[kind](W);
-    for (let t = 0; t < W * W; t++) {
+    const W = planeW(kind, side), o = (W - 1) / 2, far = new Array(72).fill(0), { poly, norm, n } = APERIODIC[kind](W);
+    for (let t = 0; t < n; t++) {
       const p = poly(t), [u, v] = [0, 1].map((d) => p.reduce((sum, q) => sum + q[d], 0) / p.length - o), k = Math.floor(((Math.atan2(v, u) + Math.PI) / (2 * Math.PI)) * 72) % 72;
       far[k] = Math.max(far[k], norm(u, v));
     }
