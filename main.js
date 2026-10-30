@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.94';
+const VERSION = '0.2.95';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6937,11 +6937,11 @@ function symmetryMaps(kind, W, sym) {
   const turns = Array.from({ length: N }, (_, k) => turn(k)), half = turn(N / 2), across = (f) => (t) => f(m[t]);
   return symMemo.set(key, { none: turns, half: [turns[0], half], rotate: turns, mirror: [turns[0], across(turns[0]), across(half), half], kaleido: [...turns, ...turns.map(across)] }[sym]).get(key);
 }
-// the symmetries a start may have here: the grid's; Famous's none (its patterns at their spots, the middle's copied onto
-// itself); with a block rule, those whose maps take each block onto one of its generation's, the rule turning their cells
+// the symmetries a start may have here: the grid's; Famous's and Anywhere's none (a pattern laid whole where it is, but the
+// copies taken from their first's: Famous's middle onto itself, Anywhere's gone out of the first part); with a block rule, those whose maps take each block onto one of its generation's, the rule turning their cells
 // alike (its states' bits in the copy's order; Ising's sides and the stellated cells' moves not seen to: none of them)
 function symmetriesHere(kind, W) {
-  const all = plane.start === 'random' && hunt.zone === 'centred' ? ['none'] : planeSymmetries(kind, W), M = walk.life?.margolus;
+  const all = plane.start === 'random' && famousZone(hunt.zone) ? ['none'] : planeSymmetries(kind, W), M = walk.life?.margolus;
   if (!M) return all;
   const memo = (M.symmetric ??= new Map()), key = `${kind}|${W}`;
   const keeps = (maps) => !M.ising && !M.move && maps.every((f) => M.turns.every((turn) => {
@@ -7942,7 +7942,7 @@ function renderSymmetry() {
   $('symmetryRow').hidden = !kind;
   $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
     return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
-      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none), and on Famous (its patterns at their spots)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
+      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none), and on Famous and Anywhere (their patterns laid whole where they are)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
   }), true));
 }
 function renderPlaneRow() {
