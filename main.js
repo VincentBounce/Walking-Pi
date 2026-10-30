@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.111';
+const VERSION = '0.2.112';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8032,8 +8032,7 @@ function renderPlaneRow() {
     return;
   }
   $('drawNote').hidden = true;
-  for (const b of $('brushCards').children) b.disabled = false;
-  for (const b of [$('openPng'), $('exportPng')]) setTile(b, { can: kind === 'square', greyed: 'on a grid of squares only (a pixel a square)' });
+  setTile($('exportPng'), { can: kind === 'square', greyed: 'on a grid of squares only (a pixel a square)' });
   const sides = planeSides(kind);
   const label = (side) => { $('planeLabel').innerHTML = `${sizeShape(planeKind(kind), side)}<small>${sizeCells(planeKind(kind), side)}</small>`; };  // the size (see gridSize; a rectangle's, if so)
   label(plane.side);
@@ -8082,11 +8081,23 @@ function renderPlaneRow() {
     i.addEventListener('click', () => { brush.colour = c; renderPlaneRow(); });
   });
   $('clearDrawn').textContent = cleared ? 'Undo' : 'Clear';
-  $('clearDrawn').disabled = !cleared && !population.size;
   $('brushTurn').textContent = `↻ ${(brush.turn * 360) / PATTERN_TURNS[kind]}°`;
-  $('brushTurn').disabled = brush.id === 'cell' || PATTERN_TURNS[kind] === 1;  // (a grid a pattern cannot turn or mirror on: greyed)
-  $('brushFlip').disabled = brush.id === 'cell' || !canMirror(kind);
   $('brushFlip').classList.toggle('active', brush.flip && canMirror(kind));
+  renderDrawTools();
+}
+// Draw's tools on the plane, each as it can (a cell: no turn), all greyed away from gen 0 (the cells drawn are its start's:
+// drawn there only; Go to gen 0, the way back)
+function renderDrawTools() {
+  const kind = MODES[$('mode').value].plane, away = drawAway(), why = "away from gen 0: its start's cells are drawn there";
+  const grey = (b, own = false, ownWhy = '') => { b.disabled = away || own; b.dataset.greyed = away ? why : own ? ownWhy : ''; };
+  for (const b of $('brushCards').children) grey(b);
+  grey($('brushTurn'), brush.id === 'cell' || PATTERN_TURNS[kind] === 1, 'for a cell, or on a grid a pattern cannot turn on');
+  grey($('brushFlip'), brush.id === 'cell' || !canMirror(kind), 'for a cell, or on a grid a pattern cannot mirror on');
+  grey($('clearDrawn'), !cleared && !population.size, 'no cell drawn');
+  grey($('openPng'), kind !== 'square', 'on a grid of squares only (a pixel a square)');
+  $('brushColours').classList.toggle('off', away);
+  $('drawFromStart').disabled = !away;
+  $('drawFromStart').dataset.greyed = away ? '' : 'at gen 0 already';
 }
 // A grid's wall (dead edges): the cells just outside it that touch one of its cells, a cell thick whatever the tiling (its
 // rhombus's or lattice cell's row round it, kept where it touches); once a grid
@@ -13753,12 +13764,7 @@ function updateStats() {
   $('reverse').disabled = cur <= runStart();
   $('step').disabled = atEnd();
   $('end').hidden = lifePlayer();  // (Life: its green link, +2k and +10k)
-  // Draw: its start's cells, gen 0's, drawn there only (the brush, Clear); away from it, a way back to it
-  const away = drawing && cur !== 0;
-  $('drawFromStart').disabled = !away;
-  $('drawFromStart').dataset.greyed = away ? '' : 'at gen 0 already';
-  $('clearDrawn').disabled = away;
-  $('clearDrawn').dataset.greyed = away ? "away from gen 0: its start's cells are drawn there" : '';
+  if (drawing && MODES[$('mode').value].plane) renderDrawTools();  // (Draw: its tools at gen 0 only)
   $('end').disabled = !runStops().some((g) => g > cur);
   // the step: folded, alone on the title's line (Life's, in its title); open, with the last, under the curve (its slider, see
   // drawActivity)
@@ -14151,7 +14157,7 @@ stage.addEventListener('pointerdown', (e) => {
   stage.classList.add('dragging');
 });
 stage.addEventListener('pointermove', (e) => {
-  if (drawing && cur === 0 && walk.plane && !e.target.closest('.stage-box')) {  // Draw: the brush follows the pointer (at gen 0 only)
+  if (drawing && !drawAway() && walk.plane && !e.target.closest('.stage-box')) {  // Draw: the brush follows the pointer (at gen 0 only)
     const r = stage.getBoundingClientRect();
     const cell = planeCellAt(walk.plane.kind, walk.plane.W, ...turnPoint([(e.clientX - r.left - view.ox) / view.scale, (e.clientY - r.top - view.oy) / view.scale], -planeTurn()));
     if (String(cell) !== String(ghost)) { ghost = cell; drawGhost(); }
@@ -14194,6 +14200,7 @@ function recentre() {
 stage.addEventListener('dblclick', () => { if (!drawing) recentre(); });  // drawing: a double click is two cells
 // Life's Draw start: a click on a cell draws (see the pointerup below); a drag still pans
 let drawing = false, drawFrom = null;
+const drawAway = () => drawing && cur !== 0;  // (Draw away from gen 0: its tools greyed, see renderDrawTools)
 // Life on the plane: the grid's size and edges (built again), its start (the cells only, but by the digits)
 for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
   $(id).addEventListener('click', () => {
@@ -14319,7 +14326,7 @@ function emojiDrawn(e) {
   for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) > 40) return true;
   return false;
 }
-stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && cur === 0 && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });  // (its start's cells: at gen 0 only)
+stage.addEventListener('pointerdown', (e) => { drawFrom = drawing && !drawAway() && e.button === 0 && !e.target.closest('.stage-box') ? [e.clientX, e.clientY] : null; });  // (its start's cells: at gen 0 only)
 stage.addEventListener('pointerup', (e) => {
   if (!drawFrom || !walk.plane || Math.hypot(e.clientX - drawFrom[0], e.clientY - drawFrom[1]) > 4) return;
   const r = stage.getBoundingClientRect();
