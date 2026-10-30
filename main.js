@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.87';
+const VERSION = '0.2.88';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2815,7 +2815,9 @@ const SHAPE_ICONS = { Squares: 'grid', Triangles: 'triangle', Hexagons: 'hexagon
   Dodecahedron: 'dodecahedron', Cuboctahedron: 'cubocta', Pyramid: 'pyramid', Rhombicuboctahedron: 'rhombi', Bicupola: 'bicupola', Sphere: 'icosahedron', Pits: 'pits', Bumps: 'bumps', Frame: 'frame', Sponge: 'menger', 'Klein bottle': 'klein' };
 for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-${kind}`;
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
-const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
+const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;
+// a mode in words, a shape's tooltip (the mode its click goes to): an automaton's grid (where), else a walk's or an ant's label
+const modeWhere = (w) => (MODES[w].where ?? $('mode').querySelector(`option[value="${w}"]`).text).replace(/^./, (c) => c.toUpperCase());  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
 const CREATURE_TIPS = { Ant: "Langton's ant: the cell's colour turns it, then the cell takes the next colour", Turmite: "An ant with states: the cell's colour and its own state turn it",
   Worm: "Paterson's worm: along the triangles' lines, never the same edge twice; it ends with none left" };
@@ -3013,7 +3015,7 @@ function renderModePicker() {
       if (!again) { navGo(2, sh); return; }
       plane.torus = !plane.torus;
       compute();
-    }, sh);
+    }, modeWhere(navPick(2, sh)));
     if (again) { setTile(b, { on: true, again }); b.title = plane.torus ? 'A torus (a click: walls)' : 'Walls (a click: a torus)'; }
     return b;
   })];
@@ -3046,7 +3048,7 @@ function renderModePicker() {
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : name, { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: tilesTurn(shownSurface(MODES[same(f)].sphere, f === here && isTurned)) });  // its picture as its tiles lie (a torus's, a strip's alike: clockwise, as the pictures laid on it)
+      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : modeWhere(same(f)), { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: tilesTurn(shownSurface(MODES[same(f)].sphere, f === here && isTurned)) });  // its picture as its tiles lie (a torus's, a strip's alike: clockwise, as the pictures laid on it)
       return [b];
     }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', greyed: 'on a tiling with no other way round (a block rule: none its blocks come round)', on: isTurned, can: turns,
       title: turns ? F.tabs[tabOf(here, true)][4] : 'The tiling turned, its rows another way round', click: turn })] : []));
@@ -3564,7 +3566,7 @@ function updateHint() {
 // to move it (the hint); on anything with a tooltip, that, in its place (none of the browser's: a banner over all; its
 // title kept as data-tip, a title set again later taken again); else nothing
 // A control's tooltip led by its name in bold (a card's, a tile's, a box's words: in full, a tile's cut short), once (a
-// tooltip that starts with it: that start in bold)
+// tooltip "Name: words": that name in bold, its words under it)
 new MutationObserver((ms) => { for (const { target: el } of ms) if (el.title && el.matches(':hover')) { el.dataset.tip = el.title; el.removeAttribute('title'); } })  // (a title set again under the mouse: not the browser's)
   .observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
 // What it tells of the element under the mouse: the control (its words, its default, why it is greyed) and its words, each
@@ -3584,7 +3586,7 @@ document.addEventListener('mouseover', (e) => {
   const told = [...(d ? [line(d === 'yes' ? 'By default' : d === 'on' ? 'On by default' : d === 'off' ? 'Off by default' : d)] : []),  // (a default that depends, told in full)
     ...(el?.dataset.greyed ? [line(`Greyed ${el.dataset.greyed}`)] : [])];  // (when it cannot be clicked)
   if (el?.dataset.tipHtml) $('tip').innerHTML = el.dataset.tipHtml;  // (a size's: its words in colour, see sizeTips)
-  else $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.toLowerCase().startsWith(name.toLowerCase()) ? [bold(name), tip.slice(name.length).replace(/^[:\s]+/, '').replace(/^./, (c) => c.toUpperCase()), ...told] : [bold(name), tip, ...told]));  // (no words of its own: its name and its default; else its name, then its words under it)
+  else $('tip').replaceChildren(...(!tip ? (told.length ? [bold(name), ...told] : []) : !ok ? [tip, ...told] : tip.startsWith(`${name}:`) ? [bold(name), tip.slice(name.length + 1).trim().replace(/^./, (c) => c.toUpperCase()), ...told] : [bold(name), tip, ...told]));  // (no words of its own: its name and its default; else its name, then its words under it)
   $('hint').hidden = !!el || !(e.target.tagName === 'CANVAS' && e.target.parentElement.id === 'stage');  // (the view's own layers, not a box's canvas over it)
 });
 // the hint, as the tooltips (each action in bold, then its gesture): the zoom first, against the view framed (×1: all of
