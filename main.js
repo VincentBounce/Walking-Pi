@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.83';
+const VERSION = '0.2.84';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3556,7 +3556,7 @@ function updateHint() {
 new MutationObserver((ms) => { for (const { target: el } of ms) if (el.title && el.matches(':hover')) { el.dataset.tip = el.title; el.removeAttribute('title'); } })  // (a title set again under the mouse: not the browser's)
   .observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
 document.addEventListener('mouseover', (e) => {
-  const el = e.target.closest?.('[title], [data-tip], [data-default]:not([data-default=""])');
+  const el = e.target.closest?.('[title], [data-tip], [data-default]:not([data-default=""]), [data-greyed]:not([data-greyed=""])');
   if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
   const tip = el?.dataset.tip ?? '', named = el?.matches('button, label');
   const name = named ? (el.querySelector('.mode-name') ?? el.querySelector('span') ?? el).textContent.trim() : '';
