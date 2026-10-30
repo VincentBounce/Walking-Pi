@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.86';
+const VERSION = '0.2.87';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1569,7 +1569,7 @@ function tileGroup(buttons, wide = false) {  // (wide: across its row, whatever 
 }
 function renderChoiceButtons(sel, box, pictures, first = null) {  // pictures: an icon per value, above its name; first: the default's value; each tile its value (data-value)
   box.replaceChildren(...Array.from(sel.options).filter((o) => !o.hidden).map((o) => {
-    const b = tile({ pic: icon(pictures[o.value]), text: o.text, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === first ? 'yes' : '', click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } });
+    const b = tile({ pic: icon(pictures[o.value]), text: o.text, title: o.title, on: o.value === sel.value, can: !o.disabled, byDefault: o.value === first ? 'yes' : '', click: () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); } });
     b.dataset.value = o.value;
     return b;
   }));
@@ -2789,8 +2789,10 @@ const NAV_KINDS = [['Life', 'glider', 'Cells born and dying by their neighbours,
 // the spaces, in turn, each its name and picture: a walk's or an ant's plane without an edge; Life's grids on the plane, those
 // that repeat (walls in a hexagon too) and its round ones, never repeating (see APERIODIC); everyone's solids, and surfaces
 // (a sheet rolled up); the walks through a 3D lattice
-const SPACES = { '2D': ['2D infinite', 'grid'], '2D squares': ['2D squares', 'grid'], '2D circles': ['2D circles', 'ring12'],
-                 '3D solids': ['3D solids', 'cube'], '3D surfaces': ['3D surfaces', 'torus'], '3D': ['Lattice', 'cubeFilled'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
+const SPACES = { '2D': ['2D infinite', 'grid', 'An endless plane, the walk going as far as its digits take it'],
+                 '2D squares': ['2D squares', 'grid', 'A flat grid, its edges walls or wrapping round'], '2D circles': ['2D circles', 'ring12', 'Grids of rings round a middle, as flowers'],
+                 '3D solids': ['3D solids', 'cube', 'The faces of a solid (a cube…), the grid going round it'], '3D surfaces': ['3D surfaces', 'torus', 'A sheet rolled up: torus, Möbius strip, Klein bottle…'],
+                 '3D': ['Lattice', 'cubeFilled', 'A 3D lattice, the walk going in space'] }, SHEETS = ['Torus', 'Möbius strip', 'Klein bottle'];
 // a tiling's icon: its polygons round a cell's middle, fitted in the 24 × 24 box
 function tilingIcon(kind) {
   const m = TILINGS[kind].polys.length, polys = [];
@@ -2989,7 +2991,7 @@ function renderModePicker() {
   $('walkHeading').innerHTML = icon(kind === 'Walk' ? 'compass' : 'grid') + WALK_HEADINGS[kind];
   // its spaces (see SPACES), one choice among them: only those it has (no ant nor automaton in Lattice)
   const planeOf = (sh) => MODES[Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][2] === sh)]?.plane;
-  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp))), true));
+  $('navSpace').replaceChildren(tileGroup(Object.keys(SPACES).filter((sp) => navValues(1, [kind]).includes(sp)).map((sp) => button(`${icon(SPACES[sp][1])}<span>${SPACES[sp][0]}</span>`, sp === space, () => navGo(1, sp), SPACES[sp][2])), true));  // (name, picture, tooltip)
   // the shapes, as pictures with their (short) names
   // (a grid of Life picked that can wrap round: a switch, a click again its edges a torus or walls)
   // in 2D, many of them: in groups by their grid's natural shape (see SHAPE_GROUPS), each its title; in 3D, the solids,
@@ -3565,13 +3567,12 @@ function updateHint() {
 // tooltip that starts with it: that start in bold)
 new MutationObserver((ms) => { for (const { target: el } of ms) if (el.title && el.matches(':hover')) { el.dataset.tip = el.title; el.removeAttribute('title'); } })  // (a title set again under the mouse: not the browser's)
   .observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
-// What it tells of the element under the mouse: the control (its words, its default, why it is greyed) and its words, its own
-// else its group's (a title on the box round it, one for all its buttons); a title kept as data-tip (see walkingCheck: every
-// button shown has words)
+// What it tells of the element under the mouse: the control (its words, its default, why it is greyed) and its words, each
+// button its own (a box that is one control, as Size's − label +: the box's); a title kept as data-tip (see walkingCheck)
 const tipOf = (target) => {
   const el = target.closest?.('[title], [data-tip], [data-default]:not([data-default=""]), [data-greyed]:not([data-greyed=""])');
-  const words = (h) => { if (h?.title) { h.dataset.tip = h.title; h.removeAttribute('title'); } return h?.dataset.tip; };
-  return { el, tip: words(el) ?? words(el?.parentElement?.closest('[title], [data-tip]')) ?? '' };
+  if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
+  return { el, tip: el?.dataset.tip ?? '' };
 };
 document.addEventListener('mouseover', (e) => {
   const { el, tip } = tipOf(e.target), named = el?.matches('button, label');
@@ -7487,7 +7488,8 @@ function cellRandom(seed, i) {
 const pictureMemo = new Map();
 // Text's fonts, everywhere without loading any (bold: thick strokes that the cells keep); Hand the one that differs most from a
 // computer to another
-const TEXT_FONTS = { sans: ['Sans', 'system-ui, sans-serif'], serif: ['Serif', 'Georgia, "Times New Roman", serif'], mono: ['Mono', 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'], hand: ['Hand', '"Chalkboard SE", "Comic Sans MS", cursive'] };
+const TEXT_FONTS = { sans: ['Sans', 'system-ui, sans-serif', 'The words in plain letters, no serifs'], serif: ['Serif', 'Georgia, "Times New Roman", serif', 'The words in letters with serifs, as in books'],
+  mono: ['Mono', 'ui-monospace, "SF Mono", Menlo, Consolas, monospace', "The words in letters all as wide, as a typewriter's"], hand: ['Hand', '"Chalkboard SE", "Comic Sans MS", cursive', 'The words as if handwritten'] };  // (name, font, tooltip)
 function picturePixel(text, P, face = 'sans') {
   const key = `${text}|${P}|${face}`;
   if (pictureMemo.has(key)) return pictureMemo.get(key);
@@ -14080,8 +14082,8 @@ for (const b of $('lifeStartTabs').querySelectorAll('button')) {
   });
 }
 // Text's fonts, one choice: a tab group of tiles, Aa in each (see TEXT_FONTS)
-$('textFonts').append(tileGroup(Object.entries(TEXT_FONTS).map(([f, [name, face]]) => {
-  const b = tile({ html: `<b class="font-pic" style="font-family: ${face.replace(/"/g, "'")}">Aa</b><span>${name}</span>`, click: () => { if (plane.font !== f) { plane.font = f; compute(); } } });
+$('textFonts').append(tileGroup(Object.entries(TEXT_FONTS).map(([f, [name, face, title]]) => {
+  const b = tile({ html: `<b class="font-pic" style="font-family: ${face.replace(/"/g, "'")}">Aa</b><span>${name}</span>`, title, click: () => { if (plane.font !== f) { plane.font = f; compute(); } } });
   b.dataset.font = f;
   return b;
 }), true));

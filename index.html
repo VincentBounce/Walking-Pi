@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261208a">
+  <link rel="stylesheet" href="style.css?v=20261208b">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -30,11 +30,11 @@
         <div class="walk-head">
           <h2 id="walkHeading">Walk</h2>
         </div>
-        <div id="navSpace" class="nav-shapes" title="Where it goes: on the plane, in a 3D lattice, or on a surface"></div>
+        <div id="navSpace" class="nav-shapes"></div>
         <div id="shapesLabel" class="field-label"></div>
-        <div id="navShapes" class="nav-shapes" title="The shape of its cells"></div>
+        <div id="navShapes" class="nav-shapes"></div>
         <div id="tilesLabel" class="field-label" hidden></div>
-        <div id="torusTiles" class="nav-shapes" hidden title="The tiles of the surface" role="tablist"></div>
+        <div id="torusTiles" class="nav-shapes" hidden role="tablist"></div>
         <div id="sizeRow" hidden>  <!-- a surface's size, under its tiles -->
           <div class="field-label">Size</div>
           <div id="sizeBox">  <!-- − + its label and its slider, one block: hovered, its motif and its tooltip (see sizeTips) -->
@@ -79,8 +79,8 @@
         <h2 data-icon="turtle">Rule</h2>
         <button id="walkRuleHow" class="wide how-it-works" data-icon="glider" type="button" title="The rule in use, step by step: what each cell (each step) sees, and what it does (its card, clicked again, too)">How it works</button>  <!-- how the rule works (see walkTutorialToggle), on its first card -->
         <div id="navRules" class="mode-list" role="listbox"></div>  <!-- the rules of that shape, where there are several -->
-        <div id="walkOn" class="choice-row" title="Walk along the lines of the grid, or from cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">
-          <button id="walkOnGrid" type="button">Grid</button><button id="walkOnCells" type="button">Cells</button>
+        <div id="walkOn" class="choice-row">
+          <button id="walkOnGrid" type="button" title="Along the lines of the grid">Grid</button><button id="walkOnCells" type="button" title="From cell to cell, colouring the cells: on triangles and hexagons the choices at each step change, and so does the base">Cells</button>
         </div>  <!-- under the rules: along the grid, or on cells -->
         <label hidden>Walk mode (menu kept as the source of truth for the tabs in the header)
           <select id="mode">
@@ -394,7 +394,7 @@
 
       <section id="colourSection" hidden>  <!-- Life: alive or dead, or 2 to 12 civilisations -->
         <h2 data-icon="duel">Populations</h2>
-        <div id="colourBlocks" class="nav-shapes colour-blocks" title="Civilisations: a newborn takes the colour most of its live neighbours have; greyed: no fair spots for that many on this figure"></div>
+        <div id="colourBlocks" class="nav-shapes colour-blocks"></div>
       </section>
 
       <section id="startSection" hidden>  <!-- Life: how the cells start (the plane), or the hunt for a lasting start (the surfaces) -->
@@ -403,7 +403,7 @@
           <div id="lifeStartTabs" class="nav-shapes"></div>  <!-- the starts: Hunt (Random for blocks), Text, Digits, Draw: one choice, a tab group of tiles (see START_TABS) -->
           <div id="startText" class="start-panel" hidden>  <!-- Text: a word or an emoji drawn on the grid, its dark pixels alive -->
             <span class="field"><textarea id="startTextInput" class="custom" rows="10" maxlength="240" autocomplete="off" spellcheck="false" title="Words, letters or emoji, a line each (Enter: a new line); drawn by a click outside or ⌘ Enter"></textarea></span>
-            <div id="textFonts" class="nav-shapes" title="The font the words are laid in"></div>  <!-- its font (see TEXT_FONTS) -->
+            <div id="textFonts" class="nav-shapes"></div>  <!-- its font (see TEXT_FONTS) -->
           </div>
           <div id="startDraw" class="start-panel">  <!-- Draw: a brush (a cell, or a pattern turned as chosen), in a colour or the eraser -->
             <button id="drawFromStart" type="button" class="wide" data-icon="start" title="The cells drawn are its start's (gen 0): there, to see them as they are">Go to gen 0 to draw</button>  <!-- (greyed there, see updateStats) -->
@@ -416,7 +416,7 @@
           <div id="startDigits" class="start-panel" hidden></div>  <!-- Digits: the number whose digits lay the cells (see numberPicker) -->
         </div>
         <div id="huntRow" hidden>  <!-- Life, in 1 to 12 colours: a hunt for the longest life, or long, even battles -->
-          <div id="huntZones" class="nav-shapes" title="Where the random starts go: the whole grid (in colours, each its part of it) or patches of radius 1, 2 or 3 side by side round the middle"></div>
+          <div id="huntZones" class="nav-shapes"></div>
           <div id="huntModeLabel" class="block-label">Hunt mode</div>
           <div id="huntGoals" class="nav-shapes"></div>  <!-- what the hunt looks for, over its button -->
           <button id="huntBtn" type="button" class="wide"></button>  <!-- its words in its tooltip: the hunt and the zone (see renderHunt) -->
@@ -710,11 +710,11 @@
       </div>
       <div id="viewTools" class="stage-box display-menu">
         <div class="stage-head" id="viewHead">  <!-- the page and the sky behind a 3D view, tiles on the right: System always in sight; the sky, Light and Dark on its left while the box is open (see applyTheme) -->
-          <div id="themeButtons" class="nav-shapes head-tiles" title="The colours of the page: light, dark, or as the system is set"></div>
+          <div id="themeButtons" class="nav-shapes head-tiles"></div>
           <select id="theme" hidden>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-            <option value="system">System</option>
+            <option value="light" title="The page light">Light</option>
+            <option value="dark" title="The page dark">Dark</option>
+            <option value="system" title="The page light or dark, as the system is set">System</option>
           </select>
           <select id="sky" hidden>
             <option value="sky">Twilight</option>  <!-- Dawn on a light page (see renderSkyButtons) -->
@@ -774,10 +774,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261208a"></script>
-  <script src="punks.js?v=20261208a"></script>
-  <script src="loops.js?v=20261208a"></script>
-  <script src="emoji.js?v=20261208a"></script>
-  <script src="main.js?v=20261208a"></script>
+  <script src="pixelarticons.js?v=20261208b"></script>
+  <script src="punks.js?v=20261208b"></script>
+  <script src="loops.js?v=20261208b"></script>
+  <script src="emoji.js?v=20261208b"></script>
+  <script src="main.js?v=20261208b"></script>
 </body>
 </html>

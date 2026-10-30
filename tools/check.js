@@ -141,8 +141,8 @@ function checkMeshes(fail) {
 
 // after an action: no error, the link's mode the one shown, a surface's cells as many as said (the crawl's, the fuzz's)
 const wait = (ms) => new Promise((go) => setTimeout(go, ms));
-// the buttons shown with no words in their tooltip, their own nor their group's (see tipOf)
-const untipped = () => [...document.querySelectorAll('button, label')].filter((b) => b.offsetParent !== null && !tipOf(b).tip && !b.dataset.tipHtml)
+// the buttons shown with no words of their own in their tooltip (see tipOf; Size's − +, the words of their box, one control)
+const untipped = () => [...document.querySelectorAll('button, label')].filter((b) => { const { el, tip } = tipOf(b); return b.offsetParent !== null && !(tip && (el === b || el.dataset.tipHtml)); })
   .map((b) => `${b.closest('[id]:not(button)')?.id ?? ''} › ${((b.querySelector('.mode-name') ?? b.querySelector('span') ?? b).textContent.trim() || b.id).slice(0, 24)}`);
 function checkTips(fail) {
   const none = untipped();
