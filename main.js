@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.96';
+const VERSION = '0.2.97';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6938,10 +6938,13 @@ function symmetryMaps(kind, W, sym) {
   return symMemo.set(key, { none: turns, half: [turns[0], half], rotate: turns, mirror: [turns[0], across(turns[0]), across(half), half], kaleido: [...turns, ...turns.map(across)] }[sym]).get(key);
 }
 // the symmetries a start may have here: the grid's; Famous's and Anywhere's none (a pattern laid whole where it is, but the
-// copies taken from their first's: Famous's middle onto itself, Anywhere's gone out of the first part); with a block rule, those whose maps take each block onto one of its generation's, the rule turning their cells
+// copies taken from their first's: Famous's middle onto itself, Anywhere's gone out of the first part); in colours, a start
+// laid by parts, those whose maps take each colour's part onto one part whole (see partSymmetries); with a block rule, those
+// whose maps take each block onto one of its generation's, the rule turning their cells
 // alike (its states' bits in the copy's order; Ising's sides and the stellated cells' moves not seen to: none of them)
 function symmetriesHere(kind, W) {
-  const all = plane.start === 'random' && famousZone(hunt.zone) ? ['none'] : planeSymmetries(kind, W), M = walk.life?.margolus;
+  const K = walk.life ? lifeParts() : 1, byParts = K > 1 && (plane.start === 'random' || plane.start === 'text');  // (as symmetricStart colours them)
+  const all = (plane.start === 'random' && famousZone(hunt.zone) ? ['none'] : planeSymmetries(kind, W)).filter((y) => !byParts || partSymmetries(kind, W, K).includes(y)), M = walk.life?.margolus;
   if (!M) return all;
   const memo = (M.symmetric ??= new Map()), key = `${kind}|${W}`;
   const keeps = (maps) => !M.ising && !M.move && maps.every((f) => M.turns.every((turn) => {
@@ -6957,6 +6960,16 @@ function symmetriesHere(kind, W) {
   }));
   if (!memo.has(key)) memo.set(key, planeSymmetries(kind, W).filter((y) => y === 'none' || keeps(symmetryMaps(kind, W, y))));
   return memo.get(key).filter((y) => all.includes(y));
+}
+// the symmetries whose every copy of a colour's part is one part whole (a copy recoloured as the part it falls in, see
+// symmetricStart: Trio's thirds, a half turn cuts each across, none), whatever the grid or the parts: their maps and cells
+const partMemo = new Map();
+function partSymmetries(kind, W, K) {
+  const key = `${kind}|${W}|${K}|${hunt.zone === 'mirror'}|${colourMix && plane.seed}`;  // (Mixed: its parts drawn from its seed)
+  if (partMemo.has(key)) return partMemo.get(key);
+  const parts = huntParts(0, K), own = new Int32Array(walk.life.seed.length);
+  parts.forEach((part, i) => { for (const t of part) own[t] = i + 1; });
+  return partMemo.set(key, planeSymmetries(kind, W).filter((y) => symmetryMaps(kind, W, y).every((f) => parts.every((part) => part.every((t) => own[f(t)] === own[f(part[0])]))))).get(key);
 }
 const symmetryOf = (kind, W = walk.plane?.W) => (W && symmetriesHere(kind, W).includes(plane.sym) ? plane.sym : 'none');
 // a cell and its copies under the grid's symmetry (index y × row + x)
@@ -7942,7 +7955,7 @@ function renderSymmetry() {
   $('symmetryRow').hidden = !kind;
   $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
     return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
-      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none), and on Famous and Anywhere (their patterns laid whole where they are)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
+      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; in colours, as their parts do, each copy one part whole; the others: none), and on Famous and Anywhere (their patterns laid whole where they are)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
   }), true));
 }
 function renderPlaneRow() {
@@ -10115,19 +10128,24 @@ function brickPlaces(g) {
   for (let t = 0; t < g.n; t++) { const s = sums.get(key(t)); out[2 * t] = wrap(s[0] / s[4], P); out[2 * t + 1] = wrap(s[1] / s[4], Q); }
   return (g.brickPlaces = out);
 }
+// each colour's part: its places' open cells only (a wall's, round a grid in a hexagon or on a surface, no one's)
 function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  // (mirror: Wild mirror, see colouring; mixed: Mixed's, else each colour's own place)
+  const { start } = walk.life.nbr;
+  return partPlaces(r, K, mirror, mixed).map((part) => part.filter((t) => start[t] < start[t + 1]));
+}
+function partPlaces(r, K, mirror, mixed) {
   if (K === 1 && walk.life?.margolus && walk.geo?.torus) return [huntParts(r, 3, false, false)[1]];  // (a reversible sheet: one colour's, Trio's second, in view: a torus's middle square, see lifeParts, patternFrame)
   if (mixed && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
     const parts = Array.from({ length: K }, () => []);
     for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(plane.seed + 7, t) * K)].push(t);
     return parts;
   }
-  const L = walk.life, g = walk.geo, n = L.seed.length, [cols, rows] = COLOUR_GRID[K], open = (t) => L.nbr.start[t] < L.nbr.start[t + 1];
+  const L = walk.life, g = walk.geo, n = L.seed.length, [cols, rows] = COLOUR_GRID[K];
   const parts = Array.from({ length: K }, () => []);
   if (walk.plane) {
     const F = planeFrame(), block = (t) => F.block(t, cols, rows);
     if (wallSlices(K)) { const { part } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]]?.push(t); return parts; } return parts.map((_, i) => lifePatch(r, middleCells(i, K))); }
-    if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[block(t)].push(t); return parts; }  // (a wall's cells none's: a grid in a hexagon, those round it)
+    if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
     if (K === 1) return [lifePatch(r)];
     const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
     return parts.map((_, i) => lifePatch(r, near
@@ -10156,7 +10174,6 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  
     if (mirror) return hull.groups.map((gr) => gr.flatMap(hullFaceCells));  // (Mirror: its two opposite faces only)
     const own = hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [hull.mids[q], k])), owner = new Map(hull.groups.flatMap((gr, k) => (hull.pairs ? [gr[0]] : gr).map((q) => [q, k])));
     for (let t = 0; t < n; t++) {
-      if (!open(t)) continue;
       const q = Math.floor(t / (g.size * g.size));
       if (owner.has(q)) { parts[owner.get(q)].push(t); continue; }
       const far = own.map(([m]) => Math.hypot(g.cen[3 * t] - m[0], g.cen[3 * t + 1] - m[1], g.cen[3 * t + 2] - m[2])), least = Math.min(...far), ks = new Set(own.flatMap(([, k], q) => (far[q] < least + 1e-9 ? [k] : [])));
@@ -10178,7 +10195,7 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  
     const k = f < 0 ? -1 : colourOf(col.items, col.colour, mids[f]);
     return k >= 0 ? k : colourOf(col.items, col.colour, c);
   };
-  if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
+  if (!r) { for (let t = 0; t < n; t++) parts[K === 1 ? 0 : nearestSpot(t)]?.push(t); return parts; }
   if (K === 1) return [lifePatch(r)];
   return col.patch.map((i) => lifePatch(r, centreCells(col.items[i])));  // round the open cells nearest each spot
 }
