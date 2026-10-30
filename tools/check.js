@@ -90,10 +90,10 @@ function checkMeshes(fail) {
   }
   // the six-fold grids with walls in a hexagon (see planeShape): their walls closed round the live cells, and the live
   // cells turning onto each other round its centre
-  const saved = { torus: plane.torus };
+  const saved = { torus: plane.torus, shape: plane.shape };
   for (const kind of ['hex', 'tri', 'kite', ...Object.keys(TILINGS), ...Object.keys(RECTS)]) {
     if (!tilingOf(kind) && !PLANE_PER[kind] || !hexagonFits(kind)) continue;  // (a rectangle's cells: built when first asked for, if any)
-    Object.assign(plane, { torus: false });
+    Object.assign(plane, { torus: false, shape: 'hex' });
     const W = planeW(kind, 32), row = planeRow(kind, W), sh = planeShape(kind, W);
     if (!sh) continue;  // (started on a page of blocks: no hexagon there)
     const dead = new Set(sh.dead), at = (t) => planeCorners(kind, t % row, Math.floor(t / row));
