@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.95';
+const VERSION = '0.2.96';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9801,7 +9801,7 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
     const same = top.findIndex((x) => x.T === r.T && (K === 1 ? x.P === r.P && x.peak === r.peak : x.end === r.end || (x.contacts === r.contacts && Math.abs(x.balance - r.balance) < 1e-6)));
     if (same >= 0 && top[same].score >= r.score) return false;  // the same run, as good already
     if (same >= 0) top.splice(same, 1);
-    top.push({ ...r, seed, pick: seed.pick });
+    top.push({ ...r, seed, pick: seed.pick, id: ++huntKept });  // (its own number: two alike in T and end still two)
     top.sort((x, y) => y.score - x.score);
     top.length = Math.min(top.length, 8);
     return true;
@@ -9849,6 +9849,7 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
   return hunt;
 }
 const hunt = { run: null, zone: 'full', top: [], status: '', picked: null, goal: 'longest' };  // goal in one colour: longest, dies, peak or cover (colours: a battle)
+let huntKept = 0;  // the results kept so far, all hunts: each one's number its identity (picked: the one played's)
 // What the hunt looks for in one colour: the longest life, the longest till it dies out, the most cells alive at once,
 // or every cell alive once the soonest (seen in Activity); the last two from a start in a zone, not the whole grid
 // (colours: the longest battle, the goals hidden). Each: its mark, its name, its words
@@ -9864,8 +9865,7 @@ function pickGoal(goal) {
   hunt.status = '';
   renderHunt();
   syncLink();
-}  // picked: the result played (its T and end)
-const huntId = (r) => `${r.T}|${r.end}`;
+}
 // The zones: patches of radius 1 to 6 round each spot (Spark … Meadow), the whole grid (Wild), the rule's
 // patterns (Famous); their random starts each as dense as drawn between 10 and 70 % (the records often
 // come from sparse starts, the long lives on average from dense ones: PATTERNS.md, Densities)
@@ -10287,7 +10287,7 @@ function renderHunt() {
     const q = K === 1 ? r.peak / r.live : r.balance, [hi, lo] = K === 1 ? [4, 2] : [0.6, 0.3];
     return q >= hi ? ['#30a46c', K === 1 ? 'spreads far' : 'even'] : q >= lo ? ['#f0a020', K === 1 ? 'spreads some' : 'uneven'] : ['#e5484d', K === 1 ? 'spreads little' : 'one-sided']; };
   // built again only when the best or the one picked change, not at each count: a click lands on what was pressed
-  const listKey = `${hunt.top.map(huntId).join()}|${hunt.picked}|${K}`;
+  const listKey = `${hunt.top.map((r) => r.id).join()}|${hunt.picked}|${K}`;
   if (listKey === hunt.listKey) return;
   hunt.listKey = listKey;
   $('huntTop').replaceChildren(...hunt.top.map((r) => {
@@ -10300,9 +10300,9 @@ function renderHunt() {
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r), why = K > 1 ? (r.contacts ? `balance ${r.balance.toFixed(2)}: how evenly its colours keep being born (1 all alike, 0 one alone; green from 0.6, orange from 0.3, else red)` : 'its colours never touched: no battle')
       : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: grown ${(r.peak / r.live).toFixed(1)} times (green from 4, orange from 2, else red)`;
-    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, on: huntId(r) === hunt.picked });  // (the one played, wherever it is now)
+    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail, on: r.id === hunt.picked });  // (the one played, wherever it is now)
     b.dataset.tipHtml = `<b class="tip-name">${name}</b>${detail}<br><span style="color:${colour}">●</span> ${word}, ${why}`;  // (its light in its tooltip, in its colour)
-    const pick = () => (huntId(r) === hunt.picked && !hunt.run ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
+    const pick = () => (r.id === hunt.picked && !hunt.run ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
     b.addEventListener('click', (e) => { if (!e.detail) pick(); });  // from the keyboard
     return b;
@@ -10311,8 +10311,8 @@ function renderHunt() {
 // a result played: its start, kept picked (lit) until another one is
 function playHuntResult(r) {
   if (hunt.run) stopHunt();  // a result played: the hunt stops there
-  hunt.picked = huntId(r);
-  if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; setLifeSeed(zoneSeed(), { zone: hunt.zone }); renderHunt(); return; }
+  hunt.picked = r.id;
+  if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; layZone(); renderHunt(); return; }
   // (icons: by their names, pop=icon24.star.heart; an emoji's, pop=emoji.🙂)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
@@ -10341,6 +10341,12 @@ function zoneSeed() {
   }
   return seed;
 }
+// the zone's start (its icons, plane.icons; its seed, plane.seed) laid as any start: its symmetry too (see startColours)
+function layZone() {
+  const seed = new Uint8Array(walk.life.seed.length);
+  startColours(seed);
+  setLifeSeed(seed, { zone: hunt.zone });
+}
 function pickZone(zone) {
   hunt.zone = zone;
   hunt.top = [];
@@ -10349,13 +10355,13 @@ function pickZone(zone) {
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
   plane.icons = Array.from({ length: lifeParts() }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
   if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
-  else { const seed = new Uint8Array(walk.life.seed.length); startColours(seed); setLifeSeed(seed, { zone }); }  // (laid as any start: its symmetry too)
+  else layZone();
   renderHunt();
 }
 function huntClick() {
   if (hunt.run) {  // Stop hunt and play: the one picked if still among the best, else the best
     stopHunt();
-    const r = hunt.top.find((x) => huntId(x) === hunt.picked) ?? hunt.top[0];
+    const r = hunt.top.find((x) => x.id === hunt.picked) ?? hunt.top[0];
     if (r) { playHuntResult(r); play(true); }
     return;
   }
