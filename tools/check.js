@@ -124,9 +124,9 @@ function checkMeshes(fail) {
     if (!tilingOf(kind) && !PLANE_PER[kind] || APERIODIC[kind]) continue;
     Object.assign(plane, { torus: true });
     const W = colourW(kind, sideW(kind, 32)), row = planeRow(kind, W), { start, list } = planeNeighbours(kind, W, true), c0 = cellMiddle(kind, 0, 0);
-    const P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((c) => [c[0] - c0[0], c[1] - c0[1]]), mid = (t) => cellMiddle(kind, t % row, Math.floor(t / row)), reach = 3 * cellWidth(kind);
+    const P = [cellMiddle(kind, row, 0), cellMiddle(kind, 0, W)].map((c) => [c[0] - c0[0], c[1] - c0[1]]), mid = cellMids(kind, W), reach = 3 * cellWidth(kind);
     let far = 0;
-    for (let t = 0; t < row * W; t++) for (let q = start[t]; q < start[t + 1]; q++) {
+    for (let t = 0; t < planeGrid(kind, W).n; t++) for (let q = start[t]; q < start[t + 1]; q++) {
       const a = mid(t), b = mid(list[q]);
       if (Math.min(...[-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => Math.hypot(b[0] + i * P[0][0] + j * P[1][0] - a[0], b[1] + i * P[0][1] + j * P[1][1] - a[1])))) > reach) far++;
     }

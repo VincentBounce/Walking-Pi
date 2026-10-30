@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.115';
+const VERSION = '0.2.116';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7741,13 +7741,14 @@ function iconCells(N, set) {
 }
 // the cells' states at generation 0, as plane says
 function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell of a soup one of them
-  const W = planeW(kind, plane.side), { n, at } = planeGrid(kind, W), seed = new Uint8Array(n);
+  const W = planeW(kind, plane.side), row = planeRow(kind, W), { n, at, xy } = planeGrid(kind, W), seed = new Uint8Array(n);
   const put = (x, y, c) => { const t = at(x, y); if (t >= 0) seed[t] = c; };
+  const place = (t) => { const [x, y] = xy(t); return y * row + x; };  // (a soup's draws by a cell's place, not its order: the same soup whichever way its cells are read)
   // (the symmetry: after, whatever the start, see symmetricStart)
   if (plane.start === 'digits') digitsOn(seed, seq);
   else if (plane.start === 'random') {
     const p = plane.density / 100;
-    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, t) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, t) * K) : 1;
+    for (let t = 0; t < n; t++) if (cellRandom(plane.seed, place(t)) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, place(t)) * K) : 1;
   } else {
     // cells drawn: a colour of another count of colours as one of these (one colour: alive), a dying state kept
     for (const [k, c] of population) put(...cellXY(k), c <= K * (C - 1) ? c : K > 1 ? ((c - 1) % K) + 1 : 1);  // a state of these colours and states, else alive
@@ -8162,12 +8163,19 @@ function shapeW(kind, W0) {
 }
 const hexagonFits = (kind) => !APERIODIC[kind] && PATTERN_TURNS[baseOf(kind)] === 6;  // (walls in a hexagon: a six-fold grid's)
 // A plane grid's cells: each an index t and its place (x, y) on the lattice (planeCorners', cellMiddle's), and back (−1: none
-// there): a rectangle's or a rhombus's row by row, t = y × row + x; a hexagon's wound round its middle (see planeShape), its own
-// cells only, none dead
+// there): a rhombus's row by row, t = y × row + x; a slanted grid's rectangle (see RECTS) row by row as well, its rows of
+// motifs (each two lattice rows or more) a lattice row at a time (its cells' nat), not a motif's cells down then the next;
+// a hexagon's wound round its middle (see planeShape), its own cells only, none dead
 const gridMemo = new Map();
-function planeGrid(kind, W) {
-  const row = planeRow(kind, W), of = planeShape(kind, W)?.cells, key = `${kind}|${W}|${row}|${!!of}`, inside = (x, y) => x >= 0 && y >= 0 && x < row && y < W;
+const rectCells = (R, W, row) => {  // (a rectangle's places, row by row: in each row of motifs, each lattice row along it)
+  const m = R.polys.length, rows = [...new Set(R.nat.map(([, y]) => y))].sort((a, b) => a - b), out = [];
+  for (let y = 0; y < W; y++) for (const r of rows) for (let x0 = 0; x0 < row; x0 += m) for (let s = 0; s < m; s++) if (R.nat[s][1] === r) out.push(y * row + x0 + s);
+  return out;
+};
+function planeGrid(kind, W, row = planeRow(kind, W)) {  // (row: a torus's blocks' own, see planeBlocks)
+  const key = `${kind}|${W}|${row}|${shaped(kind)}`, inside = (x, y) => x >= 0 && y >= 0 && x < row && y < W;
   if (gridMemo.has(key)) return gridMemo.get(key);
+  const of = (shaped(kind) && planeShape(kind, W)?.cells) || (RECTS[kind] && rectCells(RECTS[kind], W, row));
   const n = APERIODIC[kind]?.(W).n ?? row * W;  // (a circle's: its cells, then its walls)
   if (!of) return gridMemo.set(key, { n, xy: (t) => [t % row, Math.floor(t / row)], at: (x, y) => (inside(x, y) && y * row + x < n ? y * row + x : -1) }).get(key);
   const index = new Int32Array(row * W).fill(-1);
@@ -9502,8 +9510,8 @@ function planeBlocks(kind, W, torus, stars = !BLOCKS[baseOf(kind)], four = false
     const dx = x - o[0], dy = y - o[1], u = (dx * P[1][1] - dy * P[1][0]) / D, v = (P[0][0] * dy - P[0][1] * dx) / D, fu = u - Math.floor(u + 1e-9), fv = v - Math.floor(v + 1e-9);
     return [o[0] + fu * P[0][0] + fv * P[1][0], o[1] + fu * P[0][1] + fv * P[1][1]];
   };
-  // (walled, the grid's own cells, see planeGrid: a hexagon's; a torus, its sheet's, its row of cols)
-  const { n, xy } = torus ? { n: W * row, xy: (t) => [t % row, Math.floor(t / row)] } : planeGrid(kind, W);
+  // (the grid's own cells, see planeGrid: a hexagon's, a rectangle's row by row; its row of cols)
+  const { n, xy } = planeGrid(kind, W, row);
   const blocks = cellBlocks(blockSet(kind, stars, four), n, (t) => {
     const pts = planeCorners(kind, ...xy(t))?.slice().reverse();  // (the other way round, as a torus's tiles on its sheet: turned over, facing out)
     return pts ? { pts, ids: pts.map((q) => pointKey(...home(q))), mid: cellMiddle(kind, ...xy(t)) } : null;
