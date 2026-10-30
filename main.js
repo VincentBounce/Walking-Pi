@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.109';
+const VERSION = '0.2.110';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6902,6 +6902,9 @@ const DRAW_PATTERNS = [
   ['pythagoraslife-ship', 'pythagorean', ['B28/S28'], 'Spaceship', 'A.2A$3.A$2.A!', 'flies, period 2 · 5 cells'],
   ['pythagorassparks-osc', 'pythagorean', ['B267/S3457'], 'Oscillator', 'A.2A$3.A!', 'period 3 · 4 cells'],
   ['pythagorastrails-ship', 'pythagorean', ['B23/S13/C8'], 'Spaceship', 'G.G$E.EG$C.CE$A.AC$3.A!', 'flies, period 2 · 12 cells'],
+  ['elongatedlife-osc', 'elongated', ['B3/S023'], 'Oscillator', '3A.2A$A!', 'period 6 · 6 cells'],
+  ['elongatedlife-meth', 'elongated', ['B3/S023'], 'Methuselah', '.A.2A.A$5A2.A!', 'settles at generation 780 · 10 cells'],
+  ['elongatedfuses-meth', 'elongated', ['B3/S0239'], 'Methuselah', '3.A$3.3A$A3.2A!', 'settles at generation 2,183 · 7 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', 'A.B.BAD.D2.C$.A.BABCD.D!', 'flies, period 4 · 14 cells'],
   ['prismtrails-ship', 'prismatic', ['B2/S1/C8'], 'Spaceship', '2.G.GFEDE.C.CB3A$F2.G.GDEBE.C.C.A.A!', 'flies, period 4 · 23 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', 'A.B.BAD.D2.C$.2AB.B.DCD!', 'flies, period 4 · 14 cells'],
@@ -8703,7 +8706,7 @@ const RULE_ICONS = {
   'B257/S367': '.oo..,ooo.o,..ooo,.o.o.,.....', 'B245/S134/C5': '.....,.oo+.,ooo+.,..o+.,.....',
   // the new tilings' rules: a picture each from its text (mirrored; not drawn by hand)
   'B25/S357': '.....,oo.oo,.....,o...o,.o.o.', 'B23/S036/C4': '..o..,.+o+.,o...o,.o.o.,o.+.o',
-  'B3/S023': 'o.o.o,.....,.ooo.,o...o,o...o', 'B39/S0239': 'o...o,o...o,ooooo,.o.o.,.....',
+  'B3/S023': 'o.o.o,.....,.ooo.,o...o,o...o', 'B39/S0239': 'o...o,o...o,ooooo,.o.o.,.....', 'B3/S0239': '..+..,..o..,.ooo.,.o.o.,.ooo.',  // (Elongated fuses: a candle)
   'B26/S3578/C3': 'oo.oo,.o.o.,+.o.+,o+o+o,o...o',
   'B24/S456/C4': '..o..,.....,.+o+.,.o.o.,o...o',
   'B367/S015': 'oo.oo,.ooo.,o...o,.o.o.,o.o.o',
