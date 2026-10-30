@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.98';
+const VERSION = '0.2.99';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1978,6 +1978,7 @@ const ICONS = (() => {
     triangleFilled: pathEl(pathOf(tri), 'f'),
     hexagon: pathEl(pathOf(hex)),
     hexagonFilled: pathEl(pathOf(hex), 'f'),
+    rhombus: pathEl('M2 17.2H14L20 6.8H8Z'),  // a rhombus of 60°: a six-fold grid's array, uncut
     king: pathEl('M12 3V21M3 12H21M5.6 5.6L18.4 18.4M18.4 5.6L5.6 18.4'),  // the 8 ways out
     pentagons: pathEl('M7 7L9.3 12H14.7L17 7L12 4.7ZM7 17L12 19.3L17 17L14.7 12H9.3ZM7 7L9.3 12L7 17L2 14.7V9.3ZM17 7L22 9.3V14.7L17 17L14.7 12Z'),  // four of the Cairo tiling's: two across a bar, two at its ends
     ammann: [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const e = (j) => [Math.cos((j * Math.PI) / 4), Math.sin((j * Math.PI) / 4)], a = e(k), b = e(k + 1), s = 10 / (2 * Math.cos(Math.PI / 8)), pt = ([x, y]) => `${(12 + x * s).toFixed(1)} ${(12 - y * s).toFixed(1)}`;
@@ -2117,7 +2118,11 @@ const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"
 $('planeEdges').append(
   tile({ pic: icon('bricks'), text: 'Walls', id: 'edgeWalls', toggle: true, byDefault: 'off', title: "Walls: the cells past the grid's edges always dead; off, a torus (its edges glued, left to right and top to bottom: what leaves on one side comes back on the other)", click: () => { plane.torus = !plane.torus; if (plane.torus) spaceTime = false; compute(); } }),
   tile({ pic: icon('stacks'), text: 'Stacks', id: 'spaceTimeTile', toggle: true, byDefault: 'off', title: 'Stacks: the generations stacked up, in 3D, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With Walls: through a torus\'s edges no tree grows',
-    click: () => { spaceTime = !spaceTime; if (spaceTime) plane.torus = false; $('perspective').checked = perspectiveFor(MODES[$('mode').value], 0); compute(); } }));
+    click: () => { spaceTime = !spaceTime; if (spaceTime) plane.torus = false; $('perspective').checked = perspectiveFor(MODES[$('mode').value], 0); compute(); } }),
+  // with walls, a six-fold grid in a hexagon round its middle (see planeShape) or its rhombus of cells as stored, uncut
+  tileGroup([['hexagon', 'Hexagon', false, 'Hexagon: the grid cut to a hexagon round its middle, its cells outside it dead (the wall)'],
+             ['rhombus', 'Rhombus', true, 'Rhombus: the grid as it is stored, a rhombus of cells, uncut: no dead cell but its walls round it']].map(([pic, text, rhombus, title]) =>
+    tile({ pic: icon(pic), text, id: `outline${text}`, byDefault: rhombus ? '' : 'yes', title, click: () => { if (plane.rhombus !== rhombus) { plane.rhombus = rhombus; compute(); } } }))));
 // an element's HTML with links in it, written again only when it changes: against what was written, not its HTML now (a link
 // hovered has its title turned into data-tip, see the tooltips: rewritten each frame, the link under the mouse replaced, its click
 // lost), and not while one of its links is pressed (Play: its text changes each frame, the click between two)
@@ -6727,7 +6732,7 @@ const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW 
 // side: the grid's, the nearest it offers to the last picked (by hand or a link: kept, whatever grid comes); icons: an Icon
 // zone's, one a colour (or one for all)
 const plane = { get side() { const k = planeKind(MODES[$('mode').value].plane); return nearCells(planeSides(k), (f) => planeCells(f, k), picked ?? planeCells(48, k)); },
-                torus: true, text: APP_TITLE, font: 'sans', icons: [0],
+                torus: true, rhombus: false, text: APP_TITLE, font: 'sans', icons: [0],
                 start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none' };  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
@@ -6972,7 +6977,7 @@ function symmetriesHere(kind, W) {
 // symmetricStart: Trio's thirds, a half turn cuts each across, none), whatever the grid or the parts: their maps and cells
 const partMemo = new Map();
 function partSymmetries(kind, W, K) {
-  const key = `${kind}|${W}|${K}|${hunt.zone === 'mirror'}|${colourMix && plane.seed}`;  // (Mixed: its parts drawn from its seed)
+  const key = `${gridKey()}|${K}|${hunt.zone === 'mirror'}|${colourMix && plane.seed}`;  // (Mixed: its parts drawn from its seed)
   if (partMemo.has(key)) return partMemo.get(key);
   const parts = huntParts(0, K), own = new Int32Array(walk.life.seed.length);
   parts.forEach((part, i) => { for (const t of part) own[t] = i + 1; });
@@ -7932,7 +7937,8 @@ function startLead(number, seeded) {  // its start in words, on any grid (the pl
   return `${how} on ${where}`;
 }
 function planeFromSetup(s) {
-  plane.torus = Number(s.e) !== 1;
+  plane.torus = ![1, 2].includes(Number(s.e));
+  plane.rhombus = Number(s.e) === 2;  // (e=2: walls, a six-fold grid as a rhombus)
   if (s.s !== undefined) picked = planeCells(Number(s.s));  // (the grid at the nearest it offers, see plane.side; as its edges are: walls, a hexagon's cells)
   spaceTime = Number(s.sp) === 1 && !plane.torus;  // (3D: with walls only)
   plane.sym = SYMMETRIES[s.y] ? s.y : 'none';
@@ -8008,6 +8014,7 @@ function renderPlaneRow() {
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { picked = planeCells(sides[k]); compute(); });
   $('planeOutline').hidden = !!APERIODIC[kind];  // (a grid that never repeats: always walls, nothing to choose)
   setTile($('edgeWalls'), { on: !planeTorus(kind) });
+  for (const [id, rhombus] of [['outlineHexagon', false], ['outlineRhombus', true]]) setTile($(id), { on: hexagonFits(kind) && !planeTorus(kind) && plane.rhombus === rhombus, can: hexagonFits(kind) && !planeTorus(kind), greyed: 'but on a six-fold grid with walls (triangles, hexagons…; squares and parallelograms: a rectangle)' });
   setTile($('spaceTimeTile'), { on: spaceTimeOn(), can: spaceTimeApplies(), greyed: 'but on squares (not Reversible)' });
   renderSymmetry();
   $('startDraw').hidden = plane.start !== 'draw';
@@ -8074,7 +8081,7 @@ function sideOf(kind, W, nbr) {
 // middle, corner or side's middle that its cells round turn onto) the nearest its middle, the biggest that keeps the
 // grid's edge out of it by a cell's width: { dead, walls: [[x, y], …] }, else null. Its cells
 // as the whole grid's (patterns, symmetry and hunts the same); a cut by a distance: cells as far, all in or all out
-const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind);  // (a six-fold grid with walls: always a hexagon)
+const shapeMemo = new Map(), shaped = (kind) => hexagonFits(kind) && !planeTorus(kind) && !plane.rhombus;  // (a six-fold grid with walls: a hexagon, but as a rhombus, uncut)
 function planeShape(kind, W) {
   if (!shaped(kind)) return null;
   const row = planeRow(kind, W), key = `${kind}|${W}|${row}`;  // (its row as its colours make it: a hexagon's cells by their numbers)
@@ -9910,9 +9917,9 @@ const ICON_SETS = { icon: { P: 24, pixel: (i) => iconPixel(ICON_BITS[i]), names:
 // (its picture as many pixels wide as the cells it is laid on, a pixel a cell: P null, see setFits, iconChoices)
 const textSet = () => ({ P: null, pixel: (n, P) => picturePixel(plane.text, P, plane.font), names: [plane.text], word: 'text', label: () => plane.text, source: `text ${plane.text} in ${plane.font}` });  // (its source: the picture, its font too, see iconChoices' memo)
 // the grid in use, for the caches built on it (not its mode's name: Turned, another grid of the same mode): the plane's,
-// by its kind, side and torus; a surface's, its mesh, a number of its own
+// by its kind, side, torus and hexagon (see shaped); a surface's, its mesh, a number of its own
 let gridCount = 0;
-const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.row}|${walk.plane.torus}` : `#${(walk.geo.gridId ??= ++gridCount)}`);
+const gridKey = () => (walk.plane ? `${walk.plane.kind}|${walk.plane.W}|${walk.plane.row}|${walk.plane.torus}|${shaped(walk.plane.kind)}` : `#${(walk.geo.gridId ??= ++gridCount)}`);
 const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an icon, a punk, an emoji)
 // A picture laid two ways (each colour's: see iconLay, its part's cells sampled): on squares, an icon's or a punk's
 // 24 pixels each a whole count of cells, 24 × N wide (pixels whole); elsewhere, and an emoji or a word anywhere, its pixels
@@ -10042,7 +10049,7 @@ const patchSpots = (sphere, K) => { const c = colouring(sphere, K); return c.pat
 let sliceMemo = null;
 const wallSlices = (K, kind = walk.plane?.kind) => !!kind && !planeTorus(kind) && K > 1 && ((K !== 2 && K !== 4) || !!APERIODIC[kind] || shaped(kind));  // (in a circle or a hexagon: always; kind: the plane's in use, else a size's to tell)
 function planeSlices(K) {
-  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${kind}|${W}|${row}|${K}|${turn}`;
+  const { kind, W, row } = walk.plane, n = W * row, turn = planeTurn(), key = `${gridKey()}|${K}|${turn}`;
   if (sliceMemo?.key === key) return sliceMemo;
   // as seen (turned, see planeTurn), from red's, its middle up and to the left (½ a slice left of straight up), clockwise;
   // in a circle or a hexagon: round its own middle, slices of one angle each (a hexagon's from a corner: on 3, 6 or 12
@@ -11062,7 +11069,7 @@ function getSetup() {
   if (mode.life && !mode.margolus && lifeColours > 1 && colourMix) s.mx = 1;  // (Mixed)
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
-    if (!plane.torus) s.e = 1;
+    if (!plane.torus) s.e = plane.rhombus && hexagonFits(MODES[w]?.plane ?? '') ? 2 : 1;
     if (walk.plane && symmetryOf(walk.plane.kind) !== 'none') s.y = symmetryOf(walk.plane.kind);
     if (plane.start === 'draw' && population.size) s.p = populationRle(population);
     if (spaceTimeOn()) s.sp = 1;  // (Space-time)
