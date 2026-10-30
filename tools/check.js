@@ -441,6 +441,29 @@ async function checkKnown(fail) {
     else if (bad) fail(`${link}: its start not symmetric (${bad} cells unlike their copies)`);
     else if (by.length > 1 && new Set(by).size > 1) fail(`${link}: its colours unequal (${by.join(', ')})`);
   }
+  // each symmetry a grid offers kept 60 generations on (a grid in a hexagon: about its own middle, v0.2.89): squares and the
+  // grids in a hexagon all four, Florets no mirror (its tiles have none), hexagons' blocks none (their blocks not onto blocks)
+  for (const [w, offers] of [['life2d', 'half rotate mirror kaleido'], ['blocks2d', 'half rotate mirror kaleido'], ['life2dHex', 'half rotate mirror kaleido'],
+    ['life2dTri', 'half rotate mirror kaleido'], ['life2dDual56', 'half rotate mirror kaleido'], ['life2dFloret', 'half rotate'], ['blocks2dHex', '']]) {
+    location.hash = `#w=${w}&s=32&e=1&pop=random.30.1`;
+    await wait(1500);
+    const { kind, W } = walk.plane, has = Object.keys(symmetriesHere(kind, W)).filter((y) => y !== 'none').join(' ');
+    checked++;
+    if (has !== offers) fail(`${w}: symmetries ${has || 'none'}, known ${offers || 'none'}`);
+    for (const y of has ? has.split(' ') : []) {
+      plane.sym = y;
+      reseedStart();
+      await wait(600);
+      restart();
+      advanceTo(60);
+      const a = walk.life.alive;
+      let bad = 0;
+      for (let t = 0; t < a.length; t++) for (const c of cellCopies(kind, W, t)) if ((a[c] > 0) !== (a[t] > 0)) bad++;
+      checked++;
+      if (bad) fail(`${w} ${y}: at gen ${cur}, ${bad} cells unlike their copies`);
+    }
+    plane.sym = 'none';
+  }
   // a hunt: of the 2^14 starts of 14 cells (radius 2's first), the 8 longest
   location.hash = '#w=life2d&r=B3/S23&s=48&pop=random.49.5';
   await wait(800);
