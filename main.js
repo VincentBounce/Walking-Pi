@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.84';
+const VERSION = '0.2.85';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2452,16 +2452,20 @@ function syncNumberMenu() {
 // a grid of tiles showing the symbol, several per row, the name and the formula on hover. The tab shown: the number's own,
 // till another is picked (a picked number: its own again). The helper menus of the primes (which Mersenne, which primorial,
 // what size) sit right under the Primes group (every group made, those of other tabs hidden: the menus kept in the page)
-const NUMBER_TABS = [['Constants', ['Constants', 'Sequences']], ['Fractions', ['Fractions']], ['Functions', ['𝑓']], ['Primes', ['Primes']]];
+const NUMBER_TABS = [['Constants', ['Constants', 'Sequences'], 'Famous constants (π, e, φ…) and sequences laid as digits (Champernowne, random, prime gaps)'],
+  ['Fractions', ['Fractions'], 'Fractions: their digits come back round a loop (the rosettes found on the turtles)'],
+  ['Functions', ['𝑓'], 'Numbers made by a formula (√2, π², ln 2, ζ(3)…), to edit in Formula'],
+  ['Primes', ['Primes'], 'Primes as whole numbers (Mersenne, primorial, random) and the prime constant']];  // (name, its groups, its tooltip)
 let numberTab = null, numberShown = null;  // (the tab picked; the number shown when it was)
 function renderNumberPicker(active) {
   if (active !== numberShown) [numberShown, numberTab] = [active, null];
   const tab = numberTab ?? NUMBER_TABS.find(([, groups]) => groups.includes(PRESETS[active]?.group))?.[0] ?? NUMBER_TABS[0][0];
   const shown = NUMBER_TABS.find(([name]) => name === tab)[1], tabs = document.createElement('div');
   tabs.className = 'choice-row';
-  tabs.append(...NUMBER_TABS.map(([name]) => {
+  tabs.append(...NUMBER_TABS.map(([name, , title]) => {
     const b = document.createElement('button');
     b.type = 'button';
+    b.title = title;
     b.textContent = name;
     b.classList.toggle('active', name === tab);
     b.addEventListener('click', () => { numberTab = name; renderNumberPicker(active); });
