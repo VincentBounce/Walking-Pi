@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.92';
+const VERSION = '0.2.93';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6937,11 +6937,11 @@ function symmetryMaps(kind, W, sym) {
   const turns = Array.from({ length: N }, (_, k) => turn(k)), half = turn(N / 2), across = (f) => (t) => f(m[t]);
   return symMemo.set(key, { none: turns, half: [turns[0], half], rotate: turns, mirror: [turns[0], across(turns[0]), across(half), half], kaleido: [...turns, ...turns.map(across)] }[sym]).get(key);
 }
-// the symmetries a start may have here: the grid's; with a block rule, those whose maps take each block onto one of its
-// generation's, the rule turning their cells alike (its states' bits in the copy's order; Ising's sides and the
-// stellated cells' moves not seen to: none of them)
+// the symmetries a start may have here: the grid's; Famous's none (its patterns at their spots, the middle's copied onto
+// itself); with a block rule, those whose maps take each block onto one of its generation's, the rule turning their cells
+// alike (its states' bits in the copy's order; Ising's sides and the stellated cells' moves not seen to: none of them)
 function symmetriesHere(kind, W) {
-  const all = planeSymmetries(kind, W), M = walk.life?.margolus;
+  const all = plane.start === 'random' && hunt.zone === 'centred' ? ['none'] : planeSymmetries(kind, W), M = walk.life?.margolus;
   if (!M) return all;
   const memo = (M.symmetric ??= new Map()), key = `${kind}|${W}`;
   const keeps = (maps) => !M.ising && !M.move && maps.every((f) => M.turns.every((turn) => {
@@ -6955,8 +6955,8 @@ function symmetriesHere(kind, W) {
     }
     return true;
   }));
-  if (!memo.has(key)) memo.set(key, all.filter((y) => y === 'none' || keeps(symmetryMaps(kind, W, y))));
-  return memo.get(key);
+  if (!memo.has(key)) memo.set(key, planeSymmetries(kind, W).filter((y) => y === 'none' || keeps(symmetryMaps(kind, W, y))));
+  return memo.get(key).filter((y) => all.includes(y));
 }
 const symmetryOf = (kind, W = walk.plane?.W) => (W && symmetriesHere(kind, W).includes(plane.sym) ? plane.sym : 'none');
 // a cell and its copies under the grid's symmetry (index y × row + x)
@@ -7935,6 +7935,16 @@ function startFromSetup(s) {
 // the grid's size, its edges and its start, as the controls say (the patterns and the turns of a
 // square on squares only)
 let surfaceDraw = false;  // a surface's Draw tab open: its patterns shown, greyed (the start stays as it was); a view of this game only, closed by a new one (see compute), as its link has it
+// Symmetry, under the zones (a zone's sub-mode): the grid's (see symmetriesHere), those it has not greyed; its inputs the grid,
+// the rule, the start and its zone (see renderPlaneRow, renderHunt)
+function renderSymmetry() {
+  const kind = MODES[$('mode').value].plane, has = walk.plane ? symmetriesHere(walk.plane.kind, walk.plane.W) : ['none'], now = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
+  $('symmetryRow').hidden = !kind;
+  $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
+    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
+      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none), and on Famous (its patterns at their spots)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
+  }), true));
+}
 function renderPlaneRow() {
   const kind = MODES[$('mode').value].plane;
   const blocks = !!MODES[$('mode').value].margolus;
@@ -7979,12 +7989,7 @@ function renderPlaneRow() {
   $('planeOutline').hidden = !!APERIODIC[kind];  // (a grid that never repeats: always walls, nothing to choose)
   setTile($('edgeWalls'), { on: !planeTorus(kind) });
   setTile($('spaceTimeTile'), { on: spaceTimeOn(), can: spaceTimeApplies(), greyed: 'but on squares (not Reversible)' });
-  const has = walk.plane ? symmetriesHere(walk.plane.kind, walk.plane.W) : ['none'], now = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
-  $('symmetryRow').hidden = !kind;
-  $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
-    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
-      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
-  }), true));
+  renderSymmetry();
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
   $('startDigits').hidden = plane.start !== 'digits';
@@ -9849,7 +9854,8 @@ const hunt = { run: null, zone: 'full', top: [], status: '', picked: null, goal:
 // (colours: the longest battle, the goals hidden). Each: its mark, its name, its words
 const HUNT_GOALS = { longest: ['∞', 'Longest', 'The start that lasts longest, however it ends'], dies: ['✝', 'Dies out', 'The start that lasts longest and dies out, to the last cell'],
                      peak: ['▲', 'Peak', 'The start that has the most cells alive at once, from a zone (not the whole grid)'],
-                     cover: ['▦', 'Reach all', 'Fastest to reach all cells: the start whose cells are all alive once the soonest (Activity shows it), from a zone (not the whole grid)'] };
+                     cover: ['▦', 'Reach all', 'Fastest to reach all cells: the start whose cells are all alive once the soonest (Activity shows it), from a zone (not the whole grid)'],
+                     battle: ['⚔', 'Battle', 'The battle that lasts longest, its colours touching and even: in colours, the only hunt'] };
 const peakHunt = () => walk.life.colours === 1 && (hunt.goal === 'peak' || hunt.goal === 'cover');  // (a zone's: the whole grid a soup full already)
 function pickGoal(goal) {
   hunt.goal = goal;
@@ -10239,14 +10245,15 @@ function renderBack() {
 }
 function renderHunt() {
   renderBack();
-  $('huntRow').hidden = !huntOn() || surfaceDraw;
+  $('huntZones').hidden = $('huntRow').hidden = !huntOn() || surfaceDraw;
   if ($('huntRow').hidden) return;
   $('huntBtn').hidden = !!walk.life.margolus;  // (the hunt's own step: births and survivals; blocks, their zones' starts only)
 
   const K = lifeParts(), { perColour, all } = huntPlan(), busy = !!hunt.run, sym = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   const what = K > 1 ? 'the longest battle' : { longest: 'the longest life', dies: 'the longest death', peak: 'the highest peak', cover: 'the fastest to reach all cells' }[hunt.goal];
-  $('huntGoals').hidden = $('huntModeLabel').hidden = K > 1 || !!walk.life.margolus;
-  for (const b of $('huntGoals').children) b.classList.toggle('active', b.dataset.goal === hunt.goal);
+  $('huntGoals').hidden = $('huntModeLabel').hidden = !!walk.life.margolus;
+  for (const b of $('huntGoals').querySelectorAll('button')) { const battle = b.dataset.goal === 'battle'; setTile(b, { on: battle ? K > 1 : K === 1 && b.dataset.goal === hunt.goal, can: battle === K > 1 }); }
+  renderSymmetry();  // (Famous: none)
   const fits = huntFits();
   for (const b of $('huntZones').children) {
     setTile(b, { on: b.dataset.zone === hunt.zone, can: !busy && !!fits[b.dataset.zone], again: true, greyed: `${zoneGreyed(b.dataset.zone)}, and while a hunt runs` });  // (picked: a click draws another start)
@@ -14172,11 +14179,13 @@ $('brushTurn').addEventListener('click', () => { brush.turn = (brush.turn + 1) %
 $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; renderPlaneRow(); });
 $('huntBtn').addEventListener('click', huntClick);
 $('backBtn').addEventListener('click', () => searchBack(backSearch.life !== walk.life));
-$('huntGoals').replaceChildren(...Object.entries(HUNT_GOALS).map(([goal, [mark, name, words]]) => {
-  const b = tile({ pic: `<i class="goal-mark">${mark}</i>`, text: name, title: words, byDefault: goal === 'longest' ? 'yes' : '', click: () => pickGoal(goal) });  // (see hunt)
+// one choice, a tab group: in one colour the four, in colours Battle (picked by itself, see renderHunt)
+$('huntGoals').replaceChildren(tileGroup(Object.entries(HUNT_GOALS).map(([goal, [mark, name, words]]) => {
+  const b = tile({ pic: `<i class="goal-mark">${mark}</i>`, text: name, title: words, byDefault: goal === 'longest' ? 'yes' : '', greyed: goal === 'battle' ? 'in one colour (none to fight)' : 'in colours (a battle)',
+    click: goal === 'battle' ? null : () => { if (goal !== hunt.goal) pickGoal(goal); } });  // (see hunt)
   b.dataset.goal = goal;
   return b;
-}));
+}), true));
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
