@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.117';
+const VERSION = '0.2.118';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3142,6 +3142,7 @@ function compute() {
   if (torusTurned && !blocksTurn($('mode').value, true)) torusTurned = false;  // (a reversible sheet turned only where its blocks are: a link's too)
   renderModePicker();
   if (mode.sphere) fillSphereSizes(surfaceOf(mode), mode.initial);
+  if (mode.life) fitLifeColours(mode);  // (its colours first: the digits' base, its sizes, see fitLifeColours)
   const n = digitsNeeded(), want = mode.life ? n : n + LOOP_AHEAD;  // a walk also reads the digits ahead
   syncDigitsStepper();
   relabelColours(mode);
@@ -6702,16 +6703,20 @@ function meshSide(g, nbr) {
   for (let t = 0; t < g.n; t++) { const mine = corners(t); for (let q = nbr.start[t]; q < nbr.start[t + 1]; q++) { let shared = 0; for (const c of corners(nbr.list[q])) shared += mine.has(c); side[q] = shared >= 2 ? 1 : 0; } }
   return side;
 }
+// Life's colours for its grid, before anything is made of them (the digits' base, K + 1; the sizes; the tiles): from those
+// picked, those it has fair blocks or spots for (see fitColours); on a surface, its size's mesh made for them (a torus's
+// columns their blocks', see ringColumns), its sizes again for them; a link's the same
+function fitLifeColours(mode) {
+  if (mode.plane) { fitColours(); return; }
+  const kind = surfaceOf(mode);
+  lifeColours = coloursPicked;
+  fillSphereSizes(kind, mode.initial);
+  fitColours(SPHERES[kind].mesh(sphereSize()));
+  fillSphereSizes(kind, mode.initial);
+}
 function buildLife(seq, mode) {
   if (mode.plane) { buildLifePlane(seq); return; }
-  const { initial } = mode, kind = surfaceOf(mode), { mesh, radius } = SPHERES[kind];
-  // its colours first, then its size's mesh made for them (a torus's columns their blocks', see ringColumns): from those
-  // picked, those it has fair spots for, its sizes again for them; a link's the same
-  lifeColours = coloursPicked;
-  fillSphereSizes(kind, initial);
-  fitColours(mesh(sphereSize()));
-  fillSphereSizes(kind, initial);
-  syncSizeStepper();  // (its size said for them: compute said it for the colours before)
+  const kind = surfaceOf(mode), { mesh, radius } = SPHERES[kind];
   const size = sphereSize();
   const g = mesh(size);
   const nbr = cornerNeighbours(g);
@@ -7841,7 +7846,6 @@ function layLoops(seed) {
 }
 function buildLifePlane(seq) {
   const kind = planeKind(MODES[current.mode].plane);  // (a rectangle's, if so)
-  fitColours();  // as many colours as the grid has fair blocks for (before its side: their blocks' multiple, see colourW)
   const W = planeW(kind, plane.side), row = planeRow(kind, W), { n, xy, at } = planeGrid(kind, W);
   let rule = lifeRuleNow() || parseRule('B3/S23');
   if (rule.iso && rule.iso !== 'vertex' && baseOf(kind) !== { hex: 'hex', hensel: 'square' }[rule.iso]) {  // Callahan's letters need hexagons, Hensel's squares (v: any plane)
