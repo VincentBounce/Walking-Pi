@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.113';
+const VERSION = '0.2.114';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -750,7 +750,7 @@ setPalette(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
 // menu (Mersenne, primorial, random prime) or a random seed build it when picked. A card is a
 // small tile showing the symbol; its name and formula (detail, when the formula is built) are
 // in its tooltip, and the Formula field shows what it wrote.
-const NUMBER_GROUPS = ['Constants', '𝑓', 'Fractions', 'Primes', 'Sequences'];
+const NUMBER_GROUPS = ['Constants', 'Sequences', 'Fractions', '𝑓', 'Primes'];  // (in a tab's order, see NUMBER_TABS)
 const PRESETS = {
   pi:      { group: 'Constants', sym: 'π',    name: 'Pi', f: 'pi' },
   e:       { group: 'Constants', sym: 'e',    name: "Euler's number", detail: 'e = exp(1)', f: 'e' },
@@ -2488,13 +2488,12 @@ function syncNumberMenu() {
   $('primorialRow').hidden = p.id !== 'primorial';
 }
 
-// The numbers by tabs (one group of tabs: Constants and sequences, Fractions, Functions, Primes), a tab's groups shown, each
+// The numbers by tabs (one group of tabs: Constants and sequences, Fractions and functions, Primes), a tab's groups shown, each
 // a grid of tiles showing the symbol, several per row, the name and the formula on hover. The tab shown: the number's own,
 // till another is picked (a picked number: its own again). The helper menus of the primes (which Mersenne, which primorial,
 // what size) sit right under the Primes group (every group made, those of other tabs hidden: the menus kept in the page)
 const NUMBER_TABS = [['Constants', ['Constants', 'Sequences'], 'Famous constants (π, e, φ…) and sequences laid as digits (Champernowne, random, prime gaps)'],
-  ['Fractions', ['Fractions'], 'Fractions: their digits come back round a loop (the rosettes found on the turtles)'],
-  ['Functions', ['𝑓'], 'Numbers made by a formula (√2, π², ln 2, ζ(3)…), to edit in Formula'],
+  ['Formulas', ['Fractions', '𝑓'], 'Fractions, their digits coming back round a loop (the rosettes found on the turtles), and numbers made by a formula (√2, π², ln 2, ζ(3)…), to edit in Formula'],
   ['Primes', ['Primes'], 'Primes as whole numbers (Mersenne, primorial, random) and the prime constant']];  // (name, its groups, its tooltip)
 let numberTab = null, numberShown = null;  // (the tab picked; the number shown when it was)
 function renderNumberPicker(active) {
@@ -2514,8 +2513,8 @@ function renderNumberPicker(active) {
   $('numberList').replaceChildren(tabs, ...NUMBER_GROUPS.map((group) => {
     const box = document.createElement('div'), label = document.createElement('div'), grid = document.createElement('div');
     box.hidden = !shown.includes(group);
-    label.className = 'field-label';  // styled like Formula and Number of digits
-    label.textContent = group;
+    label.className = 'block-label';  // (a title of the third level: under the section's, h2, and Number's, field-label)
+    label.textContent = group === '𝑓' ? 'Functions' : group;
     label.hidden = shown.length < 2;  // (a tab of one group: its name the tab's)
     grid.className = 'number-grid';
     grid.setAttribute('role', 'listbox');
