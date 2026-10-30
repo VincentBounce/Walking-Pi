@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.104';
+const VERSION = '0.2.105';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7504,7 +7504,7 @@ function insidePolygon(pts, u, v) {
 const cellAtMemo = {}, tilesNear = new WeakMap();  // (a tiling's lattice cell's polygons, at lattice cell 0; a grid that never repeats, its tiles by squares of 2: see planeCellAt)
 function planeCellAt(kind, W, wx, wy, how = 'in') {
   let x, y, row = planeRow(kind, W);  // (W rows, row cells each: see planeCols)
-  const on = (x, y) => (how === 'free' ? [x, y] : how === 'round' ? [((x % row) + row) % row, ((y % W) + W) % W] : x >= 0 && y >= 0 && x < row && y < W ? [x, y] : null);
+  const on = (x, y) => (how === 'free' ? [x, y] : how === 'round' ? [((x % row) + row) % row, ((y % W) + W) % W] : planeGrid(kind, W).at(x, y) >= 0 ? [x, y] : null);  // ('in': a cell of the grid's, see planeGrid)
   if (tilingOf(kind)) {  // its lattice cell's polygons, and those of the cells round it (the point moved back by the lattice step: its polygons' corners once)
     const [a, b] = tilingOf(kind).basis, det = a[0] * b[1] - a[1] * b[0], u = (wx * b[1] - wy * b[0]) / det, v = (a[0] * wy - a[1] * wx) / det, m = tilingOf(kind).polys.length;
     const cell0 = (cellAtMemo[kind] ??= Array.from({ length: m }, (_, k) => planeCorners(kind, k, 0)));
@@ -8129,7 +8129,8 @@ const gridMemo = new Map();
 function planeGrid(kind, W) {
   const row = planeRow(kind, W), of = planeShape(kind, W)?.cells, key = `${kind}|${W}|${row}|${!!of}`, inside = (x, y) => x >= 0 && y >= 0 && x < row && y < W;
   if (gridMemo.has(key)) return gridMemo.get(key);
-  if (!of) return gridMemo.set(key, { n: APERIODIC[kind]?.(W).n ?? row * W, xy: (t) => [t % row, Math.floor(t / row)], at: (x, y) => (inside(x, y) ? y * row + x : -1) }).get(key);
+  const n = APERIODIC[kind]?.(W).n ?? row * W;  // (a circle's: its cells, then its walls)
+  if (!of) return gridMemo.set(key, { n, xy: (t) => [t % row, Math.floor(t / row)], at: (x, y) => (inside(x, y) && y * row + x < n ? y * row + x : -1) }).get(key);
   const index = new Int32Array(row * W).fill(-1);
   of.forEach((p, t) => { index[p] = t; });
   return gridMemo.set(key, { n: of.length, xy: (t) => [of[t] % row, Math.floor(of[t] / row)], at: (x, y) => (inside(x, y) ? index[y * row + x] : -1) }).get(key);
