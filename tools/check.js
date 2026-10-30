@@ -8,7 +8,7 @@
 //   await walkingCheck({ known: true });                                   // Life's known results, played on the graphics card: a minute
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
 // strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
-// said; the grids that never repeat, their walls closed; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count. Known:
+// said; the grids that never repeat, their walls closed; every button shown its tooltip; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count. Known:
 // Life's oscillators' periods and methuselahs' loops (PATTERNS.md's), a hunt's best, reversible rules' returns to their start.
 
 const neighbourCounts = (g, keep = () => true) => {  // how many cells have k neighbours, as shares
@@ -141,6 +141,14 @@ function checkMeshes(fail) {
 
 // after an action: no error, the link's mode the one shown, a surface's cells as many as said (the crawl's, the fuzz's)
 const wait = (ms) => new Promise((go) => setTimeout(go, ms));
+// the buttons shown with no words in their tooltip, their own nor their group's (see tipOf)
+const untipped = () => [...document.querySelectorAll('button, label')].filter((b) => b.offsetParent !== null && !tipOf(b).tip && !b.dataset.tipHtml)
+  .map((b) => `${b.closest('[id]:not(button)')?.id ?? ''} › ${((b.querySelector('.mode-name') ?? b.querySelector('span') ?? b).textContent.trim() || b.id).slice(0, 24)}`);
+function checkTips(fail) {
+  const none = untipped();
+  if (none.length) fail(`buttons with no tooltip: ${none.join(', ')}`);
+  return 1;
+}
 function checker(fail) {
   const errors = [], onError = (e) => errors.push(e.message);
   window.addEventListener('error', onError);
@@ -152,7 +160,8 @@ function checker(fail) {
     const w = $('mode').value, hashW = (location.hash.match(/w=([^&]*)/) ?? [])[1], said = [...($('sizeLabel').innerText.split('\n').at(-1).matchAll(/([\d,]+)\s+[a-z]+/gi))].reduce((sum, m) => sum + Number(m[1].replace(/,/g, '')), 0);  // (its cells, its terms summed: 1,910 hexagons + 12 pentagons)
     const n = MODES[w].sphere && !MODES[w].plane ? walk.geo?.n : null;
     const nan = document.querySelectorAll('svg[viewBox*="NaN"], svg[viewBox*="Infinity"]').length;  // (a picture with nothing to frame: no error thrown, drawn empty)
-    const bad = [errors.length && errors.splice(0).join(' / '), hashW !== w && `the link says ${hashW}`, n && said && said !== n && `${n} cells, said ${said}`, nan && `${nan} pictures framed NaN`].filter(Boolean);
+    const none = untipped();
+    const bad = [errors.length && errors.splice(0).join(' / '), none.length && `no tooltip on ${none.join(', ')}`, hashW !== w && `the link says ${hashW}`, n && said && said !== n && `${n} cells, said ${said}`, nan && `${nan} pictures framed NaN`].filter(Boolean);
     if (bad.length) fail(`${what} → ${w}: ${bad.join('; ')}`);
     return !bad.length;
   };
@@ -442,7 +451,7 @@ async function checkKnown(fail) {
 
 window.walkingCheck = async ({ known = false, crawl: andCrawl = false, deep: andDeep = false, fuzz: actions = 0, cold = false, colours = false, seed = Date.now() % 1e6, from, only } = {}) => {
   const failures = [], fail = (s) => { failures.push(s); localStorage.walkingDeepFailures = JSON.stringify(failures); };
-  let checked = checkMeshes(fail) + checkBlockWraps(fail) + checkDiscs(fail);
+  let checked = checkMeshes(fail) + checkBlockWraps(fail) + checkDiscs(fail) + checkTips(fail);
   if (known) checked += await checkKnown(fail);
   if (andCrawl) checked += await crawl(fail);
   if (actions) checked += await fuzz(fail, actions, seed, cold);

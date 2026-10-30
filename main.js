@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.85';
+const VERSION = '0.2.86';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2781,7 +2781,11 @@ MODE_ICONS.lifeFrame = 'frame';
   for (const [w] of sorted) delete NAV[w];
   for (const [w, n] of sorted) NAV[w] = n;
 }
-const NAV_KINDS = [['Life', 'glider'], ['Replicators', 'replicator'], ['Reversible', 'reversible'], ['Ant', 'ant'], ['Walk', 'compass']];
+const NAV_KINDS = [['Life', 'glider', 'Cells born and dying by their neighbours, generation after generation'],
+  ['Replicators', 'replicator', "Langton's loops: a pattern that makes copies of itself, by a table of transitions"],
+  ['Reversible', 'reversible', 'Rules on blocks of cells that play backwards as well: nothing is ever lost'],
+  ['Ant', 'ant', "A creature on the cells, turned by each cell's colour, by its rule or by the digits"],
+  ['Walk', 'compass', "A path, each step the number's next digit"]];  // (name, picture, tooltip)
 // the spaces, in turn, each its name and picture: a walk's or an ant's plane without an edge; Life's grids on the plane, those
 // that repeat (walls in a hexagon too) and its round ones, never repeating (see APERIODIC); everyone's solids, and surfaces
 // (a sheet rolled up); the walks through a 3D lattice
@@ -2811,6 +2815,8 @@ for (const [kind, t] of Object.entries(TILINGS)) SHAPE_ICONS[t.name] = `tiling-$
 const SHAPE_SHORT = { 'Klein bottle': 'Klein', 'Möbius strip': 'Möbius', 'Stella octangula': 'Stella', Tetrahedron: 'Tetra', Octahedron: 'Octa', Dodecahedron: 'Dodeca', Cuboctahedron: 'Cubocta', Rhombicuboctahedron: 'Rhombi' };
 const shapeLabel = (shape) => SHAPE_SHORT[shape] ?? shape;  // a shape's name on its button, wherever (the 2D grids, a surface's tilings)
 // the section's title
+const CREATURE_TIPS = { Ant: "Langton's ant: the cell's colour turns it, then the cell takes the next colour", Turmite: "An ant with states: the cell's colour and its own state turn it",
+  Worm: "Paterson's worm: along the triangles' lines, never the same edge twice; it ends with none left" };
 const WALK_HEADINGS = { Walk: 'Walk', Ant: 'Grid', Life: 'Grid', Replicators: 'Grid', Reversible: 'Grid' };
 // the values at a level under the choices above it (pre), in the menu's order
 const navValues = (level, pre) => [...new Set(Object.values(NAV).filter((n) => pre.every((v, i) => n[i] === v)).map((n) => n[level]))];
@@ -2975,8 +2981,8 @@ function renderModePicker() {
   const button = (html, active, go, title = '', more = {}) => tile({ html, title, on: active, click: go, ...more });
   // at the top: Walk, Ant, Life (while a gallery setup is only shown on hover, the one in use)
   const shownKind = NAV[galleryBefore?.w]?.[0] ?? kind;
-  $('modeTabs').replaceChildren(galleryTab(), ...NAV_KINDS.map(([k, pic]) => {
-    const b = button(`${icon(pic)} ${k}`, k === shownKind, () => { showPane(false); if (k !== kind) navGo(0, k); });
+  $('modeTabs').replaceChildren(galleryTab(), ...NAV_KINDS.map(([k, pic, title]) => {
+    const b = button(`${icon(pic)} ${k}`, k === shownKind, () => { showPane(false); if (k !== kind) navGo(0, k); }, title);
     b.setAttribute('role', 'tab');
     return b;
   }));
@@ -3053,11 +3059,11 @@ function renderModePicker() {
   (creatures ? $('antCreatures') : $('navRules')).replaceChildren(...rules.map((r, i) => {
     const here = Object.keys(NAV).find((m) => NAV[m].slice(0, 4).join() === [kind, space, shape, r].join());
     const v = here ?? Object.keys(NAV).find((m) => NAV[m][0] === kind && NAV[m][1] === space && NAV[m][3] === r);  // (elsewhere: its first shape)
-    const { base } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
+    const { base, detail } = splitModeLabel(optionOf(v).text), alone = NAV[v][4] === '';  // a spiral: its base here, no Grid | Cells
     const pic = icon(r === 'Turtle' ? 'turtle' : r === 'Pivot' ? 'pivot' : r === 'Parity' ? 'walk2d' : r === 'Ant' ? 'ant' : MODE_ICONS[v]);  // a turtle for the walks turning relative to their heading
     const how = !creatures && r === rule && walkTutorialFits(w);  // (picked: a click shows how it works, as Life's rules)
     const go = () => { if (how) { walkTutorialToggle(); return; } if (here) { navGo(3, r); return; } $('mode').value = v; $('mode').dispatchEvent(new Event('change')); };
-    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go, '', { byDefault: i ? '' : 'yes' }) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', on: r === rule, again: how && HOW_AGAIN, byDefault: i ? '' : 'yes', click: go });  // (the first: where a shape starts)
+    const b = creatures ? button(`${pic}<span>${r}</span>`, r === rule, go, CREATURE_TIPS[r], { byDefault: i ? '' : 'yes' }) : card({ pic, name: r, base: alone && base && !r.includes('base') ? base : '', title: detail, on: r === rule, again: how && HOW_AGAIN, byDefault: i ? '' : 'yes', click: go });  // (its digits' turns in its tooltip)  // (the first: where a shape starts)
     b.disabled = !has(kind, r);
     return b;
   }));
@@ -3559,10 +3565,16 @@ function updateHint() {
 // tooltip that starts with it: that start in bold)
 new MutationObserver((ms) => { for (const { target: el } of ms) if (el.title && el.matches(':hover')) { el.dataset.tip = el.title; el.removeAttribute('title'); } })  // (a title set again under the mouse: not the browser's)
   .observe(document.body, { attributes: true, attributeFilter: ['title'], subtree: true });
+// What it tells of the element under the mouse: the control (its words, its default, why it is greyed) and its words, its own
+// else its group's (a title on the box round it, one for all its buttons); a title kept as data-tip (see walkingCheck: every
+// button shown has words)
+const tipOf = (target) => {
+  const el = target.closest?.('[title], [data-tip], [data-default]:not([data-default=""]), [data-greyed]:not([data-greyed=""])');
+  const words = (h) => { if (h?.title) { h.dataset.tip = h.title; h.removeAttribute('title'); } return h?.dataset.tip; };
+  return { el, tip: words(el) ?? words(el?.parentElement?.closest('[title], [data-tip]')) ?? '' };
+};
 document.addEventListener('mouseover', (e) => {
-  const el = e.target.closest?.('[title], [data-tip], [data-default]:not([data-default=""]), [data-greyed]:not([data-greyed=""])');
-  if (el?.title) { el.dataset.tip = el.title; el.removeAttribute('title'); }
-  const tip = el?.dataset.tip ?? '', named = el?.matches('button, label');
+  const { el, tip } = tipOf(e.target), named = el?.matches('button, label');
   const name = named ? (el.querySelector('.mode-name') ?? el.querySelector('span') ?? el).textContent.trim() : '';
   const bold = (text) => Object.assign(document.createElement('b'), { className: 'tip-name', textContent: text }), ok = tip && /\p{L}/u.test(name);  // (a symbol, + or −: no name)
   // its default: a tile's (see setTile), a box's (its checkbox as the page starts)
@@ -6888,10 +6900,13 @@ const DRAW_PATTERNS = [
   ['type15trails-ship', 'pent15', ['B24/S13/C12'], 'Spaceship', '11.DF.4AC2.GCGJA.2BEDHKFH5.GF3.F39.K$2I.HG50.J!', 'flies, period 14 · 29 cells'],
 ];
 const DRAW_BY_ID = new Map([BRUSH_CELL, ...DRAW_PATTERNS].map((p) => [p[0], p]));
-// the symmetries a start may have, per grid: [picture, name, as said]; a rhombus of hexagons or of
+// the symmetries a start may have, per grid: [picture, name, as said, tooltip]; a rhombus of hexagons or of
 // triangles turned by half a turn is itself (Cairo pentagons: none of their own)
-const SYMMETRIES = { none: ['symNone', 'None', ''], mirror: ['symMirror', 'Mirror', 'mirrored'], rotate: ['symRotate', 'Rotate', 'turning'],
-                     kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic'], half: ['symHalf', 'Half turn', 'turned by half a turn'] };
+const SYMMETRIES = { none: ['symNone', 'None', '', 'The start as it is laid, no copy'],
+                     mirror: ['symMirror', 'Mirror', 'mirrored', 'A quarter of the start mirrored across both middles: four copies'],
+                     rotate: ['symRotate', 'Rotate', 'turning', 'A quarter of the start turned a quarter turn each time: four copies'],
+                     kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic', 'An eighth of the start mirrored across the middles and the diagonals: eight copies'],
+                     half: ['symHalf', 'Half turn', 'turned by half a turn', 'Half of the start turned by half a turn: two copies'] };
 const PLANE_SYMMETRIES = { square: ['none', 'mirror', 'rotate', 'kaleido'], hex: ['none', 'half'], tri: ['none', 'half'], cairo: ['none'], kite: ['none'], hat: ['none'], penrose: ['none'], pinwheel: ['none'], spectre: ['none'], ammann: ['none'], rhombs12: ['none'], rhombs14: ['none'], flower: ['none'], flower5: ['none'], flower7: ['none'], mirror7: ['none'], flower3: ['none'], flower4: ['none'], flower8: ['none'], flower9: ['none'], flower10: ['none'], ring7: ['none'], ring8: ['none'], ring9: ['none'], ring10: ['none'], ring12: ['none'] };
 for (const kind of Object.keys(TILINGS)) PLANE_SYMMETRIES[kind] = ['none'];
 const symmetryOf = (kind) => (PLANE_SYMMETRIES[kind].includes(plane.sym) ? plane.sym : 'none');
@@ -7926,7 +7941,7 @@ function renderPlaneRow() {
   const syms = PLANE_SYMMETRIES[kind];
   $('symmetryRow').hidden = syms.length < 2;
   $('symmetryTiles').replaceChildren(tileGroup(syms.map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing)
-    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], on: y === symmetryOf(kind), byDefault: y === 'none' ? 'yes' : '', click: () => { if (y !== symmetryOf(kind)) { plane.sym = y; reseedStart(); } } });
+    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === symmetryOf(kind), byDefault: y === 'none' ? 'yes' : '', click: () => { if (y !== symmetryOf(kind)) { plane.sym = y; reseedStart(); } } });
   }), true));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
@@ -14042,8 +14057,10 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 }
 
 // Life's starts, one choice: a tab group of tiles, its pictures over its names (Hunt's and Random's, see renderPlaneRow)
-const START_TABS = [['random', 'search', 'Hunt'], ['text', 'letter', 'Text'], ['digits', 'barcode', 'Digits'], ['draw', 'pencil', 'Draw']];
-$('lifeStartTabs').append(tileGroup(START_TABS.map(([start, pic, text]) => { const b = tile({ pic: icon(pic), text }); b.dataset.start = start; return b; }), true));
+const START_TABS = [['random', 'search', 'Hunt', 'Random cells to start, or a hunt among them (its goal below); random zones in a reversible rule'],
+  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells"],
+  ['draw', 'pencil', 'Draw', 'Cells drawn by hand, or patterns laid with the brushes, at gen 0']];  // (start, picture, name, tooltip)
+$('lifeStartTabs').append(tileGroup(START_TABS.map(([start, pic, text, title]) => { const b = tile({ pic: icon(pic), text, title }); b.dataset.start = start; return b; }), true));
 for (const b of $('lifeStartTabs').querySelectorAll('button')) {
   b.addEventListener('click', () => {
     if (!MODES[$('mode').value].plane) {  // a surface: Draw shows its patterns, the others go back to the start as it was
@@ -14064,7 +14081,7 @@ for (const b of $('lifeStartTabs').querySelectorAll('button')) {
 }
 // Text's fonts, one choice: a tab group of tiles, Aa in each (see TEXT_FONTS)
 $('textFonts').append(tileGroup(Object.entries(TEXT_FONTS).map(([f, [name, face]]) => {
-  const b = tile({ html: `<span class="font-pic" style="font-family: ${face.replace(/"/g, "'")}">Aa</span><span>${name}</span>`, click: () => { if (plane.font !== f) { plane.font = f; compute(); } } });
+  const b = tile({ html: `<b class="font-pic" style="font-family: ${face.replace(/"/g, "'")}">Aa</b><span>${name}</span>`, click: () => { if (plane.font !== f) { plane.font = f; compute(); } } });
   b.dataset.font = f;
   return b;
 }), true));
@@ -14377,7 +14394,7 @@ $('sizeDown').addEventListener('click', () => stepSize(-1));
 $('walkOnGrid').addEventListener('click', () => navGo(4, 'grid'));
 $('walkOnCells').addEventListener('click', () => navGo(4, 'cells'));
 // a creature's start, one choice: a tab group of tiles, by its rule or by the digits (as Life's starts)
-$('antStartTabs').append(tileGroup([tile({ id: 'antByRule', pic: icon('ant'), text: 'Rule' }), tile({ id: 'antByDigits', pic: icon('barcode'), text: 'Digits' })], true));
+$('antStartTabs').append(tileGroup([tile({ id: 'antByRule', pic: icon('ant'), text: 'Rule', title: 'Its turns by its rule, a card below' }), tile({ id: 'antByDigits', pic: icon('barcode'), text: 'Digits', title: "Its turns by the number's digits, each digit a turn" })], true));
 for (const [id, digits] of [['antByRule', false], ['antByDigits', true]]) {  // (a worm's own, by its rule or the digits)
   $(id).addEventListener('click', () => {
     const w = MODES[$('mode').value];
