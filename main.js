@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.103';
+const VERSION = '0.2.104';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6604,8 +6604,8 @@ function surfaceSeed(seq, n, K, walls) {
   else for (let t = 0; t < n; t++) if (cellRandom(plane.seed, t) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, t) * K) : 1;
   return seed;
 }
-// the digits as a start: one a cell, on the open cells in turn (a wall's, round a grid in a hexagon or on a surface, none: its
-// digits not lost there, the last cells not left without)
+// the digits as a start: one a cell, in turn (a grid in a hexagon or a circle from its middle out, wound round it; a
+// rectangle's row by row: see planeGrid); on a surface, on its open cells (a wall's, none: its digits not lost there)
 function digitsOn(seed, seq, walls = []) {
   const out = new Set(walls);
   let k = 0;
@@ -8103,8 +8103,8 @@ function planeShape(kind, W) {
   // no cells of its, their places past its wall
   const way = (t) => { const a = Math.atan2(mids[t][1] - o[1], mids[t][0] - o[0]) - th - Math.PI / 6 + 1e-4; return a - 2 * Math.PI * Math.floor(a / (2 * Math.PI)); };
   const near = [...mids.keys()].filter((t) => size(mids[t]) <= R).sort((p, q) => size(mids[p]) - size(mids[q])), out = new Set([...mids.keys()].filter((t) => size(mids[t]) > R));
-  const rings = [], cells = [];  // (rings: each its first, its cells, 1 if its first is on the corner's way: its turns' and its mirror's, see planeTurns)
-  near.forEach((t, i) => { if (!i || size(mids[t]) - size(mids[near[i - 1]]) > 1e-4) rings.push([i, 0, 0]); rings.at(-1)[1]++; });
+  const rings = [], cells = [];  // (rings: each its first, its cells, 1 if its first is on the corner's way: its turns' and its mirror's, see planeTurns; how far out)
+  near.forEach((t, i) => { if (!i || size(mids[t]) - size(mids[near[i - 1]]) > 1e-4) rings.push([i, 0, 0, size(mids[t])]); rings.at(-1)[1]++; });
   for (const g of rings) { const ring = near.slice(g[0], g[0] + g[1]).sort((p, q) => way(p) - way(q)); cells.push(...ring); g[2] = way(ring[0]) < 2e-4 ? 1 : 0; }
   // its core: the cells nearest its middle, all those as far (its middle, as its size's tooltip says it, see drawMotif)
   const byFar = [...mids.keys()].sort((p, q) => far(mids[p], o) - far(mids[q], o)), core = [];
@@ -10087,8 +10087,8 @@ function planeSlices(K) {
   // (the cell on its middle no one's, the slices all alike; on twice as many as its turns, each slice a mirror of the next,
   // the cells on the lines between them no one's either: all as many)
   const halves = shape && K === 2 * figureTurns(kind), byCells = !shape || figureTurns(kind) === 1;  // (no turns, a hat's, a spectre's, a pinwheel's: as many cells each, round its middle)
-  if (shape?.rings && (6 % K === 0 || K === 12)) {  // a hexagon's, by its rings (see planeShape): a slice its sixths' share of each, from the sixth from's corner starts
-    const off = (((Math.round((from + 1e-4 - shape.corner) / (Math.PI / 3)) % 6) + 6) % 6);
+  const byRings = shape?.rings && (6 % K === 0 || K === 12), off = byRings && (((Math.round((from + 1e-4 - shape.corner) / (Math.PI / 3)) % 6) + 6) % 6);
+  if (byRings) {  // a hexagon's, by its rings (see planeShape): a slice its sixths' share of each, from the sixth from's corner starts (off)
     part.fill(-1);
     for (const [a, len, on] of shape.rings) for (let i = 0, s = len / 6; len > 1 && i < len; i++) {
       const j = (i - off * s + len) % len, q = Math.floor(j / s), c = (j % s) - on, cnt = s - on;  // (its sixth; in it, past its cell on the corner's way)
@@ -10097,8 +10097,10 @@ function planeSlices(K) {
   } else if (!byCells) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
   else { const cells = [...angle.keys()].sort((p, q) => angle[p] - angle[q]); part.fill(-1); cells.forEach((t, k) => { part[t] = Math.floor((k * K) / cells.length); }); }
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
-  // its slices' middles bunch up), the cell nearest each
+  // its slices' middles bunch up), the cell nearest each; a hexagon's, its slices' middles on its first ring halfway out
+  const half = byRings && shape.rings.find((g) => g[3] >= shape.rings.at(-1)[3] / 2);
   const spots = Array.from({ length: K }, (_, i) => {
+    if (half) { const [a, len] = half; return a + ((off * len) / 6 + Math.floor(((i + 0.5) * len) / K)) % len; }
     const a = from + ((i + 0.5) * 2 * Math.PI) / K, p = [mid[0] + reach * Math.cos(a), mid[1] + reach * Math.sin(a)];
     let best = 0, near = Infinity;
     for (let t = 0; t < n; t++) { const d = (at[t][0] - p[0]) ** 2 + (at[t][1] - p[1]) ** 2; if (d < near) { near = d; best = t; } }
@@ -10169,7 +10171,7 @@ function brickPlaces(g) {
   for (let t = 0; t < g.n; t++) { const s = sums.get(key(t)); out[2 * t] = wrap(s[0] / s[4], P); out[2 * t + 1] = wrap(s[1] / s[4], Q); }
   return (g.brickPlaces = out);
 }
-// each colour's part: its places' open cells only (a wall's, round a grid in a hexagon or on a surface, no one's)
+// each colour's part: its places' open cells only (a wall's, on a surface, no one's: the plane has none, see planeGrid)
 function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  // (mirror: Wild mirror, see colouring; mixed: Mixed's, else each colour's own place)
   const { start } = walk.life.nbr;
   return partPlaces(r, K, mirror, mixed).map((part) => part.filter((t) => start[t] < start[t + 1]));
