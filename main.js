@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.110';
+const VERSION = '0.2.111';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -8794,8 +8794,9 @@ const RULE_ICONS = {
   'B34/S23': '..o..,.ooo.,ooooo,.ooo.,.o.o.', 'B2/S34': '.....,.o.o.,..o..,.o.o.,.....',
   'B24/S346/C4': '+o...,.+o..,..+o.,.....,...+o', 'B23/S6/C3': '.....,.o+..,o+o+.,.+o..,.....', 'B2347/S35/C3': 'o.o.o,.+.+.,o.o.o,.+.+.,o.o.o',
 };
-const pixelIcon = (art, box = 5) => `<svg class="icon rule-icon" viewBox="${(5 - box) / 2} ${(5 - box) / 2} ${box} ${box}" aria-hidden="true">${art.split(',').flatMap((row, y) => [...row]
-  .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`;
+// a picture of pixels (rows of "o" on, "+" dim, "." off), a square of its size and pad more round it
+const pixelIcon = (art, pad = 0) => { const rows = art.split(','), n = Math.max(rows.length, ...rows.map((r) => r.length)) + pad; return `<svg class="icon rule-icon" viewBox="${-pad / 2} ${-pad / 2} ${n} ${n}" aria-hidden="true">${rows.flatMap((row, y) => [...row]
+  .map((c, x) => (c === '.' ? '' : `<rect x="${x}" y="${y}" width="1" height="1"${c === '+' ? ' class="dim"' : ''}/>`))).join('')}</svg>`; };
 // How a rule works, in place of the grid (a click on the rule picked; again, or the cross, closes it): a cell of the grid's
 // shape and its neighbours, the live ones in colour, for each count it is born with, survives with, dies with; its
 // dying stages after. The cell the most neighbours have (its counts all drawn), on a patch of its plane grid
@@ -9987,6 +9988,8 @@ const iconMax = (set = ICON_SETS.icon) => {
   return (iconMaxMemo = { key, N: k >= lo ? k * u : 24 }).N;
 };
 const iconSize = (zone) => (!isIcon(zone) ? 0 : zone === 'emoji' || zone.endsWith('Max') ? iconMax(iconSet(zone)) : 24);  // (a picture's width in cells; max: greyed where none fits, 16 off squares)
+// a CryptoPunk's pixels as a picture's rows (see pixelIcon): Punk 24's and Punk max's, #27's (its mohawk)
+const punkArt = (i) => Array.from({ length: 24 }, (_, y) => Array.from({ length: 24 }, (_, x) => (ICON_SETS.punk.pixel(i)(x, y) ? 'o' : '.')).join('')).join(',');
 const iconSet = (zone) => ICON_SETS[zone.startsWith('punk') ? 'punk' : zone === 'emoji' ? 'emoji' : 'icon'];
 const iconIndex = (name, set = iconSet(hunt.zone)) => Math.max(0, set.names.indexOf(name));  // (a link's name; unknown, the first)
 const DENSITY = [0.1, 0.7];  // a random start's density, drawn between these
@@ -14287,7 +14290,7 @@ $('huntGoals').replaceChildren(tileGroup(Object.entries(HUNT_GOALS).map(([goal, 
 $('autoPlay').addEventListener('change', autoplay);
 $('animBar').addEventListener('mouseenter', () => requestAnimationFrame(drawActivity));  // the card opened: its curve  // turned on: it plays at once
 $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, name]]) => {
-  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : isIcon(zone) ? pixelIcon(zone.startsWith('punk') ? '.ooo.,o...o,o.o.o,o...o,o.oo.,o...o,ooo..' : '.....,.o.o.,.....,o...o,.ooo.', zone.endsWith('Max') ? 5 : 7)
+  const b = tile({ pic: pic ? icon(pic) : zone === 'emoji' ? icon('smiley') : isIcon(zone) ? (zone.startsWith('punk') ? pixelIcon(punkArt(27), zone.endsWith('Max') ? 0 : 10) : pixelIcon('.....,.o.o.,.....,o...o,.ooo.', zone.endsWith('Max') ? 0 : 2))
     : pixelIcon(zone === 'centred' ? 'ooooooo,o.....o,o..o..o,o...o.o,o.ooo.o,o.....o,ooooooo' : '.....,..o..,...o.,.ooo.'), text: name });  // Famous: a glider (centred: in a frame); Icon: a face, as big as its size
   b.dataset.zone = zone;
   if (zone === 'full') b.dataset.default = 'yes';  // (see hunt)
