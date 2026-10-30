@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.105';
+const VERSION = '0.2.106';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3061,7 +3061,7 @@ function renderModePicker() {
         torusTurned = false;
         $('mode').value = same(f);
         $('mode').dispatchEvent(new Event('change'));
-      }, f === here && turns ? F.tabs[tabOf(f, !isTurned)][4] : modeWhere(same(f)), { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: tilesTurn(shownSurface(MODES[same(f)].sphere, f === here && isTurned)) });  // its picture as its tiles lie (a torus's, a strip's alike: clockwise, as the pictures laid on it)
+      }, f === here && turns ? `${F.tabs[tabOf(f, true)][4]}: a click turns it${isTurned ? ' back' : ''}` : modeWhere(same(f)), { again: f === here && turns, byDefault: f === F.tabs[0][0] ? 'yes' : '', turn: tilesTurn(shownSurface(MODES[same(f)].sphere, f === here && isTurned)) });  // its picture as its tiles lie (a torus's, a strip's alike: clockwise, as the pictures laid on it)
       return [b];
     }), ...(F.tabs.some(([, tu]) => tu) ? [tile({ pic: icon('pivot'), text: 'Turned', toggle: true, byDefault: 'off', greyed: 'on a tiling with no other way round (a block rule: none its blocks come round)', on: isTurned, can: turns,
       title: turns ? F.tabs[tabOf(here, true)][4] : 'The tiling turned, its rows another way round', click: turn })] : []));
@@ -5666,17 +5666,19 @@ function selectSize(kind, size) {
 // A size from a link: any number of rows or tiles across, from the surface's smallest that builds
 // (least: below it a tiny torus breaks; else 1) to its largest usual one
 function linkSize(kind, s) {
-  const { sizes, least = 1 } = SPHERES[kind], [rows, along] = String(s).split('x');
-  const n = Math.min(sizes[sizes.length - 1], Math.max(least, Math.round(Number(rows)) || sizes[0]));
+  const { sizes, least = 1 } = SPHERES[kind], [rows, along] = String(s).split('x'), step = blockSizeStep(kind);
+  const n = step * Math.round(Math.min(sizes[sizes.length - 1], Math.max(least, Math.round(Number(rows)) || sizes[0])) / step) || sizes.find((f) => f % step === 0);  // (a block rule's: a size its blocks come round at)
   return TORI.includes(kind) && along ? `${n}x${along}` : n;
 }
 const sphereSizeOf = (o) => (o.value.includes('x') ? o.value : Number(o.value));
 
 // Fill the Sphere size menu for the kind of sphere of the current mode
 // The sizes of a surface, from its default one or the walk mode's (see MODES: initial)
+// a surface's sizes' step: a reversible one's, its blocks' sets coming round (see BLOCK_STEPS), else 1
+const blockSizeStep = (kind) => (MODES[$('mode').value].margolus ? BLOCK_STEPS[kind] ?? 1 : 1);
 const seek = (kind) => { picked = SPHERES[kind].tiles(parseInt($('sphereF').value)); $('sphereF').dataset.picked = picked; };  // (the size picked: its cells, see picked; the menu shows it)
 function fillSphereSizes(kind, initial = SPHERES[kind].initial) {
-  const step = MODES[$('mode').value].margolus ? BLOCK_STEPS[kind] ?? 1 : 1, sizes = SPHERES[kind].sizes.filter((f) => f % step === 0);  // (a reversible torus's: its blocks' sets come round)
+  const step = blockSizeStep(kind), sizes = SPHERES[kind].sizes.filter((f) => f % step === 0);  // (a reversible torus's: its blocks' sets come round)
   const sel = $('sphereF'), key = `${kind} ${initial} ${lifeColours} ${step}`, [was] = (sel.dataset.kind ?? '').split(' ');  // (a torus's sizes: its columns as its colours, see ringColumns)
   if (sel.dataset.kind === key && sel.dataset.picked === String(picked)) return;  // (a size picked on another grid: its nearest here)
   const rows = was === kind && sel.dataset.picked === String(picked) ? sel.value : null;  // (the same surface, its colours changed: its rows kept, its columns its colours')
@@ -8106,12 +8108,9 @@ function planeShape(kind, W) {
   const rings = [], cells = [];  // (rings: each its first, its cells, 1 if its first is on the corner's way: its turns' and its mirror's, see planeTurns; how far out)
   near.forEach((t, i) => { if (!i || size(mids[t]) - size(mids[near[i - 1]]) > 1e-4) rings.push([i, 0, 0, size(mids[t])]); rings.at(-1)[1]++; });
   for (const g of rings) { const ring = near.slice(g[0], g[0] + g[1]).sort((p, q) => way(p) - way(q)); cells.push(...ring); g[2] = way(ring[0]) < 2e-4 ? 1 : 0; }
-  // its core: the cells nearest its middle, all those as far (its middle, as its size's tooltip says it, see drawMotif)
-  const byFar = [...mids.keys()].sort((p, q) => far(mids[p], o) - far(mids[q], o)), core = [];
-  while (core.length < 1) { const d = far(mids[byFar[core.length]], o); while (far(mids[byFar[core.length]], o) - d < 1e-3) core.push(byFar[core.length]); }  // (as far: within 10⁻³, the tilings' corners to 6 places)
   const inside = new Set(cs.flatMap((P, t) => (out.has(t) ? [] : P.map((p) => pointKey(...p)))));
   const walls = [...out].filter((t) => cs[t].some((p) => inside.has(pointKey(...p)))).map((t) => [t % row, Math.floor(t / row)]);
-  return shapeMemo.set(key, { cells: Int32Array.from(cells), rings, walls, core: core.map((t) => cs[t]), o, corner: th + Math.PI / 6 }).get(key);  // (cells: their places, y × row + x; o: its middle; corner: a corner's way)
+  return shapeMemo.set(key, { cells: Int32Array.from(cells), rings, walls, core: cells.slice(0, rings[0][1]).map((t) => cs[t]), o, corner: th + Math.PI / 6 }).get(key);  // (cells: their places, y × row + x; core: its first ring, its middle as its size's tooltip says it, see drawMotif; o: its middle; corner: a corner's way)
 }
 // its grid's side: as many cells in it as a disc of diameter side's (π side² / 4 squares' worth, as a grid that never
 // repeats in a circle), the grid grown round it
