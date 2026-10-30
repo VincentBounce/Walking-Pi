@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.91';
+const VERSION = '0.2.92';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7983,7 +7983,7 @@ function renderPlaneRow() {
   $('symmetryRow').hidden = !kind;
   $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
     return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
-      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; reseedStart(); } } });
+      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; hunt.top = []; lifeReseed(); renderHunt(); } } });  // (the same start, as its link says it, its symmetry another: the hunt's finds, of another, gone)
   }), true));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
@@ -10208,9 +10208,6 @@ function huntPlan() {
   const count = K === 1 && r ? C ** cells.length : Infinity, space = [K === 1 ? C : 2, cells.length];  // (its starts: a state a cell, a colour's dead or alive)
   return { cells, copies, perColour: Math.round(zone.size / K), all: count <= 20000 ? count : 0, space };
 }
-// the start again, after its symmetry changed: in Hunt, a new start in the zone (the starts found were of
-// another kind), else the start chosen
-const reseedStart = () => (huntOn() ? pickZone(hunt.zone) : lifeReseed());
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.loops && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
@@ -10346,7 +10343,6 @@ function pickZone(zone) {
   plane.icons = Array.from({ length: lifeParts() }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
   if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else { const seed = new Uint8Array(walk.life.seed.length); startColours(seed); setLifeSeed(seed, { zone }); }  // (laid as any start: its symmetry too)
-  renderPlaneRow();
   renderHunt();
 }
 function huntClick() {

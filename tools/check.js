@@ -452,7 +452,7 @@ async function checkKnown(fail) {
     if (has !== offers) fail(`${w}: symmetries ${has || 'none'}, known ${offers || 'none'}`);
     for (const y of has ? has.split(' ') : []) {
       plane.sym = y;
-      reseedStart();
+      lifeReseed();
       await wait(600);
       restart();
       advanceTo(60);
