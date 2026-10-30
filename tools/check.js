@@ -96,8 +96,7 @@ function checkMeshes(fail) {
     Object.assign(plane, { torus: false, shape: 'hex' });
     const W = planeW(kind, 32), row = planeRow(kind, W), sh = planeShape(kind, W);
     if (!sh) continue;  // (started on a page of blocks: no hexagon there)
-    const dead = new Set(sh.dead), at = (t) => planeCorners(kind, t % row, Math.floor(t / row));
-    const live = [...Array(row * W).keys()].filter((t) => !dead.has(t)).map(at), all = [...live, ...sh.walls.map(([x, y]) => planeCorners(kind, x, y))], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
+    const live = Array.from({ length: planeGrid(kind, W).n }, (_, t) => cellPolys(kind, W)(t)), all = [...live, ...sh.walls.map(([x, y]) => planeCorners(kind, x, y))], grid = new Map(), cell = (x, y) => `${Math.floor(x / 3)},${Math.floor(y / 3)}`;
     const mid = (P) => [P.reduce((t, p) => t + p[0], 0) / P.length, P.reduce((t, p) => t + p[1], 0) / P.length];
     all.forEach((P, j) => { const c = cell(...mid(P)); (grid.get(c) ?? grid.set(c, []).get(c)).push(j); });
     const covered = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of grid.get(`${Math.floor(x / 3) + dx},${Math.floor(y / 3) + dy}`) ?? []) if (insidePolygon(all[j], x, y)) return true; return false; };
