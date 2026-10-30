@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.106';
+const VERSION = '0.2.107';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1933,6 +1933,24 @@ const dragonOf = (turns) => fitIn(turtlePath(Array.from({ length: turns }, (_, k
 })), 20);
 const dots = (list, r) => list.map(([x, y]) => `<circle class="f" cx="${x}" cy="${y}" r="${r}"/>`).join('');
 const pathEl = (d, cls) => `<path${cls ? ` class="${cls}"` : ''} d="${d}"/>`;
+// a shape walled (a convex one's corners): its outline doubled, its inside d in, and short strokes across between them, about
+// one each 5 units along its sides (its bricks), nothing filled
+const walledEl = (P, d = 2.6) => {
+  const n = P.length, c = [0, 1].map((k) => P.reduce((a, p) => a + p[k], 0) / n);
+  const sides = P.map((p, i) => { const q = P[(i + 1) % n], len = Math.hypot(q[0] - p[0], q[1] - p[1]), u = [(q[0] - p[0]) / len, (q[1] - p[1]) / len];
+    const out = (c[0] - p[0]) * -u[1] + (c[1] - p[1]) * u[0] > 0 ? 1 : -1; return { p, q, len, u, in: [-u[1] * out, u[0] * out] }; });  // (in: its normal towards the middle)
+  const inner = sides.map((s, i) => {  // (the corner of side i − 1 and side i, both moved d in)
+    const r = sides[(i + n - 1) % n], a = [r.p[0] + d * r.in[0], r.p[1] + d * r.in[1]], b = [s.p[0] + d * s.in[0], s.p[1] + d * s.in[1]];
+    const den = r.u[0] * s.u[1] - r.u[1] * s.u[0], k = ((b[0] - a[0]) * s.u[1] - (b[1] - a[1]) * s.u[0]) / den;
+    return [a[0] + k * r.u[0], a[1] + k * r.u[1]];
+  });
+  const bricks = sides.flatMap((s, i) => {  // (along its inside's side, across to the outline: all within the double line)
+    const a = inner[i], b = inner[(i + 1) % n], m = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4));
+    return Array.from({ length: m }, (_, j) => { const t = (j + 0.5) / m, x = a[0] + t * (b[0] - a[0]), y = a[1] + t * (b[1] - a[1]);
+      return `M${r2(x)} ${r2(y)}L${r2(x - d * s.in[0])} ${r2(y - d * s.in[1])}`; });
+  }).join('');
+  return pathEl(pathOf(P), 'thin') + pathEl(pathOf(inner), 'thin') + pathEl(bricks, 'thin');
+};
 // The symmetries' pictures: a flag, and its copies (turned by a, mirrored across the upright when m)
 const FLAG = [[12.8, 11.6], [12.8, 1.6], [21.5, 5.4], [12.8, 9.2]];
 const flags = (copies) => copies.map(([a, m]) => pathEl(pathOf(FLAG.map(([x, y]) => {
@@ -1951,7 +1969,7 @@ const hexCluster = (rot) => [0, 120, 240].map((d) => {
   return pathEl(pathOf(ngon(6, R, rot, 12 + R * Math.cos(t), 12 + R * Math.sin(t))));
 }).join('');
 const ICONS = (() => {
-  const hex = ngon(6, 9.5), tri = ngon(3, 10, -90, 12, 14), sq = [[4, 4], [20, 4], [20, 20], [4, 20]];
+  const hex = ngon(6, 9.5), tri = ngon(3, 10, -90, 12, 14), sq = [[4, 4], [20, 4], [20, 20], [4, 20]], rhombus = [[2, 17.2], [14, 17.2], [20, 6.8], [8, 6.8]];
   const cube = (fillTop) => pathEl(pathOf(hex)) + [0, 2, 4].map((k) => pathEl(seg([12, 12], hex[k]))).join('')
     + (fillTop ? pathEl(pathOf([[12, 12], hex[4], hex[5], hex[0]]), 'f') : '');
   // the carved cubes, as the cube: on each face seen, its middle third (P) a hole (filled), a pit (its rim), a bump (its top out of
@@ -1982,9 +2000,10 @@ const ICONS = (() => {
     hexagon: pathEl(pathOf(hex)),
     hexagonFilled: pathEl(pathOf(hex), 'f'),
     square: pathEl(pathOf(sq)),
-    squareFilled: pathEl(pathOf(sq), 'f'),
-    rhombus: pathEl('M2 17.2H14L20 6.8H8Z'),  // a rhombus of 60°: a six-fold or slanted grid's array, uncut
-    rhombusFilled: pathEl('M2 17.2H14L20 6.8H8Z', 'f'),
+    squareWalled: walledEl(sq),
+    hexagonWalled: walledEl(hex),
+    rhombus: pathEl(pathOf(rhombus)),  // a rhombus of 60°: a six-fold or slanted grid's array, uncut
+    rhombusWalled: walledEl(rhombus, 2),
     king: pathEl('M12 3V21M3 12H21M5.6 5.6L18.4 18.4M18.4 5.6L5.6 18.4'),  // the 8 ways out
     pentagons: pathEl('M7 7L9.3 12H14.7L17 7L12 4.7ZM7 17L12 19.3L17 17L14.7 12H9.3ZM7 7L9.3 12L7 17L2 14.7V9.3ZM17 7L22 9.3V14.7L17 17L14.7 12Z'),  // four of the Cairo tiling's: two across a bar, two at its ends
     ammann: [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const e = (j) => [Math.cos((j * Math.PI) / 4), Math.sin((j * Math.PI) / 4)], a = e(k), b = e(k + 1), s = 10 / (2 * Math.cos(Math.PI / 8)), pt = ([x, y]) => `${(12 + x * s).toFixed(1)} ${(12 - y * s).toFixed(1)}`;
@@ -2121,12 +2140,12 @@ const ICONS = (() => {
 const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 // the plane's outline: its shape and its edges, one choice (see outlineOf): a rectangle, a torus or walled; a six-fold grid
 // walled in a hexagon round its middle (see planeShape); a slanted one's rhombus of cells as stored, a torus or walled.
-// Filled: walled (the cells past its edges always dead); else a torus (its edges glued: what leaves on one side comes back
+// Its picture doubled with bricks: walled (the cells past its edges always dead); else a torus (its edges glued: what leaves on one side comes back
 // on the other)
 const OUTLINES = [['square', true, 'Square', 'Square: a rectangle, a torus'], ['square', false, 'Square walled', 'Square walled: a rectangle, its cells past its edges always dead'],
                   ['hex', false, 'Hex walled', 'Hex walled: a hexagon round its middle, its cells past its edges always dead'],
                   ['rhombus', true, 'Rhombus', 'Rhombus: the grid as it is stored, a rhombus of cells, a torus'], ['rhombus', false, 'Rhombus walled', 'Rhombus walled: the grid as it is stored, a rhombus of cells, its cells past its edges always dead']];
-$('planeEdges').append(tileGroup(OUTLINES.map(([shape, torus, text, title]) => tile({ pic: icon({ square: 'square', hex: 'hexagon', rhombus: 'rhombus' }[shape] + (torus ? '' : 'Filled')), text, id: `outline${text.replace(' ', '')}`, byDefault: text === 'Square' ? 'yes' : '', title,
+$('planeEdges').append(tileGroup(OUTLINES.map(([shape, torus, text, title]) => tile({ pic: icon({ square: 'square', hex: 'hexagon', rhombus: 'rhombus' }[shape] + (torus ? '' : 'Walled')), text, id: `outline${text.replace(' ', '')}`, byDefault: text === 'Square' ? 'yes' : '', title,
   click: () => { plane.shape = shape; plane.torus = torus; if (torus) spaceTime = false; compute(); } }))));  // (Stacks off on a torus)
 // Stacks (Space-time, in 3D: walls with it, left on when it goes off; a torus, Stacks off too), on squares: under Natural squares
 const spaceTimeTile = tile({ pic: icon('stacks'), text: 'Stacks', toggle: true, byDefault: 'off', title: 'Stacks: the generations stacked up, in 3D, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With walls: through a torus\'s edges no tree grows',
