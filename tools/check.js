@@ -447,7 +447,7 @@ async function checkKnown(fail) {
     ['life2dTri', 'half rotate mirror kaleido'], ['life2dDual56', 'half rotate mirror kaleido'], ['life2dFloret', 'half rotate'], ['blocks2dHex', '']]) {
     location.hash = `#w=${w}&s=32&e=1&pop=random.30.1`;
     await wait(1500);
-    const { kind, W } = walk.plane, has = Object.keys(symmetriesHere(kind, W)).filter((y) => y !== 'none').join(' ');
+    const { kind, W } = walk.plane, has = symmetriesHere(kind, W).filter((y) => y !== 'none').join(' ');
     checked++;
     if (has !== offers) fail(`${w}: symmetries ${has || 'none'}, known ${offers || 'none'}`);
     for (const y of has ? has.split(' ') : []) {

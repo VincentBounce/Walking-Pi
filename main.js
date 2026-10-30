@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.89';
+const VERSION = '0.2.90';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6909,44 +6909,33 @@ const SYMMETRIES = { none: ['symNone', 'None', '', 'The start as it is laid, no 
                      rotate: ['symRotate', 'Rotate', 'turning', "A part of the start turned by the grid's smallest turn, a quarter on squares, a sixth in a hexagon: four or six copies"],
                      mirror: ['symMirror', 'Mirror', 'mirrored', 'A quarter of the start mirrored across two lines through the middle, at right angles: four copies'],
                      kaleido: ['symKaleido', 'Kaleido', 'kaleidoscopic', 'A part of the start turned and mirrored: eight copies on squares, twelve in a hexagon'] };
-// A grid's symmetries, by construction: each a list of maps, a cell → its copy (the first, the cell itself). Squares:
-// turned and mirrored about the grid's middle; a grid in a hexagon (see planeShape): turned by sixths and mirrored about
-// the hexagon's middle o, all made of one turn and one mirror, kept if every live cell lands on a live cell (a tiling with
-// no mirror: none); the others none
+// A grid's symmetries, known by construction: about its centre, a turn of order N and a mirror. Squares: the grid's middle,
+// quarter turns; a grid in a hexagon (see planeShape): its middle o, a centre of the tiling's sixths, sixth turns, a mirror if
+// its tiles have one (Florets, Snub: none); the others none
+const planeSymmetries = (kind, W) => (kind === 'square' || (planeShape(kind, W) && TILINGS[baseOf(kind)]?.mirror !== false) ? ['none', 'half', 'rotate', 'mirror', 'kaleido']
+  : planeShape(kind, W) ? ['none', 'half', 'rotate'] : ['none']);
+// its turn r and its mirror m, a cell → the cell it goes to, made when first asked: squares by their index; a grid in a
+// hexagon, each cell's middle turned (or mirrored across the line through o at its corner's way) found again within 10⁻³
+// (the tilings' corners to 6 places), among the middles in its tenth of a unit and those round it
+const turnMemo = new Map();
+function planeTurns(kind, W) {
+  const row = planeRow(kind, W), key = `${kind}|${W}|${row}`, n = row * W;
+  if (turnMemo.has(key)) return turnMemo.get(key);
+  if (kind === 'square') { const last = W - 1, xy = (f) => Int32Array.from({ length: n }, (_, t) => { const [u, v] = f(t % W, Math.floor(t / W)); return v * W + u; }); return turnMemo.set(key, { N: 4, r: xy((x, y) => [last - y, x]), m: xy((x, y) => [x, last - y]) }).get(key); }
+  const shape = planeShape(kind, W), dead = new Set(shape.dead), [ox, oy] = shape.o, mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row)));
+  const tenth = (x, y) => Math.floor(x * 10) * 1e6 + Math.floor(y * 10), tenths = new Map(mids.map((p, t) => [tenth(...p), t]));
+  const cellAt = (x, y) => { for (const a of [-1e6, 0, 1e6]) for (const b of [-1, 0, 1]) { const t = tenths.get(tenth(x, y) + a + b); if (t !== undefined && Math.abs(mids[t][0] - x) + Math.abs(mids[t][1] - y) < 1e-3) return t; } };
+  const map = (a, mirror) => { const c = Math.cos(a), sn = Math.sin(a); return Int32Array.from({ length: n }, (_, t) => { if (dead.has(t)) return t; const dx = mids[t][0] - ox, dy = mids[t][1] - oy; return mirror ? cellAt(ox + dx * c + dy * sn, oy + dx * sn - dy * c) : cellAt(ox + dx * c - dy * sn, oy + dx * sn + dy * c); }); };
+  return turnMemo.set(key, { N: 6, r: map(Math.PI / 3, false), m: map(2 * shape.corner, true) }).get(key);
+}
+// a symmetry's maps, each a cell → its copy (the first, the cell itself): the turns, then the mirrored ones
 const symMemo = new Map();
-function planeSymmetries(kind, W) {
-  const row = planeRow(kind, W), key = `${kind}|${W}|${row}`;
+function symmetryMaps(kind, W, sym) {
+  const key = `${kind}|${W}|${sym}`;
   if (symMemo.has(key)) return symMemo.get(key);
-  const n = row * W, id = Int32Array.from({ length: n }, (_, t) => t), maps = { none: [id] }, shape = planeShape(kind, W);
-  const after = (f, g) => g && f && Int32Array.from(g, (u) => f[u]);  // (g, then f)
-  if (kind === 'square') {
-    const last = W - 1, map = (f) => Int32Array.from({ length: n }, (_, t) => { const [u, v] = f(t % W, Math.floor(t / W)); return v * W + u; });
-    const half = map((x, y) => [last - x, last - y]), mirrors = [id, map((x, y) => [last - x, y]), map((x, y) => [x, last - y]), half], diagonal = map((x, y) => [y, x]);
-    Object.assign(maps, { half: [id, half], rotate: [id, map((x, y) => [last - y, x]), half, map((x, y) => [y, last - x])], mirror: mirrors, kaleido: [...mirrors, ...mirrors.map((m) => after(diagonal, m))] });
-  } else if (shape) {
-    // each cell's middle, found again by a turned point: within 10⁻³ of it (the tilings' corners to 6 places), among the middles
-    // in its tenth of a unit and those round it
-    const mids = Array.from({ length: n }, (_, t) => cellMiddle(kind, t % row, Math.floor(t / row))), tenths = new Map(), dead = new Set(shape.dead), [ox, oy] = shape.o;
-    const tenth = (x, y) => Math.floor(x * 10) * 1e6 + Math.floor(y * 10);
-    mids.forEach((m, t) => { const k = tenth(...m); tenths.set(k, [...(tenths.get(k) ?? []), t]); });
-    const cellAt = (x, y) => { for (const a of [-1e6, 0, 1e6]) for (const b of [-1, 0, 1]) for (const t of tenths.get(tenth(x, y) + a + b) ?? []) if (Math.abs(mids[t][0] - x) + Math.abs(mids[t][1] - y) < 1e-3) return t; };
-    // a turn by a, or a mirror across the line through o at a: its map, null if a live cell lands elsewhere than on one
-    const map = (a, mirror) => {
-      const c = Math.cos(mirror ? 2 * a : a), sn = Math.sin(mirror ? 2 * a : a), m = new Int32Array(n);
-      for (let t = 0; t < n; t++) {
-        if (dead.has(t)) { m[t] = t; continue; }
-        const dx = mids[t][0] - ox, dy = mids[t][1] - oy, u = mirror ? cellAt(ox + dx * c + dy * sn, oy + dx * sn - dy * c) : cellAt(ox + dx * c - dy * sn, oy + dx * sn + dy * c);
-        if (u === undefined || dead.has(u)) return null;
-        m[t] = u;
-      }
-      return m;
-    };
-    const sixth = map(Math.PI / 3, false), across = map(shape.corner, true), turns = [id];  // (the mirrors' others: across, then turned)
-    for (let k = 1; k < 6; k++) turns.push(after(sixth, turns[k - 1]));
-    const half = turns[3] ?? map(Math.PI, false), groups = { half: [id, half], rotate: turns, mirror: [id, across, after(half, across), half], kaleido: [...turns, ...turns.map((r) => after(r, across))] };
-    for (const [y, g] of Object.entries(groups)) if (g.every(Boolean)) maps[y] = g;
-  }
-  return symMemo.set(key, maps).get(key);
+  const { N, r, m } = sym === 'none' ? { N: 1 } : planeTurns(kind, W), turn = (k) => (t) => { for (let i = 0; i < k; i++) t = r[t]; return t; };
+  const turns = Array.from({ length: N }, (_, k) => turn(k)), half = turn(N / 2), across = (f) => (t) => f(m[t]);
+  return symMemo.set(key, { none: turns, half: [turns[0], half], rotate: turns, mirror: [turns[0], across(turns[0]), across(half), half], kaleido: [...turns, ...turns.map(across)] }[sym]).get(key);
 }
 // the symmetries a start may have here: the grid's; with a block rule, those whose maps take each block onto one of its
 // generation's, the rule turning their cells alike (its states' bits in the copy's order; Ising's sides and the
@@ -6955,23 +6944,23 @@ function symmetriesHere(kind, W) {
   const all = planeSymmetries(kind, W), M = walk.life?.margolus;
   if (!M) return all;
   const memo = (M.symmetric ??= new Map()), key = `${kind}|${W}`;
-  const keeps = (maps) => !M.ising && !M.move && maps.every((m) => M.turns.every((turn) => {
+  const keeps = (maps) => !M.ising && !M.move && maps.every((f) => M.turns.every((turn) => {
     const at = new Map();
     for (let i = 0; i < turn.length; i++) at.set(turn[i], i);
     for (let i = 0; i < turn.length; i += M.k) {
-      const to = Array.from({ length: M.k }, (_, j) => at.get(m[turn[i + j]])), first = to[0] - (to[0] % M.k);
+      const to = Array.from({ length: M.k }, (_, j) => at.get(f(turn[i + j]))), first = to[0] - (to[0] % M.k);
       if (to.some((q) => q === undefined || q - (q % M.k) !== first)) return false;
       const copy = (st) => to.reduce((r, q, j) => r | (((st >> j) & 1) << (q - first)), 0);
       for (let st = 0; st < 1 << M.k; st++) if (M.to[copy(st)] !== copy(M.to[st])) return false;
     }
     return true;
   }));
-  if (!memo.has(key)) memo.set(key, Object.fromEntries(Object.entries(all).filter(([y, maps]) => y === 'none' || keeps(maps))));
+  if (!memo.has(key)) memo.set(key, all.filter((y) => y === 'none' || keeps(symmetryMaps(kind, W, y))));
   return memo.get(key);
 }
-const symmetryOf = (kind, W = walk.plane?.W) => (W && symmetriesHere(kind, W)[plane.sym] ? plane.sym : 'none');
+const symmetryOf = (kind, W = walk.plane?.W) => (W && symmetriesHere(kind, W).includes(plane.sym) ? plane.sym : 'none');
 // a cell and its copies under the grid's symmetry (index y × row + x)
-const cellCopies = (kind, W, t) => symmetriesHere(kind, W)[symmetryOf(kind, W)].map((m) => m[t]);
+const cellCopies = (kind, W, t) => symmetryMaps(kind, W, symmetryOf(kind, W)).map((f) => f(t));
 const ROOT3_2 = Math.sqrt(3) / 2;
 // The rows of a grid of side `side` (the squares' side): about as many cells as side × side squares (as the surfaces'
 // sizes, see SIDES), its cells regular: triangles 2 a rhombus, Cairo pentagons 2 a square (an even side, so
@@ -7990,10 +7979,10 @@ function renderPlaneRow() {
   $('planeOutline').hidden = !!APERIODIC[kind];  // (a grid that never repeats: always walls, nothing to choose)
   setTile($('edgeWalls'), { on: !planeTorus(kind) });
   setTile($('spaceTimeTile'), { on: spaceTimeOn(), can: spaceTimeApplies(), greyed: 'but on squares (not Reversible)' });
-  const has = walk.plane ? symmetriesHere(walk.plane.kind, walk.plane.W) : { none: true }, now = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
+  const has = walk.plane ? symmetriesHere(walk.plane.kind, walk.plane.W) : ['none'], now = walk.plane ? symmetryOf(walk.plane.kind) : 'none';
   $('symmetryRow').hidden = !kind;
   $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
-    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: !!has[y], byDefault: y === 'none' ? 'yes' : '',
+    return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
       greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none)', click: () => { if (y !== now) { plane.sym = y; reseedStart(); } } });
   }), true));
   $('startDraw').hidden = plane.start !== 'draw';
