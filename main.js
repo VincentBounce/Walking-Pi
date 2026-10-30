@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.112';
+const VERSION = '0.2.113';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2150,10 +2150,10 @@ const icon = (name) => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"
 // walled in a hexagon round its middle (see planeShape); a slanted one's rhombus of cells as stored, a torus or walled.
 // Its picture doubled with bricks: walled (the cells past its edges always dead); else a torus (its edges glued: what leaves on one side comes back
 // on the other)
-const OUTLINES = [['square', true, 'Square', 'Square: a rectangle, a torus'], ['square', false, 'Square walled', 'Square walled: a rectangle, its cells past its edges always dead'],
-                  ['hex', false, 'Hex walled', 'Hex walled: a hexagon round its middle, its cells past its edges always dead'],
-                  ['rhombus', true, 'Rhombus', 'Rhombus: the grid as it is stored, a rhombus of cells, a torus'], ['rhombus', false, 'Rhombus walled', 'Rhombus walled: the grid as it is stored, a rhombus of cells, its cells past its edges always dead']];
-$('planeEdges').append(tileGroup(OUTLINES.map(([shape, torus, text, title]) => tile({ pic: icon({ square: 'square', hex: 'hexagon', rhombus: 'rhombus' }[shape] + (torus ? '' : 'Walled')), text, id: `outline${text.replace(' ', '')}`, byDefault: text === 'Square' ? 'yes' : '', title,
+const OUTLINES = [['square', true, 'Square', 'Square: a rectangle, a torus'], ['square', false, 'Walls', 'Square walled: a rectangle, its cells past its edges always dead'],
+                  ['hex', false, 'Hex', 'Hex walled: a hexagon round its middle, its cells past its edges always dead'],
+                  ['rhombus', true, 'Rhombus', 'Rhombus: the grid as it is stored, a rhombus of cells, a torus'], ['rhombus', false, 'R. walls', 'Rhombus walled: the grid as it is stored, a rhombus of cells, its cells past its edges always dead']];
+$('planeEdges').append(tileGroup(OUTLINES.map(([shape, torus, text, title]) => tile({ pic: icon({ square: 'square', hex: 'hexagon', rhombus: 'rhombus' }[shape] + (torus ? '' : 'Walled')), text, id: `outline-${shape}-${torus ? 'torus' : 'walled'}`, byDefault: text === 'Square' ? 'yes' : '', title,
   click: () => { plane.shape = shape; plane.torus = torus; if (torus) spaceTime = false; compute(); } }))));  // (Stacks off on a torus)
 // Stacks (Space-time, in 3D: walls with it, left on when it goes off; a torus, Stacks off too), on squares: under Natural squares
 const spaceTimeTile = tile({ pic: icon('stacks'), text: 'Stacks', toggle: true, byDefault: 'off', title: 'Stacks: the generations stacked up, in 3D, time going up, a cube a live cell, as many generations as asked under the play buttons (a glider: a slanting line; an oscillator: a column); turned as a 3D walk. With walls: through a torus\'s edges no tree grows',
@@ -8041,7 +8041,7 @@ function renderPlaneRow() {
   $('planeUp').disabled = plane.side >= sides.at(-1);
   sizeGauge($('planeGauge'), sides.length, sides.indexOf(plane.side), (k) => label(sides[k]), (k) => { picked = planeCells(sides[k]); compute(); });
   $('planeOutline').hidden = !!APERIODIC[kind];  // (a grid that never repeats: always walls, nothing to choose)
-  for (const [shape, torus, text] of OUTLINES) setTile($(`outline${text.replace(' ', '')}`), { on: outlineOf(kind) === shape && planeTorus(kind) === torus, can: outlineOf(kind, shape, torus) === shape,
+  for (const [shape, torus] of OUTLINES) setTile($(`outline-${shape}-${torus ? 'torus' : 'walled'}`), { on: outlineOf(kind) === shape && planeTorus(kind) === torus, can: outlineOf(kind, shape, torus) === shape,
     greyed: shape === 'hex' ? 'but on a six-fold grid (triangles, hexagons, kites…)' : 'but on a slanted grid (its cells stored as a rhombus: triangles, hexagons, parallelograms…)' });
   setTile(spaceTimeTile, { on: spaceTimeOn(), can: spaceTimeApplies(), greyed: 'but on squares (not Reversible)' });
   renderSymmetry();
