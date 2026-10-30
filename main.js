@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.93';
+const VERSION = '0.2.94';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -10127,7 +10127,7 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  
   if (walk.plane) {
     const F = planeFrame(), block = (t) => F.block(t, cols, rows);
     if (wallSlices(K)) { const { part } = planeSlices(K); if (!r) { for (let t = 0; t < n; t++) parts[part[t]]?.push(t); return parts; } return parts.map((_, i) => lifePatch(r, middleCells(i, K))); }
-    if (!r) { for (let t = 0; t < n; t++) parts[block(t)].push(t); return parts; }
+    if (!r) { for (let t = 0; t < n; t++) if (open(t)) parts[block(t)].push(t); return parts; }  // (a wall's cells none's: a grid in a hexagon, those round it)
     if (K === 1) return [lifePatch(r)];
     const near = NEAR_RULES.includes(L.ruleText) || K === 1, side = 2 * r + 1;
     return parts.map((_, i) => lifePatch(r, near
