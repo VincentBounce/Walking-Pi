@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.116';
+const VERSION = '0.2.117';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -766,11 +766,16 @@ const PRESETS = {
   epi:     { group: '𝑓', sym: 'e^π',  name: "Gelfond's constant", detail: 'e^pi = exp(pi)', f: 'e^pi' },
   ln2:     { group: '𝑓', sym: 'ln 2', name: 'Natural log of 2', f: 'ln(2)' },
   zeta3:   { group: '𝑓', sym: 'ζ(3)', name: "Apéry's constant", f: 'zeta(3)' },
-  frac16_9: { group: '𝑓', sym: '16/9', name: 'Sixteen ninths', f: '16/9' },
+  ramanujan: { group: '𝑓', sym: 'e<sup>π√163</sup>', name: "Ramanujan's constant", detail: 'e^(pi*sqrt(163)) = 262537412640768743.99999999999925…: all but whole', f: 'e^(pi*sqrt(163))' },
   basel:   { group: '𝑓', sym: '6/π²', name: 'Probability that two whole numbers are coprime', detail: '6/pi^2 = 1/ζ(2)', f: '6/pi^2' },
-  // Fractions: their digits repeat, and on a walk that turns relative to its heading, a round of
-  // them that turns by a whole fraction of a turn closes into a rosette (k rounds for a k-fold one).
-  // Picked among the fractions up to /999 for big rosettes drawn with few overlaps, four per walk
+  // Fractions: the screens' 4/3 and 16/9, π's 22/7 and 355/113 (Zu Chongzhi's, 6 decimals right). Their digits repeat,
+  // and on a walk that turns relative to its heading, a round of them that turns by a whole fraction of a turn closes into a
+  // rosette (k rounds for a k-fold one).
+  frac4_3: { group: 'Fractions', sym: '4/3', name: 'Four thirds', detail: '4/3: the old screens, 4:3', f: '4/3' },
+  frac16_9: { group: 'Fractions', sym: '16/9', name: 'Sixteen ninths', detail: '16/9: the wide screens, 16:9', f: '16/9' },
+  frac22_7: { group: 'Fractions', sym: '22/7', name: "Archimedes' π", detail: '22/7 = 3.142857…, π to 2 decimals', f: '22/7' },
+  frac355_113: { group: 'Fractions', sym: '355/113', name: "Zu Chongzhi's π (Milü)", detail: '355/113 = 3.1415929…, π to 6 decimals', f: '355/113' },
+  // (the rosettes: picked among the fractions up to /999 for big rosettes drawn with few overlaps, four per walk)
   rose1_923: { group: 'Fractions', sym: '1/923', name: 'A 4-fold rosette on Squares turtle', detail: '1/923 in base 3', f: '1/923' },
   rose2_541: { group: 'Fractions', sym: '2/541', name: 'A 4-fold rosette on Squares turtle', detail: '2/541 in base 3', f: '2/541' },
   rose1_709: { group: 'Fractions', sym: '1/709', name: 'A 4-fold rosette on Squares turtle', detail: '1/709 in base 3', f: '1/709' },

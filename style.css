@@ -289,6 +289,7 @@ button.switch.active:hover:not(:disabled) { background: var(--pick-strong); }
 .number-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 4px; margin-bottom: 10px; }
 .number-grid button { padding: 6px 2px; font-size: 14px; white-space: nowrap; background: var(--panel); }
 .number-grid button:hover { background: var(--bg); }
+.number-grid sup { line-height: 0; }  /* an exponent (e^π√163) not raising its button */
 .number-grid button.active { border-color: var(--accent); color: var(--accent); background: var(--pick); }
 .mode-list button.active { border-color: var(--accent); background: var(--pick); }
 .mode-list button.active .mode-name,
