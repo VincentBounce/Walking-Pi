@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.108';
+const VERSION = '0.2.109';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2007,6 +2007,11 @@ const ICONS = (() => {
     hexagonWalled: walledEl(hex),
     rhombus: pathEl(pathOf(rhombus)),  // a rhombus of 60°: a six-fold or slanted grid's array, uncut
     rhombusWalled: walledEl(rhombus, 2),
+    goalLongest: pathEl('M12 12C10 8.5 4 8.5 4 12C4 15.5 10 15.5 12 12C14 8.5 20 8.5 20 12C20 15.5 14 15.5 12 12Z'),  // the hunt's goals (see HUNT_GOALS): ∞
+    goalDies: pathEl('M12 3V21M6 8.5H18'),  // (a cross)
+    goalPeak: pathEl('M12 4L21 19H3Z', 'f'),
+    goalCover: pathEl(pathOf(sq)) + pathEl('M9.33 4V20M14.67 4V20M4 9.33H20M4 14.67H20'),  // (all cells: a grid)
+    goalBattle: pathEl('M4 4L17 17M20 4L7 17M14 20L20 14M4 14L10 20M17.5 17.5L20.5 20.5M6.5 17.5L3.5 20.5'),  // (crossed swords)
     king: pathEl('M12 3V21M3 12H21M5.6 5.6L18.4 18.4M18.4 5.6L5.6 18.4'),  // the 8 ways out
     pentagons: pathEl('M7 7L9.3 12H14.7L17 7L12 4.7ZM7 17L12 19.3L17 17L14.7 12H9.3ZM7 7L9.3 12L7 17L2 14.7V9.3ZM17 7L22 9.3V14.7L17 17L14.7 12Z'),  // four of the Cairo tiling's: two across a bar, two at its ends
     ammann: [0, 1, 2, 3, 4, 5, 6, 7].map((k) => { const e = (j) => [Math.cos((j * Math.PI) / 4), Math.sin((j * Math.PI) / 4)], a = e(k), b = e(k + 1), s = 10 / (2 * Math.cos(Math.PI / 8)), pt = ([x, y]) => `${(12 + x * s).toFixed(1)} ${(12 - y * s).toFixed(1)}`;
@@ -9920,11 +9925,11 @@ const hunt = { run: null, zone: 'full', top: [], status: '', picked: null, goal:
 let huntKept = 0;  // the results kept so far, all hunts: each one's number its identity (picked: the one played's)
 // What the hunt looks for in one colour: the longest life, the longest till it dies out, the most cells alive at once,
 // or every cell alive once the soonest (seen in Activity); the last two from a start in a zone, not the whole grid
-// (colours: the longest battle, the goals hidden). Each: its mark, its name, its words
-const HUNT_GOALS = { longest: ['∞', 'Longest', 'The start that lasts longest, however it ends'], dies: ['✝', 'Dies out', 'The start that lasts longest and dies out, to the last cell'],
-                     peak: ['▲', 'Peak', 'The start that has the most cells alive at once, from a zone (not the whole grid)'],
-                     cover: ['▦', 'Reach all', 'Fastest to reach all cells: the start whose cells are all alive once the soonest (Activity shows it), from a zone (not the whole grid)'],
-                     battle: ['⚔', 'Battle', 'The battle that lasts longest, its colours touching and even: in colours, the only hunt'] };
+// (colours: the longest battle, the goals hidden). Each: its picture, its name, its words
+const HUNT_GOALS = { longest: ['goalLongest', 'Longest', 'The start that lasts longest, however it ends'], dies: ['goalDies', 'Dies out', 'The start that lasts longest and dies out, to the last cell'],
+                     peak: ['goalPeak', 'Peak', 'The start that has the most cells alive at once, from a zone (not the whole grid)'],
+                     cover: ['goalCover', 'Reach all', 'Fastest to reach all cells: the start whose cells are all alive once the soonest (Activity shows it), from a zone (not the whole grid)'],
+                     battle: ['goalBattle', 'Battle', 'The battle that lasts longest, its colours touching and even: in colours, the only hunt'] };
 const peakHunt = () => walk.life.colours === 1 && (hunt.goal === 'peak' || hunt.goal === 'cover');  // (a zone's: the whole grid a soup full already)
 function pickGoal(goal) {
   hunt.goal = goal;
@@ -14270,8 +14275,8 @@ $('brushFlip').addEventListener('click', () => { brush.flip = !brush.flip; rende
 $('huntBtn').addEventListener('click', huntClick);
 $('backBtn').addEventListener('click', () => searchBack(backSearch.life !== walk.life));
 // one choice, a tab group: in one colour the four, in colours Battle (picked by itself, see renderHunt)
-$('huntGoals').replaceChildren(tileGroup(Object.entries(HUNT_GOALS).map(([goal, [mark, name, words]]) => {
-  const b = tile({ pic: `<i class="goal-mark">${mark}</i>`, text: name, title: words, byDefault: goal === 'longest' ? 'yes' : '', greyed: goal === 'battle' ? 'in one colour (none to fight)' : 'in colours (a battle)',
+$('huntGoals').replaceChildren(tileGroup(Object.entries(HUNT_GOALS).map(([goal, [pic, name, words]]) => {
+  const b = tile({ pic: icon(pic), text: name, title: words, byDefault: goal === 'longest' ? 'yes' : '', greyed: goal === 'battle' ? 'in one colour (none to fight)' : 'in colours (a battle)',
     click: goal === 'battle' ? null : () => { if (goal !== hunt.goal) pickGoal(goal); } });  // (see hunt)
   b.dataset.goal = goal;
   return b;

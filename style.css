@@ -245,7 +245,7 @@ button.wide.how-it-works { margin-bottom: 4px; }  /* on its rules' first card, t
 .nav-shapes button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 1px; font-size: 10px; background: var(--panel); color: var(--muted); min-width: 0; }
 .nav-shapes button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-shapes button svg { width: 24px; height: 24px; }
-.nav-shapes .goal-mark { width: 24px; height: 24px; font: 600 19px/24px system-ui, sans-serif; font-style: normal; text-align: center; }  /* a hunt's goal: its mark as an icon */  /* icons: 24 px in a tile, a tab or by a section's title, 20 px on a card, 16 px in a line of text */
+/* icons: 24 px in a tile, a tab or by a section's title, 20 px on a card, 16 px in a line of text */
 /* a group of tiles, one choice among them: joined in one frame, 2 or 3 columns of tiles */
 .tile-group { display: flex; grid-column: span 2; }
 .tile-group:has(> :nth-child(3)) { grid-column: span 3; }
