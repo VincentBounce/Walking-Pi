@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.102';
+const VERSION = '0.2.103';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -10087,7 +10087,14 @@ function planeSlices(K) {
   // (the cell on its middle no one's, the slices all alike; on twice as many as its turns, each slice a mirror of the next,
   // the cells on the lines between them no one's either: all as many)
   const halves = shape && K === 2 * figureTurns(kind), byCells = !shape || figureTurns(kind) === 1;  // (no turns, a hat's, a spectre's, a pinwheel's: as many cells each, round its middle)
-  if (!byCells) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
+  if (shape?.rings && (6 % K === 0 || K === 12)) {  // a hexagon's, by its rings (see planeShape): a slice its sixths' share of each, from the sixth from's corner starts
+    const off = (((Math.round((from + 1e-4 - shape.corner) / (Math.PI / 3)) % 6) + 6) % 6);
+    part.fill(-1);
+    for (const [a, len, on] of shape.rings) for (let i = 0, s = len / 6; len > 1 && i < len; i++) {
+      const j = (i - off * s + len) % len, q = Math.floor(j / s), c = (j % s) - on, cnt = s - on;  // (its sixth; in it, past its cell on the corner's way)
+      part[a + i] = K <= 6 ? Math.floor((q * K) / 6) : c < 0 || (cnt % 2 && c === (cnt - 1) / 2) ? -1 : 2 * q + (c < cnt / 2 ? 0 : 1);  // (12: each sixth's halves, its cells on their lines no one's)
+    }
+  } else if (!byCells) angle.forEach((a, t) => { const j = Math.round(a / slice); part[t] = Math.hypot(at[t][0] - mid[0], at[t][1] - mid[1]) < 1e-6 || (halves && Math.abs(a - j * slice) < 3e-4) ? -1 : Math.min(K - 1, Math.floor(a / slice)); });
   else { const cells = [...angle.keys()].sort((p, q) => angle[p] - angle[q]); part.fill(-1); cells.forEach((t, k) => { part[t] = Math.floor((k * K) / cells.length); }); }
   // the patches' spots evenly round the middle, a slice's angle apart (not each in its slice: on a grid far from round,
   // its slices' middles bunch up), the cell nearest each
