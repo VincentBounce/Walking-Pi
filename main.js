@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.90';
+const VERSION = '0.2.91';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7983,7 +7983,7 @@ function renderPlaneRow() {
   $('symmetryRow').hidden = !kind;
   $('symmetryTiles').replaceChildren(tileGroup(Object.keys(SYMMETRIES).map((y) => {  // (one choice: a tab group; the one picked, clicked again: nothing; those the grid has not, greyed)
     return tile({ pic: icon(SYMMETRIES[y][0]), text: SYMMETRIES[y][1], title: SYMMETRIES[y][3], on: y === now, can: has.includes(y), byDefault: y === 'none' ? 'yes' : '',
-      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none)', click: () => { if (y !== now) { plane.sym = y; reseedStart(); } } });
+      greyed: 'where the grid is not its own copy so (squares: all; a grid in a hexagon: as its tiles allow; a block rule: as its blocks and its rule allow too; the others: none)', click: () => { if (y !== symmetryOf(walk.plane.kind)) { plane.sym = y; reseedStart(); } } });
   }), true));
   $('startDraw').hidden = plane.start !== 'draw';
   $('startText').hidden = plane.start !== 'text';
@@ -9782,6 +9782,7 @@ function huntRuns(L, { cells, copies, all, choices }, cap, goal, report) {  // g
   const fromPick = (pick) => {
     const s = new Uint8Array(n);
     pick.forEach((c, i) => { const f = choices[i][c]; for (let q = 0; q < f.length; q += 2) s[f[q]] = f[q + 1]; });
+    symmetricStart(s);  // (as it is laid, see startColours)
     s.pick = pick;
     return s;
   };
@@ -10344,7 +10345,8 @@ function pickZone(zone) {
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
   plane.icons = Array.from({ length: lifeParts() }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
   if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
-  else setLifeSeed(zoneSeed(), { zone });
+  else { const seed = new Uint8Array(walk.life.seed.length); startColours(seed); setLifeSeed(seed, { zone }); }  // (laid as any start: its symmetry too)
+  renderPlaneRow();
   renderHunt();
 }
 function huntClick() {
