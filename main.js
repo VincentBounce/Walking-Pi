@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.97';
+const VERSION = '0.2.98';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6585,17 +6585,24 @@ const lifeStates = () => (lifeRuleNow() || { base: 2 }).base;  // one colour: C;
 // A surface's start, as the Start says: its digits (one base-C digit a cell: 0 dead, 1 alive, 2… dying;
 // in colours, base K + 1), or a soup as dense as said, from its seed (in colours, each live cell's colour
 // drawn too)
-function surfaceSeed(seq, n, K) {
+function surfaceSeed(seq, n, K, walls) {
   const seed = new Uint8Array(n), p = plane.density / 100;
-  if (plane.start === 'digits') seed.set(seq.subarray(0, n));
+  if (plane.start === 'digits') digitsOn(seed, seq, walls);
   else for (let t = 0; t < n; t++) if (cellRandom(plane.seed, t) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, t) * K) : 1;
   return seed;
+}
+// the digits as a start: one a cell, on the open cells in turn (a wall's, round a grid in a hexagon or on a surface, none: its
+// digits not lost there, the last cells not left without)
+function digitsOn(seed, seq, walls) {
+  const out = new Set(walls);
+  let k = 0;
+  for (let t = 0; t < seed.length; t++) seed[t] = out.has(t) ? 0 : seq[k++] ?? 0;
 }
 // the same grid, another soup (a new seed, density): a surface's or the plane's
 function lifeReseed() {
   if (walk.plane) { planeReseed(); return; }
   const L = walk.life;
-  L.seed.set(surfaceSeed(walk.digits, L.seed.length, L.colours));
+  L.seed.set(surfaceSeed(walk.digits, L.seed.length, L.colours, walk.geo.walls));
   for (const t of walk.geo.walls ?? []) L.seed[t] = 0;
   startColours(L.seed);
   setLifeSeed(L.seed.slice(), lifeStart?.zone === 'mirror' ? lifeStart : null);
@@ -6670,7 +6677,7 @@ function buildLife(seq, mode) {
   }
   $('lifeRule').value = ruleBody(rule.text);  // the colours apart (see lifeColours)
   if (plane.start === 'draw') plane.start = 'random';  // no drawing on the surfaces
-  const seed = surfaceSeed(seq, g.n, rule.colours);
+  const seed = surfaceSeed(seq, g.n, rule.colours, g.walls);
   for (const t of g.walls ?? []) seed[t] = 0;
   const n = g.n;
   walk.life = { nbr, ring: rule.loops ? meshSides(g) : rule.iso && rule.iso !== 'vertex' ? ring : null, side: rule.iso === 'vertex' ? meshSide(g, nbr) : null, ringMore: rule.iso === 'hensel' && ring ? cornerNeighbours(g, 8).more : null, B: rule.B, S: rule.S, C: rule.C, two: rule.two, colours: rule.colours, ruleText: ruleBody(rule.text), seed,
@@ -7703,7 +7710,7 @@ function planeSeed(kind, seq, C, K = 1) {  // K: the civilisations, a live cell 
   const W = planeW(kind, plane.side), row = planeRow(kind, W), n = row * W, seed = new Uint8Array(n);
   const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < row && y < W) seed[y * row + x] = c; };
   // (the symmetry: after, whatever the start, see symmetricStart)
-  if (plane.start === 'digits') for (let t = 0; t < n; t++) seed[t] = seq[t] ?? 0;
+  if (plane.start === 'digits') digitsOn(seed, seq, planeDead(kind, W));
   else if (plane.start === 'random') {
     const p = plane.density / 100;
     for (let t = 0; t < n; t++) if (cellRandom(plane.seed, t) < p) seed[t] = K > 1 ? 1 + Math.floor(cellRandom(plane.seed + 1, t) * K) : 1;
