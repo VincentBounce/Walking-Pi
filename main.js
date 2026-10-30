@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.118';
+const VERSION = '0.2.119';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -14228,7 +14228,7 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 
 // Life's starts, one choice: a tab group of tiles, its pictures over its names (Hunt's and Random's, see renderPlaneRow)
 const START_TABS = [['random', 'search', 'Hunt', 'Random cells to start, or a hunt among them (its goal below); random zones in a reversible rule'],
-  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells"],
+  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells, one digit a cell, as many as the grid has cells: the same number, the same start.\nIn the rule's base: one colour, 0 dead, 1 alive, 2 and up its dying stages; in K colours, base K + 1, digit k alive in colour k.\nIn turn: a rectangle row by row, a grid in a hexagon or a circle from its middle out, wound round it.\nThe number: Number's (a constant, a fraction, a formula)"],
   ['draw', 'pencil', 'Draw', 'Cells drawn by hand, or patterns laid with the brushes, at gen 0']];  // (start, picture, name, tooltip)
 $('lifeStartTabs').append(tileGroup(START_TABS.map(([start, pic, text, title]) => { const b = tile({ pic: icon(pic), text, title }); b.dataset.start = start; return b; }), true));
 for (const b of $('lifeStartTabs').querySelectorAll('button')) {
