@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261210i">
+  <link rel="stylesheet" href="style.css?v=20261210j">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -440,9 +440,9 @@
       <section id="digitsSection">  <!-- the number walked: a walk's (a start's by the digits, under its Digits tab, see renderAntRow) -->
         <h2 data-icon="barcode">Digits</h2>
         <div id="numberPicker">  <!-- the number, its formula, its tabs, its primes' menus: one block, placed by the mode -->
-          <div class="field-label with-btn">Formula, in base 10<button id="copyNumber" class="head-btn" data-icon="barcode" type="button" hidden title="The number with all its digits over the view, to scroll or copy">Full number</button></div>  <!-- not a label: a click on ↵ would focus the field again -->
-          <div class="field formula-field"><input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off" aria-label="Formula, in base 10"
-                   title="Any number as a formula: pi, e, phi, gamma, catalan, erdos, rho, sqrt(3), cbrt(2), root(x, k), ln(x), exp(x), log(x, b), zeta(k), 22/7, 2^pi, 8^(1/3), 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps, dragon. Press Enter to compute"><button class="enter" type="button" tabindex="-1" title="Compute (Enter)">↵</button></div>
+          <div class="field-label with-btn">Formula<button id="copyNumber" class="bar-chip" type="button" hidden title="The number with all its digits, in the base its use needs, over the view, to scroll or copy"></button></div>  <!-- not a label: a click on ↵ would focus the field again -->
+          <div class="field formula-field"><input id="formula" type="text" value="pi" spellcheck="false" autocomplete="off" aria-label="Formula"
+                   title="Typed in base 10, then written in the base its use needs (the walk's, or Life's: K + 1, its colours and dead), as the chip beside it says. Any number as a formula: pi, e, phi, gamma, catalan, erdos, rho, sqrt(3), cbrt(2), root(x, k), ln(x), exp(x), log(x, b), zeta(k), 22/7, 2^pi, 8^(1/3), 2^127-1, primorial(p)+1, randprime(size, seed), and + − × ÷ ^ ( ). Digit sequences, used alone: random(seed), champernowne, primes, primegaps, dragon. Press Enter to compute"><button class="enter" type="button" tabindex="-1" title="Compute (Enter)">↵</button></div>
           <div id="numberList"></div>
           <label id="mersenneRow" hidden>Prime
             <select id="mersenneP"></select>
@@ -790,10 +790,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261210i"></script>
-  <script src="punks.js?v=20261210i"></script>
-  <script src="loops.js?v=20261210i"></script>
-  <script src="emoji.js?v=20261210i"></script>
-  <script src="main.js?v=20261210i"></script>
+  <script src="pixelarticons.js?v=20261210j"></script>
+  <script src="punks.js?v=20261210j"></script>
+  <script src="loops.js?v=20261210j"></script>
+  <script src="emoji.js?v=20261210j"></script>
+  <script src="main.js?v=20261210j"></script>
 </body>
 </html>

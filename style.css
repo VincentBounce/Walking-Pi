@@ -463,6 +463,9 @@ button.wide.active, .head-btn.active { border-color: var(--accent); color: var(-
 .bar-num { flex: none; max-width: 70%; font-size: 20px; font-weight: 700; color: var(--accent); overflow: hidden; text-overflow: ellipsis; }  /* the number first */
 .bar-chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
 .bar-chip.loop { border-color: rgba(240, 180, 41, 0.5); color: var(--accent); }
+button.bar-chip { margin-left: auto; background: none; font-weight: 400; cursor: pointer; }  /* a chip to click: Full number's, its base */
+button.bar-chip:hover { color: var(--text); border-color: var(--muted); }
+button.bar-chip.active { color: var(--accent); border-color: var(--accent); }
 .bar-sub { margin: -4px 0 8px; font-size: 12px; color: var(--muted); }
 .bar-sub b { color: var(--text); }
 .rule-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-bottom: 9px; }
