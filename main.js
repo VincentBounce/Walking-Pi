@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.149';
+const VERSION = '0.2.150';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3079,7 +3079,7 @@ function renderModePicker() {
       plane.torus = !plane.torus;
       compute();
     }, modeWhere(navPick(2, sh)));
-    if (again) { setTile(b, { on: true, again }); b.title = plane.torus ? 'A torus (a click: walls)' : 'Walls (a click: a torus)'; }
+    if (again) { setTile(b, { on: true, again }); b.title += plane.torus ? '\nA torus (a click: walls)' : '\nWalls (a click: a torus)'; }  // (its words kept, then what a click does)
     return b;
   }), ...(g === SHAPE_GROUPS[1][0] && MODES[w].life && MODES[w].plane ? [spaceTimeTile] : [])];  // (Stacks: Life on squares')
   }));
