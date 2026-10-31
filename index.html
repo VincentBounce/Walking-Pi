@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261210d">
+  <link rel="stylesheet" href="style.css?v=20261210e">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -301,7 +301,9 @@
               <option value="lifeTorusSnubtri">Life — torus</option>
               <option value="lifeTorusPythagorean">Life — torus</option>
               <option value="lifeTorusPrismatic">Life — torus</option>
+              <option value="lifeTorusElongated">Life — torus</option>
               <option value="lifeTorusTetrakis">Life — torus</option>
+              <option value="lifeTorusKischecker">Life — torus</option>
               <option value="lifeTorusKisrhombille">Life — torus</option>
               <option value="lifeTorusPent15">Life — torus</option>
               <option value="lifeTorusTrihex">Life — torus</option>
@@ -317,6 +319,7 @@
               <option value="lifeMobiusRhombitri">Life — Möbius strip</option>
               <option value="lifeMobiusPrismatic">Life — Möbius strip</option>
               <option value="lifeMobiusTetrakis">Life — Möbius strip</option>
+              <option value="lifeMobiusKischecker">Life — Möbius strip</option>
               <option value="lifeMobiusKisrhombille">Life — Möbius strip</option>
               <option value="lifeMobiusTrihex">Life — Möbius strip</option>
               <option value="lifeMobiusTruncsquare">Life — Möbius strip</option>
@@ -339,6 +342,7 @@
               <option value="lifeKleinRhombitri">Life — Klein bottle</option>
               <option value="lifeKleinPrismatic">Life — Klein bottle</option>
               <option value="lifeKleinTetrakis">Life — Klein bottle</option>
+              <option value="lifeKleinKischecker">Life — Klein bottle</option>
               <option value="lifeKleinKisrhombille">Life — Klein bottle</option>
               <option value="lifeKleinTrihex">Life — Klein bottle</option>
               <option value="lifeKleinTruncsquare">Life — Klein bottle</option>
@@ -784,10 +788,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261210d"></script>
-  <script src="punks.js?v=20261210d"></script>
-  <script src="loops.js?v=20261210d"></script>
-  <script src="emoji.js?v=20261210d"></script>
-  <script src="main.js?v=20261210d"></script>
+  <script src="pixelarticons.js?v=20261210e"></script>
+  <script src="punks.js?v=20261210e"></script>
+  <script src="loops.js?v=20261210e"></script>
+  <script src="emoji.js?v=20261210e"></script>
+  <script src="main.js?v=20261210e"></script>
 </body>
 </html>

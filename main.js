@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.139';
+const VERSION = '0.2.140';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -874,13 +874,13 @@ const TILINGS = {
   prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], torus: true,
     basis: [[1, 0], [0.5, 1.8660254037844386]],
     polys: [[[0.57735,0.845299],[1.154701,0.690599],[1.57735,0.845299],[1.366025,1.267949],[0.366025,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
-  elongated: { name: 'Elongated', mark: '⊟', cells: 'tiles', where: 'a grid of rows of squares and of triangles (the elongated triangular tiling, 3.3.3.4.4)', most: 12, turns: 2, mirror: true, pivot: [0.3660254, 0.2679492],
+  elongated: { name: 'Elongated', mark: '⊟', cells: 'tiles', where: 'a grid of rows of squares and of triangles (the elongated triangular tiling, 3.3.3.4.4)', most: 12, turns: 2, mirror: true, pivot: [0.3660254, 0.2679492], torus: true,
     basis: [[1, 0], [0.5, 1.8660254037844386]],  // (Prismatic's lattice: its dual; a square, then two triangles over it)
     polys: [[[0,0],[1,0],[0.732051,0.535898],[-0.267949,0.535898]],[[-0.267949,0.535898],[0.732051,0.535898],[0,1]],[[0.732051,0.535898],[1,1],[0,1]]] },
   tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14, turns: 4, mirror: true, pivot: [0, 0], torus: true,
     basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
     polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
-  kischecker: { name: 'Kis checker', mark: '◪', cells: 'tiles', where: 'a checkerboard of squares and tetrakis squares (every other square cut in 4 triangles from its middle)', most: 16, turns: 4, mirror: true, pivot: [1, 0.5],
+  kischecker: { name: 'Kis checker', mark: '◪', cells: 'tiles', where: 'a checkerboard of squares and tetrakis squares (every other square cut in 4 triangles from its middle)', most: 16, turns: 4, mirror: true, pivot: [1, 0.5], torus: true,
     basis: [[1, -1], [1, 1]],  // (its lattice a square at 45°: a whole square, the next one's 4 triangles; tools/tilings/build.js)
     polys: [[[1,0],[0.5,0.5],[0.5,0]],[[1.5,0.5],[1,0],[1.5,0]],[[1,0],[1.5,0.5],[1,1],[0.5,0.5]],[[0.5,0.5],[1,1],[0.5,1]],[[1,1],[1.5,0.5],[1.5,1]]] },
   kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16, turns: 6, mirror: true, pivot: [0, 0], torus: true,
@@ -920,7 +920,7 @@ const TILINGS = {
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip; the others are mirrored
 // along none, and a strip turns its tiles over round it); the strip's edges along their tiles' sides where that mirror
 // runs there (Prismatic, Tetrakis, Kisrhombille), else teeth of whole tiles, as the hexagons' strip
-const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16', 'dual56', 'dual314'];
+const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kischecker', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16', 'dual56', 'dual314'];
 // the flat solids with hexagons too, folded over their edges (see hexSolidMesh): each one's name, its family's, its size
 // (as its triangles', see SPHERES) and its cells (one a corner of its triangles, those at its corners walls)
 const HEX_SOLIDS = { tetra: { a: 'a tetrahedron', name: 'Tetrahedron', radius: (f) => f / (2 * Math.SQRT2), cells: (f) => 2 * f * f + 2 },
