@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.147';
+const VERSION = '0.2.148';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -859,7 +859,7 @@ const TILINGS = {
   rhombitri: { name: 'Rhombitri', mark: '✳', cells: 'tiles', where: 'a grid of hexagons, squares and triangles (the rhombitrihexagonal tiling)', most: 12, turns: 6, mirror: true, pivot: [0, 0], torus: true,
     basis: [[2.366025403784439, 1.3660254037844384], [0, 2.732050807568877]],
     polys: [[[1.42265,0.788675],[1.788675,0.788675],[1.57735,1.211325],[1.211325,1.211325]],[[1.42265,0.788675],[1.211325,1.211325],[0.788675,1.42265],[0.57735,1.211325],[0.788675,0.788675],[1.211325,0.57735]],[[1.211325,0.211325],[1.57735,0.211325],[1.211325,0.57735]],[[1.211325,0.211325],[1.211325,0.57735],[0.788675,0.788675],[0.788675,0.42265]],[[1.42265,0.788675],[1.211325,0.57735],[1.57735,0.211325],[1.788675,0.42265]],[[1.42265,0.788675],[1.788675,0.42265],[1.788675,0.788675]]] },
-  floret: { name: 'Florets', mark: '✿', cells: 'pentagons', where: 'a grid of floret pentagons, 6 round each flower', most: 8, turns: 6, mirror: false, pivot: [0, 0], torus: true,
+  floret: { name: 'Florets', mark: '✿', cells: 'pentagons', where: 'a grid of floret pentagons, 6 round each flower (the pentagons of type 5 tile as it does, and some of 1 and 6)', most: 8, turns: 6, mirror: false, pivot: [0, 0], torus: true,
     basis: [[2.2912878474779204, -1.3228756555322954], [2.29128784747792, 1.3228756555322954]],
     polys: [[[0,0],[0.380952,0.095238],[0.333333,0.333333],[0.095238,0.52381],[-0.095238,0.47619]],[[0,1],[0.47619,0.619048],[0.666667,0.666667],[0.619048,0.904762],[0.380952,1.095238]],[[0.095238,0.52381],[0.333333,0.333333],[0.52381,0.380952],[0.47619,0.619048],[0,1]],[[0.52381,0.380952],[1,0],[0.904762,0.47619],[0.666667,0.666667],[0.47619,0.619048]],[[0.380952,0.095238],[0.619048,-0.095238],[1,0],[0.52381,0.380952],[0.333333,0.333333]],[[0.666667,0.666667],[0.904762,0.47619],[1.095238,0.52381],[1,1],[0.619048,0.904762]]] },
   snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18, turns: 6, mirror: false, pivot: [0, 0], torus: true,
@@ -871,7 +871,7 @@ const TILINGS = {
   elongated: { name: 'Elongated', mark: '⊟', cells: 'tiles', where: 'a grid of rows of squares and of triangles (the elongated triangular tiling, 3.3.3.4.4)', most: 12, turns: 2, mirror: true, pivot: [0.3660254, 0.2679492], torus: true,
     basis: [[1, 0], [0.5, 1.8660254037844386]],  // (Prismatic's lattice: its dual; a square, then two triangles over it)
     polys: [[[0,0],[1,0],[0.732051,0.535898],[-0.267949,0.535898]],[[-0.267949,0.535898],[0.732051,0.535898],[0,1]],[[0.732051,0.535898],[1,1],[0,1]]] },
-  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], torus: true,
+  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows; the pentagons of types 6 and 7 tile as it does, and some of 1)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], torus: true,
     basis: [[1, 0], [0.5, 1.8660254037844386]],
     polys: [[[0.57735,0.845299],[1.154701,0.690599],[1.57735,0.845299],[1.366025,1.267949],[0.366025,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
   capitalI: { name: 'Capital 𝙸', mark: '⌶', cells: '𝙸 tiles', where: 'a grid of capital 𝙸 tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
@@ -1122,8 +1122,8 @@ const MODES = {
   blocks2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', margolus: true, where: 'a grid of Cairo pentagons in blocks of 4 round a corner, its 2 kinds of corners in turn' },
   blocks2dTetrakis: { base: 2, lattice: 'tetrakis', life: true, plane: 'tetrakis', margolus: true, where: 'a grid of triangles in squares of 4, each triangle first swapped with the one across its outer side (the isometric von Neumann neighbourhood, stellated)' },
   life2dTri:  { base: 2, lattice: 'tri', life: true, plane: 'tri', where: 'a grid of triangles' },
-  life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons' },
-  life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons' },
+  life2dHex:  { base: 2, lattice: 'hex', life: true, plane: 'hex', where: 'a grid of hexagons (pentagons tile as it does, a corner on a side: their types 2, 3 and 12, and some of 1)' },
+  life2dCairo: { base: 2, lattice: 'cairo', life: true, plane: 'cairo', where: 'a grid of Cairo pentagons (the pentagons of types 4 and 8 tile as it does, and some of 2)' },
   life2dKite: { base: 2, lattice: 'kite', life: true, plane: 'kite', where: 'a grid of kites (each triangle cut in 3)' },
   life2dHat: { base: 2, lattice: 'hat', life: true, plane: 'hat', where: 'a patch of hats, the tile that never repeats' },
   life2dPenrose: { base: 2, lattice: 'penrose', life: true, plane: 'penrose', where: "a patch of Penrose's rhombi (they never repeat)" },
