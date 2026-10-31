@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.143';
+const VERSION = '0.2.144';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -865,18 +865,18 @@ const TILINGS = {
   snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18, turns: 6, mirror: false, pivot: [0, 0], torus: true,
     basis: [[2.2912878474779204, -1.3228756555322954], [2.29128784747792, 1.3228756555322954]],
     polys: [[[1.428571,0.857143],[1.571429,1.142857],[1.142857,1.285714]],[[1.428571,0.857143],[1.142857,1.285714],[0.714286,1.428571],[0.571429,1.142857],[0.857143,0.714286],[1.285714,0.571429]],[[1.142857,0.285714],[1.571429,0.142857],[1.285714,0.571429]],[[1.142857,0.285714],[1.285714,0.571429],[0.857143,0.714286]],[[1.428571,0.857143],[1.285714,0.571429],[1.714286,0.428571]],[[1.428571,0.857143],[1.714286,0.428571],[1.857143,0.714286]],[[1.428571,0.857143],[1.857143,0.714286],[1.571429,1.142857]],[[1.285714,0.571429],[1.571429,0.142857],[1.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
-  capitalI: { name: 'Capital 𝙸', mark: '⌶', cells: '𝙸 tiles', where: 'a grid of capital 𝙸 tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
-    basis: [[2, 1], [-1, 3]],
-    polys: [[[0,1],[0.428571,0.857143],[0.857143,0.714286],[1.285714,0.571429],[1.428571,0.857143],[1,1],[1.142857,1.285714],[1.571429,1.142857],[1.714286,1.428571],[1.285714,1.571429],[0.857143,1.714286],[0.428571,1.857143],[0.285714,1.571429],[0.714286,1.428571],[0.571429,1.142857],[0.142857,1.285714]]] },
   pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.8], torus: true,
     basis: [[2, -1], [1, 2]],  // (y down: a small square at the bottom of each big one's right side, as its picture)
     polys: [[[0.2,0.6],[0.4,0.2],[0.8,0.4],[1.2,0.6],[1,1],[0.8,1.4],[0.4,1.2],[0,1]],[[0,0],[0.4,0.2],[0.2,0.6],[-0.2,0.4]]] },
-  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], torus: true,
-    basis: [[1, 0], [0.5, 1.8660254037844386]],
-    polys: [[[0.57735,0.845299],[1.154701,0.690599],[1.57735,0.845299],[1.366025,1.267949],[0.366025,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
   elongated: { name: 'Elongated', mark: '⊟', cells: 'tiles', where: 'a grid of rows of squares and of triangles (the elongated triangular tiling, 3.3.3.4.4)', most: 12, turns: 2, mirror: true, pivot: [0.3660254, 0.2679492], torus: true,
     basis: [[1, 0], [0.5, 1.8660254037844386]],  // (Prismatic's lattice: its dual; a square, then two triangles over it)
     polys: [[[0,0],[1,0],[0.732051,0.535898],[-0.267949,0.535898]],[[-0.267949,0.535898],[0.732051,0.535898],[0,1]],[[0.732051,0.535898],[1,1],[0,1]]] },
+  prismatic: { name: 'Prismatic', mark: '⌂', cells: 'pentagons', where: 'a grid of prismatic pentagons (houses in rows)', most: 7, turns: 2, mirror: true, pivot: [0.3660254, 1.2679492], torus: true,
+    basis: [[1, 0], [0.5, 1.8660254037844386]],
+    polys: [[[0.57735,0.845299],[1.154701,0.690599],[1.57735,0.845299],[1.366025,1.267949],[0.366025,1.267949]],[[0.366025,0.267949],[1.366025,0.267949],[1.154701,0.690599],[0.57735,0.845299],[0.154701,0.690599]]] },
+  capitalI: { name: 'Capital 𝙸', mark: '⌶', cells: '𝙸 tiles', where: 'a grid of capital 𝙸 tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
+    basis: [[2, 1], [-1, 3]],
+    polys: [[[0,1],[0.428571,0.857143],[0.857143,0.714286],[1.285714,0.571429],[1.428571,0.857143],[1,1],[1.142857,1.285714],[1.571429,1.142857],[1.714286,1.428571],[1.285714,1.571429],[0.857143,1.714286],[0.428571,1.857143],[0.285714,1.571429],[0.714286,1.428571],[0.571429,1.142857],[0.142857,1.285714]]] },
   tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14, turns: 4, mirror: true, pivot: [0, 0], torus: true,
     basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
     polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
@@ -920,7 +920,7 @@ const TILINGS = {
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip; the others are mirrored
 // along none, and a strip turns its tiles over round it); the strip's edges along their tiles' sides where that mirror
 // runs there (Prismatic, Tetrakis, Kisrhombille), else teeth of whole tiles, as the hexagons' strip
-const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'elongated', 'tetrakis', 'kischecker', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16', 'dual56', 'dual314'];
+const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'elongated', 'prismatic', 'tetrakis', 'kischecker', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16', 'dual56', 'dual314'];
 // the flat solids with hexagons too, folded over their edges (see hexSolidMesh): each one's name, its family's, its size
 // (as its triangles', see SPHERES) and its cells (one a corner of its triangles, those at its corners walls)
 const HEX_SOLIDS = { tetra: { a: 'a tetrahedron', name: 'Tetrahedron', radius: (f) => f / (2 * Math.SQRT2), cells: (f) => 2 * f * f + 2 },
