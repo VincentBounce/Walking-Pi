@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.138';
+const VERSION = '0.2.139';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1543,7 +1543,7 @@ $('viewTools').addEventListener('mouseenter', renderHeadTiles);
 // The colour menu means something else for the Game of Life, and depends on its number of states.
 // In Life the plain states come first (the default); walks keep the gradient first.
 function relabelColours(mode) {
-  const life = !!mode.life, C = life ? lifeBase() : 2, K = life ? lifeColours : 1, two = K > 1;
+  const life = !!mode.life, C = life ? lifeRuleNow()?.C ?? 2 : 2, K = life ? lifeColours : 1, two = K > 1;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
   const names = !life ? { gradient: 'Rainbow along the walk', cells: 'Rainbow cells along the walk', visits: 'Rainbow by number of visits',
                       digit: 'One colour per digit', mono: 'One colour' }
@@ -6632,7 +6632,7 @@ const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'cyan', 'ma
 const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ length: K * (C - 2) }, (_, i) => faded(LIFE_COLOURS[i % K], 1 - (Math.floor(i / K) + 1) / (C - 1)))];
 
 // the base the number is written in for Life: K + 1, a digit a cell, 0 dead, k alive in colour k (a start has live cells only)
-const lifeBase = () => (lifeRuleNow() || { base: 2 }).base;
+const lifeBase = () => (plane.start === 'digits' && colourMixed() ? 2 : (lifeRuleNow() || { base: 2 }).base);  // (Digits mixed: base 2, painted at random, see paintOwn)
 
 // A surface's start, as the Start says: its digits (one digit a cell in base K + 1: 0 dead, k alive in colour k), or a soup as dense as said, from its seed (in colours, each live cell's colour
 // drawn too)
@@ -6687,6 +6687,7 @@ const firstCopy = (t) => { const { kind, W } = walk.plane; return Math.min(...ce
 const firstCell = ([x, y]) => { const { at, xy } = walk.plane, t = at(x, y); return t < 0 ? [x, y] : xy(firstCopy(t)); };  // (a cell drawn: its first copy's, see symmetricStart)
 function startParts(seed) {
   const K = lifeParts();
+  if (plane.start === 'digits' && colourMixed()) paintOwn(seed, huntOwn());  // (Digits mixed: its digits in base 2, painted at random)
   if (plane.start === 'text') { const set = textSet(); seed.fill(0); iconChoices(iconMax(set), set).forEach((c) => { const f = c[0] ?? []; for (let q = 0; q < f.length; q += 2) seed[f[q]] = f[q + 1]; }); return; }  // (Text: its word as a picture, each colour's, see iconLay)
   if (plane.start !== 'random') return;
   // the zone picked, if it does not fit here: a smaller radius, else the soup (also for the link's start)
@@ -7042,7 +7043,7 @@ function symmetriesHere(kind, W) {
 // symmetricStart: Trio's thirds, a half turn cuts each across, none), whatever the grid or the parts: their maps and cells
 const partMemo = new Map();
 function partSymmetries(kind, W, K) {
-  const key = `${gridKey()}|${K}|${hunt.zone === 'mirror'}|${colourMixed() && plane.seed}`;  // (Mixed: its parts drawn from its seed)
+  const key = `${gridKey()}|${K}|${hunt.zone === 'mirror'}|${colourMixed() && mixSeed()}`;  // (Mixed: its parts drawn from its seed)
   if (partMemo.has(key)) return partMemo.get(key);
   const parts = huntParts(0, K), own = new Int32Array(walk.life.seed.length);
   parts.forEach((part, i) => { for (const t of part) own[t] = i + 1; });
@@ -7974,7 +7975,7 @@ function zoneWords(zone) {
   const K = lifeParts(), r = zoneRadius(zone), d = plane.density;
   if (famousZone(zone)) return `${K === 1 ? 'A pattern of the rule' : 'Patterns of the rule, one for each colour'} ${zone === 'centred' ? (K === 1 ? 'in the middle' : 'at its spot') : 'anywhere'}, turned or mirrored at random`;
   if (zone === 'mirror') return `Each colour a soup of its two opposite parts, ${d} % alive`;
-  if (zone === 'numbers') return `The digits of ${plane.number}, a digit a cell${K > 1 ? ', each colour in its part' : ''}`;
+  if (zone === 'numbers') return `The binary digits of ${plane.number}, a digit a cell${K > 1 ? (colourMixed() ? ', each live cell a colour at random' : ', each colour in its part') : ''}`;
   if (zone === 'realm' && !r) return 'Each colour random cells on its face';
   if (isIcon(zone)) { const set = iconSet(zone); return `${K === 1 ? `The ${set.word} ${set.label(plane.icons[0])}` : `The ${set.word}s ${plane.icons.slice(0, K).map(set.label).join(', ')}`} (${set.source}), ${iconSize(zone)} cells wide${K === 1 ? '' : ', each colour at its spot'}`; }
   return K === 1 ? (r ? `Random cells within radius ${r} of a cell` : `A random soup, ${d} % alive`)
@@ -8619,7 +8620,7 @@ const lifeMark = (mode) => (mode.loops ? LOOPS_MARK : mode.margolus ? (BLOCKS[bl
 let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the figure's nearest to the last picked (see fitColours); colourMix: Mixed, the colours mixed in one place (see huntParts)
 // Mixed as it counts in a zone: on, colours to mix, and a zone of cells at random (Spark … Jungle, Wild, Formula): the others lay
 // each colour's own picture or part (Icon, Punk, Emoji, Famous, Anywhere, Realm, Mirror), Mixed greyed there, kept for later
-const mixable = (zone) => zoneRadius(zone) > 0 || zone === 'full' || zone === 'numbers';
+const mixable = (zone) => plane.start === 'digits' || (plane.start === 'random' && (zoneRadius(zone) > 0 || zone === 'full' || zone === 'numbers'));
 const colourMixed = (zone = hunt.zone) => colourMix && lifeColours > 1 && mixable(zone);
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
@@ -10267,7 +10268,7 @@ function partPlaces(r, K, mirror, mixed) {
   if (K === 1 && walk.life?.margolus && walk.geo?.torus) return [huntParts(r, 3, false, false)[1]];  // (a reversible sheet: one colour's, Trio's second, in view: a torus's middle square, see lifeParts, patternFrame)
   if (mixed && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
     const parts = Array.from({ length: K }, () => []);
-    for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(plane.seed + 7, t) * K)].push(t);
+    for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(mixSeed(), t) * K)].push(t);
     return parts;
   }
   const L = walk.life, g = walk.geo, n = L.seed.length, [cols, rows] = COLOUR_GRID[K];
@@ -10342,6 +10343,9 @@ const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntPar
 // the hunt trying each once (see nthNumber), a click drawing one; its digits laid as Digits lays a number's (in the rule's base, its whole part's first, a digit a
 // cell in turn, see digitsOn), the same symmetry; in colours each cell alive (a digit not 0) in its part's colour, as Wild.
 // The number its link's (pop=formula.16/9, formula.sqrt(7)) and its result's
+// a start's live cells painted, each its colour (own: its part's, or Mixed's at random); the dead ones dead
+const paintOwn = (seed, own) => { for (let t = 0; t < seed.length; t++) seed[t] = seed[t] ? own[t] : 0; };
+const mixSeed = () => (plane.start === 'digits' || hunt.zone === 'numbers' ? 7 : plane.seed + 7);  // (Mixed's colours: a soup's from its seed; a number's fixed, its link with none)
 const huntOwn = () => { const K = lifeParts(), own = new Uint8Array(walk.life.seed.length); if (K > 1) huntParts(0, K).forEach((part, i) => { for (const t of part) own[t] = i + 1; }); return own; };  // (each cell's colour: its part's; one colour, none)
 // (the numbers, each once, each its own digits: the fractions in their lowest terms, q by q then p by p (1/2, 1/3, 2/3, 1/4,
 // 3/4…: 303,791), then the roots; number k of them all through a stride prime to their count, the hunt's order mixed)
@@ -10353,14 +10357,14 @@ const nthNumber = (k) => { const j = (k * 104729) % DRAWN; return j < DRAWN_FRAC
 const drawNumber = (random) => nthNumber(Math.floor(random() * DRAWN));
 const NUMBER_DRAWN = /^(\d+)\/(\d+)$|^sqrt\((\d+)\)$/;  // (p/q, sqrt(n): a link's)
 function numberSeed(x, own) {
-  const n = walk.life.seed.length, B = lifeBase(), digits = new Uint8Array(n), seed = new Uint8Array(n), [, p, q, root] = NUMBER_DRAWN.exec(x);
+  const n = walk.life.seed.length, B = 2, digits = new Uint8Array(n), seed = new Uint8Array(n), [, p, q, root] = NUMBER_DRAWN.exec(x);
   if (root) { const d = iroot(BigInt(root) * BigInt(B) ** BigInt(2 * n), 2).toString(B); for (let i = 0; i < n; i++) digits[i] = parseInt(d[i], B); }  // (√n × Bⁿ, whole: its whole part's digits, then n more)
   else {  // (its whole part's digits, if any, then its others by long division)
     const whole = Math.floor(Number(p) / Number(q)), lead = whole ? [...whole.toString(B)].map((c) => parseInt(c, B)) : [];
     for (let i = 0, r = Number(p) % Number(q); i < n; i++) { if (i < lead.length) { digits[i] = lead[i]; continue; } r *= B; digits[i] = Math.floor(r / Number(q)); r %= Number(q); }
   }
   digitsOn(seed, digits, walk.geo.walls);
-  if (lifeParts() > 1) for (let t = 0; t < n; t++) seed[t] = seed[t] ? own[t] : 0;
+  if (lifeParts() > 1) paintOwn(seed, own);
   symmetricStart(seed);
   seed.number = x;
   return seed;
@@ -10447,7 +10451,7 @@ function renderHunt() {
     : r ? `Random cells within ${r} of ${K === 1 ? 'the middle' : "each colour's spot"}, ${d} % of ${fmt(perColour)}${K > 1 ? ' each' : ''}`
     : z === 'realm' ? `Random cells on each colour's face, ${d} % of ${fmt(perColour)} each`
     : z === 'mirror' ? `Each colour a soup of its two opposite parts, ${d} % alive`
-    : z === 'numbers' ? `The digits of ${plane.number}, a digit a cell${K > 1 ? ', each colour in its part' : ''}`
+    : z === 'numbers' ? `The binary digits of ${plane.number}, a digit a cell${K > 1 ? (colourMixed() ? ', each live cell a colour at random' : ', each colour in its part') : ''}`
     : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
   const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'emoji' ? ' emoji' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
     : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' || z === 'mirror' ? 'soups at random' : 'starts at random';
@@ -14292,7 +14296,7 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 
 // Life's starts, one choice: a tab group of tiles, its pictures over its names (Hunt's and Random's, see renderPlaneRow)
 const START_TABS = [['random', 'search', 'Hunt', 'Random cells to start, or a hunt among them (its goal below); random zones in a reversible rule'],
-  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells, one digit a cell, as many as the grid has cells: the same number, the same start.\nIn base K + 1, live cells only: one colour, base 2, 0 dead, 1 alive; in K colours, digit k alive in colour k.\nIn turn: a rectangle row by row, a grid in a hexagon or a circle from its middle out, wound round it.\nThe number: Number's (a constant, a fraction, a formula)"],
+  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells, one digit a cell, as many as the grid has cells: the same number, the same start.\nIn base K + 1, live cells only: one colour, base 2, 0 dead, 1 alive; in K colours, digit k alive in colour k (Mixed: base 2, each live cell a colour at random, as the Formula hunt's).\nIn turn: a rectangle row by row, a grid in a hexagon or a circle from its middle out, wound round it.\nThe number: Number's (a constant, a fraction, a formula)"],
   ['draw', 'pencil', 'Draw', 'Cells drawn by hand, or patterns laid with the brushes, at gen 0']];  // (start, picture, name, tooltip)
 $('lifeStartTabs').append(tileGroup(START_TABS.map(([start, pic, text, title]) => { const b = tile({ pic: icon(pic), text, title }); b.dataset.start = start; return b; }), true));
 for (const b of $('lifeStartTabs').querySelectorAll('button')) {
@@ -14385,7 +14389,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: each colour's two opposite faces (a solid where a colour has two), random soups in them"
-    : zone === 'numbers' ? "Formula: a number at random, its digits laid a digit a cell, as the Digits start lays a number's (in colours, each colour alive in its part, as Wild): half the time a fraction p/q (q from 2 to 999, p under it), else a root √n (n from 2 to 9,999, no square); a click, another. The hunt tries each once, in a mixed order, its results each with its number"
+    : zone === 'numbers' ? "Formula: a number at random, its binary digits laid a digit a cell, 1 alive (in colours, each colour alive in its part, as Wild; Mixed, a colour at random): half the time a fraction p/q (q from 2 to 999, p under it), else a root √n (n from 2 to 9,999, no square); a click, another. The hunt tries each once, in a mixed order, its results each with its number"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as wide as fits, its outline and dark marks alive, in the middle of each colour's part: a click, another"
     : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
     : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
