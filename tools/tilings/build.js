@@ -178,7 +178,7 @@ const tri = [[1, 0], [0.5, R3 / 2]];  // the unit triangular lattice's vectors (
     const sq = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]], m = [x + 0.5, y + 0.5];
     if ((x + y) % 2 === 0) P.push(sq); else for (let i = 0; i < 4; i++) P.push([sq[i], sq[(i + 1) % 4], m]);
   }
-  cell('kischecker', [2, 0], [1, 1], P); }
+  cell('kischecker', [1, 1], [1, -1], P); }
 // rhombitrihexagonal (3.4.6.4): hexagons, squares, triangles; its dual the kites (a check: 9 neighbours)
 { const s = 1 + R3, a = mul(dir(30), s), b = mul(dir(90), s), pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 6);
   cell('rhombitri', a, b, polygons(pts, false)); cell('kitecheck', a, b, polygons(pts, true)); }

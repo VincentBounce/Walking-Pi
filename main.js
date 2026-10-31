@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.128';
+const VERSION = '0.2.129';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -881,8 +881,8 @@ const TILINGS = {
     basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
     polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
   kischecker: { name: 'Kis checker', mark: '◪', cells: 'tiles', where: 'a checkerboard of squares and tetrakis squares (every other square cut in 4 triangles from its middle)', most: 16, turns: 4, mirror: true, pivot: [1, 0.5],
-    basis: [[2, 0], [1, 1]],  // (a whole square, then the next one's 4 triangles; tools/tilings/build.js)
-    polys: [[[1,0],[1.5,0],[1,1],[0.5,1]],[[0.5,0],[1,0],[0.5,0.5]],[[1,0],[0.5,1],[0.5,0.5]],[[1.5,1],[1,1],[1.5,0.5]],[[1,1],[1.5,0],[1.5,0.5]]] },
+    basis: [[1, -1], [1, 1]],  // (its lattice a square at 45°: a whole square, the next one's 4 triangles; tools/tilings/build.js)
+    polys: [[[1,0],[0.5,0.5],[0.5,0]],[[1.5,0.5],[1,0],[1.5,0]],[[1,0],[1.5,0.5],[1,1],[0.5,0.5]],[[0.5,0.5],[1,1],[0.5,1]],[[1,1],[1.5,0.5],[1.5,1]]] },
   kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16, turns: 6, mirror: true, pivot: [0, 0], torus: true,
     basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
     polys: [[[0,0],[0.5,0],[0.333333,0.333333]],[[0,0],[0.333333,0.333333],[0,0.5]],[[0,0.5],[0.333333,0.333333],[0,1]],[[0.333333,0.333333],[0.5,0.5],[0,1]],[[0.5,0.5],[0.666667,0.666667],[0,1]],[[0.666667,0.666667],[0.5,1],[0,1]],[[1,0],[1,0.5],[0.666667,0.666667]],[[1,0],[0.666667,0.666667],[0.5,0.5]],[[0.333333,0.333333],[1,0],[0.5,0.5]],[[0.5,0],[1,0],[0.333333,0.333333]],[[0.666667,0.666667],[1,1],[0.5,1]],[[1,0.5],[1,1],[0.666667,0.666667]]] },
@@ -8273,7 +8273,7 @@ function torusSheets(kind) {
     const D = cross(a, b), A0 = W(plain[0]);
     for (let n = 1; n <= 6 && !turned; n++) for (let p = -n; p <= n && !turned; p++) for (const q of [n - Math.abs(p), Math.abs(p) - n]) {
       const U = W([p, q]), l = Math.hypot(...U);
-      if (!l || Math.abs(cross(U, A0)) < 1e-6 * l || Math.abs(U[0] * A0[0] + U[1] * A0[1]) < 1e-6 * l || !t.polys.every((P) => sidesOf(P).some((e) => Math.abs(cross(e, U)) < 1e-6 * l))) continue;  // (every cell with a side along it)
+      if (!l || Math.abs(cross(U, A0)) < 1e-6 * l || Math.abs(U[0] * A0[0] + U[1] * A0[1]) < 1e-6 * l || !t.polys.every((P) => sidesOf(P).some((e) => Math.abs(cross(e, U)) < 1e-6 * l || Math.abs(e[0] * U[0] + e[1] * U[1]) < 1e-6 * l))) continue;  // (every cell with a side along it or across it: its quarter turn's, V's)
       const V = [-U[1], U[0]], r = cross(V, b) / D, s = cross(a, V) / D;
       if (Math.abs(r - Math.round(r)) < 1e-6 && Math.abs(s - Math.round(s)) < 1e-6) { turned = [[p, q], [Math.round(r), Math.round(s)]]; deg = Math.round((Math.acos(Math.abs(U[0] * A0[0] + U[1] * A0[1]) / l / Math.hypot(...A0)) * 180) / Math.PI); }
     }
