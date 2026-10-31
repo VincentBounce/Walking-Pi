@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.155';
+const VERSION = '0.2.156';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -865,6 +865,9 @@ const TILINGS = {
   snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18, turns: 6, mirror: false, pivot: [0, 0], torus: true,
     basis: [[2.2912878474779204, -1.3228756555322954], [2.29128784747792, 1.3228756555322954]],
     polys: [[[1.428571,0.857143],[1.571429,1.142857],[1.142857,1.285714]],[[1.428571,0.857143],[1.142857,1.285714],[0.714286,1.428571],[0.571429,1.142857],[0.857143,0.714286],[1.285714,0.571429]],[[1.142857,0.285714],[1.571429,0.142857],[1.285714,0.571429]],[[1.142857,0.285714],[1.285714,0.571429],[0.857143,0.714286]],[[1.428571,0.857143],[1.285714,0.571429],[1.714286,0.428571]],[[1.428571,0.857143],[1.714286,0.428571],[1.857143,0.714286]],[[1.428571,0.857143],[1.857143,0.714286],[1.571429,1.142857]],[[1.285714,0.571429],[1.571429,0.142857],[1.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
+  tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14, turns: 4, mirror: true, pivot: [0, 0], torus: true,
+    basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
+    polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
   pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.8], torus: true,
     basis: [[2, -1], [1, 2]],  // (y down: a small square at the bottom of each big one's right side, as its picture)
     polys: [[[0.2,0.6],[0.4,0.2],[0.8,0.4],[1.2,0.6],[1,1],[0.8,1.4],[0.4,1.2],[0,1]],[[0,0],[0.4,0.2],[0.2,0.6],[-0.2,0.4]]] },
@@ -877,9 +880,6 @@ const TILINGS = {
   capitalI: { name: 'Capital 𝙸', mark: '⌶', cells: '𝙸 tiles', where: 'a grid of capital 𝙸 tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
     basis: [[2, 1], [-1, 3]],
     polys: [[[0,1],[0.428571,0.857143],[0.857143,0.714286],[1.285714,0.571429],[1.428571,0.857143],[1,1],[1.142857,1.285714],[1.571429,1.142857],[1.714286,1.428571],[1.285714,1.571429],[0.857143,1.714286],[0.428571,1.857143],[0.285714,1.571429],[0.714286,1.428571],[0.571429,1.142857],[0.142857,1.285714]]] },
-  tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14, turns: 4, mirror: true, pivot: [0, 0], torus: true,
-    basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
-    polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
   kischecker: { name: 'Kis checker', mark: '◪', cells: 'tiles', where: 'a checkerboard of squares and tetrakis squares (every other square cut in 4 triangles from its middle)', most: 16, turns: 4, mirror: true, pivot: [1, 0.5], torus: true,
     basis: [[1, -1], [1, 1]],  // (its lattice a square at 45°: a whole square, the next one's 4 triangles; tools/tilings/build.js)
     polys: [[[1,0],[0.5,0.5],[0.5,0]],[[1.5,0.5],[1,0],[1.5,0]],[[1,0],[1.5,0.5],[1,1],[0.5,0.5]],[[0.5,0.5],[1,1],[0.5,1]],[[1,1],[1.5,0.5],[1.5,1]]] },
@@ -2949,10 +2949,10 @@ const FAMILIES = [
   }),
 ];
 for (const F of FAMILIES) for (const ms of F.modes) ms.push(...ms.filter((w) => w.includes('Pivot')).map((w) => w.replace('Pivot', 'Parity')));  // each tiling's parity walks too
-const FOLDED_FIRST = ['tetrakis', 'pythagorean', 'rhombille', 'rhombitri'];  // (as on the plane's: Pythagoras after Tetrakis, Rhombitri after Rhombille)
-const kitesNext = (kinds) => [...kinds].sort((a, b) => (FOLDED_FIRST.indexOf(a) + 1 || 9) - (FOLDED_FIRST.indexOf(b) + 1 || 9));  // (those first, after the hexagons; else as listed)
-// the tilings folded, after the kites (Life only): those every fold has (Rhombitri first), then its own (the torus's)
-for (const Fo of Object.values(FOLDS)) for (const kind of kitesNext([...MOBIUS_TILINGS, ...Object.keys(TILINGS).filter((k) => !MOBIUS_TILINGS.includes(k))]).filter(Fo.has)) {
+// the tilings folded, after the hexagons (Life only), as the plane's: by their group (squares, parallelograms, the others, see
+// SHAPE_GROUPS), each as listed (TILINGS)
+const foldGroup = (k) => ({ 4: 0, 3: 2, 6: 2 }[TILINGS[k].turns] ?? 1), TILING_KINDS = Object.keys(TILINGS);  // (SHAPE_GROUPS's, by its turns: squares, parallelograms, the others)
+for (const Fo of Object.values(FOLDS)) for (const kind of TILING_KINDS.filter(Fo.has).sort((a, b) => foldGroup(a) - foldGroup(b) || TILING_KINDS.indexOf(a) - TILING_KINDS.indexOf(b))) {
   const F = FAMILIES[Fo.family], turned = FOLDED[`${Fo.of(kind)}Turned`], { name } = TILINGS[kind];
   F.tabs.push([F.modes.length, false, `tiling-${kind}`, name, name]);
   if (turned) F.tabs.push([F.modes.length, true, `tiling-${kind}`, name, `${name}, turned by ${turned.deg}° (${Fo.way})`]);
