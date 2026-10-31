@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.154';
+const VERSION = '0.2.155';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -2862,7 +2862,7 @@ function tilingIcon(kind) {
   for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) for (let k = 0; k < m; k++) polys.push(tilingAt(kind, i * m + k, j).map((p) => tilingWorld(kind, p)));
   const c = tilingWorld(kind, [0.5, 0.5]), r = Math.sqrt(Math.abs(TILINGS[kind].basis[0][0] * TILINGS[kind].basis[1][1] - TILINGS[kind].basis[0][1] * TILINGS[kind].basis[1][0]) / m) * 1.6;
   const far = (P, o = c) => { const q = [0, 1].map((d) => P.reduce((sum, p) => sum + p[d], 0) / P.length); return Math.hypot(q[0] - o[0], q[1] - o[1]); };
-  const few = { capitalI: [4, c], truncsquare: [5, tilingWorld(kind, [0, 0])], elongated: [9, tilingWorld(kind, TILINGS[kind].pivot)] }[kind];  // (Capital I's: 4 tiles; Octagons': an octagon and its 4 squares; Elongated's: 3 squares, the triangles over and under them)
+  const few = { capitalI: [4, c], truncsquare: [5, tilingWorld(kind, [0, 0])], elongated: [8, tilingWorld(kind, [0.8660254, 0.2679492])] }[kind];  // (Capital I's: 4 tiles; Octagons': an octagon and its 4 squares; Elongated's: 2 squares round their side's middle, the triangles over and under them)
   const near = few ? [...polys].sort((P, Q) => far(P, few[1]) - far(Q, few[1])).slice(0, few[0]) : polys.filter((P) => far(P) < r);
   const o = few?.[1] ?? c, s = 10 / Math.max(...near.flat().map(([x, y]) => Math.max(Math.abs(x - o[0]), Math.abs(y - o[1]))));  // (round its middle)
   return near.map((P) => pathEl(`M${P.map(([x, y]) => `${(12 + (x - o[0]) * s).toFixed(1)} ${(12 + (y - o[1]) * s).toFixed(1)}`).join('L')}Z`)).join('');  // (y down, as the grids are drawn)
