@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.134';
+const VERSION = '0.2.135';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7741,7 +7741,7 @@ const iconFits = (N, P = 24) => !!iconLay(N, P);
 // a set's pictures N cells wide fit, at its own pixels (P null: as many as its cells, a pixel a cell: Text's)
 const setFits = (N, set) => iconFits(N, set.P ?? N);
 function iconChoices(N, set) {
-  const K = lifeParts(), kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMixed()}`;
+  const K = lifeParts(), kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}`;
   if (iconMemo?.key === key) return iconMemo.choices;
   const P = set.P ?? N, lays = iconLay(N, P);  // (each colour's cells and their pixels; a set's P null: a pixel a cell)
   const choices = Array.from({ length: K }, (_, i) => {
@@ -8612,8 +8612,10 @@ const lifeMark = (mode) => (mode.loops ? LOOPS_MARK : mode.margolus ? (BLOCKS[bl
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4", see lifeRuleNow)
 let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the figure's nearest to the last picked (see fitColours); colourMix: Mixed, the colours mixed in one place (see huntParts)
-// Mixed as it counts: on, and colours to mix (in Classic, as a reversible sheet's, the switch kept for later but nothing to mix: a link says the same)
-const colourMixed = () => colourMix && lifeColours > 1;
+// Mixed as it counts in a zone: on, colours to mix, and a zone of cells at random (Spark … Jungle, Wild, Formula): the others lay
+// each colour's own picture or part (Icon, Punk, Emoji, Famous, Anywhere, Realm, Mirror), Mixed greyed there, kept for later
+const mixable = (zone) => zoneRadius(zone) > 0 || zone === 'full' || zone === 'numbers';
+const colourMixed = (zone = hunt.zone) => colourMix && lifeColours > 1 && mixable(zone);
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
 const negative = (L) => !!L.margolus?.flips && mod(cur, 2) === 1;  // (its past's too: a phase by its generation, below 0 as above)
@@ -8725,9 +8727,9 @@ function renderColours() {
   $('colourBlocks').replaceChildren(...COLOUR_STEPS.map((k) => tile({ pic: colourBlock(k), text: COLOUR_STEP_NAMES[k],
     title: `${k === 1 ? 'One colour: alive or dead' : `${k} colours: ${LIFE_COLOUR_NAMES.slice(0, k).join(', ')}`}${colourMissing(k) ? ' · a colour gone can come back: a tie, the missing one born' : ''}`,
     on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), byDefault: k === 1 ? 'yes' : '', greyed: k > 1 ? 'where the shape has no parts alike for so many colours' : '', click: () => { if (k !== lifeColours) { coloursPicked = lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
-    // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
+    // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour and where no zone mixes, see mixable)
     tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
-      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic', on: colourMixed(), can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
+      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic, and in the zones that lay each colour\'s own picture or part (Icon, Punk, Emoji, Famous, Anywhere, Realm, Mirror)', on: colourMixed(), can: lifeColours > 1 && mixable(hunt.zone), click: () => { colourMix = !colourMix; compute(); } }));
 
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
@@ -10022,7 +10024,7 @@ const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an i
 // not always: a triangle's cells let 36 in, not 32); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = (set = ICON_SETS.icon) => {
-  const key = `${gridKey()}|${lifeParts()}|${colourMixed()}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
+  const key = `${gridKey()}|${lifeParts()}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   const lo = u === 24 ? 1 : 16;  // (in u's)
   if (!patternsOn()) return (iconMaxMemo = { key, N: 24 }).N;
@@ -10045,9 +10047,9 @@ const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) 
 // Elsewhere (the plane, a torus, a strip), each colour's whole part (see huntParts) but its cells next to another's: the colours
 // two cells apart, whatever their parts' shapes and sizes. Null: greyed
 function realmParts(K) {
-  if ((K === 1 && !(walk.life.margolus && walk.geo.torus)) || colourMixed()) return null;  // (one patch: nothing to stop it, the whole grid, Wild; a reversible sheet's, its one colour's part, see huntParts)
+  if (K === 1 && !(walk.life.margolus && walk.geo.torus)) return null;  // (one patch: nothing to stop it, the whole grid, Wild; a reversible sheet's, its one colour's part, see huntParts)
   if (!realmOnFaces()) {
-    const L = walk.life, parts = huntParts(0, K), of = new Int32Array(L.seed.length).fill(-1);
+    const L = walk.life, parts = huntParts(0, K, false, false), of = new Int32Array(L.seed.length).fill(-1);
     parts.forEach((p, k) => { for (const t of p) of[t] = k; });
     const apart = (t) => { for (let q = L.nbr.start[t]; q < L.nbr.start[t + 1]; q++) if (of[L.nbr.list[q]] !== of[t]) return false; return true; };
     const own = parts.map((p) => p.filter(apart));
@@ -10321,7 +10323,7 @@ function partPlaces(r, K, mirror, mixed) {
 }
 // the triangle faces of a face of the solid: 5 for a dodecahedron's pentagon, else 1
 const facesPer = () => (['dodeca', 'dodecaKite'].includes(MODES[$('mode').value].sphere) ? 5 : 1);
-const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntParts(zoneRadius(zone), K));
+const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntParts(zoneRadius(zone), K, false, colourMixed(zone)));
 // The zone: each colour's part (see huntParts). On the plane, with a symmetry it defines the start: the
 // zone and all its copies, of which only the first of each cell's copies is chosen, the others copied
 // from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
@@ -10383,23 +10385,24 @@ function huntPlan() {
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.loops && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
-  const K = lifeParts(), key = `${gridKey()}|${K}|${walk.life.ruleText}|${lifeParts() === 1 ? hunt.goal : colourMixed()}`;  // (Mixed: one colour's places)
+  const K = lifeParts(), laid = `${gridKey()}|${K}|${walk.life.ruleText}`, key = `${laid}|${lifeParts() === 1 ? hunt.goal : colourMix}`;  // (Mixed: its zones' places)
+  if (hunt.laidKey !== laid) { hunt.laidKey = laid; hunt.laid = {}; }  // (Famous, Anywhere: whether some fit, once a grid, its colours and rule)
   if (hunt.fitKey === key) return hunt.fits;
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
-    if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
-    if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
-    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMixed() && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
+    if (famousZone(zone)) return [zone, (hunt.laid[zone] ??= patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0))];  // (whether some, not them all)
+    if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, corners: greyed)
+    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
     if (isIcon(zone)) return [zone, iconFits(iconSize(zone), iconSet(zone).P)];
-    if (zone === 'full' && hullColours(MODES[$('mode').value].sphere, K)) { const p = huntParts(0, K, false); return [zone, !peakHunt() && p.every((x) => x.length === p[0].length)]; }  // (a hull solid's Wild: its parts alike, else greyed)
+    if (zone === 'full' && hullColours(MODES[$('mode').value].sphere, K)) { const p = huntParts(0, K, false, colourMixed(zone)); return [zone, !peakHunt() && p.every((x) => x.length === p[0].length)]; }  // (a hull solid's Wild: its parts alike, else greyed)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
     const parts = zoneParts(zone, K);  // (each its own cells, none without: a face for each colour)
     return [zone, parts.every((p) => p.length) && new Set(parts.flat()).size === parts.reduce((sum, p) => sum + p.length, 0)];
   })));
 }
 // when a zone is greyed (as huntFits finds it), its tooltip's words
-const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'realm' ? 'in Classic, with Mixed, where a colour has no whole face, and on a grid too small to keep the colours apart' : zone === 'mirror' ? 'on a grid or a torus, in Classic, with Mixed, and where no colouring has its parts opposite'
+const zoneGreyed = (zone) => (isIcon(zone) ? 'where it cannot fit' : zone === 'realm' ? 'in Classic, where a colour has no whole face, and on a grid too small to keep the colours apart' : zone === 'mirror' ? 'on a grid or a torus, in Classic, and where no colouring has its parts opposite'
   : famousZone(zone) ? 'where the rule has no famous patterns, or they cannot fit' : zone === 'full' ? 'hunting the highest peak (a soup full already), and on a solid of squares and triangles where its colours\' parts differ'
   : zone === 'numbers' ? 'hunting the highest peak or all reached (the grid full already: its digits on each cell)'
   : 'where its patch cannot fit each colour\'s part');
@@ -10519,6 +10522,7 @@ function layZone() {
 }
 function pickZone(zone) {
   hunt.zone = zone;
+  renderColours();  // (Mixed: greyed or not in it)
   hunt.top = [];
   hunt.status = '';
   plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
@@ -10942,7 +10946,7 @@ function centredChoices(kind, K, rule, mine, any, centred = true) {
   const mids = K > 1 && centred ? planeSlices(K).spots.map((t) => { const m = cellMiddle(kind, ...xy(t)); return Math.atan2(m[1] - o, m[0] - o); }) : null, step = (2 * Math.PI) / n;
   // Famous (not centred): all of them, the middle's and those off it, every way the figure turns them, each copy whole in its
   // colour's part
-  const parts = !centred ? huntParts(0, K).map((p) => new Set(p)) : null, inPart = (cs, i) => !parts || cs.every((t, j) => j % 2 || parts[i].has(t));
+  const parts = !centred ? huntParts(0, K, false, false).map((p) => new Set(p)) : null, inPart = (cs, i) => !parts || cs.every((t, j) => j % 2 || parts[i].has(t));
   for (const [, , cells] of figs) {
     const own = Math.atan2(cells.reduce((a, c) => a + c[1], 0), cells.reduce((a, c) => a + c[0], 0));  // (its way from the middle)
     for (let k = 0; k < (centred && K > 1 ? 1 : n); k++) {
@@ -10982,7 +10986,7 @@ function laidChoices(centred, any = false) {  // any: the first one of each colo
   // cell's face (see cellPlace, patternFrame), kept where its first cell lands on that very cell (a move the grid allows
   // there) and its cells all on cells of that part; few enough moves (FAMOUS_ALL at most, as a hunt tries them all), those
   // kept; more (a big grid), every move, laid when drawn (a lazy list, null where it does not fit: see drawChoice)
-  if (!centred) return huntParts(0, K).map((part, i) => {
+  if (!centred) return huntParts(0, K, false, false).map((part, i) => {
     const here = new Set(part), laid = shapes.map((cells) => [cells, cells.map(([x, y]) => cellMiddle(kind, x, y))]), frames = new Map();
     const frameOf = (t) => { const pl = cellPlace(t), key = pl && `${pl.on}|${pl.face ?? pl.f ?? pl.c0 ?? ''}`; if (pl && !frames.has(key)) frames.set(key, patternFrame(i, K, pl)); return pl && frames.get(key); };
     const lay = ([cells, ms], t) => {
