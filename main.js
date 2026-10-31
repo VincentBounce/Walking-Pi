@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.133';
+const VERSION = '0.2.134';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9961,7 +9961,8 @@ function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) { 
       if (!s) return;
       for (let x = 0; x < k; x++) if (step(s, (j) => v(j, r, x))) { tried++; changed = keep(result(s), s.seed) || changed; runs[r] = null; break; }
     });
-    report(changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null, tried, false);
+    const going = runs.filter(Boolean);  // (the runs still going: so many, the furthest at its generation, a hunt whose starts all last showing it moves)
+    report(changed ? top.map((r) => ({ ...r, seed: r.seed.slice() })) : null, tried, false, [going.length, Math.max(0, ...going.map((s) => s.g))]);
     setTimeout(slice, 0);
   };
   setTimeout(slice, 0);
@@ -10538,7 +10539,7 @@ function huntClick() {
   // on and on until stopped (or, few enough starts, each of them), on the graphics card
   const L = walk.life, K = L.colours, plan = huntPlan(), all = plan.all;
   hunt.top = [];
-  hunt.run = huntRuns(L, plan, K === 1 ? 50000 : 4000, K === 1 ? hunt.goal : null, (top, n, done) => {
+  hunt.run = huntRuns(L, plan, K === 1 ? 50000 : 4000, K === 1 ? hunt.goal : null, (top, n, done, [on, g] = []) => {
     if (top) hunt.top = top;
     if (done) {
       hunt.status = `All ${fmt(all)} tried · ${hunt.top.length ? `${fmt(hunt.top.length)} kept` : K > 1 ? 'no battle' : hunt.goal === 'dies' ? 'none dies out' : 'nothing lasts'}`;
@@ -10546,7 +10547,7 @@ function huntClick() {
       return;
     }
     const [b, e] = plan.space ?? [], of = all ? fmt(all) : b && e > 1 ? `${fmt(b)}^${fmt(e)}` : b ? fmt(b) : '';  // (the starts it has: all, or so many a cell's or colour's choices)
-    hunt.status = `${all ? '' : '🎲 '}${of ? `${fmt(n)} / ${of}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept`;  // (🎲: drawn at random, not each in turn)
+    hunt.status = `${all ? '' : '🎲 '}${of ? `${fmt(n)} / ${of}` : fmt(n)} tried · ${fmt(hunt.top.length)} kept · ${fmt(on)} running, up to generation ${fmt(g)}`;  // (🎲: drawn at random, not each in turn)
     renderHunt();
   });
   hunt.status = hunt.run ? 'Starting…' : 'Too big to hunt';
