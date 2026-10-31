@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.142';
+const VERSION = '0.2.143';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -920,7 +920,7 @@ const TILINGS = {
 // the tilings on a strip: those mirrored along their lattice's first side (see tilingStrip; the others are mirrored
 // along none, and a strip turns its tiles over round it); the strip's edges along their tiles' sides where that mirror
 // runs there (Prismatic, Tetrakis, Kisrhombille), else teeth of whole tiles, as the hexagons' strip
-const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'tetrakis', 'kischecker', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16', 'dual56', 'dual314'];
+const MOBIUS_TILINGS = ['rhombille', 'rhombitri', 'prismatic', 'elongated', 'tetrakis', 'kischecker', 'kisrhombille', 'trihex', 'truncsquare', 'trunchex', 'trunctrihex', 'dual16', 'dual56', 'dual314'];
 // the flat solids with hexagons too, folded over their edges (see hexSolidMesh): each one's name, its family's, its size
 // (as its triangles', see SPHERES) and its cells (one a corner of its triangles, those at its corners walls)
 const HEX_SOLIDS = { tetra: { a: 'a tetrahedron', name: 'Tetrahedron', radius: (f) => f / (2 * Math.SQRT2), cells: (f) => 2 * f * f + 2 },
@@ -5019,7 +5019,7 @@ function mobiusMesh(kind, size) {
   const n0 = verts.length / 3, uses = new Map(), onEdge = new Uint8Array(n0), home = new Float64Array(n0).fill(NaN);
   for (const t of ids) for (let q = 0; q < k; q++) {  // edges with one tile: the strip's edge
     const a = t[q], b = t[(q + 1) % k], e = Math.min(a, b) * n0 + Math.max(a, b);
-    uses.set(e, (uses.get(e) ?? 0) + 1);
+    if (a !== b) uses.set(e, (uses.get(e) ?? 0) + 1);  // (a tile's last corner repeated, as a smaller tile has: no side)
   }
   for (const [e, c] of uses) if (c === 1) { onEdge[Math.floor(e / n0)] = 1; onEdge[e % n0] = 1; }
   // each sheet corner seen from the side of the glued ends where it was first met: from the other
