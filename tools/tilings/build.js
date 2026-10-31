@@ -105,6 +105,11 @@ function jaap(base, rows) {
   return tiles;
 }
 
+// a root of f between lo and hi (f's signs at them unlike), to 10⁻¹²
+function bisect(f, lo, hi) {
+  while (hi - lo > 1e-12) { const m = (lo + hi) / 2; if (f(m) * f(lo) > 0) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
 const T = {};
 // a lattice cell's polygons, the frame the cell itself, as main.js places a frame's cells (a copy: placeCells): in
 // bricks or alone, where they stick out of it least; a grid of them a parallelogram as near as its tiles let it
@@ -210,10 +215,7 @@ cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
 // Stein's pentagon (type 14, 1985; the only other with no freedom): 6 a cell, as Jaap Scherphuis's Tiling Viewer builds
 // it (jaapsch.net/tilings, TilingTypeN5_14): its corners from B (2B + C = 360, C + E = 180, A = 90, 2a = 2c = d = e),
 // each tile laid on another by a side (mirrored or not), the lattice from two tiles' corners; not edge to edge either
-{ const f = (b) => 1 + 2 * Math.sin(((2 * b - 270) * Math.PI) / 180) - 3 * Math.sin(((180 - b) * Math.PI) / 180);
-  let lo = 0, hi = 90;
-  while (hi - lo > 1e-12) { const m = (lo + hi) / 2; if (f(m) * f(lo) > 0) lo = m; else hi = m; }
-  const b = (lo + hi) / 2, D = Math.PI / 180, ln = 1;
+{ const b = bisect((b) => 1 + 2 * Math.sin(((2 * b - 270) * Math.PI) / 180) - 3 * Math.sin(((180 - b) * Math.PI) / 180), 0, 90), D = Math.PI / 180, ln = 1;
   const x3 = -ln * Math.cos((90 + 2 * b) * D), y3 = ln / 2 + ln * Math.sin((90 + 2 * b) * D), x2 = x3 - ln * Math.cos((180 + b) * D), y2 = y3 + ln * Math.sin((180 + b) * D);
   const x1 = x2 - 0.5 * ln * Math.cos(-b * D), y1 = y2 + 0.5 * ln * Math.sin(-b * D);
   const tiles = jaap([[0, 0], [x1, y1], [x2, y2], [x3, y3], [0, ln / 2]], [[0, 0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 0, 1, 1], [1, 1, 2, 1, 2, 1, 1], [0, 0, 1, 2, 0, 1, 0], [2, 4, 3, 0, 2, 3, 0], [2, 1, 0, 4, 0, 1, 0]]);
@@ -223,6 +225,31 @@ cell('pythagorean', [2, -1], [1, 2], [polyomino([[0, 0], [1, 0], [0, 1], [1, 1]]
   // laid as its mirror (y down): its turned torus a quarter turn clockwise (+88°), not anticlockwise, its sheet's 1.7° shear the other way
   const F = ([x, y]) => [x, -y];
   cell('pent14', F(a1), F(b1), withT(patch).map((Q) => Q.map(F)), { ring: [-1, -2] }); }
+// types 9, 10, 11 and 13 (Marjorie Rice, 1976; Richard James, 1975), as Jaap Scherphuis's Tiling Viewer builds them
+// (TilingTypeN5_9…13, its default parameter each): the pentagon's corners, each tile laid on another by a side (mirrored
+// or not), the lattice from two tiles' corners; 10, 11 and 13 not edge to edge
+const jaapCell = (name, base, rows, [t1, c1, t2, c2], [t3, c3, t4, c4], ring) => {  // (ring: its torus's sheet's side, laid along x: see cell)
+  const tiles = jaap(base, rows), at = (t, c) => tiles[t][c], patch = [];
+  const [a1, b1] = reduce([at(t1, c1)[0] - at(t2, c2)[0], at(t1, c1)[1] - at(t2, c2)[1]], [at(t3, c3)[0] - at(t4, c4)[0], at(t3, c3)[1] - at(t4, c4)[1]]);
+  for (let i = -5; i <= 5; i++) for (let j = -5; j <= 5; j++) for (const Q of tiles) patch.push(Q.map((p) => add(add(p, mul(a1, i)), mul(b1, j))));
+  cell(name, a1, b1, withT(patch), { ring });
+};
+{ const D = Math.PI / 180, d = 150, c = 360 - 2 * d;  // type 9: b = c = d = e, 2A + C = 360, D + 2E = 360 (its angle D 150°)
+  const e = bisect((e) => Math.sin((180 - d) * D) + Math.sin((360 - d - c) * D) + Math.sin((540 - d - c - (360 - 2 * e)) * D) - Math.sin(e * D), 60, 135);
+  const b = 360 - 2 * e, A = 540 - b - c - d - e, p2 = [1 + Math.cos((180 - A) * D), Math.sin((180 - A) * D)];
+  const p3 = [p2[0] + Math.cos((-A - b) * D), p2[1] + Math.sin((-A - b) * D)], p4 = [p3[0] + Math.cos((-A - b + 180 - c) * D), p3[1] + Math.sin((-A - b + 180 - c) * D)];
+  jaapCell('pent9', [[0, 0], [1, 0], p2, p3, p4], [[0, 0, 0, 0, 0, 0, 0], [1, 2, 3, 0, 3, 4, 1], [1, 4, 3, 1, 3, 4, 1], [0, 3, 4, 2, 2, 3, 0], [0, 0, 1, 0, 2, 3, 1], [1, 2, 3, 4, 3, 4, 0], [1, 4, 3, 5, 3, 4, 0], [0, 3, 4, 6, 2, 3, 1]], [0, 3, 2, 1], [7, 1, 2, 2], [1, 0]); }
+// type 10: a = b = c + e, A = 90, B + E = 180, B + 2C = 360 (its angle 90°: a square, a corner cut off)
+jaapCell('pent10', [[0, 0], [1, 0], [1, 0.5], [0.5, 1], [0, 1]], [[0, 0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 0, 4, 0], [0, 0, 1, 1, 0, 4, 0], [1, 0, 1, 2, 0, 4, 0], [2, 2, 3, 1, 2, 3, 1], [2, 2, 3, 3, 2, 3, 1]], [0, 2, 2, 3], [4, 1, 5, 2], [-1, -2]);
+{ const D = Math.PI / 180, shape = (e) => {  // type 11: 2a + c = d = e, A = 90, 2B + C = 360, C + E = 180 (its tip half its longest side's)
+    const c = 180 - e, b = 180 - c / 2, d = 270 - b, t = Math.sin((270 + e) * D) + Math.sin((90 + e + d) * D), u = Math.sin((270 + e + d + c) * D), la = -(t + u) / (1 - 2 * u);
+    return { c, d, la, lc: 1 - 2 * la }; };
+  const e = bisect((e) => 0.5 - shape(e).lc, 98, 140), { c, d, la, lc } = shape(e);
+  const p3 = [Math.cos((270 + e) * D), la + Math.sin((270 + e) * D)], p2 = [p3[0] + Math.cos((90 + e + d) * D), p3[1] + Math.sin((90 + e + d) * D)];
+  const p1 = [p2[0] + lc * Math.cos((270 + e + d + c) * D), p2[1] + lc * Math.sin((270 + e + d + c) * D)];
+  jaapCell('pent11', [[0, 0], p1, p2, p3, [0, la]], [[0, 0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 0, 1, 1], [1, 4, 3, 0, 2, 3, 0], [0, 0, 1, 2, 0, 1, 1], [0, 4, 3, 3, 3, 4, 1], [1, 0, 1, 4, 0, 1, 0], [1, 4, 3, 4, 2, 3, 1], [0, 0, 1, 6, 0, 1, 0]], [7, 3, 0, 4], [3, 3, 1, 3], [1, 0]); }
+{ const D = Math.PI / 180, c = Math.cos(120 * D), s = Math.sin(120 * D), x2 = (s + c) / 2 + s, y2 = (s + c) / 2;  // type 13: d = 2a = 2e, B = E = 90, 2A + D = 360 (its angle 120°)
+  jaapCell('pent13', [[0, 0], [x2, y2 - 0.5 * Math.SQRT2 * Math.sin(15 * D)], [x2, y2], [(s + c) / 2, (s - c) / 2], [c / 2, s / 2]], [[0, 0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 0, 1, 1], [1, 3, 2, 1, 2, 3, 1], [0, 0, 1, 2, 0, 1, 0], [0, 0, 4, 0, 3, 2, 1], [1, 0, 1, 4, 0, 1, 0], [1, 3, 2, 5, 2, 3, 0], [0, 0, 1, 6, 0, 1, 1]], [0, 2, 1, 3], [6, 0, 3, 3], [1, 0]); }
 
 // trihexagonal (3.6.3.6, the kagome): the rhombille's points, their faces (hexagons, triangles between)
 { const a = [2, 0], b = [1, R3], pts = points(a, b, [0, 1, 2, 3, 4, 5].map((k) => dir(60 * k)), 7); cell('trihex', a, b, polygons(pts, false)); }
