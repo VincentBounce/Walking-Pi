@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.123';
+const VERSION = '0.2.124';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6781,7 +6781,7 @@ const planeSides = (kind, k = planeKind(kind), W = (f) => (shaped(kind) ? sideW 
 // zone's, one a colour (or one for all)
 const plane = { get side() { const k = planeKind(MODES[$('mode').value].plane); return nearCells(planeSides(k), (f) => planeCells(f, k), picked ?? planeCells(48, k)); },
                 torus: true, shape: 'hex', text: APP_TITLE, font: 'sans', icons: [0],
-                start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none', number: '1/7' };  // (number: Digits's, see numberSeed)  // a soup of its own each visit (a link keeps its seed)
+                start: 'random', density: 30, seed: 1 + Math.floor(Math.random() * 999999999), sym: 'none', number: '1/7' };  // (number: Formulas's, see numberSeed)  // a soup of its own each visit (a link keeps its seed)
 // Draw's brush: a cell or a pattern (squares only), turned by quarter turns and mirrored, in a colour
 // (0: the eraser)
 const brush = { id: 'cell', turn: 0, flip: false, colour: 1 };
@@ -9919,7 +9919,7 @@ function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) { 
   // live cells swapped with dead ones of their colour: as many alive, elsewhere), to make it better
   let made = 0, tried = 0;
   const nextSeed = () => {
-    if (all) return made < all ? (nth ? nth(made++) : choices ? nthPick(made++) : nthSeed(made++)) : null;  // (Digits: its numbers, nth's)
+    if (all) return made < all ? (nth ? nth(made++) : choices ? nthPick(made++) : nthSeed(made++)) : null;  // (Formulas: its numbers, nth's)
     if (!top.length || made++ % 3 === 0) return choices ? randomPick() : randomSeed();
     const base = top[Math.floor(Math.random() * top.length)];
     if (choices) {
@@ -9984,7 +9984,7 @@ const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], pun
                      realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere its part, the colours apart (see realmParts)
                      mirror: ['zoneMirror', 'Mirror'],  // each colour's two opposite faces (or parts: see colouring, hullColourings)
                      full: ['zoneAll', 'Wild'],
-                     numbers: ['barcode', 'Digits', 'formula'],  // a number's digits, a fraction's or a root's, laid as the Digits start lays a number's (see numberSeed); its link's word its own (pop=digits: that start)
+                     numbers: ['barcode', 'Formulas', 'formula'],  // a number's digits, a fraction's or a root's, laid as the Digits start lays a number's (see numberSeed); its link's word its own (pop=digits: that start)
                      centred: [null, 'Famous'],  // the rule's patterns, each at its colour's spot (see patternChoices)
                      patterns: [null, 'Anywhere'],  // the same, mixed, anywhere in each colour's part
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
@@ -10315,7 +10315,7 @@ const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntPar
 // from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
 // colour], the copies [cell, cell copied, colour], the cells of a colour, how dense the random starts
 // are, and how many starts when few enough to try them all.
-// Digits: a number, a fraction p/q (q from 2 to 999, p under it, in its lowest terms: 303,791) or a root √n (n from 2 to
+// Formulas: a number, a fraction p/q (q from 2 to 999, p under it, in its lowest terms: 303,791) or a root √n (n from 2 to
 // 9,999, no square: 9,900),
 // the hunt trying each once (see nthNumber), a click drawing one; its digits laid as Digits lays a number's (in the rule's base, its whole part's first, a digit a
 // cell in turn, see digitsOn), the same symmetry; in colours each cell alive (a digit not 0) in its part's colour, as Wild.
@@ -10456,7 +10456,7 @@ function renderHunt() {
         : r.P ? `of ${fmt(r.T)} before it settles` : `still fighting at gen ${fmt(r.T)}, where the hunt stops`];  // its balance: on its light
     const [colour, word] = light(r), why = K > 1 ? (r.contacts ? `balance ${r.balance.toFixed(2)}: how evenly its colours keep being born (1 all alike, 0 one alone; green from 0.6, orange from 0.3, else red)` : 'its colours never touched: no battle')
       : `at most ${fmt(r.peak)} alive of ${fmt(n)} cells, from ${fmt(r.live)}: grown ${(r.peak / r.live).toFixed(1)} times (green from 4, orange from 2, else red)`;
-    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail: r.number ? `${detail} · ${r.number.replace(/^sqrt\((\d+)\)$/, '√$1')}` : detail, on: r.id === hunt.picked });  // (Digits: its number)  // (the one played, wherever it is now)
+    const b = card({ pic: `<i class="light" style="background:${colour}"></i>`, name, detail: r.number ? `${detail} · ${r.number.replace(/^sqrt\((\d+)\)$/, '√$1')}` : detail, on: r.id === hunt.picked });  // (Formulas: its number)  // (the one played, wherever it is now)
     b.dataset.tipHtml = `<b class="tip-name">${name}</b>${detail}<br><span style="color:${colour}">●</span> ${word}, ${why}`;  // (its light in its tooltip, in its colour)
     const pick = () => (r.id === hunt.picked && !hunt.run ? $('play').click() : playHuntResult(r));  // (the one played, again: play or pause)
     b.addEventListener('pointerdown', (e) => { if (e.button === 0) pick(); });  // at once, even while the hunt goes on
@@ -10469,7 +10469,7 @@ function playHuntResult(r) {
   if (hunt.run) stopHunt();  // a result played: the hunt stops there
   hunt.picked = r.id;
   if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; layZone(); renderHunt(); return; }
-  if (r.number) { plane.number = r.number; layZone(); renderHunt(); return; }  // (Digits: its number, the link's: formula.16/9)
+  if (r.number) { plane.number = r.number; layZone(); renderHunt(); return; }  // (Formulas: its number, the link's: formula.16/9)
   // (icons: by their names, pop=icon24.star.heart; an emoji's, pop=emoji.🙂)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
@@ -10511,7 +10511,7 @@ function pickZone(zone) {
   hunt.status = '';
   plane.density = Math.round(100 * density());  // a new start each time, as dense as drawn (in whole percents), from a new seed
   plane.seed = 1 + Math.floor(Math.random() * 999999999);
-  plane.number = drawNumber(Math.random);  // (Digits: a number at random)
+  plane.number = drawNumber(Math.random);  // (Formulas: a number at random)
   plane.icons = Array.from({ length: lifeParts() }, () => Math.floor(Math.random() * iconSet(hunt.zone).names.length));  // (an Icon or Punk zone: one at random a colour, as the hunt draws them)
   if (zone === 'full' || zone === 'mirror') lifeReseed();  // the whole grid: a soup, in colours each in its part
   else layZone();
@@ -11178,7 +11178,7 @@ const wordOfZone = (z) => HUNT_ZONES[z][2] ?? HUNT_ZONES[z][1].toLowerCase().rep
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? wordOfZone(lifeStart.zone) : 'random');
 // a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart;
 // a Punk zone's, their numbers: pop=punk24.7804)
-const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, lifeParts()).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : lifeStart?.zone === 'numbers' ? `${zoneWord()}.${plane.number}` : `${zoneWord()}.${plane.density}.${plane.seed}`);  // (Digits: its number, formula.16/9)
+const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, lifeParts()).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : lifeStart?.zone === 'numbers' ? `${zoneWord()}.${plane.number}` : `${zoneWord()}.${plane.density}.${plane.seed}`);  // (Formulas: its number, formula.16/9)
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && wordOfZone(z) === w);
 // The version a setup was made with (v=0.2.0, last in its link, kept in Treasures and their files): a link's or a saved
 // one's, kept in the link while the setup in view is that one still, so that a link that fails says where it was made
@@ -14361,7 +14361,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: each colour's two opposite faces (a solid where a colour has two), random soups in them"
-    : zone === 'numbers' ? "Digits: a number at random, its digits laid a digit a cell, as the Digits start lays a number's (in colours, each colour alive in its part, as Wild): half the time a fraction p/q (q from 2 to 999, p under it), else a root √n (n from 2 to 9,999, no square); a click, another. The hunt tries each once, in a mixed order, its results each with its number"
+    : zone === 'numbers' ? "Formulas: a number at random, its digits laid a digit a cell, as the Digits start lays a number's (in colours, each colour alive in its part, as Wild): half the time a fraction p/q (q from 2 to 999, p under it), else a root √n (n from 2 to 9,999, no square); a click, another. The hunt tries each once, in a mixed order, its results each with its number"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as wide as fits, its outline and dark marks alive, in the middle of each colour's part: a click, another"
     : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
     : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
