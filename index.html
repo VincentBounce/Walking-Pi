@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261210p">
+  <link rel="stylesheet" href="style.css?v=20261210q">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -588,6 +588,22 @@
             <option value="B356/S6789/C5" data-name="Kisrhombille Life">◬ B356/S6789/C5 — a plateau as Life's, soups settling after 180 to 1,430 generations, oscillators in all their ash (5 states)</option>
             <option value="B38/S169/C3" data-name="Long kisrhombille">◬ B38/S169/C3 — soups ending anywhere from 170 to over 6,000 generations (3 states)</option>
             <option value="B346/S01458" data-name="Long-lasting war">◬ B346/S01458 — a long war in its walls: 2 colours 1,532 to 1,916 generations till one is left, 1 of 3 soups still at war at 2,000; 3 colours 864 to 1,456 generations till one is left</option>
+            <option value="B236/S0/C4" data-name="Type 9 1">✤ B236/S0/C4 — soups settling after 189 to 3,243 generations (4 states)</option>
+            <option value="B23/S046/C4" data-name="Type 9 2">✤ B23/S046/C4 — soups settling after 393 to 3,978 generations (4 states)</option>
+            <option value="B234/S07/C4" data-name="Type 9 3">✤ B234/S07/C4 — soups settling after 181 to more than 6,000 generations (4 states)</option>
+            <option value="B235/S06/C5" data-name="Type 9 4">✤ B235/S06/C5 — soups settling after 311 to more than 6,000 generations (5 states)</option>
+            <option value="B257/S0345/C4" data-name="Type 10 1">✣ B257/S0345/C4 — soups settling after 376 to 2,374 generations (4 states)</option>
+            <option value="B26/S0345/C4" data-name="Type 10 2">✣ B26/S0345/C4 — soups settling after 369 to 1,814 generations (4 states)</option>
+            <option value="B25/S0345/C4" data-name="Type 10 3">✣ B25/S0345/C4 — soups settling after 428 to 3,817 generations (4 states)</option>
+            <option value="B256/S0345/C4" data-name="Type 10 4">✣ B256/S0345/C4 — soups settling after 184 to 2,756 generations (4 states)</option>
+            <option value="B247/S0345/C4" data-name="Type 11 1">✢ B247/S0345/C4 — soups settling after 332 to 2,490 generations (4 states)</option>
+            <option value="B24/S0345/C4" data-name="Type 11 2">✢ B24/S0345/C4 — soups settling after 205 to 3,876 generations (4 states)</option>
+            <option value="B246/S0345/C4" data-name="Type 11 3">✢ B246/S0345/C4 — soups settling after 276 to 3,986 generations (4 states)</option>
+            <option value="B25/S0345/C4" data-name="Type 11 4">✢ B25/S0345/C4 — soups settling after 256 to 2,353 generations (4 states)</option>
+            <option value="B25/S0345/C4" data-name="Type 13 1">❆ B25/S0345/C4 — soups settling after 265 to 1,545 generations (4 states)</option>
+            <option value="B257/S0345/C4" data-name="Type 13 2">❆ B257/S0345/C4 — soups settling after 241 to 857 generations (4 states)</option>
+            <option value="B347/S236" data-name="Type 13 3">❆ B347/S236 — soups settling after 174 to more than 6,000 generations (2 states)</option>
+            <option value="B23/S0356/C4" data-name="Type 13 4">❆ B23/S0356/C4 — soups settling after 184 to 1,306 generations (4 states)</option>
             <option value="B24/S0345/C4" data-name="Stein sparks">✦ B24/S0345/C4 — the most Life-like on Stein's pentagon, though far from Life: soups settling after 210 to 920 generations, an oscillator of period 14 (4 states)</option>
             <option value="B34/S2357" data-name="Stein blinkers">✦ B34/S2357 — two states, soups settling after 200 to 570 generations, blinkers in almost every end</option>
             <option value="B349/S0134/C5" data-name="Kagome Life">✡ B349/S0134/C5 — soups settling after 485 to 1,428 generations (4.21 % alive at the end), an oscillator of 10 cells, period 5 and a methuselah of 6 cells: 355 (5 states)</option>
@@ -794,10 +810,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261210p"></script>
-  <script src="punks.js?v=20261210p"></script>
-  <script src="loops.js?v=20261210p"></script>
-  <script src="emoji.js?v=20261210p"></script>
-  <script src="main.js?v=20261210p"></script>
+  <script src="pixelarticons.js?v=20261210q"></script>
+  <script src="punks.js?v=20261210q"></script>
+  <script src="loops.js?v=20261210q"></script>
+  <script src="emoji.js?v=20261210q"></script>
+  <script src="main.js?v=20261210q"></script>
 </body>
 </html>
