@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.126';
+const VERSION = '0.2.127';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -5593,7 +5593,7 @@ const cssColour = (name) => getComputedStyle(document.documentElement).getProper
 // many, from that same number each time: never drifting a step at a time; none yet: each grid its first size)
 let picked = null;
 const nearCells = (sizes, cells, n) => sizes.reduce((a, b) => (Math.abs(Math.log(cells(b) / n)) < Math.abs(Math.log(cells(a) / n)) ? b : a));  // the size with about n cells
-const lastPicked = () => `{b:Last picked}${picked ? `\nSize: {b:${fmt(picked)} cells} (picked with − + or the slider)` : ''}${MODES[$('mode').value]?.life ? `\nPopulation: {b:${COLOUR_STEP_NAMES[coloursPicked]}${colourMix && coloursPicked > 1 ? ' mixed' : ''}} (picked in the section)` : ''}`;
+const lastPicked = () => `{b:Last picked}${picked ? `\nSize: {b:${fmt(picked)} cells} (picked with − + or the slider)` : ''}${MODES[$('mode').value]?.life ? `\nPopulation: {b:${COLOUR_STEP_NAMES[coloursPicked]}${colourMixed() ? ' mixed' : ''}} (picked in the section)` : ''}`;
 const sizeTips = (row, total, text) => {
   const marks = (t) => t.replace(/[&<>]/g, (c) => `&#${c.charCodeAt(0)};`).replace(/\{([yroskbg]):([^}]*)\}/g, (_, c, w) => (c === 'g' ? `<span class="tip-default">${w}</span>` : `<b${c === 'b' ? '' : ` class="tip-${c}"`}>${w}</b>`));  // ({g:…}: grey, as a default)
   total = marks(total);
@@ -7029,7 +7029,7 @@ function symmetriesHere(kind, W) {
 // symmetricStart: Trio's thirds, a half turn cuts each across, none), whatever the grid or the parts: their maps and cells
 const partMemo = new Map();
 function partSymmetries(kind, W, K) {
-  const key = `${gridKey()}|${K}|${hunt.zone === 'mirror'}|${colourMix && plane.seed}`;  // (Mixed: its parts drawn from its seed)
+  const key = `${gridKey()}|${K}|${hunt.zone === 'mirror'}|${colourMixed() && plane.seed}`;  // (Mixed: its parts drawn from its seed)
   if (partMemo.has(key)) return partMemo.get(key);
   const parts = huntParts(0, K), own = new Int32Array(walk.life.seed.length);
   parts.forEach((part, i) => { for (const t of part) own[t] = i + 1; });
@@ -7733,7 +7733,7 @@ const iconFits = (N, P = 24) => !!iconLay(N, P);
 // a set's pictures N cells wide fit, at its own pixels (P null: as many as its cells, a pixel a cell: Text's)
 const setFits = (N, set) => iconFits(N, set.P ?? N);
 function iconChoices(N, set) {
-  const K = lifeParts(), kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMix}`;
+  const K = lifeParts(), kind = patternKind(), key = `${N}|${set.source}|${gridKey()}|${kind}|${K}|${colourMixed()}`;
   if (iconMemo?.key === key) return iconMemo.choices;
   const P = set.P ?? N, lays = iconLay(N, P);  // (each colour's cells and their pixels; a set's P null: a pixel a cell)
   const choices = Array.from({ length: K }, (_, i) => {
@@ -8604,6 +8604,8 @@ const lifeMark = (mode) => (mode.loops ? LOOPS_MARK : mode.margolus ? (BLOCKS[bl
 // rule's dying stages), or 2 to 6 civilisations (k= in a link). The engine reads them as the rule's tail
 // ("/Immigration", "/Colours4", see lifeRuleNow)
 let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the figure's nearest to the last picked (see fitColours); colourMix: Mixed, the colours mixed in one place (see huntParts)
+// Mixed as it counts: on, and colours to mix (in Classic, as a reversible sheet's, the switch kept for later but nothing to mix: a link says the same)
+const colourMixed = () => colourMix && lifeColours > 1;
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
 const negative = (L) => !!L.margolus?.flips && mod(cur, 2) === 1;  // (its past's too: a phase by its generation, below 0 as above)
@@ -8717,7 +8719,7 @@ function renderColours() {
     on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), byDefault: k === 1 ? 'yes' : '', greyed: k > 1 ? 'where the shape has no parts alike for so many colours' : '', click: () => { if (k !== lifeColours) { coloursPicked = lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
     // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour)
     tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
-      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic', on: colourMix && lifeColours > 1, can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
+      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic', on: colourMixed(), can: lifeColours > 1, click: () => { colourMix = !colourMix; compute(); } }));
 
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
@@ -10010,7 +10012,7 @@ const isIcon = (zone) => /^(?:icon|punk|emoji)/.test(zone);  // (a picture: an i
 // not always: a triangle's cells let 36 in, not 32); 24 where none (greyed)
 let iconMaxMemo = null;
 const iconMax = (set = ICON_SETS.icon) => {
-  const key = `${gridKey()}|${lifeParts()}|${colourMix}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
+  const key = `${gridKey()}|${lifeParts()}|${colourMixed()}|${patternKind()}|${set.P}`, u = set.P === 24 && patternKind() === 'square' ? 24 : 1, cells = walk.plane ? walk.plane.W * walk.plane.row : walk.geo.n;
   if (iconMaxMemo?.key === key) return iconMaxMemo.N;
   const lo = u === 24 ? 1 : 16;  // (in u's)
   if (!patternsOn()) return (iconMaxMemo = { key, N: 24 }).N;
@@ -10033,7 +10035,7 @@ const zoneRadius = (zone) => (zone.startsWith('radius') ? Number(zone.slice(6)) 
 // Elsewhere (the plane, a torus, a strip), each colour's whole part (see huntParts) but its cells next to another's: the colours
 // two cells apart, whatever their parts' shapes and sizes. Null: greyed
 function realmParts(K) {
-  if ((K === 1 && !(walk.life.margolus && walk.geo.torus)) || colourMix) return null;  // (one patch: nothing to stop it, the whole grid, Wild; a reversible sheet's, its one colour's part, see huntParts)
+  if ((K === 1 && !(walk.life.margolus && walk.geo.torus)) || colourMixed()) return null;  // (one patch: nothing to stop it, the whole grid, Wild; a reversible sheet's, its one colour's part, see huntParts)
   if (!realmOnFaces()) {
     const L = walk.life, parts = huntParts(0, K), of = new Int32Array(L.seed.length).fill(-1);
     parts.forEach((p, k) => { for (const t of p) of[t] = k; });
@@ -10237,7 +10239,7 @@ function brickPlaces(g) {
   return (g.brickPlaces = out);
 }
 // each colour's part: its places' open cells only (a wall's, on a surface, no one's: the plane has none, see planeGrid)
-function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMix) {  // (mirror: Wild mirror, see colouring; mixed: Mixed's, else each colour's own place)
+function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMixed()) {  // (mirror: Wild mirror, see colouring; mixed: Mixed's, else each colour's own place)
   const { start } = walk.life.nbr;
   return partPlaces(r, K, mirror, mixed).map((part) => part.filter((t) => start[t] < start[t + 1]));
 }
@@ -10371,14 +10373,14 @@ function huntPlan() {
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.loops && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
-  const K = lifeParts(), key = `${gridKey()}|${K}|${walk.life.ruleText}|${lifeParts() === 1 ? hunt.goal : colourMix}`;  // (Mixed: one colour's places)
+  const K = lifeParts(), key = `${gridKey()}|${K}|${walk.life.ruleText}|${lifeParts() === 1 ? hunt.goal : colourMixed()}`;  // (Mixed: one colour's places)
   if (hunt.fitKey === key) return hunt.fits;
   hunt.fitKey = key;
   return (hunt.fits = Object.fromEntries(Object.keys(HUNT_ZONES).map((zone) => {
     const r = zoneRadius(zone);
     if (famousZone(zone)) return [zone, patternsOn() && laidChoices(zone === 'centred', true).every((c) => c.length > 0)];  // (whether some, not them all)
     if (zone === 'realm' && !realmParts(K)) return [zone, false];  // (one colour, Mixed, corners: greyed)
-    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMix && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
+    if (zone === 'mirror') return [zone, !walk.plane && !walk.geo.torus && K > 1 && !colourMixed() && (!!colouring(MODES[$('mode').value].sphere, K, true) || !!hullColours(MODES[$('mode').value].sphere, K)?.pairs)];  // (a solid, two parts a colour)
     if (isIcon(zone)) return [zone, iconFits(iconSize(zone), iconSet(zone).P)];
     if (zone === 'full' && hullColours(MODES[$('mode').value].sphere, K)) { const p = huntParts(0, K, false); return [zone, !peakHunt() && p.every((x) => x.length === p[0].length)]; }  // (a hull solid's Wild: its parts alike, else greyed)
     if (!r && zone !== 'realm') return [zone, !peakHunt()];  // (the whole grid: no peak to look for, a soup full already)
@@ -11195,7 +11197,7 @@ function getSetup() {
   if (!$('fillAreas').checked) s.fa = 0;
   if (mode.life) s.r = ruleBody($('lifeRule').value);
   if (mode.life && !mode.margolus && lifeColours > 1) s.k = lifeColours;
-  if (mode.life && !mode.margolus && lifeColours > 1 && colourMix) s.mx = 1;  // (Mixed)
+  if (mode.life && colourMixed()) s.mx = 1;  // (Mixed)
   if (mode.plane) {  // the grid's side, dead edges (e=1), its start ("random.30.7", "draw" with p=, "digits"), its symmetry (y=)
     s.s = plane.side;
     if (!plane.torus) s.e = 1;
