@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.140';
+const VERSION = '0.2.141';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -3182,7 +3182,7 @@ function compute() {
   }
   const { sym, kind } = F;
   shownSym = sym;
-  const base = mode.life ? lifeBase() : mode.base;  // Life: K + 1
+  const base = mode.life ? lifeBase() : mode.base;  // Life: K + 1 (Digits mixed: 2, see lifeBase)
   const key = `${F.text}/${base}`;
   // The status line under the Number: how the digits came (time, cache), what the number is, and
   // warnings; what is shown is in the description (describe)
@@ -8620,7 +8620,7 @@ const lifeMark = (mode) => (mode.loops ? LOOPS_MARK : mode.margolus ? (BLOCKS[bl
 let lifeColours = 1, coloursPicked = 1, colourMix = false;  // the colours: the figure's nearest to the last picked (see fitColours); colourMix: Mixed, the colours mixed in one place (see huntParts)
 // Mixed as it counts in a zone: on, colours to mix, and a zone of cells at random (Spark … Jungle, Wild, Formula): the others lay
 // each colour's own picture or part (Icon, Punk, Emoji, Famous, Anywhere, Realm, Mirror), Mixed greyed there, kept for later
-const mixable = (zone) => plane.start === 'digits' || (plane.start === 'random' && (zoneRadius(zone) > 0 || zone === 'full' || zone === 'numbers'));
+const mixable = (zone) => !!walk.life && !walk.life.loops && (plane.start === 'digits' || (huntOn() && (zoneRadius(zone) > 0 || zone === 'full' || zone === 'numbers')));
 const colourMixed = (zone = hunt.zone) => colourMix && lifeColours > 1 && mixable(zone);
 // a rule that turns an empty block full (Critters, Tron): every other generation shown negative, its dead cells alive (as
 // Margolus showed Critters: its picture then the same way round, its cells as particles that keep their count)
@@ -8735,7 +8735,7 @@ function renderColours() {
     on: k === lifeColours, can: coloursFit(k), mark: colourMissing(k), byDefault: k === 1 ? 'yes' : '', greyed: k > 1 ? 'where the shape has no parts alike for so many colours' : '', click: () => { if (k !== lifeColours) { coloursPicked = lifeColours = k; $('lifeTrail').checked = k === 1; compute(); } } })),  // (Trail: on in Classic, off in colours, at first)
     // Mixed, a switch: the colours' cells mixed at random in one place, as one colour's (greyed in one colour and where no zone mixes, see mixable)
     tile({ pic: `<svg viewBox="0 0 4 4" aria-hidden="true">${[[0, 0], [2, 0], [1, 1], [3, 1], [0, 2], [2, 2], [1, 3], [3, 3]].map(([x, y], i) => `<rect x="${x}" y="${y}" width="1" height="1" fill="${LIFE_COLOURS[[0, 4, 2, 6, 5, 1, 7, 3][i]]}"/>`).join('')}</svg>`, text: 'Mixed',
-      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic, and in the zones that lay each colour\'s own picture or part (Icon, Punk, Emoji, Famous, Anywhere, Realm, Mirror)', on: colourMixed(), can: lifeColours > 1 && mixable(hunt.zone), click: () => { colourMix = !colourMix; compute(); } }));
+      title: 'Mixed: the colours placed as one colour is (one patch, a soup), each cell a colour at random', toggle: true, byDefault: 'off', greyed: 'in Classic, in Replicators, Text and Draw, and in the hunt zones that lay each colour\'s own picture or part (Icon, Punk, Emoji, Famous, Anywhere, Realm, Mirror)', on: colourMixed(), can: lifeColours > 1 && mixable(hunt.zone), click: () => { colourMix = !colourMix; compute(); } }));
 
 }
 // The Rule section: the rules known for the grid's shape, as cards, each with a picture (5 × 5 pixels of
@@ -10266,9 +10266,9 @@ function huntParts(r, K, mirror = hunt.zone === 'mirror', mixed = colourMixed())
 }
 function partPlaces(r, K, mirror, mixed) {
   if (K === 1 && walk.life?.margolus && walk.geo?.torus) return [huntParts(r, 3, false, false)[1]];  // (a reversible sheet: one colour's, Trio's second, in view: a torus's middle square, see lifeParts, patternFrame)
-  if (mixed && K > 1) {  // Mixed: one colour's place, its cells each a colour at random (the same each time: its seed's)
+  if (mixed && K > 1) {  // Mixed: one colour's place, its cells shuffled (by its seed) and dealt out in turn: each colour as many, give or take one
     const parts = Array.from({ length: K }, () => []);
-    for (const t of huntParts(r, 1)[0]) parts[Math.floor(cellRandom(mixSeed(), t) * K)].push(t);
+    huntParts(r, 1)[0].map((t) => [cellRandom(mixSeed(), t), t]).sort((x, y) => x[0] - y[0]).forEach(([, t], i) => parts[i % K].push(t));
     return parts;
   }
   const L = walk.life, g = walk.geo, n = L.seed.length, [cols, rows] = COLOUR_GRID[K];
@@ -10397,7 +10397,7 @@ function huntPlan() {
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.loops && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
 // the zones that fit the grid: a radius whose patches would overlap, or patterns with none here, greyed
 function huntFits() {
-  const K = lifeParts(), laid = `${gridKey()}|${K}|${walk.life.ruleText}`, key = `${laid}|${lifeParts() === 1 ? hunt.goal : colourMix}`;  // (Mixed: its zones' places)
+  const K = lifeParts(), laid = `${gridKey()}|${K}|${walk.life.ruleText}`, key = `${laid}|${lifeParts() === 1 ? hunt.goal : colourMixed('full')}`;  // (Mixed as it counts in the soups' zones: their places)
   if (hunt.laidKey !== laid) { hunt.laidKey = laid; hunt.laid = {}; }  // (Famous, Anywhere: whether some fit, once a grid, its colours and rule)
   if (hunt.fitKey === key) return hunt.fits;
   hunt.fitKey = key;
