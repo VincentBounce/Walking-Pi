@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.131';
+const VERSION = '0.2.132';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9812,7 +9812,7 @@ function bordersOf(L, a) {
  * (alive, the key, born of each colour, cells beside another colour's) kept LIFE_H generations (more as fewer runs go on), read back then; a run
  * ended (repeating, all reached, or the cap), its place a new start's. */
 function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) {  // goal: one colour's (see HUNT_GOALS)
-  const n = L.seed.length, K = L.colours, C = L.C, { start, list } = L.nbr, dense = DENSITY, live = (v) => v > 0 && v <= K;
+  const n = L.seed.length, K = L.colours, { start, list } = L.nbr, dense = DENSITY, live = (v) => v > 0 && v <= K;
   const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), 8 * LIFE_H);
   if (!E) return null;
   const { gl } = GLS, cover = goal === 'cover', open = Array.from({ length: n }, (_, t) => t).filter((t) => start[t] !== start[t + 1]).length;
@@ -9885,21 +9885,22 @@ function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) { 
   };
   // the cells a start chooses, with their colour; then, with a symmetry, the copies of these (cell, the cell copied, the
   // copy's colour: the colour of its part)
-  const copy = (s) => { for (const [t, u, k] of copies) s[t] = s[u] ? (K > 1 ? k : s[u]) : 0; return s; };
-  // a random start: each cell alive (of its colour; one colour: alive or a dying state) as dense as drawn
+  const alive = (k) => (K > 1 ? k : 1);  // a cell drawn alive: its colour's, else alive (never a dying state: a start as a soup is, see planeSeed)
+  const copy = (s) => { for (const [t, u, k] of copies) s[t] = s[u] ? alive(k) : 0; return s; };
+  // a random start: each cell alive (of its colour) as dense as drawn
   // (each colour at least one cell alive: a colour of few cells would else often start with none)
   const randomSeed = () => {
     const s = new Uint8Array(n), density = dense[0] + Math.random() * (dense[1] - dense[0]);
-    for (const [t, k] of cells) if (Math.random() < density) s[t] = K > 1 ? k : 1 + Math.floor(Math.random() * (C - 1));  // colours: live cells only
+    for (const [t, k] of cells) if (Math.random() < density) s[t] = alive(k);
     for (let k = 1; k <= K; k++) {
       const mine = cells.filter((c) => (K > 1 ? c[1] === k : true));
-      if (mine.length && !mine.some(([t]) => s[t] === (K > 1 ? k : 1))) s[mine[Math.floor(Math.random() * mine.length)][0]] = K > 1 ? k : 1;
+      if (mine.length && !mine.some(([t]) => s[t] === alive(k))) s[mine[Math.floor(Math.random() * mine.length)][0]] = alive(k);
     }
     return copy(s);
   };
-  const nthSeed = (k) => {  // start number k of them all: k written in base C over the cells
+  const nthSeed = (k) => {  // start number k of them all: k written in base 2 over the cells, dead or alive
     const s = new Uint8Array(n);
-    for (const [t] of cells) { s[t] = k % C; k = Math.floor(k / C); }
+    for (const [t] of cells) { s[t] = k % 2; k = Math.floor(k / 2); }
     return copy(s);
   };
   // Patterns: for each colour, its choices (a pattern, turned or mirrored, at its spot: [cell, state…]);
@@ -9941,7 +9942,7 @@ function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) { 
     }
     const seed = base.seed.slice(), swap = Math.random() < 0.5, any = () => cells[Math.floor(Math.random() * cells.length)];
     for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
-      if (!swap) { const [t, k] = any(); seed[t] = K > 1 ? (seed[t] ? 0 : k) : Math.floor(Math.random() * C); continue; }
+      if (!swap) { const [t, k] = any(); seed[t] = seed[t] ? 0 : alive(k); continue; }
       let t = -1, k = 0;  // a live cell (a few tries), to a dead one of its colour
       for (let tries = 0; tries < 20 && t < 0; tries++) { const [u, j] = any(); if (seed[u]) [t, k] = [u, j]; }
       for (let tries = 0; t >= 0 && tries < 20; tries++) { const [u, j] = any(); if (!seed[u] && (K === 1 || j === k)) { seed[u] = seed[t]; seed[t] = 0; break; } }
@@ -10356,7 +10357,7 @@ function numberSeed(x, own) {
   return seed;
 }
 function huntPlan() {
-  const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
+  const { colours: K } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
   if (hunt.zone === 'numbers') { const own = huntOwn(); return { cells: [], copies: [], nth: (k) => numberSeed(nthNumber(k), own), perColour: 0, density: 0, all: DRAWN, space: [DRAWN, 1] }; }  // (its starts: p/q, √n, each once)
   if (famousZone(hunt.zone) || isIcon(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
@@ -10377,7 +10378,7 @@ function huntPlan() {
       if (first === t) cells.push([t, colourOf(t)]); else copies.push([t, first, colourOf(t)]);
     }
   } else for (const t of zone) cells.push([t, mine.get(t)]);
-  const count = K === 1 && r ? C ** cells.length : Infinity, space = [K === 1 ? C : 2, cells.length];  // (its starts: a state a cell, a colour's dead or alive)
+  const count = K === 1 && r ? 2 ** cells.length : Infinity, space = [2, cells.length];  // (its starts: each cell dead or alive)
   return { cells, copies, perColour: Math.round(zone.size / K), all: count <= 20000 ? count : 0, space };
 }
 const huntOn = () => !!walk.life && !!MODES[$('mode').value].life && !walk.life.loops && plane.start === 'random' && COLOUR_STEPS.includes(walk.life.colours);  // (a Life mode's: not a walk's while the run before it still plays)
