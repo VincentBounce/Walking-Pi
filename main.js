@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.121';
+const VERSION = '0.2.122';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -7992,7 +7992,7 @@ function startFromSetup(s) {
     hunt.zone = zoneOfWord(kind) ?? 'full';  // (pop=bloom.30.7: Bloom's patches, from that seed)
     plane.seed = Number(b) || 1;
     if (isIcon(hunt.zone)) plane.icons = String(s.pop).split('.').slice(1).map((name) => iconIndex(name));  // (pop=icon24.star.heart: each colour's)
-    if (hunt.zone === 'numbers') plane.number = NUMBER_DRAWN.test(a) ? a : '1/7';  // (pop=numbers.16/9, numbers.sqrt(7))
+    if (hunt.zone === 'numbers') plane.number = NUMBER_DRAWN.test(a) ? a : '1/7';  // (pop=formula.16/9, formula.sqrt(7))
   } else plane.start = kind === 'draw' || kind === 'digits' || kind === 'text' ? kind : 'random';
   if (kind === 'text') plane.text = String(s.pop).slice(5) || APP_TITLE;
   plane.font = TEXT_FONTS[s.tf] ? s.tf : 'sans';  // (Text's font, tf=)
@@ -9983,7 +9983,7 @@ const HUNT_ZONES = { icon24: [null, 'Icon 24'], iconMax: [null, 'Icon max'], pun
                      realm: ['zoneFace', 'Realm'],  // on a solid, each colour's whole face; elsewhere its part, the colours apart (see realmParts)
                      mirror: ['zoneMirror', 'Mirror'],  // each colour's two opposite faces (or parts: see colouring, hullColourings)
                      full: ['zoneAll', 'Wild'],
-                     numbers: ['barcode', 'Digits', 'numbers'],  // a number's digits, a fraction's or a root's, laid as the Digits start lays a number's (see numberSeed); its link's word its own (pop=digits: that start)
+                     numbers: ['barcode', 'Digits', 'formula'],  // a number's digits, a fraction's or a root's, laid as the Digits start lays a number's (see numberSeed); its link's word its own (pop=digits: that start)
                      centred: [null, 'Famous'],  // the rule's patterns, each at its colour's spot (see patternChoices)
                      patterns: [null, 'Anywhere'],  // the same, mixed, anywhere in each colour's part
                      custom: ['link', 'Found'] };  // a start from a link with its cells (a hunt's result), from none of these: shown then only
@@ -10317,7 +10317,7 @@ const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntPar
 // Digits: a number drawn, half the time a fraction p/q (q from 2 to 999, p under it: 498,501), else a root √n (n from 2 to
 // 9,999, no square: 9,900), its digits laid as Digits lays a number's (in the rule's base, its whole part's first, a digit a
 // cell in turn, see digitsOn), the same symmetry; in colours each cell alive (a digit not 0) in its part's colour, as Wild.
-// The number its link's (pop=numbers.16/9, numbers.sqrt(7)) and its result's
+// The number its link's (pop=formula.16/9, formula.sqrt(7)) and its result's
 const huntOwn = () => { const K = lifeParts(), own = new Uint8Array(walk.life.seed.length); if (K > 1) huntParts(0, K).forEach((part, i) => { for (const t of part) own[t] = i + 1; }); return own; };  // (each cell's colour: its part's; one colour, none)
 const drawNumber = (random) => {
   if (random() < 0.5) { const q = 2 + Math.floor(random() * 998); return `${1 + Math.floor(random() * (q - 1))}/${q}`; }
@@ -10465,7 +10465,7 @@ function playHuntResult(r) {
   if (hunt.run) stopHunt();  // a result played: the hunt stops there
   hunt.picked = r.id;
   if (isIcon(hunt.zone) && r.pick) { plane.icons = [...r.pick]; layZone(); renderHunt(); return; }
-  if (r.number) { plane.number = r.number; layZone(); renderHunt(); return; }  // (Digits: its number, the link's: numbers.16/9)
+  if (r.number) { plane.number = r.number; layZone(); renderHunt(); return; }  // (Digits: its number, the link's: formula.16/9)
   // (icons: by their names, pop=icon24.star.heart; an emoji's, pop=emoji.🙂)
   setLifeSeed(r.seed, walk.life.colours === 1 ? 'hunt' : 'battle');
   renderHunt();
@@ -11174,7 +11174,7 @@ const wordOfZone = (z) => HUNT_ZONES[z][2] ?? HUNT_ZONES[z][1].toLowerCase().rep
 const zoneWord = () => (lifeStart?.zone && HUNT_ZONES[lifeStart.zone] && lifeStart.zone !== 'full' ? wordOfZone(lifeStart.zone) : 'random');
 // a zone's start in a link: its word, its density and seed (pop=bloom.30.7); an Icon zone's, its icons' names (pop=icon24.star.heart;
 // a Punk zone's, their numbers: pop=punk24.7804)
-const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, lifeParts()).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : lifeStart?.zone === 'numbers' ? `${zoneWord()}.${plane.number}` : `${zoneWord()}.${plane.density}.${plane.seed}`);  // (Digits: its number, numbers.16/9)
+const zonePop = () => (isIcon(lifeStart?.zone ?? '') ? `${zoneWord()}.${plane.icons.slice(0, lifeParts()).map((i) => iconSet(lifeStart.zone).names[i]).join('.')}` : lifeStart?.zone === 'numbers' ? `${zoneWord()}.${plane.number}` : `${zoneWord()}.${plane.density}.${plane.seed}`);  // (Digits: its number, formula.16/9)
 const zoneOfWord = (w) => Object.keys(HUNT_ZONES).find((z) => z !== 'full' && z !== 'custom' && wordOfZone(z) === w);
 // The version a setup was made with (v=0.2.0, last in its link, kept in Treasures and their files): a link's or a saved
 // one's, kept in the link while the setup in view is that one still, so that a link that fails says where it was made
