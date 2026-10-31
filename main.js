@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.127';
+const VERSION = '0.2.128';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -880,6 +880,9 @@ const TILINGS = {
   tetrakis: { name: 'Tetrakis', mark: '◩', cells: 'triangles', where: 'a grid of triangles, 4 a square (the tetrakis tiling)', most: 14, turns: 4, mirror: true, pivot: [0, 0], torus: true,
     basis: [[2.414213562373095, 0], [0, 2.414213562373095]],
     polys: [[[0,0],[0.5,0.5],[0,1]],[[0,0],[1,0],[0.5,0.5]],[[0.5,0.5],[1,1],[0,1]],[[1,0],[1,1],[0.5,0.5]]] },
+  kischecker: { name: 'Kis checker', mark: '◪', cells: 'tiles', where: 'a checkerboard of squares and tetrakis squares (every other square cut in 4 triangles from its middle)', most: 16, turns: 4, mirror: true, pivot: [1, 0.5],
+    basis: [[2, 0], [1, 1]],  // (a whole square, then the next one's 4 triangles; tools/tilings/build.js)
+    polys: [[[1,0],[1.5,0],[1,1],[0.5,1]],[[0.5,0],[1,0],[0.5,0.5]],[[1,0],[0.5,1],[0.5,0.5]],[[1.5,1],[1,1],[1.5,0.5]],[[1,1],[1.5,0],[1.5,0.5]]] },
   kisrhombille: { name: 'Kisrhombille', mark: '◬', cells: 'triangles', where: 'a grid of triangles, 12 a hexagon (the kisrhombille tiling)', most: 16, turns: 6, mirror: true, pivot: [0, 0], torus: true,
     basis: [[4.732050807568877, 0], [2.366025403784439, 4.098076211353315]],
     polys: [[[0,0],[0.5,0],[0.333333,0.333333]],[[0,0],[0.333333,0.333333],[0,0.5]],[[0,0.5],[0.333333,0.333333],[0,1]],[[0.333333,0.333333],[0.5,0.5],[0,1]],[[0.5,0.5],[0.666667,0.666667],[0,1]],[[0.666667,0.666667],[0.5,1],[0,1]],[[1,0],[1,0.5],[0.666667,0.666667]],[[1,0],[0.666667,0.666667],[0.5,0.5]],[[0.333333,0.333333],[1,0],[0.5,0.5]],[[0.5,0],[1,0],[0.333333,0.333333]],[[0.666667,0.666667],[1,1],[0.5,1]],[[1,0.5],[1,1],[0.666667,0.666667]]] },
