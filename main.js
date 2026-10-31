@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.129';
+const VERSION = '0.2.130';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9219,7 +9219,7 @@ function renderRuleSection() {
   $('ruleCards').replaceChildren(...known.map((o, i) => {
     const picked = o.value === now && !customOpen;  // (picked: a click shows how it works, see ruleTutorial)
     const bw = MODES[$('mode').value].margolus && !carriesColours(parseRule(o.value));  // (a block rule its cells carry no colour on: black and white)
-    return card({ pic: pixelIcon(RULE_ICONS[o.value]), name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked && HOW_AGAIN, byDefault: i ? '' : 'yes',  // (the first: the shape's, see fitRuleToShape)
+    return card({ pic: RULE_ICONS[o.value] ? pixelIcon(RULE_ICONS[o.value]) : '', name: `${o.dataset.name}${bw ? ' · B&W' : ''}`, on: picked, again: picked && HOW_AGAIN, byDefault: i ? '' : 'yes',  // (the first: the shape's, see fitRuleToShape)
       detail: `${o.value} · ${(o.text.split(' — ')[1] ?? '').replace(o.dataset.name, '').replace(/^[,:]?\s*/, '')}`, click: () => {  // its words, without its name
         if (picked) { ruleTutorial(!$('ruleTuto').hidden ? null : o); return; }
         customOpen = false;
