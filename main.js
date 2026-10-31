@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.141';
+const VERSION = '0.2.142';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -865,7 +865,7 @@ const TILINGS = {
   snubtri: { name: 'Snub', mark: '✶', cells: 'tiles', where: 'a grid of hexagons and triangles (the snub trihexagonal tiling)', most: 18, turns: 6, mirror: false, pivot: [0, 0], torus: true,
     basis: [[2.2912878474779204, -1.3228756555322954], [2.29128784747792, 1.3228756555322954]],
     polys: [[[1.428571,0.857143],[1.571429,1.142857],[1.142857,1.285714]],[[1.428571,0.857143],[1.142857,1.285714],[0.714286,1.428571],[0.571429,1.142857],[0.857143,0.714286],[1.285714,0.571429]],[[1.142857,0.285714],[1.571429,0.142857],[1.285714,0.571429]],[[1.142857,0.285714],[1.285714,0.571429],[0.857143,0.714286]],[[1.428571,0.857143],[1.285714,0.571429],[1.714286,0.428571]],[[1.428571,0.857143],[1.714286,0.428571],[1.857143,0.714286]],[[1.428571,0.857143],[1.857143,0.714286],[1.571429,1.142857]],[[1.285714,0.571429],[1.571429,0.142857],[1.714286,0.428571]],[[1.142857,0.285714],[0.857143,0.714286],[0.714286,0.428571]]] },
-  capitalI: { name: 'Capital I', mark: '⌶', cells: 'I tiles', where: 'a grid of capital I tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
+  capitalI: { name: 'Capital 𝙸', mark: '⌶', cells: '𝙸 tiles', where: 'a grid of capital 𝙸 tiles (7 squares each)', most: 6, turns: 2, mirror: false, pivot: [6 / 7, 3 / 14],
     basis: [[2, 1], [-1, 3]],
     polys: [[[0,1],[0.428571,0.857143],[0.857143,0.714286],[1.285714,0.571429],[1.428571,0.857143],[1,1],[1.142857,1.285714],[1.571429,1.142857],[1.714286,1.428571],[1.285714,1.571429],[0.857143,1.714286],[0.428571,1.857143],[0.285714,1.571429],[0.714286,1.428571],[0.571429,1.142857],[0.142857,1.285714]]] },
   pythagorean: { name: 'Pythagoras', mark: '◰', cells: 'squares', where: 'a grid of squares of two sizes (the Pythagorean tiling)', most: 8, turns: 4, mirror: false, pivot: [0.6, 0.8], torus: true,
