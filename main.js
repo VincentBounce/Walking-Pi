@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.145';
+const VERSION = '0.2.146';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1375,6 +1375,7 @@ function describe(base, available) {
   if (creature) { const R = creatureRules(w); setLinks($('barNum'), (barTitle = walkName(w))); setLinks($('barRule'), R.byDigits ? `${withIcons(shownSym)} · ${R.now}` : R.now); $('barRule').title = R.byDigits ? `It turns by the digits of ${shownSym}` : 'It turns by its rule'; $('barBase').hidden = !R.byDigits && !antColours(w); }  // (the base: of digits read, or its colours)
   const colours = antColours($('mode').value);
   $('barBase').textContent = colours ? `${colours} colours` : `base ${base}`;
+  $('barBase').classList.remove('how-it-works');  // (a walk's base: a click, its number; see barBase's click)
   $('barBase').parentElement.classList.toggle('life', !!creature);  // (a creature laid out as Life's: its title, its chips under it)
   if (colours) base = colours;  // its chips, one per colour
   $('barLoop').hidden = true;  // (a reversible one's: not back yet; a walk's loop, its title's link, see updateStats)
@@ -1414,6 +1415,7 @@ function describe(base, available) {
   const known = [...$('lifePreset').options].find((o) => o.dataset.name && o.value === walk.life.ruleText);
   $('barBase').textContent = walk.life.ruleText;  // on the right, the lifetime in the middle (the title: the generation, see updateStats)
   $('barBase').title = known ? known.dataset.name : '';
+  $('barBase').classList.add('how-it-works');  // (Life's rule: a click, how it works)
   $('barBase').parentElement.classList.add('life');
   $('description').innerHTML = `Neighbours share an edge or a corner · ${lead}`;  // (the rule, a newborn's colour too: How it works)
 }
@@ -14570,8 +14572,10 @@ $('copyRle').addEventListener('click', () => {
 // Full number: the number over the view as how a rule works is (its title, all its digits, scrolling), with Copy
 // (a check once copied) and the cross; another number picked, it shows that one; a click on the button again, the cross
 // or anywhere else but on it and the Digits closes it
-function closeNumber() { $('numberPreview').hidden = true; $('copyNumber').classList.remove('active', 'switch'); }
-$('copyNumber').addEventListener('click', () => { if (!$('numberPreview').hidden) closeNumber(); else showNumber(); });
+// the chips that show the number: Full number's, and a walk's base (its rule's chip: how it works instead)
+const numberChips = () => [$('copyNumber'), $('barBase')].filter((b) => !b.classList.contains('how-it-works'));
+function closeNumber() { $('numberPreview').hidden = true; for (const b of numberChips()) b.classList.remove('active', 'switch'); }
+for (const b of [$('copyNumber'), $('barBase')]) b.addEventListener('click', () => { if (b.classList.contains('how-it-works')) return; if (!$('numberPreview').hidden) closeNumber(); else showNumber(); });
 function showNumber() {
   const text = numberText(), name = `${formulaInUse} base ${current.base} `, v = $('numberPreview');
   v.innerHTML = `<div class="tut-body"><h3>${withIcons(formulaInUse)} <code>base ${current.base}</code></h3><p class="number-digits"></p></div>`;
@@ -14582,9 +14586,9 @@ function showNumber() {
   }, close: closeNumber, back: 'the walk' }));
   v.querySelector('.tut-body').scrollTop = 0;
   v.hidden = false;
-  $('copyNumber').classList.add('active', 'switch');
+  for (const b of numberChips()) b.classList.add('active', 'switch');
 }
-document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => ['copyNumber', 'numberPreview', 'numberPicker'].includes(n.id))) closeNumber(); });
+document.addEventListener('click', (e) => { if (!$('numberPreview').hidden && !e.composedPath().some((n) => ['copyNumber', 'barBase', 'numberPreview', 'numberPicker'].includes(n.id))) closeNumber(); });
 // The start selector (hexagon sphere): − / + or a number typed, then Enter. Hovering its field
 // (not − / +) shows every start on an empty globe, turned towards the chosen one.
 function setStart(n) {
