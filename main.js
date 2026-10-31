@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.132';
+const VERSION = '0.2.133';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -1339,7 +1339,7 @@ let cw = 0, ch = 0;
 /* ---- 3.1 Subtitle, colour menu and number of digits ------------------------------------------ */
 function updateRuleText() {}  // the rule is shown by describe (the Play card)
 
-// Game of Life needs one base-C digit per cell; walks use the requested number of digits
+// Game of Life needs one base-(K + 1) digit per cell; walks use the requested number of digits
 function digitsNeeded() {
   const mode = MODES[$('mode').value], size = randomPrimeSize();
   if (mode.life) return plane.start !== 'digits' ? 256 : mode.plane ? gridSize(planeKind(mode.plane), plane.side)[2] : SPHERES[surfaceOf(mode)].tiles(sphereSize());  // all the digits for a start by the digits (a cell each); else a hunt's patch
@@ -1543,7 +1543,7 @@ $('viewTools').addEventListener('mouseenter', renderHeadTiles);
 // The colour menu means something else for the Game of Life, and depends on its number of states.
 // In Life the plain states come first (the default); walks keep the gradient first.
 function relabelColours(mode) {
-  const life = !!mode.life, C = life ? lifeStates() : 2, K = life ? lifeColours : 1, two = K > 1;
+  const life = !!mode.life, C = life ? lifeBase() : 2, K = life ? lifeColours : 1, two = K > 1;
   const dying = C === 3 ? ' · dying' : C > 3 ? ` · ${C - 2} dying` : '';
   const names = !life ? { gradient: 'Rainbow along the walk', cells: 'Rainbow cells along the walk', visits: 'Rainbow by number of visits',
                       digit: 'One colour per digit', mono: 'One colour' }
@@ -3182,7 +3182,7 @@ function compute() {
   }
   const { sym, kind } = F;
   shownSym = sym;
-  const base = mode.life ? lifeStates() : mode.base;  // Life: the number of states of the rule
+  const base = mode.life ? lifeBase() : mode.base;  // Life: K + 1
   const key = `${F.text}/${base}`;
   // The status line under the Number: how the digits came (time, cache), what the number is, and
   // warnings; what is shown is in the description (describe)
@@ -6592,7 +6592,7 @@ function parseRule(text) {
   // colours: civilisations, each newborn taking the colour most of its live neighbours have (2: Immigration),
   // apart from the states C (alive, the dying stages, dead). A cell: 0 dead, k alive of colour k (1 … K),
   // k + K × s dying of colour k at stage s (1 … C − 2). A start has live cells only: one digit a cell in
-  // base K + 1 (one colour: in base C, its dying stages too)
+  // base K + 1 (one colour: base 2, dead or alive)
   const colours = m[4] ? 2 : m[5] ? Number(m[5]) : 1, two = colours === 2, C = m[3] ? Number(m[3]) : 2, iso = hex ? 'hex' : hensel ? 'hensel' : vertex ? 'vertex' : false;
   if (C < 2 || C > 25 || colours > LIFE_COLOURS.length || colours * (C - 1) > 255) return null;  // (a cell's state a byte)
   const ring = hensel ? 8 : 6, classOf = hensel ? (mask) => henselClass(mask).toUpperCase() : hexClass;
@@ -6612,7 +6612,7 @@ function parseRule(text) {
     return a;
   };
   const tail = (C > 2 ? `/C${C}` : '') + (two ? '/Immigration' : colours > 2 ? `/Colours${colours}` : '');
-  return { B: table(m[1]), S: table(m[2]), C, two, colours, iso, base: colours > 1 ? colours + 1 : C, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
+  return { B: table(m[1]), S: table(m[2]), C, two, colours, iso, base: colours + 1, text: `B${m[1].toLowerCase()}/S${m[2].toLowerCase()}${tail}` };
 }
 
 // The starting counts of a Life run: live cells (and the blue ones with two civilisations), dying ones
@@ -6631,11 +6631,10 @@ const LIFE_COLOUR_NAMES = ['red', 'blue', 'gold', 'green', 'violet', 'cyan', 'ma
 // in colours, the colour of each state from 1: alive in its colour, then fainter at each dying stage
 const civColours = (K, C) => [...LIFE_COLOURS.slice(0, K), ...Array.from({ length: K * (C - 2) }, (_, i) => faded(LIFE_COLOURS[i % K], 1 - (Math.floor(i / K) + 1) / (C - 1)))];
 
-// Number of states of the current Life rule = the base the number is written in
-const lifeStates = () => (lifeRuleNow() || { base: 2 }).base;  // one colour: C; colours: K + 1 (a start has live cells only)
+// the base the number is written in for Life: K + 1, a digit a cell, 0 dead, k alive in colour k (a start has live cells only)
+const lifeBase = () => (lifeRuleNow() || { base: 2 }).base;
 
-// A surface's start, as the Start says: its digits (one base-C digit a cell: 0 dead, 1 alive, 2… dying;
-// in colours, base K + 1), or a soup as dense as said, from its seed (in colours, each live cell's colour
+// A surface's start, as the Start says: its digits (one digit a cell in base K + 1: 0 dead, k alive in colour k), or a soup as dense as said, from its seed (in colours, each live cell's colour
 // drawn too)
 function surfaceSeed(seq, n, K, walls) {
   const seed = new Uint8Array(n), p = plane.density / 100;
@@ -9885,16 +9884,15 @@ function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) { 
   };
   // the cells a start chooses, with their colour; then, with a symmetry, the copies of these (cell, the cell copied, the
   // copy's colour: the colour of its part)
-  const alive = (k) => (K > 1 ? k : 1);  // a cell drawn alive: its colour's, else alive (never a dying state: a start as a soup is, see planeSeed)
-  const copy = (s) => { for (const [t, u, k] of copies) s[t] = s[u] ? alive(k) : 0; return s; };
+  const copy = (s) => { for (const [t, u, k] of copies) s[t] = s[u] ? k : 0; return s; };
   // a random start: each cell alive (of its colour) as dense as drawn
   // (each colour at least one cell alive: a colour of few cells would else often start with none)
   const randomSeed = () => {
     const s = new Uint8Array(n), density = dense[0] + Math.random() * (dense[1] - dense[0]);
-    for (const [t, k] of cells) if (Math.random() < density) s[t] = alive(k);
+    for (const [t, k] of cells) if (Math.random() < density) s[t] = k;  // (alive in its colour: one colour's, 1; never a dying state, see lifeBase)
     for (let k = 1; k <= K; k++) {
-      const mine = cells.filter((c) => (K > 1 ? c[1] === k : true));
-      if (mine.length && !mine.some(([t]) => s[t] === alive(k))) s[mine[Math.floor(Math.random() * mine.length)][0]] = alive(k);
+      const mine = cells.filter((c) => c[1] === k);
+      if (mine.length && !mine.some(([t]) => s[t] === k)) s[mine[Math.floor(Math.random() * mine.length)][0]] = k;
     }
     return copy(s);
   };
@@ -9942,7 +9940,7 @@ function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) { 
     }
     const seed = base.seed.slice(), swap = Math.random() < 0.5, any = () => cells[Math.floor(Math.random() * cells.length)];
     for (let m = 1 + Math.floor(Math.random() * 3); m > 0; m--) {
-      if (!swap) { const [t, k] = any(); seed[t] = seed[t] ? 0 : alive(k); continue; }
+      if (!swap) { const [t, k] = any(); seed[t] = seed[t] ? 0 : k; continue; }
       let t = -1, k = 0;  // a live cell (a few tries), to a dead one of its colour
       for (let tries = 0; tries < 20 && t < 0; tries++) { const [u, j] = any(); if (seed[u]) [t, k] = [u, j]; }
       for (let tries = 0; t >= 0 && tries < 20; tries++) { const [u, j] = any(); if (!seed[u] && (K === 1 || j === k)) { seed[u] = seed[t]; seed[t] = 0; break; } }
@@ -10344,7 +10342,7 @@ const nthNumber = (k) => { const j = (k * 104729) % DRAWN; return j < DRAWN_FRAC
 const drawNumber = (random) => nthNumber(Math.floor(random() * DRAWN));
 const NUMBER_DRAWN = /^(\d+)\/(\d+)$|^sqrt\((\d+)\)$/;  // (p/q, sqrt(n): a link's)
 function numberSeed(x, own) {
-  const n = walk.life.seed.length, B = lifeStates(), digits = new Uint8Array(n), seed = new Uint8Array(n), [, p, q, root] = NUMBER_DRAWN.exec(x);
+  const n = walk.life.seed.length, B = lifeBase(), digits = new Uint8Array(n), seed = new Uint8Array(n), [, p, q, root] = NUMBER_DRAWN.exec(x);
   if (root) { const d = iroot(BigInt(root) * BigInt(B) ** BigInt(2 * n), 2).toString(B); for (let i = 0; i < n; i++) digits[i] = parseInt(d[i], B); }  // (√n × Bⁿ, whole: its whole part's digits, then n more)
   else {  // (its whole part's digits, if any, then its others by long division)
     const whole = Math.floor(Number(p) / Number(q)), lead = whole ? [...whole.toString(B)].map((c) => parseInt(c, B)) : [];
@@ -14281,7 +14279,7 @@ for (const [id, k] of [['planeDown', -1], ['planeUp', 1]]) {
 
 // Life's starts, one choice: a tab group of tiles, its pictures over its names (Hunt's and Random's, see renderPlaneRow)
 const START_TABS = [['random', 'search', 'Hunt', 'Random cells to start, or a hunt among them (its goal below); random zones in a reversible rule'],
-  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells, one digit a cell, as many as the grid has cells: the same number, the same start.\nIn the rule's base: one colour, 0 dead, 1 alive, 2 and up its dying stages; in K colours, base K + 1, digit k alive in colour k.\nIn turn: a rectangle row by row, a grid in a hexagon or a circle from its middle out, wound round it.\nThe number: Number's (a constant, a fraction, a formula)"],
+  ['text', 'letter', 'Text', 'Words typed, laid as cells in the font picked'], ['digits', 'barcode', 'Digits', "The number's digits laid as cells, one digit a cell, as many as the grid has cells: the same number, the same start.\nIn base K + 1, live cells only: one colour, base 2, 0 dead, 1 alive; in K colours, digit k alive in colour k.\nIn turn: a rectangle row by row, a grid in a hexagon or a circle from its middle out, wound round it.\nThe number: Number's (a constant, a fraction, a formula)"],
   ['draw', 'pencil', 'Draw', 'Cells drawn by hand, or patterns laid with the brushes, at gen 0']];  // (start, picture, name, tooltip)
 $('lifeStartTabs').append(tileGroup(START_TABS.map(([start, pic, text, title]) => { const b = tile({ pic: icon(pic), text, title }); b.dataset.start = start; return b; }), true));
 for (const b of $('lifeStartTabs').querySelectorAll('button')) {
