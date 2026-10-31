@@ -7,7 +7,7 @@
 //   await walkingCheck({ deep: true });                                    // every grid's rules (yours too), How it works, colours, zones, smallest size: a night's
 //   await walkingCheck({ known: true });                                   // Life's known results, played on the graphics card: a minute
 // Returns { ok, failures, checked }. The meshes: a torus straight and turned, its tiles' neighbours alike; a Möbius
-// strip's cells away from its edges, as many neighbours as the torus of its tiles; each surface its cells as many as
+// strip's cells away from its edges, as many neighbours as the torus of its tiles, a Klein bottle's all; each surface its cells as many as
 // said; the grids that never repeat, their walls closed; every button shown its tooltip; those in a hexagon, their walls closed, turning onto themselves, as many cells as said. The crawl: no error, the link's mode the one shown, the size said its cells' count. Known:
 // Life's oscillators' periods and methuselahs' loops (PATTERNS.md's), a hunt's best, reversible rules' returns to their start.
 
@@ -65,6 +65,14 @@ function checkMeshes(fail) {
     if (mobiusMiddle(g) !== g.L / 2) fail(`${kind}: its back facing the view, not its front`);  // (its sheet laid east and south, as a torus's)
     if (!torus) fail(`${kind}: no torus of its tiles to compare with`);
     else if (!within(inside, torus)) fail(`${kind}: inside ${show(inside)}, its torus ${show(torus)}`);
+  }
+  // the Klein bottles: no edge, every cell as on the torus of its tiles (a tiling's, or the squares', hexagons', … own)
+  for (const kind of Object.keys(SPHERES).filter((k) => /^klein/.test(k))) {
+    const torus = ref[FOLDED[kind] ? FOLDS.torus.of(FOLDED[kind].kind) : kind.replace(/^klein/, 'torus').replace(/Turned$/, '')];
+    if (!torus) continue;  // (a fold with no torus of its own tiles)
+    const c = neighbourCounts(SPHERES[kind].mesh(6));
+    checked++;
+    if (!alike(c, torus)) fail(`${kind}: ${show(c)}, its torus ${show(torus)}`);
   }
   // the grids that never repeat: their walls closed round them (a point just past each side of a cell, a hundredth of the
   // side out, in a cell or a wall; each tile in every square of 3 its box covers), sizes 16 to 64
