@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.137';
+const VERSION = '0.2.138';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -9309,6 +9309,7 @@ function renderRuleSection() {
 
 }
 let ruleFittedTo = null;
+const shapeRules = {};  // each shape's last rule, by its mark: back on a shape, its rule again (as its size and colours: the last picked)
 function fitRuleToShape() {
   const w = $('mode').value, mode = MODES[w];
   if (!mode.life) return;
@@ -9316,11 +9317,12 @@ function fitRuleToShape() {
   const rule = $('lifeRule').value, options = [...$('lifePreset').options], now = options.find((o) => o.value === rule || o.value.replace(/\/C\d+$/, '') === rule);
   const iso = parseRule(rule)?.iso, lettersFit = !iso || (iso === 'vertex' ? true : iso === 'hex' ? lifeMark(mode) === '⬡' : lifeMark(mode) === '■');
   const kindFits = mode.margolus ? blocksFit(parseRule(rule), mode) : mode.loops ? !!parseRule(rule)?.loops : !parseRule(rule)?.margolus && !parseRule(rule)?.loops;  // (blocks: a block rule fitting them only; loops, a table; else neither)
-  if (ruleFittedTo === w && kindFits && lettersFit) return;  // (fitted already, a link's as it is: if it fits the grid at all)
+  const mark = lifeMark(mode);
+  if (ruleFittedTo === w && kindFits && lettersFit) { shapeRules[mark] = rule; return; }  // (fitted already, a link's as it is: if it fits the grid at all)
   ruleFittedTo = w;
-  if (kindFits && lettersFit && (!now || now.text.includes(lifeMark(mode)))) return;  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
-  const fit = options.find((o) => o.text.includes(lifeMark(mode)));
-  if (fit) { customOpen = false; setRuleText(fit.value); }  // (this shape's first: its card)
+  if (kindFits && lettersFit && (!now || now.text.includes(mark))) { shapeRules[mark] = rule; return; }  // a rule typed (its letters, if any, this shape's: Callahan's hexagons, Hensel's squares on the plane), or one for this shape: kept
+  const fit = shapeRules[mark] ?? options.find((o) => o.text.includes(mark))?.value;
+  if (fit) { customOpen = false; setRuleText(fit); }  // (this shape's last, else its first: its card)
 }
 
 function lifeReset() {
