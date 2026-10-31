@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.122';
+const VERSION = '0.2.123';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -609,6 +609,8 @@ function formulaWorker() {
 // right on a half, as many of the tiles' corners and middles are, would round either side); a point's key, so: to find
 // a place again however it was computed
 const roundOff = (x, k = 1000) => Math.round(x * k + 0.37);
+// two whole numbers' greatest common divisor (≥ 0)
+const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
 // cells' corners (polys: each its corners in turn, either way) whole round: their cells' angles there a whole turn (not by
 // the grid's edge, nor a wall)
 const wholeTurns = (polys) => {
@@ -7050,7 +7052,7 @@ const planeW = (kind, side) => (MODES[$('mode').value]?.margolus && planeTorus(k
 // colours in blocks (on a torus, or 2 and 4 with walls along the edges: see huntParts), cols × rows of them: the nearest side
 // they divide (12, 4 × 3: a multiple of 12), every colour as many cells
 const colourW = (kind, x, K = lifeColours) => {  // (x, its rows or its motifs a row: the nearest its colours' blocks' columns and rows divide; K: its colours)
-  const gcd = (a, b) => (b ? gcd(b, a % b) : a), [c, r] = COLOUR_GRID[K] ?? [1, 1], l = (c * r) / gcd(c, r);
+  const [c, r] = COLOUR_GRID[K] ?? [1, 1], l = (c * r) / gcd(c, r);
   const m = K < 2 || APERIODIC[kind] || !(planeTorus(kind) || K === 2 || K === 4) ? 1 : l * (baseOf(kind) === 'cairo' && l % 2 ? 2 : 1);  // (Cairo's: even)
   return Math.max(m, Math.round(x / m) * m);
 };
@@ -8347,7 +8349,7 @@ for (const base of ['hex', 'tri', 'kite', ...Object.keys(TILINGS)]) {
     const { U, V, det, step } = best, D = U[0] * V[1] - U[1] * V[0], inRect = ([wx, wy]) => [(wx * V[1] - wy * V[0]) / D, (U[0] * wy - U[1] * wx) / D];
     // a brick for the least rectangle its sides are whole times of (U = ku steps of a lattice side, V = kv), laid ku × kv
     // times: every one of its parts the same, as the rectangle's copies are (Snub: 2 across)
-    const [[sp, sq], [sr, st]] = step, gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x)), ku = gcd(sp, sq), kv = gcd(sr, st);
+    const [[sp, sq], [sr, st]] = step, ku = gcd(sp, sq), kv = gcd(sr, st);
     const U0 = U.map((x) => x / ku), V0 = V.map((x) => x / kv), D0 = D / ku / kv, inBrick = ([wx, wy]) => [(wx * V0[1] - wy * V0[0]) / D0, (U0[0] * wy - U0[1] * wx) / D0];
     const pick = placeCells(Array.from({ length: per }, (_, k) => planeCorners(base, k, 0).map(inBrick)), inBrick(a), inBrick(b), U0, V0, true);  // (bricks in a rectangle: the shortest outline first)
     const tiles = pick.flatMap(([k, n, m]) => Array.from({ length: ku * kv }, (_, c) => [k, n + ((c % ku) * sp) / ku + (Math.floor(c / ku) * sr) / kv, m + ((c % ku) * sq) / ku + (Math.floor(c / ku) * st) / kv])).map(([k, n, m]) => { const x = k + n * per, [al, be] = inRect(cellMiddle(base, x, m)); return { x, y: m, al, be, polys: planeCorners(base, x, m).map(inRect) }; });
@@ -9797,7 +9799,7 @@ function bordersOf(L, a) {
  * On the graphics card, in batches (see lifeEngine): the starts side by side, a generation of them all at once, their sums
  * (alive, the key, born of each colour, cells beside another colour's) kept LIFE_H generations (more as fewer runs go on), read back then; a run
  * ended (repeating, all reached, or the cap), its place a new start's. */
-function huntRuns(L, { cells, copies, all, choices, draw }, cap, goal, report) {  // goal: one colour's (see HUNT_GOALS)
+function huntRuns(L, { cells, copies, all, choices, nth }, cap, goal, report) {  // goal: one colour's (see HUNT_GOALS)
   const n = L.seed.length, K = L.colours, C = L.C, { start, list } = L.nbr, dense = DENSITY, live = (v) => v > 0 && v <= K;
   const E = lifeEngine(L, Math.max(1, Math.min(2048, Math.floor(2 ** 21 / (Math.ceil(n / 64) * 64)))), 8 * LIFE_H);
   if (!E) return null;
@@ -9917,8 +9919,7 @@ function huntRuns(L, { cells, copies, all, choices, draw }, cap, goal, report) {
   // live cells swapped with dead ones of their colour: as many alive, elsewhere), to make it better
   let made = 0, tried = 0;
   const nextSeed = () => {
-    if (draw) return draw(Math.random);  // (Digits: a number each, drawn: no tweak of a number's digits)
-    if (all) return made < all ? (choices ? nthPick(made++) : nthSeed(made++)) : null;
+    if (all) return made < all ? (nth ? nth(made++) : choices ? nthPick(made++) : nthSeed(made++)) : null;  // (Digits: its numbers, nth's)
     if (!top.length || made++ % 3 === 0) return choices ? randomPick() : randomSeed();
     const base = top[Math.floor(Math.random() * top.length)];
     if (choices) {
@@ -10314,17 +10315,20 @@ const zoneParts = (zone, K) => (zone === 'realm' ? realmParts(K) ?? [] : huntPar
 // from it (in colours, a copy takes the colour of the part it falls in). Returns the cells chosen [cell,
 // colour], the copies [cell, cell copied, colour], the cells of a colour, how dense the random starts
 // are, and how many starts when few enough to try them all.
-// Digits: a number drawn, half the time a fraction p/q (q from 2 to 999, p under it: 498,501), else a root √n (n from 2 to
-// 9,999, no square: 9,900), its digits laid as Digits lays a number's (in the rule's base, its whole part's first, a digit a
+// Digits: a number, a fraction p/q (q from 2 to 999, p under it, in its lowest terms: 303,791) or a root √n (n from 2 to
+// 9,999, no square: 9,900),
+// the hunt trying each once (see nthNumber), a click drawing one; its digits laid as Digits lays a number's (in the rule's base, its whole part's first, a digit a
 // cell in turn, see digitsOn), the same symmetry; in colours each cell alive (a digit not 0) in its part's colour, as Wild.
 // The number its link's (pop=formula.16/9, formula.sqrt(7)) and its result's
 const huntOwn = () => { const K = lifeParts(), own = new Uint8Array(walk.life.seed.length); if (K > 1) huntParts(0, K).forEach((part, i) => { for (const t of part) own[t] = i + 1; }); return own; };  // (each cell's colour: its part's; one colour, none)
-const drawNumber = (random) => {
-  if (random() < 0.5) { const q = 2 + Math.floor(random() * 998); return `${1 + Math.floor(random() * (q - 1))}/${q}`; }
-  let n;
-  do n = 2 + Math.floor(random() * 9998); while (Number.isInteger(Math.sqrt(n)));
-  return `sqrt(${n})`;
-};
+// (the numbers, each once, each its own digits: the fractions in their lowest terms, q by q then p by p (1/2, 1/3, 2/3, 1/4,
+// 3/4…: 303,791), then the roots; number k of them all through a stride prime to their count, the hunt's order mixed)
+const DRAWN_FRACTIONS = [];
+for (let q = 2; q <= 999; q++) for (let p = 1; p < q; p++) if (gcd(p, q) === 1) DRAWN_FRACTIONS.push(`${p}/${q}`);
+const DRAWN_ROOTS = Array.from({ length: 9998 }, (_, i) => i + 2).filter((n) => !Number.isInteger(Math.sqrt(n))).map((n) => `sqrt(${n})`);
+const DRAWN = DRAWN_FRACTIONS.length + DRAWN_ROOTS.length;
+const nthNumber = (k) => { const j = (k * 104729) % DRAWN; return j < DRAWN_FRACTIONS.length ? DRAWN_FRACTIONS[j] : DRAWN_ROOTS[j - DRAWN_FRACTIONS.length]; };  // (104,729, a prime not dividing DRAWN: every k under it a j of its own)
+const drawNumber = (random) => nthNumber(Math.floor(random() * DRAWN));
 const NUMBER_DRAWN = /^(\d+)\/(\d+)$|^sqrt\((\d+)\)$/;  // (p/q, sqrt(n): a link's)
 function numberSeed(x, own) {
   const n = walk.life.seed.length, B = lifeStates(), digits = new Uint8Array(n), seed = new Uint8Array(n), [, p, q, root] = NUMBER_DRAWN.exec(x);
@@ -10342,7 +10346,7 @@ function numberSeed(x, own) {
 function huntPlan() {
   const { colours: K, C } = walk.life, r = zoneRadius(hunt.zone), zone = new Set(), mine = new Map();  // mine: each cell's colour
   if (hunt.zone === 'custom') return { cells: [], copies: [], perColour: 0, density: 0, all: 0 };
-  if (hunt.zone === 'numbers') { const own = huntOwn(); return { cells: [], copies: [], draw: (random) => numberSeed(drawNumber(random), own), perColour: 0, density: 0, all: 0, space: [498501 + 9900, 1] }; }  // (its starts: p/q, √n)
+  if (hunt.zone === 'numbers') { const own = huntOwn(); return { cells: [], copies: [], nth: (k) => numberSeed(nthNumber(k), own), perColour: 0, density: 0, all: DRAWN, space: [DRAWN, 1] }; }  // (its starts: p/q, √n, each once)
   if (famousZone(hunt.zone) || isIcon(hunt.zone)) {  // (patterns, icons: their choices, one a colour)
     const choices = isIcon(hunt.zone) ? iconChoices(iconSize(hunt.zone), iconSet(hunt.zone)) : patternChoices(hunt.zone === 'centred'), count = choices.reduce((m, c) => m * c.length, 1);
     const space = choices.every((c) => c.length === choices[0].length) ? [choices[0].length, K] : [count, 1];  // (its starts: a choice a colour)
@@ -10423,7 +10427,7 @@ function renderHunt() {
     : z === 'numbers' ? `The digits of ${plane.number}, a digit a cell${K > 1 ? ', each colour in its part' : ''}`
     : K === 1 ? `A random soup, ${d} % alive` : `Each colour a soup of its part, ${d} % alive`;
   const hunts = z === 'custom' ? 'pick a zone to hunt in' : all ? `all ${fmt(all)}${N ? ' icons' : z === 'emoji' ? ' emoji' : z === 'patterns' || z === 'centred' ? '' : ' starts'}, the 8 best kept`
-    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'numbers' ? 'numbers at random, fractions p/q (q to 999) or roots √n (n to 9,999)' : z === 'full' || z === 'mirror' ? 'soups at random' : 'starts at random';
+    : N ? 'icons at random, a colour each' : famousZone(z) ? 'patterns at random' : z === 'full' || z === 'mirror' ? 'soups at random' : 'starts at random';
   const zone = shown + (sym !== 'none' ? ` · ${SYMMETRIES[sym][2]}` : '') + (life ? ` · Hunt: ${hunts}` : '');
   $('huntBtn').innerHTML = busy ? `${icon('stop')} Stop hunt and play` : `${icon('search')} Hunt ${what}`;
   $('huntBtn').disabled = !busy && hunt.zone === 'custom';  // a start from a link: a zone to hunt in first
@@ -14357,7 +14361,7 @@ $('huntZones').replaceChildren(...Object.entries(HUNT_ZONES).map(([zone, [pic, n
     : zone === 'centred' ? "Famous: the rule's patterns, one for each colour at its spot, turned or mirrored"
     : zone === 'patterns' ? "Anywhere: Famous, the rule's patterns, one for each colour anywhere in its part, turned or mirrored"
     : zone === 'mirror' ? "Mirror: each colour's two opposite faces (a solid where a colour has two), random soups in them"
-    : zone === 'numbers' ? "Digits: a number at random, its digits laid a digit a cell, as the Digits start lays a number's (in colours, each colour alive in its part, as Wild): half the time a fraction p/q (q from 2 to 999, p under it), else a root √n (n from 2 to 9,999, no square); a click, another. The hunt draws them so, its results each with its number"
+    : zone === 'numbers' ? "Digits: a number at random, its digits laid a digit a cell, as the Digits start lays a number's (in colours, each colour alive in its part, as Wild): half the time a fraction p/q (q from 2 to 999, p under it), else a root √n (n from 2 to 9,999, no square); a click, another. The hunt tries each once, in a mixed order, its results each with its number"
     : zone === 'emoji' ? "An emoji at random, of Unicode's 1,923 (Emoji 18.0), as wide as fits, its outline and dark marks alive, in the middle of each colour's part: a click, another"
     : isIcon(zone) && zone.startsWith('punk') ? `A CryptoPunk at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 10,000 of Larva Labs (2017), its line drawing alive (its outline, dark marks and contrasts), in the middle of each colour's part: a click, another`
     : isIcon(zone) ? `An icon at random, ${zone.endsWith('Max') ? 'as wide as fits, its width and height whole, cut off in its corners only (on squares 96, 72, 48 or 24 cells, elsewhere to the cell)' : '24 cells wide'}, one of the 1,036 of Pixelarticons (MIT), its pixels alive, in the middle of each colour's part: a click, another`
