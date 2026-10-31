@@ -6,7 +6,7 @@
   <title>Walking Pi</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23bf8700'/><path d='M7 11.5Q8 9 11 9H25M12.5 9.5Q12.5 19 9.5 24M19.5 9.5V21Q19.5 24 23 23' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">  <!-- a white π on gold -->
   <meta name="description" content="A walk on a grid in 2D or 3D driven by the base-2 to base-6 digits of π, other constants and large primes.">
-  <link rel="stylesheet" href="style.css?v=20261209u">
+  <link rel="stylesheet" href="style.css?v=20261209v">
   <script>  // the theme before the first paint (see applyTheme)
     try { const t = localStorage.getItem('walkingTheme') || 'system'; document.documentElement.dataset.theme = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t; } catch { document.documentElement.dataset.theme = 'dark'; }
   </script>
@@ -563,14 +563,9 @@
             <option value="B3/S023" data-name="Elongated Life">⊟ B3/S023 — soups settling after 228 to 1,353 generations (2.31 % alive at the end), oscillators in most of their ash (2 states)</option>
             <option value="B24/S0345/C4" data-name="Elongated boil">⊟ B24/S0345/C4 — soups never settling: a boil, some 41 % of its cells alive at any time (4 states)</option>
             <option value="B3/S0239" data-name="Elongated fuses">⊟ B3/S0239 — soups settling after 469 to 3,097 generations, a methuselah of 7 cells: 2,183 (2 states)</option>
-            <option value="B389/S0157/C3" data-name="Kis checker 1">◪ B389/S0157/C3 — soups settling after 344 to 1,461 generations (3 states)</option>
-            <option value="B389/S015/C3" data-name="Kis checker 2">◪ B389/S015/C3 — soups settling after 268 to 1,596 generations (3 states)</option>
-            <option value="B37/S0159/C3" data-name="Kis checker 3">◪ B37/S0159/C3 — soups settling after 351 to 1,192 generations (3 states)</option>
-            <option value="B369/S015/C3" data-name="Kis checker 4">◪ B369/S015/C3 — soups settling after 416 to 2,287 generations (3 states)</option>
-            <option value="B36/S0158/C3" data-name="Kis checker 5">◪ B36/S0158/C3 — soups settling after 559 to 2,337 generations (3 states)</option>
-            <option value="B378/S015/C3" data-name="Kis checker 6">◪ B378/S015/C3 — soups settling after 382 to 1,777 generations (3 states)</option>
-            <option value="B38/S0157/C3" data-name="Kis checker 7">◪ B38/S0157/C3 — soups settling after 497 to 1,519 generations (3 states)</option>
-            <option value="B369/S0159/C3" data-name="Kis checker 8">◪ B369/S0159/C3 — soups settling after 448 to 1,993 generations (3 states)</option>
+            <option value="B389/S0157/C3" data-name="Kis Life">◪ B389/S0157/C3 — soups settling after 344 to 1,461 generations, oscillators of period 3 in half their ash, a methuselah of 11 cells: 1,233 (3 states)</option>
+            <option value="B36/S0158/C3" data-name="Long kis">◪ B36/S0158/C3 — its soups the longest, settling after 559 to 2,337 generations, oscillators of period 3 in most of their ash, a methuselah of 5 cells: 723 (3 states)</option>
+            <option value="B37/S0159/C3" data-name="Kis steady">◪ B37/S0159/C3 — soups settling the most evenly, after 351 to 1,192 generations, a methuselah of 11 cells: 874 (3 states)</option>
             <option value="B3v12/S1247/C4" data-name="Tetrakis wake">◩ B3v12/S1247/C4 — wakes its ash up as Life does, twice as long: a ship flown into a frozen soup sets it going again some 116 generations (Life: 65), often past 300 (4 states)</option>
             <option value="B37/S1" data-name="Tetrakis Life">◩ B37/S1 — soups settling after 470 to over 6,000 generations (2 states)</option>
             <option value="B2v14v2/S23v238" data-name="Tetrakis duels">◩ B2v14v2/S23v238 — the most Life-like found on tetrakis triangles with battles turning round as Life's: 3 changes of the lead a duel, soups settling after 760 generations or so (2 states)</option>
@@ -787,10 +782,10 @@
     </div>
   </main>
 
-  <script src="pixelarticons.js?v=20261209u"></script>
-  <script src="punks.js?v=20261209u"></script>
-  <script src="loops.js?v=20261209u"></script>
-  <script src="emoji.js?v=20261209u"></script>
-  <script src="main.js?v=20261209u"></script>
+  <script src="pixelarticons.js?v=20261209v"></script>
+  <script src="punks.js?v=20261209v"></script>
+  <script src="loops.js?v=20261209v"></script>
+  <script src="emoji.js?v=20261209v"></script>
+  <script src="main.js?v=20261209v"></script>
 </body>
 </html>

@@ -37,7 +37,7 @@
 
 // The version shown after the title, and the only place it is written: 0.1.0 was the first
 // commit, and every commit adds 1 to the last number (0.1.N, N = commits before this one)
-const VERSION = '0.2.130';
+const VERSION = '0.2.131';
 const APP_TITLE = 'Walking π';  // (its name, as its page's heading; Text's words at first)
 
 /* ==============================================================================================
@@ -6919,6 +6919,12 @@ const DRAW_PATTERNS = [
   ['elongatedlife-osc', 'elongated', ['B3/S023'], 'Oscillator', '3A.2A$A!', 'period 6 · 6 cells'],
   ['elongatedlife-meth', 'elongated', ['B3/S023'], 'Methuselah', '.A.2A.A$5A2.A!', 'settles at generation 780 · 10 cells'],
   ['elongatedfuses-meth', 'elongated', ['B3/S0239'], 'Methuselah', '3.A$3.3A$A3.2A!', 'settles at generation 2,183 · 7 cells'],
+  ['kislife-osc', 'kischecker', ['B389/S0157/C3'], 'Oscillator', '2.B.A3.A$A!', 'period 3 · 4 cells'],
+  ['kislife-meth', 'kischecker', ['B389/S0157/C3'], 'Methuselah', '.A.A2.A$6.A.2A$2.3A2.A.A!', 'settles at generation 1,233 · 11 cells'],
+  ['longkis-osc', 'kischecker', ['B36/S0158/C3'], 'Oscillator', '.AB.A$.A!', 'period 3 · 4 cells'],
+  ['longkis-meth', 'kischecker', ['B36/S0158/C3'], 'Methuselah', '5.2A$A3.A.A!', 'settles at generation 723 · 5 cells'],
+  ['kissteady-osc', 'kischecker', ['B37/S0159/C3'], 'Oscillator', 'A.BA$A!', 'period 3 · 4 cells'],
+  ['kissteady-meth', 'kischecker', ['B37/S0159/C3'], 'Methuselah', '6.A.A2.A.2A$4.A3.4A.A!', 'settles at generation 874 · 11 cells'],
   ['prismaticlife-ship', 'prismatic', ['B25/S157/C5'], 'Spaceship', 'A.B.BAD.D2.C$.A.BABCD.D!', 'flies, period 4 · 14 cells'],
   ['prismtrails-ship', 'prismatic', ['B2/S1/C8'], 'Spaceship', '2.G.GFEDE.C.CB3A$F2.G.GDEBE.C.C.A.A!', 'flies, period 4 · 23 cells'],
   ['longprisms-ship', 'prismatic', ['B245/S16/C5'], 'Spaceship', 'A.B.BAD.D2.C$.2AB.B.DCD!', 'flies, period 4 · 14 cells'],
@@ -8750,6 +8756,7 @@ const RULE_ICONS = {
   'B279/S069/C4': '+.+.+,.+o+.,+...+,.o.o.,oo+oo',
   'B29/S067/C4': '.ooo.,..+..,.....,..o..,.o.o.',
   'B24/S0345/C4': '+.o.+,.o+o.,o...o,.+o+.,..o..',
+  'B389/S0157/C3': 'o+.+o,+o.o+,..o..,+o.o+,o+.+o', 'B36/S0158/C3': '..o..,..+..,.o+o.,o+.+o,ooooo', 'B37/S0159/C3': 'ooooo,o.+.o,o+o+o,o.+.o,ooooo',  // (Kis Life, Long kis, Kis steady)
   'B34/S2357': 'o.o.o,..o..,ooooo,.....,.o.o.',
   'B349/S0134/C5': '.....,....o,.oooo,..o..,.....',
   'B348/S0134/C5': '.....,o..o.,..oo.,oo..o,.....',
